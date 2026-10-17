@@ -21,7 +21,17 @@ data class RouteResult(
     val ascentM: Double,
     val descentM: Double,
     val durationS: Double,
+    /** Komoot-style breakdown, metres per category, largest first (may be empty). */
+    val wayTypes: List<Share> = emptyList(),
+    val surfaces: List<Share> = emptyList(),
 )
+
+/**
+ * Metres of the route in one category.
+ * Way type keys: cycleway, path, footway, track, quiet_road, road, busy_road, steps, ferry, other.
+ * Surface keys: asphalt, paved, gravel, unpaved, ground, natural_trail, alpine, unknown.
+ */
+data class Share(val key: String, val meters: Double)
 
 class RoutingException(message: String) : Exception(message)
 
