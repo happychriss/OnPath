@@ -37,3 +37,18 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 ## Routing
 - Contract in `RoutingContract.kt`. Implementation `BRouterEngine(context: Context, segmentsDir: File)`; profiles shipped in `assets/brouter/`.
 - Activity → profile: BIKE_TOURING → fastbike-verylowtraffic, BIKE_TREKKING → trekking, EBIKE → trekking (higher power), MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit.
+
+## Build 2 additions (night work)
+| Area | Owner | Paths |
+| --- | --- | --- |
+| Smart waypoint insertion | lead (done) | `routing/WaypointInsertion.kt` + test |
+| Routing quality, way types & surfaces | routing agent | `routing/BRouterEngine.kt`, `BRouter*.kt`, `app/libs/`, `assets/brouter/`, `tools/routing/` |
+| POI icons (sprite), zoom tiers, style | map agent | `tools/` (not routing), `assets/style/`, `assets/sprites/`, `assets/fonts/` |
+| App UI (eye button, drag, settings, summary) | app agent | rest of `app/` incl. `poi/`, `ui/`, `map/`, `data/`, tests |
+
+- `RouteResult` now has `wayTypes` and `surfaces` (`List<Share>`, defaults empty). Keys are listed in `RoutingContract.kt`.
+- POI categories: the `kind` property of `pois.geojson` features; groups are defined in `poi/PoiKinds.kt`. The app filters POIs by
+  setting a filter on every layer whose id starts with `poi-`: `["all", <original filter>, ["in", ["get","kind"], ["literal", [...enabled kinds]]]]`.
+  Style layers must therefore keep `kind` as a feature property and use expression filters (not legacy filters).
+- POI icons: sprite at `asset://sprites/onpath` (`onpath.json/.png` + `@2x`), icon names `poi-<kind>`.
+- Contour layers have ids starting with `contour-` (app can toggle them).
