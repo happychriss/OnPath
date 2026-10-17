@@ -37,6 +37,12 @@
    "data": "file://{DATA_DIR}/trails.geojson",
    "maxzoom": 14,
    "tolerance": 0.5
+  },
+  "pois": {
+   "type": "geojson",
+   "data": "file://{DATA_DIR}/pois.geojson",
+   "maxzoom": 14,
+   "buffer": 32
   }
  },
  "layers": [
@@ -3183,6 +3189,1104 @@
    }
   },
   {
+   "id": "poi-dot-z13",
+   "type": "circle",
+   "source": "pois",
+   "minzoom": 13,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "viewpoint",
+      "hut",
+      "bivouac",
+      "water",
+      "spring",
+      "waterfall",
+      "castle",
+      "train",
+      "lift"
+     ]
+    ]
+   ],
+   "paint": {
+    "circle-color": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "#7d5ba6",
+     "hut",
+     "#b8392e",
+     "bivouac",
+     "#b8392e",
+     "water",
+     "#2f86c9",
+     "spring",
+     "#2f86c9",
+     "waterfall",
+     "#2f86c9",
+     "castle",
+     "#7d5ba6",
+     "train",
+     "#4a6382",
+     "lift",
+     "#4a6382",
+     "shelter",
+     "#b8392e",
+     "restaurant",
+     "#d9822b",
+     "cafe",
+     "#d9822b",
+     "church",
+     "#7d5ba6",
+     "ruins",
+     "#7d5ba6",
+     "cave",
+     "#7d5ba6",
+     "museum",
+     "#7d5ba6",
+     "camping",
+     "#b8392e",
+     "chapel",
+     "#7d5ba6",
+     "bar",
+     "#d9822b",
+     "fast_food",
+     "#d9822b",
+     "shop",
+     "#d9822b",
+     "toilets",
+     "#5e7f73",
+     "picnic",
+     "#5e7f73",
+     "parking",
+     "#4a6382",
+     "bus",
+     "#4a6382",
+     "info",
+     "#5e7f73",
+     "bike_shop",
+     "#5e7f73",
+     "charging",
+     "#5e7f73",
+     "#777777"
+    ],
+    "circle-radius": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     5.5,
+     15,
+     7,
+     17,
+     9
+    ],
+    "circle-stroke-color": "#ffffff",
+    "circle-stroke-width": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.2,
+     16,
+     1.8
+    ],
+    "circle-pitch-alignment": "map"
+   }
+  },
+  {
+   "id": "poi-glyph-z13",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "viewpoint",
+      "hut",
+      "bivouac",
+      "water",
+      "spring",
+      "waterfall",
+      "castle",
+      "train",
+      "lift"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "◉",
+     "hut",
+     "☗",
+     "bivouac",
+     "☗",
+     "water",
+     "⛲",
+     "spring",
+     "♒",
+     "waterfall",
+     "♒",
+     "castle",
+     "⛫",
+     "train",
+     "☰",
+     "lift",
+     "△",
+     "shelter",
+     "☂",
+     "restaurant",
+     "♨",
+     "cafe",
+     "☕",
+     "church",
+     "⛪",
+     "ruins",
+     "⛫",
+     "cave",
+     "◖",
+     "museum",
+     "★",
+     "camping",
+     "⛺",
+     "chapel",
+     "⛪",
+     "bar",
+     "▼",
+     "fast_food",
+     "♨",
+     "shop",
+     "■",
+     "toilets",
+     "WC",
+     "picnic",
+     "⛱",
+     "parking",
+     "P",
+     "bus",
+     "⛟",
+     "info",
+     "i",
+     "bike_shop",
+     "⚙",
+     "charging",
+     "⚡",
+     "•"
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      6,
+      8
+     ],
+     17,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      8,
+      11
+     ]
+    ],
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-padding": 0,
+    "text-line-height": 1,
+    "text-offset": [
+     0,
+     0.05
+    ]
+   },
+   "paint": {
+    "text-color": "#ffffff"
+   }
+  },
+  {
+   "id": "poi-dot-z14",
+   "type": "circle",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "shelter",
+      "restaurant",
+      "cafe",
+      "church",
+      "ruins",
+      "cave",
+      "museum",
+      "camping"
+     ]
+    ]
+   ],
+   "paint": {
+    "circle-color": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "#7d5ba6",
+     "hut",
+     "#b8392e",
+     "bivouac",
+     "#b8392e",
+     "water",
+     "#2f86c9",
+     "spring",
+     "#2f86c9",
+     "waterfall",
+     "#2f86c9",
+     "castle",
+     "#7d5ba6",
+     "train",
+     "#4a6382",
+     "lift",
+     "#4a6382",
+     "shelter",
+     "#b8392e",
+     "restaurant",
+     "#d9822b",
+     "cafe",
+     "#d9822b",
+     "church",
+     "#7d5ba6",
+     "ruins",
+     "#7d5ba6",
+     "cave",
+     "#7d5ba6",
+     "museum",
+     "#7d5ba6",
+     "camping",
+     "#b8392e",
+     "chapel",
+     "#7d5ba6",
+     "bar",
+     "#d9822b",
+     "fast_food",
+     "#d9822b",
+     "shop",
+     "#d9822b",
+     "toilets",
+     "#5e7f73",
+     "picnic",
+     "#5e7f73",
+     "parking",
+     "#4a6382",
+     "bus",
+     "#4a6382",
+     "info",
+     "#5e7f73",
+     "bike_shop",
+     "#5e7f73",
+     "charging",
+     "#5e7f73",
+     "#777777"
+    ],
+    "circle-radius": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     5.5,
+     15,
+     7,
+     17,
+     9
+    ],
+    "circle-stroke-color": "#ffffff",
+    "circle-stroke-width": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.2,
+     16,
+     1.8
+    ],
+    "circle-pitch-alignment": "map"
+   }
+  },
+  {
+   "id": "poi-glyph-z14",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "shelter",
+      "restaurant",
+      "cafe",
+      "church",
+      "ruins",
+      "cave",
+      "museum",
+      "camping"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "◉",
+     "hut",
+     "☗",
+     "bivouac",
+     "☗",
+     "water",
+     "⛲",
+     "spring",
+     "♒",
+     "waterfall",
+     "♒",
+     "castle",
+     "⛫",
+     "train",
+     "☰",
+     "lift",
+     "△",
+     "shelter",
+     "☂",
+     "restaurant",
+     "♨",
+     "cafe",
+     "☕",
+     "church",
+     "⛪",
+     "ruins",
+     "⛫",
+     "cave",
+     "◖",
+     "museum",
+     "★",
+     "camping",
+     "⛺",
+     "chapel",
+     "⛪",
+     "bar",
+     "▼",
+     "fast_food",
+     "♨",
+     "shop",
+     "■",
+     "toilets",
+     "WC",
+     "picnic",
+     "⛱",
+     "parking",
+     "P",
+     "bus",
+     "⛟",
+     "info",
+     "i",
+     "bike_shop",
+     "⚙",
+     "charging",
+     "⚡",
+     "•"
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      6,
+      8
+     ],
+     17,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      8,
+      11
+     ]
+    ],
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-padding": 0,
+    "text-line-height": 1,
+    "text-offset": [
+     0,
+     0.05
+    ]
+   },
+   "paint": {
+    "text-color": "#ffffff"
+   }
+  },
+  {
+   "id": "poi-dot-z15",
+   "type": "circle",
+   "source": "pois",
+   "minzoom": 15,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "chapel",
+      "bar",
+      "fast_food",
+      "shop",
+      "toilets",
+      "picnic",
+      "parking",
+      "bus",
+      "info",
+      "bike_shop",
+      "charging"
+     ]
+    ]
+   ],
+   "paint": {
+    "circle-color": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "#7d5ba6",
+     "hut",
+     "#b8392e",
+     "bivouac",
+     "#b8392e",
+     "water",
+     "#2f86c9",
+     "spring",
+     "#2f86c9",
+     "waterfall",
+     "#2f86c9",
+     "castle",
+     "#7d5ba6",
+     "train",
+     "#4a6382",
+     "lift",
+     "#4a6382",
+     "shelter",
+     "#b8392e",
+     "restaurant",
+     "#d9822b",
+     "cafe",
+     "#d9822b",
+     "church",
+     "#7d5ba6",
+     "ruins",
+     "#7d5ba6",
+     "cave",
+     "#7d5ba6",
+     "museum",
+     "#7d5ba6",
+     "camping",
+     "#b8392e",
+     "chapel",
+     "#7d5ba6",
+     "bar",
+     "#d9822b",
+     "fast_food",
+     "#d9822b",
+     "shop",
+     "#d9822b",
+     "toilets",
+     "#5e7f73",
+     "picnic",
+     "#5e7f73",
+     "parking",
+     "#4a6382",
+     "bus",
+     "#4a6382",
+     "info",
+     "#5e7f73",
+     "bike_shop",
+     "#5e7f73",
+     "charging",
+     "#5e7f73",
+     "#777777"
+    ],
+    "circle-radius": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     5.5,
+     15,
+     7,
+     17,
+     9
+    ],
+    "circle-stroke-color": "#ffffff",
+    "circle-stroke-width": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.2,
+     16,
+     1.8
+    ],
+    "circle-pitch-alignment": "map"
+   }
+  },
+  {
+   "id": "poi-glyph-z15",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 15,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "chapel",
+      "bar",
+      "fast_food",
+      "shop",
+      "toilets",
+      "picnic",
+      "parking",
+      "bus",
+      "info",
+      "bike_shop",
+      "charging"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "viewpoint",
+     "◉",
+     "hut",
+     "☗",
+     "bivouac",
+     "☗",
+     "water",
+     "⛲",
+     "spring",
+     "♒",
+     "waterfall",
+     "♒",
+     "castle",
+     "⛫",
+     "train",
+     "☰",
+     "lift",
+     "△",
+     "shelter",
+     "☂",
+     "restaurant",
+     "♨",
+     "cafe",
+     "☕",
+     "church",
+     "⛪",
+     "ruins",
+     "⛫",
+     "cave",
+     "◖",
+     "museum",
+     "★",
+     "camping",
+     "⛺",
+     "chapel",
+     "⛪",
+     "bar",
+     "▼",
+     "fast_food",
+     "♨",
+     "shop",
+     "■",
+     "toilets",
+     "WC",
+     "picnic",
+     "⛱",
+     "parking",
+     "P",
+     "bus",
+     "⛟",
+     "info",
+     "i",
+     "bike_shop",
+     "⚙",
+     "charging",
+     "⚡",
+     "•"
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      6,
+      8
+     ],
+     17,
+     [
+      "case",
+      [
+       "==",
+       [
+        "get",
+        "kind"
+       ],
+       "toilets"
+      ],
+      8,
+      11
+     ]
+    ],
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-padding": 0,
+    "text-line-height": 1,
+    "text-offset": [
+     0,
+     0.05
+    ]
+   },
+   "paint": {
+    "text-color": "#ffffff"
+   }
+  },
+  {
+   "id": "poi-label-major",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "has",
+     "name"
+    ],
+    [
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "hut",
+       "bivouac",
+       "castle",
+       "waterfall",
+       "train",
+       "lift"
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 0.95,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 3,
+    "symbol-sort-key": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "hut",
+     0,
+     "bivouac",
+     1,
+     "viewpoint",
+     2,
+     "water",
+     3,
+     "spring",
+     4,
+     "waterfall",
+     5,
+     "castle",
+     6,
+     "train",
+     7,
+     "lift",
+     8,
+     "shelter",
+     9,
+     "restaurant",
+     10,
+     "cafe",
+     11,
+     "church",
+     12,
+     "ruins",
+     13,
+     "cave",
+     14,
+     "museum",
+     15,
+     "camping",
+     16,
+     "chapel",
+     17,
+     "picnic",
+     18,
+     "toilets",
+     19,
+     "bar",
+     20,
+     "fast_food",
+     21,
+     "bus",
+     22,
+     "parking",
+     23,
+     "info",
+     24,
+     "bike_shop",
+     25,
+     "charging",
+     26,
+     "shop",
+     27,
+     99
+    ]
+   },
+   "paint": {
+    "text-color": "#3f3a35",
+    "text-halo-color": "rgba(255,255,255,0.9)",
+    "text-halo-width": 1.4
+   }
+  },
+  {
+   "id": "poi-label",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 15,
+   "filter": [
+    "all",
+    [
+     "has",
+     "name"
+    ],
+    [
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "viewpoint",
+       "hut",
+       "bivouac",
+       "water",
+       "spring",
+       "waterfall",
+       "castle",
+       "train",
+       "lift",
+       "shelter",
+       "restaurant",
+       "cafe",
+       "church",
+       "ruins",
+       "cave",
+       "museum",
+       "camping",
+       "chapel",
+       "bar",
+       "fast_food",
+       "shop",
+       "toilets",
+       "picnic",
+       "info",
+       "bike_shop",
+       "charging"
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 0.95,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 3,
+    "symbol-sort-key": [
+     "match",
+     [
+      "get",
+      "kind"
+     ],
+     "hut",
+     0,
+     "bivouac",
+     1,
+     "viewpoint",
+     2,
+     "water",
+     3,
+     "spring",
+     4,
+     "waterfall",
+     5,
+     "castle",
+     6,
+     "train",
+     7,
+     "lift",
+     8,
+     "shelter",
+     9,
+     "restaurant",
+     10,
+     "cafe",
+     11,
+     "church",
+     12,
+     "ruins",
+     13,
+     "cave",
+     14,
+     "museum",
+     15,
+     "camping",
+     16,
+     "chapel",
+     17,
+     "picnic",
+     18,
+     "toilets",
+     19,
+     "bar",
+     20,
+     "fast_food",
+     21,
+     "bus",
+     22,
+     "parking",
+     23,
+     "info",
+     24,
+     "bike_shop",
+     25,
+     "charging",
+     26,
+     "shop",
+     27,
+     99
+    ]
+   },
+   "paint": {
+    "text-color": "#3f3a35",
+    "text-halo-color": "rgba(255,255,255,0.9)",
+    "text-halo-width": 1.4
+   }
+  },
+  {
    "id": "waterway-label",
    "type": "symbol",
    "source": "base",
@@ -3484,114 +4588,6 @@
    },
    "paint": {
     "text-color": "#6b5a48",
-    "text-halo-color": "rgba(255,255,255,0.9)",
-    "text-halo-width": 1.4,
-    "text-halo-blur": 0.3
-   }
-  },
-  {
-   "id": "hut-dot",
-   "type": "circle",
-   "source": "base",
-   "source-layer": "poi",
-   "minzoom": 14,
-   "filter": [
-    "in",
-    [
-     "get",
-     "subclass"
-    ],
-    [
-     "literal",
-     [
-      "alpine_hut",
-      "wilderness_hut"
-     ]
-    ]
-   ],
-   "paint": {
-    "circle-color": "#b8392e",
-    "circle-radius": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     3,
-     15,
-     5
-    ],
-    "circle-stroke-color": "#ffffff",
-    "circle-stroke-width": 1.5
-   }
-  },
-  {
-   "id": "hut-label",
-   "type": "symbol",
-   "source": "base",
-   "source-layer": "poi",
-   "minzoom": 14,
-   "filter": [
-    "in",
-    [
-     "get",
-     "subclass"
-    ],
-    [
-     "literal",
-     [
-      "alpine_hut",
-      "wilderness_hut"
-     ]
-    ]
-   ],
-   "layout": {
-    "text-field": [
-     "coalesce",
-     [
-      "get",
-      "name:de"
-     ],
-     [
-      "get",
-      "name_de"
-     ],
-     [
-      "get",
-      "name"
-     ]
-    ],
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     11,
-     16,
-     13
-    ],
-    "text-anchor": "top",
-    "text-offset": [
-     0,
-     0.6
-    ],
-    "text-max-width": 8,
-    "text-optional": true
-   },
-   "paint": {
-    "text-color": "#8a2a22",
     "text-halo-color": "rgba(255,255,255,0.9)",
     "text-halo-width": 1.4,
     "text-halo-blur": 0.3
