@@ -17,7 +17,7 @@ object StyleLoader {
         return try {
             val json = context.assets.open(STYLE_ASSET).bufferedReader().use { it.readText() }
             if (!json.trimStart().startsWith("{")) error("style is not JSON")
-            json.replace("{DATA_DIR}", dir)
+            com.onpath.app.poi.stripPoisIfMissing(json.replace("{DATA_DIR}", dir), dataDir)
         } catch (e: Exception) {
             Log.w("OnPath", "Style asset missing, using fallback: $e")
             fallback(dataDir)

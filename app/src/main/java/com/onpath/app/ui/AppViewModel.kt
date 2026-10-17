@@ -81,6 +81,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var showTours by mutableStateOf(false)
     var mode by mutableStateOf(Mode.BROWSE)
         private set
+    /** POI whose details sheet is open (F-MAP-09). */
+    var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
     // --- activity ---
     var activity by mutableStateOf(prefs.activity)
