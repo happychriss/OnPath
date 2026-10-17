@@ -7,6 +7,9 @@ class FakeCtx(private val dir: File) : android.content.Context() {
     override fun getAssets(): android.content.res.AssetManager = android.content.res.AssetManager()
 }
 
+fun fmt(s: List<Share>, total: Double) = s.take(5).joinToString(", ") { String.format("%s %.0f%%", it.key, 100 * it.meters / total) } +
+    String.format("  (sum %.0f m)", s.sumOf { it.meters })
+
 fun main() {
     android.content.res.AssetManager.root = File("/home/user/onpath/app/src/main/assets")
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
@@ -34,6 +37,11 @@ fun main() {
             val ms = System.currentTimeMillis() - t0
             println(String.format("%-38s %-14s %3d %8.2f %6.0f %6.0f %8.1f %6d %5d  ele[0]=%.0f ele[-1]=%.0f", name, ap.first, ap.second,
                 r.distanceM / 1000, r.ascentM, r.descentM, r.durationS / 60, ms, r.points.size, r.points.first().ele, r.points.last().ele))
+            println("      ways: " + fmt(r.wayTypes, r.distanceM) + "\n      surf: " + fmt(r.surfaces, r.distanceM))
+            val t1 = System.currentTimeMillis()
+            val again = eng.route(wps, ap.first, ap.second)
+            val ms2 = System.currentTimeMillis() - t1
+            if (again != r || ms2 > 50) println("      CACHE MISS: repeat took $ms2 ms")
         } catch (e: RoutingException) {
             println(String.format("%-38s %-14s %3d  -> RoutingException (%d ms): %s", name, ap.first, ap.second, System.currentTimeMillis() - t0, e.message))
         }
