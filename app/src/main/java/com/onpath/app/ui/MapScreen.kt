@@ -54,6 +54,7 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 /** The home screen: full-screen map, status on top, one bottom panel. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     vm: AppViewModel,
@@ -181,6 +182,11 @@ fun MapScreen(
     )
     if (showSave) NameDialog("Save route", vm.defaultName("Route"), onDone = { vm.saveRoute(it); showSave = false }, onDismiss = { showSave = false })
     if (confirmStop) ConfirmStopDialog(onStop = { confirmStop = false; vm.stopRecording() }, onDismiss = { confirmStop = false })
+    vm.selectedPoi?.let { poi ->
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {
+            com.onpath.app.poi.PoiDetails(poi = poi, onClose = { vm.selectedPoi = null })
+        }
+    }
 }
 
 @Composable

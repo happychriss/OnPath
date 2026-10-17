@@ -94,7 +94,16 @@ fun MapHost(
             }
             map.addOnCameraMoveListener { onCamera(map) }
             map.addOnMapClickListener { ll ->
-                if (vm.mode == Mode.PLAN) { vm.addPoint(GeoPoint(ll.latitude, ll.longitude)); true } else false
+                // In plan mode a tap always adds a route point (snapped onto a POI if one was hit,
+                // so "route to this hut" just works). Otherwise a tapped POI opens its details.
+                val poi = com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll))
+                when {
+                    vm.mode == Mode.PLAN -> {
+                        vm.addPoint(if (poi != null) GeoPoint(poi.lat, poi.lon) else GeoPoint(ll.latitude, ll.longitude)); true
+                    }
+                    poi != null -> { vm.selectedPoi = poi; true }
+                    else -> false
+                }
             }
             map.addOnMapLongClickListener { ll ->
                 val screen: PointF = map.projection.toScreenLocation(ll)

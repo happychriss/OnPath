@@ -3,7 +3,7 @@
 Last update: 2026-10-17 (first test build).
 
 ## Where we are
-**Test build 1** (versionName 0.1.0) was delivered for a first field test on a Pixel 8 in South Tyrol.
+**Test build 1.1** (versionName 0.1.0, build 1 + POIs) was delivered for a first field test on a Pixel 8 in South Tyrol.
 It compiles, unit and screenshot tests pass, routing was verified on the JVM – but it has **not yet run on
 a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions, background service).
 
@@ -38,8 +38,10 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 - English UI only; strings hard-coded.
 - Unreachable points take ~30 s to fail (BRouter search); very long routes (>80 km) may time out on phone.
 - Huts appear from z14 only; hillshade softens above z13.
-- POIs (F-MAP-09): data, style layers and `poi/` package built; **integration into map tap handling pending**
-  (see `docs/poi-integration.md` when present). `pois.geojson` is optional data.
+- POIs (F-MAP-09) integrated in build 1.1: ~12,000 OSM POIs (viewpoints, restaurants, huts, water, …) as
+  coloured dots; tap (outside plan mode) opens a details sheet with "Open in Google Maps". In plan mode a tap
+  on a POI adds a route point snapped to it. `pois.geojson` is optional (style strips POI layers if missing).
+  Huts now come only from `pois.geojson`. See `docs/poi-integration.md`.
 
 ## Decisions (from the planning discussion)
 | Topic | Decision |
@@ -64,7 +66,7 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 ## Proposed next steps
 1. **Field test feedback** on build 1 → fix crashes and layout issues (user sends `adb exec-out screencap`
    screenshots and `adb logcat` output).
-2. **Build 1.1**: integrate POIs (tap → details sheet → Google Maps link).
+2. ~~Build 1.1: integrate POIs~~ (done).
 3. **Build 2 – "works everywhere" like Komoot** (proposed, not yet confirmed by the owner):
    - Outside prepared regions, stream the base map from **OpenFreeMap** (free, OpenMapTiles schema, same
      style works) and terrain from AWS Terrain Tiles; MapLibre caches tiles automatically.
