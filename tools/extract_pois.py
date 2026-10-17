@@ -8,8 +8,9 @@ website, wikipedia, cuisine.
 Usage: python3 extract_pois.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat
 """
 import json
+import math
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 
 import osmium
 from shapely.geometry import LineString, Polygon
@@ -176,9 +177,51 @@ class Handler(osmium.SimpleHandler):
         self.add("r", a.orig_id(), kind, a.tags, pt.x, pt.y)
 
 
+MERGE_KINDS = {"bus": 40.0}  # kind -> merge radius in metres (same-name stops on both sides of a road)
+
+
+def merge_duplicates(feats):
+    """Merge same-kind, same-name POIs closer than MERGE_KINDS[kind] metres into one point (midpoint).
+    The kept feature is the one with the most properties; ids of merged features are dropped."""
+    groups = defaultdict(list)
+    rest = []
+    for f in feats:
+        p = f["properties"]
+        if p["kind"] in MERGE_KINDS and p.get("name"):
+            groups[(p["kind"], p["name"].casefold())].append(f)
+        else:
+            rest.append(f)
+    merged = 0
+    for (kind, _), fs in groups.items():
+        radius = MERGE_KINDS[kind]
+        clusters = []  # [features]
+        for f in fs:
+            lon, lat = f["geometry"]["coordinates"]
+            for cl in clusters:
+                clon, clat = cl[0]["geometry"]["coordinates"]
+                dx = (lon - clon) * 111320 * math.cos(math.radians(lat))
+                dy = (lat - clat) * 110540
+                if math.hypot(dx, dy) <= radius:
+                    cl.append(f)
+                    break
+            else:
+                clusters.append([f])
+        for cl in clusters:
+            keep = max(cl, key=lambda f: (len(f["properties"]), f["properties"]["id"]))
+            if len(cl) > 1:
+                merged += len(cl) - 1
+                lon = sum(f["geometry"]["coordinates"][0] for f in cl) / len(cl)
+                lat = sum(f["geometry"]["coordinates"][1] for f in cl) / len(cl)
+                keep = {**keep, "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]}}
+            rest.append(keep)
+    return rest, merged
+
+
 def main():
     h = Handler()
     h.apply_file(pbf, locations=True)
+    h.feats, merged = merge_duplicates(h.feats)
+    print("merged duplicates", merged)
     # stable order: important kinds first (helps symbol placement priority ties)
     h.feats.sort(key=lambda f: f["properties"]["id"])
     out = f"{out_dir}/pois.geojson"

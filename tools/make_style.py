@@ -340,31 +340,19 @@ def labels():
 
 
 # --- POIs (F-MAP-09): GeoJSON overlay from tools/extract_pois.py --------------------------------
-# kind -> (group, glyph, minzoom). Glyphs must exist in the bundled "Noto Sans Regular" ranges
-# (0-255, 9472-9727 geometric shapes, 9728-9983 misc symbols).
-POI_GROUPS = {  # group -> circle colour
-    "food": "#d9822b",       # food & drink
-    "hut": "#b8392e",        # huts, shelters, camping
-    "water": "#2f86c9",      # drinking water, springs, waterfalls
-    "sight": "#7d5ba6",      # viewpoints, castles, churches, museums
-    "transport": "#4a6382",  # bus, train, lifts, parking
-    "facility": "#5e7f73",   # toilets, picnic, info, bike
-}
-POI_KINDS = {
-    "viewpoint": ("sight", "◉", 13), "hut": ("hut", "☗", 13), "bivouac": ("hut", "☗", 13),
-    "water": ("water", "⛲", 13), "spring": ("water", "♒", 13), "waterfall": ("water", "♒", 13),
-    "castle": ("sight", "⛫", 13), "train": ("transport", "☰", 13), "lift": ("transport", "△", 13),
-    "shelter": ("hut", "☂", 14), "restaurant": ("food", "♨", 14), "cafe": ("food", "☕", 14),
-    "church": ("sight", "⛪", 14), "ruins": ("sight", "⛫", 14), "cave": ("sight", "◖", 14),
-    "museum": ("sight", "★", 14), "camping": ("hut", "⛺", 14),
-    "chapel": ("sight", "⛪", 15), "bar": ("food", "▼", 15), "fast_food": ("food", "♨", 15),
-    "shop": ("food", "■", 15), "toilets": ("facility", "WC", 15), "picnic": ("facility", "⛱", 15),
-    "parking": ("transport", "P", 15), "bus": ("transport", "⛟", 15), "info": ("facility", "i", 15),
-    "bike_shop": ("facility", "⚙", 15), "charging": ("facility", "⚡", 15),
-}
-POI_PRIO = ["hut", "bivouac", "viewpoint", "water", "spring", "waterfall", "castle", "train", "lift", "shelter",
-            "restaurant", "cafe", "church", "ruins", "cave", "museum", "camping", "chapel", "picnic", "toilets",
-            "bar", "fast_food", "bus", "parking", "info", "bike_shop", "charging", "shop"]
+# Icons come from the sprite (tools/make_sprite.py): "poi-<kind>" (badge) and "poi-<kind>-small" (dot).
+# Tiers ("more at closer zoom"); within a tier the order is the placement priority (first = most important).
+# Collision is on, so dense areas thin out; place/peak labels (above) win over POIs.
+POI_TIERS = [
+    # tier, icon minzoom, label minzoom, kinds
+    (1, 12, 14, ["hut", "bivouac", "viewpoint", "spring", "waterfall", "lift", "train", "castle"]),
+    (2, 14, 15, ["water", "restaurant", "cafe", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
+    (3, 15, 16, ["picnic", "toilets", "info", "bar", "fast_food", "bike_shop", "charging", "shop", "parking",
+                 "bus"]),
+]
+POI_PRIO = [k for _, _, _, kinds in POI_TIERS for k in kinds]
+POI_KINDS = set(POI_PRIO)
+POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 
 
 def _match(values, fallback):
@@ -376,37 +364,31 @@ def _match(values, fallback):
 
 def pois():
     kind = ["get", "kind"]
-    color = _match([(k, POI_GROUPS[g]) for k, (g, _, _) in POI_KINDS.items()], "#777777")
-    glyph = _match([(k, gl) for k, (_, gl, _) in POI_KINDS.items()], "•")
-    prio = _match([(k, i) for i, k in enumerate(POI_PRIO)], 99)
-    for z in (13, 14, 15):
-        kinds = [k for k, (_, _, mz) in POI_KINDS.items() if mz == z]
-        flt = ["in", kind, ["literal", kinds]]
-        layer(id_=f"poi-dot-z{z}", type="circle", source="pois", minzoom=z, filter=flt,
-              paint={"circle-color": color, "circle-radius": interp(13, 5.5, 15, 7, 17, 9, base=1),
-                     "circle-stroke-color": "#ffffff", "circle-stroke-width": interp(13, 1.2, 16, 1.8, base=1),
-                     "circle-pitch-alignment": "map"})
-        layer(id_=f"poi-glyph-z{z}", type="symbol", source="pois", minzoom=max(z, 14), filter=flt,
-              layout={"text-field": glyph, "text-font": REG,
-                      "text-size": interp(14, ["case", ["==", kind, "toilets"], 6, 8],
-                                         17, ["case", ["==", kind, "toilets"], 8, 11], base=1),
-                      "text-allow-overlap": True, "text-ignore-placement": True, "text-padding": 0,
-                      "text-line-height": 1, "text-offset": [0, 0.05]},
-              paint={"text-color": "#ffffff"})
-    # names: collision-aware, below place/peak labels, important kinds first
-    named = ["has", "name"]
-    for lid, minz, kinds in (("poi-label-major", 14, ["hut", "bivouac", "castle", "waterfall", "train", "lift"]),
-                             ("poi-label", 15, None)):
-        flt = ["all", named, ["in", kind, ["literal", kinds]]] if kinds else \
-            ["all", named, ["in", kind, ["literal", [k for k in POI_KINDS if k not in ("bus", "parking")]]]]
-        layer(id_=lid, type="symbol", source="pois", minzoom=minz, filter=flt,
-              layout={"text-field": ["get", "name"], "text-font": MED if kinds else REG,
+    rank = _match([(k, i) for i, k in enumerate(POI_PRIO)], 99)
+    # lower = placed first; named POIs before unnamed ones of the same kind
+    sort_key = ["+", ["*", rank, 2], ["case", ["has", "name"], 0, 1]]
+    badge = ["concat", "poi-", kind]
+    name = ["coalesce", ["get", "name"], ""]
+    # Bottom-most layer = least important tier; MapLibre places symbols of upper layers first.
+    for tier, minz, label_z, kinds in reversed(POI_TIERS):
+        icon = badge
+        if minz < POI_SMALL_UNTIL:
+            icon = ["step", ["zoom"], ["concat", "poi-", kind, "-small"], POI_SMALL_UNTIL, badge]
+        layer(id_=f"poi-tier{tier}", type="symbol", source="pois", minzoom=minz,
+              filter=["in", kind, ["literal", kinds]],
+              layout={"icon-image": icon,
+                      "icon-size": interp(12, 0.8, 13, 0.78, 15, 0.92, 17, 1.05, base=1),
+                      "icon-allow-overlap": False, "icon-padding": 1,
+                      "symbol-sort-key": sort_key, "symbol-z-order": "auto",
+                      "text-field": ["step", ["zoom"], "", label_z, name],
+                      "text-optional": True,
+                      "text-font": MED if tier == 1 else REG,
                       "text-size": interp(14, 10.5, 17, 12.5, base=1),
                       "text-variable-anchor": ["left", "right", "top", "bottom"],
-                      "text-radial-offset": 0.95, "text-justify": "auto", "text-max-width": 8,
-                      "text-padding": 3, "symbol-sort-key": prio},
-              paint={"text-color": "#3f3a35", "text-halo-color": C["halo"],
-                     "text-halo-width": 1.4})
+                      "text-radial-offset": 1.05, "text-justify": "auto", "text-max-width": 8,
+                      "text-padding": 2},
+              paint={"text-color": "#3f3a35" if tier > 1 else "#35302b",
+                     "text-halo-color": C["halo"], "text-halo-width": 1.4})
 
 
 def build():
@@ -418,6 +400,7 @@ def build():
         "metadata": {"onpath:version": 1},
         "center": [11.16, 46.67], "zoom": 12,
         "glyphs": "asset://fonts/{fontstack}/{range}.pbf",
+        "sprite": "asset://sprites/onpath",
         "sources": {
             "base": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/base.pmtiles",
                      "attribution": "© OpenStreetMap contributors"},
