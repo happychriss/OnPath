@@ -3,7 +3,12 @@ package com.onpath.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -30,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.RouteSummary
 
 /**
  * Simple elevation profile. Touching/dragging shows a cursor and reports the point so the
@@ -41,6 +48,8 @@ fun ElevationProfile(
     modifier: Modifier = Modifier,
     height: Dp = 96.dp,
     color: Color = OnPathColors.Route,
+    /** Colour the line by steepness (< 5 % route colour, 5–10 amber, 10–15 orange, > 15 red). */
+    gradient: Boolean = false,
     onHighlight: (GeoPoint?) -> Unit = {},
 ) {
     val data = remember(points) { profileData(points) }
@@ -51,6 +60,7 @@ fun ElevationProfile(
         }
         return
     }
+    val steep = remember(data, gradient) { if (gradient) RouteSummary.steepness(data.dist, data.ele) else null }
     var cursor by remember(points) { mutableStateOf<Int?>(null) }
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = Color(0xFF555A55))
@@ -116,7 +126,14 @@ fun ElevationProfile(
             lineTo(x(data.total), bottom); lineTo(left, bottom); close()
         }
         drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.05f)), top, bottom))
-        drawPath(line, color, style = Stroke(width = 2.dp.toPx()))
+        if (steep == null) drawPath(line, color, style = Stroke(width = 2.dp.toPx()))
+        else {
+            val w2 = 2.5.dp.toPx()
+            for (i in steep.indices) {
+                drawLine(steepColor(steep[i], color), Offset(x(data.dist[i]), y(data.ele[i])),
+                    Offset(x(data.dist[i + 1]), y(data.ele[i + 1])), w2, cap = StrokeCap.Round)
+            }
+        }
 
         cursor?.let { i ->
             val cx = x(data.dist[i]); val cy = y(data.ele[i])
@@ -128,6 +145,30 @@ fun ElevationProfile(
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
         }
+    }
+}
+
+private val STEEP_COLORS = listOf(Color(0xFFF2B33D), Color(0xFFEF7C1A), Color(0xFFD32F2F))
+
+private fun steepColor(s: RouteSummary.Steepness, flat: Color) = when (s) {
+    RouteSummary.Steepness.FLAT -> flat
+    RouteSummary.Steepness.MODERATE -> STEEP_COLORS[0]
+    RouteSummary.Steepness.STEEP -> STEEP_COLORS[1]
+    RouteSummary.Steepness.VERY_STEEP -> STEEP_COLORS[2]
+}
+
+/** One-line legend for the gradient colours. */
+@Composable
+fun GradientLegend(flat: Color = OnPathColors.Route) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf("< 5 %" to flat, "5–10 %" to STEEP_COLORS[0], "10–15 %" to STEEP_COLORS[1], "> 15 %" to STEEP_COLORS[2])
+            .forEach { (t, c) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(12.dp).height(3.dp).background(c))
+                    Spacer(Modifier.width(4.dp))
+                    Text(t, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
     }
 }
 

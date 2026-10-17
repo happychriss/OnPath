@@ -51,6 +51,18 @@ object PoiKinds {
 
     val all: List<PoiKind> get() = list
 
+    /**
+     * Kinds hidden until the user turns them on: keep the map calm like Komoot, which shows only
+     * highlights by default. On by default: huts, shelters, camping, viewpoints, water, waterfalls,
+     * castles/ruins/caves/museums, restaurants/cafés, train and lift stations.
+     */
+    val defaultHidden: Set<String> = setOf(
+        "bar", "fast_food", "shop", "bus", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
+        "church", "chapel",
+    )
+
+    fun inGroup(g: PoiGroup): List<PoiKind> = list.filter { it.group == g }
+
     fun of(key: String?): PoiKind =
         byKey[key] ?: PoiKind(key ?: "poi", PoiGroup.OTHER, "•", (key ?: "Place").replace('_', ' ')
             .replaceFirstChar { it.uppercase() }, (key ?: "Ort").replace('_', ' ').replaceFirstChar { it.uppercase() })

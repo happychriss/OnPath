@@ -10,11 +10,15 @@ All POI data is OpenStreetMap (ODbL). Google Maps is a link-out only: nothing fr
 
 ## Style
 - Source `pois` (geojson, `file://{DATA_DIR}/pois.geojson`).
-- Layers (all ids start with `poi-`, placed below the place/peak labels, so app layers added on top stay above them):
-  `poi-dot-z13`, `poi-glyph-z13`, `poi-dot-z14`, `poi-glyph-z14`, `poi-dot-z15`, `poi-glyph-z15`, `poi-label-major`, `poi-label`.
-- The symbol glyphs need `fonts/Noto Sans Regular/9728-9983.pbf` (added).
+- Build 2: three symbol layers `poi-tier3`, `poi-tier2`, `poi-tier1` (bottom to top, minzoom 15 / 14 / 12), icons from the
+  sprite `asset://sprites/onpath` (`poi-<kind>`). The old `poi-dot-*`, `poi-glyph-*` and `poi-label*` layers are gone.
+  Details and default visibility per kind: `docs/poi-categories.md`.
+- The app finds POI layers by the prefix `poi-` (tap lookup, Settings filter), so new tiers need no app change.
+- Settings filter (`map/LayerSettings.kt` + `poi/PoiFilter.kt`): each poi- layer's original filter is read once from
+  the loaded style JSON and wrapped as `["all", <original>, ["in", ["get","kind"], ["literal", [enabled kinds]]]]`.
+  Default hidden kinds: `PoiKinds.defaultHidden`.
 
-## Code changes for the lead (3 small edits)
+## Code changes for the lead (3 small edits, done in build 1.1 – kept for history)
 
 1. `map/StyleLoader.kt`, `load()`: after replacing `{DATA_DIR}`:
 ```kotlin

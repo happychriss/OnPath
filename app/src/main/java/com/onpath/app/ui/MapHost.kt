@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import android.graphics.PointF
 import android.util.Log
 import android.view.Gravity
 import androidx.compose.runtime.Composable
@@ -94,22 +93,23 @@ fun MapHost(
             }
             map.addOnCameraMoveListener { onCamera(map) }
             map.addOnMapClickListener { ll ->
-                // In plan mode a tap always adds a route point (snapped onto a POI if one was hit,
-                // so "route to this hut" just works). Otherwise a tapped POI opens its details.
+                // In plan mode a tap adds a route point (snapped onto a POI if one was hit, so
+                // "route to this hut" just works), placed by the same smart insertion as any tap.
+                // Otherwise – or while the route is hidden – a tapped POI opens its details.
                 val poi = com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll))
                 when {
-                    vm.mode == Mode.PLAN -> {
-                        vm.addPoint(if (poi != null) GeoPoint(poi.lat, poi.lon) else GeoPoint(ll.latitude, ll.longitude)); true
+                    vm.mode == Mode.PLAN && !vm.routeHidden -> {
+                        val p = if (poi != null) GeoPoint(poi.lat, poi.lon) else GeoPoint(ll.latitude, ll.longitude)
+                        vm.addPoint(p, ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0, onPoi = poi != null); true
                     }
                     poi != null -> { vm.selectedPoi = poi; true }
                     else -> false
                 }
             }
-            map.addOnMapLongClickListener { ll ->
-                val screen: PointF = map.projection.toScreenLocation(ll)
-                val idx = ctrlRef[0]?.waypointAt(screen) ?: -1
-                if (idx >= 0) { vm.removePoint(idx); true } else false
-            }
+            val dragger = PointDragger(mapView, map, vm) { ctrlRef[0] }
+            map.addOnMapLongClickListener { ll -> dragger.onLongPress(ll) }
+            @Suppress("ClickableViewAccessibility")
+            mapView.setOnTouchListener { _, ev -> dragger.onTouch(ev) }
             mapView.addOnDidFailLoadingMapListener { msg ->
                 Log.w("OnPath", "style failed: $msg")
                 if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }

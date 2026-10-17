@@ -14,13 +14,13 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | Path | What |
 | --- | --- |
 | `app/src/main/java/com/onpath/app/` | Kotlin app (Jetpack Compose + MapLibre) |
-| `  ui/` | `AppViewModel` (all UI state), `MapScreen`, `MapHost` (MapView in Compose), `Panels`, `Screens`, `ElevationProfile`, `Theme` |
-| `  map/` | `MapController` (sources/layers the app adds, camera, location), `StyleLoader` ({DATA_DIR} substitution, fallback style) |
-| `  routing/` | `RoutingContract.kt` (shared interface – change with care), `BRouterEngine` (offline BRouter), `EngineProvider` (single place choosing the engine, falls back to `StraightLineEngine`), `Planner` (leg-by-leg fallback) |
+| `  ui/` | `AppViewModel` (all UI state), `MapScreen`, `MapHost` (MapView in Compose), `PointDragger` (long-press drag of markers / route line), `PlanPanel` (+ `PlanExtras`: notice bar, point menu, remaining strip), `RouteBreakdown` (way type / surface bars, difficulty badge), `SettingsScreen`, `Panels`, `Screens`, `ElevationProfile` (gradient colours), `Theme` |
+| `  map/` | `MapController` (sources/layers the app adds, camera, location), `StyleLoader` ({DATA_DIR} substitution, fallback style), `LayerSettings` (Settings → POI filters, contour/hillshade visibility) |
+| `  routing/` | `RoutingContract.kt` (shared interface – change with care), `BRouterEngine` (offline BRouter), `EngineProvider` (single place choosing the engine, falls back to `StraightLineEngine`), `Planner` (leg-by-leg fallback, splits at pinned POI points), `WaypointInsertion` (where a tapped point goes), `PlanEdits` (reverse, round trip, move), `RouteSummary` (breakdown merge, difficulty formula, gradient classes) |
 | `  recording/` | `RecordingService` (foreground location service, off-route warning), `LocationTracker` |
 | `  gpx/` | Tolerant `GpxParser`, `GpxWriter` (GPX 1.1), model |
-| `  data/` | `TourDb` (SQLite WAL), `Prefs`, `DataFiles` (required data check), `Geo` helpers |
-| `  poi/` | POIs: model, kinds, tap lookup, details sheet, Google Maps link-out |
+| `  data/` | `TourDb` (SQLite WAL), `Prefs`, `DataFiles` (required data check), `Geo` helpers, `AppSettings` (Settings page model), `FollowProgress` (remaining distance while following) |
+| `  poi/` | POIs: model, kinds (+ `defaultHidden`), `PoiFilter` (layer filter JSON), tap lookup, details sheet, Google Maps link-out |
 | `app/libs/` | BRouter 1.7.11-beta jars (MIT), built by `tools/routing/build_brouter_jars.sh` |
 | `app/src/main/assets/brouter/` | BRouter profiles + `lookups.dat` |
 | `app/src/main/assets/style/onpath.json` | Map style – **generated**, edit `tools/make_style.py` instead |
