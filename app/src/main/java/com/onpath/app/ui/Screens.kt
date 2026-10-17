@@ -111,8 +111,10 @@ fun MissingDataScreen(
             Text("Connect the phone with USB debugging on and run on your computer:", style = MaterialTheme.typography.bodyMedium)
             Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF1E2421)) {
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SelectionContainer(Modifier.weight(1f)) {
-                        Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                    Box(Modifier.weight(1f)) {
+                        SelectionContainer {
+                            Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                        }
                     }
                     IconButton(onClick = { onCopy(DataFiles.ADB_COMMAND) }, Modifier.size(48.dp)) {
                         Icon(Icons.Filled.ContentCopy, "Copy command", tint = Color.White)
