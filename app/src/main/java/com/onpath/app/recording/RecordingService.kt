@@ -89,6 +89,8 @@ class RecordingService : Service() {
     private var offSince = 0L
     private var offAlerted = false
     private var offDistance: Double? = null
+    /** Off-route settings, re-read when the app sends ACTION_FOLLOW_CHANGED. */
+    private var settings: com.onpath.app.data.AppSettings? = null
     private var lastNotify = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -107,7 +109,9 @@ class RecordingService : Service() {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
             ACTION_RESUME -> { setPaused(false); return START_STICKY }
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
-            ACTION_FOLLOW_CHANGED -> { follow = Prefs(this).loadFollow(); offSince = 0; offAlerted = false; publish(); return START_STICKY }
+            ACTION_FOLLOW_CHANGED -> {
+                follow = Prefs(this).loadFollow(); settings = null; offSince = 0; offAlerted = false; publish(); return START_STICKY
+            }
         }
         if (tourId >= 0) return START_STICKY // already recording
 
@@ -222,7 +226,8 @@ class RecordingService : Service() {
         val d = Geo.distanceToLine(p.lat, p.lon, line)
         offDistance = d
         val now = SystemClock.elapsedRealtime()
-        if (d > OFF_ROUTE_M) {
+        val cfg = settings ?: Prefs(this).settings.also { settings = it }
+        if (cfg.offRouteWarning && d > cfg.offRouteM) {
             if (offSince == 0L) offSince = now
             if (!offAlerted && now - offSince >= OFF_ROUTE_MS) { offAlerted = true; alertOffRoute(d) }
         } else {
@@ -353,7 +358,6 @@ class RecordingService : Service() {
         const val MAX_ACCURACY_M = 30f
         const val MAX_SPEED_MS = 35.0       // ~126 km/h: anything faster is a GPS jump
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
-        const val OFF_ROUTE_M = 40.0
         const val OFF_ROUTE_MS = 15_000L
 
         private val _state = MutableStateFlow<RecState?>(null)

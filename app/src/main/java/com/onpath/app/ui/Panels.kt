@@ -196,82 +196,10 @@ fun BigButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: M
     else FilledTonalButton(onClick, modifier.height(68.dp), shape = RoundedCornerShape(18.dp)) { content() }
 }
 
-// ------------------------------------------------------------------ planning
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun PlanPanel(
-    pointCount: Int,
-    route: PlannedRoute?,
-    routing: Boolean,
-    error: String?,
-    canUndo: Boolean,
-    onUndo: () -> Unit,
-    onClear: () -> Unit,
-    onFromMe: () -> Unit,
-    onSave: () -> Unit,
-    onShare: () -> Unit,
-    onGo: () -> Unit,
-    onClose: () -> Unit,
-    onDeletePoint: (Int) -> Unit,
-    onHighlight: (GeoPoint?) -> Unit,
-) {
-    BottomPanel {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Plan a route", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            ActionButtonSmall(Icons.Filled.Close, "Close planning", onClose)
-        }
-        if (routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp)) else Spacer(Modifier.height(3.dp))
-        Spacer(Modifier.height(6.dp))
-        when {
-            pointCount == 0 -> Hint("Tap the map to set the start, or use “From me”.")
-            pointCount == 1 -> Hint("Tap the map to set the destination.")
-            route != null -> {
-                StatsRow(route.distanceM, route.ascentM, route.descentM, route.durationS)
-                Spacer(Modifier.height(8.dp))
-                ElevationProfile(route.points, onHighlight = onHighlight)
-            }
-        }
-        if (error != null) {
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF4E0)).padding(10.dp)) {
-                Icon(Icons.Filled.Warning, null, tint = Color(0xFFB26A00), modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(error, fontSize = 13.sp, color = Color(0xFF5A3A00))
-            }
-        }
-        if (pointCount > 0) {
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                repeat(pointCount) { i ->
-                    val c = when { i == 0 -> OnPathColors.Good; i == pointCount - 1 && pointCount > 1 -> OnPathColors.Bad; else -> OnPathColors.Route }
-                    Box(
-                        Modifier.size(36.dp).clip(CircleShape).background(c)
-                            .combinedClickable(onClick = {}, onLongClick = { onDeletePoint(i) }, onLongClickLabel = "Delete point ${i + 1}"),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
-                Text("Long-press a point to delete", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ActionButton(Icons.AutoMirrored.Filled.Undo, "Undo", onUndo, enabled = canUndo)
-            ActionButton(Icons.Filled.MyLocation, "From me", onFromMe)
-            ActionButton(Icons.Filled.DeleteSweep, "Clear", onClear, enabled = pointCount > 0)
-            ActionButton(Icons.Filled.Save, "Save", onSave, enabled = route != null)
-            ActionButton(Icons.Filled.Share, "GPX", onShare, enabled = route != null)
-        }
-        Button(onClick = onGo, enabled = route != null, modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)) {
-            Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp)); Text("Follow & record", fontSize = 16.sp)
-        }
-    }
-}
+// ------------------------------------------------------------------ planning: see PlanPanel.kt
 
 @Composable
-private fun Hint(text: String) {
+internal fun Hint(text: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Filled.TripOrigin, null, tint = OnPathColors.Green, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
@@ -323,7 +251,11 @@ fun TrackPanel(
 // ------------------------------------------------------------------ recording
 
 @Composable
-fun RecordPanel(rec: RecState, gps: GpsStatus, onPause: () -> Unit, onResume: () -> Unit, onStop: () -> Unit) {
+fun RecordPanel(
+    rec: RecState, gps: GpsStatus, onPause: () -> Unit, onResume: () -> Unit, onStop: () -> Unit,
+    /** Off-route threshold from Settings; null = warning switched off. */
+    offRouteLimitM: Int? = 40,
+) {
     BottomPanel {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(12.dp).clip(CircleShape).background(if (rec.paused) OnPathColors.Grey else OnPathColors.Rec))
@@ -339,7 +271,7 @@ fun RecordPanel(rec: RecState, gps: GpsStatus, onPause: () -> Unit, onResume: ()
             val off = rec.offRouteM
             val (txt, col) = when {
                 off == null -> "Following ${rec.followName}" to MaterialTheme.colorScheme.onSurfaceVariant
-                off > 40 -> "Off route · ${off.toInt()} m away" to OnPathColors.Bad
+                offRouteLimitM != null && off > offRouteLimitM -> "Off route · ${off.toInt()} m away" to OnPathColors.Bad
                 else -> "On route · ${rec.followName}" to OnPathColors.Good
             }
             Text(txt, color = col, fontSize = 14.sp, fontWeight = if (rec.offRouteAlert) FontWeight.Bold else FontWeight.Normal,

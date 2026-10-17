@@ -47,7 +47,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_WPT = "waypoints"
         const val SRC_HL = "highlight"
         const val LAYER_WPT = "waypoints-icons"
+        const val SRC_DRAG = "drag-preview"
     }
+
+    /** Settings page → base style layers (POI filter, contours, hillshade). */
+    val layers = LayerSettings(style)
 
     private val density = context.resources.displayMetrics.density
     private var locationReady = false
@@ -61,7 +65,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addLayer(CircleLayer("highlight-dot", SRC_HL).withProperties(
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
         ))
+        // Dashed preview from the neighbours to the finger while a point is dragged.
+        style.addSource(GeoJsonSource(SRC_DRAG))
+        style.addLayer(LineLayer("drag-preview", SRC_DRAG).withProperties(
+            PF.lineColor(ROUTE_COLOR), PF.lineWidth(3f), PF.lineDasharray(arrayOf(2f, 1.5f)), PF.lineOpacity(0.8f),
+        ))
         style.addSource(GeoJsonSource(SRC_WPT))
+        // Gold ring under markers placed on a POI (passed exactly, see Planner pinned points).
+        style.addLayer(CircleLayer("waypoints-pin", SRC_WPT).withFilter(Expression.eq(Expression.get("pinned"), Expression.literal(true)))
+            .withProperties(PF.circleRadius(19f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F2B33D"), PF.circleStrokeWidth(3f)))
         style.addLayer(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
@@ -180,7 +192,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
-    fun setWaypoints(points: List<GeoPoint>) {
+    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) {
         val src = style.getSourceAs<GeoJsonSource>(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
@@ -188,10 +200,28 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
                 addStringProperty("icon", "wp-$kind-${i + 1}")
                 addNumberProperty("idx", i)
+                addBooleanProperty("pinned", i in pinned)
             }
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
     }
+
+    /** Drag preview: lines prev → p → next (either neighbour may be null); null clears. */
+    fun setDragPreview(prev: GeoPoint?, p: GeoPoint?, next: GeoPoint?) {
+        val src = style.getSourceAs<GeoJsonSource>(SRC_DRAG) ?: return
+        if (p == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
+        val lines = listOfNotNull(prev?.let { listOf(it, p) }, next?.let { listOf(p, it) })
+            .map { seg -> seg.map { Point.fromLngLat(it.lon, it.lat) } }
+        if (lines.isEmpty()) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        else src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
+    }
+
+    /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */
+    fun metersPerPixel(): Double = try {
+        map.projection.getMetersPerPixelAtLatitude(map.cameraPosition.target?.latitude ?: 46.0)
+    } catch (_: Exception) { 5.0 }
+
+    fun dpToPx(dp: Float) = dp * density
 
     fun setHighlight(p: GeoPoint?) {
         val src = style.getSourceAs<GeoJsonSource>(SRC_HL) ?: return

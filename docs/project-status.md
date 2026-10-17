@@ -1,11 +1,40 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-17 (first test build).
+Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Where we are
+
+Note (build 2): the way types & surfaces breakdown in the planning panel is collapsed by default to a one-line summary so the panel leaves enough map to tap on.
+
 **Test build 1.1** (versionName 0.1.0, build 1 + POIs) was delivered for a first field test on a Pixel 8 in South Tyrol.
 It compiles, unit and screenshot tests pass, routing was verified on the JVM – but it has **not yet run on
 a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions, background service).
+
+### New in build 2 (app side, versionName 0.2.0)
+- **Eye button** in the plan panel: hides planned line, markers and followed/GPX line; the panel collapses to a slim
+  "Route hidden" bar and map taps are paused (a POI tap still opens its details). Tap the eye again → route is back unchanged.
+- **Smart insertion** (F-PLAN-13, `WaypointInsertion`): a tap within ~24 dp of the line becomes a stop in that leg;
+  elsewhere cheapest insertion vs. new destination. A notice above the panel says what happened ("Added as stop 2 of 4")
+  with one alternative ("Make it the destination" / "Insert as stop instead"); one undo reverts add + correction.
+  POI taps in plan mode use the same logic.
+- **Pinned POI points**: a point added by tapping a POI is kept exactly (gold ring on the marker). `Planner` splits the
+  request at pinned points so BRouter's out-and-back spur correction never removes a deliberately chosen hut/viewpoint.
+- **Drag & edit on the map** (F-PLAN-04): long-press a marker and drag → moves it (dashed preview, reroute on release);
+  long-press without moving → menu (Remove / Make start / Make destination; also from the number chips); long-press the
+  route line (optionally drag) → inserts a stop into that leg. **Redo** next to undo; **Reverse route** and
+  **Round trip (back to start)** in the panel's ⋮ menu.
+- **Route summary**: way types and surfaces as two slim stacked bars with km legend (only when the engine sends data;
+  <3 % merged into "Other"); elevation profile coloured by gradient (<5 % route blue, 5–10 amber, 10–15 orange, >15 red,
+  slope over a 100 m window); **difficulty badge** Easy/Moderate/Difficult (formula in `RouteSummary.difficulty`).
+- **Settings page** (gear on the home screen): POI groups with per-kind checkboxes, Show all / Hide all / Defaults
+  (calm defaults like Komoot, `PoiKinds.defaultHidden`); route networks, contours, hillshade; off-route warning on/off and
+  25/40/75 m; keep screen on while following; About (version, data folder + status, attributions, Apache-2.0).
+  Applied live: POI filters wrap each `poi-*` layer's original filter (`LayerSettings`, `PoiFilter`).
+- **Remaining distance / ascent / time** strip at the top while following a route (F-NAV-01, `FollowProgress`).
+  The follow file now stores elevations (old files still load).
+- Tests: unit tests for PoiFilter, RouteSummary (merge, difficulty, gradient), PlanEdits, Planner chunking (fake engine),
+  FollowProgress, breakdown folding; Paparazzi screenshots incl. plan with breakdown + gradient, eye-off, notice,
+  point menu, settings (+ full page), follow strip.
 
 ### Working in build 1
 - Offline map of Bozen/Meran/Algund: Komoot-like style, two-direction hillshade, contours, trails coloured by
@@ -43,6 +72,17 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
   on a POI adds a route point snapped to it. `pois.geojson` is optional (style strips POI layers if missing).
   Huts now come only from `pois.geojson`. See `docs/poi-integration.md`.
 
+### Known gaps (build 2, app side)
+- Drag gestures are untested on a device (MapLibre touch handling verified only by reasoning): check long-press → drag
+  on the Pixel 8 first; if it misbehaves, tap-on-line insertion and the point menu still cover all edits.
+- Pinned points are not saved with tours ("My tours" → reopen: points are routed normally); a route straightened
+  around an unpinned via is still possible.
+- Difficulty ignores trail technique (SAC / MTB scale); thresholds are first guesses – tune after field tests.
+- Remaining strip uses straight-segment matching to the followed line; no "reroute back to route" yet.
+- Plan panel is tall with breakdown bars (~60 % of the screen); the eye button helps, a collapsible details
+  section may be needed.
+- UI strings still English and hard-coded.
+
 ## Decisions (from the planning discussion)
 | Topic | Decision |
 | --- | --- |
@@ -74,8 +114,11 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
    - Automatic download of BRouter rd5 tiles from brouter.de for the current position / planned route.
    - Extras (trail difficulty, route bands, POIs, contours) stay per-region packages for now; later a
      monthly worldwide build on a server and static hosting (GitHub Releases or a storage bucket).
-4. Drag/reorder route points, place search (F-PLAN-12), German UI strings, reroute after off-route,
-   navigation summary, DB backup.
+4. Place search (F-PLAN-12), German UI strings, DB backup.
+5. From `docs/komoot-comparison.md` "Adopt later": reorder points in a list sheet; route warnings list (F-PLAN-11:
+   steps, push sections, >15 %, ferry, private); per-leg "straight line" option (F-PLAN-09); offline "reroute back
+   to route / to destination" after an off-route alert (F-NAV-02); fitness/speed setting for time estimates;
+   route corridor download (F-OFF-02). (POI layer filter: done in Settings in build 2.)
 
 ## Environment notes (for cloud/AI sessions)
 - No Android emulator available in the cloud container (no KVM) – rely on unit tests, Paparazzi screenshots,

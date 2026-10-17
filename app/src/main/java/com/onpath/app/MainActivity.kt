@@ -40,6 +40,7 @@ import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.Mode
 import com.onpath.app.ui.OnPathTheme
+import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.ToursScreen
 import com.onpath.app.ui.UnfinishedDialog
 import kotlinx.coroutines.delay
@@ -104,7 +105,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-                    BackHandler(enabled = !vm.showTours && (vm.mode == Mode.PLAN || vm.shown != null)) {
+                    if (vm.showSettings) {
+                        BackHandler { vm.showSettings = false }
+                        SettingsScreen(
+                            settings = vm.settings,
+                            onChange = vm::updateSettings,
+                            checks = remember(vm.missing) { vm.dataFiles.check() },
+                            dataDir = vm.dataFiles.dir.absolutePath,
+                            version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+                            onBack = { vm.showSettings = false },
+                        )
+                    }
+                    BackHandler(enabled = !vm.showTours && !vm.showSettings && (vm.mode == Mode.PLAN || vm.shown != null)) {
                         if (vm.shown != null) vm.closeShown() else vm.closePlanning()
                     }
 

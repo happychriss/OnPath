@@ -31,18 +31,44 @@ class Prefs(context: Context) {
                 .putFloat("camZoom", v.third.toFloat()).apply()
         }
 
+    var settings: AppSettings
+        get() = AppSettings(
+            hiddenPoiKinds = sp.getStringSet("poiHidden", null)?.toSet() ?: com.onpath.app.poi.PoiKinds.defaultHidden,
+            routeOverlay = sp.getBoolean("overlay", true),
+            contours = sp.getBoolean("contours", true),
+            hillshade = sp.getBoolean("hillshade", true),
+            offRouteWarning = sp.getBoolean("offRouteOn", true),
+            offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
+            keepScreenOn = sp.getBoolean("keepScreenOn", true),
+        )
+        set(v) = sp.edit()
+            .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
+            .putBoolean("overlay", v.routeOverlay)
+            .putBoolean("contours", v.contours)
+            .putBoolean("hillshade", v.hillshade)
+            .putBoolean("offRouteOn", v.offRouteWarning)
+            .putInt("offRouteM", v.offRouteM)
+            .putBoolean("keepScreenOn", v.keepScreenOn)
+            .apply()
+
     var planWaypoints: List<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("plan", null)).map { GeoPoint(it.lat, it.lon) }
         set(v) = sp.edit().putString("plan", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
+
+    /** Waypoints placed on a POI: passed exactly, never straightened by the router. */
+    var planPinned: Set<GeoPoint>
+        get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()
+        set(v) = sp.edit().putString("planPinned", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
 
     /** The line being followed (off-route warning); stored in a file so the service can reload it. */
     fun saveFollow(name: String, points: List<GeoPoint>?) {
         try {
             if (points == null) { followFile.delete(); return }
             val arr = JSONArray()
-            points.forEach { arr.put(it.lat); arr.put(it.lon) }
+            val ele = JSONArray()
+            points.forEach { arr.put(it.lat); arr.put(it.lon); ele.put(it.ele ?: org.json.JSONObject.NULL) }
             val tmp = File(followFile.path + ".tmp")
-            tmp.writeText(org.json.JSONObject().put("name", name).put("pts", arr).toString())
+            tmp.writeText(org.json.JSONObject().put("name", name).put("pts", arr).put("ele", ele).toString())
             tmp.renameTo(followFile)
         } catch (_: Exception) { }
     }
@@ -51,7 +77,11 @@ class Prefs(context: Context) {
         if (!followFile.exists()) null else {
             val o = org.json.JSONObject(followFile.readText())
             val a = o.getJSONArray("pts")
-            o.getString("name") to (0 until a.length() / 2).map { GeoPoint(a.getDouble(it * 2), a.getDouble(it * 2 + 1)) }
+            val e = o.optJSONArray("ele") // optional (build 2+): elevation per point for "remaining ascent"
+            o.getString("name") to (0 until a.length() / 2).map {
+                val h = e?.takeIf { arr -> it < arr.length() && !arr.isNull(it) }?.optDouble(it)
+                GeoPoint(a.getDouble(it * 2), a.getDouble(it * 2 + 1), h?.takeIf { v -> !v.isNaN() })
+            }
         }
     } catch (_: Exception) { null }
 }

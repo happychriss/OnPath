@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
 import com.onpath.app.data.Geo
 import com.onpath.app.data.Prefs
@@ -27,9 +28,11 @@ import com.onpath.app.recording.RecordingService
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.EngineProvider
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.RoutingEngine
+import com.onpath.app.routing.WaypointInsertion
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
@@ -58,6 +61,11 @@ data class ShownTrack(
 ) {
     val points: List<GeoPoint> get() = segments.flatten()
 }
+
+/** Short message after adding a point, with one alternative ("Make it the destination"). */
+data class PlanNotice(val text: String, val actionLabel: String?, val action: NoticeAction?, val id: Long = System.nanoTime())
+
+enum class NoticeAction { MAKE_DESTINATION, MAKE_STOP }
 
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
@@ -89,13 +97,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var sac by mutableStateOf(prefs.sac)
         private set
-    var overlayOn by mutableStateOf(true)
+    // --- settings (Settings page) ---
+    var settings by mutableStateOf(prefs.settings)
+        private set
+    var showSettings by mutableStateOf(false)
+    val overlayOn: Boolean get() = settings.routeOverlay
 
     // --- planning ---
     val waypoints = mutableStateListOf<GeoPoint>().apply { addAll(prefs.planWaypoints) }
+    /**
+     * Points added by tapping a POI (hut, viewpoint …), kept by value so reorder/reverse/undo keep
+     * them; a dragged point is a new value and so no longer pinned. Routed exactly (Planner).
+     */
+    private val pinned = prefs.planPinned.toMutableSet()
+    fun pinnedIndices(): Set<Int> = waypoints.indices.filter { waypoints[it] in pinned }.toSet()
     private val undo = ArrayDeque<List<GeoPoint>>()
+    private val redo = ArrayDeque<List<GeoPoint>>()
     var canUndo by mutableStateOf(false)
         private set
+    var canRedo by mutableStateOf(false)
+        private set
+    /** Eye button: planned line, markers and panel details temporarily hidden. */
+    var routeHidden by mutableStateOf(false)
+    var notice by mutableStateOf<PlanNotice?>(null)
+    /** Waypoint whose small menu (Remove / Make start / Make destination) is open. */
+    var pointMenu by mutableStateOf<Int?>(null)
+    private var lastAdded: Int = -1
     var route by mutableStateOf<PlannedRoute?>(null)
         private set
     var routing by mutableStateOf(false)
@@ -176,20 +203,97 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startPlanning() { mode = Mode.PLAN; shown = null; showTours = false }
 
-    fun closePlanning() { mode = Mode.BROWSE; highlight = null }
+    fun closePlanning() { mode = Mode.BROWSE; highlight = null; routeHidden = false; notice = null; pointMenu = null }
 
-    private fun change(block: MutableList<GeoPoint>.() -> Unit) {
-        undo.addLast(waypoints.toList())
-        if (undo.size > 100) undo.removeFirst()
+    fun updateSettings(s: AppSettings) {
+        settings = s; prefs.settings = s
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
+    }
+
+    /** @param record false = amend the last step (notice actions), so one undo reverts both. */
+    private fun change(record: Boolean = true, block: MutableList<GeoPoint>.() -> Unit) {
+        if (record) {
+            undo.addLast(waypoints.toList())
+            if (undo.size > 100) undo.removeFirst()
+            notice = null
+        }
+        redo.clear(); canRedo = false
         waypoints.block()
-        canUndo = true
+        canUndo = undo.isNotEmpty()
         prefs.planWaypoints = waypoints.toList()
+        prunePinned()
         recalc()
     }
 
-    fun addPoint(p: GeoPoint) = change { add(p) }
+    /** Forget pinned points that are neither planned nor reachable by undo/redo. */
+    private fun prunePinned() {
+        if (pinned.isEmpty()) return
+        val alive = HashSet(waypoints).apply { undo.forEach { addAll(it) }; redo.forEach { addAll(it) } }
+        if (pinned.retainAll(alive)) prefs.planPinned = pinned
+    }
+
+    private fun set(list: List<GeoPoint>, record: Boolean = true) = change(record) { clear(); addAll(list) }
+
+    /**
+     * Adds a tapped point where it most likely belongs (WaypointInsertion, F-PLAN-13) and tells
+     * the user what happened, with one tap to choose the other option.
+     * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
+     */
+    fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
+        if (onPoi) { pinned += p; prefs.planPinned = pinned }
+        val before = waypoints.toList()
+        // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
+        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
+        change { add(d.index.coerceIn(0, size), p) }
+        lastAdded = d.index
+        val n = waypoints.size
+        notice = when {
+            n <= 2 -> null // start and first destination are obvious
+            d.kind == WaypointInsertion.Kind.DESTINATION ->
+                PlanNotice("Added as new destination", "Insert as stop instead", NoticeAction.MAKE_STOP)
+            else -> PlanNotice("Added as stop ${d.index + 1} of $n", "Make it the destination", NoticeAction.MAKE_DESTINATION)
+        }
+    }
+
+    fun onNoticeAction(a: NoticeAction) {
+        val i = lastAdded
+        val w = waypoints.toList()
+        if (i !in w.indices) { notice = null; return }
+        val p = w[i]
+        when (a) {
+            NoticeAction.MAKE_DESTINATION -> {
+                set(PlanEdits.move(w, i, w.size - 1), record = false); lastAdded = w.size - 1
+                notice = PlanNotice("Now the destination", null, null)
+            }
+            NoticeAction.MAKE_STOP -> {
+                val rest = w.toMutableList().apply { removeAt(i) }
+                val at = PlanEdits.bestViaIndex(rest, p)
+                set(rest.apply { add(at, p) }, record = false); lastAdded = at
+                notice = PlanNotice("Now stop ${at + 1} of ${w.size}", null, null)
+            }
+        }
+    }
 
     fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
+
+    /** Drag-to-move: the point keeps its position in the order. */
+    fun movePoint(index: Int, p: GeoPoint) { if (index in waypoints.indices) set(PlanEdits.replace(waypoints, index, p)) }
+
+    /** Dragging the route line: a new stop inserted at [index] (the leg it was dragged from). */
+    fun insertPoint(index: Int, p: GeoPoint) {
+        change { add(index.coerceIn(1, size), p) }
+        notice = PlanNotice("Added as stop ${index.coerceIn(1, waypoints.size - 1) + 1} of ${waypoints.size}", null, null)
+    }
+
+    fun makeStart(index: Int) { if (index > 0 && index in waypoints.indices) set(PlanEdits.move(waypoints, index, 0)) }
+    fun makeDestination(index: Int) {
+        if (index in waypoints.indices && index != waypoints.lastIndex) set(PlanEdits.move(waypoints, index, waypoints.size - 1))
+    }
+    fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
+    fun roundTrip() {
+        val w = PlanEdits.roundTrip(waypoints)
+        if (w.size != waypoints.size) set(w) else if (waypoints.size >= 2) message = "The route already ends at the start."
+    }
 
     fun startAtMyPosition() {
         val loc = tracker.location.value
@@ -198,10 +302,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         change { if (isEmpty()) add(p) else add(0, p) }
     }
 
-    fun undoStep() {
-        val prev = undo.removeLastOrNull() ?: return
+    fun undoStep() = step(undo, redo)
+    fun redoStep() = step(redo, undo)
+
+    private fun step(from: ArrayDeque<List<GeoPoint>>, to: ArrayDeque<List<GeoPoint>>) {
+        val prev = from.removeLastOrNull() ?: return
+        to.addLast(waypoints.toList())
         waypoints.clear(); waypoints.addAll(prev)
-        canUndo = undo.isNotEmpty()
+        canUndo = undo.isNotEmpty(); canRedo = redo.isNotEmpty()
+        notice = null
         prefs.planWaypoints = waypoints.toList()
         recalc()
     }
@@ -212,6 +321,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeJob?.cancel()
         highlight = null
         val pts = waypoints.toList()
+        val pins = pinnedIndices()
         if (pts.size < 2) { route = null; routeError = null; routing = false; return }
         val act = activity; val level = sac
         val gen = ++routeGen
@@ -222,7 +332,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching {
                     val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                         .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
-                    Planner(eng).plan(pts, act, level)
+                    Planner(eng).plan(pts, act, level, pins)
                 }
             }
             if (gen != routeGen) return@launch // a newer request superseded this one

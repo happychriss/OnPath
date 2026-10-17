@@ -1,0 +1,213 @@
+package com.onpath.app.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.onpath.app.data.AppSettings
+import com.onpath.app.data.DataFiles
+import com.onpath.app.poi.PoiGroup
+import com.onpath.app.poi.PoiKinds
+
+val PoiGroup.label: String
+    get() = when (this) {
+        PoiGroup.FOOD -> "Food & drink"
+        PoiGroup.HUT -> "Huts & camping"
+        PoiGroup.WATER -> "Water"
+        PoiGroup.SIGHT -> "Sights & views"
+        PoiGroup.TRANSPORT -> "Transport"
+        PoiGroup.FACILITY -> "Facilities"
+        PoiGroup.OTHER -> "Other"
+    }
+
+/** Settings page (gear on the home screen). Every change is applied and saved at once. */
+@Composable
+fun SettingsScreen(
+    settings: AppSettings,
+    onChange: (AppSettings) -> Unit,
+    checks: List<DataFiles.Check>,
+    dataDir: String,
+    version: String,
+    onBack: () -> Unit,
+    initiallyExpanded: Set<PoiGroup> = emptySet(),
+) {
+    val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
+    val hidden = settings.hiddenPoiKinds
+    fun setHidden(h: Set<String>) = onChange(settings.copy(hiddenPoiKinds = h))
+
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.systemBarsPadding()) {
+            Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                Text("Settings", style = MaterialTheme.typography.titleLarge)
+            }
+            LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    Section("Points of interest") {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { setHidden(emptySet()) }) { Text("Show all") }
+                            TextButton(onClick = { setHidden(PoiKinds.all.map { it.key }.toSet()) }) { Text("Hide all") }
+                            TextButton(onClick = { setHidden(PoiKinds.defaultHidden) }) { Text("Defaults") }
+                        }
+                        PoiGroup.entries.forEach { g ->
+                            val kinds = PoiKinds.inGroup(g)
+                            if (kinds.isEmpty()) return@forEach
+                            val on = kinds.count { it.key !in hidden }
+                            val state = when (on) { 0 -> ToggleableState.Off; kinds.size -> ToggleableState.On; else -> ToggleableState.Indeterminate }
+                            val open = expanded[g] == true
+                            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { expanded[g] = !open }.padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                TriStateCheckbox(state = state, onClick = {
+                                    val keys = kinds.map { it.key }
+                                    setHidden(if (state == ToggleableState.On) hidden + keys else hidden - keys.toSet())
+                                })
+                                Box(Modifier.size(12.dp).clip(CircleShape).background(Color(g.argb)))
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(g.label, fontSize = 16.sp)
+                                    Text("$on of ${kinds.size} shown", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Collapse" else "Expand")
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            if (open) kinds.forEach { k ->
+                                val shown = k.key !in hidden
+                                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { setHidden(if (shown) hidden + k.key else hidden - k.key) }
+                                    .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = shown, onCheckedChange = { setHidden(if (shown) hidden + k.key else hidden - k.key) })
+                                    Text(k.en, fontSize = 15.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
+                    Section("Map") {
+                        SwitchRow("Marked route networks", "Hiking, cycling or MTB routes for the chosen activity", settings.routeOverlay) {
+                            onChange(settings.copy(routeOverlay = it))
+                        }
+                        SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
+                        SwitchRow("Hillshade (relief)", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
+                    }
+                }
+                item {
+                    Section("Navigation") {
+                        SwitchRow("Off-route warning", "Vibration and notification when you leave the followed route",
+                            settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text("Warn after", fontSize = 14.sp)
+                            AppSettings.OFF_ROUTE_CHOICES.forEach { m ->
+                                FilterChip(selected = settings.offRouteM == m, enabled = settings.offRouteWarning,
+                                    onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text("$m m") },
+                                    modifier = Modifier.heightIn(min = 44.dp))
+                            }
+                        }
+                        SwitchRow("Keep screen on while navigating", "Only while following a route", settings.keepScreenOn) {
+                            onChange(settings.copy(keepScreenOn = it))
+                        }
+                    }
+                }
+                item { AboutSection(checks, dataDir, version) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutSection(checks: List<DataFiles.Check>, dataDir: String, version: String) {
+    Section("About") {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("OnPath $version", fontWeight = FontWeight.SemiBold)
+            Text("Data folder", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(dataDir, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+            checks.forEach { c ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (c.present) Icons.Filled.CheckCircle else Icons.Filled.RemoveCircleOutline, null,
+                        tint = if (c.present) OnPathColors.Good else OnPathColors.Bad, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", fontSize = 13.sp)
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            ATTRIBUTIONS.forEach { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text("Licence: Apache-2.0", fontSize = 12.sp)
+        }
+    }
+}
+
+private val ATTRIBUTIONS = listOf(
+    "Map data © OpenStreetMap contributors (ODbL)",
+    "Vector tile schema © OpenMapTiles",
+    "Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)",
+    "Routing: BRouter (MIT licence)",
+    "POI icons: Maki and Temaki (CC0)",
+    "Map renderer: MapLibre Native (BSD licence)",
+)
+
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = OnPathColors.Green,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onChange(!checked) }.padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 16.sp)
+            if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
