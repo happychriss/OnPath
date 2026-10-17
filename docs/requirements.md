@@ -48,6 +48,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-MAP-06 | Map style follows activity: hiking emphasises footpaths, biking emphasises cycleways and surface. | Should |
 | F-MAP-07 | Dark / night style. | Could |
 | F-MAP-08 | Route network overlays, switchable from a layer button: three overlays from OSM route relations: hiking, cycling and MTB. Cycling overlay serves all three bike profiles. Initial release: cycling and hiking overlays (Must), MTB overlay next (Should). Routes are drawn as a soft green translucent band along the path like in Komoot, with route name or number on tap. Works offline (part of the region package); one overlay at a time, auto-selected by activity, can be turned off. | Must |
+| F-MAP-09 | Outdoor POIs from OpenStreetMap, offline: viewpoints, restaurants/cafés, huts, drinking water and springs, shelters, picnic sites, toilets, parking, bus/train stops, waterfalls, castles. Tap a POI: name, type, opening hours, phone, website (from OSM), plus "Open in Google Maps" (online link-out for photos, reviews, tips). Google content is not stored in the app (licence). | Must |
 
 ### 3.2 Own position
 

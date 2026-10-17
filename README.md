@@ -12,6 +12,9 @@ Status: early prototype. First test region: Bozen / Meran / Algund (South Tyrol)
 ## Documentation
 
 - [Requirements specification](docs/requirements.md)
+- [Project status, decisions and next steps](docs/project-status.md)
+- [Architecture contract](docs/architecture-contract.md)
+- [Guide for AI assistants and contributors](CLAUDE.md)
 
 ## License
 
