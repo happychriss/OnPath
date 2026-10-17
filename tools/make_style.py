@@ -296,16 +296,7 @@ def labels():
                   "text-font": ITA, "text-size": 11,
                   "text-max-width": 8, "text-padding": 6},
           paint={"text-color": "#6b5a48", **halo})
-    # huts
-    hut = ["in", ["get", "subclass"], ["literal", ["alpine_hut", "wilderness_hut"]]]
-    layer(id_="hut-dot", type="circle", source="base", **{"source-layer": "poi"}, minzoom=14, filter=hut,
-          paint={"circle-color": "#b8392e", "circle-radius": interp(11, 3, 15, 5),
-                 "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5})
-    layer(id_="hut-label", type="symbol", source="base", **{"source-layer": "poi"}, minzoom=14, filter=hut,
-          layout={"text-field": NAME, "text-font": MED, "text-size": interp(12, 11, 16, 13),
-                  "text-anchor": "top", "text-offset": [0, 0.6], "text-max-width": 8,
-                  "text-optional": True},
-          paint={"text-color": "#8a2a22", **halo})
+    # huts: now drawn from the POI overlay (poi-* layers), see pois()
     # peaks
     peak = ["all", ["in", ["get", "class"], ["literal", ["peak", "volcano"]]], ["has", "name"]]
     peak_text = ["format", "▲", {"font-scale": 0.8, "text-color": "#6f5b45"}, "\n", {},
@@ -348,9 +339,79 @@ def labels():
           paint={"text-color": "#24211e", **halo})
 
 
+# --- POIs (F-MAP-09): GeoJSON overlay from tools/extract_pois.py --------------------------------
+# kind -> (group, glyph, minzoom). Glyphs must exist in the bundled "Noto Sans Regular" ranges
+# (0-255, 9472-9727 geometric shapes, 9728-9983 misc symbols).
+POI_GROUPS = {  # group -> circle colour
+    "food": "#d9822b",       # food & drink
+    "hut": "#b8392e",        # huts, shelters, camping
+    "water": "#2f86c9",      # drinking water, springs, waterfalls
+    "sight": "#7d5ba6",      # viewpoints, castles, churches, museums
+    "transport": "#4a6382",  # bus, train, lifts, parking
+    "facility": "#5e7f73",   # toilets, picnic, info, bike
+}
+POI_KINDS = {
+    "viewpoint": ("sight", "◉", 13), "hut": ("hut", "☗", 13), "bivouac": ("hut", "☗", 13),
+    "water": ("water", "⛲", 13), "spring": ("water", "♒", 13), "waterfall": ("water", "♒", 13),
+    "castle": ("sight", "⛫", 13), "train": ("transport", "☰", 13), "lift": ("transport", "△", 13),
+    "shelter": ("hut", "☂", 14), "restaurant": ("food", "♨", 14), "cafe": ("food", "☕", 14),
+    "church": ("sight", "⛪", 14), "ruins": ("sight", "⛫", 14), "cave": ("sight", "◖", 14),
+    "museum": ("sight", "★", 14), "camping": ("hut", "⛺", 14),
+    "chapel": ("sight", "⛪", 15), "bar": ("food", "▼", 15), "fast_food": ("food", "♨", 15),
+    "shop": ("food", "■", 15), "toilets": ("facility", "WC", 15), "picnic": ("facility", "⛱", 15),
+    "parking": ("transport", "P", 15), "bus": ("transport", "⛟", 15), "info": ("facility", "i", 15),
+    "bike_shop": ("facility", "⚙", 15), "charging": ("facility", "⚡", 15),
+}
+POI_PRIO = ["hut", "bivouac", "viewpoint", "water", "spring", "waterfall", "castle", "train", "lift", "shelter",
+            "restaurant", "cafe", "church", "ruins", "cave", "museum", "camping", "chapel", "picnic", "toilets",
+            "bar", "fast_food", "bus", "parking", "info", "bike_shop", "charging", "shop"]
+
+
+def _match(values, fallback):
+    expr = ["match", ["get", "kind"]]
+    for k, v in values:
+        expr += [k, v]
+    return expr + [fallback]
+
+
+def pois():
+    kind = ["get", "kind"]
+    color = _match([(k, POI_GROUPS[g]) for k, (g, _, _) in POI_KINDS.items()], "#777777")
+    glyph = _match([(k, gl) for k, (_, gl, _) in POI_KINDS.items()], "•")
+    prio = _match([(k, i) for i, k in enumerate(POI_PRIO)], 99)
+    for z in (13, 14, 15):
+        kinds = [k for k, (_, _, mz) in POI_KINDS.items() if mz == z]
+        flt = ["in", kind, ["literal", kinds]]
+        layer(id_=f"poi-dot-z{z}", type="circle", source="pois", minzoom=z, filter=flt,
+              paint={"circle-color": color, "circle-radius": interp(13, 5.5, 15, 7, 17, 9, base=1),
+                     "circle-stroke-color": "#ffffff", "circle-stroke-width": interp(13, 1.2, 16, 1.8, base=1),
+                     "circle-pitch-alignment": "map"})
+        layer(id_=f"poi-glyph-z{z}", type="symbol", source="pois", minzoom=max(z, 14), filter=flt,
+              layout={"text-field": glyph, "text-font": REG,
+                      "text-size": interp(14, ["case", ["==", kind, "toilets"], 6, 8],
+                                         17, ["case", ["==", kind, "toilets"], 8, 11], base=1),
+                      "text-allow-overlap": True, "text-ignore-placement": True, "text-padding": 0,
+                      "text-line-height": 1, "text-offset": [0, 0.05]},
+              paint={"text-color": "#ffffff"})
+    # names: collision-aware, below place/peak labels, important kinds first
+    named = ["has", "name"]
+    for lid, minz, kinds in (("poi-label-major", 14, ["hut", "bivouac", "castle", "waterfall", "train", "lift"]),
+                             ("poi-label", 15, None)):
+        flt = ["all", named, ["in", kind, ["literal", kinds]]] if kinds else \
+            ["all", named, ["in", kind, ["literal", [k for k in POI_KINDS if k not in ("bus", "parking")]]]]
+        layer(id_=lid, type="symbol", source="pois", minzoom=minz, filter=flt,
+              layout={"text-field": ["get", "name"], "text-font": MED if kinds else REG,
+                      "text-size": interp(14, 10.5, 17, 12.5, base=1),
+                      "text-variable-anchor": ["left", "right", "top", "bottom"],
+                      "text-radial-offset": 0.95, "text-justify": "auto", "text-max-width": 8,
+                      "text-padding": 3, "symbol-sort-key": prio},
+              paint={"text-color": "#3f3a35", "text-halo-color": C["halo"],
+                     "text-halo-width": 1.4})
+
+
 def build():
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
-    trails(); bridges(); boundaries(); labels()
+    trails(); bridges(); boundaries(); pois(); labels()
     style = {
         "version": 8,
         "name": "OnPath Topo",
@@ -367,6 +428,8 @@ def build():
                        "tolerance": 0.5},
             "trails": {"type": "geojson", "data": "file://{DATA_DIR}/trails.geojson", "maxzoom": 14,
                        "tolerance": 0.5},
+            "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
+                     "buffer": 32},
         },
         "layers": L,
     }
