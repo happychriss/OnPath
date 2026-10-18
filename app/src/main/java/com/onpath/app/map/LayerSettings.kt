@@ -28,10 +28,20 @@ class LayerSettings(private val style: Style) {
     private var lastHidden: Set<String>? = null
 
     fun apply(s: AppSettings) {
-        if (s.hiddenPoiKinds != lastHidden) { applyPoi(s.hiddenPoiKinds); lastHidden = s.hiddenPoiKinds }
-        setVisible("contour-", s.contours)
-        setVisible("hillshade", s.hillshade)
+        // After a style reload (map data arrived, theme change, import) this object still points at the
+        // old style; MapLibre then throws on every access. The new style gets its own MapController and
+        // LayerSettings, which apply the settings again – so here we just skip.
+        if (!isCurrent()) return
+        try {
+            if (s.hiddenPoiKinds != lastHidden) { applyPoi(s.hiddenPoiKinds); lastHidden = s.hiddenPoiKinds }
+            setVisible("contour-", s.contours)
+            setVisible("hillshade", s.hillshade)
+        } catch (e: Exception) {
+            Log.w("OnPath", "layer settings not applied: $e")
+        }
     }
+
+    private fun isCurrent(): Boolean = try { style.isFullyLoaded } catch (e: Exception) { false }
 
     private fun applyPoi(hidden: Set<String>) {
         val known = PoiKinds.all.map { it.key }
@@ -47,7 +57,8 @@ class LayerSettings(private val style: Style) {
     }
 
     private fun setVisible(prefix: String, visible: Boolean) {
-        style.layers.filter { it.id.startsWith(prefix) }.forEach {
+        val layers = try { style.layers } catch (e: Exception) { Log.w("OnPath", "layers not readable: $e"); return }
+        layers.filter { it.id.startsWith(prefix) }.forEach {
             runCatching { it.setProperties(PropertyFactory.visibility(if (visible) Property.VISIBLE else Property.NONE)) }
         }
     }
