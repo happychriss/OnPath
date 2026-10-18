@@ -115,8 +115,8 @@ fun MapScreen(
     }
 
     if (showActivity) ActivityDialog(
-        vm.activity, vm.sac,
-        onSelect = { vm.selectActivity(it) }, onSac = { vm.selectSac(it) },
+        vm.activity,
+        onSelect = { vm.selectActivity(it) },
         onDismiss = { showActivity = false },
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })

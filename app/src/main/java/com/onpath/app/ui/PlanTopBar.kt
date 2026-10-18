@@ -140,12 +140,12 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
 }
 
 /**
- * The activity as an assist chip ("Hike · T3 ▾") under the search bar. It is an action (opens the
+ * The activity as an assist chip ("Hike ▾") under the search bar (the SAC level lives in Settings only). It is an action (opens the
  * activity dialog), so it carries the drop-down arrow; status is never drawn like this.
  */
 @Composable
 fun ActivityChip(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val label = activity.shortLabel + if (activity == Activity.HIKE) " · T$sac" else ""
+    val label = activity.shortLabel
     Surface(
         onClick = onClick,
         modifier = modifier.heightIn(min = 40.dp).semantics { contentDescription = "Activity: $label. Tap to change" },
