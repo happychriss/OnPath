@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Automatic re-routing while navigating – design proposal first (docs/plan-auto-reroute.md) – since 2026-10-18
 - [laptop] Plan gestures v2: snap unroutable points to nearest way; POI tap = Google offer, POI hold = add; tap a stop = delete overlay (owner spec) – since 2026-10-18
 
 ## Next
