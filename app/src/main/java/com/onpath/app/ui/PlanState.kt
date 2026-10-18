@@ -33,6 +33,18 @@ class PlanHistory(private val limit: Int = 100) {
         return prev
     }
 
+    /**
+     * Rewrites point values in every undo/redo snapshot ([moves]: old → new), without adding a step.
+     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers.
+     */
+    fun replacePoints(moves: Map<GeoPoint, GeoPoint>) {
+        if (moves.isEmpty()) return
+        for (q in listOf(undo, redo)) for (i in q.indices) {
+            val s = q[i]
+            if (s.any { it in moves }) q[i] = s.map { moves[it] ?: it }
+        }
+    }
+
     /** Every point reachable by undo or redo (to keep their "pinned" marks alive). */
     fun allPoints(): Set<GeoPoint> = HashSet<GeoPoint>().apply { undo.forEach { addAll(it) }; redo.forEach { addAll(it) } }
 }
