@@ -260,32 +260,30 @@ def paths():
           paint={"line-color": T("path.low.color"), "line-width": pw})
     layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
           filter=["all", foot, ["!", paved], ["!", steps]],
-          # Komoot-like: unpaved paths as small round black dots (paved / firm paths are solid black, path-paved)
-          layout={"line-cap": "round"},
-          paint={"line-color": T("path.color"), "line-width": pw, "line-dasharray": T("path.dash")})
+          # Komoot: ordinary paths are solid black whatever the surface; graded trails get dots (trails()).
+          paint={"line-color": T("path.color"), "line-width": pw})
     layer(id_="path-steps", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
           filter=["all", foot, steps],
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
 
 
 def trails():
+    """Komoot-like path rule (owner, 2026-10-18), all black – difficulty by rhythm, not colour:
+    no grade / T1 = solid (drawn by the base map's path layers), T2–T3 mountain hiking path = round dots,
+    T4–T6 alpine path = dot-dash. An opaque light underlay under the dotted ones hides the base map's solid
+    line of the same way, so only one clean row of dots shows. The T-labels along the trail give the exact grade."""
     sac = ["get", "sac"]
-    # SAC T1-T2 easy (dark brown), T3 mountain (orange-red), T4+ alpine (red, dotted)
-    color = ["case", [">=", sac, 4], T("trail.alpine.color"), [">=", sac, 3], T("trail.mountain.color"),
-             T("trail.easy.color")]
-    layer(id_="trails-casing", type="line", source="trails", minzoom=12, filter=[">=", sac, 1],
-          layout={"line-join": "round"},
+    graded = [">=", sac, 2]
+    layer(id_="trails-casing", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=graded,
+          layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
-    # Zoomed out: solid, a shade darker per difficulty, so trails stay readable on relief and forest.
-    low = ["case", [">=", sac, 4], T("trail.alpine.low.color"), [">=", sac, 3], T("trail.mountain.low.color"),
-           T("trail.easy.low.color")]
+    # Zoomed out: one thin solid dark line for every graded trail (dots would only read as noise).
     layer(id_="trails-low", type="line", source="trails", minzoom=10, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
-          layout={"line-join": "round"}, paint={"line-color": low, "line-width": Z("trail.width")})
-    for sid, flt in (("easy", ["<=", sac, 2]), ("mountain", ["==", sac, 3]), ("alpine", [">=", sac, 4])):
-        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID,
-              filter=["all", [">=", sac, 1], flt],
-              layout={"line-cap": "round"} if sid == "easy" else {},  # easy trails: round dots like unpaved paths
-              paint={"line-color": color, "line-width": Z("trail.width"),
+          layout={"line-join": "round"}, paint={"line-color": T("trail.low.color"), "line-width": Z("trail.width")})
+    for sid, flt in (("mountain", ["all", [">=", sac, 2], ["<=", sac, 3]]), ("alpine", [">=", sac, 4])):
+        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=flt,
+              layout={"line-cap": "round", "line-join": "round"},
+              paint={"line-color": T("trail.color"), "line-width": Z("trail.width"),
                      "line-dasharray": T(f"trail.{sid}.dash")})
     # SAC grade ("T1" … "T6") as small black text along the trail, on the other side than the
     # trail name (offset +), so both stay readable. Low priority: dropped first when space is short.

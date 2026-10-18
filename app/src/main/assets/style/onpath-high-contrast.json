@@ -3367,9 +3367,6 @@
      ]
     ]
    ],
-   "layout": {
-    "line-cap": "round"
-   },
    "paint": {
     "line-color": "#1c130c",
     "line-width": [
@@ -3389,10 +3386,6 @@
      2.7,
      18,
      3.9
-    ],
-    "line-dasharray": [
-     0.05,
-     2.2
     ]
    }
   },
@@ -3466,20 +3459,21 @@
    "id": "trails-casing",
    "type": "line",
    "source": "trails",
-   "minzoom": 12,
+   "minzoom": 13,
    "filter": [
     ">=",
     [
      "get",
      "sac"
     ],
-    1
+    2
    ],
    "layout": {
-    "line-join": "round"
+    "line-join": "round",
+    "line-cap": "round"
    },
    "paint": {
-    "line-color": "rgba(255,255,255,0.9)",
+    "line-color": "#ffffff",
     "line-width": [
      "interpolate",
      [
@@ -3518,28 +3512,7 @@
     "line-join": "round"
    },
    "paint": {
-    "line-color": [
-     "case",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      4
-     ],
-     "#9a0f2a",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      3
-     ],
-     "#a8380c",
-     "#1e150e"
-    ],
+    "line-color": "#1e150e",
     "line-width": [
      "interpolate",
      [
@@ -3561,7 +3534,7 @@
    }
   },
   {
-   "id": "trails-easy",
+   "id": "trails-mountain",
    "type": "line",
    "source": "trails",
    "minzoom": 13,
@@ -3573,7 +3546,7 @@
       "get",
       "sac"
      ],
-     1
+     2
     ],
     [
      "<=",
@@ -3581,35 +3554,15 @@
       "get",
       "sac"
      ],
-     2
+     3
     ]
    ],
    "layout": {
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-join": "round"
    },
    "paint": {
-    "line-color": [
-     "case",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      4
-     ],
-     "#b0102e",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      3
-     ],
-     "#c2410c",
-     "#1c130c"
-    ],
+    "line-color": "#1c130c",
     "line-width": [
      "interpolate",
      [
@@ -3630,79 +3583,7 @@
     ],
     "line-dasharray": [
      0.05,
-     2.2
-    ]
-   }
-  },
-  {
-   "id": "trails-mountain",
-   "type": "line",
-   "source": "trails",
-   "minzoom": 13,
-   "filter": [
-    "all",
-    [
-     ">=",
-     [
-      "get",
-      "sac"
-     ],
-     1
-    ],
-    [
-     "==",
-     [
-      "get",
-      "sac"
-     ],
-     3
-    ]
-   ],
-   "layout": {},
-   "paint": {
-    "line-color": [
-     "case",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      4
-     ],
-     "#b0102e",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      3
-     ],
-     "#c2410c",
-     "#1c130c"
-    ],
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     0.95,
-     14,
-     1.9,
-     16,
-     2.8,
-     18,
-     4.1
-    ],
-    "line-dasharray": [
-     2,
-     1.1
+     2.0
     ]
    }
   },
@@ -3712,48 +3593,19 @@
    "source": "trails",
    "minzoom": 13,
    "filter": [
-    "all",
+    ">=",
     [
-     ">=",
-     [
-      "get",
-      "sac"
-     ],
-     1
+     "get",
+     "sac"
     ],
-    [
-     ">=",
-     [
-      "get",
-      "sac"
-     ],
-     4
-    ]
+    4
    ],
-   "layout": {},
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
    "paint": {
-    "line-color": [
-     "case",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      4
-     ],
-     "#b0102e",
-     [
-      ">=",
-      [
-       "get",
-       "sac"
-      ],
-      3
-     ],
-     "#c2410c",
-     "#1c130c"
-    ],
+    "line-color": "#1c130c",
     "line-width": [
      "interpolate",
      [
@@ -3773,8 +3625,10 @@
      4.1
     ],
     "line-dasharray": [
-     1,
-     1.1
+     0.05,
+     2.0,
+     2.2,
+     2.0
     ]
    }
   },

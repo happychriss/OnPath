@@ -44,3 +44,13 @@ Token conventions:
 Other style modules (e.g. `tools/style_trail_names.py`) read tokens with
 `import style_theme; style_theme.token("label.halo.color")` or `style_theme.zoom("path.width")`
 (`make_style.token` is the same function). The active theme is set by `make_style.build()` before layers are built.
+
+
+## Paths and trails (owner, 2026-10-18 – Komoot-like, all black)
+| Way | Look |
+| --- | --- |
+| footpath / path, no grade or T1 (any surface) | solid black |
+| T2–T3 mountain hiking path | black round dots on a light underlay |
+| T4–T6 alpine path | black dot-dash |
+| track (Feldweg) | light lane; solid edges paved/compact, fine dotted edges loose |
+Difficulty is shown by rhythm and the T-labels, never by colour.
