@@ -127,8 +127,10 @@ class RecordingService : Service() {
     /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
     private var navigating = true
     private var lastNotify = 0L
-    /** Moving time vs. breaks of this tour (persisted in [TRIP_FILE], survives a restart). */
-    private var breaks = com.onpath.app.time.BreakDetector()
+    /** Moving time, breaks and pace learning of this tour (persisted in [TRIP_FILE], survives a restart). */
+    private var trip = com.onpath.app.time.TripPace()
+    /** Activity of the recording (the navigated session's activity wins for the time model). */
+    private var recActivity = com.onpath.app.routing.Activity.HIKE
     private var tripSaved = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -162,7 +164,7 @@ class RecordingService : Service() {
             }
             ACTION_CHECK_NOW -> { navigator?.checkNow(); return START_STICKY }
             ACTION_SETTINGS -> {
-                settings = null; applySettings(); updateAlert(); publish(); return START_STICKY
+                settings = null; applySettings(); trip.setPrior(priorFor(timeActivity())); updateAlert(); publish(); return START_STICKY
             }
             ACTION_TAKE_ROUTE -> {
                 navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
@@ -194,12 +196,14 @@ class RecordingService : Service() {
             eleRef = segs.lastOrNull()?.lastOrNull()?.ele
             last = null
             db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+            recActivity = activityOf(existing.activity)
             loadTrip()
         } else {
             val name = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date())
             tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
                 0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
-            breaks = com.onpath.app.time.BreakDetector()
+            recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
+            trip = com.onpath.app.time.TripPace(priorFor(recActivity))
             saveTrip()
         }
         loadFollow()
@@ -241,6 +245,7 @@ class RecordingService : Service() {
                 lastTick = now
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (elapsedS % 10 == 0L) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+                try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (_: Exception) { }
                 if (now - tripSaved > 30_000) saveTrip()
                 publish()
             }
@@ -260,7 +265,11 @@ class RecordingService : Service() {
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
         checkOffRoute(p, loc.accuracy.toDouble(), nowEl)
-        try { breaks.onFix(elapsedS.toDouble(), p.lat, p.lon) } catch (e: Exception) { Log.e("OnPath", "breaks", e) }
+        try {
+            val nav = navigator
+            val onRoute = nav != null && nav.detector.state == OffRouteDetector.State.ON_ROUTE
+            trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, nav?.detector?.progressM, onRoute)
+        } catch (e: Exception) { Log.e("OnPath", "trip pace", e) }
 
         val prev = last
         if (prev != null && !wasLost) {
@@ -304,6 +313,7 @@ class RecordingService : Service() {
         }
         navigator = session?.let { Navigator(it).apply { setNavigating(navigating) } }
         applySettings()
+        timeLine()
         alertKey = null; nm().cancel(ALERT_ID)
     }
 
@@ -328,6 +338,7 @@ class RecordingService : Service() {
             sessionStore.save(nav.session)
             Prefs(this).saveFollow(follow?.first ?: nav.session.name, nav.session.active)
             follow = (follow?.first ?: nav.session.name) to nav.session.active
+            timeLine()
         } else if (step.sessionChanged) sessionStore.save(nav.session)
         updateAlert()
         if (publishNow || step.lineChanged) publish(force = step.lineChanged)
@@ -417,7 +428,7 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
-        breaks.reset() // a pause is not a break (its time is not in elapsedS anyway)
+        trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
         saveTrip()
         navigator?.onGpsLost() // no fixes while paused: timers start from zero again
         db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
@@ -475,17 +486,38 @@ class RecordingService : Service() {
     // ---- time estimate (docs/plan-time-estimate.md) ----
 
     private fun tripTime(): com.onpath.app.time.TripTime = try {
-        com.onpath.app.time.TourTimes.of(elapsedS.toDouble(), breaks.breakS()).let { com.onpath.app.time.TripTime(it.movingS, it.breakS) }
+        trip.snapshot()
     } catch (_: Exception) { com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0) }
 
-    private fun tourTimes(): com.onpath.app.time.TourTimes = com.onpath.app.time.TourTimes.of(elapsedS.toDouble(), breaks.breakS())
+    private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
+
+    private fun activityOf(name: String?) =
+        runCatching { com.onpath.app.routing.Activity.valueOf(name!!) }.getOrDefault(com.onpath.app.routing.Activity.HIKE)
+
+    /** Activity the times are computed for: the navigated session's, else the recording's. */
+    private fun timeActivity() = navigator?.session?.activity ?: recActivity
+
+    /** Pace setting × learned factors for [a] (same as the plan sheet). */
+    private fun priorFor(a: com.onpath.app.routing.Activity): com.onpath.app.time.Factors = try {
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings, null)
+    } catch (_: Exception) { com.onpath.app.time.Factors.ONE }
+
+    /** The navigated line changed (start, re-route, back on the original): new times, learned factors stay. */
+    private fun timeLine() {
+        try {
+            val nav = navigator
+            trip.setPrior(priorFor(timeActivity()))
+            trip.setLine(nav?.session?.active?.let { com.onpath.app.time.RouteTimes.of(it, nav.session.activity) },
+                nav?.detector?.progressM ?: 0.0)
+        } catch (e: Exception) { Log.e("OnPath", "trip line", e) }
+    }
 
     /** Trip state of the running tour, written atomically (crash / restart keeps the break time). */
     private fun saveTrip() {
         if (tourId < 0) return
         tripSaved = SystemClock.elapsedRealtime()
         try {
-            val o = org.json.JSONObject().put("tour", tourId).put("breaks", breaks.toJson())
+            val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson())
             val f = File(filesDir, TRIP_FILE); val tmp = File(f.path + ".tmp")
             tmp.writeText(o.toString())
             if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
@@ -493,12 +525,13 @@ class RecordingService : Service() {
     }
 
     private fun loadTrip() {
-        breaks = try {
+        val prior = priorFor(recActivity)
+        trip = try {
             val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
-            if (o.optLong("tour", -1) == tourId) com.onpath.app.time.BreakDetector.fromJson(o.optJSONObject("breaks"))
-            else com.onpath.app.time.BreakDetector()
-        } catch (_: Exception) { com.onpath.app.time.BreakDetector() }
-        breaks.reset() // the service was gone for a while: start a new stop
+            if (o.optLong("tour", -1) == tourId) com.onpath.app.time.TripPace.fromJson(o.optJSONObject("trip"), prior)
+            else com.onpath.app.time.TripPace(prior)
+        } catch (_: Exception) { com.onpath.app.time.TripPace(prior) }
+        trip.onPause() // the service was gone for a while: start a new stop / piece
     }
 
     private fun nm() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

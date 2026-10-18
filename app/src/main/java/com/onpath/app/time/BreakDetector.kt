@@ -8,6 +8,8 @@ import org.json.JSONObject
  * Moving time vs. breaks (docs/plan-time-estimate.md §4.2): a break starts when you stay within [radiusM] for at least
  * [minS] and ends at the first fix further away. Shorter stops (photo, map check, gate) stay moving time, like in
  * signpost times. A GPS gap of at least [minS] in which you hardly moved (hut, indoors) is a break too.
+ * Slow walking on a steep path also stays within 25 m for 2 minutes, so a stop starts only when every fix of the last
+ * [minS] lies within [ENTER_M] of where you are; once in a break, you may wander within [radiusM].
  *
  * Fed with an "active" clock in seconds that excludes paused time (the recording's elapsed time), so a pause is never
  * counted twice. Pure, serialisable (survives a service restart).
@@ -24,17 +26,20 @@ class BreakDetector(private val radiusM: Double = RADIUS_M, private val minS: Do
     private var closedS = 0.0
     var count = 0
         private set
-    /** Recent fixes (s, lat, lon) before a break: the anchor is the earliest one all later fixes stay near. */
+    /** Fixes of the stop candidate (s, lat, lon): the newest ones all within [ENTER_M] of the current position. */
     private val recent = ArrayDeque<DoubleArray>()
 
     /** Standing still for at least [minS] right now. */
-    val inBreak: Boolean get() = !anchorLat.isNaN() && lastInS - anchorS >= minS
+    var inBreak: Boolean = false
+        private set
 
     /** All break time so far, including a break that is still going on (s). */
     fun breakS(): Double = closedS + if (inBreak) lastInS - anchorS else 0.0
 
-    fun onFix(activeS: Double, lat: Double, lon: Double) {
-        if (anchorLat.isNaN()) { anchor(activeS, lat, lon); remember(activeS, lat, lon); return }
+    /** One good fix; [alongM] = progress on a followed line when on it (slow but steady progress is no break). */
+    fun onFix(activeS: Double, lat: Double, lon: Double, alongM: Double? = null) {
+        val al = alongM ?: Double.NaN
+        if (lastLat.isNaN()) { recent.clear(); recent.addLast(doubleArrayOf(activeS, lat, lon, al)); remember(activeS, lat, lon); return }
         if (activeS < lastS) { remember(activeS, lat, lon); return } // clock went back (restart): ignore once
         val gap = activeS - lastS
         val slowGap = gap >= minS && Geo.distance(lastLat, lastLon, lat, lon) / gap < GAP_SPEED_MS
@@ -42,21 +47,26 @@ class BreakDetector(private val radiusM: Double = RADIUS_M, private val minS: Do
             if (Geo.distance(anchorLat, anchorLon, lat, lon) <= radiusM) lastInS = activeS
             else {
                 closedS += lastInS - anchorS
+                inBreak = false
                 if (slowGap) { closedS += gap; count++ } // indoors, then out of the door
-                anchor(activeS, lat, lon)
+                recent.clear(); recent.addLast(doubleArrayOf(activeS, lat, lon, al))
             }
         } else {
-            // walking on: the stop candidate starts at the earliest recent fix that every later fix stayed near
-            while (recent.isNotEmpty() && Geo.distance(recent.first()[1], recent.first()[2], lat, lon) > radiusM) recent.removeFirst()
-            if (recent.isEmpty()) {
-                // a long GPS gap without real movement (hut, indoors): a break as well
-                if (slowGap) { closedS += gap; count++ }
-                anchor(activeS, lat, lon)
-            } else {
-                val a = recent.first()
-                anchorS = a[0]; anchorLat = a[1]; anchorLon = a[2]
-                lastInS = activeS
-                if (inBreak) { count++; recent.clear() } else recent.addLast(doubleArrayOf(activeS, lat, lon))
+            // the stop so far: the newest fixes that all lie close to where you are now
+            recent.addLast(doubleArrayOf(activeS, lat, lon, al))
+            var k = recent.size - 1
+            while (k > 0 && Geo.distance(recent[k - 1][1], recent[k - 1][2], lat, lon) <= ENTER_M) k--
+            repeat(k) { recent.removeFirst() }
+            // a long GPS gap without real movement (hut, indoors) that the stop above does not cover: a break as well
+            if (recent.size == 1 && slowGap) { closedS += gap; count++ }
+            val t0 = recent.first()[0]
+            // very steep, very slow, but on the way: progress on the line during the last [minS]
+            val a0 = (recent.firstOrNull { it[0] >= activeS - minS } ?: recent.first())[3]
+            val progressing = !a0.isNaN() && !al.isNaN() && al - a0 >= PROGRESS_M
+            if (activeS - t0 >= minS && !progressing) {
+                inBreak = true; count++
+                anchorLat = lat; anchorLon = lon; anchorS = t0; lastInS = activeS
+                recent.clear()
             }
             while (recent.size > MAX_RECENT) recent.removeFirst()
         }
@@ -66,25 +76,26 @@ class BreakDetector(private val radiusM: Double = RADIUS_M, private val minS: Do
     /** Pause or a jump in the clock: an ongoing break ends here, the next fix starts afresh. */
     fun reset() {
         if (inBreak) closedS += lastInS - anchorS
+        inBreak = false
         anchorLat = Double.NaN; anchorLon = Double.NaN; lastLat = Double.NaN; lastLon = Double.NaN
         recent.clear()
     }
 
-    private fun anchor(s: Double, lat: Double, lon: Double) {
-        anchorLat = lat; anchorLon = lon; anchorS = s; lastInS = s
-        recent.clear(); recent.addLast(doubleArrayOf(s, lat, lon))
-    }
     private fun remember(s: Double, lat: Double, lon: Double) { lastLat = lat; lastLon = lon; lastS = s }
 
     fun toJson(): JSONObject = JSONObject()
         .put("aLat", if (anchorLat.isNaN()) JSONObject.NULL else anchorLat).put("aLon", if (anchorLon.isNaN()) JSONObject.NULL else anchorLon)
         .put("aS", anchorS).put("inS", lastInS)
         .put("lLat", if (lastLat.isNaN()) JSONObject.NULL else lastLat).put("lLon", if (lastLon.isNaN()) JSONObject.NULL else lastLon)
-        .put("lS", lastS).put("closed", closedS).put("count", count)
+        .put("lS", lastS).put("closed", closedS).put("count", count).put("on", inBreak)
 
     companion object {
         const val RADIUS_M = 25.0
         const val MIN_S = 120.0
+        /** A stop starts only when the last [MIN_S] of fixes are this close to the current one (not walking slowly). */
+        const val ENTER_M = 15.0
+        /** On a followed line: this much progress during the stop candidate means still walking. */
+        const val PROGRESS_M = 10.0
         private const val GAP_SPEED_MS = 0.15
         private const val MAX_RECENT = 2000
 
@@ -96,7 +107,7 @@ class BreakDetector(private val radiusM: Double = RADIUS_M, private val minS: Do
             b.lastLat = d("lLat"); b.lastLon = d("lLon"); b.lastS = o.optDouble("lS", 0.0)
             b.closedS = o.optDouble("closed", 0.0).takeIf { !it.isNaN() && it >= 0 } ?: 0.0
             b.count = o.optInt("count", 0)
-            if (!b.anchorLat.isNaN() && !b.inBreak) b.recent.addLast(doubleArrayOf(b.anchorS, b.anchorLat, b.anchorLon))
+            b.inBreak = o.optBoolean("on", false) && !b.anchorLat.isNaN()
             return b
         }
 

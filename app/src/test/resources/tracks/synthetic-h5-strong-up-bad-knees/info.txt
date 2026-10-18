@@ -1,0 +1,4 @@
+activity=HIKE
+pace=NORMAL
+note=Leiteralm round trip; climbs x0.8, descents x1.35, lunch 35 min at the hut
+synthetic=true

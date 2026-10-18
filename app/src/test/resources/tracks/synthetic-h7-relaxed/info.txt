@@ -1,0 +1,4 @@
+activity=HIKE
+pace=NORMAL
+note=Vigiljoch round trip; relaxed walker x1.3 with fatigue, three breaks
+synthetic=true
