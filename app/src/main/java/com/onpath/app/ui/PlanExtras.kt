@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.TripOrigin
@@ -42,6 +43,19 @@ fun PlanNoticeBar(notice: PlanNotice, onAction: (NoticeAction) -> Unit, onDismis
             { TextButton(onClick = { onAction(a) }) { Text(notice.actionLabel ?: "Change", color = Color(0xFFB9F6CA)) } }
         },
     ) { Text(notice.text) }
+}
+
+/** Clear with two or more points: one question, the plan can still be brought back with Undo. */
+@Composable
+fun ConfirmClearDialog(pointCount: Int, onClear: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.DeleteSweep, null) },
+        title = { Text("Clear this route?") },
+        text = { Text("All $pointCount points and the route line are removed. Undo brings them back.") },
+        confirmButton = { TextButton(onClick = onClear) { Text("Clear") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** Long-press on a marker without moving, or tap on a number chip. */

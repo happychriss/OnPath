@@ -123,6 +123,10 @@ class ScreenshotTest {
         OnPathTheme { PointMenuDialog(1, 4, {}, {}, {}, {}) }
     }
 
+    @Test fun confirmClear() = paparazzi.snapshot {
+        OnPathTheme { Frame { PlanPanel(planUi(), PlanCallbacks()) }; ConfirmClearDialog(3, {}, {}) }
+    }
+
     @Test fun settings() = paparazzi.snapshot {
         OnPathTheme {
             SettingsScreen(
