@@ -111,46 +111,47 @@ fun MapHost(
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }
-            map.addOnMapClickListener { ll ->
-                // Plan: a short hold (HOLD_MS, ring under the finger) adds a route point (smart
-                // insertion); a quick tap does not, so stray taps don't add points. A tap on a POI opens its
-                // card (add to route / Google Maps) without leaving planning; while a card is open, a tap on
-                // the map only closes it. Navigate (or a shown track): nothing is added, a tapped POI only
-                // opens its read-only details.
-                val poi = com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll))
-                when {
-                    vm.canEditMap -> {
-                        val snap = ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0
-                        when {
-                            poi != null -> vm.planPoi = poi
-                            vm.planPoi != null -> vm.planPoi = null
-                            hold.lastHoldMs >= HOLD_MS -> vm.addPoint(GeoPoint(ll.latitude, ll.longitude), snap)
-                            !vm.holdHintShown -> { vm.holdHintShown = true; vm.message = "Hold briefly to add a point" }
-                        }
-                        true
-                    }
-                    poi != null -> { vm.selectedPoi = poi; true }
-                    else -> false
+            val dragger = PointDragger(mapView, map, vm) { ctrlRef[0] }
+            // One rule table for every press (MapGestures): marker > POI > route line > empty map.
+            fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
+                val c = ctrlRef[0]
+                val screen = try { map.projection.toScreenLocation(ll) } catch (_: Exception) { return false }
+                val edit = vm.canEditMap
+                val marker = if (edit) c?.waypointAt(screen) ?: -1 else -1
+                val poi = if (marker < 0) com.onpath.app.poi.findPoiAt(map, screen) else null
+                val onLine = edit && marker < 0 && poi == null && press == MapGestures.Press.LONG_PRESS &&
+                    dragger.lineInsertIndex(ll) > 0
+                val snap = c?.let { PointDragger.snapMeters(it) } ?: 30.0
+                val p = GeoPoint(ll.latitude, ll.longitude)
+                return when (val a = MapGestures.decide(edit, press, vm.mapOverlayOpen, marker, poi != null, onLine, vm.holdHintShown)) {
+                    is MapGestures.Action.PointOverlay -> { vm.openPointOverlay(a.index); true }
+                    is MapGestures.Action.DragPoint -> { vm.closeMapOverlays(); dragger.startMove(a.index, ll) }
+                    MapGestures.Action.PoiBubble -> { poi?.let(vm::openPoiBubble); true }
+                    MapGestures.Action.AddPoi -> { poi?.let { vm.addPoiPoint(it, snap) }; true }
+                    MapGestures.Action.AddPoint -> { vm.addPoint(p, snap); true }
+                    MapGestures.Action.LineDrag -> dragger.startLineInsert(ll)
+                    MapGestures.Action.CloseOverlay -> { vm.closeMapOverlays(); true }
+                    MapGestures.Action.HoldHint -> { vm.holdHintShown = true; vm.message = "Hold briefly to add a point"; true }
+                    MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
+                    MapGestures.Action.None -> edit
                 }
             }
-            val dragger = PointDragger(mapView, map, vm) { ctrlRef[0] }
+            map.addOnMapClickListener { ll ->
+                // A hold of HOLD_MS (ring under the finger, vibration) ends as a click with lastHoldMs ≥ HOLD_MS.
+                handle(ll, if (hold.lastHoldMs >= HOLD_MS) MapGestures.Press.HOLD else MapGestures.Press.TAP)
+            }
             map.addOnMapLongClickListener { ll ->
                 holdAt.value = null
-                // Long press drags a point or the route line; on empty map it adds a point like a short hold.
-                dragger.onLongPress(ll) || (vm.canEditMap && vm.planPoi == null &&
-                    com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll)) == null).also { add ->
-                    if (add) vm.addPoint(GeoPoint(ll.latitude, ll.longitude), ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0)
-                }
+                handle(ll, MapGestures.Press.LONG_PRESS)
             }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
-                val armable = vm.canEditMap && vm.planPoi == null
                 hold.track(ev, slopPx = 8 * density)
                 holdAt.value = when {
-                    !armable || !hold.pressing -> null
-                    // Decide once per press: no ring when the finger is on a POI (a tap opens its card).
+                    !vm.canEditMap || vm.mapOverlayOpen || !hold.pressing -> null
+                    // Decide once per press: the ring only where a hold adds something (not on a marker).
                     ev.actionMasked == MotionEvent.ACTION_DOWN ->
-                        if (com.onpath.app.poi.findPoiAt(map, PointF(hold.downX, hold.downY)) == null) Offset(hold.downX, hold.downY) else null
+                        if ((ctrlRef[0]?.waypointAt(PointF(hold.downX, hold.downY)) ?: -1) < 0) Offset(hold.downX, hold.downY) else null
                     else -> holdAt.value
                 }
                 dragger.onTouch(ev)

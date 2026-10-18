@@ -84,13 +84,12 @@ class PlanCallbacks(
     val onContinue: () -> Unit = {},
     val onReverse: () -> Unit = {},
     val onRoundTrip: () -> Unit = {},
-    val onPointMenu: (Int) -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
 )
 
 /**
- * Plan sheet sizes: MINI = one line + primary button, COMPACT = stats + stops (default),
+ * Plan sheet sizes: MINI = one line + primary button, COMPACT = stats + "Elevation & surfaces" row (default),
  * FULL = also the elevation profile and way types / surfaces ("Elevation & surfaces" row or swipe up).
  */
 enum class PlanSize {
@@ -113,24 +112,15 @@ data class PlanUi(
     val size: PlanSize = PlanSize.COMPACT,
     /** A tour records: the primary action is "Continue navigation" instead of Start. */
     val tourRunning: Boolean = false,
-    /** Name per waypoint (search result / POI), null = unnamed; may be shorter than [pointCount]. */
-    val stopNames: List<String?> = emptyList(),
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
-
-    /** "Meraner Hütte", else "Start" / "Stop 2" / "Destination". */
-    fun stopLabel(i: Int): String = stopNames.getOrNull(i)?.takeIf { it.isNotBlank() } ?: when {
-        i == 0 -> "Start"
-        i == pointCount - 1 -> "Destination"
-        else -> "Stop ${i + 1}"
-    }
 }
 
 /**
  * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
- * text and a badge), the stops as chips with undo/redo, the profile behind "Elevation & surfaces", and ONE
- * filled primary button. Rare route actions (reverse, round trip, from my location, save, GPX, clear) are in ⋯.
+ * text and a badge) with undo/redo, the profile behind "Elevation & surfaces", and ONE
+ * filled primary button. Points are managed on the map only (tap a marker → "Delete point"). Rare route actions (reverse, round trip, from my location, save, GPX, clear) are in ⋯.
  */
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false) {
@@ -156,8 +146,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         if (!mini) {
-            Spacer(Modifier.height(8.dp))
-            StopsRow(ui, cb)
+            if (ui.pointCount == 0) { Spacer(Modifier.height(8.dp)); FromMeRow(cb) }
             if (route != null && !ui.routing) {
                 HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 DetailsToggle(ui, route, cb)
@@ -219,27 +208,12 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     }
 }
 
-/** Stops as chips "1 Start › 2 › 3 Meraner Hütte" (tap = point menu); without points "Start from my location". */
-@OptIn(ExperimentalLayoutApi::class)
+/** Without points: "Start from my location". Points are managed on the map (tap a marker → delete overlay). */
 @Composable
-private fun StopsRow(ui: PlanUi, cb: PlanCallbacks) {
-    FlowRow(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-        if (ui.pointCount == 0) {
-            FilledTonalButton(onClick = cb.onFromMe, modifier = Modifier.heightIn(min = 48.dp)) {
-                Icon(Icons.Filled.MyLocation, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-                Text("Start from my location")
-            }
-        }
-        repeat(ui.pointCount) { i ->
-            // Chevron and chip wrap together, so a line never ends with "›".
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (i > 0) Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
-                // Unnamed stops in between show just their number, so the row stays short.
-                val named = ui.stopNames.getOrNull(i)?.isNotBlank() == true
-                val label = ui.stopLabel(i)
-                StopChip(i, ui.pointCount, label.takeIf { named || i == 0 || i == ui.pointCount - 1 }, label, onClick = { cb.onPointMenu(i) })
-            }
-        }
+private fun FromMeRow(cb: PlanCallbacks) {
+    FilledTonalButton(onClick = cb.onFromMe, modifier = Modifier.heightIn(min = 48.dp)) {
+        Icon(Icons.Filled.MyLocation, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+        Text("Start from my location")
     }
 }
 
@@ -247,30 +221,6 @@ internal fun stopColor(i: Int, count: Int): Color = when {
     i == 0 -> OnPathColors.Good
     i == count - 1 && count > 1 -> OnPathColors.Bad
     else -> OnPathColors.Route
-}
-
-/** Outlined input-chip look (32dp, 48dp touch target): coloured number + name. */
-@Composable
-private fun StopChip(i: Int, count: Int, label: String?, spoken: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.padding(horizontal = 2.dp).semantics { contentDescription = "Point ${i + 1}: $spoken. Tap for options" },
-    ) {
-        Row(Modifier.height(32.dp).padding(start = 4.dp, end = if (label != null) 10.dp else 4.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(22.dp).clip(CircleShape).background(stopColor(i, count)), contentAlignment = Alignment.Center) {
-                Text("${i + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            if (label != null) {
-                Spacer(Modifier.width(6.dp))
-                Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 140.dp))
-            }
-        }
-    }
 }
 
 /** "Elevation & surfaces" – shows / hides the profile and the way type bars (FULL ⇄ COMPACT). */
