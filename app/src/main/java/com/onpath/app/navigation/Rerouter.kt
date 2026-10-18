@@ -64,7 +64,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         val skipped = RerouteTargets.passed(req.stops, base, req.visited)
         val targets = RerouteTargets.candidates(req.original, base, req.stops, req.visited)
         val deadline = t0 + req.totalMs
-        val restTime = HashMap<Int, Double>()
+        // same time model as the plan sheet and "to go" (time/RouteTimes)
+        val restTimes = com.onpath.app.time.RouteTimes.of(req.original.points, req.activity)
         var best: Pair<RejoinTarget, RouteResult>? = null
         var bestScore = Double.MAX_VALUE
         var nearest: Pair<RejoinTarget, RouteResult>? = null
@@ -91,9 +92,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             // A way back much shorter than the part of the route it replaces skips the plan (the end of a round trip
             // next to you, the way back of an out-and-back): not a rejoin.
             if (skipsRoute(r.distanceM, t.alongM - base)) continue
-            val (up, down) = Geo.climb(r.points.map { it.ele })
-            val legS = Geo.estimateSeconds(r.distanceM, up, down, req.activity)
-            val rest = restTime.getOrPut(t.alongM.toInt()) { restSeconds(req.original, t.alongM, req.activity) }
+            val legS = com.onpath.app.time.RouteTimes.of(r.points, req.activity).total()
+            val rest = restTimes.remainingFrom(t.alongM)
             val score = legS + rest
             if (score < bestScore - TIE_S) { bestScore = score; best = t to r }
         }
@@ -119,12 +119,6 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
     }
 
     private fun skipsRoute(legM: Double, sectionM: Double) = legM + SKIP_SLACK_M < SKIP_RATIO * sectionM
-
-    private fun restSeconds(line: NavLine, fromM: Double, activity: Activity): Double {
-        val rest = line.restFrom(fromM)
-        val (up, down) = Geo.climb(rest.map { it.ele })
-        return Geo.estimateSeconds(line.lengthM - fromM, up, down, activity)
-    }
 
     companion object {
         const val PER_REQUEST_MS = 8_000L

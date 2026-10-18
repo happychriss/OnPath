@@ -1,6 +1,5 @@
 package com.onpath.app.data
 
-import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.WaypointInsertion
 
@@ -37,9 +36,5 @@ class FollowProgress(private val line: List<GeoPoint>) {
             if (d < bestD) { bestD = d; bestI = k }
         }
         return if (bestI < 0) null else bestI to bestD
-    }
-
-    companion object {
-        fun timeS(r: Remaining, activity: Activity) = Geo.estimateSeconds(r.distanceM, r.ascentM, r.descentM, activity)
     }
 }

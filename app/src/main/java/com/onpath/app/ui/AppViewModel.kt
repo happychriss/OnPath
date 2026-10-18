@@ -403,7 +403,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateSettings(s: AppSettings) {
         val sacChanged = s.defaultSac != sac
+        val paceChanged = s.hikePace != settings.hikePace || s.bikePace != settings.bikePace
         settings = s; prefs.settings = s
+        if (paceChanged) retime()
         // The SAC level is set in Settings only (owner) – it applies right away to the current hiking route.
         if (sacChanged) { sac = s.defaultSac.coerceIn(1, 5); prefs.sac = sac; if (activity == Activity.HIKE) recalc() }
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
@@ -650,6 +652,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pins = pinnedIndices()
         if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false; return }
         val act = activity; val level = sac
+        val f = planFactors(act)
         val gen = requests.next()
         routing = true
         routeJob = viewModelScope.launch {
@@ -658,7 +661,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching {
                     val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                         .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
-                    Planner(eng).plan(pts, act, level, pins)
+                    withModelTime(Planner(eng).plan(pts, act, level, pins), act, f)
                 }
             }
             if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
@@ -670,6 +673,47 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             routing = false
         }
+    }
+
+    // ---------------- time estimate (docs/plan-time-estimate.md) ----------------
+
+    /** Pace setting × learned factors for planning with [a]. */
+    fun planFactors(a: Activity = activity): com.onpath.app.time.Factors =
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings, learnedFactors(a))
+
+    private fun learnedFactors(@Suppress("UNUSED_PARAMETER") a: Activity): com.onpath.app.time.Factors? = null
+
+    /**
+     * The plan's time from OnPath's own model (time/RouteTimes), not the router's: the same number as the route list
+     * and Navigate "to go" at the start. Moving time, rounded for display.
+     */
+    private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
+        r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
+
+    /** Pace or learned factors changed: new times for the plan and the route list (the route itself stays). */
+    private fun retime() {
+        route?.let { route = withModelTime(it, activity, planFactors()) }
+        refreshTours()
+    }
+
+    /** Model times of saved planned routes, by tour id: (factors, stored distance) they were computed for → seconds. */
+    private val plannedTimes = java.util.concurrent.ConcurrentHashMap<Long, Pair<Pair<com.onpath.app.time.Factors, Double>, Double>>()
+
+    /** Planned routes show the model time (recomputed, the stored router time is ignored); others as stored. */
+    private fun withModelTime(t: Tour): Tour {
+        if (t.kind != TourKind.PLANNED) return t
+        val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: Activity.HIKE
+        val f = planFactors(a)
+        val key = f to t.distanceM // an overwritten route has a new distance
+        plannedTimes[t.id]?.takeIf { it.first == key }?.let { return t.copy(durationS = it.second) }
+        return try {
+            val pts = db.loadSegments(t.id).flatten().map { it.toGeo() }
+            if (pts.size < 2) t else {
+                val s = com.onpath.app.time.TimeEstimate.planSeconds(pts, a, f)
+                plannedTimes[t.id] = key to s
+                t.copy(durationS = s)
+            }
+        } catch (_: Exception) { t }
     }
 
     /**
@@ -989,7 +1033,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshTours() {
         viewModelScope.launch(Dispatchers.IO) {
-            val list = db.listTours().filter { it.state == "done" }
+            val list = db.listTours().filter { it.state == "done" }.map { withModelTime(it) }
             withContext(Dispatchers.Main) { tours = list }
         }
     }
