@@ -5,7 +5,7 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
 - **laptop, 2026-10-18:** released **0.4.1** (see backlog "Done"); owner installed the official 0.4.0 and updates to
-  0.4.1 with the in-app updater (first real test). Map data on the Pixel 8 = South Tyrol package (same files as
+  0.4.1 with the in-app updater (first real test, result not reported yet). Map data on the Pixel 8 = South Tyrol package (same files as
   the `downloads` zip, plus `segments/E10_N45.rd5`). Open: `LayerSettings` crash (backlog "Next"), Gradle 9
   upgrade waiting for an owner decision. Nothing half done; laptop-only files are git-excluded locally.
 - **cloud, 2026-10-18:** released 0.4.0 (in-app updates + release workflow); wrote `docs/working-agreement.md`
