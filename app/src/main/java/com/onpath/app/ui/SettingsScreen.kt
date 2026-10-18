@@ -97,6 +97,29 @@ fun SettingsScreen(
             LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
+                    Section("Default activity") {
+                        Text("OnPath starts with this activity. The activity button on the map only changes the current route.",
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            com.onpath.app.routing.Activity.entries.forEach { a ->
+                                FilterChip(selected = settings.defaultActivity == a, onClick = { onChange(settings.copy(defaultActivity = a)) },
+                                    label = { Text(a.label) }, modifier = Modifier.heightIn(min = 44.dp))
+                            }
+                        }
+                        if (settings.defaultActivity == com.onpath.app.routing.Activity.HIKE) {
+                            Text("Max. difficulty (SAC)", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+                            Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                (1..5).forEach { level ->
+                                    FilterChip(selected = settings.defaultSac == level, onClick = { onChange(settings.copy(defaultSac = level)) },
+                                        label = { Text("T$level") }, modifier = Modifier.heightIn(min = 44.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
                     Section("Points of interest") {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { setHidden(emptySet()) }) { Text("Show all") }

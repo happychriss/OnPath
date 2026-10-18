@@ -59,7 +59,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val ROUTE_OVERLAY_LAYERS = listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
+            "planned-route-arrows", "$SRC_GPX-arrows",
         )
+        private const val ARROW_IMAGE = "route-arrow"
         private const val IMG_TURN = "nav-turn-arrow"
         /** Map tilt in heading-up Navigate (degrees). 0 = flat; try 30–40 for a "navigation" look. */
         const val NAV_TILT_DEG = 0.0
@@ -84,6 +86,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         addLine(SRC_GPX, GPX_COLOR, 5f, casing = true)
         addLine(SRC_REC, REC_COLOR, 4.5f, casing = true)
         addPlannedLayers()
+        addDirectionArrows()
         style.addSource(GeoJsonSource(SRC_HL))
         style.addLayer(CircleLayer("highlight-dot", SRC_HL).withProperties(
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
@@ -131,6 +134,52 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addLayer(LineLayer("planned-straight", SRC_PLANNED).withFilter(straight).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(4f), PF.lineDasharray(arrayOf(1.5f, 1.5f)),
         ))
+    }
+
+    /**
+     * Small white chevrons along the planned route and the shown/followed track, pointing in the
+     * direction of travel – so an out-and-back (same way back) is visible at a glance.
+     */
+    private fun addDirectionArrows() {
+        try {
+            style.addImage(ARROW_IMAGE, arrowBitmap())
+            for ((id, src, filter) in listOf(
+                Triple("planned-route-arrows", SRC_PLANNED, Expression.eq(Expression.get("straight"), Expression.literal(false))),
+                Triple("$SRC_GPX-arrows", SRC_GPX, null),
+            )) {
+                val l = SymbolLayer(id, src).withProperties(
+                    PF.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+                    PF.symbolSpacing(Expression.interpolate(Expression.linear(), Expression.zoom(),
+                        Expression.stop(12, 60f), Expression.stop(16, 90f))),
+                    PF.iconImage(ARROW_IMAGE),
+                    PF.iconSize(Expression.interpolate(Expression.linear(), Expression.zoom(),
+                        Expression.stop(12, 0.55f), Expression.stop(16, 0.8f))),
+                    PF.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                    PF.iconKeepUpright(false),
+                    PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
+                )
+                if (filter != null) l.setFilter(filter)
+                style.addLayer(l)
+            }
+        } catch (e: Exception) {
+            Log.w("OnPath", "direction arrows not added: $e")
+        }
+    }
+
+    /** White chevron ">" (points along the line), drawn at screen density. */
+    private fun arrowBitmap(): android.graphics.Bitmap {
+        val s = (16 * density).toInt().coerceAtLeast(16)
+        val bmp = android.graphics.Bitmap.createBitmap(s, s, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val path = android.graphics.Path().apply {
+            moveTo(s * 0.32f, s * 0.2f); lineTo(s * 0.72f, s * 0.5f); lineTo(s * 0.32f, s * 0.8f)
+        }
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeCap = android.graphics.Paint.Cap.ROUND
+            strokeJoin = android.graphics.Paint.Join.ROUND; color = android.graphics.Color.WHITE; strokeWidth = s * 0.16f
+        }
+        c.drawPath(path, p)
+        return bmp
     }
 
     @SuppressLint("MissingPermission")

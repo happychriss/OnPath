@@ -96,9 +96,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
     // --- activity ---
-    var activity by mutableStateOf(prefs.activity)
+    // Every app start begins with the default activity from Settings (owner: no need to pick it each time).
+    var activity by mutableStateOf(prefs.settings.defaultActivity)
         private set
-    var sac by mutableStateOf(prefs.sac)
+    var sac by mutableStateOf(prefs.settings.defaultSac)
         private set
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
