@@ -42,6 +42,9 @@ class Prefs(context: Context) {
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
+            defaultActivity = runCatching { com.onpath.app.routing.Activity.valueOf(sp.getString("defaultActivity", null)!!) }
+                .getOrDefault(com.onpath.app.routing.Activity.HIKE),
+            defaultSac = sp.getInt("defaultSac", 3).coerceIn(1, 5),
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
@@ -53,6 +56,8 @@ class Prefs(context: Context) {
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
+            .putString("defaultActivity", v.defaultActivity.name)
+            .putInt("defaultSac", v.defaultSac)
             .apply()
 
     var planWaypoints: List<GeoPoint>

@@ -30,6 +30,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Settings → Default activity (laptop, owner): the app always starts with it (hike + SAC level); the activity chip
+  only changes the current route. Direction arrows (white chevrons) on the planned route and shown/followed track,
+  to see out-and-back sections (`MapController.addDirectionArrows`, hidden by the eye).
 - Plan gestures v3 (laptop): hold only, 1×/2× vibration, smart point/POI menus, first-hold "Start here / Go here from my
   location", no dragging, no self-dismissing messages (the shared snackbar now stays until OK).
 - Map controls grouped (laptop, owner): one rounded group on the right – compass (Navigate always; Plan only when the
