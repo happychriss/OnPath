@@ -785,7 +785,7 @@
    "id": "routes-hike",
    "type": "line",
    "source": "routes",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "==",
     [
@@ -810,9 +810,9 @@
      [
       "zoom"
      ],
-     11,
+     10,
      0.6,
-     12.5,
+     11,
      1
     ],
     "line-width": [
@@ -868,7 +868,7 @@
      ],
      9,
      0.6,
-     10.5,
+     10,
      1
     ],
     "line-width": [
@@ -924,7 +924,7 @@
      ],
      9,
      0.6,
-     10.5,
+     10,
      1
     ],
     "line-width": [
@@ -3032,7 +3032,7 @@
    "id": "trails-low",
    "type": "line",
    "source": "trails",
-   "minzoom": 11,
+   "minzoom": 10,
    "maxzoom": 13,
    "filter": [
     ">=",

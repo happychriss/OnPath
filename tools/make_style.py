@@ -188,13 +188,13 @@ def roads():
 
 def route_bands():
     # Opaque pale bands (no stacking artefacts where segments overlap), drawn under roads, paths and trails.
-    for kind, minz in (("hike", 11), ("bike", 9), ("mtb", 9)):
+    for kind, minz in (("hike", 10), ("bike", 9), ("mtb", 9)):
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
               filter=["==", ["get", "kind"], kind],
               layout={"line-join": "round", "line-cap": "round",
                       "visibility": "visible" if kind == "hike" else "none"},
               paint={"line-color": T(f"route.{kind}.color"),
-                     "line-opacity": interp(minz, T("route.opacity.start"), minz + 1.5, 1, base=1),
+                     "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
                      "line-width": Z("route.width")})
 
 
@@ -259,7 +259,7 @@ def trails():
     # Zoomed out: solid, a shade darker per difficulty, so trails stay readable on relief and forest.
     low = ["case", [">=", sac, 4], T("trail.alpine.low.color"), [">=", sac, 3], T("trail.mountain.low.color"),
            T("trail.easy.low.color")]
-    layer(id_="trails-low", type="line", source="trails", minzoom=11, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
+    layer(id_="trails-low", type="line", source="trails", minzoom=10, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
           layout={"line-join": "round"}, paint={"line-color": low, "line-width": Z("trail.width")})
     for sid, flt in (("easy", ["<=", sac, 2]), ("mountain", ["==", sac, 3]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID,
