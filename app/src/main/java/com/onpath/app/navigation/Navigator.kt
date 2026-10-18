@@ -98,9 +98,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var lastFix: OffRouteDetector.Fix? = null
 
     init {
-        val active = NavLine(session.active)
-        // after a restart: re-match from scratch (NO_GPS); on a new route start from its beginning
-        if (session.rerouted) detector.setLine(active, 0.0) else detector.setLine(active, null, minProgressM = 0.0)
+        // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
+        detector.setLine(NavLine(session.active), null)
     }
 
     var offRouteM: Double

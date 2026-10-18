@@ -5,7 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md (owner asked laptop to build all; incl. routing parts) – since 2026-10-18
+- [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md – implemented on branch `feat/reroute`, field test + merge pending – since 2026-10-18
 
 ## Next
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
