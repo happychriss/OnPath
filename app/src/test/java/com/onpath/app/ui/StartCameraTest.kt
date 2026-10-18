@@ -13,9 +13,9 @@ class StartCameraTest {
         assertEquals(Step.WAIT, d(1_000, age = 3_600))
         assertEquals(Step.CENTRE, d(StartCamera.FRESH_WAIT_MS, age = 3_600))
     }
-    @Test fun noPositionKeepsWaitingThenGivesUp() {
+    @Test fun noPositionKeepsWaiting() {
         assertEquals(Step.WAIT, d(10_000))
-        assertEquals(Step.GIVE_UP, d(StartCamera.ANY_WAIT_MS))
+        assertEquals(Step.WAIT, d(10 * StartCamera.ANY_WAIT_MS)) // permission / cold GPS can take long
     }
     @Test fun lateFirstFixStillCentres() = assertEquals(Step.CENTRE, d(20_000, age = 1))
     @Test fun userPannedNeverJumps() = assertEquals(Step.GIVE_UP, d(500, moved = true, age = 1))
