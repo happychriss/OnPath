@@ -126,3 +126,10 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 - Reachable: download.openstreetmap.fr, brouter.de, AWS S3 terrain tiles, osmdata.openstreetmap.de,
   naciscdn.org, raw.githubusercontent.com, maven.google.com, Maven Central (sometimes HTTP 429 – retry).
   Not reachable: download.geofabrik.de, overpass-api.de.
+
+## Planned: updates directly on the phone (decided 2026-10-18)
+1. GitHub Actions workflow builds every tagged version (`v*`) and publishes a GitHub Release with the APK
+   (cloud sessions may not create releases themselves, but they may push tags).
+2. In-app "Check for updates" (Settings → About, plus a quiet daily check when online) reads the latest
+   release, shows the notes and installs the APK in place via the Android installer (requirement F-OFF-06).
+3. Later: Google Play Console developer registration + secret release key to avoid Play Protect warnings.

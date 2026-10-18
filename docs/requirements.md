@@ -130,6 +130,7 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 | F-OFF-03 | Show size before download; downloads pause and resume over unstable connections; Wi-Fi only option. | Must |
 | F-OFF-04 | Monthly map updates, optional; old data keeps working until the new package is fully verified. | Must |
 | F-OFF-05 | List of regions with size, date and delete button; total storage used. | Must |
+| F-OFF-06 | App updates from the phone: each version is published as a GitHub Release (built automatically by GitHub Actions). Settings → "Check for updates" (plus a quiet daily check when online) shows release notes and installs the new APK in place with one tap; tours and data are kept. Never installs without asking; offline it stays silent. | Must |
 
 ## 4. Robustness requirements
 
