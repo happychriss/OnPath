@@ -180,7 +180,7 @@ fun ActivityDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = {}, // picking an activity applies it and closes – no extra "Done"
         title = { Text("Activity") },
         text = {
             Column {
@@ -189,7 +189,7 @@ fun ActivityDialog(
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickable { onSelect(a) }.padding(horizontal = 12.dp),
+                            .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
