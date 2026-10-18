@@ -460,7 +460,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val mapOverlayOpen: Boolean get() = poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null
 
-    fun closeMapOverlays() { poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard() }
+    fun closeMapOverlays() {
+        // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
+        // tapping elsewhere – removes the orange ring too.
+        poiMenu?.let { m -> searchMark?.let { s -> if (kotlin.math.abs(s.lat - m.lat) < 1e-7 && kotlin.math.abs(s.lon - m.lon) < 1e-7) searchMark = null } }
+        poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
+    }
     fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays(); if (waypoints.isEmpty()) firstPointMenu = p }
 
     /** First-point menu → "Start here": the held spot is the start; later holds add points as usual. */
