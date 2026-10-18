@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Plan gestures v2: snap unroutable points to nearest way; POI tap = Google offer, POI hold = add; tap a stop = delete overlay (owner spec) – since 2026-10-18
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
