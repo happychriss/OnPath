@@ -29,6 +29,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Re-routing P0–P4 merged (laptop agent): ask every time, grey original, rejoin ahead, NavSession in the service,
+  notification with answers. Field-test checklist in `docs/plan-auto-reroute.md` / project status.
+- One blue line (owner): the followed route is drawn route-blue (no purple); while the plan is edited during a tour it
+  is thin grey under the blue plan; only a merely shown GPX track keeps purple (`MapController.setTrackLook`).
 - Settings → Default activity (laptop, owner): the app always starts with it (hike + SAC level); the activity chip
   only changes the current route. Direction arrows (white chevrons) on the planned route and shown/followed track,
   to see out-and-back sections (`MapController.addDirectionArrows`, hidden by the eye).

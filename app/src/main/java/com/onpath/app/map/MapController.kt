@@ -148,6 +148,29 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     fun setNavOriginal(points: List<GeoPoint>?) = setTrack(SRC_NAV_ORIGINAL, listOfNotNull(points))
+
+    /** How the [SRC_GPX] line looks (owner: one blue line – blue is the route you follow or will follow). */
+    enum class TrackLook { TRACK, FOLLOW, FOLLOW_BEHIND }
+
+    /**
+     * TRACK = a shown GPX track (own purple colour); FOLLOW = the followed route (route blue, like the plan);
+     * FOLLOW_BEHIND = followed route while the plan is being edited during a tour (thin grey under the blue plan).
+     */
+    fun setTrackLook(look: TrackLook) {
+        val (color, width, casing) = when (look) {
+            TrackLook.TRACK -> Triple(GPX_COLOR, 5f, true)
+            TrackLook.FOLLOW -> Triple(ROUTE_COLOR, 6f, true)
+            TrackLook.FOLLOW_BEHIND -> Triple(NAV_ORIGINAL_COLOR, 3f, false)
+        }
+        runCatching {
+            style.getLayer(SRC_GPX)?.setProperties(PF.lineColor(color), PF.lineWidth(width))
+            style.getLayer("$SRC_GPX-casing")?.setProperties(PF.lineWidth(width + 4f),
+                PF.visibility(if (casing) Property.VISIBLE else Property.NONE))
+            style.getLayer("$SRC_GPX-arrows")?.setProperties(
+                PF.visibility(if (look == TrackLook.FOLLOW_BEHIND) Property.NONE else Property.VISIBLE))
+        }
+        applyRouteOverlaysVisibility() // keep the eye button's state
+    }
     fun setNavProposal(points: List<GeoPoint>?) = setTrack(SRC_NAV_PROPOSAL, listOfNotNull(points))
     fun setNavGuide(from: GeoPoint?, to: GeoPoint?) =
         setTrack(SRC_NAV_GUIDE, if (from != null && to != null) listOf(listOf(from, to)) else emptyList())

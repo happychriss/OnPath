@@ -782,6 +782,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.NAVIGATE)
     }
 
+    /** Look of the followed / shown line on the map (see MapController.setTrackLook). */
+    fun trackLook(): com.onpath.app.map.MapController.TrackLook {
+        val planLine = route?.points
+        return when {
+            shown != null -> com.onpath.app.map.MapController.TrackLook.TRACK
+            mode == AppMode.PLAN && !followIsTrack && waypoints.size >= 2 && planLine != null && planLine != followOriginal ->
+                com.onpath.app.map.MapController.TrackLook.FOLLOW_BEHIND
+            else -> com.onpath.app.map.MapController.TrackLook.FOLLOW
+        }
+    }
+
     private fun checkNow() {
         if (recState.value != null && followLine != null) RecordingService.send(getApplication(), RecordingService.ACTION_CHECK_NOW)
     }
