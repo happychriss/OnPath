@@ -20,6 +20,11 @@ sealed interface NavPrompt {
         val line: List<GeoPoint>,
         val legM: Double,
         val resumeAlongM: Double,
+        /**
+         * Non-null: not off route – the user chose another activity in the check sheet; [line] is the rest of the tour
+         * for it. Stays until answered (also when on the route).
+         */
+        val switch: ActivitySwitch? = null,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -42,6 +47,10 @@ data class NavState(
     val toRoute: RouteHint?,
     /** Distance to the navigated line (last good fix). */
     val offM: Double?,
+    /** What is navigated (activity, stops) – the activity check reads it. */
+    val session: NavSession? = null,
+    /** Progress along [line] (metres from its start). */
+    val progressM: Double = 0.0,
 )
 
 /**
@@ -64,9 +73,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val lineChanged: Boolean = false,
         /** Something else in the session changed (visited stops): save. */
         val sessionChanged: Boolean = false,
+        /** The navigated activity changed (switch taken): store it with the tour. */
+        val activityChanged: Boolean = false,
     ) {
         operator fun plus(o: Step) = Step(vibrate || o.vibrate, o.job ?: job, (cancelJob || o.cancelJob) && o.job == null,
-            lineChanged || o.lineChanged, sessionChanged || o.sessionChanged)
+            lineChanged || o.lineChanged, sessionChanged || o.sessionChanged, activityChanged || o.activityChanged)
     }
 
     var session: NavSession = session
@@ -81,7 +92,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     var navigating = true
         private set
 
-    private val original = NavLine(session.original)
+    private var original = NavLine(session.original)
     val detector = OffRouteDetector(offRouteM)
     private var leftAtM = session.leftAtM
     private var jobId = 0
@@ -108,7 +119,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     val state: NavState
         get() = NavState(session.active, session.version, if (session.rerouted) session.original else null, prompt, toRoute,
-            detector.lastDistanceM)
+            detector.lastDistanceM, session, detector.progressM)
+
+    /** An activity switch is being asked (check sheet → chosen activity). */
+    private val switchAsked: Boolean get() = (prompt as? NavPrompt.Question)?.switch != null
 
     /** "Continue navigation": check the next fix at once (no 15 s wait), ask when away from the line. */
     fun checkNow() { forceCheck = true }
@@ -143,15 +157,33 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             val restore = restoreAlong(f, st)
             if (restore != null) return step + restoreOriginal(restore)
         }
-        if (st.rejoinedNow || (prompt != null && st.state == OffRouteDetector.State.ON_ROUTE)) {
+        if (!switchAsked && (st.rejoinedNow || (prompt != null && st.state == OffRouteDetector.State.ON_ROUTE))) {
             return step + clearPrompt()
         }
         if (st.confirmedNow && enabled && navigating && prompt == null) return step + ask(f, vibrate = true)
-        if (prompt != null) {
+        if (prompt != null && !switchAsked) {
             toRoute = hint(p)
             step += followUp(f)
         }
         return step
+    }
+
+    /**
+     * The user chose another activity in the check sheet: [proposed] is the rest of the tour for it (computed by the
+     * app). Shown as the dashed proposal with the same question as re-routing; replaces an off-route prompt.
+     */
+    fun proposeSwitch(proposed: NavSession, timeS: Double): Step {
+        if (proposed.original.size < 2) return Step()
+        val line = proposed.original
+        val newM = Geo.length(line)
+        val restM = (Geo.length(session.active) - detector.progressM).coerceAtLeast(0.0)
+        val startOff = lastFix?.let { Geo.distance(it.point, line.first()) } ?: 0.0
+        val had = runningJob >= 0
+        runningJob = -1; refreshing = false; vibrateOnResult = false
+        prompt = NavPrompt.Question(++questionId, newM - restM, 0.0, startOff, line, newM, 0.0,
+            switch = ActivitySwitch(proposed.activity, proposed.sac, proposed, timeS))
+        toRoute = null
+        return Step(cancelJob = had)
     }
 
     /** Result of [Job] [id]; stale results are ignored. */
@@ -184,6 +216,15 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     fun take(id: Int): Step {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
+        q.switch?.let { sw ->
+            // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity)
+            session = sw.session.copy(version = session.version + 1)
+            original = NavLine(session.original)
+            leftAtM = 0.0
+            detector.setLine(original, 0.0, assumeOnRoute = true)
+            prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
+            return Step(cancelJob = true, lineChanged = true, activityChanged = true)
+        }
         session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
             version = session.version + 1)
         detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
@@ -195,6 +236,12 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     fun keep(id: Int): Step {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
+        if (q.switch != null) {
+            // keep the activity: nothing changes; still off the route → the normal question flow again
+            prompt = null; toRoute = null
+            if (enabled && navigating && detector.state == OffRouteDetector.State.OFF_ROUTE) lastFix?.let { return ask(it, vibrate = false) }
+            return Step()
+        }
         prompt = NavPrompt.Kept
         keeps++
         lastFix?.let { markAsked(it); toRoute = hint(it.point) }
@@ -266,6 +313,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         leftAtM = alongM
         detector.setLine(original, alongM, assumeOnRoute = true)
         origHits = 0
+        if (switchAsked) return Step(lineChanged = true) // the activity question stays until answered
         return clearPrompt().copy(lineChanged = true)
     }
 

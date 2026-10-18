@@ -1,6 +1,7 @@
 package com.onpath.app.navigation
 
 import com.onpath.app.data.Format
+import com.onpath.app.routing.Activity
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -11,7 +12,7 @@ object NavText {
 
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> "Off route – finding a way back…"
-        is NavPrompt.Question -> "Off route – new route found"
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: "Off route – new route found"
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> "Off route – no routing data here"
             Rerouter.Reason.UNAVAILABLE -> "Off route – routing not available"
@@ -21,7 +22,22 @@ object NavText {
     }
 
     /** "+350 m · rejoins in 600 m" / "350 m shorter · rejoins in 600 m" (+ "nearest way 300 m away"). */
+    /** "New route for Bike – trekking" / "New route for Hike (T3)". */
+    fun switchTitle(sw: ActivitySwitch): String = "New route for " + activityName(sw.activity, sw.sac)
+
+    /** "Hike (T3)" / "MTB". */
+    fun activityName(a: Activity, sac: Int): String = if (a == Activity.HIKE) "${a.label} (T${sac.coerceIn(1, 5)})" else a.label
+
     fun question(q: NavPrompt.Question): String = buildString {
+        q.switch?.let { sw ->
+            // "Rest of the tour 9.3 km (+1.2 km) · 3 h 10 min"
+            append("Rest of the tour ").append(Format.distance(round10(q.legM)))
+            val e = round10(abs(q.extraM))
+            if (e >= 100) append(" (").append(if (q.extraM > 0) "+" else "−").append(Format.distance(e)).append(")")
+            append(" · ").append(Format.duration(sw.timeS))
+            if (q.startOffM > FAR_START_M) append(" · nearest way ").append(Format.distance(round10(q.startOffM))).append(" away")
+            return@buildString
+        }
         append(extra(q.extraM))
         append(" · rejoins in ").append(Format.distance(round10(q.rejoinInM)))
         if (q.startOffM > FAR_START_M) append(" · nearest way ").append(Format.distance(round10(q.startOffM))).append(" away")
