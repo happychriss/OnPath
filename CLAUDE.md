@@ -40,6 +40,8 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
 
 ## Map data (not in git – too big)
+Map data pipeline: see `docs/map-pipeline.md` and `tools/build_region.sh`.
+
 Built per region by the pipeline, copied to the phone into
 `/sdcard/Android/data/com.onpath.app/files/onpath/` (`adb push onpath-data/. <that dir>`):
 
