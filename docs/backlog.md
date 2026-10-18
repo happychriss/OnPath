@@ -7,11 +7,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Way quality: track grades, faint trails, MTB S-labels, bike surface edge (data + style) – since 2026-10-18
 - [laptop] Time estimate P4: SAC / surface / way-type factors – since 2026-10-18
-- [cloud] **Track safety (0.6.1):** point writes that cannot fail silently, guarded DB writes in the service, loud
-  "recording stopped" instead of silent stops, Navigate only once recording confirms, map guard while a style reloads,
-  straight-leg gate before navigating, arrival check on round trips, DB corruption handler, wake-lock renewal.
-  Files: `recording/`, `data/TourDb.kt`, `data/DataImporter.kt`, `map/MapController.kt`, `routing/RouteProgress.kt`,
-  small spots in `ui/AppViewModel.kt` + one dialog in `ui/RouteDialogs.kt`. Laptop: please avoid these – since 2026-10-18
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -38,6 +33,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Track safety 0.6.1 (cloud, from the 0.6.0 robustness review at
+  https://claude.ai/artifact/DRLGzEaWQBYKW4KVSFJeDd): point writes throw instead of returning -1, every DB write in
+  the service guarded with a "Recording cannot be saved" notification + `RecState.saveFailed`, `failLoud()` instead of
+  silent `stopSelf()` (precise location, GPS, foreground), Navigate only once the service reports, "Navigate anyway?"
+  for straight legs, `ArrivalGate` (round trips, poor fixes), `MapController` no-ops while a style reloads,
+  `PointFilter` (50 m accuracy, jitter by accuracy), clock-based elapsed time, wake-lock renewal, corrupt DB moved
+  aside, importer keeps the old file. **Still open from the review (next, in this order):** raw exception texts
+  shown to users; exact GPS position sent to Photon (needs an Online-search switch + coarse map centre); routing-tile
+  download accepts any HTTP 200 body; BRouter `terminate()` + total planning budget; CI on every push
+  (`verifyPaparazziDebug` + lint); backup rules (`allowBackup` + map data > 25 MB quota); drop
+  `ACCESS_BACKGROUND_LOCATION`; compass accuracy gating; DEM-based ascent.
 - Time estimate P0–P3 merged (laptop agent): one model everywhere (`time/`), pace setting, arrival clock, moving
   time / breaks, learning on the trip and across tours. Field test pending (checklist in project-status). P4 open.
 - Owner-approved batch (laptop): Clear without question (Undo restores), Pause / Resume in the tour bar (two-line
