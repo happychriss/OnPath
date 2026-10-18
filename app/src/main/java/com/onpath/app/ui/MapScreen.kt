@@ -52,6 +52,7 @@ fun MapScreen(
     var controller by remember { mutableStateOf<MapController?>(null) }
     var panelHeightPx by remember { mutableIntStateOf(0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
+    var cameraTick by remember { mutableIntStateOf(0) }
     var showActivity by remember { mutableStateOf(false) }
     var showSave by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -78,7 +79,7 @@ fun MapScreen(
             vm = vm,
             topInsetPx = topInsetPx,
             onReady = { controller = it },
-            onCamera = { map -> scale = computeScale(map, density.density) },
+            onCamera = { map -> scale = computeScale(map, density.density); cameraTick++ },
             modifier = Modifier.fillMaxSize(),
         )
         MapSync(vm, controller, rec, location, panelHeightPx)
@@ -92,6 +93,10 @@ fun MapScreen(
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
         }
+        // Plan: Google bubble of a tapped POI / delete overlay of a tapped marker, following the map.
+        MapOverlayHost(vm, controller, cameraTick,
+            topPx = topInsetPx + with(density) { 128.dp.roundToPx() }, // below search pill + activity chip
+            bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() })
     }
 
     if (showActivity) ActivityDialog(
@@ -101,12 +106,6 @@ fun MapScreen(
         onDismiss = { showActivity = false },
     )
     if (showSave) NameDialog("Save route", vm.defaultName("Route"), onDone = { vm.saveRoute(it); showSave = false }, onDismiss = { showSave = false })
-    vm.pointMenu?.let { i ->
-        if (i in vm.waypoints.indices) PointMenuDialog(i, vm.waypoints.size,
-            onRemove = { vm.removePoint(i) }, onMakeStart = { vm.makeStart(i) }, onMakeDestination = { vm.makeDestination(i) },
-            onDismiss = { vm.pointMenu = null })
-        else vm.pointMenu = null
-    }
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (confirmEnd) EndTourDialog(onEnd = { confirmEnd = false; vm.endTour() }, onDismiss = { confirmEnd = false })
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onEnd = vm::endTour, onKeepGoing = { vm.arrivalAsk = false })
@@ -175,13 +174,13 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null, stopNames = vm.waypoints.map { vm.stopName(it) }),
+            tourRunning = rec != null),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
             onSave = onSave, onShare = vm::exportPlanned,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
+            onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
         ),
     )
