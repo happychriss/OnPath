@@ -2281,11 +2281,58 @@
    }
   },
   {
-   "id": "track-casing",
+   "id": "track-low",
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 12,
+   "maxzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "track"
+    ],
+    [
+     "!=",
+     [
+      "get",
+      "brunnel"
+     ],
+     "tunnel"
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#5e4228",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     0.9,
+     13,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "track-casing",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -2340,8 +2387,8 @@
      11
     ],
     "line-dasharray": [
-     1.6,
-     1.0
+     0.35,
+     0.9
     ]
    }
   },
@@ -2350,7 +2397,7 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 12,
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -2721,11 +2768,84 @@
    }
   },
   {
-   "id": "path",
+   "id": "path-low",
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 12,
+   "maxzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "subclass"
+      ],
+      "cycleway"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "!",
+     [
+      "==",
+      [
+       "get",
+       "subclass"
+      ],
+      "steps"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#1e150e",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     1.0,
+     14,
+     1.7,
+     16,
+     2.7,
+     18,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": "path",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -2909,10 +3029,70 @@
    }
   },
   {
-   "id": "trails-easy",
+   "id": "trails-low",
    "type": "line",
    "source": "trails",
    "minzoom": 11,
+   "maxzoom": 13,
+   "filter": [
+    ">=",
+    [
+     "get",
+     "sac"
+    ],
+    1
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": [
+     "case",
+     [
+      ">=",
+      [
+       "get",
+       "sac"
+      ],
+      4
+     ],
+     "#9a0f2a",
+     [
+      ">=",
+      [
+       "get",
+       "sac"
+      ],
+      3
+     ],
+     "#a8380c",
+     "#1e150e"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     0.95,
+     14,
+     1.9,
+     16,
+     2.8,
+     18,
+     4.1
+    ]
+   }
+  },
+  {
+   "id": "trails-easy",
+   "type": "line",
+   "source": "trails",
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -2983,7 +3163,7 @@
    "id": "trails-mountain",
    "type": "line",
    "source": "trails",
-   "minzoom": 11,
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -3054,7 +3234,7 @@
    "id": "trails-alpine",
    "type": "line",
    "source": "trails",
-   "minzoom": 11,
+   "minzoom": 13,
    "filter": [
     "all",
     [
@@ -3119,6 +3299,76 @@
      1,
      1.1
     ]
+   }
+  },
+  {
+   "id": "trails-sac-label",
+   "type": "symbol",
+   "source": "trails",
+   "minzoom": 14,
+   "filter": [
+    ">=",
+    [
+     "get",
+     "sac"
+    ],
+    1
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     220,
+     17,
+     320
+    ],
+    "text-field": [
+     "concat",
+     "T",
+     [
+      "to-string",
+      [
+       "get",
+       "sac"
+      ]
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     9,
+     17,
+     11
+    ],
+    "text-max-angle": 30,
+    "text-padding": 2,
+    "text-offset": [
+     0,
+     0.75
+    ]
+   },
+   "paint": {
+    "text-color": "#000000",
+    "text-halo-color": "rgba(255,255,255,0.97)",
+    "text-halo-width": 1.2
    }
   },
   {
@@ -3322,7 +3572,9 @@
       "zoom"
      ],
      12,
-     0.8,
+     0.45,
+     12.9,
+     0.5,
      13,
      0.78,
      15,
@@ -3510,7 +3762,9 @@
       "zoom"
      ],
      12,
-     0.8,
+     0.45,
+     12.9,
+     0.5,
      13,
      0.78,
      15,
@@ -3711,7 +3965,9 @@
       "zoom"
      ],
      12,
-     0.8,
+     0.45,
+     12.9,
+     0.5,
      13,
      0.78,
      15,

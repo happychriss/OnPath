@@ -207,10 +207,14 @@ def paths():
     # narrower light fill on top, so only the two edges remain visible. At z12 just a thin dashed line.
     track = ["all", ["==", cls, "track"], not_tunnel]
     ew = Z("track.edge.width")
-    layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+    # Zoomed out: one thin solid darker line per track (dashes would only read as noise).
+    layer(id_="track-low", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+          maxzoom=LOW_ZOOM_SOLID, filter=track, layout={"line-join": "round"},
+          paint={"line-color": T("track.low.color"), "line-width": Z("track.low.width")})
+    layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
           filter=["all", track, ["!", paved]],
           paint={"line-color": T("track.edge.color"), "line-width": ew, "line-dasharray": T("track.edge.dash")})
-    layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+    layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
           filter=["all", track, paved], layout={"line-join": "round"},
           paint={"line-color": T("track.edge.color"), "line-width": ew})
     layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
@@ -233,7 +237,10 @@ def paths():
           paint={"line-color": T("path.casing.color"), "line-width": Z("path.casing.width")})
     layer(id_="path-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
           filter=["all", foot, paved, ["!", steps]], paint={"line-color": T("path.paved.color"), "line-width": pw})
-    layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+    layer(id_="path-low", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+          maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]], layout={"line-join": "round"},
+          paint={"line-color": T("path.low.color"), "line-width": pw})
+    layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
           filter=["all", foot, ["!", paved], ["!", steps]],
           paint={"line-color": T("path.color"), "line-width": pw, "line-dasharray": T("path.dash")})
     layer(id_="path-steps", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
@@ -249,11 +256,25 @@ def trails():
     layer(id_="trails-casing", type="line", source="trails", minzoom=12, filter=[">=", sac, 1],
           layout={"line-join": "round"},
           paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
+    # Zoomed out: solid, a shade darker per difficulty, so trails stay readable on relief and forest.
+    low = ["case", [">=", sac, 4], T("trail.alpine.low.color"), [">=", sac, 3], T("trail.mountain.low.color"),
+           T("trail.easy.low.color")]
+    layer(id_="trails-low", type="line", source="trails", minzoom=11, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
+          layout={"line-join": "round"}, paint={"line-color": low, "line-width": Z("trail.width")})
     for sid, flt in (("easy", ["<=", sac, 2]), ("mountain", ["==", sac, 3]), ("alpine", [">=", sac, 4])):
-        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=11,
+        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID,
               filter=["all", [">=", sac, 1], flt],
               paint={"line-color": color, "line-width": Z("trail.width"),
                      "line-dasharray": T(f"trail.{sid}.dash")})
+    # SAC grade ("T1" … "T6") as small black text along the trail, on the other side than the
+    # trail name (offset +), so both stay readable. Low priority: dropped first when space is short.
+    layer(id_="trails-sac-label", type="symbol", source="trails", minzoom=14, filter=[">=", sac, 1],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(14, 220, 17, 320),
+                  "text-field": ["concat", "T", ["to-string", sac]], "text-font": T("font.regular"),
+                  "text-size": Z("trail.sac.label.size"), "text-max-angle": 30, "text-padding": 2,
+                  "text-offset": [0, 0.75]},
+          paint={"text-color": T("trail.sac.label.color"), "text-halo-color": T("label.halo.color"),
+                 "text-halo-width": 1.2})
 
 
 def bridges():
@@ -368,6 +389,7 @@ POI_TIERS = [
 POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds]
 POI_KINDS = set(POI_PRIO)
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
+LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
 
 
 def _match(values, fallback):
@@ -392,7 +414,8 @@ def pois():
         layer(id_=f"poi-tier{tier}", type="symbol", source="pois", minzoom=minz,
               filter=["in", kind, ["literal", kinds]],
               layout={"icon-image": icon,
-                      "icon-size": interp(12, 0.8, 13, 0.78, 15, 0.92, 17, 1.05, base=1),
+                      # small dots stay tiny while zoomed out, badges from z13
+                      "icon-size": interp(12, 0.45, 12.9, 0.5, 13, 0.78, 15, 0.92, 17, 1.05, base=1),
                       "icon-allow-overlap": False, "icon-padding": 1,
                       "symbol-sort-key": sort_key, "symbol-z-order": "auto",
                       "text-field": ["step", ["zoom"], "", label_z, name],

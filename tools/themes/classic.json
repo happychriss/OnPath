@@ -133,8 +133,8 @@
  "route.width.z18": 18,
  "track.edge.color": "#8a6a48",
  "track.edge.dash": [
-  1.6,
-  1.0
+  0.35,
+  0.9
  ],
  "track.edge.width.z12": 1.0,
  "track.edge.width.z14": 3.4,
@@ -145,6 +145,9 @@
  "track.fill.width.z14": 1.8,
  "track.fill.width.z16": 3.4,
  "track.fill.width.z18": 6.4,
+ "track.low.color": "#5e4228",
+ "track.low.width.z12": 0.9,
+ "track.low.width.z13": 1.2,
  "cycleway.color": "#2f74a8",
  "cycleway.dash": [
   3,
@@ -169,6 +172,7 @@
  "path.casing.width.z14": 3.0,
  "path.casing.width.z16": 4.4,
  "path.casing.width.z18": 6.6,
+ "path.low.color": "#1e150e",
  "steps.dash": [
   0.4,
   0.4
@@ -190,6 +194,9 @@
   1,
   1.1
  ],
+ "trail.easy.low.color": "#1e150e",
+ "trail.mountain.low.color": "#a8380c",
+ "trail.alpine.low.color": "#9a0f2a",
  "trail.width.z11": 0.8,
  "trail.width.z14": 1.6,
  "trail.width.z16": 2.4,
@@ -199,6 +206,9 @@
  "trail.casing.width.z14": 3.2,
  "trail.casing.width.z16": 4.8,
  "trail.casing.width.z18": 7.2,
+ "trail.sac.label.color": "#000000",
+ "trail.sac.label.size.z14": 9,
+ "trail.sac.label.size.z17": 11,
  "boundary.country.color": "#9e8aa6",
  "boundary.region.color": "#b8a9bd",
  "label.halo.color": "rgba(255,255,255,0.92)",
