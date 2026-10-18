@@ -227,6 +227,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.shown, vm.followLine) {
         c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
     }
+    // One blue line: the followed route is blue; while the plan is edited during a tour it turns thin grey
+    // under the (blue) edited plan; a track that is only shown keeps its own colour.
+    LaunchedEffect(c) {
+        snapshotFlow { vm.trackLook() }.collect { c.setTrackLook(it) }
+    }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
