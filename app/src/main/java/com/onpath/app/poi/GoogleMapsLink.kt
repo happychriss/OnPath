@@ -19,14 +19,53 @@ object PoiLinks {
 
     private fun coord(v: Double): String = String.format(Locale.ROOT, "%.6f", v).trimEnd('0').trimEnd('.')
 
-    /** https://www.google.com/maps/search/?api=1&query=<"name lat,lon" | "lat,lon"> */
-    fun googleMapsUrl(name: String?, lat: Double, lon: Double): String {
+    /**
+     * The two forms of one "Open in Google Maps" link: [appUri] for the Google Maps app (a `geo:` intent),
+     * [webUrl] for the browser when the app is missing or disabled.
+     */
+    data class MapsLink(val appUri: String, val webUrl: String)
+
+    /**
+     * Link to [name] at [lat],[lon] in Google Maps – built offline from our own data, nothing is fetched.
+     *
+     * Why not `maps/search/?api=1&query=<name lat,lon>` (what we did until v0.x): that `query` is one free-text
+     * string. Google either reads the coordinates and drops the name (bare pin, no business card) or searches the
+     * whole text, and the documented search URL has **no location-bias parameter** – it ranks by the visible map /
+     * the phone's own location. A German OSM name that Google lists under its Italian name, or a common name
+     * ("Gasthof Sonne", "Kirche St. Peter"), then lands somewhere else. A place ID (`query_place_id`) would be exact,
+     * but needs an online Places API call, which OnPath does not make.
+     *
+     * Instead:
+     * - **Named** → `geo:<lat>,<lon>?z=16&q=<name>`: the Android Maps-intents doc says a `geo:lat,lng?q=` search
+     *   finds results *near the given coordinate* ("bias the results of the search by specifying a coordinate"),
+     *   and shows the place (with its card) when there is a single match. z=16 keeps the search local (the doc:
+     *   z=10 searches city-wide). If Google has nothing under that name, the map at least opens on the right spot.
+     *   Web fallback: `maps/search/<name>/@<lat>,<lon>,16z` – the search path with a viewport, which biases
+     *   the browser search the same way (not part of the documented `api=1` set, but Google's own URL form).
+     * - **Unnamed** (route point, unnamed viewpoint, bench …) → `geo:0,0?q=<lat>,<lon>(<label>)`: an exact pin, with
+     *   the optional [label] (e.g. the POI kind) under it; nearby business cards are one tap away. No text search,
+     *   so it can never jump. Web: the documented `api=1&query=<lat>,<lon>`.
+     *
+     * Sources: developer.android.com/guide/components/google-maps-intents,
+     * developers.google.com/maps/documentation/urls/get-started.
+     */
+    fun googleMaps(name: String?, lat: Double, lon: Double, label: String? = null): MapsLink {
         val ll = "${coord(lat)},${coord(lon)}"
-        val q = name?.trim()?.takeIf { it.isNotEmpty() }?.let { "$it $ll" } ?: ll
-        return "https://www.google.com/maps/search/?api=1&query=${enc(q)}"
+        val n = name?.let(::clean)
+        return if (n != null) {
+            MapsLink("geo:$ll?z=16&q=${enc(n)}", "https://www.google.com/maps/search/${enc(n)}/@$ll,16z")
+        } else {
+            // Parentheses delimit the label; inside it they would cut it short.
+            val l = label?.let(::clean)?.replace('(', ' ')?.replace(')', ' ')?.let(::clean)
+            MapsLink("geo:0,0?q=$ll" + (l?.let { "(${enc(it)})" } ?: ""),
+                "https://www.google.com/maps/search/?api=1&query=${enc(ll)}")
+        }
     }
 
-    fun googleMapsUrl(poi: Poi): String = googleMapsUrl(poi.name, poi.lat, poi.lon)
+    /** POIs: the name searches near the point; an unnamed POI gets an exact pin labelled with its kind. */
+    fun googleMaps(poi: Poi): MapsLink = googleMaps(poi.name, poi.lat, poi.lon, label = poi.kindInfo.label(Poi.isGerman()))
+
+    private fun clean(s: String): String? = s.replace(Regex("\\s+"), " ").trim().takeIf { it.isNotEmpty() }
 
     /** OSM wikipedia tag "de:Schloss Tirol" -> https://de.wikipedia.org/wiki/Schloss_Tirol. Full URLs pass through. */
     fun wikipediaUrl(tag: String?, defaultLang: String = "en"): String? {
@@ -68,11 +107,12 @@ object PoiLinks {
 /** Android intents for the links. All return false when nothing could handle them. */
 object PoiIntents {
 
-    /** Opens the Google Maps app if installed, otherwise the browser. */
-    fun openInGoogleMaps(context: Context, poi: Poi): Boolean {
-        val uri = Uri.parse(PoiLinks.googleMapsUrl(poi))
-        val app = Intent(Intent.ACTION_VIEW, uri).setPackage(PoiLinks.GOOGLE_MAPS_PACKAGE)
-        return start(context, app) || start(context, Intent(Intent.ACTION_VIEW, uri))
+    fun openInGoogleMaps(context: Context, poi: Poi): Boolean = openGoogleMaps(context, PoiLinks.googleMaps(poi))
+
+    /** The Google Maps app with the `geo:` form if installed, otherwise the browser with the web form. */
+    fun openGoogleMaps(context: Context, link: PoiLinks.MapsLink): Boolean {
+        val app = Intent(Intent.ACTION_VIEW, Uri.parse(link.appUri)).setPackage(PoiLinks.GOOGLE_MAPS_PACKAGE)
+        return start(context, app) || start(context, Intent(Intent.ACTION_VIEW, Uri.parse(link.webUrl)))
     }
 
     fun openWebsite(context: Context, website: String?): Boolean =
