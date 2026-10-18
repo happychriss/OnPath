@@ -1,9 +1,26 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
+Last update: 2026-10-18 (release 0.6.1 – track safety).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-18 (0.6.1 track safety):** read-only robustness review of 0.6.0 (five areas, report:
+  https://claude.ai/artifact/DRLGzEaWQBYKW4KVSFJeDd), then the "must fix" items as release 0.6.1 (notes in
+  `docs/release-notes/v0.6.1.md`): `TourDb` throws on a failed point insert and keeps a corrupt DB file; the service
+  wraps every write in `safeDb` (notification "Recording cannot be saved" + `RecState.saveFailed`, shown in the app),
+  stops with `failLoud()` instead of a silent `stopSelf()` (precise location / GPS / foreground refused → notification
+  "Recording stopped: …" + `RecordingService.startFailed` → message in the app), calls `startForeground` on every start,
+  renews the 12 h wake lock, counts real time per tick, uses `recording/PointFilter` (50 m accuracy, jitter by
+  accuracy) and a cached track snapshot. `MapController` ignores updates while a new style loads (theme change /
+  import crashed before). `AppViewModel.startNavigation` enters Navigate only after the service's first state (6 s,
+  else message); plans with straight legs ask "Navigate anyway?" (`StraightLegsDialog`); `routing/ArrivalGate` decides
+  arrival (away first, accuracy ≤ 50 m, asks again after leaving). `DataImporter` renames over the old file.
+  376 tests + Paparazzi verify green. **Field test (short):** (1) start a recording with location set to
+  "Approximate" → "Recording stopped: … precise location" and Plan stays; (2) a round trip: no "arrived" at the start,
+  asked at the end; (3) switch the map theme in Settings during a tour → no crash; (4) plan a route with an unreachable
+  point → "Navigate anyway?"; (5) under trees the track has no gaps and "Searching GPS…" is rare; (6) double-tap Start.
+  **Next (from the review, in order):** plain-language error texts; Online-search switch + coarse position to Photon;
+  validate downloaded routing tiles; BRouter cancel + planning budget; CI on every push; backup rules.
 - **laptop (background agent), 2026-10-18 (time estimate):** implemented `docs/plan-time-estimate.md` P0–P3 on branch
   **`feat/time-estimate`** (merged with main, not merged into main): new `time/` package (one model for plan sheet,
   route list, Navigate, re-route, activity check; pace chips in Settings; arrival clock; moving time / breaks;

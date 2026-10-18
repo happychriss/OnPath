@@ -48,6 +48,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import com.onpath.app.routing.ArrivalGate
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -72,6 +74,8 @@ data class ShownTrack(
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
     data class Fit(val points: List<GeoPoint>) : UiEvent
+    /** Fly to one place at [zoom] (search results). */
+    data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
 }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -103,7 +107,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "You have arrived – end tour?" is open. */
     var arrivalAsk by mutableStateOf(false)
     /** Asked once per followed line; reset when the line or the tour changes. */
-    private var arrivalDone = false
+    /** When to ask "You have arrived" (round trips, poor fixes, ask again after leaving); see [ArrivalGate]. */
+    private val arrivalGate = ArrivalGate()
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
@@ -259,9 +264,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
             }
         }
+        // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
+        viewModelScope.launch {
+            RecordingService.startFailed.collect { why ->
+                if (why != null) { RecordingService.startFailed.value = null; message = why; if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
+            }
+        }
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
         viewModelScope.launch {
+            var saveFailedShown = false
             RecordingService.state.collect { st ->
+                if (st?.saveFailed == true && !saveFailedShown) {
+                    saveFailedShown = true
+                    message = "The track cannot be saved any more (storage full or database broken). Free up space – recording keeps trying."
+                } else if (st?.saveFailed == false) saveFailedShown = false
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
                 syncNavActivity(n.session)
@@ -594,7 +610,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeMapOverlays()
         searchPlace = p
         searchMark = p
-        events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+        // Zoom to fit what it is: a city needs the overview, a single restaurant the close-up.
+        val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
+        events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
     }
 
     /** Search result marked on the map (pin); see [pickSearchResult]. */
@@ -997,17 +1015,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Plan's primary action (location permission is checked by the caller). Follows the planned
      * route, else the shown track, else nothing (free recording), and starts recording.
      */
-    fun startNavigation() {
-        if (recState.value != null) { continueNavigation(); return }
+    fun startNavigation(force: Boolean = false) {
+        if (recState.value != null) { continueNavigation(force); return }
         val s = shown
+        if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
         when {
             s != null -> { followShown(); shown = null }
             route != null && waypoints.size >= 2 -> followPlanned()
             else -> clearFollow()
         }
         startRecording()
-        enter(AppMode.NAVIGATE)
+        // Navigate only once the service really records (R-01): a refused foreground service, a missing
+        // permission or a broken database must not leave the user in Navigate with nothing being recorded.
+        startJob?.cancel()
+        startJob = viewModelScope.launch {
+            val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
+            if (started) enter(AppMode.NAVIGATE)
+            else if (message == null) message = "Recording did not start. Check the location permission (precise) and notifications, then try again."
+        }
     }
+
+    private var startJob: Job? = null
+    /** How long Start waits for the service's first state before saying that recording did not start. */
+    private val START_TIMEOUT_MS = 6_000L
+
+    /** A plan with legs the router could not find (drawn dashed): "Navigate anyway?" is open. */
+    var straightAsk by mutableStateOf(false)
+
+    private fun planHasStraightLegs(): Boolean =
+        !followIsTrack && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
+
+    /** The user wants to navigate the plan although parts of it are straight lines. */
+    fun straightConfirmed() { straightAsk = false; startNavigation(force = true) }
 
     /**
      * Back to Navigate while a tour runs (no new recording). The plan's waypoints are **not** changed (owner Q5):
@@ -1015,9 +1054,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * new route already taken) stays. Either way the service checks the next fix at once and, when the user is away
      * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
      */
-    fun continueNavigation() {
+    fun continueNavigation(force: Boolean = false) {
         if (!followIsTrack && waypoints.size >= 2) {
             val planLine = if (routing) null else route?.points
+            // an edited plan with straight legs would become the navigated line: ask first (same as Start)
+            if (!force && planLine != null && !planFollowed(planLine) && planHasStraightLegs()) { straightAsk = true; return }
             when {
                 planLine != null && !planFollowed(planLine) -> followPlanned(checkNow = true)
                 routing -> followNextRoute = true // follows the plan when the result is there
@@ -1198,10 +1239,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
     fun endTour() { arrivalAsk = false; stopRecording() }
 
-    /** Called with each fix in Navigate: asks once when the end of the followed line is reached. */
+    /** Called with each fix in Navigate: asks when the end of the followed line is reached ([ArrivalGate]). */
     fun checkArrival(position: GeoPoint, remainingAlongM: Double?) {
-        if (arrivalDone || mode != AppMode.NAVIGATE || recState.value == null) return
-        if (RouteProgress.arrived(position, followLine?.lastOrNull(), remainingAlongM)) { arrivalDone = true; arrivalAsk = true }
+        if (mode != AppMode.NAVIGATE || recState.value == null) return
+        val acc = tracker.location.value?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
+        if (arrivalGate.onFix(position, followLine?.lastOrNull(), remainingAlongM, acc)) arrivalAsk = true
     }
 
     // ---------------- follow / record ----------------
@@ -1236,7 +1278,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followOriginal = points
         planBaseline = null
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
-        arrivalDone = false
+        arrivalGate.reset()
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
             putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
         }
@@ -1245,7 +1287,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun clearFollow() {
         followFromPlan = false
         followIsTrack = false; prefs.followIsTrack = false
-        arrivalDone = false
+        arrivalGate.reset()
         prefs.saveFollow("", null)
         navStore.save(null)
         followName = null
@@ -1271,6 +1313,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveUnfinished(t: Tour) {
         unfinished = null
+        // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
+        if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
