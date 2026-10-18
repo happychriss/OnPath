@@ -7,8 +7,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
-- **Automatic re-routing:** design proposal in `docs/plan-auto-reroute.md` (laptop) – waiting for the owner's answers
-  to its 6 open questions; phases P0–P4 there (P0/P1 suggested for cloud as routing owner).
+- **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
+  vibration, grey original line, skip passed stops) – phases P0–P4 there (P0/P1 suggested for cloud as routing owner).
+  Owner UX rule: no self-dismissing messages anywhere.
 - Google Play internal test track: create app in Play Console, secret release key in GitHub secrets
   (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`,
   `PLAY_SERVICE_ACCOUNT_JSON`), upload from the release workflow. Removes Play Protect warnings. **(owner has a
