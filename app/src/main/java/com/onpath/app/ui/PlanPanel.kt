@@ -272,16 +272,21 @@ private fun DetailsToggle(ui: PlanUi, route: PlannedRoute, cb: PlanCallbacks) {
 private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     val m = Modifier.fillMaxWidth().height(56.dp)
     when {
+        // the button names the activity (owner: a wrong activity is a disaster)
         ui.tourRunning -> Button(onClick = cb.onContinue, modifier = m) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text("Continue navigation", style = MaterialTheme.typography.titleMedium)
+            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         else -> Button(onClick = cb.onStartNavigation, enabled = ui.canStart, modifier = m) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text("Start navigation", style = MaterialTheme.typography.titleMedium)
+            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
+
+/** "Start navigation · Hike" / "Continue navigation · Trekking bike". */
+internal fun primaryLabel(ui: PlanUi): String =
+    (if (ui.tourRunning) "Continue navigation" else "Start navigation") + " · " + ui.activity.navName
 
 /** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable

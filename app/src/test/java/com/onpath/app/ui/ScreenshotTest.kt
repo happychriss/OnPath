@@ -89,7 +89,7 @@ class ScreenshotTest {
     }
 
     private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0, profile = routePts),
-        recordedM = 5_320.0, elapsedS = 5025)
+        recordedM = 5_320.0, elapsedS = 5025, activity = Activity.HIKE)
 
     /** Navigate: tapped "to go" card – elevation profile of the rest of the route, ↑ and ↓. */
     @Test fun navigateProfile() = paparazzi.snapshot {
@@ -256,6 +256,43 @@ class ScreenshotTest {
 
     /** Free recording (no route), paused from the notification. */
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
+
+    // --- Activity while navigating (owner: a wrong activity is a disaster) ---
+    private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
+        com.onpath.app.navigation.ActivityFit(a, 3, problems, 7_400.0 + extraM, timeS, extraM, emptyList())
+
+    private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
+        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
+            listOf("2.3 km not suited for touring bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
+        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
+            listOf("1.4 km not suited for trekking bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
+        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
+        ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
+        ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
+    ))
+
+    /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
+    @Test fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
+
+    /** Opened a moment ago: every row still being checked. */
+    @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {
+        NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3,
+            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Checking) },
+            note = "Waiting for GPS…")))
+    }
+
+    /** MTB chosen: the dashed proposal with the usual question (stays until answered). */
+    @Test fun navigateActivitySwitchQuestion() = paparazzi.snapshot {
+        val proposed = com.onpath.app.navigation.NavSession.start(com.onpath.app.navigation.NavKind.PLAN, "Route", Activity.MTB, 3, routePts)
+        val q = question.copy(extraM = 1_200.0, legM = 8_600.0, startOffM = 10.0,
+            switch = com.onpath.app.navigation.ActivitySwitch(Activity.MTB, 3, proposed, 38 * 60.0))
+        NavFrame(navUi.copy(offRoute = OffRouteUi(q)))
+    }
+
+    /** The plan's primary button names the activity. */
+    @Test fun planStartTrekking() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
+    }
 
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
