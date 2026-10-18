@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
                             checks = vm.dataFiles.check(),
                             dataDir = vm.dataFiles.dir.absolutePath,
                             onCopy = { copy(it) },
-                            onRetry = { vm.recheckData(); if (vm.missing.isNotEmpty()) vm.message = "Still missing: ${vm.missing.joinToString { it.name }}" },
+                            onRetry = { vm.recheckData() }, // the list on the screen updates – no extra message
                             onContinue = { vm.dataScreenDismissed = true },
                             onImport = { openData.launch(arrayOf("*/*")) },
                             onDownloadRouting = { vm.downloadRoutingData() },

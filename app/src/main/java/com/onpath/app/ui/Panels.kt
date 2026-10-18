@@ -166,7 +166,7 @@ fun TrackPanel(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("GPX", maxLines = 1)
+                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Export GPX", maxLines = 1)
             }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))

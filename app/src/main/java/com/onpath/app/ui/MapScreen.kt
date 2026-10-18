@@ -67,7 +67,7 @@ fun MapScreen(
         when {
             gps == GpsStatus.OFF -> { runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }; Unit }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            vm.tracker.location.value == null -> vm.message = "Searching GPS…"
+            vm.tracker.location.value == null -> vm.followMe = true
             else -> vm.followMe = true
         }
     }
@@ -158,7 +158,7 @@ private fun PlanMode(
             }
             footer()
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
+                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
                 else PlanBottom(vm, rec, onStartNavigation, onActivity)
@@ -185,7 +185,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved),
+            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip()),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,

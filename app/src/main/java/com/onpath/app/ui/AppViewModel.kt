@@ -653,9 +653,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Clear button; with two or more points the UI asks first (PlanClear.needsConfirm). */
     var confirmClear by mutableStateOf(false)
 
-    fun requestClear() {
-        if (PlanClear.needsConfirm(waypoints.size)) confirmClear = true else clearPlan()
-    }
+    /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
+    fun requestClear() = clearPlan()
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while

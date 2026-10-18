@@ -117,6 +117,8 @@ data class PlanUi(
     val savedName: String? = null,
     /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
     val unsaved: Boolean = false,
+    /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
+    val roundTrip: Boolean = false,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -312,7 +314,7 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     HorizontalDivider()
     MenuItem(Icons.Outlined.SwapVert, "Reverse route", enabled = two, onClick = run(cb.onReverse))
-    MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two, onClick = run(cb.onRoundTrip))
+    MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two && !ui.roundTrip, onClick = run(cb.onRoundTrip))
     HorizontalDivider()
     MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
         onClick = run(cb.onClear))
