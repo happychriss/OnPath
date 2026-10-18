@@ -86,44 +86,22 @@ fun BottomPanel(
         )
     Surface(
         modifier = modifier.fillMaxWidth().then(swipe),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 12.dp,
+        shadowElevation = 8.dp,
     ) {
         Column(Modifier.navigationBarsPadding().animateContentSize()
-            .padding(start = 16.dp, end = 16.dp, top = if (onHandleTap != null) 0.dp else 10.dp, bottom = 12.dp)) {
-            if (onHandleTap != null) {
-                // Bigger touch target around the handle when it does something.
-                Box(
-                    Modifier.fillMaxWidth().height(22.dp)
-                        .clickable(onClickLabel = "Resize panel", onClick = onHandleTap),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(Color(0x33000000)))
-                }
-            } else {
-                Box(
-                    Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp)
-                        .clip(CircleShape).background(Color(0x22000000))
-                )
-                Spacer(Modifier.height(8.dp))
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            // Material drag handle (32 × 4 dp) in a full-width 48 dp tall touch area when it does something.
+            val handle = Modifier.fillMaxWidth().height(if (onHandleTap != null) 48.dp else 24.dp)
+            Box(
+                if (onHandleTap != null) handle.clickable(onClickLabel = "Resize panel", onClick = onHandleTap) else handle,
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
             }
             content()
-        }
-    }
-}
-
-/** Icon + label button, at least 56dp tall (glove friendly). */
-@Composable
-fun ActionButton(
-    icon: ImageVector, label: String, onClick: () -> Unit,
-    modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = MaterialTheme.colorScheme.onSurface,
-) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 60.dp).widthIn(min = 56.dp),
-        shape = RoundedCornerShape(14.dp), contentPadding = ButtonDefaults.TextButtonContentPadding) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = label, tint = if (enabled) tint else tint.copy(alpha = 0.35f), modifier = Modifier.size(24.dp))
-            Text(label, fontSize = 12.sp, maxLines = 1, color = if (enabled) tint else tint.copy(alpha = 0.35f))
         }
     }
 }
@@ -136,27 +114,17 @@ fun Stat(value: String, label: String, modifier: Modifier = Modifier, big: Boole
     }
 }
 
+/** Distance · ascent · descent · time; in a 2 × 2 grid when there is not room for four columns (dialogs). */
 @Composable
 fun StatsRow(distance: Double, ascent: Double, descent: Double, durationS: Double) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Stat(Format.distance(distance), "Distance", Modifier.weight(1f))
-        Stat("↑ " + Format.meters(ascent), "Ascent", Modifier.weight(1f))
-        Stat("↓ " + Format.meters(descent), "Descent", Modifier.weight(1f))
-        Stat(Format.duration(durationS), "Time", Modifier.weight(1f))
-    }
-}
-
-// ------------------------------------------------------------------ top bar
-
-@Composable
-fun ActivityChip(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp),
-        color = Color.White, shadowElevation = 4.dp) {
-        Row(Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(activity.shortLabel + if (activity == Activity.HIKE) " · T$sac" else "", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Icon(Icons.Filled.ExpandMore, "Change activity", modifier = Modifier.size(20.dp))
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stats = listOf(Format.distance(distance) to "Distance", "↑ " + Format.meters(ascent) to "Ascent",
+            "↓ " + Format.meters(descent) to "Descent", Format.duration(durationS) to "Time")
+        val perRow = if (maxWidth < 340.dp) 2 else 4
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            stats.chunked(perRow).forEach { row ->
+                Row(Modifier.fillMaxWidth()) { row.forEach { (v, l) -> Stat(v, l, Modifier.weight(1f)) } }
+            }
         }
     }
 }
@@ -195,19 +163,24 @@ fun TrackPanel(
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             ActionButtonSmall(Icons.Filled.Close, "Close track", onClose)
         }
-        Spacer(Modifier.height(6.dp))
-        StatsRow(track.distanceM, track.ascentM, track.descentM, track.durationS)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(Format.distance(track.distanceM), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(8.dp))
+            Text(Format.duration(track.durationS), style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 1.dp))
+        }
+        Text("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(8.dp))
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Icon(Icons.Filled.Share, null); Spacer(Modifier.width(6.dp)); Text("Export GPX")
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f).height(56.dp)) {
+                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("GPX", maxLines = 1)
             }
-            Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1.4f).height(56.dp),
-                shape = RoundedCornerShape(16.dp)) {
-                Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(6.dp))
-                Text(if (recording) "Follow this track" else "Start navigation")
+            Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
+                Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
+                Text(if (recording) "Follow this track" else "Start navigation", maxLines = 1)
             }
         }
     }

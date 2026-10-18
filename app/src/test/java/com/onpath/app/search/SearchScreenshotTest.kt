@@ -25,13 +25,13 @@ import com.onpath.app.ui.search.SearchUi
 import org.junit.Rule
 import org.junit.Test
 
-/** Screenshots of the search view, its empty state and the place card (Pixel 8 size). */
+/** Screenshots of the search view, its empty state and the place card (390 dp width). */
 class SearchScreenshotTest {
 
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 1080, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420),
+            screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420),
         ),
         showSystemUi = false,
     )
@@ -79,7 +79,7 @@ class SearchScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar(Activity.HIKE, 3, {}, {}, {}, Modifier.fillMaxWidth(), onSearch = {})
+                    PlanTopBar(Activity.HIKE, 3, {}, {}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
                         PlaceCard(PlaceCardUi(hut, null, 3, "as stop 2 – fits best · about +0.9 km, +15 min"),
                             com.onpath.app.ui.search.PlaceCardActions())

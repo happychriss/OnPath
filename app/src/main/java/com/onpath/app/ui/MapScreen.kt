@@ -43,6 +43,8 @@ fun MapScreen(
     onRequestLocation: () -> Unit,
     /** Start navigation; the caller makes sure location permission is granted first. */
     onStartNavigation: () -> Unit,
+    /** Opens the system file picker for a GPX file (needs the Activity). */
+    onImportGpx: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -85,7 +87,7 @@ fun MapScreen(
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
         when (vm.mode) {
-            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation,
+            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onImportGpx,
                 onActivity = { showActivity = true }, onSave = { showSave = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
@@ -119,15 +121,19 @@ fun MapScreen(
 /** Plan mode: top bar, POI card, tour bar and the plan (or shown track) panel. */
 @Composable
 private fun PlanMode(
-    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
+    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit, onImportGpx: () -> Unit,
     onActivity: () -> Unit, onSave: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
-            vm.activity, vm.sac, onActivity = onActivity,
-            onTours = { vm.refreshTours(); vm.showTours = true }, onSettings = { vm.showSettings = true },
+            vm.activity, vm.sac, onActivity = onActivity, onSearch = vm::openSearch,
+            menu = PlanMenu(
+                onTours = { vm.refreshTours(); vm.showTours = true },
+                onImportGpx = onImportGpx,
+                onSettings = { vm.showSettings = true },
+                onUpdates = if (vm.updatesEnabled) ({ vm.checkForUpdates(manual = true); vm.showSettings = true }) else null,
+            ),
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
-            onSearch = vm::openSearch,
         )
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             val upd = vm.update
@@ -142,10 +148,10 @@ private fun PlanMode(
                 PlanNoticeBar(n, onAction = vm::onNoticeAction, onDismiss = { if (vm.notice?.id == n.id) vm.notice = null })
             }
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                // Shared place card for tapped POIs and search results (ui/search).
-                com.onpath.app.ui.search.PlaceCardHost(vm)
-                rec?.let { TourRunningBar(it.distanceM, it.paused, onContinue = vm::continueNavigation, onEnd = onEndTour) }
-                PlanBottom(vm, rec, onStartNavigation, onSave)
+                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
+                // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
+                if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
+                else PlanBottom(vm, rec, onStartNavigation, onSave)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -169,11 +175,11 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null),
+            tourRunning = rec != null, stopNames = vm.waypoints.map { vm.stopName(it) }),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
             onSave = onSave, onShare = vm::exportPlanned,
-            onStartNavigation = onStartNavigation,
+            onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },

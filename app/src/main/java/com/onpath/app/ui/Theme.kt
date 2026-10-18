@@ -39,7 +39,27 @@ private val scheme = lightColorScheme(
     surfaceVariant = Color(0xFFF1F3EF),
     onSurfaceVariant = Color(0xFF4A4F4A),
     background = Color(0xFFF7F8F5),
+    onBackground = Color(0xFF1B1D1B),
+    tertiary = Color(0xFF8A5A00),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFF0D2),
+    onTertiaryContainer = Color(0xFF2C1A00),
     error = OnPathColors.Bad,
+    errorContainer = Color(0xFFFDE0DC),
+    onErrorContainer = Color(0xFF5F1410),
+    inversePrimary = Color(0xFF8ED6A8),
+    outline = Color(0xFF737970),
+    outlineVariant = Color(0xFFC3C8C0),
+    // Neutral (slightly green) containers instead of Material's default purple tint:
+    // menus, sheets, cards and chips all take these.
+    surfaceTint = OnPathColors.Green,
+    surfaceBright = Color.White,
+    surfaceDim = Color(0xFFDADDD7),
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF7F8F5),
+    surfaceContainer = Color(0xFFF1F3EF),
+    surfaceContainerHigh = Color(0xFFEBEEE9),
+    surfaceContainerHighest = Color(0xFFE5E8E3),
 )
 
 @Composable

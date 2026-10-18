@@ -135,7 +135,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var canRedo by mutableStateOf(false)
         private set
     /** Plan panel size (full / compact / mini), kept while the app runs. */
-    var planSize by mutableStateOf(PlanSize.FULL)
+    var planSize by mutableStateOf(PlanSize.COMPACT)
     var notice by mutableStateOf<PlanNotice?>(null)
     /** Waypoint whose small menu (Remove / Make start / Make destination) is open. */
     var pointMenu by mutableStateOf<Int?>(null)

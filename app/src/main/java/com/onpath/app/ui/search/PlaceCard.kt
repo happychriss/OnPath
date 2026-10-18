@@ -67,7 +67,7 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
     val isStop = ui.routeIndex != null
     Surface(
         modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp,
+        shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp,
     ) {
         Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,7 +94,6 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                 Button(
                     onClick = if (isStop) actions.onRemove else actions.onAdd,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                    shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Icon(if (isStop) Icons.Filled.Remove else Icons.Filled.Add, null, Modifier.size(20.dp))
@@ -110,15 +109,15 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     val atStart = ui.routeIndex == 0
                     val atEnd = ui.routeIndex != null && ui.routeIndex == ui.waypointCount - 1 && ui.waypointCount > 1
                     OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Text("As start", maxLines = 1)
                     }
                     OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
-                        modifier = Modifier.weight(1.25f).heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                        modifier = Modifier.weight(1.25f).heightIn(min = 48.dp)) {
                         Text("As destination", maxLines = 1)
                     }
                     OutlinedButton(onClick = actions.onGoogle, contentPadding = small,
-                        modifier = Modifier.weight(1.2f).heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                        modifier = Modifier.weight(1.2f).heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Map, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Google", maxLines = 1)
