@@ -14,7 +14,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -43,18 +45,27 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.onpath.app.routing.Activity
 
-/** The app-level things that are rarely needed while planning: all in the ⋮ menu of the search bar. */
+/**
+ * File and app actions: all in the ⋮ menu of the search bar. Each item is enabled only when it makes sense
+ * ([state], RouteRules.menu); disabled items stay visible, greyed.
+ */
 class PlanMenu(
-    val onTours: () -> Unit = {},
-    val onImportGpx: () -> Unit = {},
+    val state: RouteMenuState = RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false),
+    val onLoad: () -> Unit = {},
+    val onSave: () -> Unit = {},
+    val onManage: () -> Unit = {},
+    /** Free recording without a route (location permission is checked by the caller). */
+    val onStartRecording: () -> Unit = {},
     val onSettings: () -> Unit = {},
+    /** Called when the menu opens (refresh the saved-routes count). */
+    val onOpened: () -> Unit = {},
     /** Null hides "Check for updates" (updates switched off / not available in this build). */
     val onUpdates: (() -> Unit)? = null,
 )
 
 /**
  * Plan mode top area, Google Maps style: one search pill ("Search places or addresses") with the ⋮
- * overflow menu (My tours, Import GPX, Settings, Updates) at its end, and the activity as a compact
+ * overflow menu (Load / Save / Manage routes, Start recording, Settings, Updates) at its end, and the activity as a compact
  * chip below it. Route actions live in the plan sheet's own ⋯ menu.
  */
 @Composable
@@ -96,7 +107,7 @@ private fun SearchBarPill(onSearch: () -> Unit, menu: PlanMenu, menuInitiallyOpe
 private fun OverflowMenu(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)) {
+        IconButton(onClick = { menu.onOpened(); open = true }, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More options")
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
@@ -108,11 +119,15 @@ private fun OverflowMenu(menu: PlanMenu, initiallyOpen: Boolean) {
 /** The items of the ⋮ menu (also rendered on their own by the screenshot tests). */
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
-    MenuItem(Icons.Outlined.FormatListBulleted, "My tours") { close(); menu.onTours() }
-    MenuItem(Icons.Outlined.FileUpload, "Import GPX") { close(); menu.onImportGpx() }
+    val st = menu.state
+    MenuItem(Icons.Outlined.FolderOpen, "Load route", enabled = st.load) { close(); menu.onLoad() }
+    MenuItem(Icons.Outlined.Save, "Save route", enabled = st.save) { close(); menu.onSave() }
+    MenuItem(Icons.Outlined.FormatListBulleted, "Manage routes", enabled = st.manage) { close(); menu.onManage() }
     HorizontalDivider()
-    MenuItem(Icons.Outlined.Settings, "Settings") { close(); menu.onSettings() }
-    menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, "Check for updates") { close(); u() } }
+    MenuItem(Icons.Filled.FiberManualRecord, "Start recording", enabled = st.startRecording) { close(); menu.onStartRecording() }
+    HorizontalDivider()
+    MenuItem(Icons.Outlined.Settings, "Settings", enabled = st.settings) { close(); menu.onSettings() }
+    menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, "Check for updates", enabled = st.updates) { close(); u() } }
 }
 
 @Composable

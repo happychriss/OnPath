@@ -1,0 +1,53 @@
+package com.onpath.app.ui
+
+import com.onpath.app.data.TourKind
+import com.onpath.app.routing.GeoPoint
+
+/** Which items of the ⋮ menu can be used right now (disabled ones stay visible, greyed). */
+data class RouteMenuState(
+    val load: Boolean,
+    val save: Boolean,
+    val manage: Boolean = true,
+    val startRecording: Boolean,
+    val settings: Boolean = true,
+    val updates: Boolean = true,
+)
+
+/**
+ * "Enabled when" rules of the menus and route management (pure, unit tested; docs/ux-two-modes.md "Menus").
+ * Navigating = Navigate mode or a tour recording (also when looked at from Plan).
+ */
+object RouteRules {
+    /**
+     * @param hasRoute a planned route line exists
+     * @param pointCount planned points (two or more = a route is coming, even while it is calculated)
+     * @param savedCount saved routes / tours in Manage routes
+     */
+    fun menu(hasRoute: Boolean, pointCount: Int, savedCount: Int, navigating: Boolean, recording: Boolean) = RouteMenuState(
+        load = savedCount > 0 && !navigating && !recording,
+        save = hasRoute,
+        startRecording = !hasRoute && pointCount < 2 && !recording && !navigating,
+    )
+
+    /** Clear in the sheet's ⋯: something to clear, and not while navigating (the tour follows this plan). */
+    fun canClear(pointCount: Int, navigating: Boolean): Boolean = pointCount > 0 && !navigating
+
+    /** Opening this item puts its points into the plan (else it is only shown as a track). */
+    fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
+
+    /** While navigating only tracks can be opened; loading into the plan waits for the end of the tour. */
+    fun canOpen(kind: TourKind, waypointCount: Int, navigating: Boolean): Boolean =
+        !navigating || !replacesPlan(kind, waypointCount)
+
+    /**
+     * The plan is worth keeping and differs from what was last saved or loaded ([saved], null = never).
+     * One point is no route yet (like PlanClear.needsConfirm).
+     */
+    fun isUnsaved(points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean =
+        points.size >= 2 && (saved == null || points.size != saved.size ||
+            points.indices.any { points[it].lat != saved[it].lat || points[it].lon != saved[it].lon }) // elevation does not count
+
+    /** Ask "Replace current plan?" before loading this item. */
+    fun askBeforeLoading(kind: TourKind, waypointCount: Int, points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean =
+        replacesPlan(kind, waypointCount) && isUnsaved(points, saved)
+}

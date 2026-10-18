@@ -224,64 +224,102 @@ private fun sacHint(sac: Int) = when (sac) {
     else -> "T5 – demanding alpine hiking"
 }
 
-// ------------------------------------------------------------------ my tours
+// ------------------------------------------------------------------ manage routes
 
+/** Manage routes (⋮ → Manage routes) or the same list for ⋮ → Load route ([PICK]: tap = load, no other actions). */
+enum class RoutesMode { MANAGE, PICK }
+
+/**
+ * One list of planned routes, recorded tours and imported GPX files (newest first): type icon, name, date,
+ * distance. MANAGE: Import GPX, per item Export (share) and Delete (asks first), tap = open. PICK: tap = load.
+ * While [navigating], items that would replace the plan cannot be opened (Load waits for the end of the tour).
+ */
 @Composable
-fun ToursScreen(
+fun RoutesScreen(
     tours: List<Tour>,
+    mode: RoutesMode,
     onBack: () -> Unit,
     onImport: () -> Unit,
     onOpen: (Tour) -> Unit,
     onExport: (Tour) -> Unit,
     onDelete: (Tour) -> Unit,
+    navigating: Boolean = false,
+    initialConfirmDelete: Tour? = null,
 ) {
-    var confirmDelete by remember { mutableStateOf<Tour?>(null) }
+    var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
+    val pick = mode == RoutesMode.PICK
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                Text("My tours", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (pick) "Load route" else "Manage routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                if (!pick) TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
                     Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
                 }
             }
+            if (pick) Text("Tap a route to load it.", style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No tours yet.\nPlan a route, record a tour or import a GPX file.",
+                    Text("No routes yet.\nSave a planned route, record a tour or import a GPX file.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tours, key = { it.id }) { t ->
-                        TourCard(t, onOpen = { onOpen(t) }, onExport = { onExport(t) }, onDelete = { confirmDelete = t })
+                        val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
+                        TourCard(t, pick = pick, onOpen = if (openable) ({ onOpen(t) }) else null,
+                            onExport = { onExport(t) }, onDelete = { confirmDelete = t })
                     }
                 }
             }
         }
     }
     confirmDelete?.let { t ->
-        AlertDialog(
-            onDismissRequest = { confirmDelete = null },
-            title = { Text("Delete tour?") },
-            text = { Text("“${t.name}” will be deleted from this phone.") },
-            confirmButton = { TextButton(onClick = { onDelete(t); confirmDelete = null }) { Text("Delete", color = OnPathColors.Bad) } },
-            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
-        )
+        DeleteRouteDialog(t, onDelete = { confirmDelete = null; onDelete(t) }, onCancel = { confirmDelete = null })
     }
 }
 
+/** Stays until answered: a tap outside does nothing, Back = Cancel. Deletes only on "Delete". */
 @Composable
-private fun TourCard(t: Tour, onOpen: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
+        icon = { Icon(Icons.Filled.Delete, null) },
+        title = { Text("Delete “${t.name}”?") },
+        text = { Text("This ${t.kind.label.lowercase()} is removed from this phone. This cannot be undone.") },
+        confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete", color = OnPathColors.Bad) } },
+        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
+    )
+}
+
+/** Loading would overwrite a plan that is not saved: stays until answered (tap outside / Back = cancel). */
+@Composable
+fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        icon = { Icon(Icons.Filled.Route, null) },
+        title = { Text("Replace current plan?") },
+        text = { Text("Your current route is not saved. Save it first, or replace it with the route you picked.") },
+        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text("Replace") } },
+        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save first") } },
+    )
+}
+
+@Composable
+private fun TourCard(t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onExport: () -> Unit, onDelete: () -> Unit) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
         TourKind.RECORDED -> Icons.Filled.FiberManualRecord to OnPathColors.Rec
         TourKind.IMPORTED -> Icons.Filled.FileOpen to OnPathColors.Gpx
     }
-    Surface(onClick = onOpen, shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
-        Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = RoundedCornerShape(16.dp), color = Color.White,
+        shadowElevation = 1.dp, modifier = Modifier.heightIn(min = 72.dp)) {
+        Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = color)
+                Icon(icon, contentDescription = t.kind.label, tint = color)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -289,9 +327,12 @@ private fun TourCard(t: Tour, onOpen: () -> Unit, onExport: () -> Unit, onDelete
                 Text("${t.kind.label} · " + SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t.createdMs)),
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
+                if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            IconButton(onClick = onExport, Modifier.size(48.dp)) { Icon(Icons.Filled.Share, "Export GPX") }
-            IconButton(onClick = onDelete, Modifier.size(48.dp)) { Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (!pick) {
+                IconButton(onClick = onExport, Modifier.size(48.dp)) { Icon(Icons.Filled.Share, "Export GPX") }
+                IconButton(onClick = onDelete, Modifier.size(48.dp)) { Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
         }
     }
 }

@@ -26,16 +26,14 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Loop
-import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -76,9 +74,7 @@ class PlanCallbacks(
     val onRedo: () -> Unit = {},
     val onClear: () -> Unit = {},
     val onFromMe: () -> Unit = {},
-    val onSave: () -> Unit = {},
-    val onShare: () -> Unit = {},
-    /** Primary action: follow the route (or just record without one). */
+    /** Primary action: follow the route (free recording is in the ⋮ menu). */
     val onStartNavigation: () -> Unit = {},
     /** Primary action while a tour records: re-route from here and go back to Navigate. */
     val onContinue: () -> Unit = {},
@@ -110,8 +106,12 @@ data class PlanUi(
     val canRedo: Boolean,
     val activity: Activity,
     val size: PlanSize = PlanSize.COMPACT,
-    /** A tour records: the primary action is "Continue navigation" instead of Start. */
+    /** A tour records: the primary action is "Continue navigation" instead of Start; Clear is disabled. */
     val tourRunning: Boolean = false,
+    /** Name the plan was last saved or loaded as (null = never). */
+    val savedName: String? = null,
+    /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
+    val unsaved: Boolean = false,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -120,7 +120,9 @@ data class PlanUi(
 /**
  * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
  * text and a badge) with undo/redo, the profile behind "Elevation & surfaces", and ONE
- * filled primary button. Points are managed on the map only (hold a marker → point menu). Rare route actions (reverse, round trip, from my location, save, GPX, clear) are in ⋯.
+ * filled primary button (only with a route, or "Continue navigation" while a tour runs). Points are managed on the
+ * map only (hold a marker → point menu). Route edits (reverse, round trip, clear) are in ⋯; save / load / export
+ * are in the top ⋮ menu and Manage routes.
  */
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false) {
@@ -143,6 +145,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
             SheetOverflow(ui, cb, menuInitiallyOpen)
         }
         if (!mini) SubLine(ui, route)
+        if (!mini && route != null) SavedLine(ui)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         if (!mini) {
@@ -157,8 +160,25 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
-        PrimaryAction(ui, cb)
+        if (ui.tourRunning || ui.pointCount >= 2) {
+            Spacer(Modifier.height(12.dp))
+            PrimaryAction(ui, cb)
+        } else Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Visible save state instead of a message: "Saved as “Name”", or that it changed since. */
+@Composable
+private fun SavedLine(ui: PlanUi) {
+    val name = ui.savedName ?: return
+    val saved = !ui.unsaved
+    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(if (saved) Icons.Outlined.CheckCircle else Icons.Outlined.Edit, null,
+            tint = if (saved) OnPathColors.Good else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(if (saved) "Saved as “$name”" else "“$name” · changed, not saved",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -186,7 +206,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     if (route == null) {
         Text(
             when (ui.pointCount) {
-                0 -> "Hold the map to add a point. Hold a point or place for options. Without a route you can just record."
+                0 -> "Hold the map to add a point. Hold a point or place for options. To just record, use ⋮ → Start recording."
                 1 -> "Hold the map to add the destination. Hold a point or place for options."
                 else -> "Calculating the route…"
             },
@@ -256,10 +276,6 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
             Text("Continue navigation", style = MaterialTheme.typography.titleMedium)
         }
-        ui.pointCount < 2 -> Button(onClick = cb.onStartNavigation, modifier = m) {
-            Icon(Icons.Filled.FiberManualRecord, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-            Text("Start recording", style = MaterialTheme.typography.titleMedium)
-        }
         else -> Button(onClick = cb.onStartNavigation, enabled = ui.canStart, modifier = m) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
             Text("Start navigation", style = MaterialTheme.typography.titleMedium)
@@ -267,7 +283,7 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     }
 }
 
-/** ⋯ of the sheet: route actions that are not needed on every visit. */
+/** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable
 private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
@@ -285,16 +301,12 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 @Composable
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     val two = ui.pointCount >= 2
-    val hasRoute = ui.route != null
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    MenuItem(Icons.Outlined.MyLocation, "Start from my location", onClick = run(cb.onFromMe))
     MenuItem(Icons.Outlined.SwapVert, "Reverse route", enabled = two, onClick = run(cb.onReverse))
     MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two, onClick = run(cb.onRoundTrip))
     HorizontalDivider()
-    MenuItem(Icons.Outlined.Save, "Save to My tours", enabled = hasRoute, onClick = run(cb.onSave))
-    MenuItem(Icons.Outlined.Share, "Export GPX", enabled = hasRoute, onClick = run(cb.onShare))
-    HorizontalDivider()
-    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = ui.pointCount > 0, onClick = run(cb.onClear))
+    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
+        onClick = run(cb.onClear))
 }
 
 @Composable

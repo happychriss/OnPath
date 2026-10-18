@@ -30,6 +30,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Route menus (branch `feat/route-menus`, owner spec): top ⋮ = Load route / Save route / Manage routes / Start
+  recording / Settings / Updates, each enabled only when it makes sense (`ui/RouteRules.kt`); plan sheet ⋯ = Reverse,
+  Round trip, Clear; no primary button without a route; Manage routes list (import, export, delete with confirmation,
+  open / pick to load); "Replace current plan?" (Save first / Replace) when loading over an unsaved plan; sheet shows
+  "Saved as …". See `docs/ux-two-modes.md` "Menus". Open: saving always creates a new entry (no overwrite/rename);
+  empty-sheet hint now points to ⋮ → Start recording.
 - Plan gestures v3 (laptop): hold only, 1×/2× vibration, smart point/POI menus, first-hold "Start here / Go here from my
   location", no dragging, no self-dismissing messages (the shared snackbar now stays until OK).
 - Map controls grouped (laptop, owner): one rounded group on the right – compass (Navigate always; Plan only when the
