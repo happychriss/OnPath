@@ -5,14 +5,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] LayerSettings crash (style reload) – since 2026-10-18
 
 ## Next
-- **Bug (crash, seen on the Pixel 8 with 0.3.0):** `LayerSettings.setVisible` calls `style.layers` while a newer
-  style is loading → `IllegalStateException: Calling getLayers when a newer style is loading/has loaded`
-  (`map/LayerSettings.kt` ~line 50, from `MapScreen` `LaunchedEffect(c, vm.settings)`). Happened right after map
-  data was pushed and the style reloaded. Fix: guard the `style.layers` call (runCatching / check `style.isFullyLoaded`),
-  as the rest of the class already promises "never throws".
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
   Not applied – it is stashed on the laptop; `main` stays on AGP 8.9.1 / Gradle 8.14.3 until both sessions can
   build it. If wanted, do it on a `feat/gradle-9` branch and check the cloud build first.
@@ -34,6 +28,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- LayerSettings crash on style reload fixed (laptop): skips a stale style instead of throwing; tested on the
+  Pixel 8 by starting without base.pmtiles and putting it back.
 - 0.4.1 (laptop, released via the workflow; in-app update 0.4.0 → 0.4.1 confirmed working on the Pixel 8 by the owner): resizable plan panel
   (full / compact / mini), eye hides the route only while held, POI tap = add/remove route point, POI long press =
   ask to open Google Maps, SAC labels (T1–T6) on trails, Komoot-like Feldweg (light lane, dotted edges),
