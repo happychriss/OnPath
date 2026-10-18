@@ -158,7 +158,7 @@ private fun PlanMode(
             }
             footer()
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording) }
+                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording, onContinue = vm::continueNavigation) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
                 else PlanBottom(vm, rec, onStartNavigation, onActivity)

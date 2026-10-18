@@ -1,5 +1,13 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,28 +45,43 @@ import com.onpath.app.data.Format
  * Plan mode while a tour records: read-only status "● Tour running · 6.4 km · 1:23:45" plus the rare
  * "End tour" text button. The primary "Continue navigation" is the plan sheet's filled button.
  */
+/**
+ * The tour card in Plan mode while a tour records (owner + UX review): the three answers to "what now with my
+ * tour?" together in one row – Continue navigation (filled, most used), Pause / Resume (tonal), End tour (outlined
+ * red, asks first). Continue also resumes a paused tour (back to navigating = walking again).
+ */
 @Composable
-fun TourRunningBar(distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
-                   onPause: (Boolean) -> Unit = {}) {
+fun TourRunningBar(
+    distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
+    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {},
+) {
     val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
     Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
-        Row(Modifier.padding(start = 16.dp, end = 4.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-            RecDot(paused)
-            Spacer(Modifier.width(10.dp))
-            // Two short lines, so Pause + End tour fit and the time is never cut off.
-            androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(vertical = 4.dp).semantics { contentDescription = status }) {
-                Text(if (paused) "Tour paused" else "Tour running", style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium, maxLines = 1)
-                Text("${Format.distance(distanceM)} · ${Format.clock(elapsedS)}", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
+            Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
+                RecDot(paused)
+                Spacer(Modifier.width(10.dp))
+                Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
             }
-            // Pause / Resume right here (owner) – before, pausing was only possible from the notification.
-            TextButton(onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (paused) "Resume" else "Pause")
-            }
-            TextButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("End tour", color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.weight(1.3f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                    Text("Continue", maxLines = 1)
+                }
+                FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                    Text(if (paused) "Resume" else "Pause", maxLines = 1)
+                }
+                OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
+                    Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
+                    Text("End", color = MaterialTheme.colorScheme.error, maxLines = 1)
+                }
             }
         }
     }
