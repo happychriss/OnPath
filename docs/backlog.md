@@ -8,6 +8,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Unverified paths (owner: keep as todo):** OSM ways with no tags (or only fixme/note) that connect two paths/tracks
+  at both ends, ≤ 300 m, drawn as a grey dashed "unverified path" + point-menu hint; never used for routing (rd5 comes
+  from brouter.de). Example: way 330547188 near Algund (46.6913, 11.1015), `fixme=tags?` between two dirt paths.
+- **Attribution (owner question pending):** short "© OpenStreetMap" on the map, full credits on tap / in About.
+- **EN + DE strings** for all UI texts (owner approved, start when no big UI work runs in parallel).
 - **[cloud] Rebuild the region package / downloads zip** after `feat/way-quality` is on main: `extract_overlays.py`
   now writes the new optional `ways.geojson` (tracktype, loose surface, smoothness), `vis` in `trails.geojson`, and a
   near-exact geometry for trails/ways (0.5 m instead of 3 m – fixes the second line beside paths at z17+). Old

@@ -4,6 +4,15 @@ Last update: 2026-10-18 (release 0.6.1 – track safety).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-18 (late evening):** merged many owner-driven changes (all on main, installed on the Pixel 8 as
+  clean installs): hold-only gestures + smart menus, re-routing (ask always), time estimate P0–P4 + Time details
+  screen, plan sheet redesign (tour controls on top, mini profile, Undo on map), layout (search + ☰, route actions in
+  sheet), Komoot-like map (black paths solid/dotted by SAC, track grades, faint trails, routes as thin lines zoomed out
+  then bands, major routes pink, yellow road scale, relief stronger zoomed out), search pin (orange ring) + Bozen fix,
+  POI menu on empty plan, start at current location. **New data files** (`routes.geojson` with `net`, `trails`/`ways`/
+  `lowways.geojson`) are on the phone only – **cloud: rebuild the region package / downloads zip.** Open owner
+  questions: attribution style, unverified paths (todo). Field tests pending: re-routing, times, activity switch,
+  Google link.
 - **cloud, 2026-10-18 (0.6.1 track safety):** read-only robustness review of 0.6.0 (five areas, report:
   https://claude.ai/artifact/DRLGzEaWQBYKW4KVSFJeDd), then the "must fix" items as release 0.6.1 (notes in
   `docs/release-notes/v0.6.1.md`): `TourDb` throws on a failed point insert and keeps a corrupt DB file; the service
