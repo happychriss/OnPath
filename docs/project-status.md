@@ -4,6 +4,15 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **agent, 2026-10-18 (branch `feat/polish-1`, not merged):** polish batch. App start in Plan centres once on the
+  position (`ui/StartCamera.kt`, never after the user moved the map); own position = small blue dot + accuracy circle +
+  direction triangle in both modes (MapLibre COMPASS render mode instead of the big GPS puck); compass always in the map
+  controls (MapLibre's own compass off); "Start from my location" button removed from the empty sheet; "Tour saved" →
+  Delete asks first; ⋮ Save route offers Save (overwrite) / Save as new… for a loaded or saved plan
+  (`RouteRules.saveMode`, `TourDb.replacePlanned`); Manage routes items have ⋮ Rename / Export GPX / Delete.
+  **Test on the phone:** position dot look + direction triangle while standing / walking (Plan and Navigate, heading-up
+  still smooth?), start centring (cold start indoors / outdoors, pan before the fix → no jump), compass tap in Plan,
+  save over a loaded route → list shows the new distance, rename → sheet "Saved as" follows.
 - **agent, 2026-10-18 (branch `feat/route-menus`, not merged):** route menus per owner spec – top ⋮ Load / Save /
   Manage routes / Start recording / Settings / Updates (enabled-when rules in `ui/RouteRules.kt`), sheet ⋯ = Reverse /
   Round trip / Clear, Manage routes list with import / export / delete / pick, "Replace current plan?" question.

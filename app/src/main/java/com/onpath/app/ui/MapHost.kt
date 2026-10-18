@@ -22,7 +22,6 @@ import android.view.View
 import kotlin.math.hypot
 import android.graphics.PointF
 import android.util.Log
-import android.view.Gravity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
@@ -92,9 +91,7 @@ fun MapHost(
             map.setMinZoomPreference(3.0)
             map.setMaxZoomPreference(18.0)
             map.uiSettings.apply {
-                isCompassEnabled = true
-                compassGravity = Gravity.TOP or Gravity.END
-                setCompassMargins(0, topInsetPx + (68 * density).toInt(), (14 * density).toInt(), 0)
+                isCompassEnabled = false // our compass is in the map controls (MapFooter), always shown
                 isLogoEnabled = false
                 isAttributionEnabled = false
                 isRotateGesturesEnabled = true
@@ -118,6 +115,10 @@ fun MapHost(
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }
+            // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
+            map.addOnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) vm.userMovedMap = true
+            }
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = ctrlRef[0]

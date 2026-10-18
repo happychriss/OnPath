@@ -73,4 +73,16 @@ class RouteRulesTest {
         assertFalse(RouteRules.askBeforeLoading(TourKind.RECORDED, 0, listOf(a, b), null))
         assertFalse(RouteRules.askBeforeLoading(TourKind.IMPORTED, 3, listOf(a, b), null))
     }
+
+    @Test fun saveModeOverwriteOnlyForAnExistingSavedRoute() {
+        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(-1, null, listOf(1L, 2L))) // never saved
+        assertEquals(SaveMode.OVERWRITE_OR_NEW, RouteRules.saveMode(2, "Hirzer", listOf(1L, 2L))) // loaded / saved as #2
+        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(3, "Gone", listOf(1L, 2L))) // deleted meanwhile
+        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(2, null, listOf(2L))) // no name known
+    }
+
+    @Test fun cleanName() {
+        assertEquals("Hirzer", RouteRules.cleanName("  Hirzer ", "Old"))
+        assertEquals("Old", RouteRules.cleanName("   ", "Old"))
+    }
 }
