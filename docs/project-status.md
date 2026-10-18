@@ -4,6 +4,12 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop (background agent), 2026-10-18 (re-routing):** implemented `docs/plan-auto-reroute.md` P0–P4 on branch
+  **`feat/reroute`** (not merged): `navigation/` (OffRouteDetector, RerouteTargets, Rerouter, Navigator, NavSession,
+  NavText), optional timeout/cancel in `RoutingContract` + `BRouterEngine`, the service owns the flow (ask every time,
+  question in the app and in the ongoing notification, grey original line, arrow mode), Continue navigation no longer
+  edits the plan. Unit + JVM (real data) + Paparazzi tests green. **Next:** owner field test (checklist in the plan's
+  status table / report), then merge to `main` and release.
 - **agent, 2026-10-18 (branch `feat/route-menus`, not merged):** route menus per owner spec – top ⋮ Load / Save /
   Manage routes / Start recording / Settings / Updates (enabled-when rules in `ui/RouteRules.kt`), sheet ⋯ = Reverse /
   Round trip / Clear, Manage routes list with import / export / delete / pick, "Replace current plan?" question.

@@ -8,6 +8,8 @@ import btools.router.ProfileCache
 import btools.router.RoutingContext
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -24,7 +26,8 @@ import btools.router.RoutingEngine as BRouter
  *
  * Profiles (lookups.dat + *.brf) are shipped in `assets/brouter/` and copied to
  * `filesDir/brouter/profiles/` on first use, because BRouter reads them as files.
- * [route] is blocking and serialized (one route at a time); call it from a background thread.
+ * [route] is blocking and serialized (one route at a time); call it from a background thread. The variant with
+ * [RouteLimits] (re-routing while navigating) bounds the wait + search time and can be cancelled.
  * It only ever throws [RoutingException]. Recent results are cached, so repeating an identical
  * request (same points, activity and SAC limit) returns instantly.
  *
@@ -46,13 +49,31 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private data class CacheKey(val coords: List<Long>, val activity: Activity, val sac: Int)
 
     override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult =
+        routeWith(waypoints, activity, sacLimit, null)
+
+    /** With a time limit (incl. waiting for a running request) and a cancel signal (BRouter `terminate()`). */
+    override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult =
+        routeWith(waypoints, activity, sacLimit, limits)
+
+    private fun routeWith(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits?): RouteResult =
         try {
-            synchronized(LOCK) {
+            val start = System.currentTimeMillis()
+            if (limits == null) LOCK.lock()
+            else if (!LOCK.tryLock(limits.timeoutMs, TimeUnit.MILLISECONDS)) throw RoutingException(BUSY)
+            try {
                 val key = cacheKey(waypoints, activity, sacLimit)
-                cache[key] ?: routeLocked(waypoints, activity, sacLimit).also { cache[key] = it }
+                cache[key] ?: run {
+                    val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }
+                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel)
+                }.also { cache[key] = it }
+            } finally {
+                LOCK.unlock()
             }
         } catch (e: RoutingException) {
             throw e
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw RoutingException(CANCELLED)
         } catch (e: OutOfMemoryError) {
             throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: StackOverflowError) {
@@ -71,11 +92,14 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         return CacheKey(c, activity, if (activity == Activity.HIKE) sacLimit.coerceIn(1, 5) else 0)
     }
 
-    private fun routeLocked(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+    private fun routeLocked(
+        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
+    ): RouteResult {
         if (waypoints.size < 2) throw RoutingException("Set a start point and a destination.")
         checkSegments(waypoints)
         ensureProfiles()
-        val timeoutMs = timeoutFor(waypoints)
+        val timeoutMs = budgetMs?.coerceAtMost(timeoutFor(waypoints)) ?: timeoutFor(waypoints)
+        if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
         val rc = RoutingContext()
         rc.localFunction = File(profileDir, profileFile(activity)).absolutePath
@@ -98,7 +122,9 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         try {
             val engine = BRouter(null, null, segmentsDir, nodes, rc)
             engine.quite = true
-            engine.doRun(timeoutMs)
+            cancel?.onCancel { engine.terminate() }
+            try { engine.doRun(timeoutMs) } finally { cancel?.onCancel(null) }
+            if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
             val err = engine.errorMessage
             if (err != null) throw RoutingException(describeError(err, activity, sacLimit, timeoutMs))
             track = engine.foundTrack ?: throw RoutingException(describeError(null, activity, sacLimit, timeoutMs))
@@ -338,7 +364,11 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     }
 
     companion object {
-        private val LOCK = Any()
+        /** One BRouter search at a time in this process (planning in the app, re-routing in the service). */
+        private val LOCK = ReentrantLock()
+        const val CANCELLED = "Routing was cancelled."
+        const val BUSY = "The router is busy - try again in a moment."
+        private const val MIN_BUDGET_MS = 500L
         private const val TIMEOUT_MS = 30_000L
         private const val MIN_TIMEOUT_MS = 15_000L
         private const val TIMEOUT_MS_PER_KM = 500.0

@@ -184,8 +184,44 @@ class ScreenshotTest {
     /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
     @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
 
-    /** Slider dragged half way (springs back on release) and the off-route chip. */
-    @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi.copy(offRouteM = 63), slide = 0.5f) }
+    /** Slider dragged half way (springs back on release). */
+    @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi, slide = 0.5f) }
+
+    // --- Re-routing while navigating (owner: ask every time, nothing disappears by itself) ---
+    private val hint = com.onpath.app.navigation.RouteHint(120.0, 45.0, GeoPoint(46.68, 11.13))
+    private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
+
+    /** Off route confirmed, the way back is being computed (usually < 1 s). */
+    @Test fun navigateOffRouteSearching() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Searching, hint)))
+    }
+
+    /** The question: stays until answered or back on the route; big buttons in thumb reach above the map controls. */
+    @Test fun navigateRerouteQuestion() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question, hint)))
+    }
+
+    /** A shorter way back that starts on a way 300 m away. */
+    @Test fun navigateRerouteQuestionShorter() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(extraM = -800.0, rejoinInM = 1_250.0, startOffM = 300.0), hint)))
+    }
+
+    /** No way back found: arrow + distance to the route (arrow relative to the map). */
+    @Test fun navigateOffRouteNoWay() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_WAY),
+            hint, arrowDeg = 45f)))
+    }
+
+    /** Outside the routing data (R-12). */
+    @Test fun navigateOffRouteNoData() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_DATA),
+            hint.copy(distanceM = 640.0, bearingDeg = 250.0), arrowDeg = -110f)))
+    }
+
+    /** "Keep original" chosen: arrow banner, asked again only much later. */
+    @Test fun navigateOffRouteKept() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Kept, hint, arrowDeg = 160f)))
+    }
 
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
     @Test fun navigateTurn() = paparazzi.snapshot {

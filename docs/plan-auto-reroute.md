@@ -1,7 +1,22 @@
 # Plan: automatic re-routing while navigating
 
-Status: **owner decisions taken (2026-10-18), no code yet.** Phases in §10 can start; where the text below still says
-"automatic", the decisions here win.
+Status: **implemented P0–P4 (branch `feat/reroute`, 2026-10-18), field test pending.** Where the text below still says
+"automatic", the owner decisions win. Implementation notes:
+
+| Piece | Where | Notes |
+| --- | --- | --- |
+| Detection (P0) | `navigation/OffRouteDetector`, `navigation/NavLine` | §4 as written: window −300 m / +2 km (+5 km while off), setting + min(accuracy, 20 m), 15 s **and** 25 m (+margin) moved, back on after 3 fixes within half the distance, GPS loss freezes timers (a confirmed state stays). |
+| Way back (P1) | `navigation/RerouteTargets`, `navigation/Rerouter`, `RoutingContract.RouteLimits/RouteCancel`, `BRouterEngine` | Option C. Base = progress when leaving, or further when abeam of a later part (shortcut). Candidates: next stop ≤ 5 km, +0.5/1.5/3 km, never beyond the next stop. Score = way back + rest of the original (both `Geo.estimateSeconds`, ties → nearer). **Extra rule:** a way back shorter than 80 % of the route part it replaces (+100 m) is a skip, not a rejoin (round-trip end next to you, way back of an out-and-back) and is not chosen. 8 s per request, 12 s total, cancel via BRouter `terminate()`. The straight-line engine is never used for a way back. |
+| Flow (P2) | `navigation/Navigator` (pure), `navigation/NavSession` (`nav-session.json`), `recording/RecordingService` | Off route confirmed → one vibration + notification (sound) → "finding a way back…" → question. Question refreshed silently after 150 m (≥ 30 s). No way / no data → arrow banner, retry after 200 m or 2 min, max 3. "Keep original" → arrow banner, asked again only after 200 m **and** 2/4/8 min (with vibration). After "Take new route": back on the original (30 m into the untouched rest, or 3 fixes on the original near where you left it) → original used again, grey line gone, no vibration. Plan mode: no new questions; a pending one stays. Off-route warning off in Settings = never ask. |
+| Notification | `RecordingService.updateAlert` | One ongoing notification on channel `offroute-question` (high, sound, no channel vibration – the service vibrates once), lock-screen visible, actions **Take new route / Keep original**; stays until answered or back on route. The old `offroute` channel is deleted. |
+| UI (P3) | `ui/NavigateScreen` (`OffRouteUi`, `RerouteQuestionCard`), `ui/MapScreen.MapSync`, `map/MapController.NAV_LAYERS` | Question card low (thumb reach) above the grouped map controls; banners on top. Map layers `nav-original` (grey, below the followed line), `nav-proposal` (dashed preview while asking), `nav-guide` (dashed line to the route in arrow mode) – all in `ROUTE_OVERLAY_LAYERS` (eye button). |
+| Continue navigation (P4) | `AppViewModel.continueNavigation` | No longer edits the plan's waypoints. Edited plan → new session; else the session (and a new route taken) stays. The service checks the next fix at once (`ACTION_CHECK_NOW`) and asks when away from the line (no vibration – the user is looking). |
+
+Tests: `OffRouteDetectorTest`, `RerouteTargetsTest`/`RerouterTest`, `NavigatorTest` (unit); `tools/routing/jvm-test/RerouterJvmTest.kt`
+(real BRouter data, 20 cases on 5 routes: all found, ≤ to-destination +10 %, median ~40 ms, max ~250 ms on the laptop JVM;
+unreachable target gives up after 8 s, cancel after 0.3 s, no data in 1 ms); Paparazzi `navigateOffRoute*`,
+`navigateRerouteQuestion*`. Not done: quiet mode (not needed with ask-every-time), heading for bikes, one matcher for
+progress (the to-go strip still uses `FollowProgress`).
 
 ## Owner decisions (2026-10-18) – these override the recommendations below
 
@@ -306,7 +321,7 @@ feature (still written per fix).
    - [ ] Follow an imported GPX track and leave it → rejoins the track ahead.
    - [ ] Round trip: start and end near the car park → no early arrival, no re-route to the start.
    - [ ] Airplane mode the whole time; battery % per hour noted.
-   - [ ] Note re-route times shown in logcat (`adb logcat -d | grep -i onpath`, tag "reroute").
+   - [ ] Note re-route times shown in logcat (`adb logcat -d | grep -i reroute`, lines "reroute #n: found in … ms").
 
 ## 10. Phases (small, shippable)
 

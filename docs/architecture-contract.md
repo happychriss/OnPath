@@ -54,3 +54,9 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
   Style layers must therefore keep `kind` as a feature property and use expression filters (not legacy filters).
 - POI icons: sprite at `asset://sprites/onpath` (`onpath.json/.png` + `@2x`), icon names `poi-<kind>`.
 - Contour layers have ids starting with `contour-` (app can toggle them).
+
+## Re-routing while navigating (2026-10-18)
+- `RoutingEngine.route(waypoints, activity, sacLimit, limits: RouteLimits)` – optional overload with a default
+  implementation (calls the plain `route`), so existing engines and fakes stay valid. `RouteLimits(timeoutMs, cancel)`:
+  upper bound incl. waiting for another request, and a `RouteCancel` (BRouter `terminate()`). `BRouterEngine` uses a
+  static `ReentrantLock` (`tryLock` within the budget). Used by `navigation/Rerouter` (8 s per request, 12 s per re-route).

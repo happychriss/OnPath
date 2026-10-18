@@ -3,7 +3,7 @@
 # Usage: run.sh <segmentsDirContaining_E10_N45.rd5> [workDir]
 # Needs a kotlin-compiler-embeddable jar (Gradle's lib dir has one); set GRADLE_LIB if not found.
 # Env: KTTEST=<file.kt> runs another test main (default KtTest.kt; ViaTest.kt = via-point tests;
-#      SnapTest.kt = plan points moved onto the way);
+#      SnapTest.kt = plan points moved onto the way; RerouterJvmTest.kt = re-routing while navigating, pass/fail);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
@@ -19,6 +19,7 @@ LIBS=$(ls "$ROOT"/app/libs/*.jar | tr '\n' ':')
 mkdir -p "$W/stub" "$W/kt"
 javac -d "$W/stub" $(find "$HERE/stubs" -name '*.java')
 R="$ROOT/app/src/main/java/com/onpath/app/routing"
+N="$ROOT/app/src/main/java/com/onpath/app/navigation"; D="$ROOT/app/src/main/java/com/onpath/app/data"
 T=${KTTEST:-$HERE/KtTest.kt}; TN=$(basename "$T" .kt)
 sed "s#/home/user/build/routing-test/segments#$SEG#; s#/home/user/build/routing-test/kt-files#$W/files#; s#/home/user/onpath/app/src/main/assets#$ROOT/app/src/main/assets#" "$T" > "$W/$TN.kt"
 cp "$R/BRouterEngine.kt" "$W/BRouterEngine.kt"
@@ -28,5 +29,6 @@ if [ -n "${NO_VIA_CORRECTION:-}" ]; then
 fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
-  -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" "$W/$TN.kt"
+  -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
+  "$R/StraightLineEngine.kt" "$D/Geo.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$W/$TN.kt"
 java -Xmx192m -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

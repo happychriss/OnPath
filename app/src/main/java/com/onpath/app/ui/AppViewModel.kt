@@ -23,6 +23,9 @@ import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.GpxWriter
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.recording.LocationTracker
+import com.onpath.app.navigation.NavKind
+import com.onpath.app.navigation.NavSession
+import com.onpath.app.navigation.NavSessionStore
 import com.onpath.app.recording.RecState
 import com.onpath.app.recording.RecordingService
 import com.onpath.app.routing.Activity
@@ -166,9 +169,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var followName by mutableStateOf(prefs.loadFollow()?.first)
         private set
-    /** Line currently followed (drawn on the map while browsing). */
+    /** Line currently followed (drawn on the map while browsing); after a re-route the new line (from the service). */
     var followLine by mutableStateOf(prefs.loadFollow()?.second)
         private set
+    /** Navigation session file shared with the service (re-routing, docs/plan-auto-reroute.md). */
+    private val navStore = NavSessionStore(java.io.File(app.filesDir, NavSession.FILE))
+    /** The followed line as it was started (plan/track) – re-routing never changes it. */
+    private var followOriginal: List<GeoPoint>? = navStore.load()?.original ?: followLine
+    /** Last navigation line version seen from the service. */
+    private var navVersion = -1
 
     // --- position / camera ---
     var followMe by mutableStateOf(false)
@@ -208,6 +217,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (active != null && RecordingService.state.value == null) {
                 delay(1500) // the service may be restarting by itself (sticky)
                 if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
+            }
+        }
+        // Re-routing (service): follow the line the service navigates now (new route taken / original again).
+        viewModelScope.launch {
+            RecordingService.state.collect { st ->
+                val n = st?.nav ?: return@collect
+                if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
             }
         }
         viewModelScope.launch {
@@ -375,7 +391,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateSettings(s: AppSettings) {
         settings = s; prefs.settings = s
-        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
     }
 
     /** One undoable change of the planned points. */
@@ -635,7 +651,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { route = null; routeError = it.message ?: "Routing failed." }
             if (followNextRoute) {
                 followNextRoute = false
-                if (route != null) followPlanned() else message = "Could not re-route – still following the previous line."
+                if (route != null) followPlanned(checkNow = true) else message = "Could not re-route – still following the previous line."
             }
             routing = false
         }
@@ -749,22 +765,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Back to Navigate while a tour runs (no new recording). Smart re-route: from the current
-     * position through the stops not yet passed (RouteProgress), then follow the new line.
-     * Without a fix the stops stay as they are. A followed track (not the plan) is kept.
+     * Back to Navigate while a tour runs (no new recording). The plan's waypoints are **not** changed (owner Q5):
+     * when the plan was edited, its route becomes the new navigation session; otherwise the running session (and a
+     * new route already taken) stays. Either way the service checks the next fix at once and, when the user is away
+     * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
      */
     fun continueNavigation() {
-        val pos = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
         if (!followIsTrack && waypoints.size >= 2) {
-            if (pos != null) {
-                val visited = RouteProgress.visitedStops(waypoints, recState.value?.track?.flatten().orEmpty())
-                val stops = RouteProgress.remainingStops(waypoints, if (routing) null else route?.points, pos, visited)
-                followNextRoute = true
-                set(listOf(pos) + stops)
-            } else if (routing) followNextRoute = true
-            else if (route != null && followLine != route?.points) followPlanned()
-        }
+            val planLine = if (routing) null else route?.points
+            when {
+                planLine != null && planLine != followOriginal -> followPlanned(checkNow = true)
+                routing -> followNextRoute = true // follows the plan when the result is there
+                else -> checkNow()
+            }
+        } else checkNow()
         enter(AppMode.NAVIGATE)
+    }
+
+    private fun checkNow() {
+        if (recState.value != null && followLine != null) RecordingService.send(getApplication(), RecordingService.ACTION_CHECK_NOW)
+    }
+
+    /** Off-route question in Navigate: take the new route the service found. */
+    fun takeNewRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_TAKE_ROUTE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** Off-route question in Navigate: keep following the original route. */
+    fun keepOriginalRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_KEEP_ROUTE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
     /** The slide switch in Navigate. Recording continues. */
@@ -781,9 +810,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- follow / record ----------------
 
-    fun followPlanned() {
+    fun followPlanned(checkNow: Boolean = false) {
         val r = route ?: return
-        setFollow(defaultName("Route"), r.points, isTrack = false)
+        val w = waypoints.toList()
+        setFollow(defaultName("Route"), r.points, isTrack = false, checkNow = checkNow,
+            stops = w, names = w.map { stopName(it) }, pinned = pinnedIndices())
         followFromPlan = true
     }
 
@@ -793,13 +824,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followFromPlan = false
     }
 
-    private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean) {
+    /**
+     * Starts a navigation session for [points] (nav-session.json for the service: original line, stops for re-routing)
+     * and the plain follow line. [checkNow]: the service checks the next fix at once ("Continue navigation").
+     */
+    private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean, checkNow: Boolean = false,
+                          stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
+        val session = runCatching {
+            NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
+        }.getOrNull()
+        navStore.save(session)
         prefs.saveFollow(name, points)
         followName = name
         followLine = points
+        followOriginal = points
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
         arrivalDone = false
-        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
+            putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
+        }
     }
 
     fun clearFollow() {
@@ -807,8 +850,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followIsTrack = false; prefs.followIsTrack = false
         arrivalDone = false
         prefs.saveFollow("", null)
+        navStore.save(null)
         followName = null
         followLine = null
+        followOriginal = null
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
