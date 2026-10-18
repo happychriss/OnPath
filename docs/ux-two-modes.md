@@ -100,3 +100,26 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
 | Sheet, first line | activity button (icon ▾) · time · undo / redo · ⋯ |
 | Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Reverse, Round trip, Clear |
+
+## Activity while navigating (owner, 2026-10-18: "a wrong activity is a disaster")
+- **Visible:** the Navigate status card starts with the activity icon (48 dp button):
+  `[🥾]  7.4 km to go · 2 h 54 min` / `↑ 512 m ↓ 310 m` / `● Recording · …`. The plan sheet's primary button names it:
+  **"Start navigation · Hike"**, **"Continue navigation · Trekking bike"**. Only the icon, "Resume" and the profile
+  chevron (48 dp, right) are buttons – the rest of the card is not clickable (gloves).
+- **Tap the icon → check-and-switch sheet** (`ui/ActivitySwitchSheet.kt`), stays until a choice is made (Back = Keep):
+  "You are navigating as: Hike (T3)", then every other activity with how the **rest of the followed route** fits it –
+  "✓ fits" or the problems ("⚠ 1.4 km not suited for trekking bikes, steps 40 m · +900 m") and the new time;
+  a spinner per row while checking; "Keep Hike (T3)".
+- **How it is checked (offline):** the rest of the tour is routed with BRouter for each activity in the background
+  (position → remaining stops, like "Continue navigation"; a followed GPX track keeps its shape through vias every 2 km;
+  15 s per activity, one after the other). The followed line has no per-way tags, so the fit is read from that route
+  (`navigation/ActivityCheck`): parts of the followed rest it does not use (≥ 150 m and ≥ 3 %) = "not suited for
+  <activity>" (no access, too hard, above the SAC limit – the profile avoids them); plus from its way types / surfaces:
+  steps (bikes), unpaved (touring / e-bike), rough trail (trekking), busy road (hike). Chosen because the same route is
+  then the proposal – choosing needs no second wait.
+- **Choosing an activity** shows that route as the dashed proposal with the usual persistent question
+  ("New route for MTB – Rest of the tour 8.6 km (+1.2 km) · 38 min" · Take new route / Keep original, also in the
+  notification, silent). It stays until answered, also while on the route. **Take** = the new line becomes the tour's
+  line for the new activity (no grey line of the old one), the tour is stored with the new activity, the app switches
+  (`selectActivity`), recording continues. **Keep** = nothing changes (off route → the normal way-back question).
+  Free recording (no route): choosing switches at once. Works in every direction (Bike → Hike too).
