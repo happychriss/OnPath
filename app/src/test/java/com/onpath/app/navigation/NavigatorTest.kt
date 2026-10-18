@@ -1,0 +1,178 @@
+package com.onpath.app.navigation
+
+import com.onpath.app.navigation.Trace.fix
+import com.onpath.app.navigation.Trace.line
+import com.onpath.app.navigation.Trace.pt
+import com.onpath.app.navigation.Trace.walk
+import com.onpath.app.routing.Activity
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.json.JSONObject
+
+class NavigatorTest {
+    /** East 1 km, then north 1 km; stops at the start, the corner and the end. */
+    private val route = line(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 1000.0)
+    private fun session() = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
+        listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 1000.0)))
+
+    private class Run(val nav: Navigator) {
+        val steps = mutableListOf<Navigator.Step>()
+        val jobs get() = steps.mapNotNull { it.job }
+        fun feed(fixes: List<OffRouteDetector.Fix>) { fixes.forEach { steps += nav.onFix(it) } }
+    }
+
+    /** A found way back: from the position back to the corner and on along the route. */
+    private fun found(from: Pair<Double, Double>, extra: Double = 120.0): Rerouter.Found {
+        val leg = line(from, 1000.0 to 0.0, 1000.0 to 200.0)
+        val orig = NavLine(route)
+        val resume = 1200.0
+        val l = RerouteTargets.splice(leg, orig, resume)
+        return Rerouter.Found(l, com.onpath.app.data.Geo.length(leg), resume, extra, 110.0, 5.0, null, emptySet(), 2, 15)
+    }
+
+    @Test fun missedTurnVibratesAndAsks() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        assertEquals(1, r.steps.count { it.vibrate })
+        assertEquals(NavPrompt.Searching, r.nav.prompt)
+        val job = r.jobs.single()
+        assertEquals(1000.0, job.request.progressM, 50.0)
+        // the corner stop was visited (passed): it is in the request
+        assertTrue(1 in job.request.visited)
+        r.nav.onResult(job.id, found(1150.0 to 0.0))
+        val q = r.nav.prompt as NavPrompt.Question
+        assertEquals(120.0, q.extraM, 0.1)
+        assertNotNull(r.nav.state.toRoute)
+    }
+
+    @Test fun questionStaysUntilAnsweredThenTakeNewRoute() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        // ten minutes standing there: still asking (no timeout)
+        r.feed((0 until 600).map { fix(1150.0, 0.0, 2_000_000L + it * 1000) })
+        val q = r.nav.prompt as NavPrompt.Question
+        val v0 = r.nav.session.version
+        val s = r.nav.take(q.id)
+        assertTrue(s.lineChanged)
+        assertNull(r.nav.prompt)
+        assertTrue(r.nav.session.rerouted)
+        assertEquals(v0 + 1, r.nav.session.version)
+        assertNotNull(r.nav.state.original)
+        // a stale id does nothing
+        assertFalse(r.nav.take(q.id).lineChanged)
+    }
+
+    @Test fun backOnTheNewRouteThenOriginalIsUsedAgain() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        r.nav.take((r.nav.prompt as NavPrompt.Question).id)
+        // walk the new line back to the corner and north: back on the original → grey line gone
+        r.steps.clear()
+        r.feed(walk(1150.0 to 0.0, 1000.0 to 0.0, 1000.0 to 300.0, t0Ms = 3_000_000))
+        assertTrue(r.steps.any { it.lineChanged })
+        assertFalse(r.nav.session.rerouted)
+        assertNull(r.nav.state.original)
+        assertTrue(r.steps.none { it.vibrate })
+        assertEquals(1300.0, r.nav.detector.progressM, 30.0)
+    }
+
+    @Test fun backOnRouteByYourselfClearsTheQuestion() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        r.steps.clear()
+        r.feed(walk(1150.0 to 0.0, 1000.0 to 0.0, 1000.0 to 100.0, t0Ms = 3_000_000))
+        assertNull(r.nav.prompt)
+        assertTrue(r.steps.any { it.cancelJob })
+        assertFalse(r.nav.session.rerouted)
+    }
+
+    @Test fun keepOriginalShowsTheArrowAndAsksAgainOnlyMuchLater() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        r.nav.keep((r.nav.prompt as NavPrompt.Question).id)
+        assertEquals(NavPrompt.Kept, r.nav.prompt)
+        val t = r.nav.state.toRoute!!
+        assertTrue(t.distanceM > 100)
+        // 1 min further on: no new question
+        r.steps.clear()
+        r.feed(walk(1150.0 to 0.0, 1150.0 to 80.0, t0Ms = 1_000_000, speed = 1.3))
+        assertTrue(r.jobs.isEmpty())
+        // after 2 min and 200 m: asked again
+        r.feed(walk(1150.0 to 80.0, 1400.0 to 80.0, t0Ms = 1_200_000))
+        assertEquals(1, r.jobs.size)
+        val s = r.nav.onResult(r.jobs.last().id, found(1400.0 to 80.0))
+        assertTrue("question after a re-ask vibrates", s.vibrate)
+    }
+
+    @Test fun noWayFoundShowsArrowAndRetriesAfterMoving() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, Rerouter.Failed(Rerouter.Reason.NO_WAY, "x", 5))
+        assertEquals(NavPrompt.NoWay(Rerouter.Reason.NO_WAY), r.nav.prompt)
+        assertNotNull(r.nav.state.toRoute)
+        r.steps.clear()
+        // the first walk ended at ~885 s: 77 s and 100 m later no retry yet
+        r.feed(walk(1150.0 to 0.0, 1150.0 to 100.0, t0Ms = 890_000))
+        assertTrue(r.jobs.isEmpty())
+        r.feed(walk(1150.0 to 100.0, 1150.0 to 250.0, t0Ms = 968_000))
+        assertEquals(1, r.jobs.size)
+    }
+
+    @Test fun staleResultIsIgnored() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id + 7, found(1150.0 to 0.0))
+        assertEquals(NavPrompt.Searching, r.nav.prompt)
+    }
+
+    @Test fun planModeAsksWhenBackInNavigate() {
+        val n = Navigator(session())
+        n.setNavigating(false)
+        val r = Run(n)
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        assertNull(n.prompt)
+        val s = n.setNavigating(true)
+        assertTrue(s.vibrate); assertNotNull(s.job)
+    }
+
+    @Test fun warningOffNeverAsks() {
+        val n = Navigator(session()).apply { enabled = false }
+        val r = Run(n)
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1300.0 to 0.0))
+        assertNull(n.prompt); assertTrue(r.jobs.isEmpty())
+    }
+
+    @Test fun continueNavigationAwayFromTheRouteAsksAtOnce() {
+        val n = Navigator(session())
+        n.checkNow()
+        val s = n.onFix(fix(500.0, 300.0, 0))
+        assertNotNull(s.job)
+        assertFalse(s.vibrate) // the user is looking at the screen
+        assertEquals(NavPrompt.Searching, n.prompt)
+    }
+
+    @Test fun sessionSurvivesJson() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        r.nav.take((r.nav.prompt as NavPrompt.Question).id)
+        val s = r.nav.session
+        val back = NavSessionStore.fromJson(JSONObject(NavSessionStore.toJson(s).toString()))!!
+        assertEquals(s.copy(original = back.original, current = back.current), back)
+        assertEquals(s.original.size, back.original.size)
+        assertEquals(s.current!!.size, back.current!!.size)
+        assertEquals(s.current!!.last().lat, back.current!!.last().lat, 1e-9)
+        // after a restart the navigator continues on the new line, the original is still known
+        val n2 = Navigator(back)
+        assertTrue(n2.session.rerouted)
+        assertNotNull(n2.state.original)
+    }
+}

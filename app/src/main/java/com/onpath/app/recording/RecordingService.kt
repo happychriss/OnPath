@@ -29,7 +29,26 @@ import com.onpath.app.data.Prefs
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.data.DataFiles
+import com.onpath.app.navigation.NavKind
+import com.onpath.app.navigation.NavPrompt
+import com.onpath.app.navigation.NavSession
+import com.onpath.app.navigation.NavSessionStore
+import com.onpath.app.navigation.NavState
+import com.onpath.app.navigation.NavText
+import com.onpath.app.navigation.Navigator
+import com.onpath.app.navigation.OffRouteDetector
+import com.onpath.app.navigation.Rerouter
+import com.onpath.app.routing.EngineProvider
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.RouteCancel
+import com.onpath.app.routing.RoutingEngine
+import com.onpath.app.routing.StraightLineEngine
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,11 +77,15 @@ data class RecState(
     val followName: String?,
     /** Segments of the recorded track (new segment after pause or GPS loss). */
     val track: List<List<GeoPoint>>,
+    /** Navigation (followed line, re-routing question, grey original line); null for free recording. */
+    val nav: NavState? = null,
 )
 
 /**
  * Foreground service that records the track. Every accepted point goes straight into
- * SQLite, so nothing is lost if the process dies (R-07). Also does off-route checks.
+ * SQLite, so nothing is lost if the process dies (R-07). Also owns navigation: off-route detection and the
+ * re-routing question ([Navigator]), so it works with the screen off and the phone in the pocket (F-NAV-04).
+ * Routing runs on its own single thread; a newer request cancels the older one. Never blocks recording.
  */
 class RecordingService : Service() {
 
@@ -86,11 +109,18 @@ class RecordingService : Service() {
     private var trackSeg = -1
 
     private var follow: Pair<String, List<GeoPoint>>? = null
-    /** Off-route state machine (progress window, accuracy margin, moving check, hysteresis). */
-    private val detector = com.onpath.app.navigation.OffRouteDetector()
-    private var offAlerted = false
-    private var offDistance: Double? = null
-    /** Off-route settings, re-read when the app sends ACTION_FOLLOW_CHANGED. */
+    /** Navigation session + off-route flow; null for free recording. */
+    private var navigator: Navigator? = null
+    private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
+    private val routeExec = Executors.newSingleThreadExecutor()
+    private val routeDispatcher = routeExec.asCoroutineDispatcher()
+    private var engine: RoutingEngine? = null
+    private var rerouteJob: Job? = null
+    private var rerouteCancel: RouteCancel? = null
+    /** What the off-route notification shows now (null = none), to update it only on changes. */
+    private var alertKey: String? = null
+    private var alertPosted = 0L
+    /** Off-route settings, re-read when the app sends ACTION_SETTINGS / ACTION_FOLLOW_CHANGED. */
     private var settings: com.onpath.app.data.AppSettings? = null
     /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
     private var navigating = true
@@ -106,21 +136,36 @@ class RecordingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING)
+        val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
+            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
             ACTION_RESUME -> { setPaused(false); return START_STICKY }
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
             ACTION_NAVIGATING -> {
+                // Plan mode: no new questions; a pending one stays (owner: nothing disappears by itself)
                 navigating = intent.getBooleanExtra(EXTRA_ON, true)
-                if (!navigating && offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
-                publish(); return START_STICKY
+                navigator?.let { handle(it.setNavigating(navigating)) } ?: publish()
+                return START_STICKY
             }
             ACTION_FOLLOW_CHANGED -> {
-                loadFollow(); settings = null
-                if (offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
+                settings = null
+                loadFollow()
+                if (intent.getBooleanExtra(EXTRA_CHECK_NOW, false)) navigator?.checkNow()
                 publish(); return START_STICKY
+            }
+            ACTION_CHECK_NOW -> { navigator?.checkNow(); return START_STICKY }
+            ACTION_SETTINGS -> {
+                settings = null; applySettings(); updateAlert(); publish(); return START_STICKY
+            }
+            ACTION_TAKE_ROUTE -> {
+                navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_KEEP_ROUTE -> {
+                navigator?.let { handle(it.keep(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
             }
         }
         if (tourId >= 0) return START_STICKY // already recording
@@ -186,7 +231,7 @@ class RecordingService : Service() {
                 val now = SystemClock.elapsedRealtime()
                 if (!paused) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceAtLeast(1).coerceAtMost(5)
                 lastTick = now
-                if (gpsLost()) { detector.gpsLost(); offDistance = null } // no alarms without GPS (R-04)
+                if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (elapsedS % 10 == 0L) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
                 publish()
             }
@@ -230,44 +275,130 @@ class RecordingService : Service() {
         publish()
     }
 
+    /**
+     * (Re)loads what is navigated: `nav-session.json` written by the app (or by a re-route), else an older plain
+     * `follow.json` (followed as a track without stops). A running re-route is cancelled.
+     */
     private fun loadFollow() {
+        cancelReroute()
         follow = Prefs(this).loadFollow()
-        detector.setLine(follow?.second?.takeIf { it.size >= 2 }?.let { com.onpath.app.navigation.NavLine(it) })
-        offDistance = null
+        val line = follow?.second?.takeIf { it.size >= 2 }
+        val stored = sessionStore.load()
+        val session = when {
+            line == null -> null
+            stored != null && stored.active.size == line.size -> stored
+            else -> {
+                val prefs = Prefs(this)
+                NavSession(NavKind.TRACK, follow?.first ?: "Route", prefs.activity, prefs.sac, line)
+            }
+        }
+        navigator = session?.let { Navigator(it).apply { setNavigating(navigating) } }
+        applySettings()
+        alertKey = null; nm().cancel(ALERT_ID)
+    }
+
+    private fun applySettings() {
+        val cfg = settings ?: Prefs(this).settings.also { settings = it }
+        navigator?.let { it.offRouteM = cfg.offRouteM.toDouble(); it.enabled = cfg.offRouteWarning }
     }
 
     private fun checkOffRoute(p: TrackPoint, accuracyM: Double, nowEl: Long) {
-        if (detector.line == null) { offDistance = null; return }
-        val cfg = settings ?: Prefs(this).settings.also { settings = it }
-        detector.offRouteM = cfg.offRouteM.toDouble()
-        val st = detector.onFix(com.onpath.app.navigation.OffRouteDetector.Fix(p.lat, p.lon, accuracyM, nowEl))
-        offDistance = st.distanceM
-        val off = st.state == com.onpath.app.navigation.OffRouteDetector.State.OFF_ROUTE
-        if (navigating && cfg.offRouteWarning && off) {
-            if (!offAlerted) { offAlerted = true; alertOffRoute(st.distanceM ?: 0.0) }
-        } else if (offAlerted && !off) {
-            offAlerted = false; nm().cancel(ALERT_ID)
+        val nav = navigator ?: return
+        handle(nav.onFix(OffRouteDetector.Fix(p.lat, p.lon, accuracyM, nowEl)), publishNow = false)
+    }
+
+    /** Carries out what the navigator asks for. */
+    private fun handle(step: Navigator.Step, publishNow: Boolean = true) {
+        val nav = navigator ?: return
+        if (step.vibrate) vibrate()
+        if (step.cancelJob) cancelReroute()
+        step.job?.let { startReroute(it) }
+        if (step.lineChanged) {
+            // written before the new line is shown (crash recovery R-07)
+            sessionStore.save(nav.session)
+            Prefs(this).saveFollow(follow?.first ?: nav.session.name, nav.session.active)
+            follow = (follow?.first ?: nav.session.name) to nav.session.active
+        } else if (step.sessionChanged) sessionStore.save(nav.session)
+        updateAlert()
+        if (publishNow || step.lineChanged) publish(force = step.lineChanged)
+    }
+
+    private fun startReroute(job: Navigator.Job) {
+        cancelReroute()
+        val cancel = RouteCancel()
+        rerouteCancel = cancel
+        rerouteJob = scope.launch {
+            val out = withContext(routeDispatcher) {
+                try {
+                    val eng = engine ?: EngineProvider.create(this@RecordingService, DataFiles(this@RecordingService).segmentsDir)
+                        .also { if (it !is StraightLineEngine) engine = it } // retry later if it failed
+                    Rerouter(eng).reroute(job.request, cancel)
+                } catch (t: Throwable) {
+                    Log.e("OnPath", "reroute failed", t)
+                    Rerouter.Failed(Rerouter.Reason.UNAVAILABLE, t.message ?: t.javaClass.simpleName, 0)
+                }
+            }
+            Log.i("OnPath", "reroute #${job.id}: " + when (out) {
+                is Rerouter.Found -> "found in ${out.tookMs} ms (${out.tried} tried), leg ${out.legM.toInt()} m, extra ${out.extraM.toInt()} m"
+                is Rerouter.Failed -> "failed in ${out.tookMs} ms: ${out.reason} ${out.detail}"
+            })
+            if (rerouteCancel === cancel) { rerouteCancel = null; rerouteJob = null }
+            navigator?.let { handle(it.onResult(job.id, out)) }
         }
     }
 
-    private fun alertOffRoute(d: Double) {
+    private fun cancelReroute() {
+        rerouteCancel?.cancel(); rerouteCancel = null
+        rerouteJob?.cancel(); rerouteJob = null
+    }
+
+    private fun vibrate() {
         try {
             val vib = if (Build.VERSION.SDK_INT >= 31) {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            vib.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400, 200, 600), -1))
+            vib.vibrate(VibrationEffect.createWaveform(OFF_ROUTE_VIBRATION, -1))
         } catch (_: Exception) { }
+    }
+
+    /**
+     * The off-route notification carries the same question as the screen ("Take new route" / "Keep original").
+     * Ongoing: it stays until answered or until the user is back on the route. Posted with sound once per
+     * off-route event (our own vibration comes with it), then updated silently.
+     */
+    private fun updateAlert() {
+        val nav = navigator
+        val pr = nav?.prompt
+        if (pr == null) {
+            if (alertKey != null) { alertKey = null; nm().cancel(ALERT_ID) }
+            return
+        }
+        val hint = NavText.toRoute(nav.toRoute)
+        val key = when (pr) { is NavPrompt.Question -> "q${pr.id}"; else -> pr.javaClass.simpleName }
+        val now = SystemClock.elapsedRealtime()
+        if (key == alertKey && now - alertPosted < 15_000) return
+        alertKey = key; alertPosted = now
         try {
-            val n = NotificationCompat.Builder(this, CHANNEL_ALERT)
+            val text = when (pr) {
+                is NavPrompt.Question -> NavText.question(pr)
+                else -> hint ?: "Back to ${follow?.first ?: "the route"}"
+            }
+            val b = NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("You left the route")
-                .setContentText("${d.toInt()} m away from ${follow?.first ?: "the route"}")
+                .setContentTitle(NavText.title(pr))
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
-                .setOngoing(true) // stays until back on the route (no self-dismissing messages)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // answerable on the lock screen
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
                 .setContentIntent(openAppIntent())
-                .build()
-            nm().notify(ALERT_ID, n)
+            if (pr is NavPrompt.Question) {
+                b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
+            }
+            nm().notify(ALERT_ID, b.build())
         } catch (_: SecurityException) { }
     }
 
@@ -276,7 +407,7 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
-        detector.gpsLost() // no fixes while paused: timers start from zero again
+        navigator?.onGpsLost() // no fixes while paused: timers start from zero again
         db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
         publish(force = true)
     }
@@ -288,6 +419,7 @@ class RecordingService : Service() {
         }
         tourId = -1
         tracker.stop()
+        cancelReroute()
         scope.cancel()
         nm().cancel(ALERT_ID)
         _state.value = null
@@ -299,7 +431,9 @@ class RecordingService : Service() {
     override fun onDestroy() {
         // Process stays consistent: points are already in the DB; state stays "active"
         // unless finish() ran, so the app offers Continue / Save next time.
+        cancelReroute()
         scope.cancel()
+        routeExec.shutdown()
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         if (tourId >= 0) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
@@ -311,7 +445,8 @@ class RecordingService : Service() {
         if (tourId < 0) return
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
-            offDistance, offAlerted, follow?.first, track.map { it.toList() },
+            navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.map { it.toList() },
+            navigator?.state,
         )
         val now = SystemClock.elapsedRealtime()
         if (force || now - lastNotify > 5000) {
@@ -327,8 +462,8 @@ class RecordingService : Service() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private fun actionIntent(action: String, code: Int): PendingIntent = PendingIntent.getService(
-        this, code, Intent(this, RecordingService::class.java).setAction(action),
+    private fun actionIntent(action: String, code: Int, extras: Intent.() -> Unit = {}): PendingIntent = PendingIntent.getService(
+        this, code, Intent(this, RecordingService::class.java).setAction(action).apply(extras),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
@@ -336,7 +471,7 @@ class RecordingService : Service() {
         val status = when {
             paused -> "Paused"
             tourId >= 0 && gpsLost() -> "Searching GPS…"
-            offAlerted -> "Off route (${offDistance?.toInt() ?: 0} m)"
+            navigator?.prompt != null -> "Off route"
             else -> "Recording"
         }
         val b = NotificationCompat.Builder(this, CHANNEL_REC)
@@ -364,11 +499,25 @@ class RecordingService : Service() {
         /** App switched mode: [EXTRA_ON] true = Navigate (off-route checks on), false = Plan. */
         const val ACTION_NAVIGATING = "com.onpath.app.NAVIGATING"
         const val EXTRA_ON = "on"
+        /** Off-route / re-routing settings changed (no new session). */
+        const val ACTION_SETTINGS = "com.onpath.app.SETTINGS"
+        /** Answer to the off-route question [EXTRA_QUESTION] (app button or notification action). */
+        const val ACTION_TAKE_ROUTE = "com.onpath.app.TAKE_ROUTE"
+        const val ACTION_KEEP_ROUTE = "com.onpath.app.KEEP_ROUTE"
+        const val EXTRA_QUESTION = "question"
+        /** With ACTION_FOLLOW_CHANGED ("Continue navigation"): check the next fix at once and ask when off route. */
+        const val EXTRA_CHECK_NOW = "checkNow"
+        /** "Continue navigation" with the same session: check the next fix at once. */
+        const val ACTION_CHECK_NOW = "com.onpath.app.CHECK_NOW"
         const val EXTRA_CONTINUE_ID = "continueId"
         const val EXTRA_ACTIVITY = "activity"
 
         const val CHANNEL_REC = "recording"
-        const val CHANNEL_ALERT = "offroute"
+        /** Old off-route channel (vibrated by itself); deleted, see [CHANNEL_NAV]. */
+        private const val CHANNEL_ALERT_OLD = "offroute"
+        /** Off-route question: high importance with sound, no channel vibration (the service vibrates once itself). */
+        const val CHANNEL_NAV = "offroute-question"
+        val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
         private const val NOTIF_ID = 42
         private const val ALERT_ID = 43
 
@@ -390,11 +539,12 @@ class RecordingService : Service() {
                     description = "Shows distance and time while recording"
                 }
             )
+            runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) }
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ALERT, "Off-route warning", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Warns when you leave the route you follow"
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 600)
+                NotificationChannel(CHANNEL_NAV, "Off route", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Asks when you leave the route you follow: take a new route or keep the original"
+                    enableVibration(false)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
             )
         }
