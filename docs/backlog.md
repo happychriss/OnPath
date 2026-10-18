@@ -5,6 +5,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Activity in Navigate (icon in to-go card, "Start navigation · Hike", tap = check & switch sheet) – since 2026-10-18
+- [laptop] Route bands: one green for all activities + Komoot-like pink/green highlight for major routes (needs `net` in routes.geojson) – since 2026-10-18
 - [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
 
 ## Next
