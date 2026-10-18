@@ -47,9 +47,8 @@ class ScreenshotTest {
         wayTypes = listOf(Share("path", 6100.0), Share("track", 3300.0), Share("quiet_road", 2200.0), Share("road", 700.0), Share("steps", 180.0)),
         surfaces = listOf(Share("natural_trail", 5200.0), Share("gravel", 3900.0), Share("asphalt", 3000.0), Share("unknown", 380.0)))
     private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null,
-                       size: PlanSize = PlanSize.COMPACT, tourRunning: Boolean = false, names: List<String?> = emptyList()) =
-        PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning,
-            stopNames = names)
+                       size: PlanSize = PlanSize.COMPACT, tourRunning: Boolean = false) =
+        PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning)
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false) =
@@ -94,11 +93,6 @@ class ScreenshotTest {
 
     @Test fun plan() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
-    }
-
-    /** Plan with a named route: stop chips use the search / POI names. */
-    @Test fun planNamedStops() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(n = 3, names = listOf("Algund", "Meraner Hütte", null)), PlanCallbacks()) }
     }
 
     /** "Elevation & surfaces" opened: profile, gradient legend, way type / surface bars. */
@@ -201,13 +195,50 @@ class ScreenshotTest {
 
     @Test fun planNotice() = paparazzi.snapshot {
         Frame {
-            PlanNoticeBar(PlanNotice("Added as stop 2 of 4", "Make it the destination", NoticeAction.MAKE_DESTINATION), {}, {})
+            PlanNoticeBar(PlanNotice("Added between Seilbahn and Sessellift Vellau", PlanNotices.END_HERE, NoticeAction.MAKE_DESTINATION), {}, {})
             PlanPanel(planUi(4), PlanCallbacks())
         }
     }
 
-    @Test fun pointMenu() = paparazzi.snapshot {
-        OnPathTheme { PointMenuDialog(1, 4, {}, {}, {}, {}) }
+    /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
+    @Composable
+    private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color, anchorDp: androidx.compose.ui.unit.DpOffset,
+                             content: @Composable () -> Unit) {
+        Frame { PlanPanel(planUi(), PlanCallbacks()) }
+        val d = androidx.compose.ui.platform.LocalDensity.current
+        val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
+            drawCircle(dotColor, 11.dp.toPx(), a)
+        }
+        AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
+    }
+
+    /** Quick tap on a POI in Plan: light bubble with the name and one action, Google Maps. */
+    @Test fun poiGoogleBubble() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 330.dp)) {
+                PoiGoogleBubble(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onGoogle = {})
+            }
+        }
+    }
+
+    /** Quick tap on a route marker: small "Delete point / Cancel" overlay next to it (here near the right edge). */
+    @Test fun pointDeleteOverlay() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(340.dp, 300.dp)) {
+                PointDeleteOverlay(1, 4, "Leiter Alm", onDelete = {}, onCancel = {})
+            }
+        }
+    }
+
+    /** Destination marker near the top: the overlay goes below it; no "End route here" for start / destination. */
+    @Test fun pointDeleteOverlayBelow() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Bad, androidx.compose.ui.unit.DpOffset(180.dp, 170.dp)) {
+                PointDeleteOverlay(3, 4, null, onDelete = {}, onCancel = {})
+            }
+        }
     }
 
     @Test fun confirmClear() = paparazzi.snapshot {

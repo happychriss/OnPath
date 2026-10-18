@@ -305,6 +305,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) {
+        shownWaypoints = points.toList()
         val src = style.getSourceAs<GeoJsonSource>(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
@@ -341,13 +342,22 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)))
     }
 
-    /** Index of the waypoint marker under a screen point, or -1. */
-    fun waypointAt(screen: PointF): Int {
-        val r = 24 * density
-        val box = android.graphics.RectF(screen.x - r, screen.y - r, screen.x + r, screen.y + r)
-        val f = map.queryRenderedFeatures(box, LAYER_WPT).firstOrNull() ?: return -1
-        return f.getNumberProperty("idx")?.toInt() ?: -1
-    }
+    /** Markers currently drawn (last [setWaypoints]); used for zoom-independent hit-testing. */
+    private var shownWaypoints: List<GeoPoint> = emptyList()
+
+    /**
+     * Index of the marker nearest to a screen point within ~26 dp (screen space, so the same at every
+     * zoom; overlapping markers → the nearest one), or -1. Never throws.
+     */
+    fun waypointAt(screen: PointF): Int = try {
+        val pts = shownWaypoints
+        val xs = FloatArray(pts.size); val ys = FloatArray(pts.size)
+        pts.forEachIndexed { i, p -> map.projection.toScreenLocation(LatLng(p.lat, p.lon)).let { xs[i] = it.x; ys[i] = it.y } }
+        com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP * density)
+    } catch (e: Exception) { Log.w("OnPath", "marker hit-test failed: $e"); -1 }
+
+    /** Screen position of [p] in pixels of the map view, or null (projection not ready). */
+    fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
     fun fitTo(points: List<GeoPoint>, bottomPaddingPx: Int) {
         if (points.isEmpty()) return

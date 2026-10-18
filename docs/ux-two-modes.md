@@ -7,7 +7,7 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 | | **Plan** | **Navigate** |
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
-| Map taps | Hold 0.3 s adds a point (smart insertion), POI tap → POI card (add to route / Google Maps), drag points / line | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
+| Map taps | Hold 0.3 s adds a point (smart insertion), POI tap → small Google Maps bubble, POI hold → added as stop, marker tap → small "Delete point / Cancel / End route here" overlay, long press drags points / line (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
 | Shown | Plan sheet: named stops, stats, profile, actions (undo/redo/clear/reverse/round trip/save/GPX in ⋯), activity, My tours, Settings | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
 
@@ -27,3 +27,19 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 - Remove the eye button (not needed: Navigate never edits) – keep compact/mini sheet sizes in Plan.
 - GPS status as a dot on the locate button; the big GPS chip goes away.
 - One primary action per mode: Plan → "Start navigation", Navigate → slide to plan.
+
+## Plan gestures (owner spec 2026-10-18, `ui/MapGestures.kt`)
+Marker beats POI beats route line beats empty map. Markers are hit in screen space (26 dp, nearest marker wins
+when they overlap zoomed out). The overlays follow the map while panning and close when their point leaves the map.
+
+| | quick tap | hold ≥ 0.3 s (ring + vibration) | long press |
+| --- | --- | --- | --- |
+| empty map | hint "Hold briefly to add a point" (once) | add point (smart insertion) | add point |
+| route line | as empty map | add point (inserted into that leg) | drag out a new stop |
+| POI | bubble: name + "Open in Google Maps" (closes after 8 s) | add as pinned, named stop | add as pinned, named stop |
+| marker (incl. a POI that is a stop) | overlay: Delete point / Cancel (+ End route here for via points) | same overlay | drag the point |
+| with an overlay open | closes it (a tap on another marker / POI switches) | closes it | marker: drag; else closes |
+
+Navigate (and a shown track): nothing is added or moved; a POI tap opens read-only details. Search results keep
+the place card. The plan sheet has no stop list any more – points are managed on the map. Notices only when the
+app guessed (a stop in the middle): "Added as a stop on the way" / "Added between A and B" · "End here instead".
