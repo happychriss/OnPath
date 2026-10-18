@@ -110,6 +110,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var showSettings by mutableStateOf(false)
     val overlayOn: Boolean get() = settings.routeOverlay
 
+    // --- Navigate orientation + next turn (navigation agent; see NavigateScreen, MapController.setCamera) ---
+    /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
+    val navHeadingUp: Boolean get() = settings.navHeadingUp
+    /** Orientation button in Navigate: toggles and re-centres on the position (when there is a fix). */
+    fun toggleNavOrientation() {
+        settings = settings.copy(navHeadingUp = !settings.navHeadingUp); prefs.settings = settings
+        if (tracker.location.value != null) followMe = true
+    }
+    /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
+    var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
+
     // --- planning ---
     val waypoints = mutableStateListOf<GeoPoint>().apply { addAll(prefs.planWaypoints) }
     /**
@@ -426,6 +437,114 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isStop(poi: com.onpath.app.poi.Poi): Boolean =
         waypoints.any { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
+
+    // ---------------- search + place card (search agent; UI in ui/search, logic in search/) ----------------
+    // Open/close the search view, the picked place, and "add as role" actions of the shared place card.
+    // The card is keyed by planPoi (so MapHost's tap rules – a map tap closes it – apply unchanged).
+
+    enum class PlaceRole { SMART, START, DESTINATION }
+
+    private val searchStore by lazy { com.onpath.app.search.SearchStore(getApplication()) }
+    val search by lazy {
+        com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
+            com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))) {
+            val loc = tracker.location.value
+            val (cLat, cLon, _) = initialCamera()
+            // Position when known and near what the user looks at, else the map centre.
+            val usePos = loc != null && Geo.distance(loc.latitude, loc.longitude, cLat, cLon) < 30_000
+            com.onpath.app.ui.search.SearchContext(if (usePos) loc!!.latitude else cLat, if (usePos) loc!!.longitude else cLon,
+                if (shown == null) route?.points else null)
+        }
+    }
+    var searchOpen by mutableStateOf(false)
+        private set
+    /** The picked search result (address, kind) behind planPoi; null for a POI tapped on the map. */
+    private var searchPlace by mutableStateOf<com.onpath.app.search.Place?>(null)
+    /** Names of route points added from a place ("Leiter Alm"), by position – for stop lists. */
+    private val placeNames = HashMap<GeoPoint, String>()
+    private var namesLoaded = false
+
+    fun openSearch() { planPoi = null; searchOpen = true; search.onOpen() }
+    fun closeSearch() { searchOpen = false }
+
+    /** Result tapped: close the search, move the map there and show the place card. */
+    fun pickSearchResult(place: com.onpath.app.search.Place) {
+        val p = search.resolve(place)
+        search.remember(p)
+        searchOpen = false
+        searchPlace = p
+        planPoi = p.toPoi()
+        events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+    }
+
+    /** Place shown in the card: the search result, or the tapped POI. */
+    val cardPlace: com.onpath.app.search.Place?
+        get() = planPoi?.let { poi -> searchPlace?.takeIf { it.id == poi.id } ?: com.onpath.app.search.Place.fromPoi(poi) }
+
+    fun closePlaceCard() { planPoi = null; searchPlace = null }
+
+    private fun routeIndexOf(place: com.onpath.app.search.Place) =
+        waypoints.indexOfFirst { kotlin.math.abs(it.lat - place.lat) < 1e-7 && kotlin.math.abs(it.lon - place.lon) < 1e-7 }.takeIf { it >= 0 }
+
+    /** Card content incl. what "Add to route" will do (same WaypointInsertion as a map hold). */
+    fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi {
+        val idx = routeIndexOf(place)
+        val r = route
+        val subtitle = if (idx != null) com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size)
+        else com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
+            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }).subtitle
+        return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size, subtitle)
+    }
+
+    /** Adds the place as a pinned stop (passed exactly), named after the place. Moves it when already planned. */
+    fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) {
+        val p = GeoPoint(place.lat, place.lon)
+        val name = place.title()
+        val idx = routeIndexOf(place)
+        closePlaceCard()
+        rememberPlaceName(p, name)
+        if (idx != null) {
+            when (role) { PlaceRole.START -> makeStart(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
+            return
+        }
+        pinned += p; prefs.planPinned = pinned
+        when (role) {
+            PlaceRole.SMART -> {
+                addPoint(p, onPoi = true)
+                notice = notice?.let { it.copy(text = it.text.replaceFirst("Added", "$name added")) }
+                    ?: PlanNotice(if (waypoints.size == 1) "$name is the start" else "$name is the destination", null, null)
+            }
+            PlaceRole.START -> {
+                change { add(0, p) }
+                notice = PlanNotice("$name is the start", null, null)
+            }
+            PlaceRole.DESTINATION -> {
+                val loc = tracker.location.value
+                if (waypoints.isEmpty() && loc != null) {
+                    change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+                    notice = PlanNotice("Route from your position to $name", null, null)
+                } else {
+                    change { add(p) }
+                    notice = PlanNotice(if (waypoints.size == 1) "$name added – now add a start" else "$name is the destination", null, null)
+                }
+            }
+        }
+    }
+
+    fun removePlace(place: com.onpath.app.search.Place) { routeIndexOf(place)?.let { removePoint(it) }; closePlaceCard() }
+
+    /** Name of a route point added from a place, or null (UI: "Leiter Alm" instead of "Point 3"). */
+    fun stopName(p: GeoPoint): String? { loadNames(); return placeNames[p] }
+
+    private fun loadNames() { if (!namesLoaded) { namesLoaded = true; placeNames.putAll(searchStore.names()) } }
+
+    private fun rememberPlaceName(p: GeoPoint, name: String) {
+        loadNames(); placeNames[p] = name
+        val alive = HashSet(waypoints).apply { add(p); addAll(history.allPoints()) }
+        placeNames.keys.retainAll(alive)
+        searchStore.saveNames(placeNames)
+    }
+    // ---------------- end search ----------------
 
     /** Drag-to-move: the point keeps its position in the order. */
     fun movePoint(index: Int, p: GeoPoint) { if (index in waypoints.indices) set(PlanEdits.replace(waypoints, index, p)) }

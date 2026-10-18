@@ -1,6 +1,8 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
@@ -24,14 +26,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.routing.Activity
 
-/** Plan mode top bar: My tours and Settings on the left, the activity on the right. */
+/**
+ * Plan mode top bar: My tours and Settings on the left, the activity on the right; below it the search
+ * pill when [onSearch] is given (search view: ui/search).
+ */
 @Composable
 fun PlanTopBar(
     activity: Activity, sac: Int,
     onActivity: () -> Unit, onTours: () -> Unit, onSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onSearch: (() -> Unit)? = null,
 ) {
-    Row(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier) {
+    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Surface(onClick = onTours, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp),
             color = Color.White, shadowElevation = 4.dp) {
             Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -46,5 +53,7 @@ fun PlanTopBar(
         }
         Spacer(Modifier.weight(1f))
         ActivityChip(activity, sac, onClick = onActivity)
+    }
+    onSearch?.let { com.onpath.app.ui.search.SearchPill(it, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) }
     }
 }

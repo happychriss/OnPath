@@ -173,6 +173,14 @@ fun SettingsScreen(
                         SwitchRow("Keep screen on while navigating", "Only while following a route", settings.keepScreenOn) {
                             onChange(settings.copy(keepScreenOn = it))
                         }
+                        // Navigate orientation (navigation agent): heading-up default, north-up option.
+                        Text("Map direction while navigating", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(true to "Walking direction", false to "North up").forEach { (up, label) ->
+                                FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
+                                    label = { Text(label) }, modifier = Modifier.heightIn(min = 44.dp))
+                            }
+                        }
                     }
                 }
                 item {
