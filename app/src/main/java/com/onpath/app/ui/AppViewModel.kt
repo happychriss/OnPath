@@ -74,6 +74,8 @@ data class ShownTrack(
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
     data class Fit(val points: List<GeoPoint>) : UiEvent
+    /** Fly to one place at [zoom] (search results). */
+    data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
 }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -608,7 +610,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeMapOverlays()
         searchPlace = p
         searchMark = p
-        events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+        // Zoom to fit what it is: a city needs the overview, a single restaurant the close-up.
+        val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
+        events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
     }
 
     /** Search result marked on the map (pin); see [pickSearchResult]. */

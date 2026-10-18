@@ -70,6 +70,9 @@ object PhotonParser {
             val p = o.get("properties") as? JsonObject ?: JsonObject()
             fun s(k: String) = p.get(k)?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.takeIf { it.isNotEmpty() }
             val key = s("osm_key") ?: ""; val value = s("osm_value") ?: ""
+            // Not places you can go to: an administrative area's "centre" is just a point somewhere inside it (owner:
+            // "Bozen" landed in the forest above Meran – the province's centroid), likewise traffic signs.
+            if (key in SKIP_KEYS || (key == "highway" && value in SKIP_HIGHWAY)) continue
             val (kind, sub) = kindOf(key, value, s("type"))
             val street = listOfNotNull(s("street"), s("housenumber")).joinToString(" ").ifEmpty { null }
             val name = s("name") ?: street ?: continue
@@ -82,6 +85,9 @@ object PhotonParser {
     }
 
     private fun JsonElement.asDoubleOrNull(): Double? = try { asDouble } catch (_: Exception) { null }
+
+    private val SKIP_KEYS = setOf("boundary")
+    private val SKIP_HIGHWAY = setOf("traffic_signals", "traffic_sign", "stop", "give_way", "crossing")
 
     /** OSM key/value → our kind (+ place class). */
     fun kindOf(key: String, value: String, type: String? = null): Pair<String, String?> = when (key) {

@@ -79,4 +79,16 @@ class OnlineSearchTest {
         assertEquals("Bozen", PhotonParser.addressLine("Meran", "place", null, null, "Meran", null, "Bozen", null, "Italien"))
         assertNull(PhotonParser.addressLine("X", "other", null, null, null, null, null, null, null))
     }
+
+    /** Owner bug: "Bozen" landed on the province boundary's centroid in the forest above Meran. */
+    @Test fun skipsAdministrativeBoundariesAndSigns() {
+        val json = """{"features":[
+          {"geometry":{"coordinates":[11.2301833,46.6559296]},"properties":{"name":"Bozen","osm_key":"boundary","osm_value":"administrative","osm_type":"R","osm_id":1}},
+          {"geometry":{"coordinates":[11.3547399,46.4984781]},"properties":{"name":"Bozen","osm_key":"place","osm_value":"city","osm_type":"N","osm_id":2}},
+          {"geometry":{"coordinates":[11.3199164,46.4787258]},"properties":{"name":"Bozen","osm_key":"highway","osm_value":"traffic_sign","osm_type":"N","osm_id":3}}]}"""
+        val r = PhotonParser.parse(json)
+        org.junit.Assert.assertEquals(1, r.size)
+        org.junit.Assert.assertEquals("city", r[0].sub)
+        org.junit.Assert.assertEquals(46.4985, r[0].lat, 1e-3)
+    }
 }
