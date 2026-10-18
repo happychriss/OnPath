@@ -8,7 +8,7 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here from my location"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
-| Shown | Plan sheet: stats, profile, undo/redo, route edits in ⋯ (reverse/round trip/clear); top ⋮: load/save/manage routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
+| Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
@@ -31,22 +31,24 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 Disabled items stay visible, greyed – nothing appears or vanishes by surprise. "Navigating" = Navigate mode or a
 tour recording (also while looking at Plan during a tour).
 
-**Top ⋮ (search pill)** – file and app actions:
+**☰ (round button right of the search pill)** – library and app (see "Layout rule" below):
 
 | Item | Enabled when | Does |
 | --- | --- | --- |
-| Load route | something is saved and not navigating | Opens the routes list in pick mode: tap = load |
-| Save route | a planned route exists | Plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name stays) · **Save as new…** (name dialog) · Cancel. Otherwise the name dialog (new entry). Rule: `RouteRules.saveMode` |
-| Manage routes | always | The routes list (below) |
+| My routes | always | The routes list (below): tap = open / load |
 | Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
 | Settings, Check for updates | always (updates: only when the build supports them) | |
 
+**Save route** (sheet ⋯): plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name
+stays) · **Save as new…** (name dialog); a tap outside / Back cancels. Otherwise the name dialog (new entry).
+Rule: `RouteRules.saveMode`.
+
 **Plan sheet:** the primary button exists only with a route ("Start navigation", disabled while calculating) or
-while a tour runs ("Continue navigation"). Its ⋯ holds route edits only: Reverse, Round trip, Clear (Clear is
-disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
+while a tour runs ("Continue navigation"). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
+Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved".
 
-**Manage routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
+**My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
 map). Per item: tap = open (planned route with via points → into the plan; tracks → shown on the map), Export
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), Export (GPX share), Delete (asks "Delete “Name”?";
@@ -90,3 +92,36 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
   "hold to add" hint, no timed bubbles; the general message bar stays until OK is tapped.
+
+
+## Layout rule (owner, 2026-10-18)
+Everything about **this route** lives in the route sheet; the **library and app** live at the top.
+| Where | What |
+| --- | --- |
+| Search pill | only search |
+| ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
+| Sheet, first line | activity button (icon ▾) · time · undo / redo · ⋯ |
+| Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Reverse, Round trip, Clear |
+
+## Activity while navigating (owner, 2026-10-18: "a wrong activity is a disaster")
+- **Visible:** the Navigate status card starts with the activity icon (48 dp button):
+  `[🥾]  7.4 km to go · 2 h 54 min` / `↑ 512 m ↓ 310 m` / `● Recording · …`. The plan sheet's primary button names it:
+  **"Start navigation · Hike"**, **"Continue navigation · Trekking bike"**. Only the icon, "Resume" and the profile
+  chevron (48 dp, right) are buttons – the rest of the card is not clickable (gloves).
+- **Tap the icon → check-and-switch sheet** (`ui/ActivitySwitchSheet.kt`), stays until a choice is made (Back = Keep):
+  "You are navigating as: Hike (T3)", then every other activity with how the **rest of the followed route** fits it –
+  "✓ fits" or the problems ("⚠ 1.4 km not suited for trekking bikes, steps 40 m · +900 m") and the new time;
+  a spinner per row while checking; "Keep Hike (T3)".
+- **How it is checked (offline):** the rest of the tour is routed with BRouter for each activity in the background
+  (position → remaining stops, like "Continue navigation"; a followed GPX track keeps its shape through vias every 2 km;
+  15 s per activity, one after the other). The followed line has no per-way tags, so the fit is read from that route
+  (`navigation/ActivityCheck`): parts of the followed rest it does not use (≥ 150 m and ≥ 3 %) = "not suited for
+  <activity>" (no access, too hard, above the SAC limit – the profile avoids them); plus from its way types / surfaces:
+  steps (bikes), unpaved (touring / e-bike), rough trail (trekking), busy road (hike). Chosen because the same route is
+  then the proposal – choosing needs no second wait.
+- **Choosing an activity** shows that route as the dashed proposal with the usual persistent question
+  ("New route for MTB – Rest of the tour 8.6 km (+1.2 km) · 38 min" · Take new route / Keep original, also in the
+  notification, silent). It stays until answered, also while on the route. **Take** = the new line becomes the tour's
+  line for the new activity (no grey line of the old one), the tour is stored with the new activity, the app switches
+  (`selectActivity`), recording continues. **Keep** = nothing changes (off route → the normal way-back question).
+  Free recording (no route): choosing switches at once. Works in every direction (Bike → Hike too).

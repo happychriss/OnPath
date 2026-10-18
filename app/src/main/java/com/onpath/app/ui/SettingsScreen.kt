@@ -1,5 +1,9 @@
 package com.onpath.app.ui
 
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +67,7 @@ val PoiGroup.label: String
         PoiGroup.OTHER -> "Other"
     }
 
-/** Settings page (gear on the home screen). Every change is applied and saved at once. */
+/** Settings page (☰ → Settings). Every change is applied and saved at once. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
@@ -101,7 +105,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
                     Section("Default activity") {
-                        Text("OnPath starts with this activity. The activity button on the map only changes the current route.",
+                        Text("OnPath starts with this activity. The activity button in the route sheet only changes the current route.",
                             fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                         androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -120,10 +124,12 @@ fun SettingsScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                         SacScale.levels.forEach { l ->
                             val sel = settings.defaultSac == l.level
+                            // One touch target and one screen-reader item per level (the radio only shows the state).
                             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                                .clickable { onChange(settings.copy(defaultSac = l.level)) }
+                                .selectable(selected = sel, role = Role.RadioButton) { onChange(settings.copy(defaultSac = l.level)) }
                                 .padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
-                                androidx.compose.material3.RadioButton(selected = sel, onClick = { onChange(settings.copy(defaultSac = l.level)) })
+                                androidx.compose.material3.RadioButton(selected = sel, onClick = null,
+                                    modifier = Modifier.padding(12.dp))
                                 Column(Modifier.weight(1f).padding(top = 10.dp, end = 8.dp)) {
                                     Text("T${l.level} · ${l.name}", fontSize = 15.sp,
                                         fontWeight = if (sel) androidx.compose.ui.text.font.FontWeight.SemiBold else null)
@@ -164,9 +170,10 @@ fun SettingsScreen(
                             }
                             if (open) kinds.forEach { k ->
                                 val shown = k.key !in hidden
-                                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { setHidden(if (shown) hidden + k.key else hidden - k.key) }
+                                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                    .toggleable(value = shown, role = Role.Checkbox) { setHidden(if (shown) hidden + k.key else hidden - k.key) }
                                     .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(checked = shown, onCheckedChange = { setHidden(if (shown) hidden + k.key else hidden - k.key) })
+                                    Checkbox(checked = shown, onCheckedChange = null, modifier = Modifier.padding(12.dp))
                                     Text(k.en, fontSize = 15.sp)
                                 }
                             }
@@ -283,12 +290,13 @@ internal fun Section(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onChange(!checked) }.padding(horizontal = 16.dp),
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+        .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp)
             if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

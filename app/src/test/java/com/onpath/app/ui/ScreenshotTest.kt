@@ -57,14 +57,14 @@ class ScreenshotTest {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking)
         }
 
-    /** Plan mode: search bar (⋮ menu), activity chip, footer, then [bottom]. Top padding stands in for the status bar. */
+    /** Plan mode: search bar + ☰ menu, footer, then [bottom]. Top padding stands in for the status bar. */
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {}, bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar(Activity.HIKE, 3, {}, {}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
+                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                         aboveFooter()
                         Footer(gps, compass = CompassSpec(null, 0f) {}) // Plan: compass always shown
@@ -89,7 +89,7 @@ class ScreenshotTest {
     }
 
     private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0, profile = routePts),
-        recordedM = 5_320.0, elapsedS = 5025)
+        recordedM = 5_320.0, elapsedS = 5025, activity = Activity.HIKE)
 
     /** Navigate: tapped "to go" card – elevation profile of the rest of the route, ↑ and ↓. */
     @Test fun navigateProfile() = paparazzi.snapshot {
@@ -154,21 +154,21 @@ class ScreenshotTest {
         }
     }
 
-    /** ⋮ with a route planned (saved routes exist): Load, Save, Manage on; Start recording greyed. */
+    /** ☰ with a route planned: My routes on, Start recording greyed. */
     @Test fun planMenuOpen() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false)) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }
 
-    /** ⋮ on an empty plan (nothing saved yet): Save and Load greyed, Start recording on. */
+    /** ☰ on an empty plan: My routes and Start recording on. */
     @Test fun planMenuEmpty() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false)) {
             PlanPanel(planUi(n = 0, r = null), PlanCallbacks())
         }
     }
 
-    /** ⋮ while a tour runs (looked at from Plan): Load and Start recording greyed, Save still possible. */
+    /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
             TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
@@ -257,6 +257,43 @@ class ScreenshotTest {
     /** Free recording (no route), paused from the notification. */
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 
+    // --- Activity while navigating (owner: a wrong activity is a disaster) ---
+    private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
+        com.onpath.app.navigation.ActivityFit(a, 3, problems, 7_400.0 + extraM, timeS, extraM, emptyList())
+
+    private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
+        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
+            listOf("2.3 km not suited for touring bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
+        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
+            listOf("1.4 km not suited for trekking bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
+        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
+        ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
+        ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
+    ))
+
+    /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
+    @Test fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
+
+    /** Opened a moment ago: every row still being checked. */
+    @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {
+        NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3,
+            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Checking) },
+            note = "Waiting for GPS…")))
+    }
+
+    /** MTB chosen: the dashed proposal with the usual question (stays until answered). */
+    @Test fun navigateActivitySwitchQuestion() = paparazzi.snapshot {
+        val proposed = com.onpath.app.navigation.NavSession.start(com.onpath.app.navigation.NavKind.PLAN, "Route", Activity.MTB, 3, routePts)
+        val q = question.copy(extraM = 1_200.0, legM = 8_600.0, startOffM = 10.0,
+            switch = com.onpath.app.navigation.ActivitySwitch(Activity.MTB, 3, proposed, 38 * 60.0))
+        NavFrame(navUi.copy(offRoute = OffRouteUi(q)))
+    }
+
+    /** The plan's primary button names the activity. */
+    @Test fun planStartTrekking() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
+    }
+
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
@@ -325,6 +362,16 @@ class ScreenshotTest {
         OnPathTheme {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
                 PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {})
+            }
+        }
+    }
+
+    /** Hold on a POI with an empty plan: same choice as the first-point menu. */
+    @Test fun poiMenuEmptyPlan() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
+                    emptyPlan = true)
             }
         }
     }
@@ -402,27 +449,22 @@ class ScreenshotTest {
         Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
     )
 
-    /** Manage routes: one list of planned / recorded / imported, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
+    /** My routes: one list of planned / recorded / imported, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     @Test fun tours() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}) }
-    }
-
-    /** ⋮ Load route: the same list, tap = load. */
-    @Test fun routesPick() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, RoutesMode.PICK, {}, {}, {}, {}, {}) }
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
 
     /** Delete asks first and stays until answered. */
     @Test fun routesDeleteConfirm() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
     }
 
     /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */
     @Test fun replacePlanAsk() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, RoutesMode.PICK, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
     }
 
-    /** ⋮ Save route on a plan loaded from a saved route: Save (overwrite) or Save as new…. */
+    /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */
     @Test fun saveChoice() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
@@ -430,9 +472,9 @@ class ScreenshotTest {
         }
     }
 
-    /** Manage routes → ⋮ → Rename: name dialog prefilled with the current name. */
+    /** My routes → ⋮ → Rename: name dialog prefilled with the current name. */
     @Test fun routesRename() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
     }
 
     /** After End tour → "Tour saved" → Delete: asks first, stays until answered. */

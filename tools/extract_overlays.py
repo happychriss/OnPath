@@ -32,6 +32,14 @@ SAC = {"hiking": 1, "mountain_hiking": 2, "demanding_mountain_hiking": 3,
 ROUTE_KIND = {"hiking": "hike", "foot": "hike", "bicycle": "bike", "mtb": "mtb"}
 
 
+
+def net_rank(network):
+    """OSM route network -> importance: 4 international (icn/iwn/imtb), 3 national, 2 regional, 1 local, 0 unknown."""
+    n = (network or "").strip().lower()
+    if not n:
+        return 0
+    return {"i": 4, "n": 3, "r": 2, "l": 1}.get(n[0], 0)
+
 class RelationPass(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
@@ -46,6 +54,7 @@ class RelationPass(osmium.SimpleHandler):
             return
         ref = r.tags.get("ref", "")
         name = r.tags.get("name", "")
+        rank = net_rank(r.tags.get("network", ""))
         hike = None
         if kind == "hike":
             net = r.tags.get("network", "")
@@ -53,7 +62,7 @@ class RelationPass(osmium.SimpleHandler):
             hike = (clean_ref(ref), label, net)
         for m in r.members:
             if m.type == "w":
-                self.way_routes.setdefault(m.ref, []).append((kind, ref, name))
+                self.way_routes.setdefault(m.ref, []).append((kind, ref, name, rank))
                 if hike:
                     self.way_hikes.setdefault(m.ref, []).append(hike)
 
@@ -196,13 +205,16 @@ class WayPass(osmium.SimpleHandler):
             return
         g = rounded(mapping(line))
         if routes:
-            seen = set()
-            for kind, ref, name in routes:
-                if kind in seen:
-                    continue
-                seen.add(kind)
+            # One feature per kind; keep the most important route of that kind on this way (network rank,
+            # then a named one) so major routes (e.g. Via Claudia Augusta, E5) can be highlighted.
+            best = {}
+            for kind, ref, name, rank in routes:
+                cur = best.get(kind)
+                if cur is None or (rank, bool(name)) > (cur[2], bool(cur[1])):
+                    best[kind] = (ref, name, rank)
+            for kind, (ref, name, rank) in best.items():
                 self.routes.append({"type": "Feature", "geometry": g,
-                                    "properties": {"kind": kind, "ref": ref, "name": name}})
+                                    "properties": {"kind": kind, "ref": ref, "name": name, "net": rank}})
         if sac or mtb:
             props = {"sac": sac}
             if mtb:

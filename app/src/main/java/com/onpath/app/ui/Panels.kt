@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -132,15 +131,6 @@ fun StatsRow(distance: Double, ascent: Double, descent: Double, durationS: Doubl
 // ------------------------------------------------------------------ planning: see PlanPanel.kt
 
 @Composable
-internal fun Hint(text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.TripOrigin, null, tint = OnPathColors.Green, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(text, fontSize = 15.sp)
-    }
-}
-
-@Composable
 fun ActionButtonSmall(icon: ImageVector, desc: String, onClick: () -> Unit) {
     androidx.compose.material3.IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) { Icon(icon, desc) }
 }
@@ -176,7 +166,7 @@ fun TrackPanel(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("GPX", maxLines = 1)
+                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Export GPX", maxLines = 1)
             }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))

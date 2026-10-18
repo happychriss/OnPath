@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.ui.AppViewModel.UpdateState
 
-/** Small card on the home screen when a newer version is published. Never blocks the map. */
+/** Small card above the plan sheet when a newer version is published. Never blocks the map. */
 @Composable
 fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
     val (version, percent) = when (state) {
@@ -45,7 +45,7 @@ fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit,
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("OnPath $version is available", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Text(if (percent != null) "Downloading… $percent %" else "Your tours and map data are kept.",
+                    Text(if (percent != null) "Downloading… $percent %" else "Your routes, tours and map data are kept.",
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
