@@ -1,5 +1,10 @@
 # Plan: smart time estimate (planning + remaining time while navigating)
 
+
+**Owner decisions (2026-10-18): all six recommendations accepted** – new model everywhere (Q1 yes), "to go" =
+moving time + arrival clock with 10 % break allowance (Q2), three pace chips Relaxed/Normal/Fit (Q3), learning across
+tours automatic with Reset (Q4), no range for now (Q5), owner's GPX tours as trimmed test files in the repo (Q6).
+
 Status: **proposal, nothing implemented** (2026-10-18). Owner request: "Estimation of remaining walking/hiking time –
 how to do it smart? Settings, learn from the current trip (consider up and down) – be cool and make sure we're not too
 far off." Experiment: `tools/routing/jvm-test/TimeTest.kt` (real BRouter routes from the Bozen / Meran data +
