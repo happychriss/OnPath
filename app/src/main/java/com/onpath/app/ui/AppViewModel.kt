@@ -403,6 +403,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
 
+    /** Plan mode tap on a POI: remove it if it already is a route point, otherwise add it (pinned). */
+    fun togglePoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
+        val idx = waypoints.indexOfFirst { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
+        if (idx >= 0) removePoint(idx) else addPoint(GeoPoint(poi.lat, poi.lon), lineSnapM, onPoi = true)
+    }
+
+    /** POI long-pressed in plan mode: ask whether to open it in Google Maps. */
+    var askGooglePoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+
     /** Drag-to-move: the point keeps its position in the order. */
     fun movePoint(index: Int, p: GeoPoint) { if (index in waypoints.indices) set(PlanEdits.replace(waypoints, index, p)) }
 

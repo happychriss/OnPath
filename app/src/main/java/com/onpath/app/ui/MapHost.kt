@@ -94,21 +94,33 @@ fun MapHost(
             }
             map.addOnCameraMoveListener { onCamera(map) }
             map.addOnMapClickListener { ll ->
-                // In plan mode a tap adds a route point (snapped onto a POI if one was hit, so
-                // "route to this hut" just works), placed by the same smart insertion as any tap.
+                // In plan mode a tap adds a route point, placed by the smart insertion. A tap on a POI
+                // toggles it: added as a pinned route point, or removed again if it already is one.
                 // Otherwise – or while the route is hidden – a tapped POI opens its details.
                 val poi = com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll))
                 when {
                     vm.mode == Mode.PLAN && !vm.routeHidden -> {
-                        val p = if (poi != null) GeoPoint(poi.lat, poi.lon) else GeoPoint(ll.latitude, ll.longitude)
-                        vm.addPoint(p, ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0, onPoi = poi != null); true
+                        val snap = ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0
+                        if (poi != null) vm.togglePoiPoint(poi, snap)
+                        else vm.addPoint(GeoPoint(ll.latitude, ll.longitude), snap)
+                        true
                     }
                     poi != null -> { vm.selectedPoi = poi; true }
                     else -> false
                 }
             }
             val dragger = PointDragger(mapView, map, vm) { ctrlRef[0] }
-            map.addOnMapLongClickListener { ll -> dragger.onLongPress(ll) }
+            map.addOnMapLongClickListener { ll ->
+                // Plan mode: a long press on a POI asks whether to open it in Google Maps;
+                // anywhere else it starts dragging a point or the route line.
+                val poi = if (vm.mode == Mode.PLAN && !vm.routeHidden)
+                    com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll)) else null
+                if (poi != null) {
+                    mapView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    vm.askGooglePoi = poi
+                    true
+                } else dragger.onLongPress(ll)
+            }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev -> dragger.onTouch(ev) }
             mapView.addOnDidFailLoadingMapListener { msg ->
