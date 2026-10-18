@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Automatic re-routing while navigating – design proposal first (docs/plan-auto-reroute.md) – since 2026-10-18
-- [laptop] Plan gestures v2: snap unroutable points to nearest way; POI tap = Google offer, POI hold = add; tap a stop = delete overlay (owner spec) – since 2026-10-18
 
 ## Next
 - Google Play internal test track: create app in Play Console, secret release key in GitHub secrets
@@ -27,6 +26,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Plan gestures v2 (laptop, owner spec): POI quick tap = small "Open in Google Maps" bubble, hold on POI = add as
+  pinned stop, tap a route point = Delete / End route here / Cancel overlay (26 dp zoom-independent hit radius,
+  marker > POI > line > map), stop chips list and PointMenuDialog removed, "point added" notice only when the app
+  guessed (middle insertion, no numbers). Rules in `ui/MapGestures.kt`, overlays in `ui/MapOverlays.kt`.
+  Open owner questions: "Make it the start" only via ⋯ Reverse / search "As start"; bubble timeout 8 s.
 - Snap free plan points onto the way the route uses (laptop, owner: no off-road guidance): BRouter's matched
   crosspoints (`RouteResult.matched`, read by reflection), pure `routing/WaypointSnap`, no extra undo step, POI-pinned
   and named stops keep their coordinates. JVM test `tools/routing/jvm-test/SnapTest.kt`.

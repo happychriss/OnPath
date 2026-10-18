@@ -4,6 +4,12 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-18 (evening):** merged three background branches into `main`: Gradle 9 toolchain (AGP 9.4.1,
+  Gradle 9.6, Kotlin 2.2.10, Paparazzi 2.0.0-alpha05.1), snapping of free plan points onto the routed way
+  (`WaypointSnap`), plan gestures v2 (see backlog Done). Also: hiking via-point spike correction 250 → 50 m (owner's
+  point on the Algunder Waalweg was skipped). In progress (laptop): design proposal for automatic re-routing
+  (`docs/plan-auto-reroute.md` on branch `docs/auto-reroute-plan`, not implemented). Owner installs: laptop dev
+  builds start as a clean first install (app data + permissions reset, map files kept).
 - **cloud, 2026-10-18 (0.6.0):** three features landed. (1) Navigate: heading-up / north-up (`map/HeadingEngine`,
   orientation FAB above locate, setting "Map direction while navigating") and next-turn hints (`routing/TurnDetector`,
   green turn card on top + arrow on the map, only on route and ≤ 500 m ahead). (2) Place / address search
