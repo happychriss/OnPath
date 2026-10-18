@@ -225,7 +225,7 @@ private fun BottomContent(
             onPause = { vm.pauseRecording(true) }, onResume = { vm.pauseRecording(false) }, onStop = onStop,
         )
         vm.mode == Mode.PLAN -> PlanPanel(
-            PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.routeHidden),
+            PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.routeHidden, vm.planSize),
             PlanCallbacks(
                 onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
                 onSave = onSave, onShare = vm::exportPlanned,
@@ -237,6 +237,7 @@ private fun BottomContent(
                 onToggleHidden = { vm.routeHidden = !vm.routeHidden; vm.highlight = null; vm.notice = null },
                 onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
                 onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
+                onResize = { vm.planSize = it },
             ),
         )
         shown != null -> TrackPanel(

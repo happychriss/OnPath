@@ -48,6 +48,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,19 +80,54 @@ import com.onpath.app.routing.PlannedRoute
 
 /** Rounded bottom sheet look used for every bottom panel. */
 @Composable
-fun BottomPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun BottomPanel(
+    modifier: Modifier = Modifier,
+    /** Resizable panels: called with true for a swipe down (smaller), false for a swipe up (bigger). */
+    onSwipe: ((down: Boolean) -> Unit)? = null,
+    /** Tap on the grab handle. */
+    onHandleTap: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val threshold = with(LocalDensity.current) { 40.dp.toPx() }
+    var drag by remember { mutableFloatStateOf(0f) }
+    val swipe = if (onSwipe == null) Modifier else Modifier
+        .graphicsLayer { translationY = drag.coerceAtLeast(0f) * 0.5f }  // follow the finger a little
+        .draggable(
+            state = rememberDraggableState { drag += it },
+            orientation = Orientation.Vertical,
+            onDragStarted = { drag = 0f },
+            onDragStopped = {
+                when {
+                    drag > threshold -> onSwipe(true)
+                    drag < -threshold -> onSwipe(false)
+                }
+                drag = 0f
+            },
+        )
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().then(swipe),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 12.dp,
     ) {
-        Column(Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp)) {
-            Box(
-                Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp)
-                    .clip(CircleShape).background(Color(0x22000000))
-            )
-            Spacer(Modifier.height(8.dp))
+        Column(Modifier.navigationBarsPadding().animateContentSize()
+            .padding(start = 16.dp, end = 16.dp, top = if (onHandleTap != null) 0.dp else 10.dp, bottom = 12.dp)) {
+            if (onHandleTap != null) {
+                // Bigger touch target around the handle when it does something.
+                Box(
+                    Modifier.fillMaxWidth().height(22.dp)
+                        .clickable(onClickLabel = "Resize panel", onClick = onHandleTap),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(Color(0x33000000)))
+                }
+            } else {
+                Box(
+                    Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp)
+                        .clip(CircleShape).background(Color(0x22000000))
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             content()
         }
     }

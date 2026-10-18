@@ -119,6 +119,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** Eye button: planned line, markers and panel details temporarily hidden. */
     var routeHidden by mutableStateOf(false)
+    /** Plan panel size (full / compact / mini), kept while the app runs. */
+    var planSize by mutableStateOf(PlanSize.FULL)
     var notice by mutableStateOf<PlanNotice?>(null)
     /** Waypoint whose small menu (Remove / Make start / Make destination) is open. */
     var pointMenu by mutableStateOf<Int?>(null)
