@@ -234,7 +234,7 @@ private fun BottomContent(
                     if (rec == null) onRecord()
                 },
                 onClose = vm::closePlanning,
-                onToggleHidden = { vm.routeHidden = !vm.routeHidden; vm.highlight = null; vm.notice = null },
+                onHoldHide = { held -> vm.routeHidden = held; if (held) { vm.highlight = null } },
                 onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
                 onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
                 onResize = { vm.planSize = it },
