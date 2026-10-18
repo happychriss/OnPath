@@ -87,7 +87,13 @@ class PlanCallbacks(
     val onExport: () -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
+    /** Tour controls at the top of the sheet (only while a tour records). */
+    val onPause: (Boolean) -> Unit = {},
+    val onEndTour: () -> Unit = {},
 )
+
+/** Recording status shown at the top of the plan sheet during a tour. */
+data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
 
 /**
  * Plan sheet sizes: MINI = one line + primary button, COMPACT = stats + "Elevation & surfaces" row (default),
@@ -119,6 +125,8 @@ data class PlanUi(
     val unsaved: Boolean = false,
     /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
     val roundTrip: Boolean = false,
+    /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
+    val tour: TourState? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -139,38 +147,40 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
     ) {
         val route = ui.route
         val mini = ui.size == PlanSize.MINI
+        // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
+        ui.tour?.let { t ->
+            TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour)
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
         Row(verticalAlignment = Alignment.CenterVertically) {
             ActivityButton(ui.activity, cb.onActivity)
             Spacer(Modifier.width(8.dp))
-            Box(Modifier.weight(1f)) { Title(ui, route, mini) }
-            if (!mini) {
-                IconButton(onClick = cb.onUndo, enabled = ui.canUndo, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
-                }
-                IconButton(onClick = cb.onRedo, enabled = ui.canRedo, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
-                }
-            }
+            Box(Modifier.weight(1f)) { Title(ui, route) }
             SheetOverflow(ui, cb, menuInitiallyOpen)
         }
         if (!mini) SubLine(ui, route)
         if (!mini && route != null) SavedLine(ui)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
-        if (!mini) {
-            if (route != null && !ui.routing) {
-                HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                DetailsToggle(ui, route, cb)
-                if (ui.size == PlanSize.FULL) {
-                    ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
-                    GradientLegend()
-                    RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
+        if (!mini && route != null && !ui.routing) {
+            if (ui.size == PlanSize.FULL) {
+                Spacer(Modifier.height(6.dp))
+                ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
+                GradientLegend()
+                RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
+            } else {
+                // Mini profile, always visible (Komoot-like) – tap for the full profile and way types.
+                Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    ElevationProfile(route.points, height = 52.dp, gradient = true)
+                    Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show elevation profile") {
+                        cb.onResize(PlanSize.FULL)
+                    })
                 }
             }
         }
-        // During a tour, Continue / Pause / End live together in the tour card above (TourRunningBar);
-        // the route sheet then only shows the route.
-        if (!ui.tourRunning && ui.pointCount >= 2) {
+        // The one primary button – not during a tour (Continue is in the tour controls above).
+        if (ui.tour == null && !ui.tourRunning && ui.pointCount >= 2) {
             Spacer(Modifier.height(12.dp))
             PrimaryAction(ui, cb)
         } else Spacer(Modifier.height(8.dp))
@@ -194,7 +204,7 @@ private fun SavedLine(ui: PlanUi) {
 
 /** Read-only status, first line: time + distance (or "Plan a route"). */
 @Composable
-private fun Title(ui: PlanUi, route: PlannedRoute?, mini: Boolean) {
+private fun Title(ui: PlanUi, route: PlannedRoute?) {
     if (route == null) {
         Text("Plan a route", style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
@@ -203,8 +213,7 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, mini: Boolean) {
         Text(Format.duration(route.durationS), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
             maxLines = 1)
         Spacer(Modifier.width(8.dp))
-        // The distance sits in the line below (room for the activity button); the mini sheet has no second line.
-        if (mini) Text(Format.distance(route.distanceM),
+        Text(Format.distance(route.distanceM),
             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 1.dp))
     }
@@ -229,7 +238,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         val top = route.points.mapNotNull { it.ele }.maxOrNull()
         Text(
-            "${Format.distance(route.distanceM)}  ·  ↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
+            "↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
                 (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""),
             style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
@@ -247,29 +256,6 @@ internal fun stopColor(i: Int, count: Int): Color = when {
     else -> OnPathColors.Route
 }
 
-/** "Elevation & surfaces" – shows / hides the profile and the way type bars (FULL ⇄ COMPACT). */
-@Composable
-private fun DetailsToggle(ui: PlanUi, route: PlannedRoute, cb: PlanCallbacks) {
-    val open = ui.size == PlanSize.FULL
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
-            .clickable(role = Role.Button, onClickLabel = if (open) "Hide elevation profile" else "Show elevation profile") {
-                cb.onResize(if (open) PlanSize.COMPACT else PlanSize.FULL)
-            },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(Icons.Outlined.Landscape, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("Elevation & surfaces", style = MaterialTheme.typography.labelLarge)
-            val summary = summaryLine(route.wayTypes, route.surfaces)
-            if (!open && summary.isNotEmpty()) Text(summary, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null,
-            modifier = Modifier.padding(end = 12.dp))
-    }
-}
 
 /** The one filled button of the sheet. */
 @Composable
@@ -312,6 +298,8 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     val two = ui.pointCount >= 2
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
     // Everything about this route in one place (owner): save / export, edits, clear.
+    MenuItem(Icons.AutoMirrored.Filled.Redo, "Redo", enabled = ui.canRedo, onClick = run(cb.onRedo))
+    HorizontalDivider()
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     HorizontalDivider()

@@ -83,6 +83,7 @@ fun MapScreen(
                 showEye = vm.route != null || vm.shown != null || vm.followLine != null,
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
+                onUndo = if (vm.mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
             )
         }
     }
@@ -158,10 +159,15 @@ private fun PlanMode(
             }
             footer()
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording, onContinue = vm::continueNavigation) }
+                // The tour controls sit at the top of the plan sheet; a separate card only when the sheet is replaced
+                // (place card or shown track).
+                if (vm.cardPlace != null || vm.shown != null) rec?.let {
+                    TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording,
+                        onContinue = vm::continueNavigation)
+                }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
-                else PlanBottom(vm, rec, onStartNavigation, onActivity)
+                else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -169,7 +175,7 @@ private fun PlanMode(
 }
 
 @Composable
-private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit) {
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit) {
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
@@ -185,7 +191,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip()),
+            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
+            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) }),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -193,6 +200,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned,
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
+            onPause = vm::pauseRecording, onEndTour = onEndTour,
         ),
     )
 }
