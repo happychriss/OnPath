@@ -6,6 +6,9 @@ Schema: OpenMapTiles (Planetiler) in source "base"; overlays routes/trails GeoJS
 """
 import json
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import style_trail_names  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "assets", "style", "onpath.json")
 
@@ -393,7 +396,10 @@ def pois():
 
 def build():
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
-    trails(); bridges(); boundaries(); pois(); labels()
+    trails(); bridges(); boundaries(); pois()
+    # Trail / route name labels live in their own module (owned separately from colours).
+    L.extend(style_trail_names.layers())
+    labels()
     style = {
         "version": 8,
         "name": "OnPath Topo",
@@ -411,6 +417,7 @@ def build():
                        "tolerance": 0.5},
             "trails": {"type": "geojson", "data": "file://{DATA_DIR}/trails.geojson", "maxzoom": 14,
                        "tolerance": 0.5},
+            **style_trail_names.sources(),
             "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
                      "buffer": 32},
         },
