@@ -402,7 +402,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- planning ----------------
 
     fun updateSettings(s: AppSettings) {
+        val sacChanged = s.defaultSac != sac
         settings = s; prefs.settings = s
+        // The SAC level is set in Settings only (owner) – it applies right away to the current hiking route.
+        if (sacChanged) { sac = s.defaultSac.coerceIn(1, 5); prefs.sac = sac; if (activity == Activity.HIKE) recalc() }
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
     }
 

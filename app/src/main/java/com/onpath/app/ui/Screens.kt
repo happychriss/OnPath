@@ -175,8 +175,8 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 
 @Composable
 fun ActivityDialog(
-    current: Activity, sac: Int,
-    onSelect: (Activity) -> Unit, onSac: (Int) -> Unit, onDismiss: () -> Unit,
+    current: Activity,
+    onSelect: (Activity) -> Unit, onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -197,29 +197,24 @@ fun ActivityDialog(
                         Text(a.label, fontSize = 16.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
-                if (current == Activity.HIKE) {
-                    Spacer(Modifier.height(12.dp))
-                    Text("Max. difficulty (SAC)", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        (1..5).forEach { level ->
-                            FilterChip(selected = level == sac, onClick = { onSac(level) }, label = { Text("T$level") },
-                                modifier = Modifier.heightIn(min = 44.dp))
-                        }
-                    }
-                    Text(sacHint(sac), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         },
     )
 }
 
-private fun sacHint(sac: Int) = when (sac) {
-    1 -> "T1 – hiking: well-built paths"
-    2 -> "T2 – mountain hiking: sure-footedness"
-    3 -> "T3 – demanding mountain hiking"
-    4 -> "T4 – alpine hiking, some scrambling"
-    else -> "T5 – demanding alpine hiking"
+/**
+ * SAC hiking scale (Swiss Alpine Club), short official descriptions. Settings only (owner): the routing
+ * avoids paths above the chosen level.
+ */
+internal object SacScale {
+    data class Level(val level: Int, val name: String, val text: String)
+    val levels = listOf(
+        Level(1, "Hiking", "Well-built path, flat or slightly steep. No fall risk. Trainers are enough."),
+        Level(2, "Mountain hiking", "Continuous path, steep in places, fall risk not excluded. Some sure-footedness; hiking boots recommended."),
+        Level(3, "Demanding mountain hiking", "Path not always visible; exposed places may have ropes or chains; hands sometimes needed for balance. Sure-footed, good hiking boots."),
+        Level(4, "Alpine hiking", "Path not always present; hands needed in places; exposed terrain, steep grass, scree, easy snow fields. Experience in exposed terrain."),
+        Level(5, "Demanding alpine hiking", "Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed."),
+    )
 }
 
 // ------------------------------------------------------------------ manage routes

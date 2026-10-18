@@ -108,12 +108,23 @@ fun SettingsScreen(
                                     label = { Text(a.label) }, modifier = Modifier.heightIn(min = 44.dp))
                             }
                         }
-                        if (settings.defaultActivity == com.onpath.app.routing.Activity.HIKE) {
-                            Text("Max. difficulty (SAC)", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
-                            Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                (1..5).forEach { level ->
-                                    FilterChip(selected = settings.defaultSac == level, onClick = { onChange(settings.copy(defaultSac = level)) },
-                                        label = { Text("T$level") }, modifier = Modifier.heightIn(min = 44.dp))
+                    }
+                }
+                item {
+                    Section("Hiking difficulty (SAC scale)") {
+                        Text("Hiking routes stay on paths up to this level.",
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        SacScale.levels.forEach { l ->
+                            val sel = settings.defaultSac == l.level
+                            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                                .clickable { onChange(settings.copy(defaultSac = l.level)) }
+                                .padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
+                                androidx.compose.material3.RadioButton(selected = sel, onClick = { onChange(settings.copy(defaultSac = l.level)) })
+                                Column(Modifier.weight(1f).padding(top = 10.dp, end = 8.dp)) {
+                                    Text("T${l.level} · ${l.name}", fontSize = 15.sp,
+                                        fontWeight = if (sel) androidx.compose.ui.text.font.FontWeight.SemiBold else null)
+                                    Text(l.text, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
