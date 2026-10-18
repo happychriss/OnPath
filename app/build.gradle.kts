@@ -19,6 +19,17 @@ android {
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
+    // Fixed test signing key (in the repo on purpose): every test build can be installed as an update
+    // over the previous one, no matter which machine built it. NOT for Google Play releases.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/onpath-test.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
