@@ -5,6 +5,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Way quality: track grades, faint trails, MTB S-labels, bike surface edge (data + style) – since 2026-10-18
+- [laptop] Way info in the point menu (surface, SAC, visibility …) – since 2026-10-18
+- [laptop] Time estimate P4: SAC / surface / way-type factors – since 2026-10-18
 - [cloud] **Track safety (0.6.1):** point writes that cannot fail silently, guarded DB writes in the service, loud
   "recording stopped" instead of silent stops, Navigate only once recording confirms, map guard while a style reloads,
   straight-leg gate before navigating, arrival check on round trips, DB corruption handler, wake-lock renewal.
