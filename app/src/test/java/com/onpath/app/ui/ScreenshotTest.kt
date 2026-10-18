@@ -329,6 +329,16 @@ class ScreenshotTest {
         }
     }
 
+    /** Hold on a POI with an empty plan: same choice as the first-point menu. */
+    @Test fun poiMenuEmptyPlan() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
+                    emptyPlan = true)
+            }
+        }
+    }
+
     /** Hold on the start (unnamed): only Delete – it already is the start, it can't be the end of the route. */
     @Test fun pointMenuStart() = paparazzi.snapshot {
         OnPathTheme {
