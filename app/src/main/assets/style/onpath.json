@@ -95,7 +95,7 @@
     "grass"
    ],
    "paint": {
-    "fill-color": "#deeac4",
+    "fill-color": "#d2e2b4",
     "fill-antialias": false
    }
   },
@@ -114,7 +114,7 @@
     "wood"
    ],
    "paint": {
-    "fill-color": "#bfdca2",
+    "fill-color": "#a9cd8b",
     "fill-antialias": false
    }
   },
@@ -306,7 +306,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#d8e7c2"
+    "fill-color": "#cfe0b5"
    }
   },
   {
@@ -800,7 +800,7 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#a3d992",
+    "line-color": "#c9f29b",
     "line-opacity": [
      "interpolate",
      [
