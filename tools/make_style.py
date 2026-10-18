@@ -238,6 +238,7 @@ def paths():
     layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
           filter=track, layout={"line-join": "round"},
           paint={"line-color": T("track.fill.color"), "line-width": Z("track.fill.width")})
+    track_grades(ew)
     # cycleways (solid; unpaved dashed)
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
     cw = Z("cycleway.width")
@@ -267,13 +268,46 @@ def paths():
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
 
 
+def track_grades(ew):
+    """OSM tracktype from the optional ways.geojson redraws a track's edges (the base tiles only know
+    paved / unpaved): grade1–2 solid (compact), grade3 fine dots, grade4–5 sparse dots (soft / grass).
+    A light cover as wide as the edges hides the base map's own edges of the same way first."""
+    tt = ["coalesce", ["get", "tt"], 0]
+    graded = ["all", ["==", ["get", "k"], "t"], [">=", tt, 1]]
+    src = {"source": "ways", "minzoom": LOW_ZOOM_SOLID}
+    layer(id_="track-grade-cover", type="line", **src, filter=graded, layout={"line-join": "round"},
+          paint={"line-color": T("track.fill.color"), "line-width": Z("track.cover.width")})
+    layer(id_="track-grade-solid", type="line", **src, filter=["all", graded, ["<=", tt, 2]],
+          layout={"line-join": "round"}, paint={"line-color": T("track.edge.color"), "line-width": ew})
+    for sid, flt, dash in (("dotted", ["==", tt, 3], "track.edge.dash"), ("soft", [">=", tt, 4], "track.soft.dash")):
+        layer(id_=f"track-grade-{sid}", type="line", **src, filter=["all", graded, flt],
+              paint={"line-color": T("track.edge.color"), "line-width": ew, "line-dasharray": T(dash)})
+    layer(id_="track-grade-fill", type="line", **src, filter=graded, layout={"line-join": "round"},
+          paint={"line-color": T("track.fill.color"), "line-width": Z("track.fill.width")})
+
+
+def surface_loose():
+    """Bike activities only (MapController.setOverlay shows the "surface-loose-*" layers): a thin warm-brown
+    edge on both sides of ways with a loose surface (gravel/stony or natural soft ground, ways.geojson surf ≥ 3)
+    or bad smoothness (smooth ≥ 3). Compacted / fine gravel do not count – fine on any bike."""
+    loose = ["any", [">=", ["coalesce", ["get", "surf"], 0], 3], [">=", ["coalesce", ["get", "smooth"], 0], 3]]
+    for sid, kind, gap in (("track", ["==", ["get", "k"], "t"], "track.edge.width"),
+                           ("path", ["!=", ["get", "k"], "t"], "path.casing.width")):
+        layer(id_=f"surface-loose-{sid}", type="line", source="ways", minzoom=13, filter=["all", kind, loose],
+              layout={"line-join": "round", "visibility": "none"},
+              paint={"line-color": T("surface.loose.color"), "line-width": Z("surface.loose.width"),
+                     "line-gap-width": Z(gap)})
+
+
 def trails():
     """Komoot-like path rule (owner, 2026-10-18), all black – difficulty by rhythm, not colour:
     no grade / T1 = solid (drawn by the base map's path layers), T2–T3 mountain hiking path = round dots,
     T4–T6 alpine path = dot-dash. An opaque light underlay under the dotted ones hides the base map's solid
     line of the same way, so only one clean row of dots shows. The T-labels along the trail give the exact grade."""
     sac = ["get", "sac"]
-    graded = [">=", sac, 2]
+    # trail_visibility bad or worse: same rhythm, but sparser and lighter dots (faint trail on the ground)
+    faint = [">=", ["coalesce", ["get", "vis"], 0], 3]
+    graded = ["any", [">=", sac, 2], faint]
     layer(id_="trails-casing", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=graded,
           layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
@@ -281,10 +315,15 @@ def trails():
     layer(id_="trails-low", type="line", source="trails", minzoom=10, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
           layout={"line-join": "round"}, paint={"line-color": T("trail.low.color"), "line-width": Z("trail.width")})
     for sid, flt in (("mountain", ["all", [">=", sac, 2], ["<=", sac, 3]]), ("alpine", [">=", sac, 4])):
-        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=flt,
+        layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=["all", flt, ["!", faint]],
               layout={"line-cap": "round", "line-join": "round"},
               paint={"line-color": T("trail.color"), "line-width": Z("trail.width"),
                      "line-dasharray": T(f"trail.{sid}.dash")})
+    for sid, flt in (("mountain", ["<=", sac, 3]), ("alpine", [">=", sac, 4])):
+        layer(id_=f"trails-{sid}-faint", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=["all", flt, faint],
+              layout={"line-cap": "round", "line-join": "round"},
+              paint={"line-color": T("trail.faint.color"), "line-width": Z("trail.width"),
+                     "line-dasharray": T(f"trail.faint.{sid}.dash")})
     # SAC grade ("T1" … "T6") as small black text along the trail, on the other side than the
     # trail name (offset +), so both stay readable. Low priority: dropped first when space is short.
     layer(id_="trails-sac-label", type="symbol", source="trails", minzoom=14, filter=[">=", sac, 1],
@@ -292,6 +331,14 @@ def trails():
                   "text-field": ["concat", "T", ["to-string", sac]], "text-font": T("font.regular"),
                   "text-size": Z("trail.sac.label.size"), "text-max-angle": 30, "text-padding": 2,
                   "text-offset": [0, 0.75]},
+          paint={"text-color": T("trail.sac.label.color"), "text-halo-color": T("label.halo.color"),
+                 "text-halo-width": 1.2})
+    # MTB scale ("S0" … "S5"), same look; only in MTB / MTB e-bike (MapController.setOverlay swaps T- and S-labels).
+    layer(id_="trails-mtb-label", type="symbol", source="trails", minzoom=14, filter=["has", "mtb"],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(14, 220, 17, 320),
+                  "text-field": ["concat", "S", ["get", "mtb"]], "text-font": T("font.regular"),
+                  "text-size": Z("trail.sac.label.size"), "text-max-angle": 30, "text-padding": 2,
+                  "text-offset": [0, 0.75], "visibility": "none"},
           paint={"text-color": T("trail.sac.label.color"), "text-halo-color": T("label.halo.color"),
                  "text-halo-width": 1.2})
 
@@ -500,7 +547,7 @@ def build(theme=DEFAULT_THEME):
     L.clear()
     # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
-    trails(); access_restrictions(); bridges(); boundaries(); pois(); stations()
+    trails(); surface_loose(); access_restrictions(); bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())
     labels()
@@ -519,8 +566,12 @@ def build(theme=DEFAULT_THEME):
             "contours": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/contours.pmtiles"},
             "routes": {"type": "geojson", "data": "file://{DATA_DIR}/routes.geojson", "maxzoom": 14,
                        "tolerance": 0.5},
-            "trails": {"type": "geojson", "data": "file://{DATA_DIR}/trails.geojson", "maxzoom": 14,
-                       "tolerance": 0.5},
+            # trails / ways lie exactly on the base map's lines: little simplification, maxzoom 16 (extract_overlays)
+            "trails": {"type": "geojson", "data": "file://{DATA_DIR}/trails.geojson", "maxzoom": 16,
+                       "tolerance": 0.25},
+            # optional (stripped with its layers when the file is missing): tracktype / surface / smoothness
+            "ways": {"type": "geojson", "data": "file://{DATA_DIR}/ways.geojson", "maxzoom": 16,
+                     "tolerance": 0.25},
             **style_trail_names.sources(),
             "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
                      "buffer": 32},
