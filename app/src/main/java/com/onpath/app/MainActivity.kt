@@ -58,6 +58,11 @@ class MainActivity : ComponentActivity() {
         afterPermission = null
     }
 
+    /** Map data / style import from the phone itself (no adb). */
+    private val openData = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.importData(uri)
+    }
+
     private val openGpx = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.importGpx(uri)
     }
@@ -80,6 +85,9 @@ class MainActivity : ComponentActivity() {
                             onCopy = { copy(it) },
                             onRetry = { vm.recheckData(); if (vm.missing.isNotEmpty()) vm.message = "Still missing: ${vm.missing.joinToString { it.name }}" },
                             onContinue = { vm.dataScreenDismissed = true },
+                            onImport = { openData.launch(arrayOf("*/*")) },
+                            onDownloadRouting = { vm.downloadRoutingData() },
+                            busy = vm.dataBusy,
                         )
                     } else {
                         MapScreen(
@@ -114,7 +122,10 @@ class MainActivity : ComponentActivity() {
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
-                            themes = remember { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
+                            themes = remember(vm.styleVersion) { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
+                            onImportData = { openData.launch(arrayOf("*/*")) },
+                            onDownloadRouting = { vm.downloadRoutingData() },
+                            dataBusy = vm.dataBusy,
                         )
                     }
                     BackHandler(enabled = !vm.showTours && !vm.showSettings && (vm.mode == Mode.PLAN || vm.shown != null)) {

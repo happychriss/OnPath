@@ -189,6 +189,67 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun recheckData() { missing = dataFiles.check().filter { !it.present } }
 
+    // ---------------- map data on the phone (no adb) ----------------
+
+    /** Progress text while importing / downloading map data, null when idle. */
+    var dataBusy by mutableStateOf<String?>(null)
+        private set
+    /** Bumped when map style files changed, so the map reloads its style. */
+    var styleVersion by mutableStateOf(0)
+        private set
+
+    /** Imports the onpath-data zip or a single data/style file picked by the user. */
+    fun importData(uri: Uri) {
+        if (dataBusy != null) return
+        val app = getApplication<Application>()
+        dataBusy = "Importing map data…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = try {
+                val name = displayName(uri) ?: "import.zip"
+                val input = app.contentResolver.openInputStream(uri) ?: error("Cannot open the file.")
+                val r = com.onpath.app.data.DataImporter.import(input, name, dataFiles.dir) { f ->
+                    dataBusy = "Importing $f…"
+                }
+                withContext(Dispatchers.Main) {
+                    recheckData()
+                    styleVersion++
+                }
+                r.summary
+            } catch (e: com.onpath.app.data.DataImporter.ImportException) {
+                e.message ?: "Import failed."
+            } catch (e: Exception) {
+                "Import failed: ${e.message ?: e.javaClass.simpleName}. Your existing map data is unchanged."
+            }
+            withContext(Dispatchers.Main) { dataBusy = null; message = msg }
+        }
+    }
+
+    /** Downloads the routing data tile for the map area from brouter.de (needs internet once). */
+    fun downloadRoutingData() {
+        if (dataBusy != null) return
+        val (lat, lon, _) = initialCamera()
+        val name = com.onpath.app.data.SegmentDownloader.tileName(lat, lon)
+        dataBusy = "Downloading routing data $name…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = try {
+                com.onpath.app.data.SegmentDownloader.download(name, dataFiles.segmentsDir) { done, total ->
+                    dataBusy = if (total > 0) "Downloading routing data: ${done * 100 / total} % of ${total / 1_048_576} MB"
+                    else "Downloading routing data: ${done / 1_048_576} MB"
+                }
+                withContext(Dispatchers.Main) { recheckData() }
+                "Routing data $name ready."
+            } catch (e: Exception) {
+                "Routing data download stopped: ${e.message ?: e.javaClass.simpleName} Tap again to resume."
+            }
+            withContext(Dispatchers.Main) { dataBusy = null; message = msg }
+        }
+    }
+
+    private fun displayName(uri: Uri): String? = try {
+        getApplication<Application>().contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (_: Exception) { null } ?: uri.lastPathSegment?.substringAfterLast('/')
+
     // ---------------- activity ----------------
 
     fun selectActivity(a: Activity) {

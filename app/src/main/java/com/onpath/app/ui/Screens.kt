@@ -80,6 +80,9 @@ fun MissingDataScreen(
     onCopy: (String) -> Unit,
     onRetry: () -> Unit,
     onContinue: () -> Unit,
+    onImport: () -> Unit = {},
+    onDownloadRouting: () -> Unit = {},
+    busy: String? = null,
 ) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -108,7 +111,11 @@ fun MissingDataScreen(
                     }
                 }
             }
-            Text("Connect the phone with USB debugging on and run on your computer:", style = MaterialTheme.typography.bodyMedium)
+            DataActions(
+                routingMissing = checks.any { it.name.startsWith("segments") && !it.present },
+                busy = busy, onImport = onImport, onDownloadRouting = onDownloadRouting,
+            )
+            Text("Or, from a computer with USB debugging on:", style = MaterialTheme.typography.bodyMedium)
             Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF1E2421)) {
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
@@ -128,6 +135,33 @@ fun MissingDataScreen(
             }
             OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Continue without map data")
+            }
+        }
+    }
+}
+
+/**
+ * Getting map data onto the phone without a computer: import the onpath-data zip (or single files /
+ * style files) from Downloads, and download routing data directly from brouter.de.
+ */
+@Composable
+fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, onDownloadRouting: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp)) {
+            Text("Import map data (.zip) from this phone", fontSize = 16.sp)
+        }
+        if (routingMissing) {
+            OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
+                modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                Text("Download routing data (≈ 200 MB, Wi-Fi)")
+            }
+        }
+        if (busy != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(12.dp))
+                Text(busy, fontSize = 14.sp)
             }
         }
     }

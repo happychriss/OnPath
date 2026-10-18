@@ -1,123 +1,115 @@
 #!/usr/bin/env python3
-"""Generate the OnPath MapLibre style (app/src/main/assets/style/onpath.json).
+"""Generate the OnPath MapLibre styles from design-token themes.
 
-Edit colours / layers here, then run: python3 tools/make_style.py
+  python3 tools/make_style.py                  classic theme -> app/src/main/assets/style/onpath.json
+  python3 tools/make_style.py --theme NAME     tools/themes/NAME.json -> .../style/onpath-NAME.json
+  python3 tools/make_style.py --all            every theme in tools/themes/
+
+All colours, widths / zoom stops, opacities, fonts and hillshade settings live in tools/themes/*.json
+(token names: docs/map-style-notes.md). This file only holds the layer structure and order.
 Schema: OpenMapTiles (Planetiler) in source "base"; overlays routes/trails GeoJSON; contours PMTiles.
+Only MapLibre Native features are used (no JS-only properties).
 """
+import argparse
 import json
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import style_theme  # noqa: E402
+from style_theme import token, zoom  # noqa: E402,F401  (make_style.token is part of the module API)
 import style_trail_names  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "assets", "style", "onpath.json")
+STYLE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "assets", "style")
+DEFAULT_THEME = "classic"
 
-REG, MED, ITA = ["Noto Sans Regular"], ["Noto Sans Medium"], ["Noto Sans Italic"]
+T, Z = token, zoom
 NAME = ["coalesce", ["get", "name:de"], ["get", "name_de"], ["get", "name"]]
 
-C = {
-    "land": "#f5f2e9",
-    "farmland": "#f0efdc",
-    "grass": "#e4eecf",
-    "wood": "#cde3b4",
-    "wetland": "#dbe9d6",
-    "rock": "#ebe7e0",
-    "ice": "#f6fafc",
-    "sand": "#f1ead2",
-    "residential": "#ece7e1",
-    "industrial": "#e9e4e4",
-    "water": "#a9d3ef",
-    "waterline": "#8fc2e8",
-    "building": "#ddd5cc",
-    "casing": "#b7b0a6",
-    "road": "#ffffff",
-    "major": "#fff6d9",
-    "major_casing": "#c9b98e",
-    "motorway": "#fbe0a8",
-    "motorway_casing": "#d4a95c",
-    "track": "#8a6a4a",
-    "path": "#5b4636",
-    "label": "#3a3632",
-    "halo": "rgba(255,255,255,0.9)",
-}
+L = []
+
+
+def out_path(theme):
+    return os.path.join(STYLE_DIR, "onpath.json" if theme == DEFAULT_THEME else f"onpath-{theme}.json")
 
 
 def interp(*stops, base=1.2):
     return ["interpolate", ["exponential", base], ["zoom"], *stops]
 
 
-L = []
-
-
 def layer(**kw):
     L.append({"id": kw.pop("id_"), **kw})
 
 
+def halo():
+    return {"text-halo-color": T("label.halo.color"), "text-halo-width": T("label.halo.width"),
+            "text-halo-blur": T("label.halo.blur")}
+
+
 def bg():
-    layer(id_="background", type="background", paint={"background-color": C["land"]})
+    layer(id_="background", type="background", paint={"background-color": T("land.color")})
 
 
 def landcover():
-    for cls, col, minz in (("farmland", C["farmland"], 0), ("grass", C["grass"], 0), ("wood", C["wood"], 0),
-                           ("wetland", C["wetland"], 9), ("rock", C["rock"], 0), ("ice", C["ice"], 0),
-                           ("sand", C["sand"], 9)):
+    for cls, minz in (("farmland", 0), ("grass", 0), ("wood", 0), ("wetland", 9), ("rock", 0), ("ice", 0),
+                      ("sand", 9)):
         layer(id_=f"landcover-{cls}", type="fill", source="base", **{"source-layer": "landcover"},
               minzoom=minz, filter=["==", ["get", "class"], cls],
-              paint={"fill-color": col, "fill-antialias": False})
+              paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
-          paint={"line-color": "#b9d6ea", "line-width": 0.8, "line-dasharray": [3, 2]})
+          paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),
+                 "line-dasharray": [3, 2]})
     layer(id_="landuse-residential", type="fill", source="base", **{"source-layer": "landuse"},
           filter=["in", ["get", "class"], ["literal", ["residential", "suburb", "neighbourhood", "commercial", "retail"]]],
-          paint={"fill-color": C["residential"], "fill-opacity": interp(9, 0.5, 13, 1)})
+          paint={"fill-color": T("residential.color"), "fill-opacity": Z("residential.opacity")})
     layer(id_="landuse-industrial", type="fill", source="base", **{"source-layer": "landuse"}, minzoom=11,
           filter=["in", ["get", "class"], ["literal", ["industrial", "garages", "railway", "quarry"]]],
-          paint={"fill-color": C["industrial"]})
+          paint={"fill-color": T("industrial.color")})
     layer(id_="landuse-green", type="fill", source="base", **{"source-layer": "landuse"}, minzoom=11,
           filter=["in", ["get", "class"], ["literal", ["cemetery", "pitch", "stadium", "playground"]]],
-          paint={"fill-color": "#dfeacb"})
+          paint={"fill-color": T("leisure.color")})
     layer(id_="park-protected", type="line", source="base", **{"source-layer": "park"}, minzoom=9,
-          paint={"line-color": "rgba(90,150,80,0.3)", "line-width": interp(9, 0.8, 14, 1.6),
+          paint={"line-color": T("park.outline.color"), "line-width": Z("park.outline.width"),
                  "line-dasharray": [6, 3]})
 
 
 def hillshade():
-    # Two light sources: a broad soft one from NW and a weaker one from W for multi-directional modelling.
-    layer(id_="hillshade-nw", type="hillshade", source="terrain", maxzoom=17,
-          paint={"hillshade-illumination-direction": 315, "hillshade-illumination-anchor": "map",
-                 "hillshade-exaggeration": interp(5, 0.55, 10, 0.5, 13, 0.4, 15, 0.25, base=1),
-                 "hillshade-shadow-color": "rgba(70,62,78,0.55)",
-                 "hillshade-highlight-color": "rgba(255,253,240,0.45)",
-                 "hillshade-accent-color": "rgba(60,55,70,0.25)"})
-    layer(id_="hillshade-w", type="hillshade", source="terrain", maxzoom=17,
-          paint={"hillshade-illumination-direction": 260, "hillshade-illumination-anchor": "map",
-                 "hillshade-exaggeration": interp(10, 0.25, 13, 0.2, 15, 0.1, base=1),
-                 "hillshade-shadow-color": "rgba(60,70,90,0.35)",
-                 "hillshade-highlight-color": "rgba(255,255,255,0)",
-                 "hillshade-accent-color": "rgba(0,0,0,0)"})
+    # Two light sources: a broad one (default NW) and a weaker fill light (default W) for multi-directional modelling.
+    for lid, key in (("hillshade-nw", "main"), ("hillshade-w", "fill")):
+        k = f"hillshade.{key}"
+        layer(id_=lid, type="hillshade", source="terrain", maxzoom=17,
+              paint={"hillshade-illumination-direction": T(k + ".direction"),
+                     "hillshade-illumination-anchor": "map",
+                     "hillshade-exaggeration": Z(k + ".exaggeration"),
+                     "hillshade-shadow-color": T(k + ".shadow"),
+                     "hillshade-highlight-color": T(k + ".highlight"),
+                     "hillshade-accent-color": T(k + ".accent")})
 
 
 def contours():
     major = ["==", ["get", "idx"], 1]
     layer(id_="contour-minor", type="line", source="contours", **{"source-layer": "contour"}, minzoom=13,
           filter=["all", ["!", major], ["any", [">=", ["zoom"], 14], ["==", ["%", ["get", "ele"], 50], 0]]],
-          paint={"line-color": "#b39a78", "line-opacity": interp(13, 0.25, 15, 0.4), "line-width": 0.6})
+          paint={"line-color": T("contour.minor.color"), "line-opacity": Z("contour.minor.opacity"),
+                 "line-width": Z("contour.minor.width")})
     layer(id_="contour-major", type="line", source="contours", **{"source-layer": "contour"}, minzoom=12,
           filter=major,
-          paint={"line-color": "#a88a64", "line-opacity": interp(12, 0.3, 15, 0.5),
-                 "line-width": interp(12, 0.7, 16, 1.2)})
+          paint={"line-color": T("contour.major.color"), "line-opacity": Z("contour.major.opacity"),
+                 "line-width": Z("contour.major.width")})
     layer(id_="contour-label", type="symbol", source="contours", **{"source-layer": "contour"}, minzoom=14,
           filter=major,
-          layout={"symbol-placement": "line", "text-field": ["to-string", ["get", "ele"]], "text-font": REG,
-                  "text-size": 10, "symbol-spacing": 350, "text-padding": 10},
-          paint={"text-color": "#9a7f5c", "text-halo-color": "rgba(245,242,233,0.85)", "text-halo-width": 1.2})
+          layout={"symbol-placement": "line", "text-field": ["to-string", ["get", "ele"]],
+                  "text-font": T("font.regular"), "text-size": Z("contour.label.size"),
+                  "symbol-spacing": 350, "text-padding": 10},
+          paint={"text-color": T("contour.label.color"), "text-halo-color": T("contour.label.halo"),
+                 "text-halo-width": 1.2})
 
 
 def water():
-    for wid, inter, dash in (("waterway-stream", 0, None), ("waterway-stream-intermittent", 1, [3, 2])):
-        paint = {"line-color": C["waterline"], "line-width": interp(11, 0.5, 14, 1.2, 17, 2.5)}
+    for wid, inter, dash in (("waterway-stream", 0, False), ("waterway-stream-intermittent", 1, True)):
+        paint = {"line-color": T("waterline.color"), "line-width": Z("stream.width")}
         if dash:
-            paint["line-dasharray"] = dash
+            paint["line-dasharray"] = T("stream.dash")
         layer(id_=wid, type="line", source="base", **{"source-layer": "waterway"}, minzoom=11,
               filter=["all", ["!=", ["get", "class"], "river"], ["!=", ["get", "brunnel"], "tunnel"],
                       ["==", ["coalesce", ["get", "intermittent"], 0], inter]],
@@ -125,18 +117,21 @@ def water():
     layer(id_="waterway-river", type="line", source="base", **{"source-layer": "waterway"}, minzoom=8,
           filter=["all", ["==", ["get", "class"], "river"], ["!=", ["get", "brunnel"], "tunnel"]],
           layout={"line-cap": "round"},
-          paint={"line-color": C["waterline"], "line-width": interp(8, 0.8, 12, 2, 17, 6)})
+          paint={"line-color": T("waterline.color"), "line-width": Z("river.width")})
     layer(id_="water", type="fill", source="base", **{"source-layer": "water"},
           filter=["!=", ["get", "brunnel"], "tunnel"],
-          paint={"fill-color": C["water"]})
+          paint={"fill-color": T("water.color")})
     layer(id_="water-outline", type="line", source="base", **{"source-layer": "water"}, minzoom=12,
-          paint={"line-color": C["waterline"], "line-width": 0.6})
+          paint={"line-color": T("water.outline.color"), "line-width": Z("water.outline.width")})
 
 
 def buildings():
+    # Neutral grey blocks; a separate outline line from z15 (fill-outline-color is only 1 device px, too faint).
     layer(id_="building", type="fill", source="base", **{"source-layer": "building"}, minzoom=14,
-          paint={"fill-color": C["building"], "fill-outline-color": "#cbc2b8",
-                 "fill-opacity": interp(14, 0.6, 16, 1)})
+          paint={"fill-color": T("building.fill"), "fill-opacity": Z("building.opacity")})
+    layer(id_="building-outline", type="line", source="base", **{"source-layer": "building"}, minzoom=15,
+          paint={"line-color": T("building.outline"), "line-width": Z("building.outline.width"),
+                 "line-opacity": interp(15, 0.6, 16, 1, base=1)})
 
 
 def roads():
@@ -144,108 +139,118 @@ def roads():
     tunnel = ["==", ["get", "brunnel"], "tunnel"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     groups = [
-        # id, classes, minzoom, fill, casing, width stops (fill)
-        ("service", ["service"], 13, C["road"], C["casing"], interp(13, 0.6, 16, 3, 18, 8)),
-        ("minor", ["minor"], 11, C["road"], C["casing"], interp(11, 0.6, 14, 2.6, 16, 6, 18, 14)),
-        ("tertiary", ["tertiary"], 10, C["road"], C["casing"], interp(10, 0.8, 14, 3.5, 16, 8, 18, 16)),
-        ("secondary", ["secondary"], 8, C["major"], C["major_casing"], interp(8, 0.6, 12, 2, 14, 4.5, 16, 9, 18, 18)),
-        ("primary", ["primary", "trunk"], 7, C["major"], C["major_casing"], interp(7, 0.6, 12, 2.6, 14, 5.5, 16, 10, 18, 20)),
-        ("motorway", ["motorway"], 6, C["motorway"], C["motorway_casing"], interp(6, 0.6, 12, 2.8, 14, 6, 16, 11, 18, 22)),
+        # id, classes, minzoom, colour token prefix
+        ("service", ["service"], 13, "road"),
+        ("minor", ["minor"], 11, "road"),
+        ("tertiary", ["tertiary"], 10, "road"),
+        ("secondary", ["secondary"], 8, "major"),
+        ("primary", ["primary", "trunk"], 7, "major"),
+        ("motorway", ["motorway"], 6, "motorway"),
     ]
     # casings (non-tunnel), then fills; tunnels faint
-    for gid, classes, minz, fill, casing, width in groups:
+    for gid, classes, minz, col in groups:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
         layer(id_=f"road-{gid}-casing", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=max(minz, 10), filter=f, layout={"line-join": "round", "line-cap": "round"},
-              paint={"line-color": casing, "line-gap-width": width,
-                     "line-width": interp(10, 0.5, 14, 0.9, 18, 1.5)})
-    for gid, classes, minz, fill, casing, width in groups:
+              paint={"line-color": T(f"{col}.casing"), "line-gap-width": Z(f"road.{gid}.width"),
+                     "line-width": Z("road.casing.width")})
+    for gid, classes, minz, col in groups:
         layer(id_=f"road-{gid}-tunnel", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=12, filter=["all", ["in", cls, ["literal", classes]], tunnel],
               layout={"line-join": "round"},
-              paint={"line-color": "#d8d2c8", "line-width": width, "line-opacity": 0.7,
-                     "line-dasharray": [2, 1]})
-    for gid, classes, minz, fill, casing, width in groups:
+              paint={"line-color": T("tunnel.color"), "line-width": Z(f"road.{gid}.width"),
+                     "line-opacity": T("tunnel.opacity"), "line-dasharray": [2, 1]})
+    for gid, classes, minz, col in groups:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
+        fill = T(f"{col}.fill")
         layer(id_=f"road-{gid}", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=minz, filter=f, layout={"line-join": "round", "line-cap": "round"},
-              paint={"line-color": fill if minz >= 10 else ["step", ["zoom"], C["motorway_casing"] if gid == "motorway" else C["major_casing"], 10, fill],
-                     "line-width": width})
+              # below z10 there is no casing: draw major roads in their casing colour so they stay visible
+              paint={"line-color": fill if minz >= 10 else ["step", ["zoom"], T(f"{col}.casing"), 10, fill],
+                     "line-width": Z(f"road.{gid}.width")})
     # railways
-    layer(id_="rail", type="line", source="base", **{"source-layer": "transportation"}, minzoom=10,
+    # Railways are an important orientation feature (owner request): visible from z8, with a light
+    # casing so they read on any background, and a classic white hatch from z12.
+    layer(id_="rail-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=11,
           filter=["all", ["==", cls, "rail"], not_tunnel],
-          paint={"line-color": "#9a948c", "line-width": interp(10, 0.8, 16, 2.2)})
-    layer(id_="rail-hatch", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+          paint={"line-color": T("rail.casing.color"), "line-width": Z("rail.casing.width")})
+    layer(id_="rail", type="line", source="base", **{"source-layer": "transportation"}, minzoom=8,
           filter=["all", ["==", cls, "rail"], not_tunnel],
-          paint={"line-color": "#ffffff", "line-width": interp(13, 0.6, 16, 1.2), "line-dasharray": [3, 3]})
+          paint={"line-color": T("rail.color"), "line-width": Z("rail.width")})
+    layer(id_="rail-hatch", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+          filter=["all", ["==", cls, "rail"], not_tunnel],
+          paint={"line-color": T("rail.hatch.color"), "line-width": Z("rail.hatch.width"),
+                 "line-dasharray": [3, 3]})
     layer(id_="aerialway", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
           filter=["in", cls, ["literal", ["aerialway", "cable_car"]]],
-          paint={"line-color": "#6b6670", "line-width": 1})
+          paint={"line-color": T("aerialway.color"), "line-width": Z("aerialway.width")})
 
 
 def route_bands():
-    # Opaque pale bands (no stacking artefacts where segments overlap), drawn under roads and paths.
-    for kind, col, minz in (("hike", "#9ed68d", 11), ("bike", "#eeb08a", 9), ("mtb", "#cfa9e3", 9)):
+    # Opaque pale bands (no stacking artefacts where segments overlap), drawn under roads, paths and trails.
+    for kind, minz in (("hike", 11), ("bike", 9), ("mtb", 9)):
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
               filter=["==", ["get", "kind"], kind],
               layout={"line-join": "round", "line-cap": "round",
                       "visibility": "visible" if kind == "hike" else "none"},
-              paint={"line-color": col, "line-opacity": interp(minz, 0.6, minz + 1.5, 1, base=1),
-                     "line-width": interp(9, 1.5, 11, 2.5, 13, 6, 15, 12, 18, 18)})
+              paint={"line-color": T(f"route.{kind}.color"),
+                     "line-opacity": interp(minz, T("route.opacity.start"), minz + 1.5, 1, base=1),
+                     "line-width": Z("route.width")})
 
 
 def paths():
     cls = ["get", "class"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
-    # tracks: brown, paved tracks solid, unpaved dashed
-    track = ["all", ["==", cls, "track"], not_tunnel]
     paved = ["==", ["get", "surface"], "paved"]
+    # tracks: warm mid-brown, long dashes (unpaved) / solid (paved) – distinct from the dark short-dash paths
+    track = ["all", ["==", cls, "track"], not_tunnel]
     layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
           filter=track, layout={"line-join": "round"},
-          paint={"line-color": "rgba(255,255,255,0.7)", "line-width": interp(13, 2.2, 16, 4, 18, 7)})
-    tw = interp(12, 0.8, 14, 1.3, 16, 2, 18, 3.5)
+          paint={"line-color": T("track.casing.color"), "line-width": Z("track.casing.width")})
+    tw = Z("track.width")
     layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
-          filter=["all", track, paved], paint={"line-color": C["track"], "line-width": tw})
+          filter=["all", track, paved], paint={"line-color": T("track.paved.color"), "line-width": tw})
     layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
           filter=["all", track, ["!", paved]],
-          paint={"line-color": C["track"], "line-width": tw, "line-dasharray": [3, 1.5]})
+          paint={"line-color": T("track.color"), "line-width": tw, "line-dasharray": T("track.dash")})
     # cycleways (solid; unpaved dashed)
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
-    cw = interp(13, 1, 16, 2.2, 18, 3.5)
+    cw = Z("cycleway.width")
     layer(id_="cycleway", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
           filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
-          paint={"line-color": "#3c7fb0", "line-width": cw})
+          paint={"line-color": T("cycleway.color"), "line-width": cw})
     layer(id_="cycleway-unpaved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
           filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
-          paint={"line-color": "#3c7fb0", "line-width": cw, "line-dasharray": [3, 1.5]})
+          paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
     foot = ["all", ["==", cls, "path"], ["!=", ["get", "subclass"], "cycleway"], not_tunnel]
     steps = ["==", ["get", "subclass"], "steps"]
-    pw = interp(12, 0.7, 14, 1.2, 16, 1.8, 18, 3)
-    layer(id_="path-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
-          filter=foot, paint={"line-color": "rgba(255,255,255,0.55)", "line-width": interp(14, 2.5, 18, 6)})
+    pw = Z("path.width")
+    layer(id_="path-casing", type="line", source="base", **{"source-layer": "transportation"},
+          minzoom=T("path.casing.minzoom"), filter=foot,
+          paint={"line-color": T("path.casing.color"), "line-width": Z("path.casing.width")})
     layer(id_="path-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=["all", foot, paved, ["!", steps]], paint={"line-color": "#8b7d70", "line-width": pw})
+          filter=["all", foot, paved, ["!", steps]], paint={"line-color": T("path.paved.color"), "line-width": pw})
     layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
           filter=["all", foot, ["!", paved], ["!", steps]],
-          paint={"line-color": C["path"], "line-width": pw, "line-dasharray": [2.5, 1.2]})
+          paint={"line-color": T("path.color"), "line-width": pw, "line-dasharray": T("path.dash")})
     layer(id_="path-steps", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
           filter=["all", foot, steps],
-          paint={"line-color": C["path"], "line-width": interp(14, 2, 18, 5), "line-dasharray": [0.4, 0.4]})
+          paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
 
 
 def trails():
     sac = ["get", "sac"]
     # SAC T1-T2 easy (dark brown), T3 mountain (orange-red), T4+ alpine (red, dotted)
-    color = ["case", [">=", sac, 4], "#c4233a", [">=", sac, 3], "#d0602a", "#4f3a2a"]
+    color = ["case", [">=", sac, 4], T("trail.alpine.color"), [">=", sac, 3], T("trail.mountain.color"),
+             T("trail.easy.color")]
     layer(id_="trails-casing", type="line", source="trails", minzoom=12, filter=[">=", sac, 1],
           layout={"line-join": "round"},
-          paint={"line-color": "rgba(255,255,255,0.6)", "line-width": interp(12, 2, 14, 3, 16, 4.5, 18, 7)})
-    for sid, flt, dash in (("easy", ["<=", sac, 2], [2.5, 1.2]), ("mountain", ["==", sac, 3], [2, 1.2]),
-                           ("alpine", [">=", sac, 4], [1, 1.2])):
+          paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
+    for sid, flt in (("easy", ["<=", sac, 2]), ("mountain", ["==", sac, 3]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=11,
               filter=["all", [">=", sac, 1], flt],
-              paint={"line-color": color, "line-width": interp(11, 0.8, 14, 1.5, 16, 2.2, 18, 3.5),
-                     "line-dasharray": dash})
+              paint={"line-color": color, "line-width": Z("trail.width"),
+                     "line-dasharray": T(f"trail.{sid}.dash")})
 
 
 def bridges():
@@ -253,37 +258,40 @@ def bridges():
     bridge = ["==", ["get", "brunnel"], "bridge"]
     layer(id_="bridge-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
           filter=["all", bridge, ["in", cls, ["literal", ["minor", "tertiary", "secondary", "primary", "trunk", "motorway"]]]],
-          paint={"line-color": "#9f978c", "line-gap-width": interp(14, 3.5, 16, 8, 18, 16),
-                 "line-width": 1.2})
+          paint={"line-color": T("bridge.casing.color"), "line-gap-width": interp(14, 3.5, 16, 8, 18, 16),
+                 "line-width": Z("bridge.casing.width")})
 
 
 def boundaries():
     layer(id_="boundary-country", type="line", source="base", **{"source-layer": "boundary"},
           filter=["all", ["<=", ["get", "admin_level"], 2], ["!=", ["get", "maritime"], 1]],
-          paint={"line-color": "#9e8aa6", "line-width": interp(4, 1, 12, 2.5), "line-dasharray": [3, 1.5]})
+          paint={"line-color": T("boundary.country.color"), "line-width": interp(4, 1, 12, 2.5),
+                 "line-dasharray": [3, 1.5]})
     layer(id_="boundary-region", type="line", source="base", **{"source-layer": "boundary"}, minzoom=7,
           filter=["all", ["in", ["get", "admin_level"], ["literal", [3, 4]]], ["!=", ["get", "maritime"], 1]],
-          paint={"line-color": "#b8a9bd", "line-width": interp(7, 0.6, 12, 1.4), "line-dasharray": [3, 2]})
+          paint={"line-color": T("boundary.region.color"), "line-width": interp(7, 0.6, 12, 1.4),
+                 "line-dasharray": [3, 2]})
 
 
 def labels():
-    halo = {"text-halo-color": C["halo"], "text-halo-width": 1.4, "text-halo-blur": 0.3}
+    REG, MED, ITA, MINOR = T("font.regular"), T("font.medium"), T("font.italic"), T("font.minor-label")
+    h = halo()
     # water names
     layer(id_="waterway-label", type="symbol", source="base", **{"source-layer": "waterway"}, minzoom=13,
           filter=["==", ["get", "class"], "river"],
           layout={"symbol-placement": "line", "text-field": NAME, "text-font": ITA, "text-size": 12,
                   "symbol-spacing": 400, "text-letter-spacing": 0.05},
-          paint={"text-color": "#3d7bb0", **halo})
+          paint={"text-color": T("label.water.color"), **h})
     layer(id_="water-label", type="symbol", source="base", **{"source-layer": "water_name"}, minzoom=10,
           layout={"text-field": NAME, "text-font": ITA, "text-size": interp(10, 11, 15, 14),
                   "text-max-width": 7},
-          paint={"text-color": "#3d7bb0", **halo})
+          paint={"text-color": T("label.water.color"), **h})
     # road names
     layer(id_="road-label", type="symbol", source="base", **{"source-layer": "transportation_name"}, minzoom=14,
           filter=["!", ["in", ["get", "class"], ["literal", ["path", "track", "rail", "transit"]]]],
-          layout={"symbol-placement": "line", "text-field": NAME, "text-font": REG,
+          layout={"symbol-placement": "line", "text-field": NAME, "text-font": MINOR,
                   "text-size": interp(14, 10, 17, 12.5), "symbol-spacing": 300, "text-padding": 4},
-          paint={"text-color": "#5c5650", **halo})
+          paint={"text-color": T("label.road.color"), **h})
     layer(id_="road-shield", type="symbol", source="base", **{"source-layer": "transportation_name"},
           minzoom=10, maxzoom=14,
           filter=["all", ["in", ["get", "class"], ["literal", ["motorway", "trunk", "primary"]]],
@@ -291,55 +299,56 @@ def labels():
           layout={"symbol-placement": "line", "text-field": ["get", "ref"], "text-font": MED,
                   "text-size": 10, "symbol-spacing": 450, "text-rotation-alignment": "viewport",
                   "text-padding": 20},
-          paint={"text-color": "#7a5d1c", "text-halo-color": "#fff6d9", "text-halo-width": 2.2})
+          paint={"text-color": T("label.shield.color"), "text-halo-color": T("label.shield.halo"),
+                 "text-halo-width": 2.2})
     # saddles / passes
     layer(id_="pass-label", type="symbol", source="base", **{"source-layer": "mountain_peak"}, minzoom=12,
           filter=["all", ["==", ["get", "class"], "saddle"], ["has", "name"]],
           layout={"text-field": ["case", ["has", "ele"], ["concat", NAME, "\n", ["to-string", ["get", "ele"]], " m"], NAME],
                   "text-font": ITA, "text-size": 11,
                   "text-max-width": 8, "text-padding": 6},
-          paint={"text-color": "#6b5a48", **halo})
-    # huts: now drawn from the POI overlay (poi-* layers), see pois()
+          paint={"text-color": T("label.pass.color"), **h})
+    # huts: drawn from the POI overlay (poi-* layers), see pois()
     # peaks
     peak = ["all", ["in", ["get", "class"], ["literal", ["peak", "volcano"]]], ["has", "name"]]
-    peak_text = ["format", "▲", {"font-scale": 0.8, "text-color": "#6f5b45"}, "\n", {},
+    peak_text = ["format", "▲", {"font-scale": 0.8, "text-color": T("label.peak.icon.color")}, "\n", {},
                  NAME, {}, "\n", {},
                  ["case", ["has", "ele"], ["concat", ["to-string", ["get", "ele"]], " m"], ""],
                  {"font-scale": 0.85}]
     layer(id_="peak-label", type="symbol", source="base", **{"source-layer": "mountain_peak"}, minzoom=10,
           filter=peak,
-          layout={"text-field": peak_text, "text-font": REG, "text-size": interp(10, 11, 15, 13),
+          layout={"text-field": peak_text, "text-font": MINOR, "text-size": interp(10, 11, 15, 13),
                   "text-anchor": "top", "text-offset": [0, -0.6], "text-max-width": 8,
                   "text-padding": 8,
                   "symbol-sort-key": ["-", 0, ["coalesce", ["get", "ele"], 0]]},
-          paint={"text-color": "#4e3f30", **halo})
+          paint={"text-color": T("label.peak.color"), **h})
     # places
     place = ["get", "class"]
     layer(id_="place-hamlet", type="symbol", source="base", **{"source-layer": "place"}, minzoom=12,
           filter=["in", place, ["literal", ["hamlet", "isolated_dwelling", "neighbourhood", "quarter", "locality"]]],
-          layout={"text-field": NAME, "text-font": REG, "text-size": interp(12, 10.5, 16, 13),
+          layout={"text-field": NAME, "text-font": MINOR, "text-size": interp(12, 10.5, 16, 13),
                   "text-max-width": 7, "text-padding": 4},
-          paint={"text-color": "#55504a", **halo})
+          paint={"text-color": T("label.hamlet.color"), **h})
     layer(id_="place-suburb", type="symbol", source="base", **{"source-layer": "place"}, minzoom=11, maxzoom=16,
           filter=["==", place, "suburb"],
           layout={"text-field": NAME, "text-font": MED, "text-size": interp(11, 11, 15, 13),
                   "text-transform": "uppercase", "text-letter-spacing": 0.1, "text-max-width": 7},
-          paint={"text-color": "#7a736b", **halo})
+          paint={"text-color": T("label.suburb.color"), **h})
     layer(id_="place-village", type="symbol", source="base", **{"source-layer": "place"}, minzoom=10,
           filter=["==", place, "village"],
           layout={"text-field": NAME, "text-font": MED, "text-size": interp(10, 11, 14, 14, 16, 16),
                   "text-max-width": 7},
-          paint={"text-color": C["label"], **halo})
+          paint={"text-color": T("label.village.color"), **h})
     layer(id_="place-town", type="symbol", source="base", **{"source-layer": "place"}, minzoom=7,
           filter=["==", place, "town"],
           layout={"text-field": NAME, "text-font": MED, "text-size": interp(7, 11, 12, 15, 15, 18),
                   "text-max-width": 7},
-          paint={"text-color": "#2c2926", **halo})
+          paint={"text-color": T("label.town.color"), **h})
     layer(id_="place-city", type="symbol", source="base", **{"source-layer": "place"}, minzoom=5, maxzoom=15,
           filter=["==", place, "city"],
           layout={"text-field": NAME, "text-font": MED, "text-size": interp(5, 12, 10, 16, 14, 21),
                   "text-max-width": 7},
-          paint={"text-color": "#24211e", **halo})
+          paint={"text-color": T("label.city.color"), **h})
 
 
 # --- POIs (F-MAP-09): GeoJSON overlay from tools/extract_pois.py --------------------------------
@@ -348,12 +357,12 @@ def labels():
 # Collision is on, so dense areas thin out; place/peak labels (above) win over POIs.
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
-    (1, 12, 14, ["hut", "bivouac", "viewpoint", "spring", "waterfall", "lift", "train", "castle"]),
+    (1, 12, 14, ["hut", "bivouac", "viewpoint", "spring", "waterfall", "lift", "castle"]),
     (2, 14, 15, ["water", "restaurant", "cafe", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
     (3, 15, 16, ["picnic", "toilets", "info", "bar", "fast_food", "bike_shop", "charging", "shop", "parking",
                  "bus"]),
 ]
-POI_PRIO = [k for _, _, _, kinds in POI_TIERS for k in kinds]
+POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds]
 POI_KINDS = set(POI_PRIO)
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 
@@ -385,25 +394,48 @@ def pois():
                       "symbol-sort-key": sort_key, "symbol-z-order": "auto",
                       "text-field": ["step", ["zoom"], "", label_z, name],
                       "text-optional": True,
-                      "text-font": MED if tier == 1 else REG,
+                      "text-font": T("font.medium") if tier == 1 else T("font.minor-label"),
                       "text-size": interp(14, 10.5, 17, 12.5, base=1),
                       "text-variable-anchor": ["left", "right", "top", "bottom"],
                       "text-radial-offset": 1.05, "text-justify": "auto", "text-max-width": 8,
                       "text-padding": 2},
-              paint={"text-color": "#3f3a35" if tier > 1 else "#35302b",
-                     "text-halo-color": C["halo"], "text-halo-width": 1.4})
+              paint={"text-color": T("poi.label.color") if tier > 1 else T("poi.label.tier1.color"),
+                     "text-halo-color": T("label.halo.color"), "text-halo-width": T("label.halo.width")})
 
 
-def build():
+def stations():
+    """Train stations: always prominent (owner request) – own top POI layer, icon from z10, name from z11.
+    Id starts with "poi-" so the app's POI category filter (Settings) still applies."""
+    kind = ["get", "kind"]
+    layer(id_="poi-station", type="symbol", source="pois", minzoom=10,
+          filter=["==", kind, "train"],
+          layout={"icon-image": "poi-train",
+                  "icon-size": interp(10, 0.85, 13, 0.95, 16, 1.15, base=1),
+                  "icon-allow-overlap": False, "icon-padding": 1,
+                  "symbol-sort-key": 0,
+                  "text-field": ["step", ["zoom"], "", 11, ["coalesce", ["get", "name"], ""]],
+                  "text-optional": True,
+                  "text-font": T("station.label.font"),
+                  "text-size": interp(11, 11, 14, 12.5, 17, 14, base=1),
+                  "text-variable-anchor": ["right", "left", "top", "bottom"],
+                  "text-radial-offset": 1.1, "text-justify": "auto", "text-max-width": 9, "text-padding": 2},
+          paint={"text-color": T("station.label.color"),
+                 "text-halo-color": T("label.halo.color"), "text-halo-width": T("label.halo.width")})
+
+
+def build(theme=DEFAULT_THEME):
+    style_theme.use(theme)
+    L.clear()
+    # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
-    trails(); bridges(); boundaries(); pois()
+    trails(); bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())
     labels()
     style = {
         "version": 8,
-        "name": "OnPath Topo",
-        "metadata": {"onpath:version": 1},
+        "name": T("style.name", "OnPath"),
+        "metadata": {"onpath:version": 1, "onpath:theme": theme},
         "center": [11.16, 46.67], "zoom": 12,
         "glyphs": "asset://fonts/{fontstack}/{range}.pbf",
         "sprite": "asset://sprites/onpath",
@@ -421,12 +453,24 @@ def build():
             "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
                      "buffer": 32},
         },
-        "layers": L,
+        "layers": list(L),
     }
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w") as f:
+    out = out_path(theme)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
         json.dump(style, f, ensure_ascii=False, indent=1)
-    print("wrote", os.path.abspath(OUT), len(L), "layers")
+    print("wrote", os.path.abspath(out), len(L), "layers")
 
 
-build()
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--theme", default=DEFAULT_THEME, help="theme name in tools/themes/ (default classic)")
+    ap.add_argument("--all", action="store_true", help="build every theme in tools/themes/")
+    a = ap.parse_args()
+    themes = sorted(f[:-5] for f in os.listdir(style_theme.THEMES_DIR) if f.endswith(".json")) if a.all else [a.theme]
+    for t in themes:
+        build(t)
+
+
+if __name__ == "__main__":
+    main()

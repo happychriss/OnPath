@@ -123,8 +123,9 @@ fun MapHost(
     }
 
     // Switching the map theme in Settings reloads the style; the app layers are re-added in onReady.
-    LaunchedEffect(vm.settings.mapTheme) {
-        if (loadedTheme[0] != null && loadedTheme[0] != vm.settings.mapTheme) {
+    // An imported style file (Settings → Map data) bumps styleVersion and reloads too.
+    LaunchedEffect(vm.settings.mapTheme, vm.styleVersion) {
+        if (loadedTheme[0] != null && (loadedTheme[0] != vm.settings.mapTheme || vm.styleVersion > 0)) {
             loadedTheme[0] = vm.settings.mapTheme
             reloadRef[0]?.invoke()
         }

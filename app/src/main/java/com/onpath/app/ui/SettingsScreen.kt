@@ -76,6 +76,9 @@ fun SettingsScreen(
     initiallyExpanded: Set<PoiGroup> = emptySet(),
     /** Available map themes (StyleLoader.themes); the chooser is shown when there is more than one. */
     themes: List<String> = listOf("classic"),
+    onImportData: () -> Unit = {},
+    onDownloadRouting: () -> Unit = {},
+    dataBusy: String? = null,
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -165,6 +168,18 @@ fun SettingsScreen(
                         }
                         SwitchRow("Keep screen on while navigating", "Only while following a route", settings.keepScreenOn) {
                             onChange(settings.copy(keepScreenOn = it))
+                        }
+                    }
+                }
+                item {
+                    Section("Map data") {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
+                                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            DataActions(
+                                routingMissing = checks.any { it.name.startsWith("segments") && !it.present },
+                                busy = dataBusy, onImport = onImportData, onDownloadRouting = onDownloadRouting,
+                            )
                         }
                     }
                 }
