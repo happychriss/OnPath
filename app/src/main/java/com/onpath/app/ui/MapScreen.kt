@@ -161,8 +161,18 @@ fun MapScreen(
         RemainingTop(vm, location, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 122.dp)) // below the compass
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null)
 
+        // Quiet update check (once a day, only when online; F-OFF-06).
+        LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
+
         // ---- bottom: scale/attribution/FAB + panel ----
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            val upd = vm.update
+            val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
+                ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
+            if (vm.mode == Mode.BROWSE && rec == null && updVersion != null && updVersion != vm.updateDismissed) {
+                UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
             Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
                     scale?.let { (label, width) -> ScaleBar(label, width) }

@@ -70,6 +70,14 @@ python3 tools/extract_pois.py ...     # see script header
 python3 tools/make_style.py           # regenerates assets/style/onpath.json
 ```
 
+## Releases (updates on the phone)
+- Version = git tag `vX.Y.Z`; `-PappVersion` sets versionName, versionCode = major*10000+minor*100+patch
+  (default in `app/build.gradle.kts` for local builds – bump it with each release).
+- Release: write `docs/release-notes/vX.Y.Z.md`, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+  `.github/workflows/release.yml` tests, builds, signs (test key) and publishes the GitHub Release with the APK.
+  Cloud sessions may not create releases directly – always go through the tag.
+- The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
+
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
 - **No Google Play Services** (LocationManager directly); keep dependencies few.
