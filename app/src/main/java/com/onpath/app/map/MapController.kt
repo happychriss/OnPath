@@ -43,6 +43,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
         const val GPX_COLOR = "#8E24AA"       // purple
         const val REC_COLOR = "#EF6C00"       // orange
+        const val NAV_ORIGINAL_COLOR = "#8A8F98" // grey: the original route while a new one is followed
         const val SRC_PLANNED = "planned-route"
         const val SRC_GPX = "gpx-track"
         const val SRC_REC = "recorded-track"
@@ -56,7 +57,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
          * App layers hidden while the eye button is held: everything route-like, but not the own
          * position or the recorded track. New route layers (e.g. a grey original route) belong here.
          */
-        val ROUTE_OVERLAY_LAYERS = listOf(
+        // --- Re-routing while navigating (navigation/Navigator) ---
+        /** Thin grey original line while a new route is followed (below the followed line). */
+        const val SRC_NAV_ORIGINAL = "nav-original"
+        /** Dashed preview of the proposed new route while the question is open. */
+        const val SRC_NAV_PROPOSAL = "nav-proposal"
+        /** Dashed straight guide from the position to the route (no way found / original kept). */
+        const val SRC_NAV_GUIDE = "nav-guide"
+        /** All re-routing layer ids (hidden by the eye button too). */
+        val NAV_LAYERS = listOf(SRC_NAV_ORIGINAL, SRC_NAV_PROPOSAL, SRC_NAV_GUIDE)
+        val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
             "planned-route-arrows", "$SRC_GPX-arrows",
@@ -83,6 +93,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private var wasNavigating = false
 
     init {
+        addNavOriginal() // below the followed line
         addLine(SRC_GPX, GPX_COLOR, 5f, casing = true)
         addLine(SRC_REC, REC_COLOR, 4.5f, casing = true)
         addPlannedLayers()
@@ -99,6 +110,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
         ))
+        addNavOverlays()
         addTurnLayer()
         activateLocation()
     }
@@ -114,6 +126,31 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
     }
+
+    private fun addNavOriginal() {
+        style.addSource(GeoJsonSource(SRC_NAV_ORIGINAL))
+        style.addLayer(LineLayer(SRC_NAV_ORIGINAL, SRC_NAV_ORIGINAL).withProperties(
+            PF.lineColor(NAV_ORIGINAL_COLOR), PF.lineWidth(3f), PF.lineOpacity(0.85f),
+            PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
+        ))
+    }
+
+    private fun addNavOverlays() {
+        style.addSource(GeoJsonSource(SRC_NAV_PROPOSAL))
+        style.addLayer(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
+            PF.lineColor(ROUTE_COLOR), PF.lineWidth(5f), PF.lineDasharray(arrayOf(1.6f, 1.2f)),
+            PF.lineJoin(Property.LINE_JOIN_ROUND),
+        ))
+        style.addSource(GeoJsonSource(SRC_NAV_GUIDE))
+        style.addLayer(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
+            PF.lineColor("#C62828"), PF.lineWidth(3f), PF.lineDasharray(arrayOf(1f, 1.5f)), PF.lineOpacity(0.9f),
+        ))
+    }
+
+    fun setNavOriginal(points: List<GeoPoint>?) = setTrack(SRC_NAV_ORIGINAL, listOfNotNull(points))
+    fun setNavProposal(points: List<GeoPoint>?) = setTrack(SRC_NAV_PROPOSAL, listOfNotNull(points))
+    fun setNavGuide(from: GeoPoint?, to: GeoPoint?) =
+        setTrack(SRC_NAV_GUIDE, if (from != null && to != null) listOf(listOf(from, to)) else emptyList())
 
     /** Routed legs solid, failed legs (straight fallback) dashed. */
     private fun addPlannedLayers() {
