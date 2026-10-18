@@ -88,7 +88,18 @@ class ScreenshotTest {
         }
     }
 
-    private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0), recordedM = 5_320.0, elapsedS = 5025)
+    private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0, profile = routePts),
+        recordedM = 5_320.0, elapsedS = 5025)
+
+    /** Navigate: tapped "to go" card – elevation profile of the rest of the route, ↑ and ↓. */
+    @Test fun navigateProfile() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp)) { NavStatusCard(navUi, onResume = {}, profileOpen = true) }
+            }
+        }
+    }
 
     /** Grouped map controls: compass (map turned), eye held (route hidden), locate with GPS dot. */
     @Test fun mapControlsAll() = paparazzi.snapshot {
