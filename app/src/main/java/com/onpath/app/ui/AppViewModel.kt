@@ -478,6 +478,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
         change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
     }
@@ -490,6 +491,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { pointMenu = idx; return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
         addPoint(p, lineSnapM, onPoi = true)
     }
 
@@ -542,14 +544,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSearch() { closeMapOverlays(); searchOpen = true; search.onOpen() }
     fun closeSearch() { searchOpen = false }
 
-    /** Result tapped: close the search, move the map there and show the place card. */
+    /**
+     * Result tapped (owner): close the search, fly the map there and mark the place with a pin – no card. Holding the
+     * pin opens the usual POI menu (Add to route / Start here … / Google Maps). The mark stays until the next search
+     * pick or until the place is added to the route.
+     */
     fun pickSearchResult(place: com.onpath.app.search.Place) {
         val p = search.resolve(place)
         search.remember(p)
         searchOpen = false
+        closeMapOverlays()
         searchPlace = p
-        planPoi = p.toPoi()
+        searchMark = p
         events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+    }
+
+    /** Search result marked on the map (pin); see [pickSearchResult]. */
+    var searchMark by mutableStateOf<com.onpath.app.search.Place?>(null)
+
+    private fun clearSearchMarkAt(lat: Double, lon: Double) {
+        val m = searchMark ?: return
+        if (kotlin.math.abs(m.lat - lat) < 1e-7 && kotlin.math.abs(m.lon - lon) < 1e-7) searchMark = null
     }
 
     /** Place shown in the card: the search result, or the tapped POI. */
