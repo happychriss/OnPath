@@ -30,7 +30,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## Done (recent)
 - Plan mode POI card (laptop): tap a POI → card above the plan panel with opening hours, "Add to route" /
   "Remove from route" and "Google Maps"; planning is not interrupted. Replaces the long-press Google dialog.
-  Tap on empty map adds a point with a short vibration. Blocked ways (access=no) marked on the map.
+  Adding a point needs a short hold (0.3 s, ring + vibration) so stray taps add nothing. Blocked ways (access=no) marked on the map.
 - LayerSettings crash on style reload fixed (laptop): skips a stale style instead of throwing; tested on the
   Pixel 8 by starting without base.pmtiles and putting it back.
 - 0.4.1 (laptop, released via the workflow; in-app update 0.4.0 → 0.4.1 confirmed working on the Pixel 8 by the owner): resizable plan panel

@@ -411,6 +411,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** POI tapped in plan mode: its card (add to route / Google Maps) is shown above the plan panel. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+    /** "Hold briefly to add a point" was shown once (after a too-short tap). */
+    var holdHintShown = false
 
     fun isStop(poi: com.onpath.app.poi.Poi): Boolean =
         waypoints.any { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
