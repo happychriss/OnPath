@@ -204,6 +204,7 @@ fun MapScreen(
             onDismiss = { vm.pointMenu = null })
         else vm.pointMenu = null
     }
+    if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (confirmStop) ConfirmStopDialog(onStop = { confirmStop = false; vm.stopRecording() }, onDismiss = { confirmStop = false })
     vm.selectedPoi?.let { poi ->
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {
@@ -226,7 +227,7 @@ private fun BottomContent(
         vm.mode == Mode.PLAN -> PlanPanel(
             PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.routeHidden),
             PlanCallbacks(
-                onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::clearPlan, onFromMe = vm::startAtMyPosition,
+                onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
                 onSave = onSave, onShare = vm::exportPlanned,
                 onGo = {
                     vm.followPlanned(); vm.closePlanning()

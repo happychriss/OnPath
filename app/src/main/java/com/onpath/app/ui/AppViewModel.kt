@@ -38,6 +38,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -111,8 +112,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val pinned = prefs.planPinned.toMutableSet()
     fun pinnedIndices(): Set<Int> = waypoints.indices.filter { waypoints[it] in pinned }.toSet()
-    private val undo = ArrayDeque<List<GeoPoint>>()
-    private val redo = ArrayDeque<List<GeoPoint>>()
+    private val history = PlanHistory()
     var canUndo by mutableStateOf(false)
         private set
     var canRedo by mutableStateOf(false)
@@ -157,7 +157,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val routingDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private var engine: RoutingEngine? = null
     private var routeJob: Job? = null
-    private var routeGen = 0
+    private val requests = RouteRequests()
+    /** The followed line was taken from this plan ("Follow & record"), so Clear removes it too. */
+    private var followFromPlan = false
 
     init {
         if (waypoints.isNotEmpty()) mode = Mode.PLAN
@@ -273,14 +275,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** @param record false = amend the last step (notice actions), so one undo reverts both. */
     private fun change(record: Boolean = true, block: MutableList<GeoPoint>.() -> Unit) {
-        if (record) {
-            undo.addLast(waypoints.toList())
-            if (undo.size > 100) undo.removeFirst()
-            notice = null
-        }
-        redo.clear(); canRedo = false
+        if (record) { history.record(waypoints); notice = null } else history.dropRedo()
         waypoints.block()
-        canUndo = undo.isNotEmpty()
+        canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         recalc()
@@ -289,7 +286,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Forget pinned points that are neither planned nor reachable by undo/redo. */
     private fun prunePinned() {
         if (pinned.isEmpty()) return
-        val alive = HashSet(waypoints).apply { undo.forEach { addAll(it) }; redo.forEach { addAll(it) } }
+        val alive = HashSet(waypoints).apply { addAll(history.allPoints()) }
         if (pinned.retainAll(alive)) prefs.planPinned = pinned
     }
 
@@ -363,29 +360,48 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         change { if (isEmpty()) add(p) else add(0, p) }
     }
 
-    fun undoStep() = step(undo, redo)
-    fun redoStep() = step(redo, undo)
+    fun undoStep() = step(history.undo(waypoints))
+    fun redoStep() = step(history.redo(waypoints))
 
-    private fun step(from: ArrayDeque<List<GeoPoint>>, to: ArrayDeque<List<GeoPoint>>) {
-        val prev = from.removeLastOrNull() ?: return
-        to.addLast(waypoints.toList())
+    private fun step(prev: List<GeoPoint>?) {
+        prev ?: return
         waypoints.clear(); waypoints.addAll(prev)
-        canUndo = undo.isNotEmpty(); canRedo = redo.isNotEmpty()
-        notice = null
+        canUndo = history.canUndo; canRedo = history.canRedo
+        notice = null; pointMenu = null
         prefs.planWaypoints = waypoints.toList()
         recalc()
     }
 
-    fun clearPlan() { if (waypoints.isNotEmpty()) change { clear() } }
+    /** Clear button; with two or more points the UI asks first (PlanClear.needsConfirm). */
+    var confirmClear by mutableStateOf(false)
+
+    fun requestClear() {
+        if (PlanClear.needsConfirm(waypoints.size)) confirmClear = true else clearPlan()
+    }
+
+    /**
+     * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
+     * undo can bring them back), error, highlight, notice and point menu. A routing job still
+     * running is cancelled and its result ignored (recalc → RouteRequests.invalidate).
+     * A followed copy of this plan goes too, unless a recording is using it right now.
+     */
+    fun clearPlan() {
+        confirmClear = false
+        val planLine = route?.points
+        if (waypoints.isNotEmpty()) change { clear() } else recalc()
+        notice = null; pointMenu = null; highlight = null; lastAdded = -1
+        val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
+        if (fromPlan && followLine != null && recState.value == null) clearFollow()
+    }
 
     private fun recalc() {
-        routeJob?.cancel()
+        routeJob?.cancel(); routeJob = null
         highlight = null
         val pts = waypoints.toList()
         val pins = pinnedIndices()
-        if (pts.size < 2) { route = null; routeError = null; routing = false; return }
+        if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; return }
         val act = activity; val level = sac
-        val gen = ++routeGen
+        val gen = requests.next()
         routing = true
         routeJob = viewModelScope.launch {
             delay(150) // debounce quick taps
@@ -396,7 +412,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Planner(eng).plan(pts, act, level, pins)
                 }
             }
-            if (gen != routeGen) return@launch // a newer request superseded this one
+            if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
             result.onSuccess { route = it; routeError = it.error }
                 .onFailure { route = null; routeError = it.message ?: "Routing failed." }
             routing = false
@@ -424,11 +440,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun followPlanned() {
         val r = route ?: return
         setFollow(defaultName("Route"), r.points)
+        followFromPlan = true
     }
 
     fun followShown() {
         val s = shown ?: return
         setFollow(s.name, s.points)
+        followFromPlan = false
     }
 
     private fun setFollow(name: String, points: List<GeoPoint>) {
@@ -439,6 +457,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearFollow() {
+        followFromPlan = false
         prefs.saveFollow("", null)
         followName = null
         followLine = null
