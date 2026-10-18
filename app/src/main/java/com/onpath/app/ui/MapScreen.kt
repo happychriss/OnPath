@@ -127,6 +127,7 @@ private fun PlanMode(
             vm.activity, vm.sac, onActivity = onActivity,
             onTours = { vm.refreshTours(); vm.showTours = true }, onSettings = { vm.showSettings = true },
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
+            onSearch = vm::openSearch,
         )
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             val upd = vm.update
@@ -141,19 +142,13 @@ private fun PlanMode(
                 PlanNoticeBar(n, onAction = vm::onNoticeAction, onDismiss = { if (vm.notice?.id == n.id) vm.notice = null })
             }
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                vm.planPoi?.let { poi ->
-                    val ctx = LocalContext.current
-                    PoiPlanCard(
-                        poi, isStop = vm.isStop(poi),
-                        onToggleStop = { vm.togglePoiPoint(poi); vm.planPoi = null },
-                        onGoogle = { com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi) },
-                        onClose = { vm.planPoi = null },
-                    )
-                }
+                // Shared place card for tapped POIs and search results (ui/search).
+                com.onpath.app.ui.search.PlaceCardHost(vm)
                 rec?.let { TourRunningBar(it.distanceM, it.paused, onContinue = vm::continueNavigation, onEnd = onEndTour) }
                 PlanBottom(vm, rec, onStartNavigation, onSave)
             }
         }
+        com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
     }
 }
 
@@ -214,7 +209,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
-    LaunchedEffect(c, vm.followMe) { c.setFollow(vm.followMe) { vm.followMe = false } }
+    // Camera: follow in Plan, heading-up / north-up in Navigate; next-turn arrow (see NavigateScreen).
+    LaunchedEffect(c, vm.followMe, vm.mode, vm.navHeadingUp) {
+        c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.navHeadingUp) { vm.followMe = false }
+    }
+    LaunchedEffect(c, vm.navTurn) { c.setTurnArrow(vm.navTurn) }
     LaunchedEffect(c, vm.events.size) {
         val pending = vm.events.toList()
         vm.events.clear()

@@ -12,6 +12,8 @@ import android.util.Log
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
+import com.onpath.app.routing.Turn
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -48,6 +50,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_HL = "highlight"
         const val LAYER_WPT = "waypoints-icons"
         const val SRC_DRAG = "drag-preview"
+        // --- Navigate: orientation + next-turn arrow (navigation agent) ---
+        const val SRC_TURN = "nav-turn"
+        const val LAYER_TURN = "nav-turn-arrow"
+        private const val IMG_TURN = "nav-turn-arrow"
+        /** Map tilt in heading-up Navigate (degrees). 0 = flat; try 30–40 for a "navigation" look. */
+        const val NAV_TILT_DEG = 0.0
+        /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
+        const val NAV_TOP_PADDING = 0.30
     }
 
     /** Settings page → base style layers (POI filter, contours, hillshade). */
@@ -56,6 +66,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private val density = context.resources.displayMetrics.density
     private var locationReady = false
     private var markerImages = 0
+    /** Compass + GPS bearing for heading-up; the sensor runs only while MapLibre listens (Navigate). */
+    private val heading = HeadingEngine(context)
+    private var onTrackingDismissed: (() -> Unit)? = null
+    /** Camera mode we asked for while following (to notice when a gesture changed it). */
+    private var wantedCameraMode = CameraMode.NONE
+    private var wasNavigating = false
 
     init {
         addLine(SRC_GPX, GPX_COLOR, 5f, casing = true)
@@ -78,6 +94,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
         ))
+        addTurnLayer()
         activateLocation()
     }
 
@@ -129,9 +146,19 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .locationComponentOptions(options)
                     .build()
             )
+            lc.setCompassEngine(heading)
             lc.isLocationComponentEnabled = true
-            lc.renderMode = RenderMode.COMPASS
+            // Plan: GPS render mode (no compass sensor); Navigate switches to COMPASS, see setCamera.
+            lc.renderMode = RenderMode.GPS
             lc.cameraMode = CameraMode.NONE
+            lc.addOnCameraTrackingChangedListener(object : org.maplibre.android.location.OnCameraTrackingChangedListener {
+                override fun onCameraTrackingDismissed() { onTrackingDismissed?.invoke() }
+                override fun onCameraTrackingChanged(currentMode: Int) {
+                    // A rotate gesture turns compass tracking into plain tracking: treat as "not following"
+                    // so "centre on me" brings the chosen orientation back.
+                    if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode) onTrackingDismissed?.invoke()
+                }
+            })
             locationReady = true
         } catch (e: Exception) {
             Log.w("OnPath", "Location component not available: $e")
@@ -141,24 +168,109 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun updateLocation(loc: Location) {
         if (!locationReady) return
         try { map.locationComponent.forceLocationUpdate(loc) } catch (_: Exception) { }
+        heading.onLocation(loc)
     }
 
-    /** Follow mode: camera tracks the position; MapLibre ends it when the user pans. */
-    fun setFollow(follow: Boolean, onDismissed: () -> Unit) {
+    /** Plan mode follow (north stays where the user left it). */
+    fun setFollow(follow: Boolean, onDismissed: () -> Unit) = setCamera(follow, navigating = false, headingUp = false, onDismissed)
+
+    /**
+     * Camera and puck for both modes. Following: the camera tracks the position – in Navigate heading-up
+     * (map turns with the walking direction, [HeadingEngine]) or north-up; in Plan without turning.
+     * MapLibre ends following when the user pans ([onDismissed]); "centre on me" calls this again.
+     * The compass sensor is only used in Navigate (render mode COMPASS); Plan uses GPS render mode.
+     */
+    fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, onDismissed: () -> Unit) {
         if (!locationReady) return
         try {
             val lc = map.locationComponent
+            onTrackingDismissed = null   // no callbacks for our own mode switches
+            // our own orientation button replaces MapLibre's compass in Navigate
+            map.uiSettings.isCompassEnabled = !navigating
+            val leavingNav = wasNavigating && !navigating
+            wasNavigating = navigating
             if (follow) {
-                lc.setCameraMode(CameraMode.TRACKING, 750L, null, null, null, null)
-                lc.addOnCameraTrackingChangedListener(object : org.maplibre.android.location.OnCameraTrackingChangedListener {
-                    override fun onCameraTrackingDismissed() { lc.removeOnCameraTrackingChangedListener(this); onDismissed() }
-                    override fun onCameraTrackingChanged(currentMode: Int) {}
-                })
-                if (map.cameraPosition.zoom < 13) map.animateCamera(CameraUpdateFactory.zoomTo(15.0))
-            } else if (lc.cameraMode != CameraMode.NONE) {
-                lc.cameraMode = CameraMode.NONE
+                val (mode, tilt, bearing) = when {
+                    navigating && headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
+                    navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
+                    else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
+                }
+                lc.renderMode = if (navigating) RenderMode.COMPASS else RenderMode.GPS
+                wantedCameraMode = mode
+                val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
+                lc.setCameraMode(mode, 750L, zoom, bearing, tilt, null)
+                val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
+                lc.paddingWhileTracking(doubleArrayOf(0.0, top, 0.0, 0.0), 750L)
+            } else {
+                wantedCameraMode = CameraMode.NONE
+                if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
+                lc.renderMode = if (navigating) RenderMode.COMPASS else RenderMode.GPS
+                if (leavingNav) resetNorth()
             }
-        } catch (_: Exception) { }
+            onTrackingDismissed = onDismissed
+        } catch (e: Exception) {
+            Log.w("OnPath", "camera mode failed: $e")
+        }
+    }
+
+    /** Back in Plan: north up, flat, no tracking padding (editing on a turned map is confusing). */
+    private fun resetNorth() {
+        val cp = map.cameraPosition
+        if (cp.bearing == 0.0 && cp.tilt == 0.0 && (cp.padding?.all { it == 0.0 } != false)) return
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(
+            CameraPosition.Builder(cp).bearing(0.0).tilt(0.0).padding(0.0, 0.0, 0.0, 0.0).build()), 600)
+    }
+
+    /** True while the compass sensor is registered (for tests/diagnostics). */
+    val compassListening: Boolean get() = heading.isListening
+
+    /** Next-turn arrow at [turn], pointing in its outgoing direction; null hides it. */
+    fun setTurnArrow(turn: Turn?) {
+        val src = style.getSourceAs<GeoJsonSource>(SRC_TURN) ?: return
+        if (turn == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
+        src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(turn.point.lon, turn.point.lat)).apply {
+            addNumberProperty("rot", turn.bearingOut)
+        })
+    }
+
+    private fun addTurnLayer() {
+        style.addImage(IMG_TURN, turnArrow())
+        style.addSource(GeoJsonSource(SRC_TURN))
+        style.addLayer(SymbolLayer(LAYER_TURN, SRC_TURN).withProperties(
+            PF.iconImage(IMG_TURN),
+            PF.iconRotate(Expression.get("rot")),
+            PF.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+            PF.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+            PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
+        ))
+    }
+
+    /** Round white badge with a route-blue arrow pointing up (north); rotated by the layer. */
+    private fun turnArrow(): Bitmap {
+        val px = (30 * density).toInt()
+        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+        bmp.density = context.resources.displayMetrics.densityDpi
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val r = px / 2f
+        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)
+        c.drawCircle(r, r, r, p)
+        p.color = android.graphics.Color.WHITE
+        c.drawCircle(r, r, r - 2.5f * density, p)
+        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)
+        val path = android.graphics.Path().apply {
+            val u = px / 30f
+            moveTo(r, 5 * u)               // tip
+            lineTo(r + 9 * u, 15 * u)
+            lineTo(r + 3.5f * u, 15 * u)
+            lineTo(r + 3.5f * u, 24 * u)
+            lineTo(r - 3.5f * u, 24 * u)
+            lineTo(r - 3.5f * u, 15 * u)
+            lineTo(r - 9 * u, 15 * u)
+            close()
+        }
+        c.drawPath(path, p)
+        return bmp
     }
 
     fun setOverlay(activity: Activity, enabled: Boolean) {

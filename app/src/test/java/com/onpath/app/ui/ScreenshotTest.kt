@@ -118,6 +118,16 @@ class ScreenshotTest {
     /** Slider dragged half way (springs back on release) and the off-route chip. */
     @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi.copy(offRouteM = 63), slide = 0.5f) }
 
+    /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
+    @Test fun navigateTurn() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)))
+    }
+
+    /** North-up orientation button ("N" needle) and a slight-left hint close by. */
+    @Test fun navigateNorthUp() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_LEFT, 40.0), headingUp = false))
+    }
+
     /** Free recording (no route), paused from the notification. */
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 

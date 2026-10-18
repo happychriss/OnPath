@@ -41,6 +41,7 @@ class Prefs(context: Context) {
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
+            navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
@@ -51,6 +52,7 @@ class Prefs(context: Context) {
             .putInt("offRouteM", v.offRouteM)
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("mapTheme", v.mapTheme)
+            .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
             .apply()
 
     var planWaypoints: List<GeoPoint>

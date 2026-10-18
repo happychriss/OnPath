@@ -12,6 +12,9 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     /** Map theme key, see map/StyleLoader ("classic", "high-contrast", …). */
     val mapTheme: String = "classic",
+    // --- Navigate orientation (navigation agent) ---
+    /** Navigate: map turns so the walking direction points up (true, default) or stays north-up (false). */
+    val navHeadingUp: Boolean = true,
 ) {
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
