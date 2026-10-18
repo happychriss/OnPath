@@ -2,7 +2,8 @@
 # JVM smoke test of BRouterEngine.kt (real Kotlin code, Android Context/AssetManager stubbed).
 # Usage: run.sh <segmentsDirContaining_E10_N45.rd5> [workDir]
 # Needs a kotlin-compiler-embeddable jar (Gradle's lib dir has one); set GRADLE_LIB if not found.
-# Env: KTTEST=<file.kt> runs another test main (default KtTest.kt; ViaTest.kt = via-point tests);
+# Env: KTTEST=<file.kt> runs another test main (default KtTest.kt; ViaTest.kt = via-point tests;
+#      SnapTest.kt = plan points moved onto the way);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
@@ -27,5 +28,5 @@ if [ -n "${NO_VIA_CORRECTION:-}" ]; then
 fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
-  -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/BRouterWayStats.kt" "$W/BRouterEngine.kt" "$W/$TN.kt"
+  -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" "$W/$TN.kt"
 java -Xmx192m -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

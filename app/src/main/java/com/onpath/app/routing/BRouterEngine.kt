@@ -1,6 +1,7 @@
 package com.onpath.app.routing
 
 import android.content.Context
+import btools.mapaccess.MatchedWaypoint
 import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
 import btools.router.ProfileCache
@@ -109,12 +110,27 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException(describeError(e.message ?: e.toString(), activity, sacLimit, timeoutMs))
         }
 
-        return toResult(track, waypoints, activity)
+        return toResult(track, waypoints, activity, matchedPoints(track, nodes))
+    }
+
+    /**
+     * BRouter's snapped crosspoint per input node (matched by name), or empty when unavailable.
+     * `OsmTrack.matchedWaypoints` is protected, hence reflection; any failure just means "unknown".
+     */
+    private fun matchedPoints(track: OsmTrack, nodes: List<OsmNodeNamed>): List<GeoPoint?> = try {
+        val f = OsmTrack::class.java.getDeclaredField("matchedWaypoints").apply { isAccessible = true }
+        val list = (f.get(track) as? List<*>).orEmpty().filterIsInstance<MatchedWaypoint>()
+        val byName = list.filter { it.crosspoint != null && it.name != null }.associateBy { it.name }
+        nodes.map { n ->
+            byName[n.name]?.crosspoint?.let { c -> GeoPoint(c.ilat / 1_000_000.0 - 90.0, c.ilon / 1_000_000.0 - 180.0) }
+        }
+    } catch (e: Throwable) {
+        emptyList()
     }
 
     // ---- result conversion -------------------------------------------------------------
 
-    private fun toResult(track: OsmTrack, waypoints: List<GeoPoint>, activity: Activity): RouteResult {
+    private fun toResult(track: OsmTrack, waypoints: List<GeoPoint>, activity: Activity, matched: List<GeoPoint?>): RouteResult {
         val els = track.nodes
         if (els.isEmpty()) throw RoutingException("No route found between these points for ${activity.label}.")
         val points = ArrayList<GeoPoint>(els.size)
@@ -177,6 +193,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             durationS = track.getTotalSeconds().toDouble(),
             wayTypes = stats.wayTypes,
             surfaces = stats.surfaces,
+            matched = matched,
         )
     }
 
