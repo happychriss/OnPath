@@ -112,7 +112,7 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     }
 }
 
-/** The items of the ⋮ menu (also rendered on their own by the screenshot tests). */
+/** The items of the ☰ menu (also rendered on their own by the screenshot tests). */
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state

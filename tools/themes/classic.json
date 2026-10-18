@@ -32,8 +32,9 @@
  "park.outline.width.z9": 0.8,
  "park.outline.width.z14": 1.6,
  "hillshade.main.direction": 315,
- "hillshade.main.exaggeration.z5": 0.55,
- "hillshade.main.exaggeration.z10": 0.5,
+ "hillshade.main.exaggeration.z5": 0.8,
+ "hillshade.main.exaggeration.z9": 0.8,
+ "hillshade.main.exaggeration.z11": 0.6,
  "hillshade.main.exaggeration.z13": 0.4,
  "hillshade.main.exaggeration.z15": 0.25,
  "hillshade.main.exaggeration.base": 1,
@@ -41,7 +42,8 @@
  "hillshade.main.highlight": "rgba(255,254,246,0.55)",
  "hillshade.main.accent": "rgba(50,58,84,0.18)",
  "hillshade.fill.direction": 260,
- "hillshade.fill.exaggeration.z10": 0.25,
+ "hillshade.fill.exaggeration.z8": 0.4,
+ "hillshade.fill.exaggeration.z10": 0.35,
  "hillshade.fill.exaggeration.z13": 0.2,
  "hillshade.fill.exaggeration.z15": 0.1,
  "hillshade.fill.exaggeration.base": 1,
@@ -131,6 +133,13 @@
  "route.width.z13": 6,
  "route.width.z15": 12,
  "route.width.z18": 18,
+ "route.band.color": "#c9f29b",
+ "route.major.color": "#e8a5d8",
+ "route.major.dash": [
+  1.2,
+  1.0
+ ],
+ "route.major.label.color": "#a61e4d",
  "track.edge.color": "#8a6a48",
  "track.edge.dash": [
   0.35,
@@ -245,5 +254,6 @@
  "station.label.color": "#1e2a3a",
  "station.label.font": [
   "Noto Sans Medium"
- ]
+ ],
+ "route.major.opacity": 0.85
 }

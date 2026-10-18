@@ -180,7 +180,7 @@ fun ActivityDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = {}, // picking an activity applies it and closes – no extra "Done"
         title = { Text("Activity") },
         text = {
             Column {
@@ -189,7 +189,7 @@ fun ActivityDialog(
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickable { onSelect(a) }.padding(horizontal = 12.dp),
+                            .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -219,18 +219,14 @@ internal object SacScale {
 
 // ------------------------------------------------------------------ manage routes
 
-/** Manage routes (⋮ → Manage routes) or the same list for ⋮ → Load route ([PICK]: tap = load, no other actions). */
-enum class RoutesMode { MANAGE, PICK }
-
 /**
- * One list of planned routes, recorded tours and imported GPX files (newest first): type icon, name, date,
- * distance. MANAGE: Import GPX, per item ⋮ Rename / Export (share) / Delete (asks first), tap = open. PICK: tap = load.
- * While [navigating], items that would replace the plan cannot be opened (Load waits for the end of the tour).
+ * My routes (☰ → My routes): one list of planned routes, recorded tours and imported GPX files (newest first): type
+ * icon, name, date, distance. Import GPX at the top, per item ⋮ Rename / Export GPX / Delete (asks first), tap = open.
+ * While [navigating], items that would replace the plan cannot be opened (they wait for the end of the tour).
  */
 @Composable
 fun RoutesScreen(
     tours: List<Tour>,
-    mode: RoutesMode,
     onBack: () -> Unit,
     onImport: () -> Unit,
     onOpen: (Tour) -> Unit,
@@ -243,18 +239,15 @@ fun RoutesScreen(
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
-    val pick = mode == RoutesMode.PICK
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                Text(if (pick) "Load route" else "My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                if (!pick) TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
                     Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
                 }
             }
-            if (pick) Text("Tap a route to load it.", style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("No routes yet.\nSave a planned route, record a tour or import a GPX file.",
@@ -265,7 +258,7 @@ fun RoutesScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tours, key = { it.id }) { t ->
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
-                        TourCard(t, pick = pick, onOpen = if (openable) ({ onOpen(t) }) else null,
+                        TourCard(t, onOpen = if (openable) ({ onOpen(t) }) else null,
                             onRename = { rename = t }, onExport = { onExport(t) }, onDelete = { confirmDelete = t })
                     }
                 }
@@ -310,7 +303,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 
 @Composable
 private fun TourCard(
-    t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit,
+    t: Tour, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -331,12 +324,12 @@ private fun TourCard(
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
                 if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!pick) TourItemMenu(t, onRename, onExport, onDelete)
+            TourItemMenu(t, onRename, onExport, onDelete)
         }
     }
 }
 
-/** ⋮ per item in Manage routes: Rename, Export GPX, Delete (asks first). */
+/** ⋮ per item in My routes: Rename, Export GPX, Delete (asks first). */
 @Composable
 private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var open by remember { mutableStateOf(false) }
