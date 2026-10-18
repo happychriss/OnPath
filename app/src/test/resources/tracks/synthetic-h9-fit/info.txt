@@ -1,0 +1,4 @@
+activity=HIKE
+pace=NORMAL
+note=Ifinger summit; fit walker x0.8, one short break
+synthetic=true
