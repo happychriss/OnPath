@@ -204,6 +204,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
         }
 
+        // way attributes per point for the time model (nice-to-have: never fail a route because of it)
+        val ways = try {
+            BRouterWayStats.perNode(track.aggregateMessages(),
+                IntArray(els.size) { els[it].getILon() - 180_000_000 }, IntArray(els.size) { els[it].getILat() - 90_000_000 })
+        } catch (e: Exception) { emptyList() }
+        if (ways.size == points.size) for (i in points.indices) points[i] = points[i].copy(way = ways[i])
+
         val distanceM = track.distance.toDouble()
         // breakdown is a nice-to-have: never fail a route because of it
         val stats = try {

@@ -3,6 +3,7 @@ package com.onpath.app.time
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.WayAttrs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -16,6 +17,8 @@ import kotlin.math.roundToInt
  *
  * Along positions are metres from the start of the line as [Geo.cumulative] counts them (same as NavLine).
  * Elevation: the line's own (BRouter DEM) values; missing values are carried over from the neighbours (flat).
+ * Way: each point's [GeoPoint.way] describes the span to the next point; a piece is timed span by span with its own way
+ * (P4: SAC, surface, steps, ...). Points without way = the activity's usual way (the times as before P4).
  */
 class RouteTimes private constructor(
     val activity: Activity,
@@ -29,7 +32,19 @@ class RouteTimes private constructor(
     private val grades: DoubleArray = DoubleArray(seconds.size),
     /** Height change per segment (m). */
     private val dzs: DoubleArray = DoubleArray(seconds.size),
+    /** Seconds per segment from the slope alone (no way attributes) – for the Time details screen. */
+    private val plain: DoubleArray = seconds,
+    /** Way covering most of each segment (null = unknown). */
+    private val ways: Array<WayAttrs?> = arrayOfNulls(seconds.size),
 ) {
+    /** One model segment for [TimeBreakdown]: slope, height change, seconds (Normal pace), seconds from the slope alone. */
+    data class Piece(val grade: Double, val dz: Double, val seconds: Double, val slopeOnlyS: Double, val way: WayAttrs?)
+
+    fun pieces(): List<Piece> = seconds.indices.map { Piece(grades[it], dzs[it], seconds[it], plain[it], ways[it]) }
+
+    /** True when at least one segment had way attributes. */
+    val hasWays: Boolean get() = ways.any { it != null }
+
     /** Per segment: (gradient, height change m, seconds at Normal pace) – for [TimeBreakdown]. */
     fun segments(): List<Triple<Double, Double, Double>> = seconds.indices.map { Triple(grades[it], dzs[it], seconds[it]) }
     val segmentLengthM: Double get() = step
@@ -102,13 +117,35 @@ class RouteTimes private constructor(
             val secs = DoubleArray(n)
             val grades = DoubleArray(n)
             val dzs = DoubleArray(n)
+            val plain = DoubleArray(n)
+            val ways = arrayOfNulls<WayAttrs>(n)
+            val anyWay = points.any { it.way != null }
+            var span = 0 // first line span that may overlap piece i
             for (i in 0 until n) {
                 val dz = sm[i + 1] - sm[i]
-                groups[i] = PaceModel.group(dz / step)
-                secs[i] = PaceModel.seconds(step, dz, activity)
-                grades[i] = dz / step; dzs[i] = dz
+                val g = dz / step
+                groups[i] = PaceModel.group(g)
+                plain[i] = PaceModel.seconds(step, dz, activity)
+                grades[i] = g; dzs[i] = dz
+                if (!anyWay) { secs[i] = plain[i]; continue }
+                // span by span with each span's way, same slope for the whole piece
+                val a = i * step; val b = if (i == n - 1) total else (i + 1) * step
+                while (span < c.size - 2 && c[span + 1] <= a) span++
+                var s = 0.0; var bestLen = -1.0; var best: WayAttrs? = null
+                var k = span
+                while (k < c.size - 1 && c[k] < b) {
+                    val o = min(b, c[k + 1]) - max(a, c[k])
+                    if (o > 0) {
+                        val w = points[k].way
+                        s += PaceModel.seconds(o, g * o, activity, w)
+                        if (o > bestLen) { bestLen = o; best = w }
+                    }
+                    k++
+                }
+                secs[i] = if (bestLen > 0) s else plain[i]
+                ways[i] = best
             }
-            return RouteTimes(activity, total, step, groups, secs, grades, dzs)
+            return RouteTimes(activity, total, step, groups, secs, grades, dzs, plain, ways)
         }
     }
 }

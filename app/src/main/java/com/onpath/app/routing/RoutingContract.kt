@@ -13,7 +13,52 @@ enum class Activity(val label: String) {
     HIKE("Hike"),
 }
 
-data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null)
+/**
+ * A point; [way] (optional) = what the way from this point to the next one is like (routed lines only, see
+ * [WayAttrs]). Equality ignores [way] (two points at the same place are the same point), so lines with and without way
+ * attributes compare as before.
+ */
+data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null) {
+    override fun equals(other: Any?): Boolean =
+        this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
+
+    override fun hashCode(): Int = (lat.hashCode() * 31 + lon.hashCode()) * 31 + (ele?.hashCode() ?: 0)
+}
+
+/**
+ * Way attributes of one span of a routed line (from BRouter's way tags, see BRouterWayStats.attrs). Used by the time
+ * model (time/PaceModel). null on a point = unknown (straight legs, imported tracks, old saved lines) → the activity's
+ * usual way is assumed, i.e. the time is as without attributes.
+ */
+data class WayAttrs(
+    /** Way type key as in [Share] (path, track, steps, ...). */
+    val wayType: String,
+    /** Surface key as in [Share] (asphalt, gravel, natural_trail, alpine, unknown, ...). */
+    val surface: String,
+    /** SAC hiking scale 1..6 (T1..T6), 0 = not tagged. */
+    val sac: Int = 0,
+    /** mtb:scale 0..6 (S0..S6), -1 = not tagged. */
+    val mtb: Int = -1,
+    /** OSM smoothness value (excellent, good, intermediate, bad, very_bad, horrible, ...), null = not tagged. */
+    val smoothness: String? = null,
+    /** OSM trail_visibility (excellent, good, intermediate, bad, horrible, no), null = not tagged. */
+    val visibility: String? = null,
+    /** Raw OSM surface for rough ground (rock, stone, scree), null otherwise. */
+    val rough: String? = null,
+) {
+    /** Compact text form for files ("path|natural_trail|3|-1||bad|"); [parse] reads it back. */
+    fun code(): String = listOf(wayType, surface, sac.toString(), mtb.toString(), smoothness.orEmpty(), visibility.orEmpty(),
+        rough.orEmpty()).joinToString("|")
+
+    companion object {
+        fun parse(code: String?): WayAttrs? = try {
+            val c = code?.split('|')
+            if (c == null || c.size < 4 || c[0].isEmpty()) null
+            else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
+                c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null })
+        } catch (_: Exception) { null }
+    }
+}
 
 data class RouteResult(
     val points: List<GeoPoint>,   // full geometry, with elevation where known
