@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Two modes Plan/Navigate with slide-to-plan + UX cleanup (`docs/ux-two-modes.md`), then release – since 2026-10-18. Laptop: please avoid ui/MapScreen, ui/Panels, ui/PlanPanel, AppViewModel mode logic until done.
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
