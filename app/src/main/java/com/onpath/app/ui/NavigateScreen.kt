@@ -56,7 +56,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.data.FollowProgress
+import com.onpath.app.navigation.NavPrompt
+import com.onpath.app.navigation.NavText
+import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
+import androidx.compose.material.icons.outlined.AltRoute
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.rotate
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
 import com.onpath.app.routing.TurnKind
@@ -70,8 +79,8 @@ data class NavUi(
     val elapsedS: Long = 0,
     val paused: Boolean = false,
     val waitingGps: Boolean = false,
-    /** Distance off the route while the off-route warning is active. */
-    val offRouteM: Int? = null,
+    /** Off route (confirmed): the question, "finding a way back…" or the arrow banner; null = on route. */
+    val offRoute: OffRouteUi? = null,
     /** Next turn on the followed line (≤ 500 m ahead, on route); null = no hint. */
     val turn: TurnHint? = null,
     /** Map orientation: walking direction up (true) or north up (false); drives the orientation button. */
@@ -79,6 +88,12 @@ data class NavUi(
 )
 
 data class TurnHint(val kind: TurnKind, val distanceM: Double)
+
+/**
+ * Off-route state for the screen. [arrowDeg] = direction to the route relative to the screen's "up" (map bearing
+ * already taken off), null without a direction. Nothing here times out: it stays until answered or back on route.
+ */
+data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null)
 
 data class ToGo(val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?)
 
@@ -95,7 +110,8 @@ fun NavigateOverlay(
     onSlideToPlan: () -> Unit,
     onResume: () -> Unit = {},
     slideStartFraction: Float = 0f,
-    onToggleOrientation: () -> Unit = {},
+    onTakeRoute: (Int) -> Unit = {},
+    onKeepRoute: (Int) -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -103,10 +119,16 @@ fun NavigateOverlay(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ui.turn?.let { TurnCard(it) }
+            // status (finding a way back / no way / kept) on top: readable at a glance
+            ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }?.let { OffRouteBanner(it) }
             if (ui.toGo != null || ui.recordedM != null) NavStatusCard(ui, onResume)
-            ui.offRouteM?.let { OffRouteBanner(it) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
+            (ui.offRoute?.prompt as? NavPrompt.Question)?.let { q ->
+                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) },
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
+            }
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 startFraction = slideStartFraction)
@@ -149,20 +171,6 @@ private fun turnIcon(k: TurnKind): ImageVector = when (k) {
     TurnKind.U_TURN_RIGHT -> Icons.Filled.UTurnRight
 }
 
-/**
- * Round map-direction button: navigation arrow = walking direction up, "N" compass needle = north up.
- * A tap switches and re-centres on the position.
- */
-@Composable
-internal fun OrientationButton(headingUp: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val what = if (headingUp) "Map turns with your walking direction. Tap for north up"
-        else "Map is north up. Tap to turn it with your walking direction"
-    MapFab(onClick, modifier.semantics { contentDescription = what }, contentColor = OnPathColors.Route) {
-        if (headingUp) Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(24.dp))
-        else NorthNeedle(Modifier.size(34.dp))
-    }
-}
-
 /** Compass needle: red half pointing north with an "N" above it, grey half south. */
 @Composable
 internal fun NorthNeedle(modifier: Modifier) {
@@ -196,7 +204,7 @@ private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
                             style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     val off = g.offM
-                    if (off != null && off > 150) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
+                    if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }
                 ui.recordedM?.let { d ->
@@ -215,21 +223,67 @@ private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
     }
 }
 
+/** "Off route – finding a way back…" (spinner) / "– no way back found" / "– original route kept" with an arrow to the route. */
 @Composable
-private fun OffRouteBanner(offM: Int) {
+private fun OffRouteBanner(o: OffRouteUi) {
+    val title = NavText.title(o.prompt)
+    val hint = NavText.toRoute(o.toRoute)
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer, shadowElevation = 3.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.WrongLocation, null, modifier = Modifier.size(22.dp))
+        contentColor = MaterialTheme.colorScheme.onErrorContainer, shadowElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = listOfNotNull(title, hint).joinToString(". ") }) {
+        Row(Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                when {
+                    o.prompt == NavPrompt.Searching -> CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp,
+                        color = MaterialTheme.colorScheme.onErrorContainer)
+                    o.arrowDeg != null -> Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(36.dp).rotate(o.arrowDeg))
+                    else -> Icon(Icons.Outlined.WrongLocation, null, modifier = Modifier.size(28.dp))
+                }
+            }
             Spacer(Modifier.width(12.dp))
-            Text("Off route · $offM m away", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Column {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                hint?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
+    }
+}
+
+/**
+ * The off-route question (owner: ask every time, never re-route silently): stays until one of the two big buttons is
+ * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves.
+ */
+@Composable
+internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp,
+        border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.AltRoute, null, tint = OnPathColors.Route, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(NavText.question(q), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.size(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onKeep, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+                    Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                }
+                Button(onClick = onTake, modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
+                    Text(NavText.TAKE, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                }
+            }
         }
     }
 }
 
 /** Stateful wrapper: remaining distance along the followed line and the arrival check. */
 @Composable
-internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, footer: @Composable () -> Unit) {
+internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float, footer: @Composable () -> Unit) {
     val line = vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
     // turns on the followed line, computed once per line (pure, TurnDetector)
@@ -250,12 +304,14 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         toGo = remaining?.let { ToGo(it.distanceM, it.ascentM, FollowProgress.timeS(it, vm.activity), it.offM) },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true,
-        offRouteM = rec?.offRouteM?.takeIf { rec.offRouteAlert }?.toInt(),
+        offRoute = rec?.nav?.let { n ->
+            n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
+        },
         turn = next?.let { (t, d) -> TurnHint(t.kind, d) },
         headingUp = vm.navHeadingUp,
     )
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
-        onToggleOrientation = vm::toggleNavOrientation)
+        onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute)
 }
 
 /** Off the line by more than this: no turn hint (the off-route chip / warning takes over). */
