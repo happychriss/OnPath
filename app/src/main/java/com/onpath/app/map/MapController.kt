@@ -478,16 +478,19 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun dpToPx(dp: Float) = dp * density
 
-    /** Search result pin (red, with its name); null removes it. Never throws. */
+    /** Search result mark (orange ring around the place, with its name); null removes it. Never throws. */
     fun setSearchMark(p: GeoPoint?, name: String?) = runCatching {
         if (style.getSource(SRC_MARK) == null) {
             style.addSource(GeoJsonSource(SRC_MARK))
+            // Orange ring around the place's icon (owner: not a red dot covering it); white halo for contrast.
+            style.addLayer(CircleLayer("search-mark-halo", SRC_MARK).withProperties(
+                PF.circleRadius(18f), PF.circleColor("#00000000"), PF.circleStrokeColor("#FFFFFF"), PF.circleStrokeWidth(6f)))
             style.addLayer(CircleLayer("search-mark", SRC_MARK).withProperties(
-                PF.circleRadius(10f), PF.circleColor("#D93025"), PF.circleStrokeColor("#FFFFFF"), PF.circleStrokeWidth(3f)))
+                PF.circleRadius(18f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F28C00"), PF.circleStrokeWidth(3.5f)))
             style.addLayer(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
                 PF.textField(Expression.get("name")), PF.textFont(arrayOf("Noto Sans Medium")), PF.textSize(13f),
-                PF.textOffset(arrayOf(0f, 1.4f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
-                PF.textColor("#B3261E"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
+                PF.textOffset(arrayOf(0f, 1.9f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PF.textColor("#B35C00"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
                 PF.textAllowOverlap(true), PF.textIgnorePlacement(true)))
         }
         val src = style.getSourceAs<GeoJsonSource>(SRC_MARK) ?: return@runCatching
