@@ -10,6 +10,8 @@ data class AppSettings(
     val offRouteWarning: Boolean = true,
     val offRouteM: Int = 40,
     val keepScreenOn: Boolean = true,
+    /** Map theme key, see map/StyleLoader ("classic", "high-contrast", …). */
+    val mapTheme: String = "classic",
 ) {
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
