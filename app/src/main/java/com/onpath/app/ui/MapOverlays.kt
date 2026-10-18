@@ -88,7 +88,7 @@ fun MapOverlayHost(
                 onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
                 onGoogle = {
-                    vm.poiMenu = null
+                    vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
                 })
         }
