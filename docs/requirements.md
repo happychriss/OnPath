@@ -69,7 +69,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-PLAN-03 | Set end point the same way; option "round trip back to start". | Must |
 | F-PLAN-04 | Add, move (drag), reorder and delete via points; insert a via point by dragging the route line. | Must |
 | F-PLAN-05 | Route is calculated on the phone, offline, in under 2 seconds for 50 km and under 10 seconds for 300 km on a mid-range phone. | Must |
-| F-PLAN-06 | Show summary: distance, ascent, descent, estimated time, highest point, surface mix (paved / unpaved / trail), difficulty. | Must |
+| F-PLAN-06 | Show summary: distance, ascent, descent, estimated time (moving time without breaks, same model as Navigate), highest point, surface mix (paved / unpaved / trail), difficulty. | Must |
 | F-PLAN-07 | Interactive elevation profile; touching the profile moves a marker on the map and vice versa. | Must |
 | F-PLAN-08 | Undo / redo for every planning step. | Must |
 | F-PLAN-09 | Per segment option "straight line" for off-trail sections (e.g. across a meadow). | Should |
@@ -94,19 +94,21 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 
 - F-ROUTE-01 (Must): routing respects legal access (bicycle=no, foot=no, private, closed).
 - F-ROUTE-02 (Must): routing uses elevation; steep climbs cost time and effort, not only distance.
-- F-ROUTE-03 (Should): one slider "fitness" (easy / normal / fit) adjusts time estimates; no other tuning in v1.
+- F-ROUTE-03 (Should): one pace choice per hiking and cycling (Relaxed / Normal / Fit, ×1.25 / ×1 / ×0.8) adjusts time
+  estimates only, never the route; OnPath also learns the pace on the trip and across tours (Reset in Settings); no other
+  tuning in v1. Model and learning: docs/plan-time-estimate.md.
 - F-ROUTE-04 (Could): advanced users can load their own profile file.
 
 ### 3.5 Navigation and recording
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| F-NAV-01 | "Start" on a route: map follows position, route shown, remaining distance, ascent and time shown. | Must |
+| F-NAV-01 | "Start" on a route: map follows position, route shown, remaining distance, ascent and time shown (moving time, learned on the trip, calm) plus an arrival clock that adds a break allowance. | Must |
 | F-NAV-02 | Off-route detection (more than 40 m for 15 s while moving, configurable): vibration and sound, then – offline – a way back onto the route ahead is computed and offered as a question that stays until answered: "Take new route" / "Keep original" (also in the notification). Never re-routes silently; passed stops are skipped; the original stays visible as a grey line. No way found: arrow and distance to the route. | Must |
 | F-NAV-03 | Record track at the same time as navigating; also record without a route ("free tour"). | Must |
 | F-NAV-04 | Works with screen off and app in background; persistent notification shows distance and status; pause / resume / stop. | Must |
 | F-NAV-05 | Voice hints at junctions with offline text-to-speech. | Could (off-route warning is enough for v1) |
-| F-NAV-06 | After the tour: summary (distance, time moving, ascent), save, export GPX, delete. | Must |
+| F-NAV-06 | After the tour: summary (distance, time, moving time and breaks, planned vs. needed on the route, ascent), save, export GPX, delete. | Must |
 
 ### 3.6 GPX
 

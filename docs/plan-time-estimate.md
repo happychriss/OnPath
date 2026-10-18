@@ -5,7 +5,8 @@
 moving time + arrival clock with 10 % break allowance (Q2), three pace chips Relaxed/Normal/Fit (Q3), learning across
 tours automatic with Reset (Q4), no range for now (Q5), owner's GPX tours as trimmed test files in the repo (Q6).
 
-Status: **proposal, nothing implemented** (2026-10-18). Owner request: "Estimation of remaining walking/hiking time –
+Status: **P0–P3 implemented** on branch `feat/time-estimate` (2026-10-18, see "Implementation status" below); P4
+(terrain / surface factors, tuning with the owner's tours) open. Original proposal text follows unchanged. Owner request: "Estimation of remaining walking/hiking time –
 how to do it smart? Settings, learn from the current trip (consider up and down) – be cool and make sure we're not too
 far off." Experiment: `tools/routing/jvm-test/TimeTest.kt` (real BRouter routes from the Bozen / Meran data +
 synthetic replays), run with
@@ -35,6 +36,50 @@ synthetic replays), run with
   with the calm display.
 - **Across tours (optional):** after each tour your factors are stored per activity, so the next plan already says
   "your" time. Shown in Settings ("Your pace: 12 % faster than standard, from 4 tours", Reset).
+
+## Implementation status (2026-10-18, branch `feat/time-estimate`)
+
+| Phase | What is in the code | Where |
+| --- | --- | --- |
+| P0 | One model: table B (hiking), power model (bikes: rider power, e-assist to 25 km/h, rolling resistance and speed cap by surface, pushing = walking × 0.85 as the floor), per ~50 m DEM segment, cumulative per down/flat/up. Plan sheet, route list (planned routes re-timed on load), Navigate "to go", re-route scoring and the activity-check sheet all use it. BRouter's `durationS` stays in `RouteResult` but is not shown. | `time/PaceModel`, `time/RouteTimes`, `time/TimeEstimate`; `AppViewModel.withModelTime`, `Rerouter`, `ActivityCheck.timeS` |
+| P1 | Settings → "Your pace" (Relaxed / Normal / Fit for hiking and cycling). Navigate card: "2 h 50 min · 7.4 km", "arrive ≈ 16:40" (10 % break allowance) on the right, recording line "moving 1:12 · breaks 0:11". "Tour saved" shows moving time, breaks and "On the route: planned 3:10 – you needed 2:52". | `ui/PaceSettings.kt`, `NavigateScreen` (`recordingLine`, arrival column), `FinishedDialog(times)`, `time/TourTimesStore` (`tour-times.json`) |
+| P2 | `TripPace` in the recording service (persisted in `trip-pace.json`): learning per group with τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2; pieces off route / jumps > 400 m / ratio outside 0.33…3 are not learned. Calm display. The opened Navigate card shows "Your pace on this trip: up 0.9× · down 1.1×" after 20 min of comparison. Replay harness for GPX pairs. | `time/TripPace`, `time/BreakDetector`, `RecordingService` (`timeLine`, `tripTime`), tests `TripReplay` / `TrackReplayTest` |
+| P3 | `PaceStore` per activity (6 activities, not 3 groups): after a tour with ≥ 30 min moving time on a followed route, weighted by compared time per group, half-life 5 tours; break ratio stored (not yet used). Settings lists it with Reset (asks first). Plan = model × pace × stored factors. | `time/PaceStore`, `Prefs.paceStore`, `RecordingService.learnAcrossTours`, `AppViewModel.resetLearnedPace` |
+
+**Decisions taken while building** (open for the owner):
+- *Breaks:* "within 25 m for 2 min" alone flagged slow steep walking as breaks (replay: 2:28 h of "breaks" instead of
+  55 min). A stop now starts only when every fix of the last 2 min lies within **15 m** of the current one and, on a
+  followed line, progress in those 2 min was < 10 m; it ends > 25 m away. A GPS gap ≥ 2 min with < 0.15 m/s average
+  (hut, indoors) is a break too. Pauses are never breaks.
+- *Calm display:* a new estimate is shown every **100 m** of progress (not more often than every 10 s); standing
+  still, "to go" stays and the arrival clock only moves later as the time passes (checked every 30 s). Arrival
+  rounded to 5 min, "to go" to 1 min under 20 min, else 5 min (the plan sheet shows the same rounded value).
+- *Stored factors* are relative to the pace setting at the time; changing the chip later applies on top.
+- *No "Learn from my tours" switch* (owner Q4: automatic + Reset); *no break-allowance setting* (fixed 10 %, Q2).
+- *Bikes:* surfaces per segment are supported by `PaceModel.seconds(…, surface)` but lines carry no per-point surface
+  yet, so each activity uses its usual surface (touring asphalt, trekking / e-bike paved, MTB / e-MTB unpaved). P4.
+
+**Old vs. new times on the reference routes** (`ReferenceRoutesTest`, h:mm, Normal pace; new = plan sheet = Navigate at
+the start, shown rounded to 5 min):
+
+| Route | Plan sheet before (BRouter) | Navigate start before (DIN) | **New (both)** |
+| --- | --- | --- | --- |
+| H1 Meran → Lana | 1:36 | 2:03 | 2:02 |
+| H3 Algund → Leiteralm (up) | 1:55 | 3:28 | 2:50 |
+| H5 Leiteralm round trip | 3:24 | 6:04 | 4:47 |
+| H8 Saltaus → Hirzer hut (up) | 1:30 | 2:55 | 2:20 |
+| H8r Hirzer hut → Saltaus (down) | 1:04 | 1:55 | 1:24 |
+| H9 Meran 2000 → Ifinger (T4) | 2:05 | 3:36 | 2:57 |
+| B1 Bozen → Meran, trekking | 1:38 | 2:12 | 1:41 |
+| B3 Lana → Vigiljoch, MTB | 1:16 | 1:32 | 1:19 |
+
+**Replay (synthetic walkers on H5 / H7 / H9, `TrackReplayTest`):** |error| of "to go" at 25 / 50 / 75 %: strong climber
+with bad knees 24 / 24 / 0 %, relaxed ×1.3 11 / 11 / 10 %, fit ×0.8 11 / 13 / 5 % (plain model 15–31 %); mean 12 % vs.
+25 % without learning; breaks found within ±1 min; arrival jump per 100 m p90 2.4–3.9 min, max 3.3–12.3 min (the
+1 min + 2 % rule allows ~8 min per update on a 6 h day). Real tracks: add folders to `app/src/test/resources/tracks/`
+(plan.gpx + track.gpx + info.txt, see `TripReplay`).
+
+**Field test (owner):** see the checklist in `docs/project-status.md` (Last session).
 
 ---
 
