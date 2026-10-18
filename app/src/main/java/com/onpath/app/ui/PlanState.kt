@@ -20,9 +20,6 @@ class PlanHistory(private val limit: Int = 100) {
         redo.clear()
     }
 
-    /** A change that amends the last step (no new undo entry) still invalidates redo. */
-    fun dropRedo() = redo.clear()
-
     /** The list to show after undo, or null when there is nothing to undo. */
     fun undo(current: List<GeoPoint>): List<GeoPoint>? = step(undo, redo, current)
     fun redo(current: List<GeoPoint>): List<GeoPoint>? = step(redo, undo, current)
@@ -64,19 +61,4 @@ class RouteRequests {
 object PlanClear {
     /** Ask "Clear this route?" only when there is a route worth keeping (two or more points). */
     fun needsConfirm(pointCount: Int): Boolean = pointCount >= 2
-}
-
-/** What to say after a point was added (owner: only speak up when the app had to guess, never "stop 2 of 4"). */
-object PlanNotices {
-    const val END_HERE = "End here instead"
-
-    /**
-     * Text for a point now at [index] of [count]; null = say nothing (first / second point, or added at the end:
-     * the vibration and the new line are confirmation enough). Named neighbours make it concrete.
-     */
-    fun added(index: Int, count: Int, prevName: String?, nextName: String?): String? = when {
-        count <= 2 || index <= 0 || index >= count - 1 -> null
-        !prevName.isNullOrBlank() && !nextName.isNullOrBlank() -> "Added between $prevName and $nextName"
-        else -> "Added as a stop on the way"
-    }
 }

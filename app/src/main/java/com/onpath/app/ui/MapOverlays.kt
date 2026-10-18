@@ -2,7 +2,7 @@ package com.onpath.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -16,16 +16,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.TripOrigin
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -33,9 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,10 +51,7 @@ import com.onpath.app.poi.PoiLinks
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
-import kotlinx.coroutines.delay
-
-/** How long the Google bubble stays when nothing is tapped. */
-const val POI_BUBBLE_MS = 8000L
+import com.onpath.app.ui.MapGestures.PointAction
 
 /** "Meraner Hütte", else "Start" / "Stop 2" / "Destination". */
 fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isNotBlank() } ?: when {
@@ -59,30 +61,51 @@ fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isN
 }
 
 /**
- * The small map overlays of Plan mode (MapGestures): the Google bubble of a tapped POI and the delete overlay of
- * a tapped marker. They follow the map while it pans / zooms ([cameraTick] changes on every camera move) and close
- * when their anchor leaves the map. Nothing is drawn while the map isn't ready or in Navigate.
+ * The hold menus of Plan mode (MapGestures): the POI menu of a held POI and the point menu of a held route point.
+ * They follow the map while it pans / zooms ([cameraTick] changes on every camera move) and close when their anchor
+ * leaves the map, on a tap anywhere else or on Back – never by a timer. Nothing is drawn while the map isn't ready
+ * or in Navigate.
  */
 @Composable
-fun MapOverlayHost(vm: AppViewModel, controller: MapController?, cameraTick: Int, topPx: Int, bottomPx: Int) {
+fun MapOverlayHost(
+    vm: AppViewModel, controller: MapController?, cameraTick: Int, topPx: Int, bottomPx: Int,
+    gps: com.onpath.app.recording.GpsStatus,
+) {
     val c = controller ?: return
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
-    vm.poiBubble?.let { poi ->
-        LaunchedEffect(poi.id) { delay(POI_BUBBLE_MS); if (vm.poiBubble?.id == poi.id) vm.poiBubble = null }
-        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { vm.poiBubble = null }) {
-            PoiGoogleBubble(poi, onGoogle = {
-                vm.poiBubble = null
-                com.onpath.app.ui.search.openGoogle(ctx, PoiLinks.googleMapsUrl(poi.name, poi.lat, poi.lon))
-            })
+    vm.firstPointMenu?.let { p ->
+        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.firstPointMenu = null }) {
+            FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
+                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
+        }
+    }
+    vm.poiMenu?.let { poi ->
+        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { vm.poiMenu = null }) {
+            PoiMenu(poi,
+                onAdd = { vm.addPoiPoint(poi) },
+                onGoogle = {
+                    vm.poiMenu = null
+                    com.onpath.app.ui.search.openGoogle(ctx, PoiLinks.googleMapsUrl(poi.name, poi.lat, poi.lon))
+                })
         }
     }
     vm.pointMenu?.let { i ->
         val p = vm.waypoints.getOrNull(i)
         if (p == null) { LaunchedEffect(i) { vm.pointMenu = null }; return@let }
+        val name = vm.stopName(p)
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.pointMenu = null }) {
-            PointDeleteOverlay(i, vm.waypoints.size, vm.stopName(p),
-                onDelete = { vm.deletePointFromOverlay(i) }, onCancel = { vm.pointMenu = null }, onEndHere = { vm.endRouteAt(i) })
+            PointMenu(i, vm.waypoints.size, name) { a ->
+                when (a) {
+                    PointAction.MAKE_START -> vm.makeStartFromMenu(i)
+                    PointAction.END_HERE -> vm.endRouteAt(i)
+                    PointAction.GOOGLE -> {
+                        vm.pointMenu = null
+                        com.onpath.app.ui.search.openGoogle(ctx, PoiLinks.googleMapsUrl(name, p.lat, p.lon))
+                    }
+                    PointAction.DELETE -> vm.deletePointFromMenu(i)
+                }
+            }
         }
     }
 }
@@ -121,73 +144,97 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
     }
 }
 
-/** Light bubble for a POI tapped on the map: its name + one action, "Open in Google Maps". */
+/**
+ * First hold on an empty plan: "Start here" or "Go here from my location" (this spot = destination). The second
+ * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
+ */
 @Composable
-fun PoiGoogleBubble(poi: Poi, onGoogle: () -> Unit, modifier: Modifier = Modifier) {
+fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier) {
+    MenuSurface(modifier) {
+        Text("New route", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onStartHere)
+        HoldMenuItem(Icons.Outlined.MyLocation, "Go here from my location", enabled = fromMeBlocked == null,
+            supporting = fromMeBlocked, onClick = onFromMe)
+    }
+}
+
+/** Menu of a held POI that is not a route point: its name + "Add to route" · "Open in Google Maps". */
+@Composable
+fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier) {
     val place = Place.fromPoi(poi)
     val de = Poi.isGerman()
-    OverlaySurface(modifier) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 4.dp)) {
+    MenuSurface(modifier) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
             Text(place.title(de), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(end = 8.dp))
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(place.kindInfo.label(de) + (place.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodySmall,
                 color = Color(SearchKinds.argb(place.kind)), maxLines = 1)
-            TextButton(onClick = onGoogle, modifier = Modifier.heightIn(min = 48.dp)) {
-                Icon(Icons.Outlined.Map, null, Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(if (de) "In Google Maps öffnen" else "Open in Google Maps", fontSize = 16.sp)
-            }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HoldMenuItem(Icons.Outlined.AddLocationAlt, if (de) "Zur Route hinzufügen" else "Add to route", onClick = onAdd)
+        HoldMenuItem(Icons.Outlined.Map, if (de) "In Google Maps öffnen" else "Open in Google Maps", onClick = onGoogle)
     }
 }
 
 /**
- * Small overlay next to a tapped marker: its number + name, "Delete point" and "Cancel"; for a stop in the middle
- * also "End route here" (fixes a wrong guess of the smart insertion later).
+ * Menu of a held route point: its number + name as a small title, then only the options that make sense
+ * there ([MapGestures.pointMenu]): Make starting point · End route here · Open in Google Maps · Delete.
  */
 @Composable
-fun PointDeleteOverlay(index: Int, count: Int, name: String?, onDelete: () -> Unit, onCancel: () -> Unit,
-                       onEndHere: () -> Unit = {}, modifier: Modifier = Modifier) {
-    OverlaySurface(modifier) {
-        Column(Modifier.padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
-                Box(Modifier.size(26.dp).clip(CircleShape).background(stopColor(index, count)), contentAlignment = Alignment.Center) {
-                    Text("${index + 1}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(stopLabel(index, count, name), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, onAction: (PointAction) -> Unit) {
+    MenuSurface(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
+            Box(Modifier.size(24.dp).clip(CircleShape).background(stopColor(index, count)), contentAlignment = Alignment.Center) {
+                Text("${index + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 6.dp)) {
-                TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel", fontSize = 16.sp) }
-                FilledTonalButton(
-                    onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
-                ) {
-                    Icon(Icons.Outlined.Delete, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Delete point", fontSize = 16.sp)
-                }
-            }
-            if (index in 1 until count - 1) {
-                TextButton(onClick = onEndHere, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Icon(Icons.Outlined.Flag, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("End route here", fontSize = 16.sp)
-                }
+            Spacer(Modifier.width(10.dp))
+            Text(stopLabel(index, count, name), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank())) when (a) {
+            PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Make starting point") { onAction(a) }
+            PointAction.END_HERE -> HoldMenuItem(Icons.Outlined.Flag, "End route here") { onAction(a) }
+            PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
+            PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
+        }
+    }
+}
+
+/** One menu row: icon + label, ≥ 48 dp high, the whole row is the touch target. */
+@Composable
+private fun HoldMenuItem(
+    icon: ImageVector, label: String, danger: Boolean = false, enabled: Boolean = true, supporting: String? = null,
+    onClick: () -> Unit,
+) {
+    val base = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val color = if (enabled) base else base.copy(alpha = 0.38f)
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(label, color = color, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+            supporting?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
     }
 }
 
 @Composable
-private fun OverlaySurface(modifier: Modifier, content: @Composable () -> Unit) {
+private fun MenuSurface(modifier: Modifier, content: @Composable () -> Unit) {
     Surface(
-        modifier.widthIn(min = 180.dp),
+        modifier.widthIn(min = 220.dp),
         shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 8.dp,
-        content = content,
-    )
+    ) {
+        Column(Modifier.width(IntrinsicSize.Max).padding(bottom = 4.dp)) { content() }
+    }
 }

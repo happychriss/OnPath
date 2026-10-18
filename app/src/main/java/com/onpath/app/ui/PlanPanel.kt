@@ -120,7 +120,7 @@ data class PlanUi(
 /**
  * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
  * text and a badge) with undo/redo, the profile behind "Elevation & surfaces", and ONE
- * filled primary button. Points are managed on the map only (tap a marker → "Delete point"). Rare route actions (reverse, round trip, from my location, save, GPX, clear) are in ⋯.
+ * filled primary button. Points are managed on the map only (hold a marker → point menu). Rare route actions (reverse, round trip, from my location, save, GPX, clear) are in ⋯.
  */
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false) {
@@ -186,8 +186,8 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     if (route == null) {
         Text(
             when (ui.pointCount) {
-                0 -> "Hold the map to set a start, or search a place. Without a route you can just record."
-                1 -> "Hold the map to set the destination."
+                0 -> "Hold the map to add a point. Hold a point or place for options. Without a route you can just record."
+                1 -> "Hold the map to add the destination. Hold a point or place for options."
                 else -> "Calculating the route…"
             },
             style = MaterialTheme.typography.bodyMedium, color = variant,
@@ -208,7 +208,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     }
 }
 
-/** Without points: "Start from my location". Points are managed on the map (tap a marker → delete overlay). */
+/** Without points: "Start from my location". Points are managed on the map (hold a marker → point menu). */
 @Composable
 private fun FromMeRow(cb: PlanCallbacks) {
     FilledTonalButton(onClick = cb.onFromMe, modifier = Modifier.heightIn(min = 48.dp)) {

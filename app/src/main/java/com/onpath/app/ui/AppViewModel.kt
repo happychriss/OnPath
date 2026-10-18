@@ -63,11 +63,6 @@ data class ShownTrack(
     val points: List<GeoPoint> get() = segments.flatten()
 }
 
-/** Short message after adding a point, with one alternative ("Make it the destination"). */
-data class PlanNotice(val text: String, val actionLabel: String?, val action: NoticeAction?, val id: Long = System.nanoTime())
-
-enum class NoticeAction { MAKE_DESTINATION }
-
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
@@ -137,10 +132,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** Plan panel size (full / compact / mini), kept while the app runs. */
     var planSize by mutableStateOf(PlanSize.COMPACT)
-    var notice by mutableStateOf<PlanNotice?>(null)
-    /** Waypoint whose small "Delete point / Cancel" overlay is open (tap on its marker). */
+    /** Waypoint whose point menu is open (hold on its marker, MapGestures). */
     var pointMenu by mutableStateOf<Int?>(null)
-    private var lastAdded: Int = -1
     var route by mutableStateOf<PlannedRoute?>(null)
         private set
     var routing by mutableStateOf(false)
@@ -364,9 +357,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
-    /** @param record false = amend the last step (notice actions), so one undo reverts both. */
-    private fun change(record: Boolean = true, block: MutableList<GeoPoint>.() -> Unit) {
-        if (record) { history.record(waypoints); notice = null } else history.dropRedo()
+    /** One undoable change of the planned points. */
+    private fun change(block: MutableList<GeoPoint>.() -> Unit) {
+        history.record(waypoints)
         waypoints.block()
         canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
@@ -381,11 +374,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pinned.retainAll(alive)) prefs.planPinned = pinned
     }
 
-    private fun set(list: List<GeoPoint>, record: Boolean = true) = change(record) { clear(); addAll(list) }
+    private fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
 
     /**
-     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13). Only a stop in the middle
-     * (the app guessed) gets a notice, with "End here instead"; start / end are silent (PlanNotices).
+     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the vibration and
+     * the new line confirm it; a wrong guess is fixed in the point menu ("End route here") or with Undo.
      * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
      */
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
@@ -394,61 +387,56 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
         change { add(d.index.coerceIn(0, size), p) }
-        lastAdded = d.index
-        // Only speak up when the app had to guess (a stop in the middle); the end needs no words.
-        notice = PlanNotices.added(d.index, waypoints.size,
-            waypoints.getOrNull(d.index - 1)?.let { stopName(it) }, waypoints.getOrNull(d.index + 1)?.let { stopName(it) })
-            ?.let { PlanNotice(it, PlanNotices.END_HERE, NoticeAction.MAKE_DESTINATION) }
-    }
-
-    fun onNoticeAction(a: NoticeAction) {
-        val i = lastAdded
-        val w = waypoints.toList()
-        if (i !in w.indices) { notice = null; return }
-        when (a) {
-            NoticeAction.MAKE_DESTINATION -> {
-                set(PlanEdits.move(w, i, w.size - 1), record = false); lastAdded = w.size - 1
-                notice = null
-            }
-        }
     }
 
     fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
 
-    /** Search result shown in the place card (search, ui/search); map-tapped POIs use [poiBubble]. */
+    /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
-    // ---------------- map gesture overlays (MapGestures, ui/MapOverlays) ----------------
-    /** POI tapped on the map in Plan: the small "Open in Google Maps" bubble next to it. */
-    var poiBubble by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+    // ---------------- map hold menus (MapGestures, ui/MapOverlays) ----------------
+    /** POI held on the map in Plan: its menu "Add to route · Open in Google Maps". */
+    var poiMenu by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
-    val mapOverlayOpen: Boolean get() = poiBubble != null || pointMenu != null || planPoi != null
+    /** First hold on an empty plan: the held spot, its menu "Start here · Go here from my location" is open. */
+    var firstPointMenu by mutableStateOf<GeoPoint?>(null)
 
-    fun closeMapOverlays() { poiBubble = null; pointMenu = null; if (planPoi != null) closePlaceCard() }
-    fun openPoiBubble(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiBubble = poi }
-    fun openPointOverlay(index: Int) { closeMapOverlays(); if (index in waypoints.indices) pointMenu = index }
+    val mapOverlayOpen: Boolean get() = poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null
 
-    /** Hold on a POI: added as a pinned, named route point; when it already is a stop, its delete overlay opens. */
+    fun closeMapOverlays() { poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard() }
+    fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays(); if (waypoints.isEmpty()) firstPointMenu = p }
+
+    /** First-point menu → "Start here": the held spot is the start; later holds add points as usual. */
+    fun startHere(p: GeoPoint) { firstPointMenu = null; addPoint(p) }
+
+    /** First-point menu → "Go here from my location": start = current position, the held spot = destination. */
+    fun routeFromMyLocation(p: GeoPoint) {
+        firstPointMenu = null
+        val loc = tracker.location.value ?: return // the menu only offers this with a position
+        if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
+    }
+    fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiMenu = poi }
+    fun openPointMenu(index: Int) { closeMapOverlays(); if (index in waypoints.indices) pointMenu = index }
+
+    /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
         closeMapOverlays()
         val idx = waypoints.indexOfFirst { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
         if (idx >= 0) { pointMenu = idx; return }
         val p = GeoPoint(poi.lat, poi.lon)
-        val name = com.onpath.app.search.Place.fromPoi(poi).title()
-        rememberPlaceName(p, name)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         addPoint(p, lineSnapM, onPoi = true)
-        notice = notice?.let { it.copy(text = it.text.replaceFirst("Added", "$name added")) }
     }
 
-    /** Delete overlay → "End route here" (via points only): that point becomes the destination. */
+    /** Point menu → "Make starting point" (not on the start). */
+    fun makeStartFromMenu(index: Int) { pointMenu = null; makeStart(index) }
+
+    /** Point menu → "End route here" (middle points only): that point becomes the destination. */
     fun endRouteAt(index: Int) { pointMenu = null; makeDestination(index) }
 
-    /** Delete overlay → "Delete point". */
-    fun deletePointFromOverlay(index: Int) { pointMenu = null; removePoint(index) }
-    // ---------------- end map gesture overlays ----------------
-
-    /** "Hold briefly to add a point" was shown once (after a too-short tap). */
-    var holdHintShown = false
+    /** Point menu → "Delete" (Undo brings it back). */
+    fun deletePointFromMenu(index: Int) { pointMenu = null; removePoint(index) }
+    // ---------------- end map hold menus ----------------
 
     fun isStop(poi: com.onpath.app.poi.Poi): Boolean =
         waypoints.any { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
@@ -524,24 +512,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         pinned += p; prefs.planPinned = pinned
         when (role) {
-            PlaceRole.SMART -> {
-                addPoint(p, onPoi = true)
-                notice = notice?.let { it.copy(text = it.text.replaceFirst("Added", "$name added")) }
-                    ?: PlanNotice(if (waypoints.size == 1) "$name is the start" else "$name is the destination", null, null)
-            }
-            PlaceRole.START -> {
-                change { add(0, p) }
-                notice = PlanNotice("$name is the start", null, null)
-            }
+            // No timed notices (owner rule): the named marker and the new line show what happened.
+            PlaceRole.SMART -> addPoint(p, onPoi = true)
+            PlaceRole.START -> change { add(0, p) }
             PlaceRole.DESTINATION -> {
                 val loc = tracker.location.value
-                if (waypoints.isEmpty() && loc != null) {
-                    change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
-                    notice = PlanNotice("Route from your position to $name", null, null)
-                } else {
-                    change { add(p) }
-                    notice = PlanNotice(if (waypoints.size == 1) "$name added – now add a start" else "$name is the destination", null, null)
-                }
+                if (waypoints.isEmpty() && loc != null) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+                else change { add(p) }
             }
         }
     }
@@ -560,14 +537,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchStore.saveNames(placeNames)
     }
     // ---------------- end search ----------------
-
-    /** Drag-to-move: the point keeps its position in the order. */
-    fun movePoint(index: Int, p: GeoPoint) { if (index in waypoints.indices) set(PlanEdits.replace(waypoints, index, p)) }
-
-    /** Dragging the route line: a new stop inserted at [index] (the leg it was dragged from). */
-    fun insertPoint(index: Int, p: GeoPoint) {
-        change { add(index.coerceIn(1, size), p) } // dragged out of the line: the user chose the place, no notice
-    }
 
     fun makeStart(index: Int) { if (index > 0 && index in waypoints.indices) set(PlanEdits.move(waypoints, index, 0)) }
     fun makeDestination(index: Int) {
@@ -593,7 +562,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prev ?: return
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
-        notice = null; pointMenu = null
+        pointMenu = null; firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         recalc()
     }
@@ -615,7 +584,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         confirmClear = false
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
-        notice = null; pointMenu = null; highlight = null; lastAdded = -1
+        pointMenu = null; firstPointMenu = null; highlight = null
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
@@ -685,7 +654,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
     private fun enter(m: AppMode) {
         mode = m
-        if (m == AppMode.NAVIGATE) { planPoi = null; poiBubble = null; notice = null; pointMenu = null; highlight = null; followMe = true }
+        if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; pointMenu = null; firstPointMenu = null; highlight = null; followMe = true }
         else followMe = false
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)

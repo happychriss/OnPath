@@ -71,15 +71,3 @@ class PlanStateTest {
         assertTrue(PlanClear.needsConfirm(5))
     }
 }
-
-class PlanNoticesTest {
-    @Test fun silentForFirstSecondAndEnd() {
-        org.junit.Assert.assertNull(PlanNotices.added(0, 1, null, null))
-        org.junit.Assert.assertNull(PlanNotices.added(1, 2, "A", null))
-        org.junit.Assert.assertNull(PlanNotices.added(3, 4, "A", null))
-    }
-    @Test fun viaIsAnnouncedWithoutNumbers() =
-        org.junit.Assert.assertEquals("Added as a stop on the way", PlanNotices.added(1, 4, "Seilbahn", null))
-    @Test fun viaBetweenNamedStops() =
-        org.junit.Assert.assertEquals("Added between Seilbahn and Sessellift Vellau", PlanNotices.added(2, 4, "Seilbahn", "Sessellift Vellau"))
-}

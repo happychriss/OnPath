@@ -138,8 +138,8 @@ class MainActivity : ComponentActivity() {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
+                    // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
-                        LaunchedEffect(msg) { delay(if (msg.length > 80) 7000 else 3500); if (vm.message == msg) vm.message = null }
                         Snackbar(
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp, start = 12.dp, end = 12.dp),
                             action = { TextButton(onClick = { vm.message = null }) { Text("OK") } },
