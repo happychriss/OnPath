@@ -534,6 +534,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Screen position of [p] in pixels of the map view, or null (projection not ready). */
     fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
+    /** Search result: fly to [p] at [zoom]. Never throws. */
+    fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
+    }
+
     fun fitTo(points: List<GeoPoint>, bottomPaddingPx: Int) {
         if (points.isEmpty()) return
         try {
