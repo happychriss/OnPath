@@ -4,14 +4,23 @@
 Output (in OUT_DIR):
   routes.geojson  - official hiking / bicycle / mtb route relations (line geometries)
   trails.geojson  - paths with SAC scale (hiking difficulty) and/or mtb:scale
+  trailnames.geojson - OPTIONAL label lines (style_trail_names.py):
+      t="n": trail names ("Algunder Waalweg"), from the way's name:de / German part of name, or
+             the name of a hiking route relation for unnamed member ways; consecutive ways with the
+             same name are merged so labels place well. Props: name, tier (1 = Waalweg/Höhenweg/long,
+             2 = normal, 3 = short), len (m).
+      t="r": hiking route numbers (AVS "25", "24A"; several on one way joined as "24 · 25").
 
 Usage: python3 extract_overlays.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat
 """
 import json
+import math
+import re
 import sys
 
 import osmium
-from shapely.geometry import LineString, box, mapping
+from shapely.geometry import LineString, MultiLineString, box, mapping
+from shapely.ops import linemerge
 
 pbf, out_dir = sys.argv[1], sys.argv[2]
 minlon, minlat, maxlon, maxlat = map(float, sys.argv[3:7])
@@ -27,6 +36,7 @@ class RelationPass(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
         self.way_routes = {}  # way id -> list of (kind, ref, name)
+        self.way_hikes = {}   # way id -> list of (ref, label, network) of hiking relations
 
     def relation(self, r):
         if r.tags.get("type") != "route":
@@ -36,17 +46,131 @@ class RelationPass(osmium.SimpleHandler):
             return
         ref = r.tags.get("ref", "")
         name = r.tags.get("name", "")
+        hike = None
+        if kind == "hike":
+            net = r.tags.get("network", "")
+            label = route_label(r.tags) if net not in ("iwn", "nwn") else ""
+            hike = (clean_ref(ref), label, net)
         for m in r.members:
             if m.type == "w":
                 self.way_routes.setdefault(m.ref, []).append((kind, ref, name))
+                if hike:
+                    self.way_hikes.setdefault(m.ref, []).append(hike)
+
+
+# --- trail names / route numbers (trailnames.geojson) ---------------------------------------------
+TRAIL_HW = {"path", "footway", "track", "bridleway", "steps", "cycleway", "pedestrian"}
+REF_RE = re.compile(r"^\d{1,3}[A-Z]?$")                       # AVS trail numbers: 25, 24A
+STREETY = re.compile(r"(stra(ß|ss)e|gasse|platz|passage|\bpark\b|\d+-\d+)", re.I)
+GENERIC = {"wanderweg", "verbindungsweg", "waldweg", "weg", "sentiero", "steig", "path", "trail"}
+TIER1 = re.compile(r"(waal|höhenweg|promenade|panoramaweg|jakobsweg|höfeweg|steig$)", re.I)
+WAYWORD = re.compile(r"(weg|steig|pfad|promenade|waal|trail|runde|route|sentiero|percorso|passeggiata|"
+                     r"cammino|via )", re.I)  # else usually a farm/place name on an access track
+LABEL_SIMPLIFY = 0.00012  # about 10 m, then smoothed: winding Waalwege otherwise exceed text-max-angle
+REF_SIMPLIFY = 0.00008    # numbers are drawn upright at points, the line only positions them
+
+
+def clean_ref(ref):
+    ref = ref.replace(" ", "").upper()
+    return ref if REF_RE.match(ref) else ""
+
+
+def clean_name(tags):
+    """German display name: name:de, else the German part of a bilingual "DE - IT" name."""
+    n = (tags.get("name:de") or tags.get("name") or "").strip()
+    parts = [p.strip() for p in n.split(" - ")]
+    parts = [p for p in parts if p and not REF_RE.match(p.replace(" ", "").upper())]
+    n = parts[0] if parts else ""
+    if "=>" in n or "->" in n:  # "from => to" route descriptions, not names
+        return ""
+    if not n or n.lower() in GENERIC or all(REF_RE.match(p) for p in re.split(r"[\s,;/+]+", n.upper()) if p):
+        return ""
+    if n.lower().startswith(("lwn ", "wanderweg ", "percorso ", "weg ")) or STREETY.search(n):
+        return ""
+    return n[:1].upper() + n[1:]
+
+
+def route_label(tags):
+    return clean_name(tags)
+
+
+def chaikin(coords, rounds=2):
+    """Corner-cutting smoothing (keeps the end points) so curved trails take a line label."""
+    for _ in range(rounds):
+        out = [coords[0]]
+        for (x1, y1), (x2, y2) in zip(coords, coords[1:]):
+            out += [(.75 * x1 + .25 * x2, .75 * y1 + .25 * y2), (.25 * x1 + .75 * x2, .25 * y1 + .75 * y2)]
+        out.append(coords[-1])
+        coords = out
+    return coords
+
+
+def length_m(line):
+    c = list(line.coords)
+    k = math.cos(math.radians(c[0][1]))
+    return sum(math.hypot((x2 - x1) * k, y2 - y1) for (x1, y1), (x2, y2) in zip(c, c[1:])) * 111320
 
 
 class WayPass(osmium.SimpleHandler):
-    def __init__(self, way_routes):
+    def __init__(self, way_routes, way_hikes=None):
         super().__init__()
         self.way_routes = way_routes
+        self.way_hikes = way_hikes or {}
         self.routes = []
         self.trails = []
+        self.by_name = {}  # label -> list of raw coordinate lists
+        self.by_ref = {}   # "24 · 25" -> list of raw coordinate lists
+
+    def collect_names(self, w):
+        hikes = self.way_hikes.get(w.id, [])
+        hw = w.tags.get("highway", "")
+        trail = hw in TRAIL_HW and w.tags.get("footway") not in ("sidewalk", "crossing")
+        label = clean_name(w.tags) if trail else ""
+        if trail and not label:
+            # unnamed member way of a named hiking route: show the route's name
+            label = next((lab for _, lab, _ in hikes if lab), "")
+        refs = sorted({r for r, _, _ in hikes if r}, key=lambda r: (int(re.match(r"\d+", r).group()), r))
+        if not label and not refs:
+            return
+        try:
+            coords = [(round(n.lon, 6), round(n.lat, 6)) for n in w.nodes]
+        except osmium.InvalidLocationError:
+            return
+        if len(coords) < 2 or not any(minlon - .01 < x < maxlon + .01 and minlat - .01 < y < maxlat + .01
+                                      for x, y in coords):
+            return
+        if label:
+            self.by_name.setdefault(label, []).append(coords)
+        if refs:
+            self.by_ref.setdefault(" · ".join(refs[:3]), []).append(coords)
+
+    def label_features(self):
+        feats = []
+        for t, groups in (("n", self.by_name), ("r", self.by_ref)):
+            for key, lines in groups.items():
+                merged = linemerge(MultiLineString(lines)).intersection(BBOX)
+                parts = [g for g in getattr(merged, "geoms", [merged]) if g.geom_type == "LineString" and not g.is_empty]
+                total = sum(length_m(g) for g in parts)
+                for g in parts:
+                    g = g.simplify(LABEL_SIMPLIFY if t == "n" else REF_SIMPLIFY)
+                    if t == "n" and len(g.coords) > 2:
+                        g = LineString(chaikin(list(g.coords), 3)).simplify(0.00003)  # drop dense points: rounding would zigzag
+                    ln = length_m(g)
+                    if ln < (60 if t == "r" else 80):
+                        continue
+                    props = {"t": t}
+                    if t == "n":
+                        if not WAYWORD.search(key):
+                            tier = 3
+                        elif (TIER1.search(key) and total >= 600) or total >= 2500:
+                            tier = 1
+                        else:
+                            tier = 2 if ln >= 250 else 3
+                        props.update(name=key, tier=tier, len=int(ln))
+                    else:
+                        props.update(ref=key)
+                    feats.append({"type": "Feature", "geometry": rounded(mapping(g)), "properties": props})
+        return feats
 
     def geom(self, w):
         try:
@@ -61,6 +185,7 @@ class WayPass(osmium.SimpleHandler):
         return line.simplify(SIMPLIFY)
 
     def way(self, w):
+        self.collect_names(w)
         routes = self.way_routes.get(w.id)
         sac = SAC.get(w.tags.get("sac_scale", ""), 0)
         mtb = w.tags.get("mtb:scale", "")
@@ -94,9 +219,9 @@ def rounded(geom):
 def main():
     rp = RelationPass()
     rp.apply_file(pbf)
-    wp = WayPass(rp.way_routes)
+    wp = WayPass(rp.way_routes, rp.way_hikes)
     wp.apply_file(pbf, locations=True)
-    for name, feats in (("routes", wp.routes), ("trails", wp.trails)):
+    for name, feats in (("routes", wp.routes), ("trails", wp.trails), ("trailnames", wp.label_features())):
         with open(f"{out_dir}/{name}.geojson", "w") as f:
             json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
         print(name, len(feats))
