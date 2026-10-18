@@ -87,8 +87,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var dataScreenDismissed by mutableStateOf(false)
 
     // --- screens and mode ---
-    /** Manage routes / Load route list (⋮ menu); null = closed. */
-    var routesScreen by mutableStateOf<RoutesMode?>(null)
+    /** My routes list (☰ → My routes) is open. */
+    var routesOpen by mutableStateOf(false)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -473,6 +473,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiMenu = poi }
+
+    /** POI menu on an empty plan → "Go here from my location": start = position, the POI (pinned, named) = destination. */
+    fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
+        closeMapOverlays()
+        val loc = tracker.location.value ?: return // the menu only offers this with a position
+        if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
+        val p = GeoPoint(poi.lat, poi.lon)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
+        pinned += p; prefs.planPinned = pinned
+        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+    }
     fun openPointMenu(index: Int) { closeMapOverlays(); if (index in waypoints.indices) pointMenu = index }
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
@@ -482,6 +494,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { pointMenu = idx; return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
         addPoint(p, lineSnapM, onPoi = true)
     }
 
@@ -534,14 +547,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSearch() { closeMapOverlays(); searchOpen = true; search.onOpen() }
     fun closeSearch() { searchOpen = false }
 
-    /** Result tapped: close the search, move the map there and show the place card. */
+    /**
+     * Result tapped (owner): close the search, fly the map there and mark the place with a pin – no card. Holding the
+     * pin opens the usual POI menu (Add to route / Start here … / Google Maps). The mark stays until the next search
+     * pick or until the place is added to the route.
+     */
     fun pickSearchResult(place: com.onpath.app.search.Place) {
         val p = search.resolve(place)
         search.remember(p)
         searchOpen = false
+        closeMapOverlays()
         searchPlace = p
-        planPoi = p.toPoi()
+        searchMark = p
         events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+    }
+
+    /** Search result marked on the map (pin); see [pickSearchResult]. */
+    var searchMark by mutableStateOf<com.onpath.app.search.Place?>(null)
+
+    private fun clearSearchMarkAt(lat: Double, lon: Double) {
+        val m = searchMark ?: return
+        if (kotlin.math.abs(m.lat - lat) < 1e-7 && kotlin.math.abs(m.lon - lon) < 1e-7) searchMark = null
     }
 
     /** Place shown in the card: the search result, or the tapped POI. */
@@ -799,7 +825,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun menuState(recording: Boolean): RouteMenuState =
         RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
 
-    fun openRoutes(m: RoutesMode) { refreshTours(); routesScreen = m }
+    fun openRoutes() { refreshTours(); routesOpen = true }
 
     /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
     fun requestOpen(t: Tour) {
@@ -1118,7 +1144,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
-            withContext(Dispatchers.Main) { message = "Tour saved to My tours." }
+            withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
         }
     }
 
@@ -1139,7 +1165,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTour(t: Tour) {
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
-            routesScreen = null
+            routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
@@ -1247,11 +1273,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
-                routesScreen = null // show the imported track on the map
+                routesOpen = false // show the imported track on the map
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                message = buildString {
+                // The track panel with its name is the feedback; a message (until OK) only when something was odd.
+                message = if (data.warnings.isEmpty()) null else buildString {
                     append("Imported “$name”: ${data.pointCount} points")
                     if (data.waypoints.isNotEmpty()) append(", ${data.waypoints.size} waypoints")
                     append(".")
