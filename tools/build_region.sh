@@ -230,7 +230,7 @@ fi
 done_step "$(size "$DATA/terrain.pmtiles")"
 
 # ---------------------------------------------------- 5. overlays: routes, trails, trail names
-step "overlays (routes.geojson, trails.geojson, trailnames.geojson)"
+step "overlays (routes.geojson, trails.geojson, ways.geojson, trailnames.geojson)"
 if up_to_date "$DATA/routes.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
    && up_to_date "$DATA/trails.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
    && { [ -s "$DATA/trailnames.geojson" ] || ! grep -q trailnames "$TOOLS/extract_overlays.py"; }; then
@@ -243,6 +243,7 @@ else
 fi
 [ -s "$DATA/routes.geojson" ] && [ -s "$DATA/trails.geojson" ] || die "routes/trails.geojson missing"
 done_step "routes $(size "$DATA/routes.geojson"), trails $(size "$DATA/trails.geojson")$( \
+  [ -s "$DATA/ways.geojson" ] && echo ", ways $(size "$DATA/ways.geojson")")$( \
   [ -s "$DATA/trailnames.geojson" ] && echo ", trailnames $(size "$DATA/trailnames.geojson")")"
 
 # ----------------------------------------------------------------------------------------- 6. POIs

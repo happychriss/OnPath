@@ -16,6 +16,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **[cloud] Rebuild the region package / downloads zip** after `feat/way-quality` is on main: `extract_overlays.py`
+  now writes the new optional `ways.geojson` (tracktype, loose surface, smoothness), `vis` in `trails.geojson`, and a
+  near-exact geometry for trails/ways (0.5 m instead of 3 m – fixes the second line beside paths at z17+). Old
+  packages keep working (no track grades / surface edges, trails slightly off at high zoom).
 - **EN + DE strings** (owner approved): move all UI texts to strings.xml (EN + DE) in one go – start after the time
   estimate (feat/time-estimate) is merged, it touches most screens.
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
