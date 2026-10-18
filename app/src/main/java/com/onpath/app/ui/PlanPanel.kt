@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Save
@@ -85,6 +86,8 @@ class PlanCallbacks(
     /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
     val onSave: () -> Unit = {},
     val onExport: () -> Unit = {},
+    /** Route ⋯ → Time details (how the time was calculated). */
+    val onTimeDetails: () -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
@@ -302,6 +305,7 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     HorizontalDivider()
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
+    MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     HorizontalDivider()
     MenuItem(Icons.Outlined.SwapVert, "Reverse route", enabled = two, onClick = run(cb.onReverse))
     MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two && !ui.roundTrip, onClick = run(cb.onRoundTrip))

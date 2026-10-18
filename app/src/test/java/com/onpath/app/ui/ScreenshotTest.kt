@@ -123,6 +123,15 @@ class ScreenshotTest {
         }
     }
 
+    /** Route sheet ⋯ → Time details: slope bands, factors, result. */
+    @Test fun timeDetails() = paparazzi.snapshot {
+        OnPathTheme {
+            TimeDetailsScreen(TimeDetailsUi(
+                com.onpath.app.time.TimeBreakdown.of(routePts, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
+                "Normal", 1.0, com.onpath.app.time.Factors(0.95, 1.0, 1.1), 3), onBack = {})
+        }
+    }
+
     /** App start without a plan: Plan is home; no points, Start navigation = free recording. GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
         Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }

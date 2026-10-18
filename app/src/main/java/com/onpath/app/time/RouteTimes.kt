@@ -25,7 +25,15 @@ class RouteTimes private constructor(
     private val step: Double,
     private val groups: IntArray,
     private val seconds: DoubleArray,
+    /** Smoothed gradient per segment (−0.2 = 20 % down) – for the Time details screen. */
+    private val grades: DoubleArray = DoubleArray(seconds.size),
+    /** Height change per segment (m). */
+    private val dzs: DoubleArray = DoubleArray(seconds.size),
 ) {
+    /** Per segment: (gradient, height change m, seconds at Normal pace) – for [TimeBreakdown]. */
+    fun segments(): List<Triple<Double, Double, Double>> = seconds.indices.map { Triple(grades[it], dzs[it], seconds[it]) }
+    val segmentLengthM: Double get() = step
+
     /** cum[g][k] = seconds of group g in segments 0 until k (Normal pace, no factors). */
     private val cum: Array<DoubleArray> = Array(PaceModel.GROUPS) { g ->
         val c = DoubleArray(seconds.size + 1)
@@ -92,12 +100,15 @@ class RouteTimes private constructor(
             val sm = DoubleArray(n + 1) { i -> (ele[max(0, i - 1)] + ele[i] + ele[min(n, i + 1)]) / 3 }
             val groups = IntArray(n)
             val secs = DoubleArray(n)
+            val grades = DoubleArray(n)
+            val dzs = DoubleArray(n)
             for (i in 0 until n) {
                 val dz = sm[i + 1] - sm[i]
                 groups[i] = PaceModel.group(dz / step)
                 secs[i] = PaceModel.seconds(step, dz, activity)
+                grades[i] = dz / step; dzs[i] = dz
             }
-            return RouteTimes(activity, total, step, groups, secs)
+            return RouteTimes(activity, total, step, groups, secs, grades, dzs)
         }
     }
 }

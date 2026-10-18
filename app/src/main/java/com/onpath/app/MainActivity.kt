@@ -115,6 +115,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    vm.timeDetails?.let { td ->
+                        BackHandler { vm.timeDetails = null }
+                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
+                    }
                     if (vm.showSettings) {
                         BackHandler { vm.showSettings = false }
                         SettingsScreen(

@@ -748,6 +748,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun learnedFactors(a: Activity): com.onpath.app.time.Factors? = paceStore.factors(a)
 
+    /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
+    var timeDetails by mutableStateOf<TimeDetailsUi?>(null)
+
+    fun openTimeDetails() {
+        val r = route ?: return
+        val pace = com.onpath.app.time.TimeEstimate.pace(activity, settings)
+        val entry = paceStore.entry(activity)
+        timeDetails = TimeDetailsUi(
+            com.onpath.app.time.TimeBreakdown.of(r.points, activity, planFactors()),
+            pace.label, pace.factor, entry?.factors, entry?.tours ?: 0,
+        )
+    }
+
     /**
      * The plan's time from OnPath's own model (time/RouteTimes), not the router's: the same number as the route list
      * and Navigate "to go" at the start. Moving time, rounded for display.
