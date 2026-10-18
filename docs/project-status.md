@@ -4,6 +4,16 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-18 (two modes, 0.5.0):** implemented `docs/ux-two-modes.md`. `AppMode { PLAN, NAVIGATE }` replaces
+  BROWSE/PLAN; Plan is home (top bar My tours / Settings / activity, GPS dot on the locate button, eye button, GPS chip,
+  browse bar and record panel removed). "Start navigation" follows the plan, a shown track or nothing (free recording)
+  and starts recording; Navigate = remaining strip + recording chip + "Slide to plan" (`SlideToUnlock`, ≥ 85 %,
+  TalkBack action), map taps add/move nothing, POI tap = read-only details. Recording never stops on a switch; in Plan a
+  "Tour running" bar offers Continue navigation (re-route from the position through the stops not yet passed,
+  `RouteProgress.remainingStops`) and End tour (confirmation). Arrival within 50 m asks once "end tour?". The service
+  pauses off-route checks in Plan (`ACTION_NAVIGATING`). App start opens Navigate when a recording is active.
+  Version bumped to 0.5.0 + release notes. Next: feel test on the Pixel 8 (slider with gloves, re-route, arrival,
+  pocket safety), then tune.
 - **laptop, 2026-10-18:** released **0.4.1** (see backlog "Done"); owner installed the official 0.4.0 and updates to
   0.4.1 with the in-app updater (first real test, result not reported yet). Map data on the Pixel 8 = South Tyrol package (same files as
   the `downloads` zip, plus `segments/E10_N45.rd5`). Open: `LayerSettings` crash (backlog "Next"), Gradle 9
@@ -91,6 +101,15 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 - Plan panel is tall with breakdown bars (~60 % of the screen); the eye button helps, a collapsible details
   section may be needed.
 - UI strings still English and hard-coded.
+
+### Known gaps (0.5.0, two modes)
+- Untested on a device: slide switch with gloves, map following in Navigate, re-route on Continue (BRouter call from
+  the current position), arrival dialog (50 m and at most 150 m of the followed line left).
+- Pause is only in the notification (Navigate shows Resume when paused); no pause button in the app.
+- Continue navigation replaces the plan's start with the current position (one Undo brings the old plan back).
+- Navigate shows the followed line only (no stop markers); the followed line is still drawn in GPX purple.
+- Back in Navigate leaves the app (recording goes on); only the slide switch goes to Plan.
+- A GPX opened from another app while navigating switches to Plan to show it (recording goes on).
 
 ## Decisions (from the planning discussion)
 | Topic | Decision |

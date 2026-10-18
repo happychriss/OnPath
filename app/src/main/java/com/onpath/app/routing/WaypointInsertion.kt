@@ -71,7 +71,20 @@ object WaypointInsertion {
      * Waypoints are matched to route vertices in order (monotonic), so out-and-back routes work.
      */
     fun legOfRouteIndex(waypoints: List<GeoPoint>, route: List<GeoPoint>, routeIndex: Int): Int {
+        val wpIdx = routeIndices(waypoints, route)
+        for (leg in 0 until waypoints.size - 1) {
+            if (routeIndex < wpIdx[leg + 1]) return leg
+        }
+        return waypoints.size - 2
+    }
+
+    /**
+     * Route vertex index for each waypoint, matched in order (monotonic): the start maps to 0,
+     * the destination to the route end, each stop to its nearest vertex after the previous one.
+     */
+    fun routeIndices(waypoints: List<GeoPoint>, route: List<GeoPoint>): IntArray {
         val wpIdx = IntArray(waypoints.size)
+        if (route.isEmpty()) return wpIdx
         var from = 0
         for (w in waypoints.indices) {
             // Search forward from the previous match; the last waypoint maps to the route end.
@@ -86,10 +99,7 @@ object WaypointInsertion {
             wpIdx[w] = best
             from = best
         }
-        for (leg in 0 until waypoints.size - 1) {
-            if (routeIndex < wpIdx[leg + 1]) return leg
-        }
-        return waypoints.size - 2
+        return wpIdx
     }
 
     /** Approximate distance (m) from [p] to segment a–b, using a local equirectangular projection. */

@@ -1,31 +1,15 @@
 package com.onpath.app.ui
 
 import android.content.Intent
-import android.location.Location
 import android.provider.Settings
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material.icons.filled.GpsNotFixed
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,30 +22,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.map.MapController
 import com.onpath.app.recording.GpsStatus
-import com.onpath.app.recording.LocationTracker
 import com.onpath.app.recording.RecState
 import kotlinx.coroutines.delay
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 
-/** The home screen: full-screen map, status on top, one bottom panel. */
+/** The main screen: full-screen map with the Plan or Navigate controls on top (AppMode). */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     vm: AppViewModel,
     onRequestLocation: () -> Unit,
-    onRecord: () -> Unit,
-    onImport: () -> Unit,
+    /** Start navigation; the caller makes sure location permission is granted first. */
+    onStartNavigation: () -> Unit,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -71,26 +52,24 @@ fun MapScreen(
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
     var showSave by remember { mutableStateOf(false) }
-    var confirmStop by remember { mutableStateOf(false) }
+    var confirmEnd by remember { mutableStateOf(false) }
 
     val rec by vm.recState.collectAsState()
     val location by vm.tracker.location.collectAsState()
 
-    // GPS chip status, refreshed every second (age of the last fix matters).
-    val gps by produceState(GpsStatus.SEARCHING to null as String?, vm.tracker) {
-        while (true) {
-            val st = vm.tracker.status()
-            val loc = vm.tracker.location.value
-            val detail = when {
-                loc == null -> null
-                st == GpsStatus.SEARCHING -> "Last fix ${ageText(loc)}"
-                loc.hasAccuracy() -> "± ${loc.accuracy.toInt()} m"
-                else -> null
-            }
-            value = st to detail
-            delay(1000)
+    // GPS status for the dot on the locate button, refreshed every second (age of the last fix matters).
+    val gps by produceState(GpsStatus.SEARCHING, vm.tracker) {
+        while (true) { value = vm.tracker.status(); delay(1000) }
+    }
+    val onLocate = {
+        when {
+            gps == GpsStatus.OFF -> { runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }; Unit }
+            gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
+            vm.tracker.location.value == null -> vm.message = "Searching GPS…"
+            else -> vm.followMe = true
         }
     }
+    val footer = @Composable { MapFooter(scale) { LocateButton(gps, vm.followMe, onLocate) } }
 
     Box(Modifier.fillMaxSize()) {
         MapHost(
@@ -100,114 +79,16 @@ fun MapScreen(
             onCamera = { map -> scale = computeScale(map, density.density) },
             modifier = Modifier.fillMaxSize(),
         )
-
-        // ---- sync state -> map ----
-        val c = controller
-        if (c != null) {
-            // Planned line + markers only in plan mode and not while the eye button hides them.
-            LaunchedEffect(c) {
-                snapshotFlow { Triple(vm.route, vm.mode == Mode.PLAN && !vm.routeHidden, vm.waypoints.toList()) }
-                    .collect { (r, show, w) ->
-                        c.setPlanned(if (show) r else null)
-                        c.setWaypoints(if (show) w else emptyList(), vm.pinnedIndices())
-                    }
-            }
-            LaunchedEffect(c, vm.shown, vm.followLine, vm.routeHidden) {
-                c.setTrack(MapController.SRC_GPX, if (vm.routeHidden) emptyList() else vm.shown?.segments ?: listOfNotNull(vm.followLine))
-            }
-            LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
-            LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
-            LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
-            LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
-            LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
-            LaunchedEffect(c, vm.followMe) { c.setFollow(vm.followMe) { vm.followMe = false } }
-            LaunchedEffect(c, vm.events.size) {
-                val pending = vm.events.toList()
-                vm.events.clear()
-                pending.forEach { e ->
-                    when (e) {
-                        is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
-                        is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
-                    }
-                }
-            }
-        } else {
-            // share events must also work before the map is ready
-            LaunchedEffect(vm.events.size) {
-                vm.events.filterIsInstance<UiEvent.Share>().forEach { runCatching { context.startActivity(it.intent) } }
-                vm.events.removeAll { it is UiEvent.Share }
-            }
-        }
-
-        // ---- top: status + activity ----
-        Row(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            GpsChip(gps.first, gps.second, onClick = {
-                when (gps.first) {
-                    GpsStatus.OFF -> runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
-                    GpsStatus.NO_PERMISSION -> onRequestLocation()
-                    else -> vm.followMe = true
-                }
-            })
-            Spacer(Modifier.weight(1f))
-            if (vm.mode == Mode.BROWSE) {
-                SettingsButton(onClick = { vm.showSettings = true })
-                Spacer(Modifier.width(8.dp))
-            }
-            ActivityChip(vm.activity, vm.sac, onClick = { showActivity = true })
-        }
-        RemainingTop(vm, location, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 122.dp)) // below the compass
-        KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null)
-
+        MapSync(vm, controller, rec, location, panelHeightPx)
+        KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
         // Quiet update check (once a day, only when online; F-OFF-06).
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
-        // ---- bottom: scale/attribution/FAB + panel ----
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-            val upd = vm.update
-            val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
-                ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
-            if (vm.mode == Mode.BROWSE && rec == null && updVersion != null && updVersion != vm.updateDismissed) {
-                UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
-            }
-            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
-                Column(Modifier.weight(1f)) {
-                    scale?.let { (label, width) -> ScaleBar(label, width) }
-                    Text("© OpenStreetMap contributors, © OpenMapTiles, Terrarium (Mapzen/AWS)", fontSize = 10.sp, color = Color(0xFF333333),
-                        modifier = Modifier.padding(top = 4.dp).background(Color(0xB3FFFFFF), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
-                }
-                FloatingActionButton(
-                    onClick = {
-                        if (vm.tracker.location.value == null) {
-                            if (gps.first == GpsStatus.NO_PERMISSION) onRequestLocation() else vm.message = "Searching GPS…"
-                        } else vm.followMe = true
-                    },
-                    containerColor = Color.White,
-                    contentColor = if (vm.followMe) OnPathColors.Route else Color(0xFF333333),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.size(60.dp),
-                ) { Icon(if (vm.followMe) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, "Center on my position") }
-            }
-            vm.notice?.let { n ->
-                if (vm.mode == Mode.PLAN) PlanNoticeBar(n, onAction = vm::onNoticeAction, onDismiss = { if (vm.notice?.id == n.id) vm.notice = null })
-            }
-            Column(Modifier.onSizeChanged { panelHeightPx = it.height }) {
-                val planPoi = vm.planPoi
-                if (planPoi != null && vm.mode == Mode.PLAN) {
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    PoiPlanCard(
-                        planPoi, isStop = vm.isStop(planPoi),
-                        onToggleStop = { vm.togglePoiPoint(planPoi); vm.planPoi = null },
-                        onGoogle = { com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, planPoi) },
-                        onClose = { vm.planPoi = null },
-                    )
-                }
-                BottomContent(vm, rec, gps.first, onRecord, onImport,
-                    onSave = { showSave = true }, onStop = { confirmStop = true })
-            }
+        when (vm.mode) {
+            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation,
+                onActivity = { showActivity = true }, onSave = { showSave = true }, onEndTour = { confirmEnd = true },
+                onPanelHeight = { panelHeightPx = it })
+            AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
         }
     }
 
@@ -225,78 +106,125 @@ fun MapScreen(
         else vm.pointMenu = null
     }
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
-    if (confirmStop) ConfirmStopDialog(onStop = { confirmStop = false; vm.stopRecording() }, onDismiss = { confirmStop = false })
+    if (confirmEnd) EndTourDialog(onEnd = { confirmEnd = false; vm.endTour() }, onDismiss = { confirmEnd = false })
+    if (vm.arrivalAsk && rec != null) ArrivalDialog(onEnd = vm::endTour, onKeepGoing = { vm.arrivalAsk = false })
     vm.selectedPoi?.let { poi ->
+        // Read-only details (Navigate, or a shown track): no "add to route" here.
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {
             com.onpath.app.poi.PoiDetails(poi = poi, onClose = { vm.selectedPoi = null })
         }
     }
 }
 
+/** Plan mode: top bar, POI card, tour bar and the plan (or shown track) panel. */
 @Composable
-private fun BottomContent(
-    vm: AppViewModel, rec: RecState?, gps: GpsStatus,
-    onRecord: () -> Unit, onImport: () -> Unit, onSave: () -> Unit, onStop: () -> Unit,
+private fun PlanMode(
+    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
+    onActivity: () -> Unit, onSave: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
+    Box(Modifier.fillMaxSize()) {
+        PlanTopBar(
+            vm.activity, vm.sac, onActivity = onActivity,
+            onTours = { vm.refreshTours(); vm.showTours = true }, onSettings = { vm.showSettings = true },
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
+        )
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            val upd = vm.update
+            val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
+                ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
+            if (rec == null && updVersion != null && updVersion != vm.updateDismissed) {
+                UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+            footer()
+            vm.notice?.let { n ->
+                PlanNoticeBar(n, onAction = vm::onNoticeAction, onDismiss = { if (vm.notice?.id == n.id) vm.notice = null })
+            }
+            Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
+                vm.planPoi?.let { poi ->
+                    val ctx = LocalContext.current
+                    PoiPlanCard(
+                        poi, isStop = vm.isStop(poi),
+                        onToggleStop = { vm.togglePoiPoint(poi); vm.planPoi = null },
+                        onGoogle = { com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi) },
+                        onClose = { vm.planPoi = null },
+                    )
+                }
+                rec?.let { TourRunningBar(it.distanceM, it.paused, onContinue = vm::continueNavigation, onEnd = onEndTour) }
+                PlanBottom(vm, rec, onStartNavigation, onSave)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onSave: () -> Unit) {
     val shown = vm.shown
-    when {
-        rec != null && vm.mode != Mode.PLAN && shown == null -> RecordPanel(
-            rec, gps, offRouteLimitM = vm.settings.offRouteM.takeIf { vm.settings.offRouteWarning },
-            onPause = { vm.pauseRecording(true) }, onResume = { vm.pauseRecording(false) }, onStop = onStop,
-        )
-        vm.mode == Mode.PLAN -> PlanPanel(
-            PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.routeHidden, vm.planSize),
-            PlanCallbacks(
-                onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
-                onSave = onSave, onShare = vm::exportPlanned,
-                onGo = {
-                    vm.followPlanned(); vm.closePlanning()
-                    if (rec == null) onRecord()
-                },
-                onClose = vm::closePlanning,
-                onHoldHide = { held -> vm.routeHidden = held; if (held) { vm.highlight = null } },
-                onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-                onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
-                onResize = { vm.planSize = it },
-            ),
-        )
-        shown != null -> TrackPanel(
+    if (shown != null) {
+        TrackPanel(
             shown, isFollowed = vm.followName == shown.name, recording = rec != null,
             onFollow = {
-                vm.followShown()
-                if (rec == null) onRecord()
-                vm.closeShown()
+                if (rec == null) onStartNavigation()
+                else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }
             },
             onExport = vm::exportShown,
             onClose = vm::closeShown, onHighlight = { vm.highlight = it },
         )
-        else -> BrowseBar(
-            onPlan = vm::startPlanning, onRecord = onRecord,
-            onTours = { vm.refreshTours(); vm.showTours = true },
-            followName = vm.followName, onStopFollow = vm::clearFollow,
-        )
+        return
     }
+    PlanPanel(
+        PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
+            tourRunning = rec != null),
+        PlanCallbacks(
+            onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
+            onSave = onSave, onShare = vm::exportPlanned,
+            onStartNavigation = onStartNavigation,
+            onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
+            onPointMenu = { vm.pointMenu = it }, onHighlight = { vm.highlight = it },
+            onResize = { vm.planSize = it },
+        ),
+    )
 }
 
+/** Keeps the map layers in step with the app state. */
 @Composable
-private fun SettingsButton(onClick: () -> Unit) {
-    androidx.compose.material3.Surface(onClick = onClick, modifier = Modifier.size(48.dp), shape = androidx.compose.foundation.shape.CircleShape,
-        color = Color.White, shadowElevation = 4.dp) {
-        Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Settings, "Settings", tint = Color(0xFF333333)) }
+private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, location: android.location.Location?, panelHeightPx: Int) {
+    val context = LocalContext.current
+    if (c == null) {
+        // share events must also work before the map is ready
+        LaunchedEffect(vm.events.size) {
+            vm.events.filterIsInstance<UiEvent.Share>().forEach { runCatching { context.startActivity(it.intent) } }
+            vm.events.removeAll { it is UiEvent.Share }
+        }
+        return
     }
-}
-
-/** "x km to go" while a route is followed and a position is known. */
-@Composable
-private fun RemainingTop(vm: AppViewModel, location: Location?, modifier: Modifier) {
-    val line = vm.followLine ?: return
-    if (location == null || vm.mode == Mode.PLAN) return
-    val progress = remember(line) { com.onpath.app.data.FollowProgress(line) }
-    val hint = remember(line) { intArrayOf(0) }
-    val r = remember(progress, location) {
-        progress.remaining(com.onpath.app.routing.GeoPoint(location.latitude, location.longitude), hint[0])?.also { hint[0] = it.index }
-    } ?: return
-    RemainingStrip(r.distanceM, r.ascentM, com.onpath.app.data.FollowProgress.timeS(r, vm.activity), r.offM, modifier)
+    // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
+    LaunchedEffect(c) {
+        snapshotFlow { Triple(vm.route, vm.canEditMap, vm.waypoints.toList()) }
+            .collect { (r, show, w) ->
+                c.setPlanned(if (show) r else null)
+                c.setWaypoints(if (show) w else emptyList(), vm.pinnedIndices())
+            }
+    }
+    LaunchedEffect(c, vm.shown, vm.followLine) {
+        c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
+    }
+    LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
+    LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
+    LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
+    LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
+    LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
+    LaunchedEffect(c, vm.followMe) { c.setFollow(vm.followMe) { vm.followMe = false } }
+    LaunchedEffect(c, vm.events.size) {
+        val pending = vm.events.toList()
+        vm.events.clear()
+        pending.forEach { e ->
+            when (e) {
+                is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
+                is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
+            }
+        }
+    }
 }
 
 @Composable
@@ -305,23 +233,6 @@ private fun KeepScreenOn(on: Boolean) {
     androidx.compose.runtime.DisposableEffect(on) {
         view.keepScreenOn = on
         onDispose { view.keepScreenOn = false }
-    }
-}
-
-@Composable
-private fun ScaleBar(label: String, width: Dp) {
-    Column(Modifier.background(Color(0xB3FFFFFF), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
-        Text(label, fontSize = 10.sp, color = Color(0xFF222222))
-        Box(Modifier.width(width).height(3.dp).background(Color(0xFF222222)))
-    }
-}
-
-private fun ageText(loc: Location): String {
-    val s = LocationTracker.ageSeconds(loc)
-    return when {
-        s < 60 -> "${s}s ago"
-        s < 3600 -> "${s / 60} min ago"
-        else -> "${s / 3600} h ago"
     }
 }
 

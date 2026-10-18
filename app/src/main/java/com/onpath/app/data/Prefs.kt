@@ -62,6 +62,11 @@ class Prefs(context: Context) {
         get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()
         set(v) = sp.edit().putString("planPinned", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
 
+    /** The followed line is a shown/imported track, not the plan ("Continue navigation" then does not re-plan). */
+    var followIsTrack: Boolean
+        get() = sp.getBoolean("followIsTrack", false)
+        set(v) = sp.edit().putBoolean("followIsTrack", v).apply()
+
     /** The line being followed (off-route warning); stored in a file so the service can reload it. */
     fun saveFollow(name: String, points: List<GeoPoint>?) {
         try {

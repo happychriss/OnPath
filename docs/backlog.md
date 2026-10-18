@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Two modes Plan/Navigate with slide-to-plan + UX cleanup (`docs/ux-two-modes.md`), then release – since 2026-10-18. Laptop: please avoid ui/MapScreen, ui/Panels, ui/PlanPanel, AppViewModel mode logic until done.
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
@@ -29,6 +28,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- 0.5.0 (cloud): two modes Plan / Navigate (`docs/ux-two-modes.md`): Plan is home (My tours + Settings in the top bar,
+  GPS dot on the locate button, no eye button, no Plan/Record/My tours bar), "Start navigation" (route, shown track or
+  free recording), Navigate with remaining strip and slide-to-plan (≥ 85 %), map taps change nothing; recording keeps
+  running in Plan ("Tour running" bar, Continue navigation re-routes past passed stops, End tour with confirmation);
+  arrival dialog within 50 m; off-route warnings only in Navigate. **Needs a feel test on the Pixel 8** (slider with
+  gloves, re-route, arrival).
 - Plan mode POI card (laptop): tap a POI → card above the plan panel with opening hours, "Add to route" /
   "Remove from route" and "Google Maps"; planning is not interrupted. Replaces the long-press Google dialog.
   Adding a point needs a short hold (0.3 s, ring + vibration) so stray taps add nothing. Blocked ways (access=no) marked on the map.

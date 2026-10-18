@@ -2,21 +2,12 @@ package com.onpath.app.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -25,7 +16,6 @@ import com.onpath.app.data.DataFiles
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.recording.GpsStatus
-import com.onpath.app.recording.RecState
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedLeg
@@ -55,38 +45,87 @@ class ScreenshotTest {
     private val route = PlannedRoute(listOf(PlannedLeg(routePts, false)), 12_480.0, 842.0, 310.0, 4.6 * 3600, null,
         wayTypes = listOf(Share("path", 6100.0), Share("track", 3300.0), Share("quiet_road", 2200.0), Share("road", 700.0), Share("steps", 180.0)),
         surfaces = listOf(Share("natural_trail", 5200.0), Share("gravel", 3900.0), Share("asphalt", 3000.0), Share("unknown", 380.0)))
-    private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null, hidden: Boolean = false,
-                       size: PlanSize = PlanSize.FULL) =
-        PlanUi(n, r, routing, error, canUndo = true, canRedo = false, activity = Activity.HIKE, hidden = hidden, size = size)
+    private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null,
+                       size: PlanSize = PlanSize.FULL, tourRunning: Boolean = false) =
+        PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning)
 
     @Composable
-    private fun Frame(bottom: @Composable () -> Unit) {
+    private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false) =
+        MapFooter("500 m" to 64.dp) { LocateButton(gps, following, onClick = {}) }
+
+    /** Plan mode: top bar (My tours, Settings, activity), footer, then [bottom]. Top padding stands in for the status bar. */
+    @Composable
+    private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {}, bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 40.dp)) {
-                    GpsChip(GpsStatus.GOOD, "± 4 m", onClick = {})
-                    Spacer(Modifier.weight(1f))
-                    ActivityChip(Activity.HIKE, 3, onClick = {})
-                }
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(end = 16.dp, bottom = 10.dp)) {
-                        Spacer(Modifier.weight(1f))
-                        FloatingActionButton(onClick = {}, containerColor = Color.White, shape = RoundedCornerShape(18.dp),
-                            modifier = Modifier.size(60.dp)) { Icon(Icons.Filled.GpsFixed, null) }
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    PlanTopBar(Activity.HIKE, 3, {}, {}, {}, Modifier.fillMaxWidth())
+                    Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                        aboveFooter()
+                        Footer(gps)
+                        bottom()
                     }
-                    bottom()
                 }
             }
         }
     }
 
-    @Test fun home() = paparazzi.snapshot {
-        Frame { BrowseBar({}, {}, {}, followName = null, onStopFollow = {}) }
+    @Composable
+    private fun NavFrame(ui: NavUi, slide: Float = 0f) {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    NavigateOverlay(ui, footer = { Footer(following = true) }, onSlideToPlan = {}, slideStartFraction = slide)
+                }
+            }
+        }
+    }
+
+    private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0), recordedM = 5_320.0, elapsedS = 5025)
+
+    /** App start without a plan: Plan is home; no points, Start navigation = free recording. GPS searching. */
+    @Test fun planEmpty() = paparazzi.snapshot {
+        Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
     @Test fun plan() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Back in Plan while the tour records: Tour running bar instead of Start navigation. */
+    @Test fun planTourRunning() = paparazzi.snapshot {
+        Frame {
+            TourRunningBar(6_400.0, paused = false, onContinue = {}, onEnd = {})
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
+        }
+    }
+
+    @Test fun endTourConfirm() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame {
+                TourRunningBar(6_400.0, paused = false, onContinue = {}, onEnd = {})
+                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
+            }
+            EndTourDialog({}, {})
+        }
+    }
+
+    /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
+    @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
+
+    /** Slider dragged half way (springs back on release) and the off-route chip. */
+    @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi.copy(offRouteM = 63), slide = 0.5f) }
+
+    /** Free recording (no route), paused from the notification. */
+    @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
+
+    @Test fun arrival() = paparazzi.snapshot {
+        OnPathTheme {
+            NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
+            ArrivalDialog({}, {})
+        }
     }
 
     /** Way types & surfaces opened by the user. */
@@ -106,11 +145,6 @@ class ScreenshotTest {
                 error = "Leg 1→2: No route found near this point. Shown as a straight dashed line. Try moving the point or changing the activity."),
                 PlanCallbacks())
         }
-    }
-
-    /** Eye button held down: route hidden on the map, panel unchanged except the eye icon. */
-    @Test fun planHidden() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(hidden = true), PlanCallbacks()) }
     }
 
     /** Swiped down once: profile, breakdown and point chips removed. */
@@ -166,28 +200,6 @@ class ScreenshotTest {
         }
     }
 
-    @Test fun followStrip() = paparazzi.snapshot {
-        OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                MapPlaceholder(Modifier.fillMaxSize())
-                RemainingStrip(7_420.0, 512.0, 2.9 * 3600, null, Modifier.align(Alignment.TopCenter).padding(top = 120.dp))
-                Column(Modifier.align(Alignment.BottomCenter)) {
-                    RecordPanel(RecState(1, false, 5320.0, 412.0, 120.0, 5025, false, 12.0, false, "Waalweg", emptyList()),
-                        GpsStatus.GOOD, {}, {}, {})
-                }
-            }
-        }
-    }
-
-    @Test fun recording() = paparazzi.snapshot {
-        Frame {
-            RecordPanel(
-                RecState(1, false, 5320.0, 412.0, 120.0, 5025, false, 63.0, true, "Waalweg", emptyList()),
-                GpsStatus.GOOD, {}, {}, {},
-            )
-        }
-    }
-
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
@@ -228,11 +240,8 @@ class ScreenshotTest {
         "0.4.1", "- Trail names along the paths\n- Update button in Settings", "https://x/onpath.apk", 32_000_000, "https://x")
 
     @Test fun updateBanner() = paparazzi.snapshot {
-        Frame {
-            Column {
-                UpdateBanner(AppViewModel.UpdateState.Available(release), {}, {}, Modifier.padding(12.dp))
-                BrowseBar({}, {}, {}, followName = null, onStopFollow = {})
-            }
+        Frame(aboveFooter = { UpdateBanner(AppViewModel.UpdateState.Available(release), {}, {}, Modifier.padding(12.dp)) }) {
+            PlanPanel(planUi(n = 0, r = null), PlanCallbacks())
         }
     }
 

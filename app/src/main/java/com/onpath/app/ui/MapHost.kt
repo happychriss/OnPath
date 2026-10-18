@@ -112,14 +112,14 @@ fun MapHost(
             }
             map.addOnCameraMoveListener { onCamera(map) }
             map.addOnMapClickListener { ll ->
-                // In plan mode a short hold (HOLD_MS, ring under the finger) adds a route point (smart
+                // Plan: a short hold (HOLD_MS, ring under the finger) adds a route point (smart
                 // insertion); a quick tap does not, so stray taps don't add points. A tap on a POI opens its
                 // card (add to route / Google Maps) without leaving planning; while a card is open, a tap on
-                // the map only closes it. Otherwise – or while the route is hidden – a tapped POI opens its
-                // details.
+                // the map only closes it. Navigate (or a shown track): nothing is added, a tapped POI only
+                // opens its read-only details.
                 val poi = com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll))
                 when {
-                    vm.mode == Mode.PLAN && !vm.routeHidden -> {
+                    vm.canEditMap -> {
                         val snap = ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0
                         when {
                             poi != null -> vm.planPoi = poi
@@ -137,14 +137,14 @@ fun MapHost(
             map.addOnMapLongClickListener { ll ->
                 holdAt.value = null
                 // Long press drags a point or the route line; on empty map it adds a point like a short hold.
-                dragger.onLongPress(ll) || (vm.mode == Mode.PLAN && !vm.routeHidden && vm.planPoi == null &&
+                dragger.onLongPress(ll) || (vm.canEditMap && vm.planPoi == null &&
                     com.onpath.app.poi.findPoiAt(map, map.projection.toScreenLocation(ll)) == null).also { add ->
                     if (add) vm.addPoint(GeoPoint(ll.latitude, ll.longitude), ctrlRef[0]?.let { PointDragger.snapMeters(it) } ?: 30.0)
                 }
             }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
-                val armable = vm.mode == Mode.PLAN && !vm.routeHidden && vm.planPoi == null
+                val armable = vm.canEditMap && vm.planPoi == null
                 hold.track(ev, slopPx = 8 * density)
                 holdAt.value = when {
                     !armable || !hold.pressing -> null

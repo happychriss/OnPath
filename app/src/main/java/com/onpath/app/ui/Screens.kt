@@ -341,15 +341,3 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
         },
     )
 }
-
-@Composable
-fun ConfirmStopDialog(onStop: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Navigation, null) },
-        title = { Text("Stop recording?") },
-        text = { Text("The tour is saved to My tours.") },
-        confirmButton = { TextButton(onClick = onStop) { Text("Stop & save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep recording") } },
-    )
-}

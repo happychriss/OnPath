@@ -1,9 +1,6 @@
 package com.onpath.app.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,31 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.TripOrigin
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -55,8 +38,8 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
@@ -70,11 +53,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
-import com.onpath.app.recording.GpsStatus
-import com.onpath.app.recording.RecState
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
-import com.onpath.app.routing.PlannedRoute
 
 // ------------------------------------------------------------------ shared pieces
 
@@ -169,32 +149,6 @@ fun StatsRow(distance: Double, ascent: Double, descent: Double, durationS: Doubl
 // ------------------------------------------------------------------ top bar
 
 @Composable
-fun GpsChip(status: GpsStatus, detail: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val color = when (status) {
-        GpsStatus.GOOD -> OnPathColors.Good
-        GpsStatus.WEAK -> OnPathColors.Weak
-        GpsStatus.SEARCHING -> OnPathColors.Grey
-        GpsStatus.OFF, GpsStatus.NO_PERMISSION -> OnPathColors.Bad
-    }
-    Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp),
-        color = Color.White, shadowElevation = 4.dp) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(status.label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                val sub = when (status) {
-                    GpsStatus.OFF -> "Tap to turn on"
-                    GpsStatus.NO_PERMISSION -> "Tap to allow"
-                    else -> detail
-                }
-                if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-@Composable
 fun ActivityChip(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp),
         color = Color.White, shadowElevation = 4.dp) {
@@ -205,41 +159,6 @@ fun ActivityChip(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Mo
             Icon(Icons.Filled.ExpandMore, "Change activity", modifier = Modifier.size(20.dp))
         }
     }
-}
-
-// ------------------------------------------------------------------ browse
-
-@Composable
-fun BrowseBar(onPlan: () -> Unit, onRecord: () -> Unit, onTours: () -> Unit, followName: String?, onStopFollow: () -> Unit) {
-    BottomPanel {
-        if (followName != null) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Following: $followName", Modifier.weight(1f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                TextButton(onClick = onStopFollow) { Text("Stop following") }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BigButton(Icons.Filled.Route, "Plan", onPlan, Modifier.weight(1f), primary = false)
-            BigButton(Icons.Filled.FiberManualRecord, "Record", onRecord, Modifier.weight(1f), primary = true)
-            BigButton(Icons.Filled.FormatListBulleted, "My tours", onTours, Modifier.weight(1f), primary = false)
-        }
-    }
-}
-
-@Composable
-fun BigButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean) {
-    val content: @Composable () -> Unit = {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.height(2.dp))
-            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-        }
-    }
-    if (primary) Button(onClick, modifier.height(68.dp), shape = RoundedCornerShape(18.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Rec)) { content() }
-    else FilledTonalButton(onClick, modifier.height(68.dp), shape = RoundedCornerShape(18.dp)) { content() }
 }
 
 // ------------------------------------------------------------------ planning: see PlanPanel.kt
@@ -288,61 +207,7 @@ fun TrackPanel(
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1.4f).height(56.dp),
                 shape = RoundedCornerShape(16.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(6.dp))
-                Text(if (recording) "Follow this track" else "Follow & record")
-            }
-        }
-    }
-}
-
-// ------------------------------------------------------------------ recording
-
-@Composable
-fun RecordPanel(
-    rec: RecState, gps: GpsStatus, onPause: () -> Unit, onResume: () -> Unit, onStop: () -> Unit,
-    /** Off-route threshold from Settings; null = warning switched off. */
-    offRouteLimitM: Int? = 40,
-) {
-    BottomPanel {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).clip(CircleShape).background(if (rec.paused) OnPathColors.Grey else OnPathColors.Rec))
-            Spacer(Modifier.width(8.dp))
-            val status = when {
-                rec.paused -> "Paused"
-                rec.gpsLost || gps != GpsStatus.GOOD && gps != GpsStatus.WEAK -> "Recording · waiting for GPS"
-                else -> "Recording"
-            }
-            Text(status, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-        }
-        if (rec.followName != null) {
-            val off = rec.offRouteM
-            val (txt, col) = when {
-                off == null -> "Following ${rec.followName}" to MaterialTheme.colorScheme.onSurfaceVariant
-                offRouteLimitM != null && off > offRouteLimitM -> "Off route · ${off.toInt()} m away" to OnPathColors.Bad
-                else -> "On route · ${rec.followName}" to OnPathColors.Good
-            }
-            Text(txt, color = col, fontSize = 14.sp, fontWeight = if (rec.offRouteAlert) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Stat(Format.distance(rec.distanceM), "Distance", Modifier.weight(1f), big = true)
-            Stat(Format.clock(rec.elapsedS), "Time", Modifier.weight(1f), big = true)
-            Stat(Format.meters(rec.ascentM), "Ascent", Modifier.weight(1f), big = true)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (rec.paused) {
-                Button(onClick = onResume, modifier = Modifier.weight(1f).height(60.dp), shape = RoundedCornerShape(16.dp)) {
-                    Icon(Icons.Filled.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Resume", fontSize = 16.sp)
-                }
-            } else {
-                FilledTonalButton(onClick = onPause, modifier = Modifier.weight(1f).height(60.dp), shape = RoundedCornerShape(16.dp)) {
-                    Icon(Icons.Filled.Pause, null); Spacer(Modifier.width(6.dp)); Text("Pause", fontSize = 16.sp)
-                }
-            }
-            Button(onClick = onStop, modifier = Modifier.weight(1f).height(60.dp), shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Bad)) {
-                Icon(Icons.Filled.Stop, null); Spacer(Modifier.width(6.dp)); Text("Stop", fontSize = 16.sp)
+                Text(if (recording) "Follow this track" else "Start navigation")
             }
         }
     }
