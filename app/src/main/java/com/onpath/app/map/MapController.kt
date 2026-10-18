@@ -168,9 +168,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             else -> "routes-bike"
         }
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
-            style.getLayer(id)?.setProperties(
-                PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            )
+            val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
+            style.getLayer(id)?.setProperties(vis)
+            style.getLayer("$id-line")?.setProperties(vis)  // thin centre line when zoomed out
         }
     }
 
