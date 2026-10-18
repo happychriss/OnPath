@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Menus + route management (⋮: Load/Save/Manage routes/Start recording; first-hold start menu) – since 2026-10-18
 - [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md (owner asked laptop to build all; incl. routing parts) – since 2026-10-18
 
 ## Next
@@ -33,6 +32,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Settings → Default activity (laptop, owner): the app always starts with it (hike + SAC level); the activity chip
   only changes the current route. Direction arrows (white chevrons) on the planned route and shown/followed track,
   to see out-and-back sections (`MapController.addDirectionArrows`, hidden by the eye).
+- Route menus (branch `feat/route-menus`, owner spec): top ⋮ = Load route / Save route / Manage routes / Start
+  recording / Settings / Updates, each enabled only when it makes sense (`ui/RouteRules.kt`); plan sheet ⋯ = Reverse,
+  Round trip, Clear; no primary button without a route; Manage routes list (import, export, delete with confirmation,
+  open / pick to load); "Replace current plan?" (Save first / Replace) when loading over an unsaved plan; sheet shows
+  "Saved as …". See `docs/ux-two-modes.md` "Menus". Open: saving always creates a new entry (no overwrite/rename);
+  empty-sheet hint now points to ⋮ → Start recording.
 - Plan gestures v3 (laptop): hold only, 1×/2× vibration, smart point/POI menus, first-hold "Start here / Go here from my
   location", no dragging, no self-dismissing messages (the shared snackbar now stays until OK).
 - Map controls grouped (laptop, owner): one rounded group on the right – compass (Navigate always; Plan only when the

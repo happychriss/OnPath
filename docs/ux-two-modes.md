@@ -8,7 +8,7 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here from my location"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
-| Shown | Plan sheet: named stops, stats, profile, actions (undo/redo/clear/reverse/round trip/save/GPX in ⋯), activity, My tours, Settings | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
+| Shown | Plan sheet: stats, profile, undo/redo, route edits in ⋯ (reverse/round trip/clear); top ⋮: load/save/manage routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
@@ -21,6 +21,36 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 4. **Navigate without a route** = free recording (position + track only).
 5. **App start:** opens in Plan; if a tour is still running (e.g. after a phone restart) it opens in Navigate.
 6. Off-route warning only in Navigate; stays as today (settings).
+
+## Menus (owner spec 2026-10-18, rules in `ui/RouteRules.kt`)
+Disabled items stay visible, greyed – nothing appears or vanishes by surprise. "Navigating" = Navigate mode or a
+tour recording (also while looking at Plan during a tour).
+
+**Top ⋮ (search pill)** – file and app actions:
+
+| Item | Enabled when | Does |
+| --- | --- | --- |
+| Load route | something is saved and not navigating | Opens the routes list in pick mode: tap = load |
+| Save route | a planned route exists | Name dialog (prefilled with the last saved name); always saves a new entry |
+| Manage routes | always | The routes list (below) |
+| Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
+| Settings, Check for updates | always (updates: only when the build supports them) | |
+
+**Plan sheet:** the primary button exists only with a route ("Start navigation", disabled while calculating) or
+while a tour runs ("Continue navigation"). Its ⋯ holds route edits only: Reverse, Round trip, Clear (Clear is
+disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
+"“Name” · changed, not saved".
+
+**Manage routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
+type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
+map). Per item: tap = open (planned route with via points → into the plan; tracks → shown on the map), Export
+(GPX share), Delete (asks "Delete “Name”?"; the dialog stays until Cancel / Delete, a tap outside does nothing).
+While navigating, planned routes cannot be loaded into the plan ("Can be loaded after the tour"); tracks can be shown.
+
+**Loading over an unsaved plan:** "Replace current plan?" – **Save first** (name dialog, then load) · **Replace**
+(tap outside / Back = cancel). The plan counts as unsaved when it has two or more points and they differ (lat/lon)
+from what was last saved or loaded (persisted, follows the snapping of points onto the way). Replacing is also one
+undo step. Tracks open next to the plan without asking.
 
 ## UX cleanup that comes with it
 - Remove the separate Plan / Record / My tours bar; Plan is the home. My tours + Settings via the top bar in Plan.

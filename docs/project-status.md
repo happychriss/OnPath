@@ -4,6 +4,11 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **agent, 2026-10-18 (branch `feat/route-menus`, not merged):** route menus per owner spec – top ⋮ Load / Save /
+  Manage routes / Start recording / Settings / Updates (enabled-when rules in `ui/RouteRules.kt`), sheet ⋯ = Reverse /
+  Round trip / Clear, Manage routes list with import / export / delete / pick, "Replace current plan?" question.
+  Details: `docs/ux-two-modes.md` "Menus". **Test on the phone:** save → "Saved as …" in the sheet; edit → "changed";
+  Load over an unsaved plan (Save first / Replace); delete dialog; menu items greyed during a tour.
 - **laptop, 2026-10-18 (evening):** merged three background branches into `main`: Gradle 9 toolchain (AGP 9.4.1,
   Gradle 9.6, Kotlin 2.2.10, Paparazzi 2.0.0-alpha05.1), snapping of free plan points onto the routed way
   (`WaypointSnap`), plan gestures v2 (see backlog Done). Also: hiking via-point spike correction 250 → 50 m (owner's
