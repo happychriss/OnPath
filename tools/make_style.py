@@ -278,23 +278,30 @@ def trails():
 
 
 def access_restrictions():
-    """Ways you may not use (OSM access=no / private -> OpenMapTiles "access": "no"), like Komoot's
-    blocked sign: a light red tint along the way (z14+) and a small red no-entry sign repeated along it
-    (z15+). Only paths, tracks and non-driveway service roads – private driveways would put a sign at
-    every house. Routing (BRouter) already avoids these ways."""
+    """Ways you may not use, like Komoot's blocked sign: a light red tint along the way (z14+) and a small red
+    no-entry sign repeated along it (z15+). OpenMapTiles sets "access": "no" for OSM access=no/private, but many
+    marked trails are "access=no + foot=yes" (closed to vehicles, open to walkers) – so the marking depends on
+    the activity: the "-foot" layers (hiking, visible by default) skip ways with foot=yes, the "-bike" layers
+    (bike profiles, hidden by default) skip ways with bicycle=yes. The app switches them with the activity
+    (MapController.setOverlay). Only paths, tracks and non-driveway service roads – private driveways would put
+    a sign at every house. Routing (BRouter) already respects these tags."""
     cls = ["get", "class"]
-    blocked = ["all", ["==", ["get", "access"], "no"],
-               ["any", ["in", cls, ["literal", ["path", "track"]]],
-                ["all", ["==", cls, "service"],
-                 ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]]
-    layer(id_="access-no-tint", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
-          filter=blocked, layout={"line-join": "round", "line-cap": "round"},
-          paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
-    layer(id_="access-no-sign", type="symbol", source="base", **{"source-layer": "transportation"}, minzoom=15,
-          filter=blocked,
-          layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
-                  "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
-                  "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1})
+    allowed = ["literal", ["yes", "designated", "permissive"]]
+    base = ["all", ["==", ["get", "access"], "no"],
+            ["any", ["in", cls, ["literal", ["path", "track"]]],
+             ["all", ["==", cls, "service"],
+              ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]]
+    for mode, tag, visible in (("foot", "foot", True), ("bike", "bicycle", False)):
+        blocked = ["all", base, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+        vis = {"visibility": "visible" if visible else "none"}
+        layer(id_=f"access-no-tint-{mode}", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
+              filter=blocked, layout={"line-join": "round", "line-cap": "round", **vis},
+              paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
+        layer(id_=f"access-no-sign-{mode}", type="symbol", source="base", **{"source-layer": "transportation"}, minzoom=15,
+              filter=blocked,
+              layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
+                      "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
+                      "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1, **vis})
 
 
 def bridges():
