@@ -41,6 +41,34 @@ data class Share(val key: String, val meters: Double)
 
 class RoutingException(message: String) : Exception(message)
 
+/**
+ * Cancel signal for one routing request (re-routing while navigating: a newer request supersedes an older one).
+ * Thread-safe; [cancel] may be called from any thread, the engine stops as soon as it can.
+ */
+class RouteCancel {
+    @Volatile var isCancelled = false
+        private set
+    private var hook: (() -> Unit)? = null
+
+    fun cancel() {
+        val h = synchronized(this) { isCancelled = true; hook }
+        try { h?.invoke() } catch (_: Exception) { }
+    }
+
+    /** Engine side: what to run on [cancel] (null = nothing running). Runs at once when already cancelled. */
+    fun onCancel(h: (() -> Unit)?) {
+        val now = synchronized(this) { hook = h; isCancelled }
+        if (now && h != null) try { h() } catch (_: Exception) { }
+    }
+}
+
+/** Optional limits for one request; see [RoutingEngine.route] with limits. */
+data class RouteLimits(
+    /** Upper bound for this request incl. waiting for another request to finish (ms). */
+    val timeoutMs: Long,
+    val cancel: RouteCancel? = null,
+)
+
 interface RoutingEngine {
     /**
      * Calculates a route through all waypoints (start, vias, end), fully offline.
@@ -49,4 +77,11 @@ interface RoutingEngine {
      * @param sacLimit hiking difficulty limit 1..5 (SAC T1..T5), only used for HIKE.
      */
     fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int = 3): RouteResult
+
+    /**
+     * Same as [route], but gives up after [RouteLimits.timeoutMs] or when [RouteLimits.cancel] fires (throws
+     * RoutingException). Engines without support ignore the limits (default), so existing engines stay valid.
+     */
+    fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult =
+        route(waypoints, activity, sacLimit)
 }
