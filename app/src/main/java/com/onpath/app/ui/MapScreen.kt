@@ -218,9 +218,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
     // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
     LaunchedEffect(c) {
-        snapshotFlow { Triple(vm.route, vm.canEditMap, vm.waypoints.toList()) }
-            .collect { (r, show, w) ->
-                c.setPlanned(if (show) r else null)
+        snapshotFlow { Triple(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.waypoints.toList()) }
+            .collect { (r, showLine, w) ->
+                c.setPlanned(if (showLine) r else null)
+                val show = vm.canEditMap
                 c.setWaypoints(if (show) w else emptyList(), vm.pinnedIndices())
             }
     }
