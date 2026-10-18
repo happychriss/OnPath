@@ -7,7 +7,11 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
 SEG=${1:?segments dir}; W=${2:-$(mktemp -d)}
-L=${GRADLE_LIB:-$(dirname "$(ls ~/.gradle/wrapper/dists/*/*/*/lib/kotlin-compiler-embeddable-*.jar | tail -1)")}
+# Prefer the Gradle version the wrapper uses, else the newest installed one (version sort, so 10.x > 9.x).
+GV=$(sed -n 's#.*/gradle-\([0-9][0-9.]*\)-\(bin\|all\)\.zip.*#\1#p' "$ROOT/gradle/wrapper/gradle-wrapper.properties")
+KCE=$(ls ~/.gradle/wrapper/dists/gradle-"$GV"-*/*/*/lib/kotlin-compiler-embeddable-*.jar 2>/dev/null | tail -1 || true)
+[ -n "$KCE" ] || KCE=$(ls ~/.gradle/wrapper/dists/*/*/*/lib/kotlin-compiler-embeddable-*.jar | sort -V | tail -1)
+L=${GRADLE_LIB:-$(dirname "$KCE")}
 KCP=$(ls $L/kotlin-compiler-embeddable-*.jar $L/kotlin-stdlib-[0-9]*.jar $L/kotlin-reflect-*.jar $L/kotlin-script-runtime-*.jar $L/kotlinx-coroutines-core-jvm-*.jar $L/annotations-*.jar $L/kotlin-daemon-embeddable-*.jar | tr '\n' ':')
 STD=$(ls $L/kotlin-stdlib-[0-9]*.jar)
 LIBS=$(ls "$ROOT"/app/libs/*.jar | tr '\n' ':')
