@@ -131,6 +131,16 @@
  "route.width.z13": 6,
  "route.width.z15": 12,
  "route.width.z18": 18,
+ "route.band.color": "#c9f29b",
+ "route.major.color": "#d6336c",
+ "route.major.width.z9": 1.0,
+ "route.major.width.z13": 1.4,
+ "route.major.width.z16": 2.0,
+ "route.major.dash": [
+  2.5,
+  1.5
+ ],
+ "route.major.label.color": "#a61e4d",
  "track.edge.color": "#8a6a48",
  "track.edge.dash": [
   0.35,

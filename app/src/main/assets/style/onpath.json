@@ -838,6 +838,248 @@
    }
   },
   {
+   "id": "routes-hike-major-l",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 10,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     -2.5,
+     15,
+     -5.5,
+     18,
+     -8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-hike-major-r",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 10,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     2.5,
+     15,
+     5.5,
+     18,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-hike-major-label",
+   "type": "symbol",
+   "source": "routes",
+   "minzoom": 12,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "hike"
+     ],
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
+    ],
+    [
+     "!=",
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ],
+     ""
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     300,
+     16,
+     500
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     10,
+     16,
+     12
+    ],
+    "text-max-angle": 30,
+    "text-padding": 4,
+    "text-offset": [
+     0,
+     1.0
+    ],
+    "visibility": "visible"
+   },
+   "paint": {
+    "text-color": "#a61e4d",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
    "id": "routes-bike",
    "type": "line",
    "source": "routes",
@@ -856,7 +1098,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#eeb08a",
+    "line-color": "#c9f29b",
     "line-opacity": [
      "interpolate",
      [
@@ -894,6 +1136,248 @@
    }
   },
   {
+   "id": "routes-bike-major-l",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 9,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bike"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     -2.5,
+     15,
+     -5.5,
+     18,
+     -8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-bike-major-r",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 9,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bike"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     2.5,
+     15,
+     5.5,
+     18,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-bike-major-label",
+   "type": "symbol",
+   "source": "routes",
+   "minzoom": 12,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "bike"
+     ],
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
+    ],
+    [
+     "!=",
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ],
+     ""
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     300,
+     16,
+     500
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     10,
+     16,
+     12
+    ],
+    "text-max-angle": 30,
+    "text-padding": 4,
+    "text-offset": [
+     0,
+     1.0
+    ],
+    "visibility": "none"
+   },
+   "paint": {
+    "text-color": "#a61e4d",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
    "id": "routes-mtb",
    "type": "line",
    "source": "routes",
@@ -912,7 +1396,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#cfa9e3",
+    "line-color": "#c9f29b",
     "line-opacity": [
      "interpolate",
      [
@@ -947,6 +1431,248 @@
      18,
      18
     ]
+   }
+  },
+  {
+   "id": "routes-mtb-major-l",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 9,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "mtb"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     -2.5,
+     15,
+     -5.5,
+     18,
+     -8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-mtb-major-r",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 9,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "mtb"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#d6336c",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     13,
+     1.4,
+     16,
+     2.0
+    ],
+    "line-dasharray": [
+     2.5,
+     1.5
+    ],
+    "line-offset": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     0,
+     13,
+     2.5,
+     15,
+     5.5,
+     18,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "routes-mtb-major-label",
+   "type": "symbol",
+   "source": "routes",
+   "minzoom": 12,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "mtb"
+     ],
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
+    ],
+    [
+     "!=",
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ],
+     ""
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     300,
+     16,
+     500
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     10,
+     16,
+     12
+    ],
+    "text-max-angle": 30,
+    "text-padding": 4,
+    "text-offset": [
+     0,
+     1.0
+    ],
+    "visibility": "none"
+   },
+   "paint": {
+    "text-color": "#a61e4d",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
    }
   },
   {
