@@ -29,6 +29,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Point menu concept (owner): "Start here" drops the points before, "End here" drops the points after (menu says how
+  many; Undo restores); round trip: "Start & finish here" rotates the loop (same points, same order). Start and
+  destination of a normal route get neither (⋯ Reverse). `PlanEdits.startAt/endAt/rotateLoop/isRoundTrip`.
 - Navigate (laptop, owner): "to go" card shows ↑ and ↓; tap it for the elevation profile of the rest of the route
   (stays open until tapped again).
 - Google Maps link (laptop agent): named places open `geo:lat,lon?z=16&q=<name>` (name search biased to our point),

@@ -42,7 +42,7 @@ object MapGestures {
     enum class Buzz { NONE, ONE, TWO }
 
     /** Entries of the point menu, in display order. */
-    enum class PointAction { MAKE_START, END_HERE, GOOGLE, DELETE }
+    enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE }
 
     /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
@@ -81,12 +81,15 @@ object MapGestures {
     }
 
     /**
-     * Sensible options for route point [index] of [count]: "Make starting point" (not on the start), "End route
-     * here" (middle points only), "Open in Google Maps" (named place / POI only), "Delete" (always).
+     * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
+     * points before) and "End here" (drops the points after). Round trip: "Start & finish here" (rotates the loop) on
+     * every point except the start/finish. "Open in Google Maps" (named place / POI only), "Delete" (always).
+     * Start and destination of a normal route get neither (⋯ → Reverse swaps them).
      */
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean): List<PointAction> = buildList {
-        if (index > 0) add(PointAction.MAKE_START)
-        if (index in 1 until count - 1) add(PointAction.END_HERE)
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false): List<PointAction> = buildList {
+        val middle = index in 1 until count - 1
+        if (roundTrip) { if (middle) add(PointAction.LOOP_START) }
+        else if (middle) { add(PointAction.MAKE_START); add(PointAction.END_HERE) }
         if (isPlace) add(PointAction.GOOGLE)
         add(PointAction.DELETE)
     }
