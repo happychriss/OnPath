@@ -421,6 +421,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             Activity.MTB, Activity.EMTB -> "routes-mtb"
             else -> "routes-bike"
         }
+        // Blocked-way marking follows the activity: walkers may use "access=no + foot=yes" ways, bikers
+        // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
+        val walking = activity == Activity.HIKE
+        for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
+                "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking)) {
+            runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+        }
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
             style.getLayer(id)?.setProperties(
                 PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
