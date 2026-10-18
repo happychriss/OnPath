@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] 0.6.0: navigation heading-up/north-up + next-turn arrow; place/address search (offline + Photon, Google link-out); Material-style UI cleanup – since 2026-10-18. Laptop: please don't edit app/ until this lands.
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
