@@ -387,14 +387,16 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit) {
  * back to "Tour saved", nothing is lost by a slip of the finger.
  */
 @Composable
-fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false) {
+fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,
+                        times: com.onpath.app.time.TourTimes? = null) {
     var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
     if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
-    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone)
+    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times)
 }
 
 @Composable
-fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit) {
+fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit,
+                   times: com.onpath.app.time.TourTimes? = null) {
     AlertDialog(
         onDismissRequest = onDone,
         title = { Text("Tour saved") },
@@ -402,6 +404,7 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(t.name, fontWeight = FontWeight.SemiBold)
                 StatsRow(t.distanceM, t.ascentM, t.descentM, t.durationS)
+                times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
             }
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },

@@ -135,6 +135,8 @@ class MainActivity : ComponentActivity() {
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
                             onInstallUpdate = { vm.installUpdate() },
+                            learnedPace = vm.learnedPace,
+                            onResetPace = vm::resetLearnedPace,
                         )
                     }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
@@ -158,6 +160,7 @@ class MainActivity : ComponentActivity() {
                 }
                 vm.finishedTour?.let { t ->
                     FinishedTourDialogs(t,
+                        times = vm.finishedTimes,
                         onExport = { vm.exportTour(t) },
                         onDelete = { vm.deleteTour(t); vm.finishedTour = null },
                         onDone = { vm.finishedTour = null })
