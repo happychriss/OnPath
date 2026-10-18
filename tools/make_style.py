@@ -321,7 +321,7 @@ def trails():
     # Zoomed out: one thin solid dark line for every graded trail (dots would only read as noise).
     # Zoomed out every path / track from our own data (the base map has them only from z12–13), so every route line
     # sits on a visible way – like Komoot. Tracks lighter than paths.
-    layer(id_="trails-low", type="line", source="trails", minzoom=11, maxzoom=LOW_ZOOM_SOLID,
+    layer(id_="trails-low", type="line", source="lowways", minzoom=11, maxzoom=LOW_ZOOM_SOLID,
           layout={"line-join": "round"},
           paint={"line-color": ["case", ["==", ["get", "k"], "t"], T("track.low.color"), T("trail.low.color")],
                  "line-width": ["case", ["==", ["get", "k"], "t"], interp(11, 0.6, 13, 1.0, base=1), Z("trail.width")]})
@@ -581,6 +581,8 @@ def build(theme=DEFAULT_THEME):
             "trails": {"type": "geojson", "data": "file://{DATA_DIR}/trails.geojson", "maxzoom": 16,
                        "tolerance": 0.25},
             # optional (stripped with its layers when the file is missing): tracktype / surface / smoothness
+            "lowways": {"type": "geojson", "data": "file://{DATA_DIR}/lowways.geojson", "maxzoom": 12,
+                        "tolerance": 1.0},
             "ways": {"type": "geojson", "data": "file://{DATA_DIR}/ways.geojson", "maxzoom": 16,
                      "tolerance": 0.25},
             **style_trail_names.sources(),
