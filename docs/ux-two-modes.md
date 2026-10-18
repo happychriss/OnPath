@@ -8,7 +8,7 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here from my location"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
-| Shown | Plan sheet: stats, profile, undo/redo, route edits in ⋯ (reverse/round trip/clear); top ⋮: load/save/manage routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
+| Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
@@ -31,22 +31,24 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 Disabled items stay visible, greyed – nothing appears or vanishes by surprise. "Navigating" = Navigate mode or a
 tour recording (also while looking at Plan during a tour).
 
-**Top ⋮ (search pill)** – file and app actions:
+**☰ (round button right of the search pill)** – library and app (see "Layout rule" below):
 
 | Item | Enabled when | Does |
 | --- | --- | --- |
-| Load route | something is saved and not navigating | Opens the routes list in pick mode: tap = load |
-| Save route | a planned route exists | Plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name stays) · **Save as new…** (name dialog) · Cancel. Otherwise the name dialog (new entry). Rule: `RouteRules.saveMode` |
-| Manage routes | always | The routes list (below) |
+| My routes | always | The routes list (below): tap = open / load |
 | Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
 | Settings, Check for updates | always (updates: only when the build supports them) | |
 
+**Save route** (sheet ⋯): plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name
+stays) · **Save as new…** (name dialog); a tap outside / Back cancels. Otherwise the name dialog (new entry).
+Rule: `RouteRules.saveMode`.
+
 **Plan sheet:** the primary button exists only with a route ("Start navigation", disabled while calculating) or
-while a tour runs ("Continue navigation"). Its ⋯ holds route edits only: Reverse, Round trip, Clear (Clear is
-disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
+while a tour runs ("Continue navigation"). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
+Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved".
 
-**Manage routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
+**My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
 map). Per item: tap = open (planned route with via points → into the plan; tracks → shown on the map), Export
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), Export (GPX share), Delete (asks "Delete “Name”?";

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -130,15 +129,6 @@ fun StatsRow(distance: Double, ascent: Double, descent: Double, durationS: Doubl
 }
 
 // ------------------------------------------------------------------ planning: see PlanPanel.kt
-
-@Composable
-internal fun Hint(text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.TripOrigin, null, tint = OnPathColors.Green, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(text, fontSize = 15.sp)
-    }
-}
 
 @Composable
 fun ActionButtonSmall(icon: ImageVector, desc: String, onClick: () -> Unit) {

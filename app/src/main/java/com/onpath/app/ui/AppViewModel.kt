@@ -85,8 +85,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var dataScreenDismissed by mutableStateOf(false)
 
     // --- screens and mode ---
-    /** Manage routes / Load route list (⋮ menu); null = closed. */
-    var routesScreen by mutableStateOf<RoutesMode?>(null)
+    /** My routes list (☰ → My routes) is open. */
+    var routesOpen by mutableStateOf(false)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -818,7 +818,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun menuState(recording: Boolean): RouteMenuState =
         RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
 
-    fun openRoutes(m: RoutesMode) { refreshTours(); routesScreen = m }
+    fun openRoutes() { refreshTours(); routesOpen = true }
 
     /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
     fun requestOpen(t: Tour) {
@@ -1002,7 +1002,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
-            withContext(Dispatchers.Main) { message = "Tour saved to My tours." }
+            withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
         }
     }
 
@@ -1023,7 +1023,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTour(t: Tour) {
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
-            routesScreen = null
+            routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
@@ -1131,11 +1131,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
-                routesScreen = null // show the imported track on the map
+                routesOpen = false // show the imported track on the map
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                message = buildString {
+                // The track panel with its name is the feedback; a message (until OK) only when something was odd.
+                message = if (data.warnings.isEmpty()) null else buildString {
                     append("Imported “$name”: ${data.pointCount} points")
                     if (data.waypoints.isNotEmpty()) append(", ${data.waypoints.size} waypoints")
                     append(".")

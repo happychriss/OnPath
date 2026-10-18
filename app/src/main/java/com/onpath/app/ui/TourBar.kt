@@ -67,7 +67,7 @@ fun EndTourDialog(onEnd: () -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text("End this tour?") },
-        text = { Text("Recording stops and the tour is saved to My tours.") },
+        text = { Text("Recording stops and the tour is saved to My routes.") },
         confirmButton = { TextButton(onClick = onEnd) { Text("End & save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
@@ -80,7 +80,7 @@ fun ArrivalDialog(onEnd: () -> Unit, onKeepGoing: () -> Unit) {
         onDismissRequest = onKeepGoing,
         icon = { Icon(Icons.Filled.Flag, null, tint = OnPathColors.Good) },
         title = { Text("You have arrived – end tour?") },
-        text = { Text("End & save stops recording and saves the tour to My tours.") },
+        text = { Text("End & save stops recording and saves the tour to My routes.") },
         confirmButton = { TextButton(onClick = onEnd) { Text("End & save") } },
         dismissButton = { TextButton(onClick = onKeepGoing) { Text("Keep going") } },
     )

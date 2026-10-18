@@ -102,15 +102,13 @@ class MainActivity : ComponentActivity() {
                                     if (newTour && !vm.batteryHintShown) showBatteryHint = true
                                 }
                             },
-                            onImportGpx = { launchImport() },
                         )
-                        vm.routesScreen?.let { routesMode ->
-                            BackHandler { vm.routesScreen = null }
+                        if (vm.routesOpen) {
+                            BackHandler { vm.routesOpen = false }
                             RoutesScreen(
                                 tours = vm.tours,
-                                mode = routesMode,
                                 navigating = vm.navigating(vm.recState.collectAsState().value != null),
-                                onBack = { vm.routesScreen = null },
+                                onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },
                                 onOpen = { vm.requestOpen(it) },
                                 onExport = { vm.exportTour(it) },
@@ -138,7 +136,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
-                    BackHandler(enabled = vm.routesScreen == null && !vm.showSettings && vm.mode == AppMode.PLAN &&
+                    BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
                         (vm.shown != null || vm.mapOverlayOpen)) {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
@@ -253,6 +251,7 @@ class MainActivity : ComponentActivity() {
     private fun copy(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("adb", text))
-        vm.message = "Copied."
+        // Android 13+ confirms a copy itself; an extra message would only need another tap.
+        if (Build.VERSION.SDK_INT < 33) vm.message = "Copied."
     }
 }
