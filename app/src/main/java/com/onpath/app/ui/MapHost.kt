@@ -122,6 +122,7 @@ fun MapHost(
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = ctrlRef[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (_: Exception) { return false }
+                if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
                 val marker = if (edit) c?.waypointAt(screen) ?: -1 else -1
                 val poi = if (marker < 0) com.onpath.app.poi.findPoiAt(map, screen) else null
@@ -154,7 +155,7 @@ fun MapHost(
                 else if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
                     // Decide once per press what an armed hold feels like: 2× on a route point, 1× elsewhere.
                     val at = PointF(hold.downX, hold.downY)
-                    val edit = vm.canEditMap
+                    val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) ctrlRef[0]?.waypointAt(at) ?: -1 else -1
                     val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)

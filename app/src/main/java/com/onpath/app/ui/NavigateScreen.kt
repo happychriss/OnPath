@@ -107,9 +107,7 @@ fun NavigateOverlay(
             ui.offRouteM?.let { OffRouteBanner(it) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-            OrientationButton(ui.headingUp, onToggleOrientation,
-                Modifier.align(Alignment.End).padding(end = 16.dp, bottom = 12.dp))
-            footer()
+            footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 startFraction = slideStartFraction)
         }
@@ -167,7 +165,7 @@ internal fun OrientationButton(headingUp: Boolean, onClick: () -> Unit, modifier
 
 /** Compass needle: red half pointing north with an "N" above it, grey half south. */
 @Composable
-private fun NorthNeedle(modifier: Modifier) {
+internal fun NorthNeedle(modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     Canvas(modifier) {
         val w = size.width; val h = size.height

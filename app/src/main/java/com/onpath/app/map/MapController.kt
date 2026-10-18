@@ -52,6 +52,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // --- Navigate: orientation + next-turn arrow (navigation agent) ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
+        /**
+         * App layers hidden while the eye button is held: everything route-like, but not the own
+         * position or the recorded track. New route layers (e.g. a grey original route) belong here.
+         */
+        val ROUTE_OVERLAY_LAYERS = listOf(
+            "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
+            "$SRC_GPX-casing", SRC_GPX, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
+        )
         private const val IMG_TURN = "nav-turn-arrow"
         /** Map tilt in heading-up Navigate (degrees). 0 = flat; try 30–40 for a "navigation" look. */
         const val NAV_TILT_DEG = 0.0
@@ -206,6 +214,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             Log.w("OnPath", "camera mode failed: $e")
         }
     }
+
+    private var routeOverlaysVisible = true
+
+    /** Eye button: hide / show all [ROUTE_OVERLAY_LAYERS]. Never throws. */
+    fun setRouteOverlaysVisible(visible: Boolean) {
+        routeOverlaysVisible = visible
+        applyRouteOverlaysVisibility()
+    }
+
+    /** Re-apply the eye state, e.g. after adding a route layer. */
+    fun applyRouteOverlaysVisibility() {
+        val v = PF.visibility(if (routeOverlaysVisible) Property.VISIBLE else Property.NONE)
+        for (id in ROUTE_OVERLAY_LAYERS) runCatching { style.getLayer(id)?.setProperties(v) }
+    }
+
+    /** Compass button in Plan: turn the map back to north up. */
+    fun northUp() = runCatching { resetNorth() }
 
     /** Back in Plan: north up, flat, no tracking padding (editing on a turned map is confusing). */
     private fun resetNorth() {
