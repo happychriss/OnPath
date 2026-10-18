@@ -24,6 +24,12 @@ data class RouteResult(
     /** Komoot-style breakdown, metres per category, largest first (may be empty). */
     val wayTypes: List<Share> = emptyList(),
     val surfaces: List<Share> = emptyList(),
+    /**
+     * Where the engine matched each input waypoint onto a way (same order and size as the request's
+     * waypoints; null entries = unknown). Empty when the engine does not report it (callers then fall
+     * back to the route geometry, see [WaypointSnap]).
+     */
+    val matched: List<GeoPoint?> = emptyList(),
 )
 
 /**

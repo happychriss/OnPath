@@ -47,6 +47,8 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 | App UI (eye button, drag, settings, summary) | app agent | rest of `app/` incl. `poi/`, `ui/`, `map/`, `data/`, tests |
 
 - `RouteResult` now has `wayTypes` and `surfaces` (`List<Share>`, defaults empty). Keys are listed in `RoutingContract.kt`.
+- `RouteResult.matched` (`List<GeoPoint?>`, default empty): where the engine snapped each input waypoint onto a way (BRouter crosspoint).
+  `Planner` turns it into `PlannedRoute.snapped`; the app moves free (not POI-pinned) plan points there (`WaypointSnap`).
 - POI categories: the `kind` property of `pois.geojson` features; groups are defined in `poi/PoiKinds.kt`. The app filters POIs by
   setting a filter on every layer whose id starts with `poi-`: `["all", <original filter>, ["in", ["get","kind"], ["literal", [...enabled kinds]]]]`.
   Style layers must therefore keep `kind` as a feature property and use expression filters (not legacy filters).
