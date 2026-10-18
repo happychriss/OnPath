@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
                                     if (newTour && !vm.batteryHintShown) showBatteryHint = true
                                 }
                             },
+                            onImportGpx = { launchImport() },
                         )
                         if (vm.showTours) {
                             BackHandler { vm.showTours = false }

@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] 0.6.0: navigation heading-up/north-up + next-turn arrow; place/address search (offline + Photon, Google link-out); Material-style UI cleanup – since 2026-10-18. Laptop: please don't edit app/ until this lands.
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
@@ -29,6 +28,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- 0.6.0 (cloud): navigation heading-up / north-up + next-turn card and arrow; place / address search (offline index +
+  Photon online, place card with "Add to route" preview, Google Maps link-out, named stops); Material 3 UI cleanup
+  (search pill + ⋮ menu, activity chip, plan sheet with status text, named stop chips and one primary button, route
+  actions in ⋯, small FABs, Navigate status on top). `app/` is free again for the laptop. **Needs a phone test** (see
+  `docs/project-status.md`, last session).
 - 0.5.0 (cloud): two modes Plan / Navigate (`docs/ux-two-modes.md`): Plan is home (My tours + Settings in the top bar,
   GPS dot on the locate button, no eye button, no Plan/Record/My tours bar), "Start navigation" (route, shown track or
   free recording), Navigate with remaining strip and slide-to-plan (≥ 85 %), map taps change nothing; recording keeps

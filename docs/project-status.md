@@ -4,6 +4,25 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-18 (0.6.0):** three features landed. (1) Navigate: heading-up / north-up (`map/HeadingEngine`,
+  orientation FAB above locate, setting "Map direction while navigating") and next-turn hints (`routing/TurnDetector`,
+  green turn card on top + arrow on the map, only on route and ≤ 500 m ahead). (2) Place / address search
+  (`search/`, `ui/search/`): offline index (POIs, base-map places, trails) + Photon online when available, results
+  "near your route" first, one place card for search results and tapped POIs ("Add to route" with a preview of where it
+  goes, As start / As destination, Google Maps link-out); stops keep their names (`vm.stopName`). (3) Material 3 UI
+  cleanup: Plan top = one search pill with a ⋮ menu (My tours, Import GPX, Settings, Check for updates) + activity
+  chip; plan sheet = M3 drag handle, status text (time, distance, ↑/↓, highest point, difficulty badge), named stop
+  chips, undo/redo, one filled primary button (Start navigation / Start recording / Continue navigation); profile and
+  breakdown behind "Elevation & surfaces" (sheet opens COMPACT); reverse / round trip / from my location / save / GPX /
+  clear in the sheet's ⋯. Tour running bar is status + End tour only. Map controls are 48 dp round small FABs on the
+  right; scale + attribution smaller. Navigate: turn card → status card (to go + recording) → off-route banner on
+  top, FABs right, slide-to-plan bottom. The place card replaces the plan sheet while open. Theme: neutral surface
+  containers / outlines (no M3 purple tint). Screenshot tests now render at 390 dp width and include both menus.
+  **Test on the phone:** heading-up while walking (smooth? jumps when standing still?), turn card distances and arrow
+  position, north-up toggle; search offline (airplane mode) and online, add a result as stop / start / destination,
+  Google Maps link; stop names in the sheet; ⋮ Import GPX and Check for updates; sheet ⋯ actions; swipe the sheet
+  (mini / compact / full) and "Elevation & surfaces"; Continue navigation + End tour while recording; one-hand reach of
+  the FABs and the slider with gloves.
 - **cloud, 2026-10-18 (two modes, 0.5.0):** implemented `docs/ux-two-modes.md`. `AppMode { PLAN, NAVIGATE }` replaces
   BROWSE/PLAN; Plan is home (top bar My tours / Settings / activity, GPS dot on the locate button, eye button, GPS chip,
   browse bar and record panel removed). "Start navigation" follows the plan, a shown track or nothing (free recording)

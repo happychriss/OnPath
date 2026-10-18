@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,7 +41,7 @@ fun PlanNoticeBar(notice: PlanNotice, onAction: (NoticeAction) -> Unit, onDismis
     Snackbar(
         modifier = modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         action = notice.action?.let { a ->
-            { TextButton(onClick = { onAction(a) }) { Text(notice.actionLabel ?: "Change", color = Color(0xFFB9F6CA)) } }
+            { TextButton(onClick = { onAction(a) }) { Text(notice.actionLabel ?: "Change", color = MaterialTheme.colorScheme.inversePrimary) } }
         },
     ) { Text(notice.text) }
 }
@@ -85,19 +86,5 @@ fun PointMenuDialog(
 private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
         Icon(icon, null); Spacer(Modifier.width(12.dp)); Text(label, Modifier.weight(1f), fontSize = 16.sp)
-    }
-}
-
-/** Top strip while following a route: what is left (F-NAV-01). */
-@Composable
-fun RemainingStrip(distanceM: Double, ascentM: Double, timeS: Double, offM: Double?, modifier: Modifier = Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 4.dp) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("${Format.distance(distanceM)} to go", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            Text("  ·  ↑ ${Format.meters(ascentM)}  ·  ${Format.duration(timeS)}", fontSize = 14.sp)
-            if (offM != null && offM > 150) Text("  ·  ${Format.distance(offM)} off", fontSize = 13.sp, color = OnPathColors.Bad)
-        }
     }
 }

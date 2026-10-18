@@ -30,20 +30,6 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.GoogleSearchLink
 import com.onpath.app.ui.AppViewModel
 
-/** The search pill in the Plan top bar ("Search places or addresses"). */
-@Composable
-fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("Search places or addresses", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1)
-        }
-    }
-}
-
 /** Full-screen search view while [AppViewModel.searchOpen] (Plan mode). Back closes it. */
 @Composable
 fun SearchHost(vm: AppViewModel) {

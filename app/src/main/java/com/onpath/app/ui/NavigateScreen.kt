@@ -29,7 +29,10 @@ import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.outlined.WrongLocation
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -80,7 +83,9 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double)
 data class ToGo(val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?)
 
 /**
- * Navigate mode: full map following the user, what is left on top, slide-to-plan at the bottom.
+ * Navigate mode, Google Maps style. Status on top (read-only): the next-turn card, what is left and the
+ * recording state, then the off-route warning. Controls at the bottom right / bottom: orientation and locate
+ * FABs, slide-to-plan. Ending the tour happens in Plan ("End tour") or on arrival – never by a stray touch here.
  * Map taps change nothing here (MapHost checks AppViewModel.canEditMap).
  */
 @Composable
@@ -94,18 +99,16 @@ fun NavigateOverlay(
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp, start = 12.dp, end = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(top = 8.dp, start = 12.dp, end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ui.turn?.let { TurnChip(it) }
-            ui.toGo?.let { RemainingStrip(it.distanceM, it.ascentM, it.timeS, it.offM) }
-            ui.recordedM?.let { RecordingChip(it, ui.elapsedS, ui.paused, ui.waitingGps, onResume) }
-            ui.offRouteM?.let { OffRouteChip(it) }
+            ui.turn?.let { TurnCard(it) }
+            if (ui.toGo != null || ui.recordedM != null) NavStatusCard(ui, onResume)
+            ui.offRouteM?.let { OffRouteBanner(it) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             OrientationButton(ui.headingUp, onToggleOrientation,
-                Modifier.align(Alignment.End).padding(end = 20.dp, bottom = 10.dp))
+                Modifier.align(Alignment.End).padding(end = 16.dp, bottom = 12.dp))
             footer()
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 startFraction = slideStartFraction)
@@ -113,22 +116,23 @@ fun NavigateOverlay(
     }
 }
 
-/** Next turn: arrow icon + "Right in 120 m" (only while on route and ≤ 500 m ahead). */
+/** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
-private fun TurnChip(t: TurnHint) {
+private fun TurnCard(t: TurnHint) {
     val text = if (t.distanceM < 15) "${t.kind.label} now" else "${t.kind.label} in ${turnDistance(t.distanceM)}"
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Route, shadowElevation = 4.dp,
-        modifier = Modifier.semantics { contentDescription = text }) {
-        Row(Modifier.heightIn(min = 44.dp).padding(start = 10.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(turnIcon(t.kind), null, tint = Color.White, modifier = Modifier.size(30.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(turnDistance(t.distanceM), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Text(t.kind.label, color = Color.White, fontSize = 15.sp)
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
+        Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(t.kind.label, style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }
-
 /** Rounded like a navigation display: 10 m steps below 200 m, 50 m steps above. */
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> "Now"
@@ -155,11 +159,9 @@ private fun turnIcon(k: TurnKind): ImageVector = when (k) {
 internal fun OrientationButton(headingUp: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val what = if (headingUp) "Map turns with your walking direction. Tap for north up"
         else "Map is north up. Tap to turn it with your walking direction"
-    Surface(shape = CircleShape, color = Color.White, shadowElevation = 4.dp, modifier = modifier.size(52.dp)) {
-        IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = what }) {
-            if (headingUp) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(28.dp))
-            else NorthNeedle(Modifier.size(40.dp))
-        }
+    MapFab(onClick, modifier.semantics { contentDescription = what }, contentColor = OnPathColors.Route) {
+        if (headingUp) Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(24.dp))
+        else NorthNeedle(Modifier.size(34.dp))
     }
 }
 
@@ -177,26 +179,53 @@ private fun NorthNeedle(modifier: Modifier) {
     }
 }
 
-/** "● Recording · 5.3 km · 1:23:45"; while paused with a Resume button. */
+/**
+ * Read-only status card: "7.4 km to go · ↑ 512 m · 2 h 54 min" and "● Recording · 5.3 km · 1:23:45".
+ * The only button is "Resume" while paused (from the notification).
+ */
 @Composable
-private fun RecordingChip(distanceM: Double, elapsedS: Long, paused: Boolean, waitingGps: Boolean, onResume: () -> Unit) {
-    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 4.dp) {
-        Row(Modifier.heightIn(min = 36.dp).padding(start = 12.dp, end = if (paused) 4.dp else 12.dp),
+private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(9.dp).background(if (paused) OnPathColors.Grey else OnPathColors.Rec, CircleShape))
-            Spacer(Modifier.width(8.dp))
-            val status = when { paused -> "Paused"; waitingGps -> "Waiting for GPS"; else -> "Recording" }
-            Text("$status · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}", fontSize = 13.sp)
-            if (paused) TextButton(onClick = onResume) { Text("Resume") }
+            Column(Modifier.weight(1f)) {
+                ui.toGo?.let { g ->
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text("${Format.distance(g.distanceM)} to go", style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text("  ·  ↑ ${Format.meters(g.ascentM)}  ·  ${Format.duration(g.timeS)}",
+                            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    val off = g.offM
+                    if (off != null && off > 150) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                }
+                ui.recordedM?.let { d ->
+                    Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RecDot(ui.paused, Modifier.size(8.dp))
+                        Spacer(Modifier.width(8.dp))
+                        val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS"; else -> "Recording" }
+                        Text("$status · ${Format.distance(d)} · ${Format.clock(ui.elapsedS)}",
+                            style = if (ui.toGo == null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+            if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
         }
     }
 }
 
 @Composable
-private fun OffRouteChip(offM: Int) {
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Bad, shadowElevation = 4.dp) {
-        Text("Off route · $offM m away", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+private fun OffRouteBanner(offM: Int) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer, shadowElevation = 3.dp, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.WrongLocation, null, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Off route · $offM m away", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

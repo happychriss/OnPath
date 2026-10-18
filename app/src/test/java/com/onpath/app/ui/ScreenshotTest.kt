@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,13 +29,13 @@ import org.junit.Rule
 import org.junit.Test
 import kotlin.math.sin
 
-/** JVM screenshots of the non-map UI at Pixel 8 size (map replaced by a placeholder). */
+/** JVM screenshots of the non-map UI at 390 dp width (map replaced by a placeholder). */
 class ScreenshotTest {
 
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 1080, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420),
+            screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420),
         ),
         showSystemUi = false,
     )
@@ -46,21 +47,22 @@ class ScreenshotTest {
         wayTypes = listOf(Share("path", 6100.0), Share("track", 3300.0), Share("quiet_road", 2200.0), Share("road", 700.0), Share("steps", 180.0)),
         surfaces = listOf(Share("natural_trail", 5200.0), Share("gravel", 3900.0), Share("asphalt", 3000.0), Share("unknown", 380.0)))
     private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null,
-                       size: PlanSize = PlanSize.FULL, tourRunning: Boolean = false) =
-        PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning)
+                       size: PlanSize = PlanSize.COMPACT, tourRunning: Boolean = false, names: List<String?> = emptyList()) =
+        PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning,
+            stopNames = names)
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false) =
         MapFooter("500 m" to 64.dp) { LocateButton(gps, following, onClick = {}) }
 
-    /** Plan mode: top bar (My tours, Settings, activity), footer, then [bottom]. Top padding stands in for the status bar. */
+    /** Plan mode: search bar (⋮ menu), activity chip, footer, then [bottom]. Top padding stands in for the status bar. */
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {}, bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar(Activity.HIKE, 3, {}, {}, {}, Modifier.fillMaxWidth())
+                    PlanTopBar(Activity.HIKE, 3, {}, {}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                         aboveFooter()
                         Footer(gps)
@@ -94,10 +96,45 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
-    /** Back in Plan while the tour records: Tour running bar instead of Start navigation. */
+    /** Plan with a named route: stop chips use the search / POI names. */
+    @Test fun planNamedStops() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(n = 3, names = listOf("Algund", "Meraner Hütte", null)), PlanCallbacks()) }
+    }
+
+    /** "Elevation & surfaces" opened: profile, gradient legend, way type / surface bars. */
+    @Test fun planExpanded() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.FULL), PlanCallbacks()) }
+    }
+
+    /** Drop-down menus are popups (not drawn by Paparazzi): draw their items where the menu opens. */
+    @Composable
+    private fun MenuCard(modifier: Modifier, items: @Composable () -> Unit) {
+        androidx.compose.material3.Surface(modifier.width(260.dp), shape = androidx.compose.material3.MaterialTheme.shapes.extraSmall,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer, shadowElevation = 3.dp) {
+            Column(Modifier.padding(vertical = 8.dp)) { items() }
+        }
+    }
+
+    /** The ⋮ menu of the search bar: My tours, Import GPX, Settings, Updates. */
+    @Test fun planMenuOpen() = paparazzi.snapshot {
+        Box(Modifier.fillMaxSize()) {
+            Frame { PlanPanel(planUi(), PlanCallbacks()) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(onUpdates = {})) {} } }
+        }
+    }
+
+    /** The ⋯ menu of the plan sheet: the rare route actions. */
+    @Test fun planSheetMenuOpen() = paparazzi.snapshot {
+        Box(Modifier.fillMaxSize()) {
+            Frame { PlanPanel(planUi(), PlanCallbacks()) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.BottomEnd).padding(bottom = 150.dp, end = 12.dp)) { SheetMenuItems(planUi(), PlanCallbacks()) {} } }
+        }
+    }
+
+    /** Back in Plan while the tour records: status bar (End tour) and "Continue navigation" as the primary button. */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            TourRunningBar(6_400.0, paused = false, onContinue = {}, onEnd = {})
+            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
             PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
         }
     }
@@ -105,7 +142,7 @@ class ScreenshotTest {
     @Test fun endTourConfirm() = paparazzi.snapshot {
         OnPathTheme {
             Frame {
-                TourRunningBar(6_400.0, paused = false, onContinue = {}, onEnd = {})
+                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
             EndTourDialog({}, {})
@@ -157,11 +194,6 @@ class ScreenshotTest {
         }
     }
 
-    /** Swiped down once: profile, breakdown and point chips removed. */
-    @Test fun planCompact() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
-    }
-
     /** Swiped down twice: one line with the key numbers. */
     @Test fun planMini() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
@@ -196,7 +228,7 @@ class ScreenshotTest {
     /** Whole settings page on a tall canvas (all sections). */
     @Test fun settingsFull() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 1080, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)))
+            screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot {
             OnPathTheme {
                 SettingsScreen(

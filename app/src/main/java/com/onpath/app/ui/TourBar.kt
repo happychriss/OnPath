@@ -26,31 +26,38 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 
-/** Plan mode while a tour records: "Tour running · 6.4 km", End tour, Continue navigation. */
+/**
+ * Plan mode while a tour records: read-only status "● Tour running · 6.4 km · 1:23:45" plus the rare
+ * "End tour" text button. The primary "Continue navigation" is the plan sheet's filled button.
+ */
 @Composable
-fun TourRunningBar(distanceM: Double, paused: Boolean, onContinue: () -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
-        Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).background(if (paused) OnPathColors.Grey else OnPathColors.Rec, CircleShape))
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(if (paused) "Tour paused" else "Tour running", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Text(Format.distance(distanceM), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            }
-            TextButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp)) { Text("End tour", color = OnPathColors.Bad) }
-            Button(onClick = onContinue, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)) {
-                Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-                Text("Continue navigation", fontSize = 14.sp, maxLines = 1)
+fun TourRunningBar(distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier) {
+    val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
+    Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+            RecDot(paused)
+            Spacer(Modifier.width(10.dp))
+            Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1,
+                modifier = Modifier.weight(1f).semantics { contentDescription = status })
+            TextButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("End tour", color = MaterialTheme.colorScheme.error)
             }
         }
     }
+}
+
+/** Recording state dot: orange while recording, grey while paused. */
+@Composable
+fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
+    Box(modifier.size(10.dp).background(if (paused) OnPathColors.Grey else OnPathColors.Rec, CircleShape))
 }
 
 /** "End tour" in Plan mode: one question, then stop & save (summary follows). */
