@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Bug: hiking via point on a spur not reached (spike cut 250 m) – since 2026-10-18
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
@@ -29,6 +28,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Bug fixed (laptop): a hiking via point on a spur was cut off and left unconnected (owner's point 3 on the Algunder
+  Waalweg, 100 m off the route) – BRouter's via-point spike correction for HIKE lowered 250 m → 50 m
+  (`VIA_CORRECTION_HIKE_M`). **Cloud:** please re-run your `ViaTest.kt` cases (the VIA_CASES file is not in the
+  repo – consider committing it) and check bikes (400 m) for the same effect.
 - 0.6.0 (cloud): navigation heading-up / north-up + next-turn card and arrow; place / address search (offline index +
   Photon online, place card with "Add to route" preview, Google Maps link-out, named stops); Material 3 UI cleanup
   (search pill + ⋮ menu, activity chip, plan sheet with status text, named stop chips and one primary button, route

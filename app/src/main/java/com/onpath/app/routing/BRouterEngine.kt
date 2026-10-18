@@ -209,8 +209,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     }
 
     /**
-     * Longest out-and-back spike (one way) BRouter cuts at a via point. Shorter for hiking, where a via
-     * on a short spur is more often a deliberate goal (summit, viewpoint, hut).
+     * Longest out-and-back spike (one way) BRouter cuts at a via point. Much shorter for hiking, where a
+     * via point on a spur is usually a deliberate goal (summit, viewpoint, a spot on a Waalweg): with
+     * 250 m the owner's point 3 on the Algunder Waalweg was cut off and left unconnected (100 m away).
+     * 50 m still trims small snapping spikes.
      */
     private fun viaCorrectionM(activity: Activity): Double =
         if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
@@ -324,7 +326,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         private const val MIN_TIMEOUT_MS = 15_000L
         private const val TIMEOUT_MS_PER_KM = 500.0
         private const val VIA_CORRECTION_M = 400.0
-        private const val VIA_CORRECTION_HIKE_M = 250.0
+        private const val VIA_CORRECTION_HIKE_M = 50.0
         private const val CACHE_SIZE = 8
         private const val MAX_SNAP_M = 1000.0
         private const val ELE_FILTER_M = 10.0
