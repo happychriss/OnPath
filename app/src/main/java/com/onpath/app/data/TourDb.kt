@@ -160,6 +160,12 @@ class TourDb private constructor(context: Context) :
 
     fun appendPoint(tourId: Long, seq: Int, seg: Int, p: TrackPoint) = insertPoint(writableDatabase, tourId, seq, seg, p)
 
+    /** The activity switched during a recording (Navigate → activity check). */
+    fun updateActivity(tourId: Long, activity: String, sac: Int) {
+        writableDatabase.update("tours", ContentValues().apply { put("activity", activity); put("sac", sac) },
+            "id=?", arrayOf(tourId.toString()))
+    }
+
     fun updateStats(tourId: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String) {
         writableDatabase.update("tours", ContentValues().apply {
             put("distance", distance); put("ascent", ascent); put("descent", descent)
