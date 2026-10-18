@@ -441,6 +441,7 @@ class RecordingService : Service() {
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
+                learnAcrossTours()
                 File(filesDir, TRIP_FILE).delete()
             } catch (e: Exception) { Log.e("OnPath", "tour times", e) }
             _finished.value = tourId
@@ -491,6 +492,20 @@ class RecordingService : Service() {
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
 
+    /** Learning across tours (owner decision Q4): stores this tour's pace when it followed a route long enough. */
+    private fun learnAcrossTours() {
+        try {
+            val a = timeActivity()
+            val prefs = Prefs(this)
+            val store = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
+            val pace = com.onpath.app.time.TimeEstimate.pace(a, settings ?: prefs.settings).factor
+            val (p, obs) = trip.observed()
+            val t = tourTimes()
+            val next = store.update(a, trip.factors(), p, obs, trip.prior * (1 / pace), t.movingS, t.breakS)
+            if (next !== store) { prefs.paceStore = next.toJson(); Log.i("OnPath", "pace learned for $a: ${next.factors(a)}") }
+        } catch (e: Exception) { Log.e("OnPath", "learn pace", e) }
+    }
+
     private fun activityOf(name: String?) =
         runCatching { com.onpath.app.routing.Activity.valueOf(name!!) }.getOrDefault(com.onpath.app.routing.Activity.HIKE)
 
@@ -499,7 +514,8 @@ class RecordingService : Service() {
 
     /** Pace setting × learned factors for [a] (same as the plan sheet). */
     private fun priorFor(a: com.onpath.app.routing.Activity): com.onpath.app.time.Factors = try {
-        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings, null)
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings,
+            com.onpath.app.time.PaceStore.fromJson(Prefs(this).paceStore).factors(a))
     } catch (_: Exception) { com.onpath.app.time.Factors.ONE }
 
     /** The navigated line changed (start, re-route, back on the original): new times, learned factors stay. */
