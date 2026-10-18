@@ -30,5 +30,5 @@ fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$D/Geo.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$W/$TN.kt"
+  "$R/StraightLineEngine.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$W/$TN.kt"
 java -Xmx192m -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

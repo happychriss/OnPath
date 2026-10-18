@@ -45,6 +45,8 @@ class Prefs(context: Context) {
             defaultActivity = runCatching { com.onpath.app.routing.Activity.valueOf(sp.getString("defaultActivity", null)!!) }
                 .getOrDefault(com.onpath.app.routing.Activity.HIKE),
             defaultSac = sp.getInt("defaultSac", 3).coerceIn(1, 5),
+            hikePace = com.onpath.app.time.Pace.of(sp.getString("hikePace", null)),
+            bikePace = com.onpath.app.time.Pace.of(sp.getString("bikePace", null)),
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
@@ -58,6 +60,8 @@ class Prefs(context: Context) {
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
             .putString("defaultActivity", v.defaultActivity.name)
             .putInt("defaultSac", v.defaultSac)
+            .putString("hikePace", v.hikePace.name)
+            .putString("bikePace", v.bikePace.name)
             .apply()
 
     var planWaypoints: List<GeoPoint>
@@ -82,6 +86,11 @@ class Prefs(context: Context) {
     var planPinned: Set<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()
         set(v) = sp.edit().putString("planPinned", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
+
+    /** Learned pace per activity (time/PaceStore JSON); null = nothing learned yet. */
+    var paceStore: String?
+        get() = sp.getString("paceStore", null)
+        set(v) = sp.edit().putString("paceStore", v).apply()
 
     /** The followed line is a shown/imported track, not the plan ("Continue navigation" then does not re-plan). */
     var followIsTrack: Boolean

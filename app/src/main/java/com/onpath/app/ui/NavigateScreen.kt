@@ -315,6 +315,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     // turns on the followed line, computed once per line (pure, TurnDetector)
     val turns = remember(line) { line?.let { TurnDetector.turns(it) } ?: emptyList() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
+    // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
+    val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
     val hint = remember(line) { intArrayOf(0) }
     val here = location?.let { GeoPoint(it.latitude, it.longitude) }
     val remaining = remember(progress, location) {
@@ -328,7 +330,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
     val ui = NavUi(
         toGo = remaining?.let { r ->
-            ToGo(r.distanceM, r.ascentM, FollowProgress.timeS(r, vm.activity), r.offM, r.descentM,
+            ToGo(r.distanceM, r.ascentM, toGoSeconds(times, r.distanceM, vm.planFactors()), r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList())
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
@@ -342,6 +344,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute)
 }
+
+/** Moving time from the position ([remainingM] before the end) to the end of the line, rounded for display. */
+internal fun toGoSeconds(times: com.onpath.app.time.RouteTimes?, remainingM: Double, f: com.onpath.app.time.Factors): Double =
+    if (times == null) 0.0 else com.onpath.app.time.TimeEstimate.round(times.remainingFrom(times.lengthM - remainingM, f))
 
 /** Off the line by more than this: no turn hint (the off-route chip / warning takes over). */
 internal const val TURN_HIDE_OFF_M = 40.0
