@@ -79,6 +79,10 @@ fun SettingsScreen(
     onImportData: () -> Unit = {},
     onDownloadRouting: () -> Unit = {},
     dataBusy: String? = null,
+    /** null = updates handled elsewhere (installed from Google Play) – section hidden. */
+    update: AppViewModel.UpdateState? = null,
+    onCheckUpdate: () -> Unit = {},
+    onInstallUpdate: () -> Unit = {},
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -182,6 +186,9 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+                if (update != null) item {
+                    Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                 }
                 item { AboutSection(checks, dataDir, version) }
             }

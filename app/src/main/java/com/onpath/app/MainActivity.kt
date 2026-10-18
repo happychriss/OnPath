@@ -126,6 +126,9 @@ class MainActivity : ComponentActivity() {
                             onImportData = { openData.launch(arrayOf("*/*")) },
                             onDownloadRouting = { vm.downloadRoutingData() },
                             dataBusy = vm.dataBusy,
+                            update = vm.update.takeIf { vm.updatesEnabled },
+                            onCheckUpdate = { vm.checkForUpdates(manual = true) },
+                            onInstallUpdate = { vm.installUpdate() },
                         )
                     }
                     BackHandler(enabled = !vm.showTours && !vm.showSettings && (vm.mode == Mode.PLAN || vm.shown != null)) {

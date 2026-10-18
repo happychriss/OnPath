@@ -195,6 +195,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- map data on the phone (no adb) ----------------
 
+    // ---------------- app updates from GitHub Releases (F-OFF-06) ----------------
+
+    sealed interface UpdateState {
+        data object Idle : UpdateState
+        data object Checking : UpdateState
+        data object UpToDate : UpdateState
+        data class Available(val release: com.onpath.app.update.AppUpdater.Release) : UpdateState
+        data class Downloading(val release: com.onpath.app.update.AppUpdater.Release, val percent: Int) : UpdateState
+        data class Failed(val message: String) : UpdateState
+    }
+
+    var update by mutableStateOf<UpdateState>(UpdateState.Idle)
+        private set
+    /** Release the user dismissed on the home screen (no nagging; still visible in Settings). */
+    var updateDismissed by mutableStateOf<String?>(null)
+
+    /** Hidden when Google Play installed the app – Play handles updates then. */
+    val updatesEnabled: Boolean by lazy { !com.onpath.app.update.AppUpdater.installedFromPlay(getApplication()) }
+
+    fun checkForUpdates(manual: Boolean) {
+        if (!updatesEnabled || update is UpdateState.Checking || update is UpdateState.Downloading) return
+        val sp = getApplication<Application>().getSharedPreferences("onpath", 0)
+        val now = System.currentTimeMillis()
+        if (!manual && !com.onpath.app.update.AppUpdater.dueForAutoCheck(sp.getLong("updateCheck", 0), now)) return
+        if (manual) update = UpdateState.Checking
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = try {
+                val r = com.onpath.app.update.AppUpdater.fetchLatest(com.onpath.app.BuildConfig.UPDATE_REPO)
+                sp.edit().putLong("updateCheck", now).apply()
+                if (r != null && com.onpath.app.update.AppUpdater.isNewer(r.version, com.onpath.app.BuildConfig.VERSION_NAME))
+                    UpdateState.Available(r) else UpdateState.UpToDate
+            } catch (e: Exception) {
+                // Offline or GitHub unreachable: silent for the automatic check.
+                if (manual) UpdateState.Failed("Could not check for updates (${e.message ?: "no connection"}).") else UpdateState.Idle
+            }
+            withContext(Dispatchers.Main) { update = result }
+        }
+    }
+
+    /** Downloads the update and opens the Android installer (the user confirms there). */
+    fun installUpdate() {
+        val app = getApplication<Application>()
+        val rel = (update as? UpdateState.Available)?.release ?: return
+        if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
+            message = "Allow OnPath to install updates, then tap Install again."
+            try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (_: Exception) { }
+            return
+        }
+        update = UpdateState.Downloading(rel, 0)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val apk = com.onpath.app.update.AppUpdater.download(app, rel) { p ->
+                    viewModelScope.launch(Dispatchers.Main) { if (update is UpdateState.Downloading) update = UpdateState.Downloading(rel, p) }
+                }
+                withContext(Dispatchers.Main) {
+                    update = UpdateState.Available(rel)
+                    app.startActivity(com.onpath.app.update.AppUpdater.installIntent(app, apk))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    update = UpdateState.Available(rel)
+                    message = "Update download failed: ${e.message ?: "no connection"}. Your current version keeps working."
+                }
+            }
+        }
+    }
+
     /** Progress text while importing / downloading map data, null when idle. */
     var dataBusy by mutableStateOf<String?>(null)
         private set

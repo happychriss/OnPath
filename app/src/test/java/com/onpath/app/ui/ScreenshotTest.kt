@@ -223,4 +223,20 @@ class ScreenshotTest {
             )
         }
     }
+
+    private val release = com.onpath.app.update.AppUpdater.Release(
+        "0.4.1", "- Trail names along the paths\n- Update button in Settings", "https://x/onpath.apk", 32_000_000, "https://x")
+
+    @Test fun updateBanner() = paparazzi.snapshot {
+        Frame {
+            Column {
+                UpdateBanner(AppViewModel.UpdateState.Available(release), {}, {}, Modifier.padding(12.dp))
+                BrowseBar({}, {}, {}, followName = null, onStopFollow = {})
+            }
+        }
+    }
+
+    @Test fun updateSettings() = paparazzi.snapshot {
+        Frame { Column(Modifier.padding(16.dp)) { UpdateSectionContent(AppViewModel.UpdateState.Available(release), "0.4.0", {}, {}) } }
+    }
 }

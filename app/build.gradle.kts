@@ -13,8 +13,15 @@ android {
         applicationId = "com.onpath.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
+        // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
+        // newer version installs as an update.
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.4.0"
+        val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
+            .plus(listOf(0, 0, 0)).take(3)
+        versionCode = vMaj * 10000 + vMin * 100 + vPatch
+        versionName = appVersion
+        buildConfigField("String", "UPDATE_REPO", "\"happychriss/OnPath\"")
         // Pixel 8 and all current phones are arm64; keeps the APK small (MapLibre native libs).
         ndk { abiFilters += listOf("arm64-v8a") }
     }

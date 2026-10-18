@@ -1,0 +1,88 @@
+# Builds and publishes an OnPath release for every version tag (vX.Y.Z).
+# The app's "Check for updates" (Settings) reads the latest release and installs its APK.
+#
+#   git tag v0.4.1 && git push origin v0.4.1
+#
+# Release notes: docs/release-notes/vX.Y.Z.md if present, otherwise GitHub's generated notes.
+# Signing: the fixed test key in keystore/ (so updates install in place). A secret Play release key
+# will be added later via repository secrets (see docs/project-status.md).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.4.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version from tag
+        run: |
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Building OnPath $VERSION"
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION"
+
+      - name: Build APK
+        run: ./gradlew --no-daemon assembleDebug -PappVersion="$VERSION"
+
+      - name: Prepare release files
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/onpath-$VERSION.apk"
+          (cd dist && sha256sum * > SHA256SUMS)
+          NOTES="docs/release-notes/v$VERSION.md"
+          if [ -f "$NOTES" ]; then cp "$NOTES" dist/notes.md; else echo "OnPath $VERSION" > dist/notes.md; fi
+          cat >> dist/notes.md <<'TXT'
+
+          ---
+          **Install on the phone:** open this page on the phone, tap the `.apk` below, then Install.
+          Already installed? OnPath → Settings → Updates → Check for updates.
+          Map data: OnPath → Settings → Map data → Import map data (.zip).
+          TXT
+          ls -la dist
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: OnPath ${{ env.VERSION }}
+          body_path: dist/notes.md
+          # Not a pre-release: the app's update check reads /releases/latest, which skips pre-releases.
+          prerelease: false
+          make_latest: true
+          files: |
+            dist/onpath-${{ env.VERSION }}.apk
+            dist/SHA256SUMS
