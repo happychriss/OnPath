@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
@@ -13,7 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 
 /**
- * Dialogs of saving / loading routes, drawn above every screen (map, Manage routes): Save route name,
+ * Dialogs of saving / loading routes, drawn above every screen (map, My routes): Save route name,
  * "Replace current plan?", and a save problem. None of them closes by itself.
  */
 @Composable
@@ -43,8 +42,9 @@ fun RouteDialogs(vm: AppViewModel) {
 }
 
 /**
- * ⋮ → Save route for a plan that belongs to a saved route [name]: **Save** overwrites it (name stays),
- * **Save as new…** asks for a name and keeps [name] as it was. Stays until answered (tap outside / Back = Cancel).
+ * Sheet ⋯ → Save route for a plan that belongs to a saved route [name]: **Save** overwrites it (name stays),
+ * **Save as new…** asks for a name and keeps [name] as it was. No Cancel button: a tap outside or Back cancels
+ * (like "Replace current plan?").
  */
 @Composable
 fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveAsNew: () -> Unit, onCancel: () -> Unit) {
@@ -58,10 +58,7 @@ fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveA
         },
         confirmButton = { TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save") } },
         dismissButton = {
-            Row {
-                TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
-                TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save as new…") }
-            }
+            TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save as new…") }
         },
     )
 }
