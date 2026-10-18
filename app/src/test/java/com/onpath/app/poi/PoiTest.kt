@@ -2,30 +2,42 @@ package com.onpath.app.poi
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PoiTest {
 
+    // The old single "name lat,lon" search query is gone: Google searched that text without any bias to the
+    // coordinates and often landed elsewhere (see PoiLinks.googleMaps KDoc).
+
     @Test
-    fun googleMapsUrlWithName() {
-        assertEquals(
-            "https://www.google.com/maps/search/?api=1&query=Schloss%20Tirol%2046.723%2C11.12345",
-            PoiLinks.googleMapsUrl("Schloss Tirol", 46.723, 11.12345),
-        )
+    fun googleMapsNamedSearchesNearTheCoordinate() {
+        val l = PoiLinks.googleMaps("Schloss Tirol", 46.723, 11.12345)
+        assertEquals("geo:46.723,11.12345?z=16&q=Schloss%20Tirol", l.appUri)
+        assertEquals("https://www.google.com/maps/search/Schloss%20Tirol/@46.723,11.12345,16z", l.webUrl)
     }
 
     @Test
-    fun googleMapsUrlWithoutName() {
-        assertEquals("https://www.google.com/maps/search/?api=1&query=46.5%2C11.25",
-            PoiLinks.googleMapsUrl(null, 46.5, 11.25))
-        assertEquals("https://www.google.com/maps/search/?api=1&query=46.5%2C11.25",
-            PoiLinks.googleMapsUrl("  ", 46.5, 11.25))
+    fun googleMapsUnnamedIsAnExactPin() {
+        val l = PoiLinks.googleMaps(null, 46.5, 11.25)
+        assertEquals("geo:0,0?q=46.5,11.25", l.appUri)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=46.5%2C11.25", l.webUrl)
+        assertEquals(l, PoiLinks.googleMaps("  ", 46.5, 11.25))
+        assertEquals("geo:0,0?q=46.5,11.25(Aussicht%20Nord)", PoiLinks.googleMaps(null, 46.5, 11.25, " Aussicht (Nord) ").appUri)
     }
 
     @Test
-    fun googleMapsUrlEncodesUmlautsAndAmpersand() {
-        val url = PoiLinks.googleMapsUrl("Gasthof Rößl & Café", 46.1, 11.2)
-        assertEquals("https://www.google.com/maps/search/?api=1&query=Gasthof%20R%C3%B6%C3%9Fl%20%26%20Caf%C3%A9%2046.1%2C11.2", url)
+    fun googleMapsEncodesUmlautsAndAmpersand() {
+        val l = PoiLinks.googleMaps("Gasthof  Rößl & Café", 46.1, 11.2)
+        assertEquals("geo:46.1,11.2?z=16&q=Gasthof%20R%C3%B6%C3%9Fl%20%26%20Caf%C3%A9", l.appUri)
+    }
+
+    @Test
+    fun googleMapsPoiUsesKindLabelOnlyWhenUnnamed() {
+        val named = Poi("n1", "restaurant", "Gasthaus Brunner", 46.68, 11.13)
+        assertEquals("geo:46.68,11.13?z=16&q=Gasthaus%20Brunner", PoiLinks.googleMaps(named).appUri)
+        val unnamed = Poi("n2", "viewpoint", null, 46.6801234567, 11.1)
+        assertTrue(PoiLinks.googleMaps(unnamed).appUri.startsWith("geo:0,0?q=46.680123,11.1("))
     }
 
     @Test

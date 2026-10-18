@@ -86,7 +86,7 @@ fun MapOverlayHost(
                 onAdd = { vm.addPoiPoint(poi) },
                 onGoogle = {
                     vm.poiMenu = null
-                    com.onpath.app.ui.search.openGoogle(ctx, PoiLinks.googleMapsUrl(poi.name, poi.lat, poi.lon))
+                    com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
                 })
         }
     }
@@ -101,7 +101,7 @@ fun MapOverlayHost(
                     PointAction.END_HERE -> vm.endRouteAt(i)
                     PointAction.GOOGLE -> {
                         vm.pointMenu = null
-                        com.onpath.app.ui.search.openGoogle(ctx, PoiLinks.googleMapsUrl(name, p.lat, p.lon))
+                        com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, p.lat, p.lon))
                     }
                     PointAction.DELETE -> vm.deletePointFromMenu(i)
                 }

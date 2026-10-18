@@ -51,6 +51,11 @@ vm.selectedPoi?.let { poi ->
 - `Poi` (data class) with `Poi.fromFeature(feature)` and `Poi.fromProperties(map, lat, lon)`, plus `title()`, `openingHoursLines`, `cuisineLabel`, `osmUrl`.
 - `PoiKinds.of(kind)`: labels (EN/DE), group colour, glyph.
 - `PoiLinks` (pure URL builders, unit-tested) and `PoiIntents` (Google Maps app or browser, website, wikipedia, `ACTION_DIAL`).
+- "Open in Google Maps" (`PoiLinks.googleMaps` → `PoiIntents.openGoogleMaps`): a named place opens as
+  `geo:<lat>,<lon>?z=16&q=<name>` – a name search that Google biases to our coordinate, so it lands on the business
+  card when Google knows the place; an unnamed point opens as an exact pin `geo:0,0?q=<lat>,<lon>(<kind>)`. The old
+  `api=1&query=<name lat,lon>` had no location bias and often landed elsewhere. Browser fallback: `maps/search/<name>/@lat,lon,16z`
+  or `api=1&query=<lat,lon>`. Built offline; no place IDs (they would need the online Places API).
 - `findPoiAt(map, screenPoint, boxDp = 24f)`: queries all `poi-*` layers. The nearest hit wins. It never throws.
 - `PoiDetails(poi, onClose)`: the Material 3 sheet content.
 - Tests: `app/src/test/java/com/onpath/app/poi/PoiTest.kt`.
