@@ -140,10 +140,10 @@
   1.0
  ],
  "route.major.label.color": "#a61e4d",
- "track.edge.color": "#8a6a48",
+ "track.edge.color": "#97856f",
  "track.edge.dash": [
-  0.35,
-  0.9
+  0.25,
+  0.45
  ],
  "track.edge.width.z12": 1.0,
  "track.edge.width.z14": 3.4,
@@ -151,9 +151,9 @@
  "track.edge.width.z18": 10,
  "track.fill.color": "#fffdf5",
  "track.fill.width.z13": 0.6,
- "track.fill.width.z14": 1.8,
- "track.fill.width.z16": 3.4,
- "track.fill.width.z18": 6.4,
+ "track.fill.width.z14": 2.0,
+ "track.fill.width.z16": 3.8,
+ "track.fill.width.z18": 7.6,
  "track.low.color": "#5e4228",
  "track.low.width.z12": 0.9,
  "track.low.width.z13": 1.2,
@@ -218,7 +218,7 @@
  "trail.sac.label.color": "#000000",
  "trail.sac.label.size.z14": 9,
  "trail.sac.label.size.z17": 11,
- "access.no.tint.color": "rgba(210,40,40,0.28)",
+ "access.no.tint.color": "rgba(120,70,70,0.28)",
  "access.no.tint.width.z14": 4,
  "access.no.tint.width.z16": 7,
  "access.no.tint.width.z18": 12,

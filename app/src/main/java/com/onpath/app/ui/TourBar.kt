@@ -38,15 +38,25 @@ import com.onpath.app.data.Format
  * "End tour" text button. The primary "Continue navigation" is the plan sheet's filled button.
  */
 @Composable
-fun TourRunningBar(distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier) {
+fun TourRunningBar(distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
+                   onPause: (Boolean) -> Unit = {}) {
     val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
     Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             RecDot(paused)
             Spacer(Modifier.width(10.dp))
-            Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1,
-                modifier = Modifier.weight(1f).semantics { contentDescription = status })
+            // Two short lines, so Pause + End tour fit and the time is never cut off.
+            androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(vertical = 4.dp).semantics { contentDescription = status }) {
+                Text(if (paused) "Tour paused" else "Tour running", style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium, maxLines = 1)
+                Text("${Format.distance(distanceM)} · ${Format.clock(elapsedS)}", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            // Pause / Resume right here (owner) – before, pausing was only possible from the notification.
+            TextButton(onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (paused) "Resume" else "Pause")
+            }
             TextButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("End tour", color = MaterialTheme.colorScheme.error)
             }

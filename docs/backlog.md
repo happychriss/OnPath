@@ -8,6 +8,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
 
 ## Next
+- **EN + DE strings** (owner approved): move all UI texts to strings.xml (EN + DE) in one go – start after the time
+  estimate (feat/time-estimate) is merged, it touches most screens.
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
   vibration, grey original line, skip passed stops) – phases P0–P4 there (P0/P1 suggested for cloud as routing owner).
   Owner UX rule: no self-dismissing messages anywhere.
@@ -29,10 +31,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Owner-approved batch (laptop): Clear without question (Undo restores), Pause / Resume in the tour bar (two-line
+  status), Round trip greyed when already a loop, no "Searching GPS…" / "Still missing" messages, "Export GPX"
+  everywhere, blocked-way tint grey-red, Feldwege with finer lighter dots (Komoot-like).
 - Activity in Navigate (laptop agent): icon in the to-go card (own 48 dp target), "Start navigation · Hike", tap =
   check-and-switch sheet (routes the rest for each activity, fits / problems, switching asks Take new route / Keep).
 - UX audit (laptop agent): outdated labels, dead Load-route screen, save choice without Cancel, no OK after import /
-  copy, settings rows; proposals pending owner (Clear confirm, Pause in tour bar, EN/DE strings).
+  copy, settings rows; proposals decided by the owner (see next entry).
 - Route bands (laptop, owner): one green band for every activity; major routes (OSM network regional / national /
   international, `net` ≥ 2 – Via Claudia Augusta, E5, EuroVelo 7, Etschradroute, Meraner Höhenweg …) get a Komoot-like
   semi-transparent green/pink dashed band + name label. `routes.geojson` now has `net` (0–4) → **cloud: rebuild the region package /

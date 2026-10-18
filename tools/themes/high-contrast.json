@@ -87,5 +87,9 @@
  "hillshade.fill.exaggeration.z8": 0.25,
  "hillshade.fill.exaggeration.z10": 0.2,
  "hillshade.fill.exaggeration.z13": 0.1,
- "hillshade.fill.exaggeration.z15": 0.05
+ "hillshade.fill.exaggeration.z15": 0.05,
+ "track.edge.dash": [
+  0.25,
+  0.45
+ ]
 }

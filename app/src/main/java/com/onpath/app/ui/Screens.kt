@@ -401,7 +401,7 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
         dismissButton = {
             Row {
                 TextButton(onClick = onDelete) { Text("Delete", color = OnPathColors.Bad) }
-                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text("GPX") }
+                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text("Export GPX") }
             }
         },
     )
