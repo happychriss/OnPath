@@ -15,7 +15,7 @@ import kotlin.math.hypot
 /**
  * Plan-mode press-and-drag on the map (F-PLAN-04):
  * - long-press a marker and drag → move that point; release → reroute
- * - long-press a marker without moving → small menu (Remove / Make start / Make destination)
+ * - long-press a marker without moving → the small "Delete point" overlay (like a tap)
  * - long-press the route line (and optionally drag) → insert a stop into that leg
  *
  * MapLibre reports the long press while the finger is still down; from then on this class
@@ -34,22 +34,34 @@ class PointDragger(
     private var mapCancelled = false
     private val active get() = moveIndex >= 0 || insertIndex >= 0
 
-    /** From the map's long-click listener. Returns true when a drag starts. */
-    fun onLongPress(ll: LatLng): Boolean {
-        val c = controller() ?: return false
-        if (!vm.canEditMap) return false // Navigate never moves anything
-        val screen = map.projection.toScreenLocation(ll)
-        val idx = c.waypointAt(screen)
-        if (idx >= 0) {
-            moveIndex = idx
-        } else {
-            val route = vm.route?.points ?: return false
-            val p = GeoPoint(ll.latitude, ll.longitude)
-            val hit = WaypointInsertion.nearestOnRoute(route, p) ?: return false
-            if (hit.second > snapMeters(c) || vm.waypoints.size < 2) return false
-            insertIndex = WaypointInsertion.legOfRouteIndex(vm.waypoints, route, hit.first) + 1
-        }
-        start = screen; moved = false; mapCancelled = false
+    /** Long press on marker [index] (MapGestures.Action.DragPoint): starts moving it. */
+    fun startMove(index: Int, ll: LatLng): Boolean {
+        if (!vm.canEditMap || index !in vm.waypoints.indices) return false // Navigate never moves anything
+        moveIndex = index
+        return begin(ll)
+    }
+
+    /** Leg index + 1 when [ll] is on the planned line (within [snapMeters]), else -1. */
+    fun lineInsertIndex(ll: LatLng): Int {
+        val c = controller() ?: return -1
+        val route = vm.route?.points ?: return -1
+        if (vm.waypoints.size < 2) return -1
+        val hit = WaypointInsertion.nearestOnRoute(route, GeoPoint(ll.latitude, ll.longitude)) ?: return -1
+        if (hit.second > snapMeters(c)) return -1
+        return WaypointInsertion.legOfRouteIndex(vm.waypoints, route, hit.first) + 1
+    }
+
+    /** Long press on the route line (MapGestures.Action.LineDrag): drag out a new stop. */
+    fun startLineInsert(ll: LatLng): Boolean {
+        if (!vm.canEditMap) return false
+        val i = lineInsertIndex(ll).takeIf { it > 0 } ?: return false
+        insertIndex = i
+        return begin(ll)
+    }
+
+    private fun begin(ll: LatLng): Boolean {
+        start = try { map.projection.toScreenLocation(ll) } catch (_: Exception) { moveIndex = -1; insertIndex = -1; return false }
+        moved = false; mapCancelled = false
         mapView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         return true
     }
@@ -74,7 +86,7 @@ class PointDragger(
                 val p = if (moved) at(ev) else at(start.x, start.y)
                 when {
                     moveIndex >= 0 && moved -> vm.movePoint(moveIndex, p)
-                    moveIndex >= 0 -> vm.pointMenu = moveIndex
+                    moveIndex >= 0 -> vm.openPointOverlay(moveIndex)
                     else -> vm.insertPoint(insertIndex, p)
                 }
                 reset(c)

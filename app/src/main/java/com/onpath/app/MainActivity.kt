@@ -132,10 +132,10 @@ class MainActivity : ComponentActivity() {
                             onInstallUpdate = { vm.installUpdate() },
                         )
                     }
-                    // Back in Plan closes a shown track or the POI card. Navigate is left only by the slide switch.
+                    // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
                     BackHandler(enabled = !vm.showTours && !vm.showSettings && vm.mode == AppMode.PLAN &&
-                        (vm.shown != null || vm.planPoi != null)) {
-                        if (vm.planPoi != null) vm.planPoi = null else vm.closeShown()
+                        (vm.shown != null || vm.mapOverlayOpen)) {
+                        if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
                     vm.message?.let { msg ->
