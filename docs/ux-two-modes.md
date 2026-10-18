@@ -90,3 +90,13 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
   "hold to add" hint, no timed bubbles; the general message bar stays until OK is tapped.
+
+
+## Layout rule (owner, 2026-10-18)
+Everything about **this route** lives in the route sheet; the **library and app** live at the top.
+| Where | What |
+| --- | --- |
+| Search pill | only search |
+| ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
+| Sheet, first line | activity button (icon ▾) · time · undo / redo · ⋯ |
+| Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Reverse, Round trip, Clear |

@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,13 +47,11 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.routing.Activity
 
 /**
- * File and app actions: all in the ⋮ menu of the search bar. Each item is enabled only when it makes sense
- * ([state], RouteRules.menu); disabled items stay visible, greyed.
+ * App-level actions in the ☰ menu next to the search bar (owner: the search bar only searches; everything about
+ * the current route lives in the route sheet). Each item is enabled only when it makes sense ([state]).
  */
 class PlanMenu(
     val state: RouteMenuState = RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false),
-    val onLoad: () -> Unit = {},
-    val onSave: () -> Unit = {},
     val onManage: () -> Unit = {},
     /** Free recording without a route (location permission is checked by the caller). */
     val onStartRecording: () -> Unit = {},
@@ -64,31 +63,28 @@ class PlanMenu(
 )
 
 /**
- * Plan mode top area, Google Maps style: one search pill ("Search places or addresses") with the ⋮
- * overflow menu (Load / Save / Manage routes, Start recording, Settings, Updates) at its end, and the activity as a compact
- * chip below it. Route actions live in the plan sheet's own ⋯ menu.
+ * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it (My routes, Start
+ * recording, Settings, Updates). The activity and all route actions live in the route sheet (PlanPanel).
  */
 @Composable
 fun PlanTopBar(
-    activity: Activity, sac: Int,
-    onActivity: () -> Unit,
     onSearch: () -> Unit,
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
 ) {
-    Column(modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        SearchBarPill(onSearch, menu, menuInitiallyOpen)
-        Spacer(Modifier.height(8.dp))
-        ActivityChip(activity, sac, onClick = onActivity)
+    Row(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        SearchBarPill(onSearch, Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        AppMenuButton(menu, menuInitiallyOpen)
     }
 }
 
 @Composable
-private fun SearchBarPill(onSearch: () -> Unit, menu: PlanMenu, menuInitiallyOpen: Boolean) {
+private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
         onClick = onSearch,
-        modifier = Modifier.fillMaxWidth().height(56.dp).semantics { contentDescription = "Search places or addresses"; role = Role.Button },
+        modifier = modifier.height(56.dp).semantics { contentDescription = "Search places or addresses"; role = Role.Button },
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 3.dp,
@@ -98,17 +94,17 @@ private fun SearchBarPill(onSearch: () -> Unit, menu: PlanMenu, menuInitiallyOpe
             Spacer(Modifier.width(12.dp))
             Text("Search places or addresses", style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
-            OverflowMenu(menu, menuInitiallyOpen)
         }
     }
 }
 
 @Composable
-private fun OverflowMenu(menu: PlanMenu, initiallyOpen: Boolean) {
+private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        IconButton(onClick = { menu.onOpened(); open = true }, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = "Menu" }) {
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null) }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
@@ -120,10 +116,7 @@ private fun OverflowMenu(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
-    MenuItem(Icons.Outlined.FolderOpen, "Load route", enabled = st.load) { close(); menu.onLoad() }
-    MenuItem(Icons.Outlined.Save, "Save route", enabled = st.save) { close(); menu.onSave() }
-    MenuItem(Icons.Outlined.FormatListBulleted, "Manage routes", enabled = st.manage) { close(); menu.onManage() }
-    HorizontalDivider()
+    MenuItem(Icons.Outlined.FolderOpen, "My routes", enabled = st.manage) { close(); menu.onManage() }
     MenuItem(Icons.Filled.FiberManualRecord, "Start recording", enabled = st.startRecording) { close(); menu.onStartRecording() }
     HorizontalDivider()
     MenuItem(Icons.Outlined.Settings, "Settings", enabled = st.settings) { close(); menu.onSettings() }
@@ -139,25 +132,3 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
     )
 }
 
-/**
- * The activity as an assist chip ("Hike ▾") under the search bar (the SAC level lives in Settings only). It is an action (opens the
- * activity dialog), so it carries the drop-down arrow; status is never drawn like this.
- */
-@Composable
-fun ActivityChip(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val label = activity.shortLabel
-    Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 40.dp).semantics { contentDescription = "Activity: $label. Tap to change" },
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-    ) {
-        Row(Modifier.padding(start = 10.dp, end = 6.dp).heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(activity.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-            Icon(Icons.Filled.ArrowDropDown, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}

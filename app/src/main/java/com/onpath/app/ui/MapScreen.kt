@@ -110,7 +110,7 @@ fun MapScreen(
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
-            topPx = topInsetPx + with(density) { 128.dp.roundToPx() }, // below search pill + activity chip
+            topPx = topInsetPx + with(density) { 80.dp.roundToPx() }, // below the search pill + ☰ row
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
     }
 
@@ -139,11 +139,9 @@ private fun PlanMode(
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
-            vm.activity, vm.sac, onActivity = onActivity, onSearch = vm::openSearch,
+            onSearch = vm::openSearch,
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
-                onLoad = { vm.openRoutes(RoutesMode.PICK) },
-                onSave = vm::requestSave,
                 onManage = { vm.openRoutes(RoutesMode.MANAGE) },
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
@@ -166,7 +164,7 @@ private fun PlanMode(
                 rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
-                else PlanBottom(vm, rec, onStartNavigation)
+                else PlanBottom(vm, rec, onStartNavigation, onActivity)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -174,7 +172,7 @@ private fun PlanMode(
 }
 
 @Composable
-private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit) {
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit) {
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
@@ -195,6 +193,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
+            onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned,
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
         ),

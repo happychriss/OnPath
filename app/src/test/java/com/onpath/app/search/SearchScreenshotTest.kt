@@ -79,7 +79,7 @@ class SearchScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar(Activity.HIKE, 3, {}, {}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
+                    PlanTopBar({}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
                         PlaceCard(PlaceCardUi(hut, null, 3, "as stop 2 – fits best · about +0.9 km, +15 min"),
                             com.onpath.app.ui.search.PlaceCardActions())

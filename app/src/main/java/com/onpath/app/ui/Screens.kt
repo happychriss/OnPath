@@ -248,7 +248,7 @@ fun RoutesScreen(
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                Text(if (pick) "Load route" else "Manage routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text(if (pick) "Load route" else "My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 if (!pick) TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
                     Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
                 }
