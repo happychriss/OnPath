@@ -131,20 +131,20 @@
  "route.width.z13": 6,
  "route.width.z15": 12,
  "route.width.z18": 18,
- "track.color": "#82592f",
- "track.paved.color": "#82592f",
- "track.dash": [
-  4,
-  1.6
+ "track.edge.color": "#8a6a48",
+ "track.edge.dash": [
+  1.6,
+  1.0
  ],
- "track.width.z12": 0.9,
- "track.width.z14": 1.5,
- "track.width.z16": 2.4,
- "track.width.z18": 3.8,
- "track.casing.color": "rgba(255,255,255,0.75)",
- "track.casing.width.z13": 2.6,
- "track.casing.width.z16": 4.6,
- "track.casing.width.z18": 7.5,
+ "track.edge.width.z12": 1.0,
+ "track.edge.width.z14": 3.4,
+ "track.edge.width.z16": 5.6,
+ "track.edge.width.z18": 10,
+ "track.fill.color": "#fffdf5",
+ "track.fill.width.z13": 0.6,
+ "track.fill.width.z14": 1.8,
+ "track.fill.width.z16": 3.4,
+ "track.fill.width.z18": 6.4,
  "cycleway.color": "#2f74a8",
  "cycleway.dash": [
   3,

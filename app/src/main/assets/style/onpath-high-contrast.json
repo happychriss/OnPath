@@ -2285,112 +2285,6 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 13,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "class"
-     ],
-     "track"
-    ],
-    [
-     "!=",
-     [
-      "get",
-      "brunnel"
-     ],
-     "tunnel"
-    ]
-   ],
-   "layout": {
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "rgba(255,255,255,0.9)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     3.2,
-     16,
-     5.4,
-     18,
-     8.5
-    ]
-   }
-  },
-  {
-   "id": "track-paved",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
-   "minzoom": 12,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "class"
-      ],
-      "track"
-     ],
-     [
-      "!=",
-      [
-       "get",
-       "brunnel"
-      ],
-      "tunnel"
-     ]
-    ],
-    [
-     "==",
-     [
-      "get",
-      "surface"
-     ],
-     "paved"
-    ]
-   ],
-   "paint": {
-    "line-color": "#6b4420",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     1.1,
-     14,
-     1.9,
-     16,
-     2.9,
-     18,
-     4.4
-    ]
-   }
-  },
-  {
-   "id": "track",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
    "minzoom": 12,
    "filter": [
     "all",
@@ -2437,17 +2331,128 @@
       "zoom"
      ],
      12,
-     1.1,
+     1.2,
      14,
-     1.9,
+     3.8,
      16,
-     2.9,
+     6.2,
      18,
-     4.4
+     11
     ],
     "line-dasharray": [
-     4,
-     1.6
+     1.6,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "track-paved",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 12,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "track"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "==",
+     [
+      "get",
+      "surface"
+     ],
+     "paved"
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4420",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     1.2,
+     14,
+     3.8,
+     16,
+     6.2,
+     18,
+     11
+    ]
+   }
+  },
+  {
+   "id": "track",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "track"
+    ],
+    [
+     "!=",
+     [
+      "get",
+      "brunnel"
+     ],
+     "tunnel"
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#fffdf5",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.6,
+     14,
+     1.8,
+     16,
+     3.4,
+     18,
+     6.4
     ]
    }
   },
