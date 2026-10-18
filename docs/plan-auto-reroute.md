@@ -28,6 +28,7 @@ progress (the to-go strip still uses `FollowProgress`).
 | Q4 | **No extra vibration** for a found route – the vibration comes with the question (Q1). Failure (no way found): question/banner with arrow to the route, same vibration. |
 | Q5 | **No separate change** – "Continue navigation" uses the same ask flow when you are off route. |
 | Q6 | Not now (no answer = recommendation). |
+| Q7 | **Keep the 80 % rule** (owner, 2026-10-18): a way back shorter than 80 % of the route part it replaces is not offered (would cut a round trip short). The proposal is shown as a dashed preview and always needs confirmation. |
 
 UX rule from the owner for the whole app: **no messages that disappear by themselves**; banners/questions stay until
 answered or until the situation is gone.
