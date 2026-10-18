@@ -49,6 +49,9 @@ ROUTE_KIND = {"hiking": "hike", "foot": "hike", "bicycle": "bike", "mtb": "mtb"}
 
 
 
+# Ways drawn zoomed out from our own data (trails-low), also without a difficulty grade.
+LOW_WAYS = {"path", "footway", "bridleway", "track"}
+
 def net_rank(network):
     """OSM route network -> importance: 4 international (icn/iwn/imtb), 3 national, 2 regional, 1 local, 0 unknown."""
     n = (network or "").strip().lower()
@@ -218,7 +221,9 @@ class WayPass(osmium.SimpleHandler):
         vis = VIS.get(w.tags.get("trail_visibility", ""))
         quality = self.quality(w)
         faint = vis is not None and vis >= 3
-        if not routes and not sac and not mtb and not faint and not quality:
+        hw = w.tags.get("highway", "")
+        low = hw in LOW_WAYS and w.tags.get("footway") not in ("sidewalk", "crossing") and w.tags.get("area") != "yes"
+        if not routes and not sac and not mtb and not faint and not quality and not low:
             return
         line = self.geom(w)
         if line is None:
@@ -244,7 +249,13 @@ class WayPass(osmium.SimpleHandler):
                 props["mtb"] = mtb[:1]
             if vis is not None:
                 props["vis"] = vis
+            if hw == "track":
+                props["k"] = "t"
             self.trails.append({"type": "Feature", "geometry": fine, "properties": props})
+        elif low:
+            # only drawn zoomed out (trails-low, < z13): coarse geometry is fine and keeps the file small
+            self.trails.append({"type": "Feature", "geometry": g,
+                                "properties": {"sac": 0, **({"k": "t"} if hw == "track" else {})}})
         if quality:
             self.ways.append({"type": "Feature", "geometry": fine, "properties": quality})
 

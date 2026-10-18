@@ -88,8 +88,8 @@
  "road.casing.width.z18": 1.7,
  "major.fill": "#fff4d1",
  "major.casing": "#b9a46e",
- "motorway.fill": "#fbdb9c",
- "motorway.casing": "#c99446",
+ "motorway.fill": "#f0a24a",
+ "motorway.casing": "#b06d26",
  "road.service.width.z13": 0.6,
  "road.service.width.z16": 3,
  "road.service.width.z18": 8,
@@ -269,5 +269,13 @@
  ],
  "route.major.opacity": 0.85,
  "trail.color": "#33251a",
- "trail.low.color": "#1e150e"
+ "trail.low.color": "#1e150e",
+ "tertiary.fill": "#fdf4cf",
+ "tertiary.casing": "#cdbf96",
+ "secondary.fill": "#fbe48f",
+ "secondary.casing": "#c7aa52",
+ "primary.fill": "#f5c75a",
+ "primary.casing": "#b38a2c",
+ "route.line.color": "#3e9a4e",
+ "route.major.line.color": "#c43a7d"
 }
