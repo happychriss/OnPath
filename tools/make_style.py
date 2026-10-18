@@ -260,6 +260,8 @@ def paths():
           paint={"line-color": T("path.low.color"), "line-width": pw})
     layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
           filter=["all", foot, ["!", paved], ["!", steps]],
+          # Komoot-like: unpaved paths as small round black dots (paved / firm paths are solid black, path-paved)
+          layout={"line-cap": "round"},
           paint={"line-color": T("path.color"), "line-width": pw, "line-dasharray": T("path.dash")})
     layer(id_="path-steps", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
           filter=["all", foot, steps],
@@ -282,6 +284,7 @@ def trails():
     for sid, flt in (("easy", ["<=", sac, 2]), ("mountain", ["==", sac, 3]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID,
               filter=["all", [">=", sac, 1], flt],
+              layout={"line-cap": "round"} if sid == "easy" else {},  # easy trails: round dots like unpaved paths
               paint={"line-color": color, "line-width": Z("trail.width"),
                      "line-dasharray": T(f"trail.{sid}.dash")})
     # SAC grade ("T1" … "T6") as small black text along the trail, on the other side than the

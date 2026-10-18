@@ -166,10 +166,10 @@
  "cycleway.width.z16": 2.3,
  "cycleway.width.z18": 3.6,
  "path.color": "#33251a",
- "path.paved.color": "#77695c",
+ "path.paved.color": "#33251a",
  "path.dash": [
-  2.4,
-  1.1
+  0.05,
+  2.2
  ],
  "path.width.z12": 0.8,
  "path.width.z14": 1.35,
@@ -192,8 +192,8 @@
  "trail.mountain.color": "#cf4f1c",
  "trail.alpine.color": "#c01d3b",
  "trail.easy.dash": [
-  2.4,
-  1.1
+  0.05,
+  2.2
  ],
  "trail.mountain.dash": [
   2,

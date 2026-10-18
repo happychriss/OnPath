@@ -36,7 +36,7 @@
  "track.edge.width.z18": 11,
  "cycleway.color": "#1d5f93",
  "path.color": "#1c130c",
- "path.paved.color": "#544a40",
+ "path.paved.color": "#1c130c",
  "path.width.z12": 1.0,
  "path.width.z14": 1.7,
  "path.width.z16": 2.7,
