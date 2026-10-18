@@ -86,7 +86,8 @@ class RecordingService : Service() {
     private var trackSeg = -1
 
     private var follow: Pair<String, List<GeoPoint>>? = null
-    private var offSince = 0L
+    /** Off-route state machine (progress window, accuracy margin, moving check, hysteresis). */
+    private val detector = com.onpath.app.navigation.OffRouteDetector()
     private var offAlerted = false
     private var offDistance: Double? = null
     /** Off-route settings, re-read when the app sends ACTION_FOLLOW_CHANGED. */
@@ -112,12 +113,14 @@ class RecordingService : Service() {
             ACTION_RESUME -> { setPaused(false); return START_STICKY }
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
             ACTION_NAVIGATING -> {
-                navigating = intent.getBooleanExtra(EXTRA_ON, true); offSince = 0
+                navigating = intent.getBooleanExtra(EXTRA_ON, true)
                 if (!navigating && offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
                 publish(); return START_STICKY
             }
             ACTION_FOLLOW_CHANGED -> {
-                follow = Prefs(this).loadFollow(); settings = null; offSince = 0; offAlerted = false; publish(); return START_STICKY
+                loadFollow(); settings = null
+                if (offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
+                publish(); return START_STICKY
             }
         }
         if (tourId >= 0) return START_STICKY // already recording
@@ -146,7 +149,7 @@ class RecordingService : Service() {
             tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
                 0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
         }
-        follow = Prefs(this).loadFollow()
+        loadFollow()
         acquireWakeLock()
         tracker.onFix = { onFix(it) }
         tracker.start()
@@ -183,7 +186,7 @@ class RecordingService : Service() {
                 val now = SystemClock.elapsedRealtime()
                 if (!paused) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceAtLeast(1).coerceAtMost(5)
                 lastTick = now
-                if (gpsLost()) { offSince = 0; offDistance = null } // no alarms without GPS
+                if (gpsLost()) { detector.gpsLost(); offDistance = null } // no alarms without GPS (R-04)
                 if (elapsedS % 10 == 0L) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
                 publish()
             }
@@ -202,7 +205,7 @@ class RecordingService : Service() {
         lastGoodFixElapsed = nowEl
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
-        checkOffRoute(p)
+        checkOffRoute(p, loc.accuracy.toDouble(), nowEl)
 
         val prev = last
         if (prev != null && !wasLost) {
@@ -227,19 +230,23 @@ class RecordingService : Service() {
         publish()
     }
 
-    private fun checkOffRoute(p: TrackPoint) {
-        val line = follow?.second
-        if (line.isNullOrEmpty()) { offDistance = null; return }
-        val d = Geo.distanceToLine(p.lat, p.lon, line)
-        offDistance = d
-        val now = SystemClock.elapsedRealtime()
+    private fun loadFollow() {
+        follow = Prefs(this).loadFollow()
+        detector.setLine(follow?.second?.takeIf { it.size >= 2 }?.let { com.onpath.app.navigation.NavLine(it) })
+        offDistance = null
+    }
+
+    private fun checkOffRoute(p: TrackPoint, accuracyM: Double, nowEl: Long) {
+        if (detector.line == null) { offDistance = null; return }
         val cfg = settings ?: Prefs(this).settings.also { settings = it }
-        if (navigating && cfg.offRouteWarning && d > cfg.offRouteM) {
-            if (offSince == 0L) offSince = now
-            if (!offAlerted && now - offSince >= OFF_ROUTE_MS) { offAlerted = true; alertOffRoute(d) }
-        } else {
-            offSince = 0;
-            if (offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
+        detector.offRouteM = cfg.offRouteM.toDouble()
+        val st = detector.onFix(com.onpath.app.navigation.OffRouteDetector.Fix(p.lat, p.lon, accuracyM, nowEl))
+        offDistance = st.distanceM
+        val off = st.state == com.onpath.app.navigation.OffRouteDetector.State.OFF_ROUTE
+        if (navigating && cfg.offRouteWarning && off) {
+            if (!offAlerted) { offAlerted = true; alertOffRoute(st.distanceM ?: 0.0) }
+        } else if (offAlerted && !off) {
+            offAlerted = false; nm().cancel(ALERT_ID)
         }
     }
 
@@ -257,7 +264,7 @@ class RecordingService : Service() {
                 .setContentText("${d.toInt()} m away from ${follow?.first ?: "the route"}")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
-                .setAutoCancel(true)
+                .setOngoing(true) // stays until back on the route (no self-dismissing messages)
                 .setContentIntent(openAppIntent())
                 .build()
             nm().notify(ALERT_ID, n)
@@ -269,7 +276,7 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
-        offSince = 0
+        detector.gpsLost() // no fixes while paused: timers start from zero again
         db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
         publish(force = true)
     }
@@ -368,8 +375,7 @@ class RecordingService : Service() {
         const val MAX_ACCURACY_M = 30f
         const val MAX_SPEED_MS = 35.0       // ~126 km/h: anything faster is a GPS jump
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
-        const val OFF_ROUTE_MS = 15_000L
-
+        
         private val _state = MutableStateFlow<RecState?>(null)
         val state: StateFlow<RecState?> = _state
         private val _finished = MutableStateFlow<Long?>(null)
