@@ -1,7 +1,21 @@
 # Plan: automatic re-routing while navigating
 
-Status: **proposal, no code yet** (laptop session, 2026-10-18). Owner asked: "complex topic – first come with a plan".
-Decide the open questions in §11, then the phases in §10 can start.
+Status: **owner decisions taken (2026-10-18), no code yet.** Phases in §10 can start; where the text below still says
+"automatic", the decisions here win.
+
+## Owner decisions (2026-10-18) – these override the recommendations below
+
+| # | Decision |
+| --- | --- |
+| Q1 | **Ask every time, never re-route silently.** When off route is confirmed: vibrate, compute the way back in the background, then show a question that **stays until answered** (no timeout, no disappearing banner – hiking in rain/stress): "Off route – new route found (+350 m, rejoins in 600 m)" · **Take new route** · **Keep original**. If the user gets back onto the route by themselves, the question goes away (nothing left to answer). No "Only warn / Off" setting needed for now (ask is the behaviour). |
+| Q2 | **Yes:** after taking a new route, the original stays visible as a thin grey line. |
+| Q3 | **Skip always:** stops passed by a shortcut are skipped, also POI-pinned ones (no extra question). |
+| Q4 | **No extra vibration** for a found route – the vibration comes with the question (Q1). Failure (no way found): question/banner with arrow to the route, same vibration. |
+| Q5 | **No separate change** – "Continue navigation" uses the same ask flow when you are off route. |
+| Q6 | Not now (no answer = recommendation). |
+
+UX rule from the owner for the whole app: **no messages that disappear by themselves**; banners/questions stay until
+answered or until the situation is gone.
 
 **Short version**
 
