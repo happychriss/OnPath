@@ -440,8 +440,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // Blocked-way marking follows the activity: walkers may use "access=no + foot=yes" ways, bikers
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
+        val mtb = activity == Activity.MTB || activity == Activity.EMTB
+        // Way quality (tools/make_style.py): T-labels (SAC) for hiking only, S-labels (mtb:scale) for MTB /
+        // MTB e-bike only, loose-surface edges for every bike activity.
         for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
-                "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking)) {
+                "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
+                "trails-sac-label" to walking, "trails-mtb-label" to mtb,
+                "surface-loose-track" to !walking, "surface-loose-path" to !walking)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
         }
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
