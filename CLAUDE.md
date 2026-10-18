@@ -71,11 +71,11 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 ```
 
 ## Releases (updates on the phone)
-- Version = git tag `vX.Y.Z`; `-PappVersion` sets versionName, versionCode = major*10000+minor*100+patch
-  (default in `app/build.gradle.kts` for local builds – bump it with each release).
-- Release: write `docs/release-notes/vX.Y.Z.md`, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
-  `.github/workflows/release.yml` tests, builds, signs (test key) and publishes the GitHub Release with the APK.
-  Cloud sessions may not create releases directly – always go through the tag.
+- Version: default `appVersion` in `app/build.gradle.kts` (versionCode = major*10000+minor*100+patch).
+- To release: bump that version, add `docs/release-notes/vX.Y.Z.md`, push to `main`.
+  `.github/workflows/release.yml` then tests, builds, signs (test key), creates tag `vX.Y.Z` and the
+  GitHub Release with the APK – once per version (re-runs skip existing releases). Cloud sessions may not
+  push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
 
 ## Conventions
