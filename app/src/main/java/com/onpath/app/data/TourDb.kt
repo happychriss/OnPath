@@ -96,6 +96,33 @@ class TourDb private constructor(context: Context) :
         arrayOf(TourKind.RECORDED.name)
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
 
+    /**
+     * Overwrites a saved planned route in place (⋮ Save after loading it): stats, via points and line; name and
+     * date stay. Returns false when the route is gone (deleted meanwhile) – the caller saves a new one instead.
+     */
+    fun replacePlanned(
+        id: Long, activity: String?, sac: Int,
+        distance: Double, ascent: Double, descent: Double, duration: Double,
+        segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>,
+    ): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val n = db.update("tours", ContentValues().apply {
+                put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
+                put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
+            }, "id=? AND kind=?", arrayOf(id.toString(), TourKind.PLANNED.name))
+            if (n == 0) return false
+            db.delete("points", "tour_id=?", arrayOf(id.toString()))
+            var seq = 0
+            segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
+            db.setTransactionSuccessful()
+            return true
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     fun rename(id: Long, name: String) {
         writableDatabase.update("tours", ContentValues().apply { put("name", name) }, "id=?", arrayOf(id.toString()))
     }

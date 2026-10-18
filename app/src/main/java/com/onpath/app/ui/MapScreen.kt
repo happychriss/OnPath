@@ -73,15 +73,14 @@ fun MapScreen(
             else -> vm.followMe = true
         }
     }
-    // One grouped control: compass (Navigate always; Plan only when the map is turned), eye (only with
-    // something route-like on the map), locate (always, with the GPS dot).
+    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
+    // (only with something route-like on the map), locate (always, with the GPS dot).
     val footer = @Composable {
         MapFooter(scale) {
             MapControls(
                 compass = when {
                     vm.mode == AppMode.NAVIGATE -> CompassSpec(vm.navHeadingUp, 0f, vm::toggleNavOrientation)
-                    kotlin.math.abs(bearing) > 1f -> CompassSpec(null, bearing) { controller?.northUp() }
-                    else -> null
+                    else -> CompassSpec(null, bearing) { controller?.northUp() }
                 },
                 showEye = vm.route != null || vm.shown != null || vm.followLine != null,
                 onPeek = { vm.routePeek = it },
@@ -145,7 +144,7 @@ private fun PlanMode(
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
                 onLoad = { vm.openRoutes(RoutesMode.PICK) },
-                onSave = { vm.saveDialog = true },
+                onSave = vm::requestSave,
                 onManage = { vm.openRoutes(RoutesMode.MANAGE) },
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
@@ -194,7 +193,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved),
         PlanCallbacks(
-            onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
+            onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onHighlight = { vm.highlight = it },
@@ -232,6 +231,25 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
+    // App start in Plan: centre once on the position (first fix, else last known), unless the user moved the map.
+    LaunchedEffect(c) {
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        while (!vm.startCameraDone) {
+            val loc = vm.tracker.location.value
+            val step = StartCamera.decide(
+                elapsedMs = android.os.SystemClock.elapsedRealtime() - t0,
+                modeKnown = vm.startModeKnown,
+                plan = vm.mode == AppMode.PLAN && vm.recState.value == null && !vm.followMe,
+                userMoved = vm.userMovedMap,
+                fixAgeS = loc?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
+            )
+            when (step) {
+                StartCamera.Step.WAIT -> delay(250)
+                StartCamera.Step.CENTRE -> { loc?.let { c.centreOn(it.latitude, it.longitude) }; vm.startCameraDone = true }
+                StartCamera.Step.GIVE_UP -> vm.startCameraDone = true
+            }
+        }
+    }
     // Camera: follow in Plan, heading-up / north-up in Navigate; next-turn arrow (see NavigateScreen).
     LaunchedEffect(c, vm.followMe, vm.mode, vm.navHeadingUp) {
         c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.navHeadingUp) { vm.followMe = false }

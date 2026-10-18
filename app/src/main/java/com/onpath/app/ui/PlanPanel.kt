@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Landscape
@@ -38,7 +37,6 @@ import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,7 +71,6 @@ class PlanCallbacks(
     val onUndo: () -> Unit = {},
     val onRedo: () -> Unit = {},
     val onClear: () -> Unit = {},
-    val onFromMe: () -> Unit = {},
     /** Primary action: follow the route (free recording is in the ⋮ menu). */
     val onStartNavigation: () -> Unit = {},
     /** Primary action while a tour records: re-route from here and go back to Navigate. */
@@ -149,7 +146,6 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         if (!mini) {
-            if (ui.pointCount == 0) { Spacer(Modifier.height(8.dp)); FromMeRow(cb) }
             if (route != null && !ui.routing) {
                 HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 DetailsToggle(ui, route, cb)
@@ -206,7 +202,8 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     if (route == null) {
         Text(
             when (ui.pointCount) {
-                0 -> "Hold the map to add a point. Hold a point or place for options. To just record, use ⋮ → Start recording."
+                0 -> "Hold the map to start there – or to go there from your location. Hold a point or place for options. " +
+                    "To just record, use ⋮ → Start recording."
                 1 -> "Hold the map to add the destination. Hold a point or place for options."
                 else -> "Calculating the route…"
             },
@@ -225,15 +222,6 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
             Spacer(Modifier.width(8.dp))
             DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
         }
-    }
-}
-
-/** Without points: "Start from my location". Points are managed on the map (hold a marker → point menu). */
-@Composable
-private fun FromMeRow(cb: PlanCallbacks) {
-    FilledTonalButton(onClick = cb.onFromMe, modifier = Modifier.heightIn(min = 48.dp)) {
-        Icon(Icons.Filled.MyLocation, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-        Text("Start from my location")
     }
 }
 

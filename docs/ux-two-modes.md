@@ -20,7 +20,12 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
    (End & save / Keep going), or (b) in Plan mode via "End tour" (with confirmation). Never from Navigate directly.
 4. **Navigate without a route** = free recording (position + track only).
 5. **App start:** opens in Plan; if a tour is still running (e.g. after a phone restart) it opens in Navigate.
+   In Plan the map centres once on the position (`ui/StartCamera.kt`): a fresh fix at once, else after 4 s the last
+   known position, else the saved camera stays (a fix within 60 s still centres). Once the user moved the map it
+   never jumps. No following – the map stays where the user pans it.
 6. Off-route warning only in Navigate; stays as today (settings).
+7. **After End tour:** "Tour saved" (Done / GPX / Delete); Delete asks "Delete “Name”?" first (stays until answered,
+   Cancel goes back to "Tour saved").
 
 ## Menus (owner spec 2026-10-18, rules in `ui/RouteRules.kt`)
 Disabled items stay visible, greyed – nothing appears or vanishes by surprise. "Navigating" = Navigate mode or a
@@ -31,7 +36,7 @@ tour recording (also while looking at Plan during a tour).
 | Item | Enabled when | Does |
 | --- | --- | --- |
 | Load route | something is saved and not navigating | Opens the routes list in pick mode: tap = load |
-| Save route | a planned route exists | Name dialog (prefilled with the last saved name); always saves a new entry |
+| Save route | a planned route exists | Plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name stays) · **Save as new…** (name dialog) · Cancel. Otherwise the name dialog (new entry). Rule: `RouteRules.saveMode` |
 | Manage routes | always | The routes list (below) |
 | Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
 | Settings, Check for updates | always (updates: only when the build supports them) | |
@@ -44,10 +49,12 @@ disabled while navigating). The sheet shows the save state as text, not as a mes
 **Manage routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
 map). Per item: tap = open (planned route with via points → into the plan; tracks → shown on the map), Export
-(GPX share), Delete (asks "Delete “Name”?"; the dialog stays until Cancel / Delete, a tap outside does nothing).
+and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), Export (GPX share), Delete (asks "Delete “Name”?";
+the dialog stays until Cancel / Delete, a tap outside does nothing).
 While navigating, planned routes cannot be loaded into the plan ("Can be loaded after the tour"); tracks can be shown.
 
-**Loading over an unsaved plan:** "Replace current plan?" – **Save first** (name dialog, then load) · **Replace**
+**Loading over an unsaved plan:** "Replace current plan?" – **Save first** (the Save / Save as new choice or the name
+dialog as above, then load) · **Replace**
 (tap outside / Back = cancel). The plan counts as unsaved when it has two or more points and they differ (lat/lon)
 from what was last saved or loaded (persisted, follows the snapping of points onto the way). Replacing is also one
 undo step. Tracks open next to the plan without asking.
@@ -56,6 +63,10 @@ undo step. Tracks open next to the plan without asking.
 - Remove the separate Plan / Record / My tours bar; Plan is the home. My tours + Settings via the top bar in Plan.
 - Remove the eye button (not needed: Navigate never edits) – keep compact/mini sheet sizes in Plan.
 - GPS status as a dot on the locate button; the big GPS chip goes away.
+- Map controls (one group on the right): **compass always** (Plan: needle turned with the map, tap = north up;
+  Navigate: walking direction / north up toggle), eye (only with a route / track), locate. MapLibre's own compass is off.
+- Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
+  (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
 - One primary action per mode: Plan → "Start navigation", Navigate → slide to plan.
 
 ## Plan gestures (owner spec v3, 2026-10-18, `ui/MapGestures.kt`)
@@ -75,7 +86,7 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   close when their point leaves the map. **No Cancel button:** a tap anywhere else or Back closes a menu. A hold on
   another marker / POI switches to its menu; a hold on the empty map while a menu is open only closes it.
 - Navigate (and a shown track): nothing is added or moved; a POI tap opens read-only details. Search results keep
-  the place card. The empty plan sheet says how it works: "Hold the map to add a point. Hold a point or place for
-  options."
+  the place card. The empty plan sheet says how it works: "Hold the map to start there – or to go there from your
+  location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
   "hold to add" hint, no timed bubbles; the general message bar stays until OK is tapped.

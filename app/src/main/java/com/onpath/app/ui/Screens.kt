@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Navigation
@@ -37,6 +39,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -231,7 +235,7 @@ enum class RoutesMode { MANAGE, PICK }
 
 /**
  * One list of planned routes, recorded tours and imported GPX files (newest first): type icon, name, date,
- * distance. MANAGE: Import GPX, per item Export (share) and Delete (asks first), tap = open. PICK: tap = load.
+ * distance. MANAGE: Import GPX, per item ⋮ Rename / Export (share) / Delete (asks first), tap = open. PICK: tap = load.
  * While [navigating], items that would replace the plan cannot be opened (Load waits for the end of the tour).
  */
 @Composable
@@ -244,9 +248,12 @@ fun RoutesScreen(
     onExport: (Tour) -> Unit,
     onDelete: (Tour) -> Unit,
     navigating: Boolean = false,
+    onRename: (Tour, String) -> Unit = { _, _ -> },
     initialConfirmDelete: Tour? = null,
+    initialRename: Tour? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
+    var rename by remember { mutableStateOf(initialRename) }
     val pick = mode == RoutesMode.PICK
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
@@ -270,7 +277,7 @@ fun RoutesScreen(
                     items(tours, key = { it.id }) { t ->
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
                         TourCard(t, pick = pick, onOpen = if (openable) ({ onOpen(t) }) else null,
-                            onExport = { onExport(t) }, onDelete = { confirmDelete = t })
+                            onRename = { rename = t }, onExport = { onExport(t) }, onDelete = { confirmDelete = t })
                     }
                 }
             }
@@ -278,6 +285,10 @@ fun RoutesScreen(
     }
     confirmDelete?.let { t ->
         DeleteRouteDialog(t, onDelete = { confirmDelete = null; onDelete(t) }, onCancel = { confirmDelete = null })
+    }
+    rename?.let { t ->
+        NameDialog("Rename ${t.kind.label.lowercase()}", t.name, confirmLabel = "Rename",
+            onDone = { rename = null; onRename(t, it) }, onDismiss = { rename = null })
     }
 }
 
@@ -309,7 +320,9 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 }
 
 @Composable
-private fun TourCard(t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun TourCard(
+    t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit,
+) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
         TourKind.RECORDED -> Icons.Filled.FiberManualRecord to OnPathColors.Rec
@@ -329,10 +342,28 @@ private fun TourCard(t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onExport: ()
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
                 if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!pick) {
-                IconButton(onClick = onExport, Modifier.size(48.dp)) { Icon(Icons.Filled.Share, "Export GPX") }
-                IconButton(onClick = onDelete, Modifier.size(48.dp)) { Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
+            if (!pick) TourItemMenu(t, onRename, onExport, onDelete)
+        }
+    }
+}
+
+/** ⋮ per item in Manage routes: Rename, Export GPX, Delete (asks first). */
+@Composable
+private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
+            Icon(Icons.Filled.MoreVert, "Options for “${t.name}”", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            fun run(a: () -> Unit): () -> Unit = { open = false; a() }
+            DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                onClick = run(onRename), modifier = Modifier.heightIn(min = 48.dp))
+            DropdownMenuItem(text = { Text("Export GPX") }, leadingIcon = { Icon(Icons.Filled.Share, null) },
+                onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
+            DropdownMenuItem(text = { Text("Delete", color = OnPathColors.Bad) },
+                leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
+                onClick = run(onDelete), modifier = Modifier.heightIn(min = 48.dp))
         }
     }
 }
@@ -340,14 +371,14 @@ private fun TourCard(t: Tour, pick: Boolean, onOpen: (() -> Unit)?, onExport: ()
 // ------------------------------------------------------------------ dialogs
 
 @Composable
-fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit) {
+fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = "Save") {
     var text by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, label = { Text("Name") }) },
-        confirmButton = { TextButton(onClick = { onDone(text) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onDone(text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
     )
 }
 
@@ -360,6 +391,17 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit) {
         confirmButton = { TextButton(onClick = onContinue) { Text("Continue tour") } },
         dismissButton = { TextButton(onClick = onSave) { Text("Save tour") } },
     )
+}
+
+/**
+ * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
+ * back to "Tour saved", nothing is lost by a slip of the finger.
+ */
+@Composable
+fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false) {
+    var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
+    if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
+    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone)
 }
 
 @Composable
