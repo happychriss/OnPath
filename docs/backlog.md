@@ -7,8 +7,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
-- Release 0.4.1 with the laptop's latest changes (SAC labels, POI tap toggles route point) – also the first real
-  test of the in-app update button.
+- **Bug (crash, seen on the Pixel 8 with 0.3.0):** `LayerSettings.setVisible` calls `style.layers` while a newer
+  style is loading → `IllegalStateException: Calling getLayers when a newer style is loading/has loaded`
+  (`map/LayerSettings.kt` ~line 50, from `MapScreen` `LaunchedEffect(c, vm.settings)`). Happened right after map
+  data was pushed and the style reloaded. Fix: guard the `style.layers` call (runCatching / check `style.isFullyLoaded`),
+  as the rest of the class already promises "never throws".
+- **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
+  Not applied – it is stashed on the laptop; `main` stays on AGP 8.9.1 / Gradle 8.14.3 until both sessions can
+  build it. If wanted, do it on a `feat/gradle-9` branch and check the cloud build first.
 - Google Play internal test track: create app in Play Console, secret release key in GitHub secrets
   (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`,
   `PLAY_SERVICE_ACCOUNT_JSON`), upload from the release workflow. Removes Play Protect warnings. **(owner has a
@@ -27,6 +33,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- 0.4.1 (laptop, released via the workflow, in-app update tested on the Pixel 8): resizable plan panel
+  (full / compact / mini), eye hides the route only while held, POI tap = add/remove route point, POI long press =
+  ask to open Google Maps, SAC labels (T1–T6) on trails, Komoot-like Feldweg (light lane, dotted edges),
+  solid darker ways below z13, tiny POI dots, darker forest / brighter hiking band.
+- Tried and **rejected by the owner:** a thin centre line inside the route bands below z13 (reverted in 7a1abf0) –
+  keep the bands as plain green/orange/lilac overlays.
 - 0.4.0: in-app updates via GitHub Releases, release workflow.
 - 0.3.0: trail names + AVS numbers, contrast pass + high-contrast theme, stronger railways/stations,
   map data import on the phone, Clear with confirmation, map pipeline script + docs.
