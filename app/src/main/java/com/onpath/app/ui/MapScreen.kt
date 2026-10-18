@@ -216,6 +216,21 @@ fun MapScreen(
     }
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (confirmStop) ConfirmStopDialog(onStop = { confirmStop = false; vm.stopRecording() }, onDismiss = { confirmStop = false })
+    vm.askGooglePoi?.let { poi ->
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { vm.askGooglePoi = null },
+            title = { Text(poi.title()) },
+            text = { Text("Open this place in Google Maps? (online: reviews, photos, current info)") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    vm.askGooglePoi = null
+                    com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
+                }) { Text("Open in Google Maps") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { vm.askGooglePoi = null }) { Text("Cancel") } },
+        )
+    }
     vm.selectedPoi?.let { poi ->
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {
             com.onpath.app.poi.PoiDetails(poi = poi, onClose = { vm.selectedPoi = null })
