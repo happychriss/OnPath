@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Activity in Navigate (icon in to-go card, "Start navigation · Hike", tap = check & switch sheet) – since 2026-10-18
-- [laptop] Route bands: one green for all activities + Komoot-like pink/green highlight for major routes (needs `net` in routes.geojson) – since 2026-10-18
 - [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
 
 ## Next
@@ -31,6 +30,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Route bands (laptop, owner): one green band for every activity; major routes (OSM network regional / national /
+  international, `net` ≥ 2 – Via Claudia Augusta, E5, EuroVelo 7, Etschradroute, Meraner Höhenweg …) get Komoot-like
+  pink dashed edges + name label. `routes.geojson` now has `net` (0–4) → **cloud: rebuild the region package /
+  downloads zip** (`tools/extract_overlays.py`), older data just shows no highlight.
 - Layout (laptop, owner): top = search pill (search only) + round ☰ app menu (My routes, Start recording, Settings,
   Check for updates). Route sheet = everything about this route: activity button (icon ▾) at the start of the first
   line, ⋯ = Save route, Export GPX, Reverse, Round trip, Clear. Activity chip removed from the map; "Load route" and
