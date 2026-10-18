@@ -173,9 +173,6 @@ fun SettingsScreen(
                                 }
                             }
                         }
-                        SwitchRow("Marked route networks", "Hiking, cycling or MTB routes for the chosen activity", settings.routeOverlay) {
-                            onChange(settings.copy(routeOverlay = it))
-                        }
                         SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
                         SwitchRow("Hillshade (relief)", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
                     }

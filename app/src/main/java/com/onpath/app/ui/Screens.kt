@@ -175,8 +175,8 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 
 @Composable
 fun ActivityDialog(
-    current: Activity, sac: Int, overlayOn: Boolean,
-    onSelect: (Activity) -> Unit, onSac: (Int) -> Unit, onOverlay: (Boolean) -> Unit, onDismiss: () -> Unit,
+    current: Activity, sac: Int,
+    onSelect: (Activity) -> Unit, onSac: (Int) -> Unit, onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -208,12 +208,6 @@ fun ActivityDialog(
                         }
                     }
                     Text(sacHint(sac), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Show marked routes", Modifier.weight(1f))
-                    Switch(checked = overlayOn, onCheckedChange = onOverlay)
                 }
             }
         },
