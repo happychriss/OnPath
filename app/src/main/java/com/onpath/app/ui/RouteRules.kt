@@ -13,6 +13,9 @@ data class RouteMenuState(
     val updates: Boolean = true,
 )
 
+/** What ⋮ → Save route does: ask for a name (new entry), or offer Save (overwrite) / Save as new…. */
+enum class SaveMode { NAME_DIALOG, OVERWRITE_OR_NEW }
+
 /**
  * "Enabled when" rules of the menus and route management (pure, unit tested; docs/ux-two-modes.md "Menus").
  * Navigating = Navigate mode or a tour recording (also when looked at from Plan).
@@ -28,6 +31,18 @@ object RouteRules {
         save = hasRoute,
         startRecording = !hasRoute && pointCount < 2 && !recording && !navigating,
     )
+
+    /**
+     * ⋮ → Save route: when the plan was loaded from (or last saved as) a planned route that still exists, offer to
+     * overwrite it or save a new one; otherwise the name dialog (always a new entry).
+     * @param savedId tour id the plan was last saved / loaded as (-1 = none)
+     * @param plannedIds ids of the planned routes in Manage routes
+     */
+    fun saveMode(savedId: Long, savedName: String?, plannedIds: Collection<Long>): SaveMode =
+        if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE_OR_NEW else SaveMode.NAME_DIALOG
+
+    /** A new name from the rename / save dialog: trimmed; blank keeps [old]. */
+    fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 
     /** Clear in the sheet's ⋯: something to clear, and not while navigating (the tour follows this plan). */
     fun canClear(pointCount: Int, navigating: Boolean): Boolean = pointCount > 0 && !navigating
