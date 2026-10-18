@@ -142,10 +142,11 @@ def roads():
         # id, classes, minzoom, colour token prefix
         ("service", ["service"], 13, "road"),
         ("minor", ["minor"], 11, "road"),
-        ("tertiary", ["tertiary"], 10, "road"),
-        ("secondary", ["secondary"], 8, "major"),
-        ("primary", ["primary", "trunk"], 7, "major"),
-        ("motorway", ["motorway"], 6, "motorway"),
+        # busier roads stand out by a yellow-to-orange scale by road class (OSM has no traffic counts)
+        ("tertiary", ["tertiary"], 10, "tertiary"),
+        ("secondary", ["secondary"], 8, "secondary"),
+        ("primary", ["primary"], 7, "primary"),
+        ("motorway", ["motorway", "trunk"], 6, "motorway"),
     ]
     # casings (non-tunnel), then fills; tunnels faint
     for gid, classes, minz, col in groups:
@@ -196,14 +197,20 @@ def route_bands():
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
               filter=flt,
               layout={"line-join": "round", "line-cap": "round", "visibility": vis},
-              paint={"line-color": T("route.band.color"),
+              # Zoomed out the route IS a thin line on the way (no empty band); from z13.5 it widens into the
+              # soft band. Our own look (owner: similar to Komoot, not a copy).
+              paint={"line-color": ["interpolate", ["linear"], ["zoom"], 13, T("route.line.color"), 14, T("route.band.color")],
                      "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
-                     "line-width": Z("route.width")})
+                     "line-width": interp(9, 1.2, 12, 2.0, 13, 2.6, 14, 7, 15, 12, 18, 18, base=1)})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
         major = ["all", flt, [">=", ["coalesce", ["get", "net"], 0], 2]]
-        layer(id_=f"routes-{kind}-major", type="line", source="routes", minzoom=minz,
+        # zoomed out: the major route as a thin solid pink line on top of the green one
+        layer(id_=f"routes-{kind}-major-low", type="line", source="routes", minzoom=minz, maxzoom=13.5,
+              filter=major, layout={"line-join": "round", "line-cap": "round", "visibility": vis},
+              paint={"line-color": T("route.major.line.color"), "line-width": interp(9, 1.2, 12, 2.0, 13, 2.6, base=1)})
+        layer(id_=f"routes-{kind}-major", type="line", source="routes", minzoom=13.5,
               filter=major, layout={"line-join": "round", "visibility": vis},
               paint={"line-color": T("route.major.color"), "line-width": Z("route.width"),
                      "line-opacity": T("route.major.opacity"), "line-dasharray": T("route.major.dash")})
@@ -312,8 +319,12 @@ def trails():
           layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
     # Zoomed out: one thin solid dark line for every graded trail (dots would only read as noise).
-    layer(id_="trails-low", type="line", source="trails", minzoom=10, maxzoom=LOW_ZOOM_SOLID, filter=[">=", sac, 1],
-          layout={"line-join": "round"}, paint={"line-color": T("trail.low.color"), "line-width": Z("trail.width")})
+    # Zoomed out every path / track from our own data (the base map has them only from z12–13), so every route line
+    # sits on a visible way – like Komoot. Tracks lighter than paths.
+    layer(id_="trails-low", type="line", source="trails", minzoom=11, maxzoom=LOW_ZOOM_SOLID,
+          layout={"line-join": "round"},
+          paint={"line-color": ["case", ["==", ["get", "k"], "t"], T("track.low.color"), T("trail.low.color")],
+                 "line-width": ["case", ["==", ["get", "k"], "t"], interp(11, 0.6, 13, 1.0, base=1), Z("trail.width")]})
     for sid, flt in (("mountain", ["all", [">=", sac, 2], ["<=", sac, 3]]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=["all", flt, ["!", faint]],
               layout={"line-cap": "round", "line-join": "round"},
