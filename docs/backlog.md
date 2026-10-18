@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Activity in Navigate (icon in to-go card, "Start navigation · Hike", tap = check & switch sheet) – since 2026-10-18
 - [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
 
 ## Next
@@ -30,6 +29,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Activity in Navigate (laptop agent): icon in the to-go card (own 48 dp target), "Start navigation · Hike", tap =
+  check-and-switch sheet (routes the rest for each activity, fits / problems, switching asks Take new route / Keep).
+- UX audit (laptop agent): outdated labels, dead Load-route screen, save choice without Cancel, no OK after import /
+  copy, settings rows; proposals pending owner (Clear confirm, Pause in tour bar, EN/DE strings).
 - Route bands (laptop, owner): one green band for every activity; major routes (OSM network regional / national /
   international, `net` ≥ 2 – Via Claudia Augusta, E5, EuroVelo 7, Etschradroute, Meraner Höhenweg …) get a Komoot-like
   semi-transparent green/pink dashed band + name label. `routes.geojson` now has `net` (0–4) → **cloud: rebuild the region package /
