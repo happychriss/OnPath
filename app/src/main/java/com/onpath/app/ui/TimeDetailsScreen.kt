@@ -65,6 +65,7 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                     TdKV("With breaks (+${(TimeEstimate.BREAK_ALLOWANCE * 100).toInt()} %)",
                         Format.duration(r.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)))
                     TdKV("At Normal pace, nothing learned", Format.duration(r.baseS))
+                    if (r.wayRows.isNotEmpty()) TdKV("From the slope alone (no way info)", Format.duration(r.slopeOnlyS))
                 }
                 TdSection("Factors") {
                     TdKV("Activity", r.activity.label)
@@ -97,13 +98,35 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                         }
                     }
                 }
+                if (r.wayRows.isNotEmpty()) TdSection("By way type / difficulty (Normal pace)") {
+                    Row(Modifier.fillMaxWidth()) {
+                        TdCell("Way", 2f, header = true); TdCell("Dist.", 1f, header = true)
+                        TdCell("Slope only", 1.1f, header = true); TdCell("×", 0.7f, header = true)
+                        TdCell("Time", 1f, header = true); TdCell("km/h", 0.9f, header = true)
+                    }
+                    HorizontalDivider()
+                    r.wayRows.forEach { row ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            TdCell(row.label, 2f)
+                            TdCell(Format.distance(row.distanceM), 1f)
+                            TdCell(TimeEstimate.hm(row.slopeS), 1.1f)
+                            TdCell(f2(row.factor), 0.7f)
+                            TdCell(TimeEstimate.hm(row.wayS), 1f, bold = true)
+                            TdCell(String.format("%.1f", if (row.wayS > 0) row.distanceM / row.wayS * 3.6 else 0.0), 0.9f)
+                        }
+                    }
+                }
                 TdSection("How it is calculated") {
-                    TdNote(if (bike) "Bikes: power model per piece – rider power, mass, air drag, rolling resistance for the " +
-                        "activity's usual surface (${PaceModel.bike(r.activity).surface}), downhill speed caps, pushing on very steep climbs."
+                    TdNote(if (bike) "Bikes: power model per piece – rider power, mass, air drag, rolling resistance and " +
+                        "downhill speed cap of the surface, pushing on very steep climbs."
                     else "Hiking: minutes per km from the slope of each 50 m piece (4 km/h flat, about 320–340 m/h up, " +
                         "500–550 m/h down, slower again on very steep descents).")
+                    TdNote(if (bike) "Way per piece: real surface (track grade too), slower on bad smoothness and MTB grades " +
+                        "(S1 ≤ 15, S2 ≤ 10, S3 ≤ 6 km/h on an MTB), pushing on S4+ / T4+ and steps (carried, half walking speed). " +
+                        "Unknown way: the activity's usual surface (${PaceModel.bike(r.activity).surface})."
+                    else "Way per piece: trail difficulty T1–T2 × 1.0, T3 × 1.15, T4 × 1.35, T5 × 1.6, T6 × 1.67; " +
+                        "rock / scree and steps at least × 1.15; faint trails × 1.1–1.25.")
                     TdNote("Heights come from the terrain model along the route (never GPS altitude), lightly smoothed.")
-                    TdNote("Not used yet: way type, surface per piece and trail difficulty (SAC) – planned as step P4.")
                     TdNote("While navigating, the factors are also learned from your pace on this trip (down / flat / up).")
                 }
             }

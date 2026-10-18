@@ -5,8 +5,9 @@
 moving time + arrival clock with 10 % break allowance (Q2), three pace chips Relaxed/Normal/Fit (Q3), learning across
 tours automatic with Reset (Q4), no range for now (Q5), owner's GPX tours as trimmed test files in the repo (Q6).
 
-Status: **P0–P3 implemented** on branch `feat/time-estimate` (2026-10-18, see "Implementation status" below); P4
-(terrain / surface factors, tuning with the owner's tours) open. Original proposal text follows unchanged. Owner request: "Estimation of remaining walking/hiking time –
+Status: **P0–P3 implemented** on branch `feat/time-estimate` (2026-10-18, see "Implementation status" below); **P4
+way factors implemented** on `feat/time-p4` (SAC / surface / steps / MTB scale per span, see "P4" below); tuning with
+the owner's tours still open. Original proposal text follows unchanged. Owner request: "Estimation of remaining walking/hiking time –
 how to do it smart? Settings, learn from the current trip (consider up and down) – be cool and make sure we're not too
 far off." Experiment: `tools/routing/jvm-test/TimeTest.kt` (real BRouter routes from the Bozen / Meran data +
 synthetic replays), run with
@@ -44,6 +45,7 @@ synthetic replays), run with
 | P0 | One model: table B (hiking), power model (bikes: rider power, e-assist to 25 km/h, rolling resistance and speed cap by surface, pushing = walking × 0.85 as the floor), per ~50 m DEM segment, cumulative per down/flat/up. Plan sheet, route list (planned routes re-timed on load), Navigate "to go", re-route scoring and the activity-check sheet all use it. BRouter's `durationS` stays in `RouteResult` but is not shown. | `time/PaceModel`, `time/RouteTimes`, `time/TimeEstimate`; `AppViewModel.withModelTime`, `Rerouter`, `ActivityCheck.timeS` |
 | P1 | Settings → "Your pace" (Relaxed / Normal / Fit for hiking and cycling). Navigate card: "2 h 50 min · 7.4 km", "arrive ≈ 16:40" (10 % break allowance) on the right, recording line "moving 1:12 · breaks 0:11". "Tour saved" shows moving time, breaks and "On the route: planned 3:10 – you needed 2:52". | `ui/PaceSettings.kt`, `NavigateScreen` (`recordingLine`, arrival column), `FinishedDialog(times)`, `time/TourTimesStore` (`tour-times.json`) |
 | P2 | `TripPace` in the recording service (persisted in `trip-pace.json`): learning per group with τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2; pieces off route / jumps > 400 m / ratio outside 0.33…3 are not learned. Calm display. The opened Navigate card shows "Your pace on this trip: up 0.9× · down 1.1×" after 20 min of comparison. Replay harness for GPX pairs. | `time/TripPace`, `time/BreakDetector`, `RecordingService` (`timeLine`, `tripTime`), tests `TripReplay` / `TrackReplayTest` |
+| P4 | Way attributes per span of the routed line (`GeoPoint.way: WayAttrs`, from BRouter's track messages): hiking × SAC / rough ground / steps / faint-trail factor, bikes on the real surface with smoothness / MTB-scale caps and pushing. Used per 50 m piece; Time details has a second table "By way type / difficulty". Kept through leg fallback, chunks, re-route splice and the navigation session file; saved routes store their group times in `plan-times.json`. | `routing/RoutingContract` (`WayAttrs`), `BRouterWayStats.perNode`, `BRouterEngine.toResult`, `time/PaceModel` (`hikeWayFactor`, `ride`), `time/RouteTimes`, `time/TimeBreakdown`, `time/PlanTimesStore`, `NavSession` |
 | P3 | `PaceStore` per activity (6 activities, not 3 groups): after a tour with ≥ 30 min moving time on a followed route, weighted by compared time per group, half-life 5 tours; break ratio stored (not yet used). Settings lists it with Reset (asks first). Plan = model × pace × stored factors. | `time/PaceStore`, `Prefs.paceStore`, `RecordingService.learnAcrossTours`, `AppViewModel.resetLearnedPace` |
 
 **Decisions taken while building** (open for the owner):
@@ -56,8 +58,8 @@ synthetic replays), run with
   rounded to 5 min, "to go" to 1 min under 20 min, else 5 min (the plan sheet shows the same rounded value).
 - *Stored factors* are relative to the pace setting at the time; changing the chip later applies on top.
 - *No "Learn from my tours" switch* (owner Q4: automatic + Reset); *no break-allowance setting* (fixed 10 %, Q2).
-- *Bikes:* surfaces per segment are supported by `PaceModel.seconds(…, surface)` but lines carry no per-point surface
-  yet, so each activity uses its usual surface (touring asphalt, trekking / e-bike paved, MTB / e-MTB unpaved). P4.
+- *Bikes:* since P4 each span uses its real surface; spans without attributes (straight legs, imported tracks) use the
+  activity's usual surface (touring asphalt, trekking / e-bike paved, MTB / e-MTB unpaved).
 
 **Old vs. new times on the reference routes** (`ReferenceRoutesTest`, h:mm, Normal pace; new = plan sheet = Navigate at
 the start, shown rounded to 5 min):
@@ -78,6 +80,59 @@ with bad knees 24 / 24 / 0 %, relaxed ×1.3 11 / 11 / 10 %, fit ×0.8 11 / 13 / 
 25 % without learning; breaks found within ±1 min; arrival jump per 100 m p90 2.4–3.9 min, max 3.3–12.3 min (the
 1 min + 2 % rule allows ~8 min per update on a 6 h day). Real tracks: add folders to `app/src/test/resources/tracks/`
 (plan.gpx + track.gpx + info.txt, see `TripReplay`).
+
+### P4: way type and difficulty (2026-10-18, branch `feat/time-p4`)
+
+Owner: "Is the estimator considering up and down and way type?" – up / down yes (per 50 m piece), now also the way.
+
+**How:** BRouter reports way tags per run of equal tags (`processUnusedTags=1`); `BRouterWayStats.perNode` matches the
+runs to the track nodes by position and puts a `WayAttrs` (way type, surface key, SAC 1–6, mtb:scale, smoothness,
+trail_visibility, rock / scree) on every routed point (`GeoPoint.way`, ignored by `equals`, so nothing else changes).
+`RouteTimes` times each 50 m piece span by span with the piece's slope and each span's way. No attributes (straight
+legs, GPX tracks, old saved lines) = exactly the P0–P3 times. Not in the BRouter lookup table, so not used: `scree`
+(only rock / stone), `incline` on steps.
+
+**Hiking factors** (× table B, which already has the slope):
+
+| Way | Factor | Why |
+| --- | --- | --- |
+| no SAC, T1, T2 | × 1.0 | Table B is anchored on DAV / AVS / Swiss signpost times, which use one formula for every hiking and mountain path (Swiss Wanderwege: "nimmt keine Rücksicht … auf die Schwierigkeit des Weges"). |
+| T3 (demanding mountain hiking) | × 1.15 | Rocky, sure-footed walking. Wood et al. 2023 (GPS, 88 000 km): heavy ground cover / obstruction costs ≈ 13 % on the flat (4.85 → 4.23 km/h). |
+| T4 (alpine hiking) | × 1.35 | Hands needed at times, pathless sections; between T3 and the off-path value. |
+| T5 (demanding alpine) | × 1.6 | Often pathless, scrambling. Tobler 1993: off-path speed = 3/5 of on-path (× 1.67) – the upper end; Wood 2023 found Tobler's 0.6 too strong for easy off-path ground, so T5 stays a bit below it. |
+| T6 (difficult alpine) | × 1.67 | Tobler's off-path factor. |
+| rock / stone surface, steps | ≥ × 1.15 | as T3 (steps: slope is in table B, the extra is the stepping rhythm, mainly down). |
+| trail_visibility bad / horrible / no | × 1.1 / 1.2 / 1.25 on top | way-finding; capped at × 1.8 overall. |
+
+**Bikes** (power model unchanged; per span): rolling resistance and downhill cap of the **real surface** (track grade via
+the surface mapping: grade1 paved … grade4/5 ground). Smoothness (OSM: defined by the vehicle that still gets through):
+intermediate cap 25 km/h; bad cap 15 (MTB 20), Crr ≥ 0.025; very_bad cap 10 (MTB 15), Crr ≥ 0.035; horrible and worse:
+pushed (MTB: cap 10). MTB scale (singletrail-skala.de; without it a footpath's SAC stands in: T2 ≈ S1, T3 ≈ S2,
+T4+ ≈ S4): MTB / e-MTB S1 cap 15, Crr ≥ 0.03; S2 cap 10, Crr ≥ 0.045; S3 cap 6, Crr ≥ 0.06; S4+ pushed. Other bikes:
+S1 cap 12, S2+ (or T3+) pushed. Pushed = walking (table B) × 0.85; steps = carried, half of that. Rolling resistance
+order of magnitude: asphalt 0.004–0.008, gravel ≈ 0.01–0.02, rough ground ≥ 0.03 (Wilson, *Bicycling Science*). The
+caps are judgement – first in line for tuning with real rides.
+
+**Old vs. new** (`tools/routing/jvm-test/TimeP4Test.kt`, real BRouter routes, Normal pace, h:mm unrounded):
+
+| Route | Way mix (km) | Before (P0–P3) | **P4** |
+| --- | --- | --- | --- |
+| H1 Meran → Lana (valley) | road 4.0, cycleway 3.8 | 2:02 | 2:02 (±0) |
+| H2 Algund → Schenna (Waalweg) | road 4.1, footway 1.1, track 0.7 | 2:05 | 2:05 (±0) |
+| H3 Algund → Leiteralm (up) | T2 2.2, road 1.3, track 0.9, T1 0.8 | 2:50 | 2:50 (±0) |
+| H5 Leiteralm round trip | T2 4.7, road 2.4, track 1.8 | 4:47 | 4:47 (±0) |
+| H8 Saltaus → Hirzer hut (up) | path 2.0, track 0.9 | 2:20 | 2:20 (±0) |
+| H9 Meran 2000 → Ifinger (sac limit T5) | T1 5.2, **T3 1.4**, T2 1.1 | 2:57 | **3:05 (+5 %)** |
+| H10 Texel group traverse | **T4 5.1** | 2:17 | **3:05 (+35 %)** |
+| H11 Texel group section | **T5 3.2** | 2:53 | **4:37 (+60 %)** |
+| B1 Bozen → Meran, trekking | asphalt 32.8 | 1:41 | 1:36 (−5 %: asphalt instead of the assumed "paved") |
+| B1 Bozen → Meran, touring | asphalt 29.8 | 1:20 | 1:21 |
+| B2 Meran → Schenna → Meran, trekking | asphalt / paved / gravel, intermediate | 0:55 | 0:56 |
+| B3 Lana → Vigiljoch, MTB | unknown 2.7, asphalt 2.2 | 1:19 | 1:14 (−6 %: asphalt part) |
+| B4 Algund → Vellau, MTB | gravel T1/T2 2.0 | 0:40 | 0:41 |
+
+The Ifinger summit path is tagged T3 in OSM (only the last 1.4 km), so it gets slower only there; real T4 / T5 routes
+get +35 % / +60 %. Valley and T1/T2 routes are unchanged.
 
 **Field test (owner):** see the checklist in `docs/project-status.md` (Last session).
 
@@ -442,6 +497,15 @@ P0 alone fixes the most visible problem (the jump between Plan and Navigate) and
   2018 variants: [movecost docs](https://www.rdocumentation.org/packages/movecost/versions/3.0.0/topics/mc_cost_functions).
 - Wood et al. 2023, "Improved prediction of hiking speeds using a data driven approach" (7,636 GPS tracks; per-route
   error 13.5–15.5 % for all models): [arXiv 2303.16065](https://ar5iv.labs.arxiv.org/html/2303.16065).
+- Tobler's off-path factor 0.6 (3/5): W. Tobler 1993, *Three presentations on geographical analysis and modeling*,
+  NCGIA TR 93-1; Wood et al. 2023 (above) on obstruction (−0.5 km/h at ≥ 10 cm ground cover; "the factor of 0.6 is a
+  larger reduction in walking speed than is observed in practice").
+- Swiss signpost times ignore the path difficulty: [Beobachter](https://www.beobachter.ch/ausfluge-freizeit/wanderwegweiser-die-gelben-zeiten),
+  [SRF](https://www.srf.ch/sendungen/kassensturz-espresso/services/espresso-aha/espresso-aha-so-berechnen-sie-die-wanderzeit).
+- SAC scale: [OSM wiki Key:sac_scale](https://wiki.openstreetmap.org/wiki/Key:sac_scale); MTB scale:
+  [OSM wiki Key:mtb:scale](https://wiki.openstreetmap.org/wiki/Key:mtb:scale), [singletrail-skala.de](https://www.singletrail-skala.de/);
+  smoothness by vehicle: [OSM wiki Key:smoothness](https://wiki.openstreetmap.org/wiki/Key:smoothness).
+- Rolling resistance by surface: D. G. Wilson, *Bicycling Science* (3rd ed., MIT Press 2004), ch. 6.
 - BRouter time model: `btools.router.StdPath.computeKinematic` and `RoutingContext` defaults in the bundled BRouter
   1.7.11 jars (`app/libs/`).
 - Komoot fitness level changes only the time estimate:

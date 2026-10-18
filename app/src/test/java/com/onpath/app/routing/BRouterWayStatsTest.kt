@@ -73,4 +73,24 @@ class BRouterWayStatsTest {
         assertTrue(BRouterWayStats.fromMessages(null, 100.0).wayTypes.isEmpty())
         assertTrue(BRouterWayStats.fromMessages(listOf("a\tb"), 100.0).surfaces.isEmpty())
     }
+
+    @Test fun perNodeMatchesRunsToNodes() {
+        fun m(lon: Int, lat: Int, tags: String) = "$lon\t$lat\t300\t10\t1000\t0\t0\t0\t0\t$tags\t\t10\t100"
+        val lon = intArrayOf(11000000, 11000100, 11000200, 11000300, 11000400)
+        val lat = intArrayOf(46000000, 46000000, 46000000, 46000000, 46000000)
+        val msgs = listOf(
+            m(11000200, 46000000, "highway=track surface=gravel"),
+            m(11000400, 46000000, "highway=path sac_scale=alpine_hiking trail_visibility=bad surface=rock mtb:scale=3+"),
+        )
+        val w = BRouterWayStats.perNode(msgs, lon, lat)
+        assertEquals(5, w.size)
+        assertEquals("track", w[0]!!.wayType); assertEquals("gravel", w[1]!!.surface)
+        val p = w[2]!!
+        assertEquals(4, p.sac); assertEquals(3, p.mtb); assertEquals("bad", p.visibility); assertEquals("rock", p.rough)
+        assertEquals("alpine", p.surface)
+        assertTrue(w[4] === w[3]) // the last node repeats the last way
+        // a run that matches no node: nothing (times as without attributes)
+        assertTrue(BRouterWayStats.perNode(listOf(m(1, 2, "highway=path")), lon, lat).isEmpty())
+        assertTrue(BRouterWayStats.perNode(null, lon, lat).isEmpty())
+    }
 }

@@ -2,6 +2,7 @@ package com.onpath.app.navigation
 
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.WayAttrs
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -73,6 +74,7 @@ class NavSessionStore(private val file: File) {
             .put("v", 1)
             .put("kind", s.kind.name).put("name", s.name).put("activity", s.activity.name).put("sac", s.sac)
             .put("original", pts(s.original))
+            .put("originalWays", ways(s.original) ?: JSONObject.NULL)
             .put("stops", JSONArray().apply {
                 s.stops.forEach { st ->
                     put(JSONObject().put("lat", st.point.lat).put("lon", st.point.lon).put("along", st.alongM)
@@ -80,12 +82,13 @@ class NavSessionStore(private val file: File) {
                 }
             })
             .put("current", s.current?.let { pts(it) } ?: JSONObject.NULL)
+            .put("currentWays", s.current?.let { ways(it) } ?: JSONObject.NULL)
             .put("spliceAt", s.spliceAtM).put("resumeAlong", s.resumeAlongM).put("leftAt", s.leftAtM)
             .put("visited", JSONArray().apply { s.visited.sorted().forEach { put(it) } })
             .put("version", s.version)
 
         fun fromJson(o: JSONObject): NavSession? {
-            val original = readPts(o.getJSONArray("original"))
+            val original = withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays"))
             if (original.size < 2) return null
             val stops = o.optJSONArray("stops")?.let { a ->
                 (0 until a.length()).map { i ->
@@ -94,7 +97,7 @@ class NavSessionStore(private val file: File) {
                         if (s.isNull("name")) null else s.optString("name"), s.optBoolean("pinned"))
                 }
             }.orEmpty()
-            val current = if (o.isNull("current")) null else o.optJSONArray("current")?.let { readPts(it) }?.takeIf { it.size >= 2 }
+            val current = if (o.isNull("current")) null else o.optJSONArray("current")?.let { withWays(readPts(it), o.optJSONArray("currentWays")) }?.takeIf { it.size >= 2 }
             val visited = o.optJSONArray("visited")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty()
             return NavSession(
                 kind = runCatching { NavKind.valueOf(o.getString("kind")) }.getOrDefault(NavKind.TRACK),
@@ -110,6 +113,34 @@ class NavSessionStore(private val file: File) {
         private fun pts(l: List<GeoPoint>) = JSONArray().apply {
             l.forEach { put(it.lat); put(it.lon); put(it.ele ?: JSONObject.NULL) }
         }
+
+        /** Way attributes of a line (time model, [GeoPoint.way]) as runs [startIndex, code, ...]; null = none known. */
+        private fun ways(l: List<GeoPoint>): JSONArray? {
+            if (l.none { it.way != null }) return null
+            val a = JSONArray()
+            var last: String? = "\u0000"
+            l.forEachIndexed { i, p ->
+                val c = p.way?.code()
+                if (c != last) { a.put(i); a.put(c ?: JSONObject.NULL); last = c }
+            }
+            return a
+        }
+
+        /** Puts the runs written by [ways] back on the points; anything odd = no attributes (times as without). */
+        private fun withWays(l: List<GeoPoint>, a: JSONArray?): List<GeoPoint> = try {
+            if (a == null || a.length() < 2) l else {
+                val out = l.toMutableList()
+                var r = 0
+                while (r + 1 < a.length()) {
+                    val from = a.getInt(r)
+                    val to = if (r + 2 < a.length()) a.getInt(r + 2) else l.size
+                    val w = if (a.isNull(r + 1)) null else WayAttrs.parse(a.getString(r + 1))
+                    for (i in from.coerceAtLeast(0) until to.coerceAtMost(l.size)) out[i] = out[i].copy(way = w)
+                    r += 2
+                }
+                out
+            }
+        } catch (_: Exception) { l }
 
         private fun readPts(a: JSONArray): List<GeoPoint> = (0 until a.length() / 3).map {
             val e = if (a.isNull(it * 3 + 2)) null else a.optDouble(it * 3 + 2).takeIf { v -> !v.isNaN() }

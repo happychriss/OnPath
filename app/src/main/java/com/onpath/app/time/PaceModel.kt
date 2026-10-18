@@ -1,6 +1,7 @@
 package com.onpath.app.time
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.WayAttrs
 
 /**
  * The one time model of OnPath (docs/plan-time-estimate.md §3): seconds for a short piece of route from its length and
@@ -12,6 +13,9 @@ import com.onpath.app.routing.Activity
  * - Bikes: a power model (like BRouter's, but computed here so Plan and Navigate agree): rider power by activity, e-bike
  *   assist up to 25 km/h, rolling resistance by surface, speed caps by surface (downhill), pushing (walking speed
  *   × 0.85) as the floor on very steep climbs.
+ * - Way attributes (P4, [WayAttrs] per span of a routed line): hiking gets a factor for SAC grade, rough ground, steps
+ *   and faint trails ([hikeWayFactor]); bikes ride on the real surface, slower on bad smoothness / MTB scale and push
+ *   where bikes are walked ([ride]). Unknown way (null) = exactly the times without attributes.
  *
  * All values are for the "Normal" pace; [Pace] and learned [Factors] multiply the result.
  */
@@ -115,15 +119,95 @@ object PaceModel {
         return (lo + hi) / 2
     }
 
+    // ---- way attributes (P4, docs/plan-time-estimate.md "P4") ------------------------------------------------
+
+    /**
+     * Hiking time factor by SAC grade (index 0 = not tagged, 1..6 = T1..T6). Table B already has the slope; this is the
+     * extra time for the ground itself: T1/T2 as the signposts (table B is anchored on them), T3 sure-footedness on
+     * rocky paths, T4 hands sometimes needed, T5/T6 often pathless (Tobler's off-path ×1/0.6 = 1.67 as the upper end).
+     */
+    private val SAC_FACTOR = doubleArrayOf(1.0, 1.0, 1.0, 1.15, 1.35, 1.6, 1.67)
+    private const val HIKE_FACTOR_MAX = 1.8
+
+    /** Hiking: time factor for the way (1 = table B as it is). */
+    fun hikeWayFactor(w: WayAttrs?): Double {
+        if (w == null) return 1.0
+        var f = SAC_FACTOR[w.sac.coerceIn(0, 6)]
+        if (w.rough != null) f = maxOf(f, 1.15) // rock / scree underfoot
+        if (w.wayType == "steps") f = maxOf(f, 1.15)
+        f *= when (w.visibility) {
+            "bad" -> 1.1
+            "horrible" -> 1.2
+            "no" -> 1.25
+            else -> 1.0 // excellent, good, intermediate, not tagged
+        }
+        return minOf(f, HIKE_FACTOR_MAX)
+    }
+
+    /**
+     * How a bike gets along one span: rolling resistance, top speed (km/h) and whether the bike is pushed
+     * ([pushFactor] > 0 = walking speed × 0.85 × this; carried up / down steps = 0.5).
+     */
+    data class Ride(val cr: Double, val capKmh: Double, val pushFactor: Double = 0.0)
+
+    /** [Ride] for [activity] on way [w] (null = the activity's usual surface: the model without attributes). */
+    fun ride(activity: Activity, w: WayAttrs?): Ride {
+        val b = bike(activity)
+        val key = w?.surface?.takeIf { rollingResistance(it) != null } ?: b.surface
+        var cr = rollingResistance(key)!!
+        var cap = capKmh(key)!!
+        if (w == null) return Ride(cr, cap)
+        if (w.wayType == "steps") return Ride(cr, cap, 0.5)
+        val mtb = activity == Activity.MTB || activity == Activity.EMTB
+        fun limit(c: Double, k: Double) { cr = maxOf(cr, c); cap = minOf(cap, k) }
+        // smoothness is defined by the vehicle that still gets through (OSM wiki Key:smoothness)
+        when (w.smoothness) {
+            "intermediate" -> limit(0.0, 25.0)
+            "bad", "robust_wheels" -> if (mtb) limit(0.0, 20.0) else limit(0.025, 15.0)
+            "very_bad", "high_clearance" -> if (mtb) limit(0.03, 15.0) else limit(0.035, 10.0)
+            "horrible", "very_horrible", "off_road_wheels", "impassable" ->
+                if (mtb) limit(0.045, 10.0) else return Ride(cr, cap, 1.0)
+        }
+        // MTB scale (singletrail-skala.de); without it the SAC grade of a footpath stands in
+        val s = when {
+            w.mtb >= 0 -> w.mtb
+            w.sac >= 4 -> 4
+            w.sac == 3 -> 2
+            w.sac == 2 -> 1
+            else -> 0
+        }
+        if (mtb) when (s) {
+            1 -> limit(0.03, 15.0)
+            2 -> limit(0.045, 10.0)
+            3 -> limit(0.06, 6.0)
+            in 4..6 -> return Ride(cr, cap, 1.0)
+        } else when (s) {
+            1 -> limit(0.035, 12.0)
+            in 2..6 -> return Ride(cr, cap, 1.0)
+        }
+        return Ride(cr, cap)
+    }
+
+    /** Steady speed (m/s) on [grade] for [activity] on way [w] (null = as [bikeSpeedMs] without a surface). */
+    fun bikeSpeedOn(grade: Double, activity: Activity, w: WayAttrs?): Double {
+        val r = ride(activity, w)
+        val g = if (grade.isNaN()) 0.0 else grade
+        if (r.pushFactor > 0) return pushSpeedMs(g) * r.pushFactor
+        val b = bike(activity)
+        var v = solve(b.riderW, b.massKg, b.drag, r.cr, g)
+        if (b.assistW > 0) v = maxOf(v, minOf(solve(b.riderW + b.assistW, b.massKg, b.drag, r.cr, g), ASSIST_LIMIT_MS))
+        return v.coerceAtMost(r.capKmh / 3.6).coerceAtLeast(pushSpeedMs(g))
+    }
+
     // ---- one segment -----------------------------------------------------------------------------------------
 
-    /** Seconds for [lenM] horizontal metres with height change [dz] (Normal pace, no learned factors). */
-    fun seconds(lenM: Double, dz: Double, activity: Activity, surface: String? = null): Double {
+    /** Seconds for [lenM] horizontal metres with height change [dz] on way [way] (Normal pace, no learned factors). */
+    fun seconds(lenM: Double, dz: Double, activity: Activity, way: WayAttrs? = null): Double {
         if (lenM <= 0 || lenM.isNaN()) return 0.0
         val grade = if (dz.isNaN()) 0.0 else dz / lenM
         return when (activity) {
-            Activity.HIKE -> hikeMinPerKm(grade) * 60 * lenM / 1000
-            else -> lenM / bikeSpeedMs(grade, activity, surface)
+            Activity.HIKE -> hikeMinPerKm(grade) * 60 * lenM / 1000 * hikeWayFactor(way)
+            else -> lenM / bikeSpeedOn(grade, activity, way)
         }
     }
 }

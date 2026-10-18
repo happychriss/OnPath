@@ -127,7 +127,15 @@ class ScreenshotTest {
     @Test fun timeDetails() = paparazzi.snapshot {
         OnPathTheme {
             TimeDetailsScreen(TimeDetailsUi(
-                com.onpath.app.time.TimeBreakdown.of(routePts, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
+                com.onpath.app.time.TimeBreakdown.of(routePts.mapIndexed { i, p ->
+                    p.copy(way = when {
+                        i < 20 -> com.onpath.app.routing.WayAttrs("quiet_road", "asphalt")
+                        i < 50 -> com.onpath.app.routing.WayAttrs("track", "gravel")
+                        i < 90 -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 2)
+                        i < 110 -> com.onpath.app.routing.WayAttrs("path", "alpine", sac = 4)
+                        else -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 3, visibility = "bad")
+                    })
+                }, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
                 "Normal", 1.0, com.onpath.app.time.Factors(0.95, 1.0, 1.1), 3), onBack = {})
         }
     }

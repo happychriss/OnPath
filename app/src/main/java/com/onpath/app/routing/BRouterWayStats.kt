@@ -62,6 +62,48 @@ object BRouterWayStats {
         return Breakdown(toShares(ways, scale), toShares(surf, scale))
     }
 
+    /** Way attributes for the time model from one message's way tags. */
+    fun attrs(tags: Map<String, String>): WayAttrs = WayAttrs(
+        wayType = wayType(tags),
+        surface = surface(tags),
+        sac = SAC[tags["sac_scale"]] ?: 0,
+        mtb = tags["mtb:scale"]?.trim()?.firstOrNull()?.digitToIntOrNull()?.coerceIn(0, 6) ?: -1,
+        smoothness = tags["smoothness"],
+        visibility = tags["trail_visibility"],
+        rough = tags["surface"]?.takeIf { it in ROUGH },
+    )
+
+    /**
+     * Way attributes per track node: [i] = the way from node i to node i+1 (the last node repeats the last way).
+     * BRouter's aggregated messages are runs of equal way tags, each reported at the run's last node (lon / lat in
+     * micro-degrees, as in [nodeLon] / [nodeLat] = ilon − 180e6 / ilat − 90e6). Runs are matched to nodes in order by
+     * position. Empty list when anything does not fit (the time model then assumes the activity's usual way).
+     */
+    fun perNode(messages: List<String?>?, nodeLon: IntArray, nodeLat: IntArray): List<WayAttrs?> {
+        val n = nodeLon.size
+        if (messages.isNullOrEmpty() || n < 2 || nodeLat.size != n) return emptyList()
+        val out = arrayOfNulls<WayAttrs>(n)
+        val cache = HashMap<String, WayAttrs>()
+        var k = 0 // first node of the current run
+        var last: WayAttrs? = null
+        for (line in messages) {
+            if (line.isNullOrEmpty()) continue
+            val cols = line.split('\t')
+            if (cols.size < 10) continue
+            val lon = cols[0].trim().toIntOrNull() ?: continue
+            val lat = cols[1].trim().toIntOrNull() ?: continue
+            var j = k + 1
+            while (j < n && (nodeLon[j] != lon || nodeLat[j] != lat)) j++
+            if (j >= n) return emptyList()
+            val a = cache.getOrPut(cols[9]) { attrs(parseTags(cols[9])) }
+            for (i in k until j) out[i] = a
+            last = a; k = j
+        }
+        if (last == null) return emptyList()
+        for (i in k until n) out[i] = last
+        return out.toList()
+    }
+
     fun parseTags(desc: String?): Map<String, String> {
         if (desc.isNullOrBlank()) return emptyMap()
         val m = HashMap<String, String>()
@@ -131,6 +173,11 @@ object BRouterWayStats {
     private fun toShares(m: Map<String, Double>, scale: Double): List<Share> =
         m.entries.map { Share(it.key, it.value * scale) }.sortedByDescending { it.meters }
 
+    private val SAC = mapOf(
+        "hiking" to 1, "T1-hiking" to 1, "mountain_hiking" to 2, "demanding_mountain_hiking" to 3,
+        "alpine_hiking" to 4, "demanding_alpine_hiking" to 5, "difficult_alpine_hiking" to 6,
+    )
+    private val ROUGH = setOf("rock", "rocks", "rocky", "stone", "scree")
     private val ALPINE_SAC = setOf("alpine_hiking", "demanding_alpine_hiking", "difficult_alpine_hiking")
     private val MAJOR_ROADS = setOf(
         "tertiary", "tertiary_link", "secondary", "secondary_link", "primary", "primary_link",

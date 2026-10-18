@@ -820,6 +820,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
+    private val planTimes by lazy {
+        com.onpath.app.time.PlanTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.PlanTimesStore.FILE))
+    }
+
+    /** A planned route was saved as [id]: keep its model time per group (with way attributes) for the route list. */
+    private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) {
+        if (r == null || r.points.size < 2) return
+        try { planTimes.put(id, r.distanceM, com.onpath.app.time.RouteTimes.of(r.points, a).groupTotals()) } catch (_: Exception) { }
+    }
+
     /** Planned routes show the model time (recomputed, the stored router time is ignored); others as stored. */
     private fun withModelTime(t: Tour): Tour {
         if (t.kind != TourKind.PLANNED) return t
@@ -827,6 +837,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val f = planFactors(a)
         val key = f to t.distanceM // an overwritten route has a new distance
         plannedTimes[t.id]?.takeIf { it.first == key }?.let { return t.copy(durationS = it.second) }
+        // stored at save with the way attributes (P4); the stored points alone have none
+        planTimes.get(t.id, t.distanceM)?.let { g ->
+            val s = com.onpath.app.time.PlanTimesStore.seconds(g, f)
+            plannedTimes[t.id] = key to s
+            return t.copy(durationS = s)
+        }
         return try {
             val pts = db.loadSegments(t.id).flatten().map { it.toGeo() }
             if (pts.size < 2) t else {
@@ -872,7 +888,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
                         pts.map { GpxWaypoint(it.lat, it.lon, null) },
-                    )
+                    ).also { storePlanTimes(it, r, act) }
                 }.getOrNull()
             }
             if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
@@ -913,7 +929,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
                         pts.map { GpxWaypoint(it.lat, it.lon, null) },
-                    )
+                    ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
                 }
             }
             ok.onSuccess { replaced ->
