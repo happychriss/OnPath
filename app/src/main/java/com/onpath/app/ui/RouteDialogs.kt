@@ -31,6 +31,7 @@ fun RouteDialogs(vm: AppViewModel) {
     vm.replaceAsk?.let { _ ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null })
     }
+    if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(
             onDismissRequest = { vm.routesProblem = null },
@@ -60,5 +61,23 @@ fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveA
         dismissButton = {
             TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save as new…") }
         },
+    )
+}
+
+/**
+ * Start navigation on a plan with legs the router could not find (dashed straight lines on the map). Those parts
+ * are not a path: the user decides, nothing starts silently (R-12). No Cancel button: a tap outside or Back keeps the plan.
+ */
+@Composable
+fun StraightLegsDialog(onNavigate: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Parts of this route were not found") },
+        text = {
+            Text("The dashed parts are straight lines, not paths. Off-route warnings and turn hints follow them anyway. " +
+                "Move those points or change the activity, or navigate as it is.")
+        },
+        confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text("Navigate anyway") } },
+        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Fix the route") } },
     )
 }

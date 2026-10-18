@@ -85,6 +85,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Settings page → base style layers (POI filter, contours, hillshade). */
     val layers = LayerSettings(style)
 
+    /**
+     * True while [style] is the map's current, fully loaded style. While a new style loads (theme change, data
+     * import) MapLibre throws on any access to the old one, and the app's effects can still hold this controller
+     * for a moment – every update below is a no-op then instead of a crash (R-01).
+     */
+    private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) { false }
+
+    /** GeoJSON source [id], or null when the style is gone or being replaced (the caller then does nothing). */
+    private fun source(id: String): GeoJsonSource? =
+        if (!live()) null else try { style.getSourceAs<GeoJsonSource>(id) } catch (_: Exception) { null }
+
+    /** Runs a style update only on a live style and never lets a MapLibre exception reach the UI. */
+    private inline fun guarded(what: String, block: () -> Unit) {
+        if (!live()) return
+        try { block() } catch (e: Exception) { Log.w("OnPath", "map $what skipped: $e") }
+    }
+
     private val density = context.resources.displayMetrics.density
     private var locationReady = false
     private var markerImages = 0
@@ -163,7 +180,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             TrackLook.FOLLOW -> Triple(ROUTE_COLOR, 6f, true)
             TrackLook.FOLLOW_BEHIND -> Triple(NAV_ORIGINAL_COLOR, 3f, false)
         }
-        runCatching {
+        guarded("track look") {
             style.getLayer(SRC_GPX)?.setProperties(PF.lineColor(color), PF.lineWidth(width))
             style.getLayer("$SRC_GPX-casing")?.setProperties(PF.lineWidth(width + 4f),
                 PF.visibility(if (casing) Property.VISIBLE else Property.NONE))
@@ -366,8 +383,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     val compassListening: Boolean get() = heading.isListening
 
     /** Next-turn arrow at [turn], pointing in its outgoing direction; null hides it. */
-    fun setTurnArrow(turn: Turn?) {
-        val src = style.getSourceAs<GeoJsonSource>(SRC_TURN) ?: return
+    fun setTurnArrow(turn: Turn?) = guarded("turn arrow") {
+        val src = source(SRC_TURN) ?: return
         if (turn == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
         src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(turn.point.lon, turn.point.lat)).apply {
             addNumberProperty("rot", turn.bearingOut)
@@ -436,8 +453,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         }
     }
 
-    fun setPlanned(route: PlannedRoute?) {
-        val src = style.getSourceAs<GeoJsonSource>(SRC_PLANNED) ?: return
+    fun setPlanned(route: PlannedRoute?) = guarded("planned route") {
+        val src = source(SRC_PLANNED) ?: return
         if (route == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
         val features = route.legs.filter { it.points.size >= 2 }.map { leg ->
             Feature.fromGeometry(LineString.fromLngLats(leg.points.map { Point.fromLngLat(it.lon, it.lat) })).apply {
@@ -447,16 +464,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         src.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 
-    fun setTrack(sourceId: String, segments: List<List<GeoPoint>>) {
-        val src = style.getSourceAs<GeoJsonSource>(sourceId) ?: return
+    fun setTrack(sourceId: String, segments: List<List<GeoPoint>>) = guarded("track $sourceId") {
+        val src = source(sourceId) ?: return
         val lines = segments.filter { it.size >= 2 }.map { seg -> seg.map { Point.fromLngLat(it.lon, it.lat) } }
         if (lines.isEmpty()) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
         src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
-    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) {
+    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) = guarded("waypoints") {
         shownWaypoints = points.toList()
-        val src = style.getSourceAs<GeoJsonSource>(SRC_WPT) ?: return
+        val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
             val kind = when { i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
@@ -477,7 +494,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun dpToPx(dp: Float) = dp * density
 
     /** Search result mark (orange ring around the place, with its name); null removes it. Never throws. */
-    fun setSearchMark(p: GeoPoint?, name: String?) = runCatching {
+    fun setSearchMark(p: GeoPoint?, name: String?) = guarded("search mark") {
         if (style.getSource(SRC_MARK) == null) {
             style.addSource(GeoJsonSource(SRC_MARK))
             // One orange ring around the place's icon (owner: not a red dot covering it), clearly outside the icon.
@@ -489,13 +506,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 PF.textColor("#B35C00"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
                 PF.textAllowOverlap(true), PF.textIgnorePlacement(true)))
         }
-        val src = style.getSourceAs<GeoJsonSource>(SRC_MARK) ?: return@runCatching
+        val src = source(SRC_MARK) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("name", name ?: "") })
     }
 
-    fun setHighlight(p: GeoPoint?) {
-        val src = style.getSourceAs<GeoJsonSource>(SRC_HL) ?: return
+    fun setHighlight(p: GeoPoint?) = guarded("highlight") {
+        val src = source(SRC_HL) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)))
     }

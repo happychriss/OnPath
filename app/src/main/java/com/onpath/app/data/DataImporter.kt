@@ -101,8 +101,11 @@ object DataImporter {
                 out.fd.sync()
             }
             if (tmp.length() == 0L) throw ImportException("${dest.name} is empty.")
-            if (dest.exists() && !dest.delete()) throw ImportException("Could not replace ${dest.name}.")
-            if (!tmp.renameTo(dest)) throw ImportException("Could not save ${dest.name}.")
+            // rename replaces the old file atomically: the existing data is never gone without the new one in place
+            if (!tmp.renameTo(dest)) {
+                if (dest.exists() && !dest.delete()) throw ImportException("Could not replace ${dest.name}.")
+                if (!tmp.renameTo(dest)) throw ImportException("Could not save ${dest.name}.")
+            }
         } finally {
             if (tmp.exists()) tmp.delete()
         }
