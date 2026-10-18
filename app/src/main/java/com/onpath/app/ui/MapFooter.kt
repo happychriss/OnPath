@@ -119,13 +119,13 @@ private fun ScaleBar(label: String, width: Dp) {
 
 /**
  * Compass / orientation button content. [headingUp] true/false = Navigate (walking direction up / north
- * up, tap toggles); null = Plan, shown only while the map is turned (needle shows north, tap = north up).
+ * up, tap toggles); null = Plan, always shown (needle turned by the map [bearing], tap = north up).
  */
 data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick: () -> Unit)
 
 /**
- * The map controls as one group (owner: "center, eye and compass grouped, shown when needed"):
- * compass on top (only when it means something), the eye in the middle (only when there is a route,
+ * The map controls as one group (owner: "center, eye and compass grouped"):
+ * compass on top (always), the eye in the middle (only when there is a route,
  * track or followed line – hold to hide them, position stays), locate at the bottom (always, GPS dot).
  */
 @Composable
@@ -162,7 +162,7 @@ private fun CompassControl(c: CompassSpec) {
     val what = when (c.headingUp) {
         true -> "Map turns with your walking direction. Tap for north up"
         false -> "Map is north up. Tap to turn it with your walking direction"
-        null -> "Map is turned. Tap for north up"
+        null -> if (kotlin.math.abs(c.bearing) > 1f) "Map is turned. Tap for north up" else "Compass. Map is north up"
     }
     Box(
         Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },

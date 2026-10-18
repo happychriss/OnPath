@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.onpath.app.ui.AppViewModel
-import com.onpath.app.ui.FinishedDialog
+import com.onpath.app.ui.FinishedTourDialogs
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
                                 onOpen = { vm.requestOpen(it) },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
+                                onRename = { t, name -> vm.renameTour(t, name) },
                             )
                         }
                     }
@@ -156,7 +157,7 @@ class MainActivity : ComponentActivity() {
                     UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.saveUnfinished(t) })
                 }
                 vm.finishedTour?.let { t ->
-                    FinishedDialog(t,
+                    FinishedTourDialogs(t,
                         onExport = { vm.exportTour(t) },
                         onDelete = { vm.deleteTour(t); vm.finishedTour = null },
                         onDone = { vm.finishedTour = null })

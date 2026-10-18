@@ -5,7 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Polish: start at my location, small blue position dot with direction, compass always, save overwrite/rename, remove 'Start from my location' button, confirm tour delete – since 2026-10-18
+- [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md (owner asked laptop to build all; incl. routing parts) – since 2026-10-18
 
 ## Next
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
@@ -33,6 +33,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   notification with answers. Field-test checklist in `docs/plan-auto-reroute.md` / project status.
 - One blue line (owner): the followed route is drawn route-blue (no purple); while the plan is edited during a tour it
   is thin grey under the blue plan; only a merely shown GPX track keeps purple (`MapController.setTrackLook`).
+- Polish 1 (branch `feat/polish-1`, owner): start at my location, small blue position dot with direction triangle,
+  compass always in the map controls, no "Start from my location" button, "Tour saved" → Delete asks first, Save =
+  overwrite / Save as new…, Rename in Manage routes (⋮ per item). See `docs/ux-two-modes.md`.
 - Settings → Default activity (laptop, owner): the app always starts with it (hike + SAC level); the activity chip
   only changes the current route. Direction arrows (white chevrons) on the planned route and shown/followed track,
   to see out-and-back sections (`MapController.addDirectionArrows`, hidden by the eye).

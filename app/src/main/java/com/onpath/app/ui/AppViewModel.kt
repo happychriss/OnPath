@@ -155,8 +155,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var savedPoints by mutableStateOf(prefs.planSavedPoints)
     /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
     val planUnsaved: Boolean get() = RouteRules.isUnsaved(waypoints, savedPoints)
-    /** "Save route" name dialog is open. */
+    /** "Save route" name dialog is open (always a new entry). */
     var saveDialog by mutableStateOf(false)
+    /**
+     * "Save route" choice is open: Save (overwrite the loaded / last saved route) or Save as new…; [SaveChoice.thenOpen]
+     * is the route to load afterwards ("Save first" before loading), else null.
+     */
+    var saveChoice by mutableStateOf<SaveChoice?>(null)
+    class SaveChoice(val thenOpen: Tour?)
     /** "Replace current plan?" is open for this route. */
     var replaceAsk by mutableStateOf<Tour?>(null)
     /** "Save first" was chosen: the name dialog saves the plan, then loads this route. */
@@ -181,6 +187,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- position / camera ---
     var followMe by mutableStateOf(false)
+    /** The start mode (Plan / Navigate) is decided (database checked for an unfinished tour). */
+    var startModeKnown by mutableStateOf(false)
+        private set
+    /** The user moved the map by a gesture since the app started (StartCamera never jumps after that). */
+    var userMovedMap = false
+    /** StartCamera ran (centred or gave up) – once per app process, not per style reload. */
+    var startCameraDone = false
 
     // --- dialogs / messages ---
     var message by mutableStateOf<String?>(null)
@@ -213,7 +226,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             val active = db.findActiveRecording()
             val start = AppMode.onStart(RecordingService.state.value != null, active != null)
-            withContext(Dispatchers.Main) { enter(start) }
+            withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
             if (active != null && RecordingService.state.value == null) {
                 delay(1500) // the service may be restarting by itself (sticky)
                 if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
@@ -587,13 +600,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (w.size != waypoints.size) set(w) else if (waypoints.size >= 2) message = "The route already ends at the start."
     }
 
-    fun startAtMyPosition() {
-        val loc = tracker.location.value
-        if (loc == null) { message = "No position yet – waiting for GPS."; return }
-        val p = GeoPoint(loc.latitude, loc.longitude)
-        change { if (isEmpty()) add(p) else add(0, p) }
-    }
-
     fun undoStep() = step(history.undo(waypoints))
     fun redoStep() = step(history.redo(waypoints))
 
@@ -702,6 +708,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
+    fun requestSave() {
+        if (waypoints.size < 2) return
+        when (currentSaveMode()) {
+            SaveMode.OVERWRITE_OR_NEW -> saveChoice = SaveChoice(null)
+            SaveMode.NAME_DIALOG -> saveDialog = true
+        }
+    }
+
+    private fun currentSaveMode() =
+        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED }.map { it.id })
+
+    /** Choice "Save": overwrite the saved route in place (name stays). Falls back to a new entry if it is gone. */
+    fun saveChoiceOverwrite() {
+        val choice = saveChoice ?: return
+        saveChoice = null
+        val then: (() -> Unit)? = choice.thenOpen?.let { t -> { openTour(t) } }
+        val pts = waypoints.toList()
+        val name = savedName
+        val id = savedId
+        if (pts.size < 2 || name == null || id < 0) { saveDialog = true; return }
+        val r = route
+        val act = activity; val level = sac
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    db.replacePlanned(
+                        id, act.name, level,
+                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
+                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                    )
+                }
+            }
+            ok.onSuccess { replaced ->
+                if (replaced) { setSaved(name, id, pts); refreshTours(); then?.invoke() }
+                else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
+            }.onFailure {
+                routesProblem = "The route could not be saved. Your plan is still here – please try again."
+            }
+        }
+    }
+
+    /** Choice "Save as new…": the name dialog (then loading the picked route when it came from "Save first"). */
+    fun saveChoiceAsNew() {
+        val choice = saveChoice ?: return
+        saveChoice = null
+        if (choice.thenOpen != null) saveFirst = choice.thenOpen else saveDialog = true
+    }
+
+    /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name. */
+    fun renameTour(t: Tour, input: String) {
+        val name = RouteRules.cleanName(input, t.name)
+        if (name == t.name) return
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }.isSuccess }
+            if (!ok) { routesProblem = "The route could not be renamed. Please try again."; return@launch }
+            if (savedId == t.id) setSaved(name, savedId, savedPoints)
+            shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
+            refreshTours()
+        }
+    }
+
     private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
         savedName = name; savedId = id; savedPoints = points
         prefs.planSavedName = name; prefs.planSavedId = id; prefs.planSavedPoints = points
@@ -725,7 +794,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; openTour(t) }
 
     /** "Save first": name dialog, then save and load [replaceAsk]. */
-    fun replaceSaveFirst() { saveFirst = replaceAsk; replaceAsk = null }
+    fun replaceSaveFirst() {
+        val t = replaceAsk ?: return
+        replaceAsk = null
+        if (currentSaveMode() == SaveMode.OVERWRITE_OR_NEW) saveChoice = SaveChoice(t) else saveFirst = t
+    }
 
     fun saveFirstDone(name: String) {
         val t = saveFirst ?: return

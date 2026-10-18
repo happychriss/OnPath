@@ -77,6 +77,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
         const val NAV_TOP_PADDING = 0.30
+        /** Position puck in both modes: MapLibre's small blue dot + bearing triangle (not the big GPS puck). */
+        private const val PUCK_MODE = RenderMode.COMPASS
     }
 
     /** Settings page → base style layers (POI filter, contours, hillshade). */
@@ -259,8 +261,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             )
             lc.setCompassEngine(heading)
             lc.isLocationComponentEnabled = true
-            // Plan: GPS render mode (no compass sensor); Navigate switches to COMPASS, see setCamera.
-            lc.renderMode = RenderMode.GPS
+            // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
+            // (owner: "as earlier"; GPS mode drew the big white navigation puck). The direction comes from
+            // HeadingEngine (compass standing, GPS bearing while moving).
+            lc.renderMode = PUCK_MODE
             lc.cameraMode = CameraMode.NONE
             lc.addOnCameraTrackingChangedListener(object : org.maplibre.android.location.OnCameraTrackingChangedListener {
                 override fun onCameraTrackingDismissed() { onTrackingDismissed?.invoke() }
@@ -289,15 +293,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * Camera and puck for both modes. Following: the camera tracks the position – in Navigate heading-up
      * (map turns with the walking direction, [HeadingEngine]) or north-up; in Plan without turning.
      * MapLibre ends following when the user pans ([onDismissed]); "centre on me" calls this again.
-     * The compass sensor is only used in Navigate (render mode COMPASS); Plan uses GPS render mode.
+     * The puck is always the small dot with a direction triangle ([PUCK_MODE]); the compass sensor runs while
+     * the map is visible (MapLibre releases it when the map stops).
      */
     fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, onDismissed: () -> Unit) {
         if (!locationReady) return
         try {
             val lc = map.locationComponent
             onTrackingDismissed = null   // no callbacks for our own mode switches
-            // our own orientation button replaces MapLibre's compass in Navigate
-            map.uiSettings.isCompassEnabled = !navigating
+            // our own compass in the map controls replaces MapLibre's in both modes
+            map.uiSettings.isCompassEnabled = false
             val leavingNav = wasNavigating && !navigating
             wasNavigating = navigating
             if (follow) {
@@ -306,7 +311,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                     else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
                 }
-                lc.renderMode = if (navigating) RenderMode.COMPASS else RenderMode.GPS
+                lc.renderMode = PUCK_MODE
                 wantedCameraMode = mode
                 val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, null)
@@ -315,7 +320,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             } else {
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
-                lc.renderMode = if (navigating) RenderMode.COMPASS else RenderMode.GPS
+                lc.renderMode = PUCK_MODE
                 if (leavingNav) resetNorth()
             }
             onTrackingDismissed = onDismissed
@@ -336,6 +341,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun applyRouteOverlaysVisibility() {
         val v = PF.visibility(if (routeOverlaysVisible) Property.VISIBLE else Property.NONE)
         for (id in ROUTE_OVERLAY_LAYERS) runCatching { style.getLayer(id)?.setProperties(v) }
+    }
+
+    /**
+     * App start in Plan: centre on the position once (no following, so the user can pan right away).
+     * Zooms in only when the map is zoomed far out. Never throws.
+     */
+    fun centreOn(lat: Double, lon: Double) = runCatching {
+        val zoom = map.cameraPosition.zoom.let { if (it < 13.0) 15.0 else it }
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom), 600)
     }
 
     /** Compass button in Plan: turn the map back to north up. */

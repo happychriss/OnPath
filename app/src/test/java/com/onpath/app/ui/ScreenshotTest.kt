@@ -67,7 +67,7 @@ class ScreenshotTest {
                     PlanTopBar(Activity.HIKE, 3, {}, {}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                         aboveFooter()
-                        Footer(gps)
+                        Footer(gps, compass = CompassSpec(null, 0f) {}) // Plan: compass always shown
                         bottom()
                     }
                 }
@@ -98,6 +98,16 @@ class ScreenshotTest {
                 Box(Modifier.align(Alignment.BottomCenter)) {
                     Footer(compass = CompassSpec(null, 35f) {}, eye = true, peeking = true)
                 }
+            }
+        }
+    }
+
+    /** Plan, map north up: the compass stays in the group (owner: always visible), no eye without a route. */
+    @Test fun mapControlsPlanNorth() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.align(Alignment.BottomCenter)) { Footer(compass = CompassSpec(null, 0f) {}) }
             }
         }
     }
@@ -381,7 +391,7 @@ class ScreenshotTest {
         Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
     )
 
-    /** Manage routes: one list of planned / recorded / imported, Import GPX, per item Export and Delete. */
+    /** Manage routes: one list of planned / recorded / imported, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     @Test fun tours() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}) }
     }
@@ -399,6 +409,27 @@ class ScreenshotTest {
     /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */
     @Test fun replacePlanAsk() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, RoutesMode.PICK, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
+    }
+
+    /** ⋮ Save route on a plan loaded from a saved route: Save (overwrite) or Save as new…. */
+    @Test fun saveChoice() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
+            SaveChoiceDialog("Route Meran – Hirzer", unsaved = true, {}, {}, {})
+        }
+    }
+
+    /** Manage routes → ⋮ → Rename: name dialog prefilled with the current name. */
+    @Test fun routesRename() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
+    }
+
+    /** After End tour → "Tour saved" → Delete: asks first, stays until answered. */
+    @Test fun finishedTourDeleteAsk() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+            FinishedTourDialogs(tourList[1], {}, {}, {}, initialConfirm = true)
+        }
     }
 
     /** The sheet shows the save state instead of a message. */
