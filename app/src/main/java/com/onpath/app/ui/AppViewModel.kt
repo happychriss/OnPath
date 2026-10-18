@@ -199,8 +199,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** The user moved the map by a gesture since the app started (StartCamera never jumps after that). */
     var userMovedMap = false
-    /** StartCamera ran (centred or gave up) – once per app process, not per style reload. */
+    /** StartCamera ran (centred or gave up) – reset each time the app comes to the front ([onAppStart]). */
     var startCameraDone = false
+    /** Bumped by [onAppStart]: restarts the start-camera check in MapScreen. */
+    var startCameraGen by mutableStateOf(0)
+
+    private var backgroundSince = 0L
+
+    /** App goes to the background (Activity.onStop). */
+    fun onAppStop() { backgroundSince = android.os.SystemClock.elapsedRealtime() }
+
+    /**
+     * App comes to the front (Activity.onStart): centre on the position again unless something is running – on a
+     * real start, or after more than 10 min away (a quick look at Google Maps must not move the map).
+     */
+    fun onAppStart() {
+        val away = if (backgroundSince == 0L) Long.MAX_VALUE else android.os.SystemClock.elapsedRealtime() - backgroundSince
+        if (away < 10 * 60_000L || recState.value != null || mode != AppMode.PLAN) return
+        startCameraDone = false; userMovedMap = false; followMe = false; startCameraGen++
+    }
 
     // --- dialogs / messages ---
     var message by mutableStateOf<String?>(null)
@@ -476,7 +493,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeMapOverlays() {
         // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
         // tapping elsewhere – removes the orange ring too.
-        poiMenu?.let { m -> searchMark?.let { s -> if (kotlin.math.abs(s.lat - m.lat) < 1e-7 && kotlin.math.abs(s.lon - m.lon) < 1e-7) searchMark = null } }
+        if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
         poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
     }
     fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays(); if (waypoints.isEmpty()) firstPointMenu = p }

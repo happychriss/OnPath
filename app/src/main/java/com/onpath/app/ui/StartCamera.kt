@@ -1,12 +1,13 @@
 package com.onpath.app.ui
 
 /**
- * App start in Plan: centre the map once on the own position (owner request). Pure, unit tested.
+ * Every app start / return to the app in Plan: centre the map on the own position (owner: "always at my current
+ * location"). Pure, unit tested.
  *
- * A fresh fix centres at once; if none comes within [FRESH_WAIT_MS], the last known position is used
- * (even if old); without any position the map keeps its saved camera, and a fix that arrives later
- * (e.g. after the permission was granted) still centres until [ANY_WAIT_MS]. Never against the user:
- * once they moved the map, or when a tour is running / the app is in Navigate, nothing happens.
+ * A fresh fix centres at once; if none comes within [FRESH_WAIT_MS], the last known position is used (even if
+ * old); without any position it keeps waiting – e.g. for the permission answer or a cold GPS start – and centres
+ * when the first position arrives. Never against the user: once they moved the map, or when a tour is running /
+ * the app is in Navigate, nothing happens.
  */
 object StartCamera {
     const val FRESH_WAIT_MS = 4_000L
@@ -26,7 +27,6 @@ object StartCamera {
         modeKnown && !plan -> Step.GIVE_UP
         !modeKnown -> if (elapsedMs >= ANY_WAIT_MS) Step.GIVE_UP else Step.WAIT
         fixAgeS != null && (fixAgeS <= FRESH_AGE_S || elapsedMs >= FRESH_WAIT_MS) -> Step.CENTRE
-        elapsedMs >= ANY_WAIT_MS -> Step.GIVE_UP
-        else -> Step.WAIT
+        else -> Step.WAIT // no position yet: keep waiting (no time limit)
     }
 }
