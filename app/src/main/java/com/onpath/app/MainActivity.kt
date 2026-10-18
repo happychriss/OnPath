@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
+                            themes = remember { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
                         )
                     }
                     BackHandler(enabled = !vm.showTours && !vm.showSettings && (vm.mode == Mode.PLAN || vm.shown != null)) {

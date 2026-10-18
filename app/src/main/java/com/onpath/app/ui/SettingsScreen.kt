@@ -64,6 +64,7 @@ val PoiGroup.label: String
     }
 
 /** Settings page (gear on the home screen). Every change is applied and saved at once. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
@@ -73,6 +74,8 @@ fun SettingsScreen(
     version: String,
     onBack: () -> Unit,
     initiallyExpanded: Set<PoiGroup> = emptySet(),
+    /** Available map themes (StyleLoader.themes); the chooser is shown when there is more than one. */
+    themes: List<String> = listOf("classic"),
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -127,6 +130,19 @@ fun SettingsScreen(
                 }
                 item {
                     Section("Map") {
+                        if (themes.size > 1) {
+                            Text("Map style", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+                            androidx.compose.foundation.layout.FlowRow(
+                                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                themes.forEach { t ->
+                                    FilterChip(selected = settings.mapTheme == t, onClick = { onChange(settings.copy(mapTheme = t)) },
+                                        label = { Text(com.onpath.app.map.StyleLoader.label(t)) },
+                                        modifier = Modifier.heightIn(min = 44.dp))
+                                }
+                            }
+                        }
                         SwitchRow("Marked route networks", "Hiking, cycling or MTB routes for the chosen activity", settings.routeOverlay) {
                             onChange(settings.copy(routeOverlay = it))
                         }

@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import android.util.Log
 import android.view.Gravity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -114,13 +115,27 @@ fun MapHost(
                 Log.w("OnPath", "style failed: $msg")
                 if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }
             }
-            load(StyleLoader.load(context, vm.dataFiles.dir))
+            loadedTheme[0] = vm.settings.mapTheme
+            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme)) }
+            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme))
         }
-        onDispose { ctrlRef[0] = null }
+        onDispose { ctrlRef[0] = null; reloadRef[0] = null }
+    }
+
+    // Switching the map theme in Settings reloads the style; the app layers are re-added in onReady.
+    LaunchedEffect(vm.settings.mapTheme) {
+        if (loadedTheme[0] != null && loadedTheme[0] != vm.settings.mapTheme) {
+            loadedTheme[0] = vm.settings.mapTheme
+            reloadRef[0]?.invoke()
+        }
     }
 
     AndroidView(factory = { mapView }, modifier = modifier)
 }
+
+/** Theme of the loaded style and a way to reload it (set once the map is ready). */
+private val loadedTheme = arrayOfNulls<String>(1)
+private val reloadRef = arrayOfNulls<() -> Unit>(1)
 
 /** Latest controller for listeners created before it existed. */
 internal val ctrlRef = arrayOfNulls<MapController>(1)
