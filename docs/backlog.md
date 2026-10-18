@@ -8,9 +8,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - [laptop] Plan gestures v2: snap unroutable points to nearest way; POI tap = Google offer, POI hold = add; tap a stop = delete overlay (owner spec) – since 2026-10-18
 
 ## Next
-- **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
-  Not applied – it is stashed on the laptop; `main` stays on AGP 8.9.1 / Gradle 8.14.3 until both sessions can
-  build it. If wanted, do it on a `feat/gradle-9` branch and check the cloud build first.
 - Google Play internal test track: create app in Play Console, secret release key in GitHub secrets
   (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`,
   `PLAY_SERVICE_ACCOUNT_JSON`), upload from the release workflow. Removes Play Protect warnings. **(owner has a
@@ -29,6 +26,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Toolchain (laptop, owner approved): **AGP 9.4.1, Gradle 9.6.0, Kotlin 2.2.10, Paparazzi 2.0.0-alpha05.1** (1.3.5
+  breaks on Gradle 9). AGP-9 compatibility flags in `gradle.properties` (builtInKotlin=false, newDsl=false …) –
+  clean up before AGP 10. All snapshots re-recorded (antialiasing only). **Cloud:** first build downloads Gradle 9.6;
+  still JDK 21; on snapshot conflicts run `recordPaparazziDebug`.
 - Bug fixed (laptop): a hiking via point on a spur was cut off and left unconnected (owner's point 3 on the Algunder
   Waalweg, 100 m off the route) – BRouter's via-point spike correction for HIKE lowered 250 m → 50 m
   (`VIA_CORRECTION_HIKE_M`). **Cloud:** please re-run your `ViaTest.kt` cases (the VIA_CASES file is not in the
