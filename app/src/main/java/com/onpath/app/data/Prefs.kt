@@ -59,6 +59,20 @@ class Prefs(context: Context) {
         get() = TourDb.jsonToWaypoints(sp.getString("plan", null)).map { GeoPoint(it.lat, it.lon) }
         set(v) = sp.edit().putString("plan", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
 
+    /**
+     * What the plan was last saved or loaded as (name, tour id, points): the plan counts as unsaved when its
+     * points differ (RouteRules.isUnsaved). Null name = never saved / loaded.
+     */
+    var planSavedName: String?
+        get() = sp.getString("planSavedName", null)
+        set(v) = sp.edit().putString("planSavedName", v).apply()
+    var planSavedId: Long
+        get() = sp.getLong("planSavedId", -1)
+        set(v) = sp.edit().putLong("planSavedId", v).apply()
+    var planSavedPoints: List<GeoPoint>?
+        get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
+        set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
+
     /** Waypoints placed on a POI: passed exactly, never straightened by the router. */
     var planPinned: Set<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()

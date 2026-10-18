@@ -82,7 +82,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var dataScreenDismissed by mutableStateOf(false)
 
     // --- screens and mode ---
-    var showTours by mutableStateOf(false)
+    /** Manage routes / Load route list (⋮ menu); null = closed. */
+    var routesScreen by mutableStateOf<RoutesMode?>(null)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -142,6 +143,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var highlight by mutableStateOf<GeoPoint?>(null)
 
+    // --- saved state of the plan (menus / Manage routes) ---
+    /** Name, tour id and points the plan was last saved or loaded as; the plan is unsaved when its points differ. */
+    var savedName by mutableStateOf(prefs.planSavedName)
+        private set
+    private var savedId = prefs.planSavedId
+    private var savedPoints by mutableStateOf(prefs.planSavedPoints)
+    /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
+    val planUnsaved: Boolean get() = RouteRules.isUnsaved(waypoints, savedPoints)
+    /** "Save route" name dialog is open. */
+    var saveDialog by mutableStateOf(false)
+    /** "Replace current plan?" is open for this route. */
+    var replaceAsk by mutableStateOf<Tour?>(null)
+    /** "Save first" was chosen: the name dialog saves the plan, then loads this route. */
+    var saveFirst by mutableStateOf<Tour?>(null)
+    /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
+    var routesProblem by mutableStateOf<String?>(null)
+
     // --- shown track / follow ---
     var shown by mutableStateOf<ShownTrack?>(null)
         private set
@@ -178,6 +196,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         recalc()
+        refreshTours() // "Load route" is enabled only when something is saved
         // Set directly (enter() touches properties declared below); the check after the DB read
         // calls enter() and so also tells a running service which mode we are in.
         if (RecordingService.state.value != null) mode = AppMode.NAVIGATE
@@ -195,6 +214,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (id != null) {
                     RecordingService.finished.value = null
                     finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
+                    refreshTours()
                     clearFollow()
                     arrivalAsk = false
                     enter(AppMode.PLAN)
@@ -631,21 +651,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val keep = pins + routed.indices.filter { stopName(routed[it]) != null }
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
+        if (!RouteRules.isUnsaved(routed, savedPoints)) setSaved(savedName, savedId, snapped)
         history.replacePoints(WaypointSnap.moves(routed, snapped))
         prefs.planWaypoints = waypoints.toList()
     }
 
-    fun saveRoute(name: String) {
-        val r = route ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            db.insertTour(
-                TourKind.PLANNED, name.ifBlank { defaultName("Route") }, activity.name, sac,
-                r.distanceM, r.ascentM, r.descentM, r.durationS,
-                listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }),
-                waypoints.map { GpxWaypoint(it.lat, it.lon, null) },
-            )
-            withContext(Dispatchers.Main) { message = "Route saved to My tours." }
+    /**
+     * Saves the plan as a new planned route (⋮ Save route, or "Save first" before loading). The sheet then shows
+     * "Saved as …" (no message). Without a route line yet (still calculating / failed) the points are stored as
+     * the line, so nothing is lost; opening it re-routes. [then] runs on success only.
+     */
+    fun saveRoute(name: String, then: (() -> Unit)? = null) {
+        val pts = waypoints.toList()
+        if (pts.size < 2) return
+        val r = route
+        val title = name.trim().ifBlank { defaultName("Route") }
+        val act = activity; val level = sac
+        viewModelScope.launch {
+            val id = withContext(Dispatchers.IO) {
+                runCatching {
+                    db.insertTour(
+                        TourKind.PLANNED, title, act.name, level,
+                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
+                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                    )
+                }.getOrNull()
+            }
+            if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
+            setSaved(title, id, pts)
+            refreshTours()
+            then?.invoke()
         }
+    }
+
+    private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
+        savedName = name; savedId = id; savedPoints = points
+        prefs.planSavedName = name; prefs.planSavedId = id; prefs.planSavedPoints = points
+    }
+
+    /** Navigate mode or a tour recording: no loading into the plan, no Clear. */
+    fun navigating(recording: Boolean): Boolean = mode == AppMode.NAVIGATE || recording
+
+    /** State of the ⋮ menu items (RouteRules.menu). */
+    fun menuState(recording: Boolean): RouteMenuState =
+        RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
+
+    fun openRoutes(m: RoutesMode) { refreshTours(); routesScreen = m }
+
+    /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
+    fun requestOpen(t: Tour) {
+        if (!RouteRules.canOpen(t.kind, t.waypoints.size, navigating(recState.value != null))) return
+        if (RouteRules.askBeforeLoading(t.kind, t.waypoints.size, waypoints, savedPoints)) replaceAsk = t else openTour(t)
+    }
+
+    fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; openTour(t) }
+
+    /** "Save first": name dialog, then save and load [replaceAsk]. */
+    fun replaceSaveFirst() { saveFirst = replaceAsk; replaceAsk = null }
+
+    fun saveFirstDone(name: String) {
+        val t = saveFirst ?: return
+        saveFirst = null
+        saveRoute(name) { openTour(t) }
     }
 
     fun defaultName(prefix: String) =
@@ -783,13 +851,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTour(t: Tour) {
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
-            showTours = false
-            if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) {
+            routesScreen = null
+            if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
                 sac = t.sac
                 shown = null
-                change { clear(); addAll(t.waypoints.map { GeoPoint(it.lat, it.lon) }) }
+                val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
+                change { clear(); addAll(pts) }
+                setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
                 showTrack(ShownTrack(t.id, t.name, segs.map { s -> s.map { it.toGeo() } }, t.waypoints,
@@ -812,6 +882,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             db.deleteTour(t.id)
             withContext(Dispatchers.Main) {
                 if (shown?.tourId == t.id) shown = null
+                if (savedId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
                 if (finishedTour?.id == t.id) finishedTour = null
                 refreshTours()
             }
@@ -888,6 +959,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
+                routesScreen = null // show the imported track on the map
+                refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 message = buildString {
