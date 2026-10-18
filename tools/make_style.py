@@ -200,15 +200,13 @@ def route_bands():
                      "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
                      "line-width": Z("route.width")})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
-        # Komoot-like pink-green – pink dashed edges on both sides of the green band (never over the path itself)
-        # and the route name along the line.
+        # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
+        # the path inside stays visible), plus the route name along the line.
         major = ["all", flt, [">=", ["coalesce", ["get", "net"], 0], 2]]
-        for side, sign in (("l", -1), ("r", 1)):
-            layer(id_=f"routes-{kind}-major-{side}", type="line", source="routes", minzoom=minz,
-                  filter=major, layout={"line-join": "round", "visibility": vis},
-                  paint={"line-color": T("route.major.color"), "line-width": Z("route.major.width"),
-                         "line-dasharray": T("route.major.dash"),
-                         "line-offset": interp(9, 0, 13, sign * 2.5, 15, sign * 5.5, 18, sign * 8.5, base=1)})
+        layer(id_=f"routes-{kind}-major", type="line", source="routes", minzoom=minz,
+              filter=major, layout={"line-join": "round", "visibility": vis},
+              paint={"line-color": T("route.major.color"), "line-width": Z("route.width"),
+                     "line-opacity": T("route.major.opacity"), "line-dasharray": T("route.major.dash")})
         layer(id_=f"routes-{kind}-major-label", type="symbol", source="routes", minzoom=12,
               filter=["all", major, ["!=", ["coalesce", ["get", "name"], ""], ""]],
               layout={"symbol-placement": "line", "symbol-spacing": interp(12, 300, 16, 500),

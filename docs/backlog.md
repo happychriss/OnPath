@@ -31,8 +31,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## Done (recent)
 - Route bands (laptop, owner): one green band for every activity; major routes (OSM network regional / national /
-  international, `net` ≥ 2 – Via Claudia Augusta, E5, EuroVelo 7, Etschradroute, Meraner Höhenweg …) get Komoot-like
-  pink dashed edges + name label. `routes.geojson` now has `net` (0–4) → **cloud: rebuild the region package /
+  international, `net` ≥ 2 – Via Claudia Augusta, E5, EuroVelo 7, Etschradroute, Meraner Höhenweg …) get a Komoot-like
+  semi-transparent green/pink dashed band + name label. `routes.geojson` now has `net` (0–4) → **cloud: rebuild the region package /
   downloads zip** (`tools/extract_overlays.py`), older data just shows no highlight.
 - Layout (laptop, owner): top = search pill (search only) + round ☰ app menu (My routes, Start recording, Settings,
   Check for updates). Route sheet = everything about this route: activity button (icon ▾) at the start of the first

@@ -431,7 +431,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
             // the band plus its major-route highlight (pink edges + name)
-            for (suffix in listOf("", "-major-l", "-major-r", "-major-label")) {
+            for (suffix in listOf("", "-major", "-major-label")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
             }
         }
