@@ -33,10 +33,11 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
   pauses off-route checks in Plan (`ACTION_NAVIGATING`). App start opens Navigate when a recording is active.
   Version bumped to 0.5.0 + release notes. Next: feel test on the Pixel 8 (slider with gloves, re-route, arrival,
   pocket safety), then tune.
-- **laptop, 2026-10-18:** released **0.4.1** (see backlog "Done"); owner installed the official 0.4.0 and updates to
-  0.4.1 with the in-app updater (first real test, result not reported yet). Map data on the Pixel 8 = South Tyrol package (same files as
-  the `downloads` zip, plus `segments/E10_N45.rd5`). Open: `LayerSettings` crash (backlog "Next"), Gradle 9
-  upgrade waiting for an owner decision. Nothing half done; laptop-only files are git-excluded locally.
+- **laptop, 2026-10-18 (after 0.4.1, all in 0.5.0/0.6.0):** fixed the `LayerSettings` crash on style reload; blocked
+  ways (OSM access=no/private) get a red tint + no-entry signs (`access_restrictions()` in `make_style.py`, sprite
+  `access-no`); plan-mode POI card (now the cloud's place card); adding a point needs a 0.3 s hold with a ring
+  (`HOLD_MS` in `MapHost`). Owner confirmed the in-app update 0.4.0 → 0.4.1 works; phone now on 0.6.0 via the
+  updater. Open owner question: show trails / hiking bands earlier when zoomed out (around z10)? Nothing half done.
 - **cloud, 2026-10-18:** released 0.4.0 (in-app updates + release workflow); wrote `docs/working-agreement.md`
   and `docs/backlog.md`.
 
