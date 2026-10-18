@@ -40,6 +40,12 @@
    "maxzoom": 16,
    "tolerance": 0.25
   },
+  "lowways": {
+   "type": "geojson",
+   "data": "file://{DATA_DIR}/lowways.geojson",
+   "maxzoom": 12,
+   "tolerance": 1.0
+  },
   "ways": {
    "type": "geojson",
    "data": "file://{DATA_DIR}/ways.geojson",
@@ -4034,7 +4040,7 @@
   {
    "id": "trails-low",
    "type": "line",
-   "source": "trails",
+   "source": "lowways",
    "minzoom": 11,
    "maxzoom": 13,
    "layout": {

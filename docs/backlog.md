@@ -5,8 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Way quality: track grades, faint trails, MTB S-labels, bike surface edge (data + style) – since 2026-10-18
-- [laptop] Time estimate P4: SAC / surface / way-type factors – since 2026-10-18
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -37,6 +35,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Way quality (laptop agents): track grades, faint trails, MTB S-labels (MTB only; T-labels hike only), loose-surface
+  edge in bike modes, trail geometry ~0.5 m (no double lines). Time P4: SAC / surface / smoothness / MTB factors.
+- Komoot-like overview (laptop): routes thin lines below z13.5 then bands, all paths/tracks from z11 (new optional
+  `lowways.geojson`), yellow road scale. **Cloud: rebuild the region package with ways / lowways / trails / routes.**
 - Track safety 0.6.1 (cloud, from the 0.6.0 robustness review at
   https://claude.ai/artifact/DRLGzEaWQBYKW4KVSFJeDd): point writes throw instead of returning -1, every DB write in
   the service guarded with a "Recording cannot be saved" notification + `RecState.saveFailed`, `failLoud()` instead of

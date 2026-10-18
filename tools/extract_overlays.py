@@ -50,6 +50,7 @@ ROUTE_KIND = {"hiking": "hike", "foot": "hike", "bicycle": "bike", "mtb": "mtb"}
 
 
 # Ways drawn zoomed out from our own data (trails-low), also without a difficulty grade.
+LOW_SIMPLIFY = 0.00008  # ~8 m: lowways are only drawn below z13
 LOW_WAYS = {"path", "footway", "bridleway", "track"}
 
 def net_rank(network):
@@ -147,6 +148,7 @@ class WayPass(osmium.SimpleHandler):
         self.routes = []
         self.trails = []
         self.ways = []
+        self.low = []
         self.by_name = {}  # label -> list of raw coordinate lists
         self.by_ref = {}   # "24 · 25" -> list of raw coordinate lists
 
@@ -249,13 +251,12 @@ class WayPass(osmium.SimpleHandler):
                 props["mtb"] = mtb[:1]
             if vis is not None:
                 props["vis"] = vis
-            if hw == "track":
-                props["k"] = "t"
             self.trails.append({"type": "Feature", "geometry": fine, "properties": props})
-        elif low:
-            # only drawn zoomed out (trails-low, < z13): coarse geometry is fine and keeps the file small
-            self.trails.append({"type": "Feature", "geometry": g,
-                                "properties": {"sac": 0, **({"k": "t"} if hw == "track" else {})}})
+        if low or sac:
+            # lowways.geojson: every path / track, coarse (~8 m), only drawn zoomed out (< z13) – own small file
+            # so the detailed trails source stays light
+            self.low.append({"type": "Feature", "geometry": rounded(mapping(self.geom(w, LOW_SIMPLIFY))),
+                             "properties": {"k": "t"} if hw == "track" else {}})
         if quality:
             self.ways.append({"type": "Feature", "geometry": fine, "properties": quality})
 
@@ -289,7 +290,8 @@ def main():
     rp.apply_file(pbf)
     wp = WayPass(rp.way_routes, rp.way_hikes)
     wp.apply_file(pbf, locations=True)
-    for name, feats in (("routes", wp.routes), ("trails", wp.trails), ("ways", wp.ways), ("trailnames", wp.label_features())):
+    for name, feats in (("routes", wp.routes), ("trails", wp.trails), ("ways", wp.ways), ("lowways", wp.low),
+                        ("trailnames", wp.label_features())):
         with open(f"{out_dir}/{name}.geojson", "w") as f:
             json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
         print(name, len(feats))
