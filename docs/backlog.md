@@ -5,6 +5,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] **Track safety (0.6.1):** point writes that cannot fail silently, guarded DB writes in the service, loud
+  "recording stopped" instead of silent stops, Navigate only once recording confirms, map guard while a style reloads,
+  straight-leg gate before navigating, arrival check on round trips, DB corruption handler, wake-lock renewal.
+  Files: `recording/`, `data/TourDb.kt`, `data/DataImporter.kt`, `map/MapController.kt`, `routing/RouteProgress.kt`,
+  small spots in `ui/AppViewModel.kt` + one dialog in `ui/RouteDialogs.kt`. Laptop: please avoid these – since 2026-10-18
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
