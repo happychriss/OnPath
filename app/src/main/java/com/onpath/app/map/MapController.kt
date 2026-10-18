@@ -49,7 +49,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_WPT = "waypoints"
         const val SRC_HL = "highlight"
         const val LAYER_WPT = "waypoints-icons"
-        const val SRC_DRAG = "drag-preview"
         // --- Navigate: orientation + next-turn arrow (navigation agent) ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
@@ -80,11 +79,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addSource(GeoJsonSource(SRC_HL))
         style.addLayer(CircleLayer("highlight-dot", SRC_HL).withProperties(
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
-        ))
-        // Dashed preview from the neighbours to the finger while a point is dragged.
-        style.addSource(GeoJsonSource(SRC_DRAG))
-        style.addLayer(LineLayer("drag-preview", SRC_DRAG).withProperties(
-            PF.lineColor(ROUTE_COLOR), PF.lineWidth(3f), PF.lineDasharray(arrayOf(2f, 1.5f)), PF.lineOpacity(0.8f),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
         // Gold ring under markers placed on a POI (passed exactly, see Planner pinned points).
@@ -317,16 +311,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             }
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
-    }
-
-    /** Drag preview: lines prev → p → next (either neighbour may be null); null clears. */
-    fun setDragPreview(prev: GeoPoint?, p: GeoPoint?, next: GeoPoint?) {
-        val src = style.getSourceAs<GeoJsonSource>(SRC_DRAG) ?: return
-        if (p == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
-        val lines = listOfNotNull(prev?.let { listOf(it, p) }, next?.let { listOf(p, it) })
-            .map { seg -> seg.map { Point.fromLngLat(it.lon, it.lat) } }
-        if (lines.isEmpty()) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
-        else src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
     /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */

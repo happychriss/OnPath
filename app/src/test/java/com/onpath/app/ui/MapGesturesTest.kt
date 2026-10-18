@@ -1,6 +1,8 @@
 package com.onpath.app.ui
 
 import com.onpath.app.ui.MapGestures.Action
+import com.onpath.app.ui.MapGestures.Buzz
+import com.onpath.app.ui.MapGestures.PointAction
 import com.onpath.app.ui.MapGestures.Press
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,56 +10,91 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MapGesturesTest {
-    private fun plan(press: Press, marker: Int = -1, poi: Boolean = false, onLine: Boolean = false,
-                     overlay: Boolean = false, hinted: Boolean = false) =
-        MapGestures.decide(true, press, overlay, marker, poi, onLine, hinted)
+    private fun plan(press: Press, marker: Int = -1, poi: Boolean = false, menu: Boolean = false, empty: Boolean = false) =
+        MapGestures.decide(true, press, menu, marker, poi, empty)
 
-    // --- empty map / route line ---
-    @Test fun quickTapOnEmptyMapOnlyHintsOnce() {
-        assertEquals(Action.HoldHint, plan(Press.TAP))
-        assertEquals(Action.None, plan(Press.TAP, hinted = true))
+    // --- quick taps never change anything ---
+    @Test fun quickTapDoesNothing() {
+        assertEquals(Action.None, plan(Press.TAP))
+        assertEquals(Action.None, plan(Press.TAP, poi = true))
+        assertEquals(Action.None, plan(Press.TAP, marker = 1, poi = true))
     }
-    @Test fun holdAddsPoint() = assertEquals(Action.AddPoint, plan(Press.HOLD))
-    @Test fun holdOnLineAddsPointToo() = assertEquals(Action.AddPoint, plan(Press.HOLD, onLine = true))
-    @Test fun longPressOnLineDragsTheLine() = assertEquals(Action.LineDrag, plan(Press.LONG_PRESS, onLine = true))
-    @Test fun longPressOnEmptyMapAdds() = assertEquals(Action.AddPoint, plan(Press.LONG_PRESS))
+    @Test fun quickTapClosesAnOpenMenu() {
+        assertEquals(Action.CloseMenu, plan(Press.TAP, menu = true))
+        assertEquals(Action.CloseMenu, plan(Press.TAP, poi = true, menu = true))
+        assertEquals(Action.CloseMenu, plan(Press.TAP, marker = 2, menu = true))
+    }
 
-    // --- POI ---
-    @Test fun poiTapOpensGoogleBubble() = assertEquals(Action.PoiBubble, plan(Press.TAP, poi = true))
-    @Test fun poiHoldAddsPoi() = assertEquals(Action.AddPoi, plan(Press.HOLD, poi = true))
-    @Test fun poiLongPressAddsPoi() = assertEquals(Action.AddPoi, plan(Press.LONG_PRESS, poi = true, onLine = true))
-    @Test fun poiThatIsAStopActsLikeItsMarker() {
+    // --- hold ---
+    @Test fun holdOnMapOrLineAddsPoint() = assertEquals(Action.AddPoint, plan(Press.HOLD))
+    @Test fun holdOnPoiOpensPoiMenu() = assertEquals(Action.PoiMenu, plan(Press.HOLD, poi = true))
+    @Test fun holdOnMarkerOpensPointMenu() = assertEquals(Action.PointMenu(1), plan(Press.HOLD, marker = 1))
+    @Test fun poiThatIsAStopActsLikeItsMarker() =
         // a POI already on the route has its marker on top of it: never added twice
-        assertEquals(Action.PointOverlay(2), plan(Press.HOLD, marker = 2, poi = true))
-        assertEquals(Action.PointOverlay(2), plan(Press.TAP, marker = 2, poi = true))
+        assertEquals(Action.PointMenu(2), plan(Press.HOLD, marker = 2, poi = true))
+
+    // --- empty plan: the first hold asks how to start ---
+    @Test fun firstHoldOnEmptyPlanOpensFirstPointMenu() {
+        assertEquals(Action.FirstPointMenu, plan(Press.HOLD, empty = true))
+        assertEquals(Action.PoiMenu, plan(Press.HOLD, poi = true, empty = true)) // a POI keeps its own menu
+        assertEquals(Action.None, plan(Press.TAP, empty = true))
+        assertEquals(Action.CloseMenu, plan(Press.HOLD, menu = true, empty = true)) // dismissing adds nothing
+    }
+    @Test fun fromMyLocationNeedsAFreshFix() {
+        assertEquals("No location permission", MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.NO_PERMISSION, false))
+        assertEquals("Location off", MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.OFF, true))
+        assertEquals("Searching GPS…", MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.SEARCHING, true))
+        assertEquals("Searching GPS…", MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.GOOD, false))
+        assertEquals(null, MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.WEAK, true))
+        assertEquals(null, MapGestures.fromMeBlocked(com.onpath.app.recording.GpsStatus.GOOD, true))
     }
 
-    // --- markers win over POIs and the line ---
-    @Test fun markerTapOpensDeleteOverlay() = assertEquals(Action.PointOverlay(1), plan(Press.TAP, marker = 1, poi = true, onLine = true))
-    @Test fun markerHoldDoesNotAdd() = assertEquals(Action.PointOverlay(0), plan(Press.HOLD, marker = 0, onLine = true))
-    @Test fun markerLongPressDrags() = assertEquals(Action.DragPoint(3), plan(Press.LONG_PRESS, marker = 3, poi = true))
+    // --- a menu is open ---
+    @Test fun holdOnEmptyMapOnlyClosesTheMenu() = assertEquals(Action.CloseMenu, plan(Press.HOLD, menu = true))
+    @Test fun holdOnOtherTargetSwitchesMenu() {
+        assertEquals(Action.PointMenu(1), plan(Press.HOLD, marker = 1, menu = true))
+        assertEquals(Action.PoiMenu, plan(Press.HOLD, poi = true, menu = true))
+    }
 
-    // --- an overlay is open ---
-    @Test fun tapElsewhereClosesOverlay() {
-        assertEquals(Action.CloseOverlay, plan(Press.TAP, overlay = true))
-        assertEquals(Action.CloseOverlay, plan(Press.HOLD, overlay = true))
-        assertEquals(Action.CloseOverlay, plan(Press.HOLD, poi = true, overlay = true))
-        assertEquals(Action.CloseOverlay, plan(Press.LONG_PRESS, onLine = true, overlay = true))
+    // --- vibration when the hold is armed ---
+    @Test fun buzzOnceOnMapAndPoiTwiceOnRoutePoint() {
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false))
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, true))
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 0, true))
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, true, 3, false))
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, true, -1, true))
     }
-    @Test fun tapOnOtherTargetSwitchesOverlay() {
-        assertEquals(Action.PointOverlay(1), plan(Press.TAP, marker = 1, overlay = true))
-        assertEquals(Action.PoiBubble, plan(Press.TAP, poi = true, overlay = true))
-        assertEquals(Action.DragPoint(1), plan(Press.LONG_PRESS, marker = 1, overlay = true))
+    @Test fun noRingWhereTheHoldDoesNothing() {
+        assertEquals(Buzz.NONE, MapGestures.buzz(true, true, -1, false)) // only closes the menu
+        assertEquals(Buzz.NONE, MapGestures.buzz(false, false, 1, true)) // Navigate
     }
+    @Test fun buzzPatterns() {
+        assertEquals(2, MapGestures.pattern(Buzz.ONE).size)
+        assertEquals(4, MapGestures.pattern(Buzz.TWO).size)
+        assertTrue(MapGestures.pattern(Buzz.TWO).sum() < 300) // short
+        assertEquals(0, MapGestures.pattern(Buzz.NONE).size)
+    }
+
+    // --- point menu: only sensible options ---
+    @Test fun pointMenuOnStart() {
+        assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(0, 4, isPlace = false))
+        assertEquals(listOf(PointAction.GOOGLE, PointAction.DELETE), MapGestures.pointMenu(0, 4, isPlace = true))
+    }
+    @Test fun pointMenuOnMiddlePoint() = assertEquals(
+        listOf(PointAction.MAKE_START, PointAction.END_HERE, PointAction.GOOGLE, PointAction.DELETE),
+        MapGestures.pointMenu(1, 4, isPlace = true))
+    @Test fun pointMenuOnDestination() =
+        assertEquals(listOf(PointAction.MAKE_START, PointAction.DELETE), MapGestures.pointMenu(3, 4, isPlace = false))
+    @Test fun pointMenuOnSinglePoint() = assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(0, 1, isPlace = false))
 
     // --- Navigate / shown track: read-only ---
     @Test fun navigateIsReadOnly() {
         for (p in Press.entries) {
-            assertEquals(Action.None, MapGestures.decide(false, p, false, 1, false, true, false))
-            assertEquals(Action.None, MapGestures.decide(false, p, false, -1, false, false, false))
+            assertEquals(Action.None, MapGestures.decide(false, p, false, 1, false, false))
+            assertEquals(Action.None, MapGestures.decide(false, p, false, -1, false, true))
         }
-        assertEquals(Action.PoiDetails, MapGestures.decide(false, Press.TAP, false, -1, true, false, false))
-        assertEquals(Action.None, MapGestures.decide(false, Press.HOLD, false, -1, true, false, false))
+        assertEquals(Action.PoiDetails, MapGestures.decide(false, Press.TAP, false, -1, true, false))
+        assertEquals(Action.None, MapGestures.decide(false, Press.HOLD, false, -1, true, false))
     }
 
     // --- nearest marker ---

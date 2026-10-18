@@ -193,50 +193,70 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
     }
 
-    @Test fun planNotice() = paparazzi.snapshot {
-        Frame {
-            PlanNoticeBar(PlanNotice("Added between Seilbahn and Sessellift Vellau", PlanNotices.END_HERE, NoticeAction.MAKE_DESTINATION), {}, {})
-            PlanPanel(planUi(4), PlanCallbacks())
-        }
-    }
-
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
-    private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color, anchorDp: androidx.compose.ui.unit.DpOffset,
+    private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
                              content: @Composable () -> Unit) {
-        Frame { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
         val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
-        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
         AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }
 
-    /** Quick tap on a POI in Plan: light bubble with the name and one action, Google Maps. */
-    @Test fun poiGoogleBubble() = paparazzi.snapshot {
+    /** First hold on an empty plan: Start here · Go here from my location (position known). */
+    @Test fun firstPointMenu() = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 330.dp)) {
-                PoiGoogleBubble(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onGoogle = {})
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(200.dp, 430.dp), empty = true) {
+                FirstPointMenu(null, onStartHere = {}, onFromMe = {})
             }
         }
     }
 
-    /** Quick tap on a route marker: small "Delete point / Cancel" overlay next to it (here near the right edge). */
-    @Test fun pointDeleteOverlay() = paparazzi.snapshot {
+    /** Same without a position: "Go here from my location" disabled with the reason. */
+    @Test fun firstPointMenuNoGps() = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(340.dp, 300.dp)) {
-                PointDeleteOverlay(1, 4, "Leiter Alm", onDelete = {}, onCancel = {})
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(200.dp, 430.dp), empty = true) {
+                FirstPointMenu("Searching GPS…", onStartHere = {}, onFromMe = {})
             }
         }
     }
 
-    /** Destination marker near the top: the overlay goes below it; no "End route here" for start / destination. */
-    @Test fun pointDeleteOverlayBelow() = paparazzi.snapshot {
+    /** Hold on a POI in Plan: its menu "Add to route · Open in Google Maps". */
+    @Test fun poiMenu() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {})
+            }
+        }
+    }
+
+    /** Hold on the start (unnamed): only Delete – it already is the start, it can't be the end of the route. */
+    @Test fun pointMenuStart() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Good, androidx.compose.ui.unit.DpOffset(120.dp, 420.dp)) {
+                PointMenu(0, 4, null) {}
+            }
+        }
+    }
+
+    /** Hold on a middle point that is a POI (near the right edge): every option. */
+    @Test fun pointMenuMiddlePoi() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(340.dp, 470.dp)) {
+                PointMenu(1, 4, "Leiter Alm") {}
+            }
+        }
+    }
+
+    /** Destination near the top: the menu goes below it; Make starting point + Delete (no End route here). */
+    @Test fun pointMenuDestination() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(OnPathColors.Bad, androidx.compose.ui.unit.DpOffset(180.dp, 170.dp)) {
-                PointDeleteOverlay(3, 4, null, onDelete = {}, onCancel = {})
+                PointMenu(3, 4, null) {}
             }
         }
     }

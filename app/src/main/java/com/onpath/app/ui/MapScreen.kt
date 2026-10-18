@@ -93,10 +93,10 @@ fun MapScreen(
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
         }
-        // Plan: Google bubble of a tapped POI / delete overlay of a tapped marker, following the map.
+        // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
             topPx = topInsetPx + with(density) { 128.dp.roundToPx() }, // below search pill + activity chip
-            bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() })
+            bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
     }
 
     if (showActivity) ActivityDialog(
@@ -143,9 +143,6 @@ private fun PlanMode(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
             }
             footer()
-            vm.notice?.let { n ->
-                PlanNoticeBar(n, onAction = vm::onNoticeAction, onDismiss = { if (vm.notice?.id == n.id) vm.notice = null })
-            }
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
                 rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
