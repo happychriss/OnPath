@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] POI card in plan mode (add to route / Google Maps), tap feedback – since 2026-10-18
 
 ## Next
 - **Gradle upgrade (owner decision):** Android Studio on the laptop wants AGP 9.4.1 / Gradle 9.6 / Kotlin 2.2.10.
@@ -29,6 +28,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Plan mode POI card (laptop): tap a POI → card above the plan panel with opening hours, "Add to route" /
+  "Remove from route" and "Google Maps"; planning is not interrupted. Replaces the long-press Google dialog.
+  Tap on empty map adds a point with a short vibration. Blocked ways (access=no) marked on the map.
 - LayerSettings crash on style reload fixed (laptop): skips a stale style instead of throwing; tested on the
   Pixel 8 by starting without base.pmtiles and putting it back.
 - 0.4.1 (laptop, released via the workflow; in-app update 0.4.0 → 0.4.1 confirmed working on the Pixel 8 by the owner): resizable plan panel
