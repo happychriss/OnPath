@@ -168,7 +168,9 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
                 }
             }
         }
-        if (ui.tourRunning || ui.pointCount >= 2) {
+        // During a tour, Continue / Pause / End live together in the tour card above (TourRunningBar);
+        // the route sheet then only shows the route.
+        if (!ui.tourRunning && ui.pointCount >= 2) {
             Spacer(Modifier.height(12.dp))
             PrimaryAction(ui, cb)
         } else Spacer(Modifier.height(8.dp))

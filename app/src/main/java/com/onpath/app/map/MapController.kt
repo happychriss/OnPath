@@ -106,9 +106,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
-        // Gold ring under markers placed on a POI (passed exactly, see Planner pinned points).
-        style.addLayer(CircleLayer("waypoints-pin", SRC_WPT).withFilter(Expression.eq(Expression.get("pinned"), Expression.literal(true)))
-            .withProperties(PF.circleRadius(19f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F2B33D"), PF.circleStrokeWidth(3f)))
+        // No ring for POI-pinned stops any more (owner): the only orange ring is the search mark.
         style.addLayer(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
