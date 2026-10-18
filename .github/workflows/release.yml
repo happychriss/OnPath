@@ -1,64 +1,80 @@
-# Builds and publishes an OnPath release for every version tag (vX.Y.Z).
-# The app's "Check for updates" (Settings) reads the latest release and installs its APK.
+# Builds and publishes an OnPath release (GitHub Release with the APK) – the app's
+# "Check for updates" (Settings → Updates) installs it on the phone.
 #
-#   git tag v0.4.1 && git push origin v0.4.1
+# Trigger: a push to main that changes the version (default appVersion in app/build.gradle.kts)
+# or adds release notes (docs/release-notes/vX.Y.Z.md). If a release for that version already
+# exists, nothing happens. The workflow creates the tag vX.Y.Z itself (cloud sessions may not
+# push tags or create releases). It can also be started by hand: Actions → Release → Run workflow.
 #
-# Release notes: docs/release-notes/vX.Y.Z.md if present, otherwise GitHub's generated notes.
-# Signing: the fixed test key in keystore/ (so updates install in place). A secret Play release key
-# will be added later via repository secrets (see docs/project-status.md).
+# Release notes: docs/release-notes/vX.Y.Z.md if present.
+# Signing: the fixed test key in keystore/ (updates install in place). A secret Play release key
+# will come later via repository secrets.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths:
+      - "app/build.gradle.kts"
+      - "docs/release-notes/**"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing tag to (re)build, e.g. v0.4.0"
-        required: true
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
+
+      - name: Version and "already released?" check
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(sed -n 's/.*?: "\([0-9][0-9.]*\)".*/\1/p' app/build.gradle.kts | head -1)
+          [ -n "$VERSION" ] || { echo "No default appVersion found in app/build.gradle.kts"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists – nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Will release OnPath $VERSION"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-java@v4
+        if: steps.ver.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        if: steps.ver.outputs.skip != 'true'
         with:
           packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
 
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Version from tag
-        run: |
-          VERSION="${TAG#v}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Building OnPath $VERSION"
+        if: steps.ver.outputs.skip != 'true'
 
       - name: Unit tests
+        if: steps.ver.outputs.skip != 'true'
         run: ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION"
 
       - name: Build APK
+        if: steps.ver.outputs.skip != 'true'
         run: ./gradlew --no-daemon assembleDebug -PappVersion="$VERSION"
 
       - name: Prepare release files
+        if: steps.ver.outputs.skip != 'true'
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/onpath-$VERSION.apk"
@@ -75,9 +91,11 @@ jobs:
           ls -la dist
 
       - name: Publish GitHub release
+        if: steps.ver.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
           name: OnPath ${{ env.VERSION }}
           body_path: dist/notes.md
           # Not a pre-release: the app's update check reads /releases/latest, which skips pre-releases.
