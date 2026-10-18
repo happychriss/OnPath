@@ -105,12 +105,24 @@ def badge(color, icon, pr, canvas=24, r_out=10.5, ring=1.6, pict=12.5, shadow=Tr
     return im.resize((canvas * pr, canvas * pr), Image.LANCZOS)
 
 
+def no_entry(pr, canvas=16):
+    """Red 'no entry' sign (white ring, white bar) for ways with access=no/private."""
+    n = canvas * pr * SS
+    c = n / 2
+    sc = pr * SS
+    im = disc((n, n), c, c, 7.4 * sc, (255, 255, 255, 255))
+    im = Image.alpha_composite(im, disc((n, n), c, c, 6.2 * sc, (200, 32, 38, 255)))
+    ImageDraw.Draw(im).rectangle((c - 3.8 * sc, c - 1.1 * sc, c + 3.8 * sc, c + 1.1 * sc), fill=(255, 255, 255, 255))
+    return im.resize((canvas * pr, canvas * pr), Image.LANCZOS)
+
+
 def build(pr):
     images = {}
     for kind, (group, icon) in KINDS.items():
         col = GROUPS[group]
         images[f"poi-{kind}"] = badge(col, icon, pr)
         images[f"poi-{kind}-small"] = badge(col, None, pr, canvas=12, r_out=4.6, ring=1.3, shadow=True)
+    images["access-no"] = no_entry(pr)
     # simple shelf packing
     cols = 8
     cell = 24 * pr

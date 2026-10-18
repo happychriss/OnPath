@@ -1,4 +1,11 @@
 {
+ "access-no": {
+  "height": 16,
+  "pixelRatio": 1,
+  "width": 16,
+  "x": 48,
+  "y": 168
+ },
  "poi-bar": {
   "height": 24,
   "pixelRatio": 1,
