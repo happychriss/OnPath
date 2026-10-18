@@ -277,6 +277,26 @@ def trails():
                  "text-halo-width": 1.2})
 
 
+def access_restrictions():
+    """Ways you may not use (OSM access=no / private -> OpenMapTiles "access": "no"), like Komoot's
+    blocked sign: a light red tint along the way (z14+) and a small red no-entry sign repeated along it
+    (z15+). Only paths, tracks and non-driveway service roads – private driveways would put a sign at
+    every house. Routing (BRouter) already avoids these ways."""
+    cls = ["get", "class"]
+    blocked = ["all", ["==", ["get", "access"], "no"],
+               ["any", ["in", cls, ["literal", ["path", "track"]]],
+                ["all", ["==", cls, "service"],
+                 ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]]
+    layer(id_="access-no-tint", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
+          filter=blocked, layout={"line-join": "round", "line-cap": "round"},
+          paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
+    layer(id_="access-no-sign", type="symbol", source="base", **{"source-layer": "transportation"}, minzoom=15,
+          filter=blocked,
+          layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
+                  "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
+                  "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1})
+
+
 def bridges():
     cls = ["get", "class"]
     bridge = ["==", ["get", "brunnel"], "bridge"]
@@ -454,7 +474,7 @@ def build(theme=DEFAULT_THEME):
     L.clear()
     # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
-    trails(); bridges(); boundaries(); pois(); stations()
+    trails(); access_restrictions(); bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())
     labels()

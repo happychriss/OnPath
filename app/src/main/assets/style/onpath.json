@@ -3372,6 +3372,190 @@
    }
   },
   {
+   "id": "access-no-tint",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "access"
+     ],
+     "no"
+    ],
+    [
+     "any",
+     [
+      "in",
+      [
+       "get",
+       "class"
+      ],
+      [
+       "literal",
+       [
+        "path",
+        "track"
+       ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "class"
+       ],
+       "service"
+      ],
+      [
+       "!",
+       [
+        "in",
+        [
+         "get",
+         "service"
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": "rgba(210,40,40,0.28)",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     4,
+     16,
+     7,
+     18,
+     12
+    ]
+   }
+  },
+  {
+   "id": "access-no-sign",
+   "type": "symbol",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 15,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "access"
+     ],
+     "no"
+    ],
+    [
+     "any",
+     [
+      "in",
+      [
+       "get",
+       "class"
+      ],
+      [
+       "literal",
+       [
+        "path",
+        "track"
+       ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "class"
+       ],
+       "service"
+      ],
+      [
+       "!",
+       [
+        "in",
+        [
+         "get",
+         "service"
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     15,
+     90,
+     18,
+     160
+    ],
+    "icon-image": "access-no",
+    "icon-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     15,
+     0.75,
+     18,
+     1.0
+    ],
+    "icon-rotation-alignment": "viewport",
+    "icon-allow-overlap": false,
+    "icon-padding": 1
+   }
+  },
+  {
    "id": "bridge-casing",
    "type": "line",
    "source": "base",
