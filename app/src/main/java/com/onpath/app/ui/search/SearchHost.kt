@@ -67,7 +67,8 @@ fun PlaceCardHost(vm: AppViewModel) {
             onRemove = { vm.removePlace(place) },
             onStart = { vm.addPlace(place, AppViewModel.PlaceRole.START) },
             onDestination = { vm.addPlace(place, AppViewModel.PlaceRole.DESTINATION) },
-            onGoogle = { openGoogle(ctx, PoiLinks.googleMapsUrl(place.name, place.lat, place.lon)) },
+            onGoogle = { com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, place.poi?.let(PoiLinks::googleMaps)
+                ?: PoiLinks.googleMaps(place.name, place.lat, place.lon, label = place.title())) },
             onClose = vm::closePlaceCard,
         ),
     )
