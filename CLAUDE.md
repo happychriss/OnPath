@@ -1,5 +1,8 @@
 # OnPath – guide for AI assistants and contributors
 
+**Two sessions work on this repo (laptop + cloud): follow `docs/working-agreement.md` – pull first, claim in
+`docs/backlog.md`, push small green commits, leave a handoff.**
+
 Read this first, then `docs/project-status.md` (where we are, decisions, next steps) and
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07).
 
