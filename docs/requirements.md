@@ -102,7 +102,7 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | F-NAV-01 | "Start" on a route: map follows position, route shown, remaining distance, ascent and time shown. | Must |
-| F-NAV-02 | Off-route detection (more than 40 m for 15 s, configurable): vibration and sound, then offer "reroute back to route" or "recalculate to destination", offline. | Must |
+| F-NAV-02 | Off-route detection (more than 40 m for 15 s while moving, configurable): vibration and sound, then – offline – a way back onto the route ahead is computed and offered as a question that stays until answered: "Take new route" / "Keep original" (also in the notification). Never re-routes silently; passed stops are skipped; the original stays visible as a grey line. No way found: arrow and distance to the route. | Must |
 | F-NAV-03 | Record track at the same time as navigating; also record without a route ("free tour"). | Must |
 | F-NAV-04 | Works with screen off and app in background; persistent notification shows distance and status; pause / resume / stop. | Must |
 | F-NAV-05 | Voice hints at junctions with offline text-to-speech. | Could (off-route warning is enough for v1) |
