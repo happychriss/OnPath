@@ -77,6 +77,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val dataFiles = DataFiles(app)
     private val prefs = Prefs(app)
     private val db = TourDb.get(app)
+    // time estimate state, declared before init {} uses it (recalc / refreshTours)
+    /** Pace learned from earlier tours (Prefs JSON, written by the recording service when a tour ends). */
+    private var paceStore = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
+
+    /** Model times of saved planned routes, by tour id: (factors, stored distance) they were computed for → seconds. */
+    private val plannedTimes = java.util.concurrent.ConcurrentHashMap<Long, Pair<Pair<com.onpath.app.time.Factors, Double>, Double>>()
     val tracker = LocationTracker(app)
 
     // --- data check ---
@@ -247,6 +253,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     RecordingService.finished.value = null
                     finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                     finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
+                    reloadPace()
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
@@ -685,7 +692,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun planFactors(a: Activity = activity): com.onpath.app.time.Factors =
         com.onpath.app.time.TimeEstimate.planFactors(a, settings, learnedFactors(a))
 
-    private fun learnedFactors(@Suppress("UNUSED_PARAMETER") a: Activity): com.onpath.app.time.Factors? = null
+    private fun learnedFactors(a: Activity): com.onpath.app.time.Factors? = paceStore.factors(a)
 
     /**
      * The plan's time from OnPath's own model (time/RouteTimes), not the router's: the same number as the route list
@@ -695,10 +702,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
 
     /** What was learned from earlier tours, per activity (Settings → Your pace). */
-    var learnedPace by mutableStateOf<List<LearnedPace>>(emptyList())
+    var learnedPace by mutableStateOf(learnedList())
         private set
 
-    fun resetLearnedPace(@Suppress("UNUSED_PARAMETER") a: Activity) {}
+    private fun learnedList() = paceStore.learned().map { (a, e) -> LearnedPace(a, e.tours, e.factors) }
+
+    /** Settings → Your pace → Reset (after a confirmation): times for [a] go back to the pace setting. */
+    fun resetLearnedPace(a: Activity) {
+        paceStore = paceStore.reset(a)
+        prefs.paceStore = paceStore.toJson()
+        learnedPace = learnedList()
+        retime()
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
+    }
+
+    /** A tour ended: the service may have learned something; new plan times. */
+    private fun reloadPace() {
+        val fresh = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
+        if (fresh.toJson() != paceStore.toJson()) { paceStore = fresh; learnedPace = learnedList(); retime() }
+    }
 
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
@@ -712,8 +734,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshTours()
     }
 
-    /** Model times of saved planned routes, by tour id: (factors, stored distance) they were computed for → seconds. */
-    private val plannedTimes = java.util.concurrent.ConcurrentHashMap<Long, Pair<Pair<com.onpath.app.time.Factors, Double>, Double>>()
 
     /** Planned routes show the model time (recomputed, the stored router time is ignored); others as stored. */
     private fun withModelTime(t: Tour): Tour {
