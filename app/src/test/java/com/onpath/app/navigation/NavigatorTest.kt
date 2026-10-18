@@ -175,4 +175,16 @@ class NavigatorTest {
         assertTrue(n2.session.rerouted)
         assertNotNull(n2.state.original)
     }
+
+    @Test fun sessionKeepsWayAttributes() {
+        val w1 = com.onpath.app.routing.WayAttrs("track", "gravel")
+        val w2 = com.onpath.app.routing.WayAttrs("path", "alpine", sac = 4, visibility = "bad")
+        val pts = (0..9).map { i -> com.onpath.app.routing.GeoPoint(46.0 + i * 0.001, 11.0, 500.0, if (i < 4) w1 else if (i < 8) w2 else null) }
+        val s = NavSession.start(NavKind.PLAN, "x", Activity.HIKE, 3, pts)
+        val back = NavSessionStore.fromJson(JSONObject(NavSessionStore.toJson(s).toString()))!!
+        assertEquals(pts.map { it.way }, back.original.map { it.way })
+        // old files without the way runs load as before
+        val old = NavSessionStore.toJson(s).apply { remove("originalWays") }
+        assertTrue(NavSessionStore.fromJson(JSONObject(old.toString()))!!.original.all { it.way == null })
+    }
 }

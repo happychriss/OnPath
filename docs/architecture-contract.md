@@ -60,3 +60,14 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
   implementation (calls the plain `route`), so existing engines and fakes stay valid. `RouteLimits(timeoutMs, cancel)`:
   upper bound incl. waiting for another request, and a `RouteCancel` (BRouter `terminate()`). `BRouterEngine` uses a
   static `ReentrantLock` (`tryLock` within the budget). Used by `navigation/Rerouter` (8 s per request, 12 s per re-route).
+
+## Way attributes on the route line (time estimate P4, 2026-10-18)
+- `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys
+  as in `Share`, SAC 1..6, mtb:scale, smoothness, trail_visibility, rough surface). Set by `BRouterEngine` on every
+  routed point (`BRouterWayStats.perNode`, from the track messages); null on straight legs, imported tracks and lines
+  stored without it. **`GeoPoint.equals`/`hashCode` ignore `way`**, so all existing comparisons behave as before.
+- Because the attributes ride on the points, they survive leg-by-leg fallback, chunking at pinned points, the
+  re-route splice (`NavLine.pointAt` keeps the span's `way`) and the navigation session file (`NavSession` writes
+  optional `originalWays` / `currentWays` run lists; old files load without them). Saved routes (`TourDb`) store no
+  attributes; their list time comes from `time/PlanTimesStore` written at save, else from the bare points.
+- Consumers: `time/RouteTimes` (per 50 m piece) and `time/TimeBreakdown` ("By way" table). Unknown → today's times.
