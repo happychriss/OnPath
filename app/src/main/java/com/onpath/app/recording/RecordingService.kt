@@ -81,6 +81,8 @@ data class RecState(
     val nav: NavState? = null,
     /** Moving time, breaks, to go and arrival (docs/plan-time-estimate.md); null before the first tick. */
     val time: com.onpath.app.time.TripTime? = null,
+    /** The last track point could not be written (storage full, database broken): the UI must say so. */
+    val saveFailed: Boolean = false,
 )
 
 /**
@@ -109,6 +111,11 @@ class RecordingService : Service() {
     private var lastGoodFixElapsed = 0L
     private val track = mutableListOf<MutableList<GeoPoint>>()
     private var trackSeg = -1
+    /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
+    private var trackSnapshot: List<List<GeoPoint>> = emptyList()
+    private var snapshotDirty = true
+    /** A database write failed; cleared by the next successful point write. */
+    private var saveFailed = false
 
     private var follow: Pair<String, List<GeoPoint>>? = null
     /** Navigation session + off-route flow; null for free recording. */
@@ -183,37 +190,63 @@ class RecordingService : Service() {
                 return START_STICKY
             }
         }
-        if (tourId >= 0) return START_STICKY // already recording
+        // Already recording: every startForegroundService() must be answered with startForeground(), or the
+        // system kills the process ("did not call startForeground") – a double tap on Start must not do that.
+        if (tourId >= 0) { goForeground(); return START_STICKY }
 
         // ACTION_START, or a sticky restart by the system (null intent): continue an active recording.
         val continueId = intent?.getLongExtra(EXTRA_CONTINUE_ID, -1L) ?: -1L
-        val existing = if (continueId >= 0) db.getTour(continueId) else if (intent == null) db.findActiveRecording() else null
+        val existing = try {
+            if (continueId >= 0) db.getTour(continueId) else if (intent == null) db.findActiveRecording() else null
+        } catch (e: Exception) {
+            Log.e("OnPath", "read tour", e)
+            failLoud("Recording could not start: the tour database cannot be read.")
+            return START_NOT_STICKY
+        }
         if (intent == null && existing == null) { stopSelf(); return START_NOT_STICKY }
 
-        if (!goForeground()) { stopSelf(); return START_NOT_STICKY }
-
-        if (existing != null) {
-            tourId = existing.id
-            distance = existing.distanceM; ascent = existing.ascentM; descent = existing.descentM
-            elapsedS = existing.durationS.toLong()
-            val (nextSeq, lastSeg) = db.recordingCursor(tourId)
-            seq = nextSeq; seg = lastSeg + 1 // resume in a new segment, no straight jump
-            val segs = db.loadSegments(tourId)
-            segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
-            trackSeg = lastSeg
-            eleRef = segs.lastOrNull()?.lastOrNull()?.ele
-            last = null
-            db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
-            recActivity = activityOf(existing.activity)
-            loadTrip()
-        } else {
-            val name = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date())
-            tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
-                0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
-            recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
-            trip = com.onpath.app.time.TripPace(priorFor(recActivity))
-            saveTrip()
+        // Nothing silent (R-01): without precise location or GPS the user is told, not left "Searching GPS…" for hours.
+        if (!tracker.hasFinePermission()) {
+            failLoud("Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.")
+            return START_NOT_STICKY
         }
+        if (!tracker.hasGps()) { failLoud("Recording stopped: this device has no GPS."); return START_NOT_STICKY }
+        if (!goForeground()) {
+            failLoud("Recording could not start (Android did not allow the background service). Open OnPath and try again.")
+            return START_NOT_STICKY
+        }
+
+        try {
+            if (existing != null) {
+                tourId = existing.id
+                distance = existing.distanceM; ascent = existing.ascentM; descent = existing.descentM
+                elapsedS = existing.durationS.toLong()
+                val (nextSeq, lastSeg) = db.recordingCursor(tourId)
+                seq = nextSeq; seg = lastSeg + 1 // resume in a new segment, no straight jump
+                val segs = db.loadSegments(tourId)
+                segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
+                trackSeg = lastSeg
+                eleRef = segs.lastOrNull()?.lastOrNull()?.ele
+                last = null
+                recActivity = activityOf(existing.activity)
+                loadTrip()
+            } else {
+                val name = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date())
+                tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
+                    0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
+                recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
+                trip = com.onpath.app.time.TripPace(priorFor(recActivity))
+                saveTrip()
+            }
+        } catch (e: Exception) {
+            Log.e("OnPath", "start recording", e)
+            tourId = -1
+            failLoud("Recording could not start: the tour cannot be saved (storage full or database broken).")
+            return START_NOT_STICKY
+        }
+        snapshotDirty = true
+        safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+        safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
         acquireWakeLock()
         tracker.onFix = { onFix(it) }
@@ -246,13 +279,19 @@ class RecordingService : Service() {
     private fun startTicker() {
         scope.launch {
             var lastTick = SystemClock.elapsedRealtime()
+            var lastStats = lastTick
             while (isActive) {
                 delay(1000)
                 val now = SystemClock.elapsedRealtime()
-                if (!paused) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceAtLeast(1).coerceAtMost(5)
+                // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes
+                if (!paused) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
                 lastTick = now
+                if (wakeLock?.isHeld != true) acquireWakeLock() // the lock times out after 12 h: long days go on
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
-                if (elapsedS % 10 == 0L) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+                if (now - lastStats >= 10_000) {
+                    lastStats = now
+                    safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+                }
                 try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (_: Exception) { }
                 if (now - tripSaved > 30_000) saveTrip()
                 publish()
@@ -265,7 +304,7 @@ class RecordingService : Service() {
     private fun onFix(loc: Location) {
         if (tourId < 0 || paused) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
-        if (!loc.hasAccuracy() || loc.accuracy > MAX_ACCURACY_M) return
+        if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) return
 
         val nowEl = SystemClock.elapsedRealtime()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
@@ -280,14 +319,9 @@ class RecordingService : Service() {
         } catch (e: Exception) { Log.e("OnPath", "trip pace", e) }
 
         val prev = last
-        if (prev != null && !wasLost) {
-            val d = Geo.distance(prev.lat, prev.lon, p.lat, p.lon)
-            val dt = ((p.timeMs ?: 0) - (prev.timeMs ?: 0)) / 1000.0
-            if (dt > 0 && d / dt > MAX_SPEED_MS) return              // impossible jump
-            val minMove = maxOf(3.0, minOf(loc.accuracy.toDouble(), 15.0) / 2)
-            if (d < minMove && dt < 30) return                         // standing still: ignore jitter
-            distance += d
-        }
+        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost)
+        if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
+        distance += moved
         if (wasLost && prev != null) seg++                            // GPS gap: new segment
         p.ele?.let { e ->
             val r = eleRef
@@ -295,11 +329,65 @@ class RecordingService : Service() {
             else if (e - r >= 5) { ascent += e - r; eleRef = e }
             else if (r - e >= 5) { descent += r - e; eleRef = e }
         }
-        try { db.appendPoint(tourId, seq++, seg, p) } catch (e: Exception) { Log.e("OnPath", "write point", e) }
+        // The point goes to SQLite first (R-07). seq advances only when it is really stored.
+        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p) }) {
+            seq++
+            if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
+        }
         last = p
         if (track.isEmpty() || trackSeg != seg) { track += mutableListOf<GeoPoint>(); trackSeg = seg }
         track.last() += p.toGeo()
+        snapshotDirty = true
         publish()
+    }
+
+    /**
+     * Runs a database write; a failure (storage full, corrupt file) is logged, shown as a loud notification once
+     * and reported in [RecState.saveFailed] – never a crash, never silent (R-01, R-07). Returns true on success.
+     */
+    private inline fun safeDb(what: String, block: () -> Unit): Boolean = try {
+        block(); true
+    } catch (e: Exception) {
+        Log.e("OnPath", "db $what failed", e)
+        if (!saveFailed) { saveFailed = true; notifySaveFailed(); vibrate() }
+        false
+    }
+
+    private fun notifySaveFailed() {
+        try {
+            val text = "The track cannot be saved any more (storage full or database broken). Free up space; recording keeps trying."
+            nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Recording cannot be saved")
+                .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
+                .setOngoing(true)
+                .setContentIntent(openAppIntent())
+                .build())
+        } catch (_: Exception) { }
+    }
+
+    /**
+     * The service cannot (or can no longer) record: say so in a notification that stays, then stop. The tour keeps
+     * its "active" state, so the app offers Continue / Save next time. Never a silent stopSelf().
+     */
+    private fun failLoud(text: String) {
+        Log.e("OnPath", "recording stopped: $text")
+        try {
+            nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Recording stopped")
+                .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
+                .setAutoCancel(true)
+                .setContentIntent(openAppIntent())
+                .build())
+        } catch (_: Exception) { }
+        vibrate()
+        _startFailed.value = text
+        stopSelf()
     }
 
     /**
@@ -446,13 +534,13 @@ class RecordingService : Service() {
         trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
         saveTrip()
         navigator?.onGpsLost() // no fixes while paused: timers start from zero again
-        db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+        safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         publish(force = true)
     }
 
     private fun finish() {
         if (tourId >= 0) {
-            db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done")
+            safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
@@ -480,17 +568,21 @@ class RecordingService : Service() {
         routeExec.shutdown()
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
-        if (tourId >= 0) { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active"); saveTrip() }
+        if (tourId >= 0) {
+            safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+            saveTrip()
+        }
         _state.value = null
         super.onDestroy()
     }
 
     private fun publish(force: Boolean = false) {
         if (tourId < 0) return
+        if (snapshotDirty) { trackSnapshot = track.map { it.toList() }; snapshotDirty = false }
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
-            navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.map { it.toList() },
-            navigator?.state, tripTime(),
+            navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
+            navigator?.state, tripTime(), saveFailed,
         )
         val now = SystemClock.elapsedRealtime()
         if (force || now - lastNotify > 5000) {
@@ -633,9 +725,11 @@ class RecordingService : Service() {
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
         private const val NOTIF_ID = 42
         private const val ALERT_ID = 43
+        /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
+        private const val SAVE_FAIL_ID = 44
 
-        const val MAX_ACCURACY_M = 30f
-        const val MAX_SPEED_MS = 35.0       // ~126 km/h: anything faster is a GPS jump
+        const val MAX_ACCURACY_M = PointFilter.MAX_ACCURACY_M
+        const val MAX_SPEED_MS = PointFilter.MAX_SPEED_MS
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
         /** Trip state (breaks, pace learning) of the running tour. */
         const val TRIP_FILE = "trip-pace.json"
@@ -645,6 +739,9 @@ class RecordingService : Service() {
         private val _finished = MutableStateFlow<Long?>(null)
         /** Id of the last tour stopped (UI shows a summary, then clears it). */
         val finished: MutableStateFlow<Long?> = _finished
+        private val _startFailed = MutableStateFlow<String?>(null)
+        /** Why the service stopped by itself (plain text; the app shows it and clears it). */
+        val startFailed: MutableStateFlow<String?> = _startFailed
 
         fun createChannels(context: Context) {
             if (Build.VERSION.SDK_INT < 26) return

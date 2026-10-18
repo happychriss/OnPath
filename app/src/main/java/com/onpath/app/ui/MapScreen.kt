@@ -287,6 +287,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         pending.forEach { e ->
             when (e) {
                 is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
+                is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
             }
         }
