@@ -86,18 +86,18 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | # | Step | Command (simplified) | Output | Time | Size |
 | --- | --- | --- | --- | --- | --- |
 | 1 | OSM extract | `curl -fL -C - -o region.osm.pbf $OSM_URL` | `work/osm/*.osm.pbf` | ~1 min | 130 MB |
-| 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 89 MB |
-| 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | TIME_BASE | SIZE_BASE |
-| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.85 46.35 11.60 46.85 13` | `$D/terrain.pmtiles` | TIME_TERRAIN | SIZE_TERRAIN |
-| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `trailnames.geojson` | TIME_OVERLAYS | SIZE_OVERLAYS |
-| 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/pois.geojson` | TIME_POIS | SIZE_POIS |
-| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.85 46.35 11.60 46.85` | `$D/contours.pmtiles` | TIME_CONTOURS | SIZE_CONTOURS |
-| 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~100 KB each |
-| 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~1 min | 190 MB |
-| 10 | Package | zip (`.pmtiles`/`.rd5` stored, GeoJSON deflated) + manifest + checksums | `onpath-data-<region>.zip` | TIME_ZIP | SIZE_ZIP |
+| 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
+| 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
+| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.85 46.35 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
+| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `trailnames.geojson` | 2 min | 6.7 + 2.9 + 3.6 MB |
+| 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
+| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.85 46.35 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
+| 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
+| 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~10 s | 199 MB |
+| 10 | Package | zip (`.pmtiles`/`.rd5` stored, GeoJSON deflated) + manifest + checksums | `onpath-data-<region>.zip` | 45 s | 283 MB (270 MiB) |
 
-Whole run from cached inputs: **TIME_TOTAL**. Zip without routing tiles (`--no-segments`): SIZE_ZIP_NOSEG.
-Peak memory ~6 GB (Planetiler heap); temp disk ~5 GB plus the 1.4 GB Planetiler sources cache.
+Whole run from cached inputs: **21 min (Planetiler 14 min of it); a re-run with nothing changed takes ~25 s (only the zip is rebuilt)**. Zip without routing tiles (`--no-segments`): 85 MB (81 MiB).
+Peak memory: the Planetiler heap (`JAVA_XMX`, default 6g); temp disk a few GB plus the 1.4 GB Planetiler sources cache (`work/planetiler-sources`). Planetiler took 9 min in an earlier run and 14 min in the measured one (shared 4-core machine).
 
 Notes per step:
 - **3 Planetiler** writes temporary files (`--tmpdir`) and caches the side data (`--download_dir`);
@@ -144,6 +144,9 @@ out/<region>/
   styles/onpath*.json           ← always built, for pushing a new look without new data
 ```
 
+Defaults are `./out/<region>` and `./work` relative to the current folder – run the script from outside
+the repo (or pass `--out` / `--work`), so map data never ends up next to tracked files.
+
 `manifest.json` is deliberately not inside the zip: the importer only accepts known file types and
 would list it as "skipped".
 
@@ -188,7 +191,7 @@ How the data reaches the phone (data folder `/sdcard/Android/data/com.onpath.app
 ## 9. Server (Hetzner) runbook
 
 **Machine:** for regional packages a CX32/CPX31-class cloud server (4 vCPU, 8–16 GB RAM, 80+ GB disk)
-is plenty (test region ≈ TIME_TOTAL). For whole countries (Italy, Austria, Germany): CCX33 / AX-line
+is plenty (test region ≈ 20 min). For whole countries (Italy, Austria, Germany): CCX33 / AX-line
 (8+ cores, 32–64 GB RAM, NVMe 250 GB+), `JAVA_XMX=24g`; the Python overlay/POI passes keep node
 locations in memory, so RAM matters more than cores.
 

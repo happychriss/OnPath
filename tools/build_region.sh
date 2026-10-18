@@ -139,7 +139,7 @@ fetch() {
   echo "$remote" > "$part.meta"
   if [ -n "$len" ] && [ -f "$part" ] && [ "$(stat -c %s "$part")" = "$len" ]; then :; else
     log "    downloading $url${len:+ ($(( len / 1048576 )) MB)}"
-    curl -fL --retry 5 --retry-delay 10 --connect-timeout 30 -C - -o "$part" "$url" \
+    curl -fL $([ -t 2 ] || echo -sS) --retry 5 --retry-delay 10 --connect-timeout 30 -C - -o "$part" "$url" \
       || die "download failed: $url (re-run to resume)"
   fi
   if [ -n "$len" ] && [ "$(stat -c %s "$part")" != "$len" ]; then
@@ -176,8 +176,17 @@ else
   OSM="$WORK/osm/$(basename "${OSM_URL%%\?*}")"
   fetch "$OSM_URL" "$OSM" "$OSM_MAX_AGE_DAYS"
 fi
-OSM_DATE=$(date -u -r "$OSM" +%Y-%m-%dT%H:%M:%SZ)
-done_step "$(size "$OSM"), file date $OSM_DATE"
+# data date from the PBF header (replication timestamp), else the file date
+OSM_DATE=$(python3 - "$OSM" 2>/dev/null <<'PY' || true
+import sys, osmium
+r = osmium.io.Reader(sys.argv[1], osmium.osm.osm_entity_bits.NOTHING)
+h = r.header()
+print(h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")
+r.close()
+PY
+)
+[ -n "$OSM_DATE" ] || OSM_DATE=$(date -u -r "$OSM" +%Y-%m-%dT%H:%M:%SZ)
+done_step "$(size "$OSM"), OSM data of $OSM_DATE"
 
 # ------------------------------------------------------------------------------- 2. planetiler.jar
 step "planetiler.jar"
@@ -272,8 +281,15 @@ step "styles (all themes) and sprite"
 if [ "$SPRITE" = 1 ]; then
   python3 "$TOOLS/make_sprite.py" | sed 's/^/    /'
   log "    sprite regenerated in app/src/main/assets/sprites (part of the APK – commit and rebuild the app)"
-elif [ -n "$(find "$TOOLS/icons" "$TOOLS/make_sprite.py" -newer "$REPO/app/src/main/assets/sprites/onpath.png" 2>/dev/null)" ]; then
-  log "    WARNING: icons / make_sprite.py are newer than the sprite – run with --sprite (APK asset)"
+else
+  # file dates are meaningless after a git clone: compare the last commits instead
+  ct() { git -C "$REPO" log -1 --format=%ct -- "$@" 2>/dev/null || echo 0; }
+  if [ -z "$(git -C "$REPO" status --porcelain -- tools/icons tools/make_sprite.py 2>/dev/null)" ] \
+     && [ "$(ct tools/icons tools/make_sprite.py)" -le "$(ct app/src/main/assets/sprites)" ]; then
+    log "    sprite is up to date with tools/icons"
+  else
+    log "    WARNING: icons / make_sprite.py changed after the sprite – run with --sprite (APK asset)"
+  fi
 fi
 # Build the styles from a copy of tools/, so the repo's bundled assets are not touched by a data build.
 SB="$WORK/tmp/stylebuild"
