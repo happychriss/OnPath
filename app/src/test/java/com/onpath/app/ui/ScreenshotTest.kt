@@ -108,7 +108,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Eye button on: route hidden on the map, panel unchanged except the eye icon and a hint. */
+    /** Eye button held down: route hidden on the map, panel unchanged except the eye icon. */
     @Test fun planHidden() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(hidden = true), PlanCallbacks()) }
     }

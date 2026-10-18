@@ -2,6 +2,11 @@ package com.onpath.app.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -70,7 +75,8 @@ class PlanCallbacks(
     val onShare: () -> Unit = {},
     val onGo: () -> Unit = {},
     val onClose: () -> Unit = {},
-    val onToggleHidden: () -> Unit = {},
+    /** Eye button held (true) / released (false): the route is hidden only while held. */
+    val onHoldHide: (Boolean) -> Unit = {},
     val onReverse: () -> Unit = {},
     val onRoundTrip: () -> Unit = {},
     val onPointMenu: (Int) -> Unit = {},
@@ -122,14 +128,12 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
             Spacer(Modifier.width(8.dp))
             if (route != null && !ui.routing && !mini) DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
             if (!(mini && route != null)) Spacer(Modifier.weight(1f))
-            // The eye only hides the route on the map; the panel stays as it is.
-            if (ui.hidden) ActionButtonSmall(Icons.Filled.VisibilityOff, "Show route again", cb.onToggleHidden)
-            else ActionButtonSmall(Icons.Filled.Visibility, "Hide route to see the map", cb.onToggleHidden)
+            // Hold the eye to peek at the map under the route; release shows it again.
+            HoldEyeButton(held = ui.hidden, onHold = cb.onHoldHide)
             PlanOverflow(enabled = ui.pointCount >= 2, cb)
             ActionButtonSmall(Icons.Filled.Close, "Close planning", cb.onClose)
         }
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp)) else Spacer(Modifier.height(3.dp))
-        if (ui.hidden) Hint("Route hidden – tap the eye to show it. Map taps are paused.")
         ui.error?.let { ErrorBox(it) }
         if (mini) return@BottomPanel
         Spacer(Modifier.height(6.dp))
@@ -160,6 +164,26 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
             shape = RoundedCornerShape(16.dp)) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp)); Text("Follow & record", fontSize = 16.sp)
         }
+    }
+}
+
+/** Eye button that hides the route only while it is pressed down. */
+@Composable
+private fun HoldEyeButton(held: Boolean, onHold: (Boolean) -> Unit) {
+    val hold by rememberUpdatedState(onHold)
+    Box(
+        Modifier.size(48.dp).clip(CircleShape)
+            .background(if (held) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .semantics { contentDescription = "Hold to hide the route and see the map" }
+            .pointerInput(Unit) {
+                detectTapGestures(onPress = {
+                    hold(true)
+                    try { tryAwaitRelease() } finally { hold(false) }
+                })
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(if (held) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = null)
     }
 }
 
