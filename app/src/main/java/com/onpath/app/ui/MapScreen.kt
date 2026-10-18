@@ -244,6 +244,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
+    LaunchedEffect(c, vm.searchMark) {
+        val m = vm.searchMark
+        c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
+    }
     // Marked route networks always show (owner): the band of the current activity.
     LaunchedEffect(c, vm.activity) { c.setOverlay(vm.activity, true) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
