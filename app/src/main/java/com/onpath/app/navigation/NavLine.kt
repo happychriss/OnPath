@@ -109,7 +109,7 @@ class NavLine(val points: List<GeoPoint>) {
         val f = if (seg <= 0) 0.0 else (alongM - cum[i]) / seg
         val a = points[i]; val b = points[i + 1]
         val ele = if (a.ele != null && b.ele != null) a.ele + (b.ele - a.ele) * f else a.ele ?: b.ele
-        return GeoPoint(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f, ele)
+        return GeoPoint(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f, ele, a.way) // keeps the span's way (time model)
     }
 
     /** The line from [alongM] to the end, starting with the interpolated point there. */

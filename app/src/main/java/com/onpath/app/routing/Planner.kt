@@ -24,7 +24,8 @@ data class PlannedRoute(
 ) {
     val points: List<GeoPoint> by lazy {
         val out = ArrayList<GeoPoint>()
-        legs.forEach { leg -> leg.points.forEach { if (out.isEmpty() || out.last() != it) out += it } }
+        // at a join the next leg's first point wins: its way attributes (GeoPoint.way) describe the way onward
+        legs.forEach { leg -> leg.points.forEach { if (out.isEmpty() || out.last() != it) out += it else out[out.size - 1] = it } }
         out
     }
 }
@@ -109,7 +110,7 @@ class Planner(private val engine: RoutingEngine) {
                 val d = Geo.distance(a, b)
                 dist += d
                 time += Geo.estimateSeconds(d, 0.0, 0.0, activity)
-                PlannedLeg(listOf(a, b), true)
+                PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
         return PlannedRoute(legs, dist, up, down, time, firstError,
