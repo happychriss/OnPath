@@ -84,7 +84,12 @@ class MapGesturesTest {
         listOf(PointAction.MAKE_START, PointAction.END_HERE, PointAction.GOOGLE, PointAction.DELETE),
         MapGestures.pointMenu(1, 4, isPlace = true))
     @Test fun pointMenuOnDestination() =
-        assertEquals(listOf(PointAction.MAKE_START, PointAction.DELETE), MapGestures.pointMenu(3, 4, isPlace = false))
+        assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(3, 4, isPlace = false))
+    @Test fun pointMenuRoundTrip() {
+        assertEquals(listOf(PointAction.LOOP_START, PointAction.DELETE), MapGestures.pointMenu(2, 5, isPlace = false, roundTrip = true))
+        assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(0, 5, isPlace = false, roundTrip = true))
+        assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(4, 5, isPlace = false, roundTrip = true))
+    }
     @Test fun pointMenuOnSinglePoint() = assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(0, 1, isPlace = false))
 
     // --- Navigate / shown track: read-only ---

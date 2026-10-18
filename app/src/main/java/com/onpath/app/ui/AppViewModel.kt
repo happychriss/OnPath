@@ -481,10 +481,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Point menu → "Make starting point" (not on the start). */
-    fun makeStartFromMenu(index: Int) { pointMenu = null; makeStart(index) }
+    /** Point menu → "Start here" (drops earlier points) / round trip "Start & finish here" (rotates the loop). */
+    fun makeStartFromMenu(index: Int) {
+        pointMenu = null
+        if (index !in waypoints.indices) return
+        set(if (isRoundTrip()) PlanEdits.rotateLoop(waypoints, index) else PlanEdits.startAt(waypoints, index))
+    }
+
+    fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
 
     /** Point menu → "End route here" (middle points only): that point becomes the destination. */
-    fun endRouteAt(index: Int) { pointMenu = null; makeDestination(index) }
+    fun endRouteAt(index: Int) { pointMenu = null; if (index in waypoints.indices) set(PlanEdits.endAt(waypoints, index)) }
 
     /** Point menu → "Delete" (Undo brings it back). */
     fun deletePointFromMenu(index: Int) { pointMenu = null; removePoint(index) }

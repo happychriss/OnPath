@@ -95,9 +95,9 @@ fun MapOverlayHost(
         if (p == null) { LaunchedEffect(i) { vm.pointMenu = null }; return@let }
         val name = vm.stopName(p)
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.pointMenu = null }) {
-            PointMenu(i, vm.waypoints.size, name) { a ->
+            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip()) { a ->
                 when (a) {
-                    PointAction.MAKE_START -> vm.makeStartFromMenu(i)
+                    PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu(i)
                     PointAction.END_HERE -> vm.endRouteAt(i)
                     PointAction.GOOGLE -> {
                         vm.pointMenu = null
@@ -183,7 +183,8 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
  * there ([MapGestures.pointMenu]): Make starting point · End route here · Open in Google Maps · Delete.
  */
 @Composable
-fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, onAction: (PointAction) -> Unit) {
+fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, roundTrip: Boolean = false,
+              onAction: (PointAction) -> Unit) {
     MenuSurface(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
@@ -195,9 +196,14 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank())) when (a) {
-            PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Make starting point") { onAction(a) }
-            PointAction.END_HERE -> HoldMenuItem(Icons.Outlined.Flag, "End route here") { onAction(a) }
+        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip)) when (a) {
+            // Say what happens: the dropped points come back with Undo.
+            PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start here",
+                supporting = "Removes ${points(index)} before") { onAction(a) }
+            PointAction.END_HERE -> HoldMenuItem(Icons.Outlined.Flag, "End here",
+                supporting = "Removes ${points(count - 1 - index)} after") { onAction(a) }
+            PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start & finish here",
+                supporting = "Same loop, starts here") { onAction(a) }
             PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
             PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
         }
@@ -238,3 +244,6 @@ private fun MenuSurface(modifier: Modifier, content: @Composable () -> Unit) {
         Column(Modifier.width(IntrinsicSize.Max).padding(bottom = 4.dp)) { content() }
     }
 }
+
+
+private fun points(n: Int) = if (n == 1) "1 point" else "$n points"

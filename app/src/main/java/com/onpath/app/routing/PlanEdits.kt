@@ -22,6 +22,29 @@ object PlanEdits {
         return out
     }
 
+    /** True when the route ends where it starts (≥ 3 points, last within [sameM] of the first). */
+    fun isRoundTrip(w: List<GeoPoint>, sameM: Double = 15.0): Boolean =
+        w.size >= 3 && Geo.distance(w.first(), w.last()) <= sameM
+
+    /** "Start here": drop the points before [index]; the rest of the route stays as it is. */
+    fun startAt(w: List<GeoPoint>, index: Int): List<GeoPoint> =
+        if (index <= 0 || index >= w.lastIndex) w else w.subList(index, w.size).toList()
+
+    /** "End here": drop the points after [index]. */
+    fun endAt(w: List<GeoPoint>, index: Int): List<GeoPoint> =
+        if (index <= 0 || index >= w.lastIndex) w else w.subList(0, index + 1).toList()
+
+    /**
+     * Round trip "Start & finish here": rotate the loop so it starts and ends at [index] – same points,
+     * same order, same loop. The closing point is the new start again.
+     */
+    fun rotateLoop(w: List<GeoPoint>, index: Int): List<GeoPoint> {
+        if (!isRoundTrip(w) || index <= 0 || index >= w.lastIndex) return w
+        val loop = w.dropLast(1)
+        val rotated = loop.drop(index) + loop.take(index)
+        return rotated + rotated.first()
+    }
+
     fun replace(w: List<GeoPoint>, index: Int, p: GeoPoint): List<GeoPoint> =
         if (index !in w.indices) w else w.toMutableList().also { it[index] = p }
 
