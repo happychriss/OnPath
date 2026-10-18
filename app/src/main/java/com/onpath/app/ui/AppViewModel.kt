@@ -31,6 +31,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
+import com.onpath.app.routing.WaypointSnap
 import com.onpath.app.routing.RouteProgress
 import com.onpath.app.routing.RoutingEngine
 import com.onpath.app.routing.WaypointInsertion
@@ -625,7 +626,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
-            result.onSuccess { route = it; routeError = it.error }
+            result.onSuccess { route = it; routeError = it.error; snapToRoute(pts, pins, it) }
                 .onFailure { route = null; routeError = it.message ?: "Routing failed." }
             if (followNextRoute) {
                 followNextRoute = false
@@ -633,6 +634,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             routing = false
         }
+    }
+
+    /**
+     * Moves free points onto the way the router used (owner: no off-road guidance), so marker, stored
+     * plan and route line agree. POI-pinned and named stops keep their coordinates. Amends the current
+     * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
+     * belongs to the snapped points. Only for the newest result of exactly these points.
+     */
+    private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
+        if (waypoints.toList() != routed) return
+        val keep = pins + routed.indices.filter { stopName(routed[it]) != null }
+        val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
+        for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
+        history.replacePoints(WaypointSnap.moves(routed, snapped))
+        prefs.planWaypoints = waypoints.toList()
     }
 
     fun saveRoute(name: String) {
