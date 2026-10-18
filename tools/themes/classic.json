@@ -167,10 +167,6 @@
  "cycleway.width.z18": 3.6,
  "path.color": "#33251a",
  "path.paved.color": "#33251a",
- "path.dash": [
-  0.05,
-  2.2
- ],
  "path.width.z12": 0.8,
  "path.width.z14": 1.35,
  "path.width.z16": 2.2,
@@ -188,29 +184,21 @@
  ],
  "steps.width.z14": 2.2,
  "steps.width.z18": 5,
- "trail.easy.color": "#33251a",
- "trail.mountain.color": "#cf4f1c",
- "trail.alpine.color": "#c01d3b",
- "trail.easy.dash": [
-  0.05,
-  2.2
- ],
  "trail.mountain.dash": [
-  2,
-  1.1
+  0.05,
+  2.0
  ],
  "trail.alpine.dash": [
-  1,
-  1.1
+  0.05,
+  2.0,
+  2.2,
+  2.0
  ],
- "trail.easy.low.color": "#1e150e",
- "trail.mountain.low.color": "#a8380c",
- "trail.alpine.low.color": "#9a0f2a",
  "trail.width.z11": 0.8,
  "trail.width.z14": 1.6,
  "trail.width.z16": 2.4,
  "trail.width.z18": 3.6,
- "trail.casing.color": "rgba(255,255,255,0.7)",
+ "trail.casing.color": "#fbfaf4",
  "trail.casing.width.z12": 2.2,
  "trail.casing.width.z14": 3.2,
  "trail.casing.width.z16": 4.8,
@@ -255,5 +243,7 @@
  "station.label.font": [
   "Noto Sans Medium"
  ],
- "route.major.opacity": 0.85
+ "route.major.opacity": 0.85,
+ "trail.color": "#33251a",
+ "trail.low.color": "#1e150e"
 }

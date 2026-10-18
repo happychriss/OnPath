@@ -46,14 +46,11 @@
  "path.casing.width.z14": 3.7,
  "path.casing.width.z16": 5.3,
  "path.casing.width.z18": 7.6,
- "trail.easy.color": "#1c130c",
- "trail.mountain.color": "#c2410c",
- "trail.alpine.color": "#b0102e",
  "trail.width.z11": 0.95,
  "trail.width.z14": 1.9,
  "trail.width.z16": 2.8,
  "trail.width.z18": 4.1,
- "trail.casing.color": "rgba(255,255,255,0.9)",
+ "trail.casing.color": "#ffffff",
  "trail.casing.width.z12": 2.8,
  "trail.casing.width.z14": 3.9,
  "trail.casing.width.z16": 5.6,
@@ -91,5 +88,6 @@
  "track.edge.dash": [
   0.25,
   0.45
- ]
+ ],
+ "trail.color": "#1c130c"
 }
