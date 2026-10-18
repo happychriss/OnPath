@@ -2285,31 +2285,42 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 13,
+   "minzoom": 12,
    "filter": [
     "all",
     [
-     "==",
+     "all",
      [
-      "get",
-      "class"
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "track"
      ],
-     "track"
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
     ],
     [
-     "!=",
+     "!",
      [
-      "get",
-      "brunnel"
-     ],
-     "tunnel"
+      "==",
+      [
+       "get",
+       "surface"
+      ],
+      "paved"
+     ]
     ]
    ],
-   "layout": {
-    "line-join": "round"
-   },
    "paint": {
-    "line-color": "rgba(255,255,255,0.75)",
+    "line-color": "#8a6a48",
     "line-width": [
      "interpolate",
      [
@@ -2319,12 +2330,18 @@
      [
       "zoom"
      ],
-     13,
-     2.6,
+     12,
+     1.0,
+     14,
+     3.4,
      16,
-     4.6,
+     5.6,
      18,
-     7.5
+     10
+    ],
+    "line-dasharray": [
+     1.6,
+     1.0
     ]
    }
   },
@@ -2364,8 +2381,11 @@
      "paved"
     ]
    ],
+   "layout": {
+    "line-join": "round"
+   },
    "paint": {
-    "line-color": "#82592f",
+    "line-color": "#8a6a48",
     "line-width": [
      "interpolate",
      [
@@ -2376,13 +2396,13 @@
       "zoom"
      ],
      12,
-     0.9,
+     1.0,
      14,
-     1.5,
+     3.4,
      16,
-     2.4,
+     5.6,
      18,
-     3.8
+     10
     ]
    }
   },
@@ -2391,42 +2411,31 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 12,
+   "minzoom": 13,
    "filter": [
     "all",
     [
-     "all",
+     "==",
      [
-      "==",
-      [
-       "get",
-       "class"
-      ],
-      "track"
+      "get",
+      "class"
      ],
-     [
-      "!=",
-      [
-       "get",
-       "brunnel"
-      ],
-      "tunnel"
-     ]
+     "track"
     ],
     [
-     "!",
+     "!=",
      [
-      "==",
-      [
-       "get",
-       "surface"
-      ],
-      "paved"
-     ]
+      "get",
+      "brunnel"
+     ],
+     "tunnel"
     ]
    ],
+   "layout": {
+    "line-join": "round"
+   },
    "paint": {
-    "line-color": "#82592f",
+    "line-color": "#fffdf5",
     "line-width": [
      "interpolate",
      [
@@ -2436,18 +2445,14 @@
      [
       "zoom"
      ],
-     12,
-     0.9,
+     13,
+     0.6,
      14,
-     1.5,
+     1.8,
      16,
-     2.4,
+     3.4,
      18,
-     3.8
-    ],
-    "line-dasharray": [
-     4,
-     1.6
+     6.4
     ]
    }
   },

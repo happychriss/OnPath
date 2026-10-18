@@ -202,17 +202,20 @@ def paths():
     cls = ["get", "class"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     paved = ["==", ["get", "surface"], "paved"]
-    # tracks: warm mid-brown, long dashes (unpaved) / solid (paved) – distinct from the dark short-dash paths
+    # tracks (Feldweg / farm and forest tracks, highway=track): Komoot-like narrow light road with
+    # brown edges – dashed when unpaved, solid when paved. A wide edge line is drawn first, then a
+    # narrower light fill on top, so only the two edges remain visible. At z12 just a thin dashed line.
     track = ["all", ["==", cls, "track"], not_tunnel]
-    layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=track, layout={"line-join": "round"},
-          paint={"line-color": T("track.casing.color"), "line-width": Z("track.casing.width")})
-    tw = Z("track.width")
-    layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
-          filter=["all", track, paved], paint={"line-color": T("track.paved.color"), "line-width": tw})
-    layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+    ew = Z("track.edge.width")
+    layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
           filter=["all", track, ["!", paved]],
-          paint={"line-color": T("track.color"), "line-width": tw, "line-dasharray": T("track.dash")})
+          paint={"line-color": T("track.edge.color"), "line-width": ew, "line-dasharray": T("track.edge.dash")})
+    layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
+          filter=["all", track, paved], layout={"line-join": "round"},
+          paint={"line-color": T("track.edge.color"), "line-width": ew})
+    layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+          filter=track, layout={"line-join": "round"},
+          paint={"line-color": T("track.fill.color"), "line-width": Z("track.fill.width")})
     # cycleways (solid; unpaved dashed)
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
     cw = Z("cycleway.width")

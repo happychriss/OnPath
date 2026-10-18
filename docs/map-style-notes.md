@@ -11,7 +11,8 @@ Komoot, onX basemap redesign write-up). We took the principles, not code or pale
    (#ddd5cc → #cbc6c0) with a subtle outline from z15, so towns are grey, the countryside is warm.
 4. **Thin ways need width *and* a halo.** Paths are near-black brown short dashes (#5b4636 → #33251a), at least
    ~1.35 px at z14 and 2.2 px at z16, with a thin white casing from z13 so they pop on forest and hillshade.
-5. **Tracks differ from paths by colour and rhythm**: warmer mid-brown (#82592f), longer dashes, slightly wider.
+5. **Tracks (Feldweg, `highway=track`) look like Komoot's**: a narrow light road (cream fill) with brown edges –
+   dashed when unpaved, solid when paved; at z12 only a thin dashed brown line. Paths stay dark single dashed lines.
 6. **Route bands sit under trails** (pale opaque bands, drawn below roads/paths/trails) so they never wash lines out.
 7. **Relief without mud.** Hillshade shadows are a cool blue-grey at moderate opacity instead of a warm purple-grey;
    brown-grey shadows on green forest turn olive/muddy.
