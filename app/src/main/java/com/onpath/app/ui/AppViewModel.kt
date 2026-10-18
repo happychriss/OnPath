@@ -470,6 +470,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiMenu = poi }
+
+    /** POI menu on an empty plan → "Go here from my location": start = position, the POI (pinned, named) = destination. */
+    fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
+        closeMapOverlays()
+        val loc = tracker.location.value ?: return // the menu only offers this with a position
+        if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
+        val p = GeoPoint(poi.lat, poi.lon)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        pinned += p; prefs.planPinned = pinned
+        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+    }
     fun openPointMenu(index: Int) { closeMapOverlays(); if (index in waypoints.indices) pointMenu = index }
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
