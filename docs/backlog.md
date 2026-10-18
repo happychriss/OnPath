@@ -5,7 +5,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
+- [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md – implemented on branch `feat/time-estimate` (agent),
+  waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
 - **EN + DE strings** (owner approved): move all UI texts to strings.xml (EN + DE) in one go – start after the time

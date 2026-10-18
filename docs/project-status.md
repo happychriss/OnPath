@@ -4,6 +4,19 @@ Last update: 2026-10-17 (test build 2, versionName 0.2.0 / versionCode 2).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop (background agent), 2026-10-18 (time estimate):** implemented `docs/plan-time-estimate.md` P0–P3 on branch
+  **`feat/time-estimate`** (merged with main, not merged into main): new `time/` package (one model for plan sheet,
+  route list, Navigate, re-route, activity check; pace chips in Settings; arrival clock; moving time / breaks;
+  learning on the trip in the recording service; learning across tours with Reset). Details and old vs. new times in
+  the plan's "Implementation status". **Field test:** (1) plan a mountain hike – note the sheet time, Start navigation:
+  "to go" must be the same; (2) Settings → Your pace Fit / Relaxed changes plan and route-list times, not the route;
+  (3) walk ≥ 20 min on the route: card stays calm (no jumps > a few min per 100 m), opened card shows "Your pace on
+  this trip" once it differs; (4) a 5+ min stop counts as break ("moving · breaks" line), a photo stop does not; slow
+  steep climbing must not count as break; (5) arrival clock moves later during a long break, not while walking
+  normally; (6) End tour: "Tour saved" shows moving time, breaks and "On the route: planned … – you needed …";
+  (7) after ≥ 30 min on a route, Settings → Your pace shows "Learned · Hike …" with Reset; the next plan uses it;
+  (8) kill the app / reboot during a tour: breaks and learning continue; (9) bikes: e-bike / MTB times plausible?
+  (10) export plan + track GPX of the tours for `app/src/test/resources/tracks/`.
 - **laptop (background agent), 2026-10-18 (re-routing):** implemented `docs/plan-auto-reroute.md` P0–P4 on branch
   **`feat/reroute`** (not merged): `navigation/` (OffRouteDetector, RerouteTargets, Rerouter, Navigator, NavSession,
   NavText), optional timeout/cancel in `RoutingContract` + `BRouterEngine`, the service owns the flow (ask every time,
