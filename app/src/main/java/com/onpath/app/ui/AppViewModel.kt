@@ -782,6 +782,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.NAVIGATE)
     }
 
+    /**
+     * True while a tour follows exactly the current plan (plan not edited): then the followed line (blue) is the
+     * plan, and after a re-route the plan line must not be drawn as a second blue line (the original shows grey).
+     */
+    fun planIsFollowed(): Boolean =
+        followLine != null && !followIsTrack && route?.points != null && route?.points == followOriginal
+
     /** Look of the followed / shown line on the map (see MapController.setTrackLook). */
     fun trackLook(): com.onpath.app.map.MapController.TrackLook {
         val planLine = route?.points
