@@ -23,6 +23,7 @@ region (name, bbox, OSM URL)
   ├─ OSM extract (.osm.pbf) ──┬─ Planetiler ───────────────► base.pmtiles        (required)
   │                           ├─ extract_overlays.py ──────► routes.geojson      (required)
   │                           │                            ├► trails.geojson      (required)
+  │                           │                            ├► ways.geojson        (optional)
   │                           │                            └► trailnames.geojson  (optional)
   │                           └─ extract_pois.py ──────────► pois.geojson        (optional)
   ├─ AWS Terrarium tiles ──── build_terrain.py ────────────► terrain.pmtiles     (required)
@@ -89,7 +90,7 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
 | 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
 | 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.85 46.35 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
-| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `trailnames.geojson` | 2 min | 6.7 + 2.9 + 3.6 MB |
+| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `trailnames.geojson` | 2 min | 7.0 + 4.6 + 6.0 + 3.6 MB |
 | 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
 | 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.85 46.35 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
@@ -116,7 +117,8 @@ Notes per step:
 | Refinement | Data (pipeline) | Style (`tools/make_style.py` + modules) | App |
 | --- | --- | --- | --- |
 | **Trail names + route numbers** | `extract_overlays.py` → `trailnames.geojson`: `t="n"` trail name lines (German name: `name:de` or the German half of "DE - IT"; unnamed member ways get the hiking relation's name; same-name ways merged, simplified + Chaikin-smoothed; `tier` 1 = Waalweg/Höhenweg/≥2.5 km, 2 = normal, 3 = short or not a "…weg"; `len` m). `t="r"`: AVS route numbers of the way's hiking relations ("25", "24 · 25") | `tools/style_trail_names.py`: layers `trail-ref` (z14+, upright red numbers), `trail-name-t3/t2/t1` (z15/z14/z13, longer first) | optional, stripped by `OptionalSources` when missing |
-| **Trail difficulty** | `trails.geojson`: `sac` 1–6 from `sac_scale`, `mtb` 0–6 from `mtb:scale` | `trails-*` layers: colour *and* dash by SAC (T1–2 / T3 / T4+), white casing | required |
+| **Trail difficulty** | `trails.geojson`: `sac` 0–6 from `sac_scale`, `mtb` "0"–"6" from `mtb:scale`, `vis` 0–5 from `trail_visibility` (see "Way quality fields") | `trails-*` layers: rhythm by SAC (solid / dots / dot-dash), faint trails sparser + lighter, light underlay; `trails-sac-label` (T, hiking), `trails-mtb-label` (S, MTB) | required |
+| **Way quality** | `ways.geojson`: `k`, `tt`, `surf`, `smooth` (see "Way quality fields") | `track-grade-*` (track edges by tracktype), `surface-loose-*` (bike activities) | optional, stripped by `OptionalSources` when missing; toggled per activity (`MapController.setOverlay`) |
 | **Route bands** | `routes.geojson`: route relations `hiking/foot` → `hike`, `bicycle` → `bike`, `mtb` → `mtb` (+ `ref`, `name`) | `route_bands()`: pale opaque bands **below** roads/paths/trails; ids `routes-hike/-bike/-mtb` | toggled per activity (`MapController`) |
 | **POIs + tiers** | `extract_pois.py`: 28 kinds (`classify()`), ways/areas → representative point; **bus de-dup**: same-name stops within 40 m merged to their midpoint (`MERGE_KINDS`) | `POI_TIERS` in `make_style.py`: `poi-tier1` (icon z12, dot until z13, label z14), `poi-tier2` (z14/z15), `poi-tier3` (z15/z16); sort key = kind rank, named first; see `docs/poi-categories.md` | Settings filter wraps every `poi-*` layer filter; tap lookup |
 | **Railways + stations** | rails from base tiles (`transportation` class `rail`); stations = POI kind `train` (railway station/halt, no subway/funicular/tourist) | `rail-casing`, `rail` (from z8), `rail-hatch` (z12); `poi-station` top POI layer, icon z10, name z11 (`station.*` tokens) | station follows the POI filter (`train`) |
@@ -125,6 +127,25 @@ Notes per step:
 | **Contours** | `build_contours.py`: 50 m lines at z12, 20 m at z13 (MVT layer `contour`, props `ele`, `idx`=1 every 100 m) | `contour-*` layers | optional, toggle in Settings |
 | **Hillshade / 3-D relief** | `terrain.pmtiles` (Terrarium) | `hillshade.*` tokens | required |
 | **Base map** | Planetiler OpenMapTiles z0–14 | land cover, water, roads, paths, labels (German) | required |
+
+### Way quality fields (stable names – other code may read them)
+`trails.geojson` and `ways.geojson` keep a near-exact geometry (0.5 m simplification, 5 decimals, source
+`maxzoom` 16 / `tolerance` 0.25) because they are drawn right over the base map's own path / track lines; the
+earlier 3 m simplification showed as a second line beside the path at z17+.
+
+| File | Key | Values | From OSM |
+| --- | --- | --- | --- |
+| trails | `sac` | 0 none, 1 hiking … 6 difficult_alpine_hiking (always present) | `sac_scale` |
+| trails | `mtb` | "0" … "6" (first character, so "2+" → "2") | `mtb:scale` |
+| trails | `vis` | 0 excellent, 1 good, 2 intermediate, 3 bad, 4 horrible, 5 no (only if tagged) | `trail_visibility` |
+| ways | `k` | "t" track, "p" path / footway / bridleway, "c" cycleway | `highway` |
+| ways | `tt` | 1–5 (tracks only) | `tracktype=gradeN` |
+| ways | `surf` | 1 paved (asphalt, concrete, paving_stones, sett, …), 2 compact (compacted, fine_gravel), 3 gravel / stony (gravel, pebblestone, rock, stone, scree), 4 natural soft (dirt, ground, earth, mud, grass, sand, woodchips, grass_paver) – only if tagged; generic `unpaved` is left out | `surface` |
+| ways | `smooth` | 0 excellent, 1 good, 2 intermediate, 3 bad, 4 very_bad, 5 horrible, 6 very_horrible, 7 impassable (only if tagged) | `smoothness` |
+
+`trails.geojson` holds ways with `sac`, `mtb` or `vis` ≥ 3. `ways.geojson` holds track / path / footway /
+cycleway / bridleway ways (no sidewalks / crossings) with a tracktype, `surf` ≥ 3 or `smooth` ≥ 3 – ways the map
+draws differently; it does not list every surface.
 
 Token reference and the "why" of the look: `docs/map-style-notes.md`. POI kinds and counts:
 `docs/poi-categories.md`, `docs/poi-integration.md`.
@@ -135,7 +156,7 @@ Token reference and the "why" of the look: `docs/map-style-notes.md`. POI kinds 
 out/<region>/
   onpath-data/                  ← exactly the phone's data folder
     base.pmtiles  terrain.pmtiles  contours.pmtiles
-    routes.geojson  trails.geojson  trailnames.geojson  pois.geojson
+    routes.geojson  trails.geojson  ways.geojson  trailnames.geojson  pois.geojson
     segments/E10_N45.rd5        (not with --no-segments)
     styles/onpath*.json         (only with --with-styles)
   onpath-data-<region>.zip      ← the same, under "onpath-data/" in the zip
