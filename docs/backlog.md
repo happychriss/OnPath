@@ -7,7 +7,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Plan gestures v3 (hold only, smart point menu, no timed messages) – since 2026-10-18
 - [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md (owner asked laptop to build all; incl. routing parts) – since 2026-10-18
-- [laptop] Style: hiking bands + trails from z10 (Meran looked empty at town zoom) – since 2026-10-18
 
 ## Next
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
@@ -31,6 +30,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Style (laptop): hiking route bands from z10 (fully opaque by z11, all bands fade in over one zoom), graded trails
+  from z10 – Meran no longer looks empty at town zoom. Untagged paths still from z12 (base tiles).
 - Plan gestures v2 (laptop, owner spec): POI quick tap = small "Open in Google Maps" bubble, hold on POI = add as
   pinned stop, tap a route point = Delete / End route here / Cancel overlay (26 dp zoom-independent hit radius,
   marker > POI > line > map), stop chips list and PointMenuDialog removed, "point added" notice only when the app
