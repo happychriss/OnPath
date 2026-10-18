@@ -2,8 +2,11 @@ package com.onpath.app.data
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
+import java.io.File
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONArray
@@ -33,9 +36,32 @@ data class Tour(
  * Recording writes every accepted point immediately (R-07).
  */
 class TourDb private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, 1) {
+    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, 1, KeepCorruptFile()) {
 
     init { setWriteAheadLoggingEnabled(true) }
+
+    /**
+     * Android's default handler deletes a corrupt database – every recorded tour with it. This one moves the file
+     * aside (`onpath.db.corrupt-<time>`) so the tours can still be rescued, and lets the app start with a fresh DB.
+     */
+    private class KeepCorruptFile : DatabaseErrorHandler {
+        override fun onCorruption(db: SQLiteDatabase) {
+            val path = db.path
+            try { Log.e("OnPath", "database corrupt: $path") } catch (_: Throwable) { }
+            try { if (db.isOpen) db.close() } catch (_: Exception) { }
+            if (path.isNullOrEmpty() || path == ":memory:") return
+            try {
+                val stamp = System.currentTimeMillis()
+                for (suffix in listOf("", "-wal", "-shm", "-journal")) {
+                    val f = File(path + suffix)
+                    if (f.exists() && !f.renameTo(File("$path.corrupt-$stamp$suffix"))) f.delete()
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
+    /** An older test build over a newer database: keep the data, never throw at start. */
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -95,6 +121,15 @@ class TourDb private constructor(context: Context) :
         "SELECT * FROM tours WHERE kind=? AND state='active' ORDER BY created DESC LIMIT 1",
         arrayOf(TourKind.RECORDED.name)
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
+
+    /**
+     * Only one recording can be active. When a new one starts while an older one is still marked active
+     * (crash + restart race), the older one is closed as "done" so it stays visible in My routes instead of hidden.
+     */
+    fun finishOtherActive(exceptId: Long): Int = writableDatabase.update(
+        "tours", ContentValues().apply { put("state", "done") },
+        "kind=? AND state='active' AND id<>?", arrayOf(TourKind.RECORDED.name, exceptId.toString())
+    )
 
     /**
      * Overwrites a saved planned route in place (⋮ Save after loading it): stats, via points and line; name and
@@ -180,8 +215,9 @@ class TourDb private constructor(context: Context) :
         if (c.moveToFirst() && !c.isNull(0)) (c.getInt(0) + 1) to c.getInt(1) else 0 to 0
     }
 
+    /** Throws on failure (disk full, corrupt DB): a silent `insert()` returning -1 would lose the track unnoticed. */
     private fun insertPoint(db: SQLiteDatabase, id: Long, seq: Int, seg: Int, p: TrackPoint) {
-        db.insert("points", null, ContentValues().apply {
+        db.insertOrThrow("points", null, ContentValues().apply {
             put("tour_id", id); put("seq", seq); put("seg", seg); put("lat", p.lat); put("lon", p.lon)
             if (p.ele != null) put("ele", p.ele) else putNull("ele")
             if (p.timeMs != null) put("time", p.timeMs) else putNull("time")
