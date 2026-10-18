@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Layout: search + ☰ app menu on top, route actions + activity in the route sheet – since 2026-10-18
 - [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md (owner accepted all recommendations) – since 2026-10-18
 
 ## Next
@@ -30,6 +29,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Layout (laptop, owner): top = search pill (search only) + round ☰ app menu (My routes, Start recording, Settings,
+  Check for updates). Route sheet = everything about this route: activity button (icon ▾) at the start of the first
+  line, ⋯ = Save route, Export GPX, Reverse, Round trip, Clear. Activity chip removed from the map; "Load route" and
+  "Manage routes" merged into My routes (opening a planned route loads it, asks "Replace current plan?").
 - Point menu concept (owner): "Start here" drops the points before, "End here" drops the points after (menu says how
   many; Undo restores); round trip: "Start & finish here" rotates the loop (same points, same order). Start and
   destination of a normal route get neither (⋯ Reverse). `PlanEdits.startAt/endAt/rotateLoop/isRoundTrip`.

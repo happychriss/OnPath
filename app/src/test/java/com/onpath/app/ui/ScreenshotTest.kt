@@ -64,7 +64,7 @@ class ScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar(Activity.HIKE, 3, {}, {}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
+                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                         aboveFooter()
                         Footer(gps, compass = CompassSpec(null, 0f) {}) // Plan: compass always shown
