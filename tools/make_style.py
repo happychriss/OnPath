@@ -196,15 +196,6 @@ def route_bands():
               paint={"line-color": T(f"route.{kind}.color"),
                      "line-opacity": interp(minz, T("route.opacity.start"), minz + 1.5, 1, base=1),
                      "line-width": Z("route.width")})
-    # Zoomed out the band alone looks empty where its way (untagged path, track) is not drawn yet:
-    # a thin solid centre line until LOW_ZOOM_SOLID, so every marked route has a line. Toggled by
-    # the app together with its band ("routes-<kind>" + "-line").
-    for kind, minz in (("hike", 11), ("bike", 9), ("mtb", 9)):
-        layer(id_=f"routes-{kind}-line", type="line", source="routes", minzoom=max(minz, 11),
-              maxzoom=LOW_ZOOM_SOLID, filter=["==", ["get", "kind"], kind],
-              layout={"line-join": "round", "line-cap": "round",
-                      "visibility": "visible" if kind == "hike" else "none"},
-              paint={"line-color": T(f"route.{kind}.line.color"), "line-width": Z("route.line.width")})
 
 
 def paths():

@@ -131,11 +131,6 @@
  "route.width.z13": 6,
  "route.width.z15": 12,
  "route.width.z18": 18,
- "route.hike.line.color": "#2b3a1c",
- "route.bike.line.color": "#9a5528",
- "route.mtb.line.color": "#6e4589",
- "route.line.width.z11": 0.9,
- "route.line.width.z13": 1.3,
  "track.edge.color": "#8a6a48",
  "track.edge.dash": [
   0.35,
