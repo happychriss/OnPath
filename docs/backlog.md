@@ -5,9 +5,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Smart remaining-time estimate – design proposal first (docs/plan-time-estimate.md) – since 2026-10-18
 
 ## Next
+- **Time estimate:** proposal in `docs/plan-time-estimate.md` (laptop) – waiting for the owner's answers; phases P0–P4.
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
   vibration, grey original line, skip passed stops) – phases P0–P4 there (P0/P1 suggested for cloud as routing owner).
   Owner UX rule: no self-dismissing messages anywhere.
