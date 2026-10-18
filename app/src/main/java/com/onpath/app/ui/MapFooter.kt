@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -103,6 +104,8 @@ fun MapControls(
     following: Boolean,
     onLocate: () -> Unit,
     peeking: Boolean = false,
+    /** Plan: undo the last edit (shown only when there is something to undo). */
+    onUndo: (() -> Unit)? = null,
 ) {
     Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -112,6 +115,13 @@ fun MapControls(
             }
             if (showEye) {
                 EyeControl(onPeek, peeking)
+                GroupDivider()
+            }
+            if (onUndo != null) {
+                Box(Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = "Undo" },
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 GroupDivider()
             }
             LocateControl(gps, following, onLocate)

@@ -184,11 +184,11 @@ class ScreenshotTest {
         }
     }
 
-    /** Back in Plan while the tour records: status bar (End tour) and "Continue navigation" as the primary button. */
+    /** Back in Plan while the tour records: one sheet – tour status + Continue / Pause / End on top, then the route. */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(6_400.0, 5025, paused = false)),
+                PlanCallbacks())
         }
     }
 
