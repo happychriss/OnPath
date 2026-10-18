@@ -54,3 +54,19 @@ Other style modules (e.g. `tools/style_trail_names.py`) read tokens with
 | T4–T6 alpine path | black dot-dash |
 | track (Feldweg) | light lane; solid edges paved/compact, fine dotted edges loose |
 Difficulty is shown by rhythm and the T-labels, never by colour.
+
+## Way quality (owner, 2026-10-18)
+Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`) – fields in `docs/map-pipeline.md`.
+| Way | Look | Shown |
+| --- | --- | --- |
+| track grade1–2 (compact) | solid brown edges | always |
+| track grade3 | fine dotted edges (`track.edge.dash`) | always |
+| track grade4–5 (soft / grass) | sparse dotted edges (`track.soft.dash`) | always |
+| track without tracktype | as before: solid if OpenMapTiles says paved, else fine dots | always |
+| trail with `trail_visibility` bad / horrible / no | same rhythm, sparser and lighter dots (`trail.faint.*`); T1/untagged faint paths get the T2 dot rhythm | always |
+| SAC label "T1"…"T6" | small black text along the way (`trails-sac-label`) | **hiking only** |
+| MTB label "S0"…"S5" | same look (`trails-mtb-label`) | **MTB / MTB e-bike only** |
+| loose surface (gravel, stony, dirt, ground, grass, sand, …) or smoothness bad or worse | thin warm-brown edge on both sides (`surface.loose.*`, `line-gap-width`) | **bike activities only** |
+Compacted and fine gravel do not count as loose (fine on any bike). The app switches the activity-dependent layers
+in `MapController.setOverlay`. Tracktype edges come from `ways.geojson`, drawn over the base map's track with a
+light cover (`track.cover.width`) that hides the base map's own edges.
