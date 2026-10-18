@@ -31,6 +31,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
+import com.onpath.app.routing.RouteProgress
 import com.onpath.app.routing.RoutingEngine
 import com.onpath.app.routing.WaypointInsertion
 import kotlinx.coroutines.Job
@@ -46,8 +47,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
-
-enum class Mode { BROWSE, PLAN }
 
 /** A track shown on the map (imported GPX, recorded or saved tour). */
 data class ShownTrack(
@@ -86,10 +85,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var dataScreenDismissed by mutableStateOf(false)
 
-    // --- navigation ---
+    // --- screens and mode ---
     var showTours by mutableStateOf(false)
-    var mode by mutableStateOf(Mode.BROWSE)
+    /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
+    var mode by mutableStateOf(AppMode.PLAN)
         private set
+    /** Map taps may add, move or insert points (Plan with no track shown). */
+    val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
+    /** "You have arrived – end tour?" is open. */
+    var arrivalAsk by mutableStateOf(false)
+    /** Asked once per followed line; reset when the line or the tour changes. */
+    private var arrivalDone = false
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
@@ -117,8 +123,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var canRedo by mutableStateOf(false)
         private set
-    /** Eye button: planned line, markers and panel details temporarily hidden. */
-    var routeHidden by mutableStateOf(false)
     /** Plan panel size (full / compact / mini), kept while the app runs. */
     var planSize by mutableStateOf(PlanSize.FULL)
     var notice by mutableStateOf<PlanNotice?>(null)
@@ -160,14 +164,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var engine: RoutingEngine? = null
     private var routeJob: Job? = null
     private val requests = RouteRequests()
-    /** The followed line was taken from this plan ("Follow & record"), so Clear removes it too. */
+    /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
     private var followFromPlan = false
+    /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
+    private var followIsTrack = prefs.followIsTrack
+    /** "Continue navigation" re-plans: follow the next route result. */
+    private var followNextRoute = false
 
     init {
-        if (waypoints.isNotEmpty()) mode = Mode.PLAN
         recalc()
+        // Set directly (enter() touches properties declared below); the check after the DB read
+        // calls enter() and so also tells a running service which mode we are in.
+        if (RecordingService.state.value != null) mode = AppMode.NAVIGATE
         viewModelScope.launch(Dispatchers.IO) {
             val active = db.findActiveRecording()
+            val start = AppMode.onStart(RecordingService.state.value != null, active != null)
+            withContext(Dispatchers.Main) { enter(start) }
             if (active != null && RecordingService.state.value == null) {
                 delay(1500) // the service may be restarting by itself (sticky)
                 if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
@@ -179,6 +191,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     RecordingService.finished.value = null
                     finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                     clearFollow()
+                    arrivalAsk = false
+                    enter(AppMode.PLAN)
                 }
             }
         }
@@ -333,10 +347,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- planning ----------------
 
-    fun startPlanning() { mode = Mode.PLAN; shown = null; showTours = false }
-
-    fun closePlanning() { mode = Mode.BROWSE; highlight = null; planPoi = null; routeHidden = false; notice = null; pointMenu = null }
-
     fun updateSettings(s: AppSettings) {
         settings = s; prefs.settings = s
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
@@ -482,7 +492,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         highlight = null
         val pts = waypoints.toList()
         val pins = pinnedIndices()
-        if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; return }
+        if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false; return }
         val act = activity; val level = sac
         val gen = requests.next()
         routing = true
@@ -498,6 +508,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
             result.onSuccess { route = it; routeError = it.error }
                 .onFailure { route = null; routeError = it.message ?: "Routing failed." }
+            if (followNextRoute) {
+                followNextRoute = false
+                if (route != null) followPlanned() else message = "Could not re-route – still following the previous line."
+            }
             routing = false
         }
     }
@@ -518,29 +532,92 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun defaultName(prefix: String) =
         "$prefix " + SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date())
 
+    // ---------------- modes: Plan <-> Navigate ----------------
+
+    /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
+    private fun enter(m: AppMode) {
+        mode = m
+        if (m == AppMode.NAVIGATE) { planPoi = null; notice = null; pointMenu = null; highlight = null; followMe = true }
+        else followMe = false
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
+            putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
+        }
+    }
+
+    /**
+     * Plan's primary action (location permission is checked by the caller). Follows the planned
+     * route, else the shown track, else nothing (free recording), and starts recording.
+     */
+    fun startNavigation() {
+        if (recState.value != null) { continueNavigation(); return }
+        val s = shown
+        when {
+            s != null -> { followShown(); shown = null }
+            route != null && waypoints.size >= 2 -> followPlanned()
+            else -> clearFollow()
+        }
+        startRecording()
+        enter(AppMode.NAVIGATE)
+    }
+
+    /**
+     * Back to Navigate while a tour runs (no new recording). Smart re-route: from the current
+     * position through the stops not yet passed (RouteProgress), then follow the new line.
+     * Without a fix the stops stay as they are. A followed track (not the plan) is kept.
+     */
+    fun continueNavigation() {
+        val pos = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
+        if (!followIsTrack && waypoints.size >= 2) {
+            if (pos != null) {
+                val visited = RouteProgress.visitedStops(waypoints, recState.value?.track?.flatten().orEmpty())
+                val stops = RouteProgress.remainingStops(waypoints, if (routing) null else route?.points, pos, visited)
+                followNextRoute = true
+                set(listOf(pos) + stops)
+            } else if (routing) followNextRoute = true
+            else if (route != null && followLine != route?.points) followPlanned()
+        }
+        enter(AppMode.NAVIGATE)
+    }
+
+    /** The slide switch in Navigate. Recording continues. */
+    fun switchToPlan() = enter(AppMode.PLAN)
+
+    /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
+    fun endTour() { arrivalAsk = false; stopRecording() }
+
+    /** Called with each fix in Navigate: asks once when the end of the followed line is reached. */
+    fun checkArrival(position: GeoPoint, remainingAlongM: Double?) {
+        if (arrivalDone || mode != AppMode.NAVIGATE || recState.value == null) return
+        if (RouteProgress.arrived(position, followLine?.lastOrNull(), remainingAlongM)) { arrivalDone = true; arrivalAsk = true }
+    }
+
     // ---------------- follow / record ----------------
 
     fun followPlanned() {
         val r = route ?: return
-        setFollow(defaultName("Route"), r.points)
+        setFollow(defaultName("Route"), r.points, isTrack = false)
         followFromPlan = true
     }
 
     fun followShown() {
         val s = shown ?: return
-        setFollow(s.name, s.points)
+        setFollow(s.name, s.points, isTrack = true)
         followFromPlan = false
     }
 
-    private fun setFollow(name: String, points: List<GeoPoint>) {
+    private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean) {
         prefs.saveFollow(name, points)
         followName = name
         followLine = points
+        followIsTrack = isTrack; prefs.followIsTrack = isTrack
+        arrivalDone = false
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
     fun clearFollow() {
         followFromPlan = false
+        followIsTrack = false; prefs.followIsTrack = false
+        arrivalDone = false
         prefs.saveFollow("", null)
         followName = null
         followLine = null
@@ -563,6 +640,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveUnfinished(t: Tour) {
         unfinished = null
+        enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
             withContext(Dispatchers.Main) { message = "Tour saved to My tours." }
@@ -592,7 +670,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
                 sac = t.sac
                 shown = null
-                mode = Mode.PLAN
                 change { clear(); addAll(t.waypoints.map { GeoPoint(it.lat, it.lon) }) }
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
@@ -603,7 +680,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun showTrack(s: ShownTrack) {
-        mode = Mode.BROWSE
+        // A GPX opened from another app while navigating: show it in Plan (the recording goes on).
+        if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN)
         shown = s
         events += UiEvent.Fit(s.points)
     }

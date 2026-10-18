@@ -38,7 +38,7 @@ import com.onpath.app.ui.AppViewModel
 import com.onpath.app.ui.FinishedDialog
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
-import com.onpath.app.ui.Mode
+import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.ToursScreen
@@ -93,13 +93,13 @@ class MainActivity : ComponentActivity() {
                         MapScreen(
                             vm = vm,
                             onRequestLocation = { requestLocation(force = true) },
-                            onRecord = {
+                            onStartNavigation = {
                                 withLocation {
-                                    vm.startRecording()
-                                    if (!vm.batteryHintShown) showBatteryHint = true
+                                    val newTour = vm.recState.value == null
+                                    vm.startNavigation()
+                                    if (newTour && !vm.batteryHintShown) showBatteryHint = true
                                 }
                             },
-                            onImport = { launchImport() },
                         )
                         if (vm.showTours) {
                             BackHandler { vm.showTours = false }
@@ -131,8 +131,10 @@ class MainActivity : ComponentActivity() {
                             onInstallUpdate = { vm.installUpdate() },
                         )
                     }
-                    BackHandler(enabled = !vm.showTours && !vm.showSettings && (vm.mode == Mode.PLAN || vm.shown != null)) {
-                        if (vm.shown != null) vm.closeShown() else vm.closePlanning()
+                    // Back in Plan closes a shown track or the POI card. Navigate is left only by the slide switch.
+                    BackHandler(enabled = !vm.showTours && !vm.showSettings && vm.mode == AppMode.PLAN &&
+                        (vm.shown != null || vm.planPoi != null)) {
+                        if (vm.planPoi != null) vm.planPoi = null else vm.closeShown()
                     }
 
                     vm.message?.let { msg ->

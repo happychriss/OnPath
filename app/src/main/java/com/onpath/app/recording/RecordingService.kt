@@ -91,6 +91,8 @@ class RecordingService : Service() {
     private var offDistance: Double? = null
     /** Off-route settings, re-read when the app sends ACTION_FOLLOW_CHANGED. */
     private var settings: com.onpath.app.data.AppSettings? = null
+    /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
+    private var navigating = true
     private var lastNotify = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -103,12 +105,17 @@ class RecordingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED)
+        val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
             ACTION_RESUME -> { setPaused(false); return START_STICKY }
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
+            ACTION_NAVIGATING -> {
+                navigating = intent.getBooleanExtra(EXTRA_ON, true); offSince = 0
+                if (!navigating && offAlerted) { offAlerted = false; nm().cancel(ALERT_ID) }
+                publish(); return START_STICKY
+            }
             ACTION_FOLLOW_CHANGED -> {
                 follow = Prefs(this).loadFollow(); settings = null; offSince = 0; offAlerted = false; publish(); return START_STICKY
             }
@@ -227,7 +234,7 @@ class RecordingService : Service() {
         offDistance = d
         val now = SystemClock.elapsedRealtime()
         val cfg = settings ?: Prefs(this).settings.also { settings = it }
-        if (cfg.offRouteWarning && d > cfg.offRouteM) {
+        if (navigating && cfg.offRouteWarning && d > cfg.offRouteM) {
             if (offSince == 0L) offSince = now
             if (!offAlerted && now - offSince >= OFF_ROUTE_MS) { offAlerted = true; alertOffRoute(d) }
         } else {
@@ -347,6 +354,9 @@ class RecordingService : Service() {
         const val ACTION_RESUME = "com.onpath.app.RESUME"
         const val ACTION_STOP = "com.onpath.app.STOP"
         const val ACTION_FOLLOW_CHANGED = "com.onpath.app.FOLLOW_CHANGED"
+        /** App switched mode: [EXTRA_ON] true = Navigate (off-route checks on), false = Plan. */
+        const val ACTION_NAVIGATING = "com.onpath.app.NAVIGATING"
+        const val EXTRA_ON = "on"
         const val EXTRA_CONTINUE_ID = "continueId"
         const val EXTRA_ACTIVITY = "activity"
 

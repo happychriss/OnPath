@@ -2,11 +2,6 @@ package com.onpath.app.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.MoreVert
@@ -34,8 +28,6 @@ import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -73,10 +65,8 @@ class PlanCallbacks(
     val onFromMe: () -> Unit = {},
     val onSave: () -> Unit = {},
     val onShare: () -> Unit = {},
-    val onGo: () -> Unit = {},
-    val onClose: () -> Unit = {},
-    /** Eye button held (true) / released (false): the route is hidden only while held. */
-    val onHoldHide: (Boolean) -> Unit = {},
+    /** Primary action: follow the route (or just record without one). */
+    val onStartNavigation: () -> Unit = {},
     val onReverse: () -> Unit = {},
     val onRoundTrip: () -> Unit = {},
     val onPointMenu: (Int) -> Unit = {},
@@ -102,9 +92,13 @@ data class PlanUi(
     val canUndo: Boolean,
     val canRedo: Boolean,
     val activity: Activity,
-    val hidden: Boolean = false,
     val size: PlanSize = PlanSize.FULL,
-)
+    /** A tour records: the Tour running bar offers "Continue navigation" instead of Start. */
+    val tourRunning: Boolean = false,
+) {
+    /** Without a route navigation just records; while a route is being computed, wait for it. */
+    val canStart: Boolean get() = pointCount < 2 || route != null
+}
 
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
@@ -128,62 +122,47 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
             Spacer(Modifier.width(8.dp))
             if (route != null && !ui.routing && !mini) DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
             if (!(mini && route != null)) Spacer(Modifier.weight(1f))
-            // Hold the eye to peek at the map under the route; release shows it again.
-            HoldEyeButton(held = ui.hidden, onHold = cb.onHoldHide)
             PlanOverflow(enabled = ui.pointCount >= 2, cb)
-            ActionButtonSmall(Icons.Filled.Close, "Close planning", cb.onClose)
         }
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp)) else Spacer(Modifier.height(3.dp))
         ui.error?.let { ErrorBox(it) }
-        if (mini) return@BottomPanel
-        Spacer(Modifier.height(6.dp))
-        when {
-            ui.pointCount == 0 -> Hint("Tap the map to set the start, or use “From me”.")
-            ui.pointCount == 1 -> Hint("Tap the map to set the destination.")
-            route != null -> {
-                StatsRow(route.distanceM, route.ascentM, route.descentM, route.durationS)
-                if (ui.size == PlanSize.FULL) {
-                    Spacer(Modifier.height(6.dp))
-                    ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
-                    GradientLegend()
-                    RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp))
+        // Mini: title line + primary action only (one primary action per mode).
+        if (!mini) {
+            Spacer(Modifier.height(6.dp))
+            when {
+                ui.pointCount == 0 -> {
+                    Hint("Hold the map briefly to set the start, or use “From me”.")
+                    Text("No route? Start navigation just records your track.", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                ui.pointCount == 1 -> Hint("Hold the map briefly to set the destination.")
+                route != null -> {
+                    StatsRow(route.distanceM, route.ascentM, route.descentM, route.durationS)
+                    if (ui.size == PlanSize.FULL) {
+                        Spacer(Modifier.height(6.dp))
+                        ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
+                        GradientLegend()
+                        RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp))
+                    }
                 }
             }
+            if (ui.pointCount > 0 && ui.size == PlanSize.FULL) PointChips(ui.pointCount, cb.onPointMenu)
+            Spacer(Modifier.height(4.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                ActionButton(Icons.AutoMirrored.Filled.Undo, "Undo", cb.onUndo, enabled = ui.canUndo)
+                ActionButton(Icons.AutoMirrored.Filled.Redo, "Redo", cb.onRedo, enabled = ui.canRedo)
+                ActionButton(Icons.Filled.MyLocation, "From me", cb.onFromMe)
+                ActionButton(Icons.Filled.DeleteSweep, "Clear", cb.onClear, enabled = ui.pointCount > 0)
+                ActionButton(Icons.Filled.Save, "Save", cb.onSave, enabled = route != null)
+                ActionButton(Icons.Filled.Share, "GPX", cb.onShare, enabled = route != null)
+            }
+        } else Spacer(Modifier.height(6.dp))
+        if (!ui.tourRunning) {
+            Button(onClick = cb.onStartNavigation, enabled = ui.canStart, modifier = Modifier.fillMaxWidth().height(60.dp),
+                shape = RoundedCornerShape(16.dp)) {
+                Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp)); Text("Start navigation", fontSize = 17.sp)
+            }
         }
-        if (ui.pointCount > 0 && ui.size == PlanSize.FULL) PointChips(ui.pointCount, cb.onPointMenu)
-        Spacer(Modifier.height(4.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ActionButton(Icons.AutoMirrored.Filled.Undo, "Undo", cb.onUndo, enabled = ui.canUndo)
-            ActionButton(Icons.AutoMirrored.Filled.Redo, "Redo", cb.onRedo, enabled = ui.canRedo)
-            ActionButton(Icons.Filled.MyLocation, "From me", cb.onFromMe)
-            ActionButton(Icons.Filled.DeleteSweep, "Clear", cb.onClear, enabled = ui.pointCount > 0)
-            ActionButton(Icons.Filled.Save, "Save", cb.onSave, enabled = route != null)
-            ActionButton(Icons.Filled.Share, "GPX", cb.onShare, enabled = route != null)
-        }
-        Button(onClick = cb.onGo, enabled = route != null, modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)) {
-            Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp)); Text("Follow & record", fontSize = 16.sp)
-        }
-    }
-}
-
-/** Eye button that hides the route only while it is pressed down. */
-@Composable
-private fun HoldEyeButton(held: Boolean, onHold: (Boolean) -> Unit) {
-    val hold by rememberUpdatedState(onHold)
-    Box(
-        Modifier.size(48.dp).clip(CircleShape)
-            .background(if (held) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .semantics { contentDescription = "Hold to hide the route and see the map" }
-            .pointerInput(Unit) {
-                detectTapGestures(onPress = {
-                    hold(true)
-                    try { tryAwaitRelease() } finally { hold(false) }
-                })
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(if (held) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = null)
     }
 }
 

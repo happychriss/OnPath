@@ -37,7 +37,7 @@ class PointDragger(
     /** From the map's long-click listener. Returns true when a drag starts. */
     fun onLongPress(ll: LatLng): Boolean {
         val c = controller() ?: return false
-        if (vm.mode != Mode.PLAN || vm.routeHidden) return false
+        if (!vm.canEditMap) return false // Navigate never moves anything
         val screen = map.projection.toScreenLocation(ll)
         val idx = c.waypointAt(screen)
         if (idx >= 0) {
@@ -96,7 +96,7 @@ class PointDragger(
     private fun reset(c: MapController?) {
         moveIndex = -1; insertIndex = -1; moved = false
         c?.setDragPreview(null, null, null)
-        c?.setWaypoints(if (vm.mode == Mode.PLAN && !vm.routeHidden) vm.waypoints.toList() else emptyList(), vm.pinnedIndices())
+        c?.setWaypoints(if (vm.canEditMap) vm.waypoints.toList() else emptyList(), vm.pinnedIndices())
     }
 
     private fun at(ev: MotionEvent) = at(ev.x, ev.y)
