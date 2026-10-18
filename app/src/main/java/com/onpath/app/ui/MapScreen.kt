@@ -44,8 +44,6 @@ fun MapScreen(
     onRequestLocation: () -> Unit,
     /** Start navigation; the caller makes sure location permission is granted first. */
     onStartNavigation: () -> Unit,
-    /** Opens the system file picker for a GPX file (needs the Activity). */
-    onImportGpx: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -103,7 +101,7 @@ fun MapScreen(
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
         when (vm.mode) {
-            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onImportGpx,
+            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation,
                 onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
@@ -134,7 +132,6 @@ fun MapScreen(
 @Composable
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onImportGpx: () -> Unit, // Import GPX lives in Manage routes now
     onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
@@ -142,7 +139,7 @@ private fun PlanMode(
             onSearch = vm::openSearch,
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
-                onManage = { vm.openRoutes(RoutesMode.MANAGE) },
+                onManage = { vm.openRoutes() },
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.showSettings = true },

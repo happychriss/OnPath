@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
@@ -66,17 +65,7 @@ fun MapFooter(scale: Pair<String, Dp>?, fabs: @Composable ColumnScope.() -> Unit
     }
 }
 
-/** Standard round map button (small FAB, 48dp = full touch target), surface coloured like Google Maps' controls. */
-@Composable
-fun MapFab(onClick: () -> Unit, modifier: Modifier = Modifier, contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-           content: @Composable () -> Unit) {
-    SmallFloatingActionButton(
-        onClick = onClick, modifier = modifier.size(MAP_FAB),
-        shape = CircleShape, containerColor = MaterialTheme.colorScheme.surface, contentColor = contentColor,
-        content = content,
-    )
-}
-
+/** Size of one map control (48 dp = full touch target). */
 val MAP_FAB = 48.dp
 
 fun gpsColor(status: GpsStatus): Color = when (status) {
@@ -84,29 +73,6 @@ fun gpsColor(status: GpsStatus): Color = when (status) {
     GpsStatus.WEAK -> OnPathColors.Weak
     GpsStatus.SEARCHING -> OnPathColors.Grey
     GpsStatus.OFF, GpsStatus.NO_PERMISSION -> OnPathColors.Bad
-}
-
-/**
- * Centre-on-me button with the GPS status as a small coloured dot (green good, amber weak,
- * grey searching, red off / not allowed). The caller decides what a tap does for each status.
- */
-@Composable
-fun LocateButton(status: GpsStatus, following: Boolean, onClick: () -> Unit) {
-    val what = when (status) {
-        GpsStatus.OFF -> "Location is off, tap to turn it on"
-        GpsStatus.NO_PERMISSION -> "Location not allowed, tap to allow"
-        else -> "Center on my position. GPS ${status.label}"
-    }
-    Box {
-        MapFab(onClick, contentColor = if (following) OnPathColors.Route else MaterialTheme.colorScheme.onSurfaceVariant) {
-            Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, what)
-        }
-        // GPS status: a read-only dot on the button, not a separate control.
-        Box(
-            Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = 2.dp).size(12.dp)
-                .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),
-        )
-    }
 }
 
 @Composable
@@ -202,7 +168,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
     val what = when (status) {
         GpsStatus.OFF -> "Location is off, tap to turn it on"
         GpsStatus.NO_PERMISSION -> "Location not allowed, tap to allow"
-        else -> "Center on my position. GPS ${status.label}"
+        else -> "Centre on my position. GPS ${status.label}"
     }
     Box(Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
