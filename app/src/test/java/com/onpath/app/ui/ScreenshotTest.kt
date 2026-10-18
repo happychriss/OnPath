@@ -125,11 +125,33 @@ class ScreenshotTest {
         }
     }
 
-    /** The ⋮ menu of the search bar: My tours, Import GPX, Settings, Updates. */
-    @Test fun planMenuOpen() = paparazzi.snapshot {
+    @Composable
+    private fun TopMenu(state: RouteMenuState, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
-            Frame { PlanPanel(planUi(), PlanCallbacks()) }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(onUpdates = {})) {} } }
+            Frame { bottom() }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(state, onUpdates = {})) {} } }
+        }
+    }
+
+    /** ⋮ with a route planned (saved routes exist): Load, Save, Manage on; Start recording greyed. */
+    @Test fun planMenuOpen() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false)) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ⋮ on an empty plan (nothing saved yet): Save and Load greyed, Start recording on. */
+    @Test fun planMenuEmpty() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false)) {
+            PlanPanel(planUi(n = 0, r = null), PlanCallbacks())
+        }
+    }
+
+    /** ⋮ while a tour runs (looked at from Plan): Load and Start recording greyed, Save still possible. */
+    @Test fun planMenuNavigating() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
+            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
+            PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
     }
 
@@ -316,17 +338,36 @@ class ScreenshotTest {
         }
     }
 
+    private val viaPts = listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null), com.onpath.app.gpx.GpxWaypoint(46.70, 11.20, null))
+    private val tourList = listOf(
+        Tour(1, TourKind.PLANNED, "Route Meran – Hirzer", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 300.0, 6.1 * 3600, "done", viaPts),
+        Tour(2, TourKind.RECORDED, "Tour 12 Oct 2026, 09:14", 1_760_200_000_000, "MTB", 3, 32_800.0, 940.0, 940.0, 3.2 * 3600, "done", emptyList()),
+        Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
+    )
+
+    /** Manage routes: one list of planned / recorded / imported, Import GPX, per item Export and Delete. */
     @Test fun tours() = paparazzi.snapshot {
-        OnPathTheme {
-            ToursScreen(
-                listOf(
-                    Tour(1, TourKind.PLANNED, "Route Meran – Hirzer", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 300.0, 6.1 * 3600, "done", emptyList()),
-                    Tour(2, TourKind.RECORDED, "Tour 12 Oct 2026, 09:14", 1_760_200_000_000, "MTB", 3, 32_800.0, 940.0, 940.0, 3.2 * 3600, "done", emptyList()),
-                    Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
-                ),
-                {}, {}, {}, {}, {},
-            )
-        }
+        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}) }
+    }
+
+    /** ⋮ Load route: the same list, tap = load. */
+    @Test fun routesPick() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, RoutesMode.PICK, {}, {}, {}, {}, {}) }
+    }
+
+    /** Delete asks first and stays until answered. */
+    @Test fun routesDeleteConfirm() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, RoutesMode.MANAGE, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
+    }
+
+    /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */
+    @Test fun replacePlanAsk() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, RoutesMode.PICK, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
+    }
+
+    /** The sheet shows the save state instead of a message. */
+    @Test fun planSaved() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer"), PlanCallbacks()) }
     }
 
     @Test fun missingData() = paparazzi.snapshot {

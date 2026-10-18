@@ -25,6 +25,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +42,8 @@ import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.SettingsScreen
-import com.onpath.app.ui.ToursScreen
+import com.onpath.app.ui.RouteDialogs
+import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
 import kotlinx.coroutines.delay
 
@@ -102,13 +104,15 @@ class MainActivity : ComponentActivity() {
                             },
                             onImportGpx = { launchImport() },
                         )
-                        if (vm.showTours) {
-                            BackHandler { vm.showTours = false }
-                            ToursScreen(
+                        vm.routesScreen?.let { routesMode ->
+                            BackHandler { vm.routesScreen = null }
+                            RoutesScreen(
                                 tours = vm.tours,
-                                onBack = { vm.showTours = false },
+                                mode = routesMode,
+                                navigating = vm.navigating(vm.recState.collectAsState().value != null),
+                                onBack = { vm.routesScreen = null },
                                 onImport = { launchImport() },
-                                onOpen = { vm.openTour(it) },
+                                onOpen = { vm.requestOpen(it) },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                             )
@@ -133,7 +137,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
-                    BackHandler(enabled = !vm.showTours && !vm.showSettings && vm.mode == AppMode.PLAN &&
+                    BackHandler(enabled = vm.routesScreen == null && !vm.showSettings && vm.mode == AppMode.PLAN &&
                         (vm.shown != null || vm.mapOverlayOpen)) {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
@@ -147,6 +151,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                RouteDialogs(vm)
                 vm.unfinished?.let { t ->
                     UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.saveUnfinished(t) })
                 }

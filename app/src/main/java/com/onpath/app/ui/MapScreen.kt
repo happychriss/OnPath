@@ -56,7 +56,6 @@ fun MapScreen(
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
     var showActivity by remember { mutableStateOf(false) }
-    var showSave by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
 
     val rec by vm.recState.collectAsState()
@@ -106,7 +105,7 @@ fun MapScreen(
 
         when (vm.mode) {
             AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onImportGpx,
-                onActivity = { showActivity = true }, onSave = { showSave = true }, onEndTour = { confirmEnd = true },
+                onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
         }
@@ -122,7 +121,6 @@ fun MapScreen(
         onOverlay = { vm.updateSettings(vm.settings.copy(routeOverlay = it)) },
         onDismiss = { showActivity = false },
     )
-    if (showSave) NameDialog("Save route", vm.defaultName("Route"), onDone = { vm.saveRoute(it); showSave = false }, onDismiss = { showSave = false })
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (confirmEnd) EndTourDialog(onEnd = { confirmEnd = false; vm.endTour() }, onDismiss = { confirmEnd = false })
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onEnd = vm::endTour, onKeepGoing = { vm.arrivalAsk = false })
@@ -137,16 +135,22 @@ fun MapScreen(
 /** Plan mode: top bar, POI card, tour bar and the plan (or shown track) panel. */
 @Composable
 private fun PlanMode(
-    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit, onImportGpx: () -> Unit,
-    onActivity: () -> Unit, onSave: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
+    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onImportGpx: () -> Unit, // Import GPX lives in Manage routes now
+    onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
             vm.activity, vm.sac, onActivity = onActivity, onSearch = vm::openSearch,
             menu = PlanMenu(
-                onTours = { vm.refreshTours(); vm.showTours = true },
-                onImportGpx = onImportGpx,
+                state = vm.menuState(recording = rec != null),
+                onLoad = { vm.openRoutes(RoutesMode.PICK) },
+                onSave = { vm.saveDialog = true },
+                onManage = { vm.openRoutes(RoutesMode.MANAGE) },
+                // Free recording without a route: a shown track is closed so it is not followed.
+                onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.showSettings = true },
+                onOpened = vm::refreshTours,
                 onUpdates = if (vm.updatesEnabled) ({ vm.checkForUpdates(manual = true); vm.showSettings = true }) else null,
             ),
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
@@ -164,7 +168,7 @@ private fun PlanMode(
                 rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
-                else PlanBottom(vm, rec, onStartNavigation, onSave)
+                else PlanBottom(vm, rec, onStartNavigation)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -172,7 +176,7 @@ private fun PlanMode(
 }
 
 @Composable
-private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onSave: () -> Unit) {
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit) {
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
@@ -188,10 +192,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null),
+            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear, onFromMe = vm::startAtMyPosition,
-            onSave = onSave, onShare = vm::exportPlanned,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onHighlight = { vm.highlight = it },
