@@ -83,6 +83,9 @@ fun SettingsScreen(
     update: AppViewModel.UpdateState? = null,
     onCheckUpdate: () -> Unit = {},
     onInstallUpdate: () -> Unit = {},
+    /** Pace learned from earlier tours, one entry per activity with data (time estimate). */
+    learnedPace: List<LearnedPace> = emptyList(),
+    onResetPace: (com.onpath.app.routing.Activity) -> Unit = {},
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -130,6 +133,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+                item { PaceSection(settings, onChange, learnedPace, onResetPace) } // time estimate (PaceSettings.kt)
                 item {
                     Section("Points of interest") {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -267,7 +271,7 @@ private val ATTRIBUTIONS = listOf(
 )
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String, content: @Composable () -> Unit) {
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = OnPathColors.Green,

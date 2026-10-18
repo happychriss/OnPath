@@ -92,6 +92,13 @@ data class NavUi(
     val turn: TurnHint? = null,
     /** Map orientation: walking direction up (true) or north up (false); drives the orientation button. */
     val headingUp: Boolean = true,
+    /** Arrival clock "16:40" (to go + break allowance), shown large on the right; null = none. */
+    val arriveAt: String? = null,
+    /** Recording time without breaks / breaks so far (s); null = not known (shows the elapsed clock instead). */
+    val movingS: Double? = null,
+    val breakS: Double? = null,
+    /** "Your pace on this trip: up 0.9× · down 1.1×" in the opened card; null = nothing learned yet. */
+    val paceNote: String? = null,
 )
 
 data class TurnHint(val kind: TurnKind, val distanceM: Double)
@@ -201,7 +208,8 @@ internal fun NorthNeedle(modifier: Modifier) {
 }
 
 /**
- * Read-only status card: "7.4 km to go · ↑ 512 m · 2 h 54 min" and "● Recording · 5.3 km · 1:23:45".
+ * Read-only status card: "7.4 km to go · 2 h 50 min", "↑ 512 m ↓ 310 m" with "arrive ≈ 16:40" on the right, and
+ * "● 5.3 km · moving 1:12 · breaks 0:11" (moving time without breaks; docs/plan-time-estimate.md §5).
  * The only button is "Resume" while paused (from the notification).
  */
 @Composable
@@ -215,12 +223,11 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 ui.toGo?.let { g ->
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("${Format.distance(g.distanceM)} to go", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text("  ·  ↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}  ·  ${Format.duration(g.timeS)}",
-                            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                    // the time first in view: it must never be cut off (↑ / ↓ go to their own line)
+                    Text("${Format.distance(g.distanceM)} to go · ${Format.duration(g.timeS)}", style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     val off = g.offM
                     if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
@@ -229,14 +236,18 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                         RecDot(ui.paused, Modifier.size(8.dp))
                         Spacer(Modifier.width(8.dp))
-                        val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS"; else -> "Recording" }
-                        Text("$status · ${Format.distance(d)} · ${Format.clock(ui.elapsedS)}",
+                        Text(recordingLine(ui, d),
                             style = if (ui.toGo == null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }
             }
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
+            else if (ui.toGo != null && ui.arriveAt != null) Column(horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 8.dp).semantics(mergeDescendants = true) {}) {
+                Text("arrive", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("≈ ${ui.arriveAt}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
             if (canOpen) Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
         }
@@ -244,9 +255,29 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         if (profileOpen && canOpen) {
             ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp))
+            ui.paceNote?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
+            }
         }
       }
     }
+}
+
+/**
+ * "5.3 km · moving 1:12 · breaks 0:11" while navigating; the state word only when it matters (paused, no GPS) or for a
+ * free recording ("Recording · 2.1 km · moving 0:28"). Without moving time: the elapsed clock as before.
+ */
+internal fun recordingLine(ui: NavUi, distanceM: Double): String {
+    val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS"; else -> "Recording" }
+    val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
+    val parts = mutableListOf<String>()
+    if (ui.toGo == null || ui.paused || ui.waitingGps) parts += status
+    parts += Format.distance(distanceM)
+    parts += "moving ${com.onpath.app.time.TimeEstimate.hm(moving)}"
+    val b = ui.breakS ?: 0.0
+    if (b >= 60) parts += "breaks ${com.onpath.app.time.TimeEstimate.hm(b)}"
+    return parts.joinToString(" · ")
 }
 
 /** "Off route – finding a way back…" (spinner) / "– no way back found" / "– original route kept" with an arrow to the route. */
@@ -328,9 +359,15 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }
     LaunchedEffect(next?.first) { vm.navTurn = next?.first }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
+    val tt = rec?.time
+    // the service's calm, learned value while it knows the line; else the plain model from here
+    val toGoS = remaining?.let { r -> tt?.toGoS ?: toGoSeconds(times, r.distanceM, vm.planFactors()) }
+    val arrive = toGoS?.let { s ->
+        tt?.arrivalMs?.takeIf { tt.toGoS != null } ?: com.onpath.app.time.TimeEstimate.arrivalMs(System.currentTimeMillis(), s)
+    }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
     val ui = NavUi(
         toGo = remaining?.let { r ->
-            ToGo(r.distanceM, r.ascentM, toGoSeconds(times, r.distanceM, vm.planFactors()), r.offM, r.descentM,
+            ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList())
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
@@ -340,6 +377,9 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         turn = next?.let { (t, d) -> TurnHint(t.kind, d) },
         headingUp = vm.navHeadingUp,
+        arriveAt = arrive,
+        movingS = tt?.movingS, breakS = tt?.breakS,
+        paceNote = tt?.learned?.let { paceNote(it) },
     )
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute)
@@ -348,6 +388,13 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
 /** Moving time from the position ([remainingM] before the end) to the end of the line, rounded for display. */
 internal fun toGoSeconds(times: com.onpath.app.time.RouteTimes?, remainingM: Double, f: com.onpath.app.time.Factors): Double =
     if (times == null) 0.0 else com.onpath.app.time.TimeEstimate.round(times.remainingFrom(times.lengthM - remainingM, f))
+
+/** "Your pace on this trip: up 0.9× · down 1.1×" – hidden while every factor is about 1. */
+internal fun paceNote(f: com.onpath.app.time.Factors): String? {
+    val parts = listOf("up" to f.up, "flat" to f.flat, "down" to f.down).filter { kotlin.math.abs(it.second - 1) >= 0.05 }
+    if (parts.isEmpty()) return null
+    return "Your pace on this trip: " + parts.joinToString(" · ") { "%s %.1f×".format(java.util.Locale.US, it.first, it.second) }
+}
 
 /** Off the line by more than this: no turn hint (the off-route chip / warning takes over). */
 internal const val TURN_HIDE_OFF_M = 40.0

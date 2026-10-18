@@ -79,6 +79,8 @@ data class RecState(
     val track: List<List<GeoPoint>>,
     /** Navigation (followed line, re-routing question, grey original line); null for free recording. */
     val nav: NavState? = null,
+    /** Moving time, breaks, to go and arrival (docs/plan-time-estimate.md); null before the first tick. */
+    val time: com.onpath.app.time.TripTime? = null,
 )
 
 /**
@@ -125,6 +127,9 @@ class RecordingService : Service() {
     /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
     private var navigating = true
     private var lastNotify = 0L
+    /** Moving time vs. breaks of this tour (persisted in [TRIP_FILE], survives a restart). */
+    private var breaks = com.onpath.app.time.BreakDetector()
+    private var tripSaved = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -189,10 +194,13 @@ class RecordingService : Service() {
             eleRef = segs.lastOrNull()?.lastOrNull()?.ele
             last = null
             db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+            loadTrip()
         } else {
             val name = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date())
             tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
                 0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
+            breaks = com.onpath.app.time.BreakDetector()
+            saveTrip()
         }
         loadFollow()
         acquireWakeLock()
@@ -233,6 +241,7 @@ class RecordingService : Service() {
                 lastTick = now
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (elapsedS % 10 == 0L) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+                if (now - tripSaved > 30_000) saveTrip()
                 publish()
             }
         }
@@ -251,6 +260,7 @@ class RecordingService : Service() {
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
         checkOffRoute(p, loc.accuracy.toDouble(), nowEl)
+        try { breaks.onFix(elapsedS.toDouble(), p.lat, p.lon) } catch (e: Exception) { Log.e("OnPath", "breaks", e) }
 
         val prev = last
         if (prev != null && !wasLost) {
@@ -407,6 +417,8 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
+        breaks.reset() // a pause is not a break (its time is not in elapsedS anyway)
+        saveTrip()
         navigator?.onGpsLost() // no fixes while paused: timers start from zero again
         db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
         publish(force = true)
@@ -415,6 +427,11 @@ class RecordingService : Service() {
     private fun finish() {
         if (tourId >= 0) {
             db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done")
+            try {
+                com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
+                    .put(tourId, tourTimes())
+                File(filesDir, TRIP_FILE).delete()
+            } catch (e: Exception) { Log.e("OnPath", "tour times", e) }
             _finished.value = tourId
         }
         tourId = -1
@@ -436,7 +453,7 @@ class RecordingService : Service() {
         routeExec.shutdown()
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
-        if (tourId >= 0) db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active")
+        if (tourId >= 0) { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active"); saveTrip() }
         _state.value = null
         super.onDestroy()
     }
@@ -446,13 +463,42 @@ class RecordingService : Service() {
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.map { it.toList() },
-            navigator?.state,
+            navigator?.state, tripTime(),
         )
         val now = SystemClock.elapsedRealtime()
         if (force || now - lastNotify > 5000) {
             lastNotify = now
             try { nm().notify(NOTIF_ID, buildNotification()) } catch (_: SecurityException) { }
         }
+    }
+
+    // ---- time estimate (docs/plan-time-estimate.md) ----
+
+    private fun tripTime(): com.onpath.app.time.TripTime = try {
+        com.onpath.app.time.TourTimes.of(elapsedS.toDouble(), breaks.breakS()).let { com.onpath.app.time.TripTime(it.movingS, it.breakS) }
+    } catch (_: Exception) { com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0) }
+
+    private fun tourTimes(): com.onpath.app.time.TourTimes = com.onpath.app.time.TourTimes.of(elapsedS.toDouble(), breaks.breakS())
+
+    /** Trip state of the running tour, written atomically (crash / restart keeps the break time). */
+    private fun saveTrip() {
+        if (tourId < 0) return
+        tripSaved = SystemClock.elapsedRealtime()
+        try {
+            val o = org.json.JSONObject().put("tour", tourId).put("breaks", breaks.toJson())
+            val f = File(filesDir, TRIP_FILE); val tmp = File(f.path + ".tmp")
+            tmp.writeText(o.toString())
+            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+        } catch (e: Exception) { Log.e("OnPath", "save trip", e) }
+    }
+
+    private fun loadTrip() {
+        breaks = try {
+            val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
+            if (o.optLong("tour", -1) == tourId) com.onpath.app.time.BreakDetector.fromJson(o.optJSONObject("breaks"))
+            else com.onpath.app.time.BreakDetector()
+        } catch (_: Exception) { com.onpath.app.time.BreakDetector() }
+        breaks.reset() // the service was gone for a while: start a new stop
     }
 
     private fun nm() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -524,6 +570,8 @@ class RecordingService : Service() {
         const val MAX_ACCURACY_M = 30f
         const val MAX_SPEED_MS = 35.0       // ~126 km/h: anything faster is a GPS jump
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
+        /** Trip state (breaks, pace learning) of the running tour. */
+        const val TRIP_FILE = "trip-pace.json"
         
         private val _state = MutableStateFlow<RecState?>(null)
         val state: StateFlow<RecState?> = _state

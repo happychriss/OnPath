@@ -198,6 +198,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<String?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
     var finishedTour by mutableStateOf<Tour?>(null)
+    /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
+    var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
+        private set
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set
     var events = mutableStateListOf<UiEvent>()
@@ -243,6 +246,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (id != null) {
                     RecordingService.finished.value = null
                     finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
+                    finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
@@ -689,6 +693,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
         r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
+
+    /** What was learned from earlier tours, per activity (Settings → Your pace). */
+    var learnedPace by mutableStateOf<List<LearnedPace>>(emptyList())
+        private set
+
+    fun resetLearnedPace(@Suppress("UNUSED_PARAMETER") a: Activity) {}
+
+    /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
+    private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
+        com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).get(t.id)
+            ?: com.onpath.app.time.TourTimes.of(t.durationS, com.onpath.app.time.BreakDetector.breaksIn(db.loadSegments(t.id)))
+    } catch (_: Exception) { null }
 
     /** Pace or learned factors changed: new times for the plan and the route list (the route itself stays). */
     private fun retime() {
