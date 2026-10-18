@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Time estimate P0–P3 per docs/plan-time-estimate.md – implemented on branch `feat/time-estimate` (agent),
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -32,6 +31,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Time estimate P0–P3 merged (laptop agent): one model everywhere (`time/`), pace setting, arrival clock, moving
+  time / breaks, learning on the trip and across tours. Field test pending (checklist in project-status). P4 open.
 - Owner-approved batch (laptop): Clear without question (Undo restores), Pause / Resume in the tour bar (two-line
   status), Round trip greyed when already a loop, no "Searching GPS…" / "Still missing" messages, "Export GPX"
   everywhere, blocked-way tint grey-red, Feldwege with finer lighter dots (Komoot-like).
