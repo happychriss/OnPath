@@ -335,7 +335,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startPlanning() { mode = Mode.PLAN; shown = null; showTours = false }
 
-    fun closePlanning() { mode = Mode.BROWSE; highlight = null; routeHidden = false; notice = null; pointMenu = null }
+    fun closePlanning() { mode = Mode.BROWSE; highlight = null; planPoi = null; routeHidden = false; notice = null; pointMenu = null }
 
     fun updateSettings(s: AppSettings) {
         settings = s; prefs.settings = s
@@ -409,8 +409,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) removePoint(idx) else addPoint(GeoPoint(poi.lat, poi.lon), lineSnapM, onPoi = true)
     }
 
-    /** POI long-pressed in plan mode: ask whether to open it in Google Maps. */
-    var askGooglePoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+    /** POI tapped in plan mode: its card (add to route / Google Maps) is shown above the plan panel. */
+    var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+
+    fun isStop(poi: com.onpath.app.poi.Poi): Boolean =
+        waypoints.any { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
 
     /** Drag-to-move: the point keeps its position in the order. */
     fun movePoint(index: Int, p: GeoPoint) { if (index in waypoints.indices) set(PlanEdits.replace(waypoints, index, p)) }
