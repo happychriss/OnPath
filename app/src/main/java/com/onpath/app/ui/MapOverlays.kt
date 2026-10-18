@@ -83,9 +83,12 @@ fun MapOverlayHost(
     vm.poiMenu?.let { poi ->
         Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { vm.poiMenu = null }) {
             PoiMenu(poi,
+                emptyPlan = vm.waypoints.isEmpty(),
+                fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
+                onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
                 onGoogle = {
-                    vm.poiMenu = null
+                    vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
                 })
         }
@@ -160,9 +163,13 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
     }
 }
 
-/** Menu of a held POI that is not a route point: its name + "Add to route" · "Open in Google Maps". */
+/**
+ * Menu of a held POI that is not a route point: its name + "Add to route" · "Open in Google Maps". On an empty plan
+ * it asks like the first-point menu (owner): "Start here" · "Go here from my location" · "Open in Google Maps".
+ */
 @Composable
-fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier) {
+fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
+            emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {}) {
     val place = Place.fromPoi(poi)
     val de = Poi.isGerman()
     MenuSurface(modifier) {
@@ -173,7 +180,13 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
                 color = Color(SearchKinds.argb(place.kind)), maxLines = 1)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.AddLocationAlt, if (de) "Zur Route hinzufügen" else "Add to route", onClick = onAdd)
+        if (emptyPlan) {
+            HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onAdd)
+            HoldMenuItem(Icons.Outlined.MyLocation, "Go here from my location", enabled = fromMeBlocked == null,
+                supporting = fromMeBlocked, onClick = onFromMe)
+        } else {
+            HoldMenuItem(Icons.Outlined.AddLocationAlt, if (de) "Zur Route hinzufügen" else "Add to route", onClick = onAdd)
+        }
         HoldMenuItem(Icons.Outlined.Map, if (de) "In Google Maps öffnen" else "Open in Google Maps", onClick = onGoogle)
     }
 }

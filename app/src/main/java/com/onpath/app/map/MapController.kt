@@ -53,6 +53,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // --- Navigate: orientation + next-turn arrow (navigation agent) ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
+        const val SRC_MARK = "search-mark"
         /**
          * App layers hidden while the eye button is held: everything route-like, but not the own
          * position or the recorded track. New route layers (e.g. a grey original route) belong here.
@@ -105,9 +106,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
-        // Gold ring under markers placed on a POI (passed exactly, see Planner pinned points).
-        style.addLayer(CircleLayer("waypoints-pin", SRC_WPT).withFilter(Expression.eq(Expression.get("pinned"), Expression.literal(true)))
-            .withProperties(PF.circleRadius(19f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F2B33D"), PF.circleStrokeWidth(3f)))
+        // No ring for POI-pinned stops any more (owner): the only orange ring is the search mark.
         style.addLayer(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
@@ -429,9 +428,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
         }
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
-            style.getLayer(id)?.setProperties(
-                PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            )
+            val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
+            // the band plus its major-route highlight (pink edges + name)
+            for (suffix in listOf("", "-major", "-major-label")) {
+                runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
+            }
         }
     }
 
@@ -475,6 +476,24 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun dpToPx(dp: Float) = dp * density
 
+    /** Search result mark (orange ring around the place, with its name); null removes it. Never throws. */
+    fun setSearchMark(p: GeoPoint?, name: String?) = runCatching {
+        if (style.getSource(SRC_MARK) == null) {
+            style.addSource(GeoJsonSource(SRC_MARK))
+            // One orange ring around the place's icon (owner: not a red dot covering it), clearly outside the icon.
+            style.addLayer(CircleLayer("search-mark", SRC_MARK).withProperties(
+                PF.circleRadius(22f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F28C00"), PF.circleStrokeWidth(3.5f)))
+            style.addLayer(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
+                PF.textField(Expression.get("name")), PF.textFont(arrayOf("Noto Sans Medium")), PF.textSize(13f),
+                PF.textOffset(arrayOf(0f, 2.2f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PF.textColor("#B35C00"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
+                PF.textAllowOverlap(true), PF.textIgnorePlacement(true)))
+        }
+        val src = style.getSourceAs<GeoJsonSource>(SRC_MARK) ?: return@runCatching
+        if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("name", name ?: "") })
+    }
+
     fun setHighlight(p: GeoPoint?) {
         val src = style.getSourceAs<GeoJsonSource>(SRC_HL) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
@@ -502,7 +521,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(points[0].lat, points[0].lon), 14.0))
+                // one place (search result): close enough to see the POI icon and the paths around it
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(points[0].lat, points[0].lon), 16.0), 700)
                 return
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()

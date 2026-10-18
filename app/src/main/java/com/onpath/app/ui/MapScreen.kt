@@ -44,8 +44,6 @@ fun MapScreen(
     onRequestLocation: () -> Unit,
     /** Start navigation; the caller makes sure location permission is granted first. */
     onStartNavigation: () -> Unit,
-    /** Opens the system file picker for a GPX file (needs the Activity). */
-    onImportGpx: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -69,7 +67,7 @@ fun MapScreen(
         when {
             gps == GpsStatus.OFF -> { runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }; Unit }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            vm.tracker.location.value == null -> vm.message = "Searching GPS…"
+            vm.tracker.location.value == null -> vm.followMe = true
             else -> vm.followMe = true
         }
     }
@@ -103,14 +101,14 @@ fun MapScreen(
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
         when (vm.mode) {
-            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onImportGpx,
+            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation,
                 onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
-            topPx = topInsetPx + with(density) { 128.dp.roundToPx() }, // below search pill + activity chip
+            topPx = topInsetPx + with(density) { 80.dp.roundToPx() }, // below the search pill + ☰ row
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
     }
 
@@ -134,17 +132,14 @@ fun MapScreen(
 @Composable
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onImportGpx: () -> Unit, // Import GPX lives in Manage routes now
     onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
-            vm.activity, vm.sac, onActivity = onActivity, onSearch = vm::openSearch,
+            onSearch = vm::openSearch,
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
-                onLoad = { vm.openRoutes(RoutesMode.PICK) },
-                onSave = vm::requestSave,
-                onManage = { vm.openRoutes(RoutesMode.MANAGE) },
+                onManage = { vm.openRoutes() },
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.showSettings = true },
@@ -163,10 +158,10 @@ private fun PlanMode(
             }
             footer()
             Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
-                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour) }
+                rec?.let { TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording, onContinue = vm::continueNavigation) }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
-                else PlanBottom(vm, rec, onStartNavigation)
+                else PlanBottom(vm, rec, onStartNavigation, onActivity)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -174,7 +169,7 @@ private fun PlanMode(
 }
 
 @Composable
-private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit) {
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit) {
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
@@ -190,11 +185,12 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved),
+            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip()),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
+            onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned,
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
         ),
@@ -245,6 +241,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
+    LaunchedEffect(c, vm.searchMark) {
+        val m = vm.searchMark
+        c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
+    }
     // Marked route networks always show (owner): the band of the current activity.
     LaunchedEffect(c, vm.activity) { c.setOverlay(vm.activity, true) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }

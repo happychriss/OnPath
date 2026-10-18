@@ -73,6 +73,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.rotate
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
 import com.onpath.app.routing.TurnKind
@@ -99,6 +100,11 @@ data class NavUi(
     val breakS: Double? = null,
     /** "Your pace on this trip: up 0.9× · down 1.1×" in the opened card; null = nothing learned yet. */
     val paceNote: String? = null,
+    /** What is navigated / recorded as (icon first in the status card, tap = check-and-switch sheet); null = not shown. */
+    val activity: Activity? = null,
+    val sac: Int = 3,
+    /** The check-and-switch sheet is open (stays until a choice is made). */
+    val activityCheck: ActivityCheckUi? = null,
 )
 
 data class TurnHint(val kind: TurnKind, val distanceM: Double)
@@ -131,6 +137,9 @@ fun NavigateOverlay(
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
+    onActivity: () -> Unit = {},
+    onChooseActivity: (Activity) -> Unit = {},
+    onKeepActivity: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -142,7 +151,7 @@ fun NavigateOverlay(
             ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }?.let { OffRouteBanner(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
-                NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen })
+                NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity)
             }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
@@ -155,6 +164,8 @@ fun NavigateOverlay(
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 startFraction = slideStartFraction)
         }
+        // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
+        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
     }
 }
 
@@ -208,26 +219,40 @@ internal fun NorthNeedle(modifier: Modifier) {
 }
 
 /**
- * Read-only status card: "7.4 km to go · 2 h 50 min", "↑ 512 m ↓ 310 m" with "arrive ≈ 16:40" on the right, and
- * "● 5.3 km · moving 1:12 · breaks 0:11" (moving time without breaks; docs/plan-time-estimate.md §5).
- * The only button is "Resume" while paused (from the notification).
+ * Status card: activity icon (48 dp button → check-and-switch sheet), "2 h 50 min · 7.4 km" (to go), "↑ 512 m ↓ 310 m",
+ * "arrive ≈ 16:40" large on the right (to go + break allowance) and "● moving 1:12 · breaks 0:11" (moving time
+ * without breaks; docs/plan-time-estimate.md §5). Buttons: the icon, "Resume" while paused, the profile chevron (48 dp);
+ * the rest of the card is not clickable.
  */
 @Composable
-internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {}) {
+internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
+                           onActivity: () -> Unit = {}) {
     val canOpen = (ui.toGo?.profile?.size ?: 0) >= 2
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth().then(if (canOpen) Modifier.clickable(
-            onClickLabel = if (profileOpen) "Hide elevation profile" else "Show elevation profile", onClick = onToggleProfile) else Modifier)) {
+        // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
+        modifier = Modifier.fillMaxWidth()) {
       Column {
-        Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
+            // the activity first (owner: a wrong activity is a disaster); its own 48 dp target opens the check sheet
+            ui.activity?.let { a ->
+                Surface(onClick = onActivity, shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(48.dp).semantics {
+                        contentDescription = "Activity: ${NavText.activityName(a, ui.sac)}. Tap to check or switch"
+                    }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(a.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(28.dp))
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+            }
             Column(Modifier.weight(1f)) {
                 ui.toGo?.let { g ->
-                    // the time first in view: it must never be cut off (↑ / ↓ go to their own line)
-                    Text("${Format.distance(g.distanceM)} to go · ${Format.duration(g.timeS)}", style = MaterialTheme.typography.titleMedium,
+                    // the time first: with the activity icon and the arrival clock beside it, an ellipsis cuts the distance, never the time
+                    Text("${Format.duration(g.timeS)} · ${Format.distance(g.distanceM)}", style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
+                        style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val off = g.offM
                     if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
@@ -245,13 +270,16 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
             else if (ui.toGo != null && ui.arriveAt != null) Column(horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).semantics(mergeDescendants = true) {}) {
-                Text("arrive", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("≈ ${ui.arriveAt}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text("arrive ≈", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
             }
-            if (canOpen) Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+            if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
+                Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (profileOpen) "Hide elevation profile" else "Show elevation profile",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        // Tap the card: elevation profile of what is left (stays open until tapped again).
+        // Chevron: elevation profile of what is left (stays open until tapped again).
         if (profileOpen && canOpen) {
             ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp))
@@ -265,15 +293,16 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
 }
 
 /**
- * "5.3 km · moving 1:12 · breaks 0:11" while navigating; the state word only when it matters (paused, no GPS) or for a
- * free recording ("Recording · 2.1 km · moving 0:28"). Without moving time: the elapsed clock as before.
+ * "moving 1:12 · breaks 0:11" while navigating (the card is narrow: the recorded distance gives way, the state word only
+ * when it matters: paused, no GPS); a free recording: "Recording · 2.1 km · moving 0:28 · breaks 0:05".
+ * Without moving time: the elapsed clock as before.
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double): String {
     val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS"; else -> "Recording" }
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
     val parts = mutableListOf<String>()
     if (ui.toGo == null || ui.paused || ui.waitingGps) parts += status
-    parts += Format.distance(distanceM)
+    if (ui.toGo == null) parts += Format.distance(distanceM)
     parts += "moving ${com.onpath.app.time.TimeEstimate.hm(moving)}"
     val b = ui.breakS ?: 0.0
     if (b >= 60) parts += "breaks ${com.onpath.app.time.TimeEstimate.hm(b)}"
@@ -316,7 +345,7 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
         border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.AltRoute, null, tint = OnPathColors.Route, modifier = Modifier.size(28.dp))
+                Icon(q.switch?.activity?.icon ?: Icons.Outlined.AltRoute, null, tint = OnPathColors.Route, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -380,9 +409,16 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         arriveAt = arrive,
         movingS = tt?.movingS, breakS = tt?.breakS,
         paceNote = tt?.learned?.let { paceNote(it) },
+        // what the service navigates is the truth; free recording: the app's activity
+        activity = rec?.nav?.session?.activity ?: vm.activity,
+        sac = rec?.nav?.session?.sac ?: vm.sac,
+        activityCheck = vm.activityCheck,
     )
+    // Back on the open sheet = "Keep" (nothing changes)
+    androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
-        onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute)
+        onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
+        onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck)
 }
 
 /** Moving time from the position ([remainingM] before the end) to the end of the line, rounded for display. */

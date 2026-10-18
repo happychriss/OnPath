@@ -188,14 +188,32 @@ def roads():
 
 def route_bands():
     # Opaque pale bands (no stacking artefacts where segments overlap), drawn under roads, paths and trails.
+    # One green for every activity (owner: the activity is visible everywhere, no colour coding needed); the
+    # app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
     for kind, minz in (("hike", 10), ("bike", 9), ("mtb", 9)):
+        vis = "visible" if kind == "hike" else "none"
+        flt = ["==", ["get", "kind"], kind]
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
-              filter=["==", ["get", "kind"], kind],
-              layout={"line-join": "round", "line-cap": "round",
-                      "visibility": "visible" if kind == "hike" else "none"},
-              paint={"line-color": T(f"route.{kind}.color"),
+              filter=flt,
+              layout={"line-join": "round", "line-cap": "round", "visibility": vis},
+              paint={"line-color": T("route.band.color"),
                      "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
                      "line-width": Z("route.width")})
+        # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
+        # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
+        # the path inside stays visible), plus the route name along the line.
+        major = ["all", flt, [">=", ["coalesce", ["get", "net"], 0], 2]]
+        layer(id_=f"routes-{kind}-major", type="line", source="routes", minzoom=minz,
+              filter=major, layout={"line-join": "round", "visibility": vis},
+              paint={"line-color": T("route.major.color"), "line-width": Z("route.width"),
+                     "line-opacity": T("route.major.opacity"), "line-dasharray": T("route.major.dash")})
+        layer(id_=f"routes-{kind}-major-label", type="symbol", source="routes", minzoom=12,
+              filter=["all", major, ["!=", ["coalesce", ["get", "name"], ""], ""]],
+              layout={"symbol-placement": "line", "symbol-spacing": interp(12, 300, 16, 500),
+                      "text-field": ["get", "name"], "text-font": T("font.medium"), "text-size": interp(12, 10, 16, 12, base=1),
+                      "text-max-angle": 30, "text-padding": 4, "text-offset": [0, 1.0], "visibility": vis},
+              paint={"text-color": T("route.major.label.color"), "text-halo-color": T("label.halo.color"),
+                     "text-halo-width": 1.5})
 
 
 def paths():

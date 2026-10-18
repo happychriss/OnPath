@@ -14,15 +14,8 @@
  "water.outline.color": "#4f9ad6",
  "stream.width.z14": 1.5,
  "stream.width.z17": 3,
- "hillshade.main.exaggeration.z5": 0.45,
- "hillshade.main.exaggeration.z10": 0.4,
- "hillshade.main.exaggeration.z13": 0.3,
- "hillshade.main.exaggeration.z15": 0.18,
  "hillshade.main.shadow": "rgba(58,60,82,0.45)",
  "hillshade.main.highlight": "rgba(255,255,250,0.55)",
- "hillshade.fill.exaggeration.z10": 0.15,
- "hillshade.fill.exaggeration.z13": 0.1,
- "hillshade.fill.exaggeration.z15": 0.05,
  "contour.minor.color": "#9c7f5a",
  "contour.major.color": "#8a6a44",
  "contour.label.color": "#6f5535",
@@ -85,5 +78,18 @@
  "rail.width.z10": 1.6,
  "rail.width.z13": 2.6,
  "rail.width.z16": 3.8,
- "station.label.color": "#0f1824"
+ "station.label.color": "#0f1824",
+ "hillshade.main.exaggeration.z5": 0.65,
+ "hillshade.main.exaggeration.z9": 0.65,
+ "hillshade.main.exaggeration.z11": 0.48,
+ "hillshade.main.exaggeration.z13": 0.3,
+ "hillshade.main.exaggeration.z15": 0.18,
+ "hillshade.fill.exaggeration.z8": 0.25,
+ "hillshade.fill.exaggeration.z10": 0.2,
+ "hillshade.fill.exaggeration.z13": 0.1,
+ "hillshade.fill.exaggeration.z15": 0.05,
+ "track.edge.dash": [
+  0.25,
+  0.45
+ ]
 }

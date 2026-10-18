@@ -126,7 +126,11 @@ fun MapHost(
                 if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
                 val marker = if (edit) c?.waypointAt(screen) ?: -1 else -1
-                val poi = if (marker < 0) com.onpath.app.poi.findPoiAt(map, screen) else null
+                // A marked search result (pin) counts as a POI: holding it opens the POI menu.
+                val mark = vm.searchMark?.takeIf { m ->
+                    c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true
+                }
+                val poi = if (marker >= 0) null else mark?.toPoi() ?: com.onpath.app.poi.findPoiAt(map, screen)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(24f) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)

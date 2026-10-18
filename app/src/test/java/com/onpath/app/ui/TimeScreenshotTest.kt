@@ -34,7 +34,7 @@ class TimeScreenshotTest {
     private val pts = (0..120).map { i -> GeoPoint(46.67 + i * 0.0004, 11.16 + i * 0.0003, 350.0 + 600 * sin(i / 38.0) + (i % 7)) }
     private val ui = NavUi(toGo = ToGo(7_420.0, 512.0, 2 * 3600 + 50 * 60.0, 12.0, descentM = 310.0, profile = pts),
         recordedM = 5_320.0, elapsedS = 5025, arriveAt = "16:40", movingS = 72 * 60.0, breakS = 11 * 60.0,
-        paceNote = paceNote(Factors(down = 1.1, flat = 1.0, up = 0.9)))
+        paceNote = paceNote(Factors(down = 1.1, flat = 1.0, up = 0.9)), activity = Activity.HIKE)
 
     /** Navigate: "to go" with the arrival clock on the right, moving time and breaks in the recording line. */
     @Test fun navigateArrival() = paparazzi.snapshot {

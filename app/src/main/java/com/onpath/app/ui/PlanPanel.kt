@@ -1,5 +1,8 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,6 +80,11 @@ class PlanCallbacks(
     val onContinue: () -> Unit = {},
     val onReverse: () -> Unit = {},
     val onRoundTrip: () -> Unit = {},
+    /** Activity icon at the start of the sheet: opens the activity picker. */
+    val onActivity: () -> Unit = {},
+    /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
+    val onSave: () -> Unit = {},
+    val onExport: () -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
 )
@@ -109,6 +117,8 @@ data class PlanUi(
     val savedName: String? = null,
     /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
     val unsaved: Boolean = false,
+    /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
+    val roundTrip: Boolean = false,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -130,6 +140,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         val route = ui.route
         val mini = ui.size == PlanSize.MINI
         Row(verticalAlignment = Alignment.CenterVertically) {
+            ActivityButton(ui.activity, cb.onActivity)
+            Spacer(Modifier.width(8.dp))
             Box(Modifier.weight(1f)) { Title(ui, route, mini) }
             if (!mini) {
                 IconButton(onClick = cb.onUndo, enabled = ui.canUndo, modifier = Modifier.size(48.dp)) {
@@ -156,7 +168,9 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
                 }
             }
         }
-        if (ui.tourRunning || ui.pointCount >= 2) {
+        // During a tour, Continue / Pause / End live together in the tour card above (TourRunningBar);
+        // the route sheet then only shows the route.
+        if (!ui.tourRunning && ui.pointCount >= 2) {
             Spacer(Modifier.height(12.dp))
             PrimaryAction(ui, cb)
         } else Spacer(Modifier.height(8.dp))
@@ -189,7 +203,8 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, mini: Boolean) {
         Text(Format.duration(route.durationS), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
             maxLines = 1)
         Spacer(Modifier.width(8.dp))
-        Text(Format.distance(route.distanceM) + if (mini) " · ↑ ${Format.meters(route.ascentM)}" else "",
+        // The distance sits in the line below (room for the activity button); the mini sheet has no second line.
+        if (mini) Text(Format.distance(route.distanceM),
             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 1.dp))
     }
@@ -203,7 +218,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
         Text(
             when (ui.pointCount) {
                 0 -> "Hold the map to start there – or to go there from your location. Hold a point or place for options. " +
-                    "To just record, use ⋮ → Start recording."
+                    "To just record, use ☰ → Start recording."
                 1 -> "Hold the map to add the destination. Hold a point or place for options."
                 else -> "Calculating the route…"
             },
@@ -214,7 +229,8 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         val top = route.points.mapNotNull { it.ele }.maxOrNull()
         Text(
-            "↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" + (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""),
+            "${Format.distance(route.distanceM)}  ·  ↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
+                (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""),
             style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
         )
@@ -260,16 +276,21 @@ private fun DetailsToggle(ui: PlanUi, route: PlannedRoute, cb: PlanCallbacks) {
 private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     val m = Modifier.fillMaxWidth().height(56.dp)
     when {
+        // the button names the activity (owner: a wrong activity is a disaster)
         ui.tourRunning -> Button(onClick = cb.onContinue, modifier = m) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text("Continue navigation", style = MaterialTheme.typography.titleMedium)
+            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         else -> Button(onClick = cb.onStartNavigation, enabled = ui.canStart, modifier = m) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text("Start navigation", style = MaterialTheme.typography.titleMedium)
+            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
+
+/** "Start navigation · Hike" / "Continue navigation · Trekking bike". */
+internal fun primaryLabel(ui: PlanUi): String =
+    (if (ui.tourRunning) "Continue navigation" else "Start navigation") + " · " + ui.activity.navName
 
 /** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable
@@ -290,8 +311,12 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     val two = ui.pointCount >= 2
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
+    // Everything about this route in one place (owner): save / export, edits, clear.
+    MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
+    MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
+    HorizontalDivider()
     MenuItem(Icons.Outlined.SwapVert, "Reverse route", enabled = two, onClick = run(cb.onReverse))
-    MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two, onClick = run(cb.onRoundTrip))
+    MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two && !ui.roundTrip, onClick = run(cb.onRoundTrip))
     HorizontalDivider()
     MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
         onClick = run(cb.onClear))
@@ -305,6 +330,20 @@ private fun ErrorBox(error: String) {
             Icon(Icons.Outlined.Warning, null, tint = Color(0xFFB26A00), modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(error, style = MaterialTheme.typography.bodySmall, color = Color(0xFF5A3A00))
+        }
+    }
+}
+
+
+/** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
+@Composable
+private fun ActivityButton(activity: Activity, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(onClick = onClick, shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Activity: ${activity.label}. Tap to change" }) {
+        Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
+            Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }

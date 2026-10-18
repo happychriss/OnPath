@@ -144,7 +144,7 @@ class RecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
-            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW)
+            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
@@ -172,6 +172,14 @@ class RecordingService : Service() {
             }
             ACTION_KEEP_ROUTE -> {
                 navigator?.let { handle(it.keep(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_PROPOSE_SWITCH -> {
+                // activity check sheet: the app routed the rest for another activity and wrote it to a file
+                val f = File(filesDir, com.onpath.app.navigation.ActivityCheck.PROPOSAL_FILE)
+                val proposed = NavSessionStore(f).load()
+                f.delete()
+                if (proposed != null) navigator?.let { handle(it.proposeSwitch(proposed, intent.getDoubleExtra(EXTRA_TIME_S, 0.0))) }
                 return START_STICKY
             }
         }
@@ -340,6 +348,11 @@ class RecordingService : Service() {
             follow = (follow?.first ?: nav.session.name) to nav.session.active
             timeLine()
         } else if (step.sessionChanged) sessionStore.save(nav.session)
+        if (step.activityChanged && tourId >= 0) {
+            // the tour is now recorded as the new activity; the app follows via RecState.nav.session
+            try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) { Log.e("OnPath", "activity", e) }
+            Prefs(this).activity = nav.session.activity
+        }
         updateAlert()
         if (publishNow || step.lineChanged) publish(force = step.lineChanged)
     }
@@ -415,6 +428,8 @@ class RecordingService : Service() {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openAppIntent())
+            // an activity switch was asked for on the screen: no sound (the user is looking), the question stays
+            if (pr is NavPrompt.Question && pr.switch != null) b.setSilent(true)
             if (pr is NavPrompt.Question) {
                 b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
@@ -600,6 +615,9 @@ class RecordingService : Service() {
         const val ACTION_TAKE_ROUTE = "com.onpath.app.TAKE_ROUTE"
         const val ACTION_KEEP_ROUTE = "com.onpath.app.KEEP_ROUTE"
         const val EXTRA_QUESTION = "question"
+        /** Activity check: a proposed session for another activity is in ActivityCheck.PROPOSAL_FILE ([EXTRA_TIME_S] = its time). */
+        const val ACTION_PROPOSE_SWITCH = "com.onpath.app.PROPOSE_SWITCH"
+        const val EXTRA_TIME_S = "timeS"
         /** With ACTION_FOLLOW_CHANGED ("Continue navigation"): check the next fix at once and ask when off route. */
         const val EXTRA_CHECK_NOW = "checkNow"
         /** "Continue navigation" with the same session: check the next fix at once. */

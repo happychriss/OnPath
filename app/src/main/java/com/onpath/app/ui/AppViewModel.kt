@@ -43,6 +43,8 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,8 +93,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var dataScreenDismissed by mutableStateOf(false)
 
     // --- screens and mode ---
-    /** Manage routes / Load route list (⋮ menu); null = closed. */
-    var routesScreen by mutableStateOf<RoutesMode?>(null)
+    /** My routes list (☰ → My routes) is open. */
+    var routesOpen by mutableStateOf(false)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -243,8 +245,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
         viewModelScope.launch {
             RecordingService.state.collect { st ->
-                val n = st?.nav ?: return@collect
+                val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
+                syncNavActivity(n.session)
             }
         }
         viewModelScope.launch {
@@ -470,7 +473,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val mapOverlayOpen: Boolean get() = poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null
 
-    fun closeMapOverlays() { poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard() }
+    fun closeMapOverlays() {
+        // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
+        // tapping elsewhere – removes the orange ring too.
+        poiMenu?.let { m -> searchMark?.let { s -> if (kotlin.math.abs(s.lat - m.lat) < 1e-7 && kotlin.math.abs(s.lon - m.lon) < 1e-7) searchMark = null } }
+        poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
+    }
     fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays(); if (waypoints.isEmpty()) firstPointMenu = p }
 
     /** First-point menu → "Start here": the held spot is the start; later holds add points as usual. */
@@ -483,6 +491,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiMenu = poi }
+
+    /** POI menu on an empty plan → "Go here from my location": start = position, the POI (pinned, named) = destination. */
+    fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
+        closeMapOverlays()
+        val loc = tracker.location.value ?: return // the menu only offers this with a position
+        if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
+        val p = GeoPoint(poi.lat, poi.lon)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
+        pinned += p; prefs.planPinned = pinned
+        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+    }
     fun openPointMenu(index: Int) { closeMapOverlays(); if (index in waypoints.indices) pointMenu = index }
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
@@ -492,6 +512,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { pointMenu = idx; return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
         addPoint(p, lineSnapM, onPoi = true)
     }
 
@@ -544,14 +565,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSearch() { closeMapOverlays(); searchOpen = true; search.onOpen() }
     fun closeSearch() { searchOpen = false }
 
-    /** Result tapped: close the search, move the map there and show the place card. */
+    /**
+     * Result tapped (owner): close the search, fly the map there and mark the place with a pin – no card. Holding the
+     * pin opens the usual POI menu (Add to route / Start here … / Google Maps). The mark stays until the next search
+     * pick or until the place is added to the route.
+     */
     fun pickSearchResult(place: com.onpath.app.search.Place) {
         val p = search.resolve(place)
         search.remember(p)
         searchOpen = false
+        closeMapOverlays()
         searchPlace = p
-        planPoi = p.toPoi()
+        searchMark = p
         events += UiEvent.Fit(listOf(GeoPoint(p.lat, p.lon)))
+    }
+
+    /** Search result marked on the map (pin); see [pickSearchResult]. */
+    var searchMark by mutableStateOf<com.onpath.app.search.Place?>(null)
+
+    private fun clearSearchMarkAt(lat: Double, lon: Double) {
+        val m = searchMark ?: return
+        if (kotlin.math.abs(m.lat - lat) < 1e-7 && kotlin.math.abs(m.lon - lon) < 1e-7) searchMark = null
     }
 
     /** Place shown in the card: the search result, or the tapped POI. */
@@ -637,9 +671,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Clear button; with two or more points the UI asks first (PlanClear.needsConfirm). */
     var confirmClear by mutableStateOf(false)
 
-    fun requestClear() {
-        if (PlanClear.needsConfirm(waypoints.size)) confirmClear = true else clearPlan()
-    }
+    /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
+    fun requestClear() = clearPlan()
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
@@ -676,7 +709,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
-            result.onSuccess { route = it; routeError = it.error; snapToRoute(pts, pins, it) }
+            result.onSuccess {
+                route = it; routeError = it.error; snapToRoute(pts, pins, it)
+                // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
+                if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
+            }
                 .onFailure { route = null; routeError = it.message ?: "Routing failed." }
             if (followNextRoute) {
                 followNextRoute = false
@@ -872,7 +909,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun menuState(recording: Boolean): RouteMenuState =
         RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
 
-    fun openRoutes(m: RoutesMode) { refreshTours(); routesScreen = m }
+    fun openRoutes() { refreshTours(); routesOpen = true }
 
     /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
     fun requestOpen(t: Tour) {
@@ -936,7 +973,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!followIsTrack && waypoints.size >= 2) {
             val planLine = if (routing) null else route?.points
             when {
-                planLine != null && planLine != followOriginal -> followPlanned(checkNow = true)
+                planLine != null && !planFollowed(planLine) -> followPlanned(checkNow = true)
                 routing -> followNextRoute = true // follows the plan when the result is there
                 else -> checkNow()
             }
@@ -949,14 +986,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * plan, and after a re-route the plan line must not be drawn as a second blue line (the original shows grey).
      */
     fun planIsFollowed(): Boolean =
-        followLine != null && !followIsTrack && route?.points != null && route?.points == followOriginal
+        followLine != null && !followIsTrack && planFollowed(route?.points)
 
     /** Look of the followed / shown line on the map (see MapController.setTrackLook). */
     fun trackLook(): com.onpath.app.map.MapController.TrackLook {
         val planLine = route?.points
         return when {
             shown != null -> com.onpath.app.map.MapController.TrackLook.TRACK
-            mode == AppMode.PLAN && !followIsTrack && waypoints.size >= 2 && planLine != null && planLine != followOriginal ->
+            mode == AppMode.PLAN && !followIsTrack && waypoints.size >= 2 && planLine != null && !planFollowed(planLine) ->
                 com.onpath.app.map.MapController.TrackLook.FOLLOW_BEHIND
             else -> com.onpath.app.map.MapController.TrackLook.FOLLOW
         }
@@ -974,6 +1011,139 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Off-route question in Navigate: keep following the original route. */
     fun keepOriginalRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_KEEP_ROUTE) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    // ---------------- activity check while navigating (owner: a wrong activity is a disaster) ----------------
+
+    /** The check-and-switch sheet (Navigate → tap the activity icon); null = closed. Stays until a choice is made. */
+    var activityCheck by mutableStateOf<ActivityCheckUi?>(null)
+        private set
+    private var checkJob: Job? = null
+    private var checkCancel: com.onpath.app.routing.RouteCancel? = null
+    private var checkSession: NavSession? = null
+    private var checkRest: com.onpath.app.navigation.ActivityCheck.Rest? = null
+    /** Session activity last seen from the service (switch taken → the app follows). */
+    private var navActivitySeen: Activity? = null
+    /** Plan line computed for an activity switched while navigating: counts as followed (not an edit). */
+    private var planBaseline: List<GeoPoint>? = null
+    private var adoptPlanBaseline = false
+
+    private fun planFollowed(planLine: List<GeoPoint>?): Boolean =
+        planLine != null && (planLine == followOriginal || planLine == planBaseline)
+
+    private fun sacFor(a: Activity) = if (a == Activity.HIKE) sac else checkSession?.sac ?: sac
+
+    /**
+     * Opens the sheet: for every other activity the rest of the followed tour is routed offline (one after the other,
+     * spinner per row) and checked ([com.onpath.app.navigation.ActivityCheck]). Free recording: plain choices.
+     */
+    fun openActivityCheck() {
+        closeActivityCheck()
+        val nav = recState.value?.nav
+        val session = nav?.session?.takeIf { it.active.size >= 2 }
+        val cur = session?.activity ?: activity
+        val curSac = session?.sac ?: sac
+        val others = Activity.entries.filter { it != cur }
+        checkSession = session
+        if (session == null) {
+            activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Plain) },
+                note = "No route is followed – the new activity applies to the recording and the plan.")
+            return
+        }
+        activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Checking) },
+            note = if (tracker.location.value == null) "Waiting for GPS…" else null)
+        val cancel = com.onpath.app.routing.RouteCancel()
+        checkCancel = cancel
+        checkJob = viewModelScope.launch {
+            val loc = tracker.location.value ?: tracker.location.filterNotNull().first()
+            val pos = GeoPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null)
+            val progress = recState.value?.nav?.progressM ?: nav.progressM
+            val rest = withContext(Dispatchers.Default) {
+                runCatching { com.onpath.app.navigation.ActivityCheck.rest(session, progress, pos) }.getOrNull()
+            }
+            checkRest = rest
+            if (rest == null) {
+                updateCheck(null) { ActivityRowState.Failed("Nothing left of the route to check") }
+                return@launch
+            }
+            updateCheck(null) { it }
+            for (a in others) {
+                if (!isActive || cancel.isCancelled) return@launch
+                val st = withContext(routingDispatcher) {
+                    try {
+                        val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
+                            .also { if (EngineProvider.isRealRouter) engine = it }
+                        if (eng is com.onpath.app.routing.StraightLineEngine) {
+                            ActivityRowState.Failed("Offline routing not available")
+                        } else {
+                            val r = eng.route(rest.waypoints, a, sacFor(a),
+                                com.onpath.app.routing.RouteLimits(com.onpath.app.navigation.ActivityCheck.TIMEOUT_MS, cancel))
+                            if (r.points.size < 2) ActivityRowState.Failed("No route found for it")
+                            else ActivityRowState.Ready(com.onpath.app.navigation.ActivityCheck.evaluate(rest.line, a, sacFor(a), r, planFactors(a)))
+                        }
+                    } catch (e: Exception) {
+                        ActivityRowState.Failed(e.message?.takeIf { it.length < 90 } ?: "No route found for it")
+                    }
+                }
+                if (!isActive || cancel.isCancelled) return@launch
+                updateCheck(a) { st }
+            }
+        }
+    }
+
+    /** Clears the note; [a] null = every row, else only that row. */
+    private fun updateCheck(a: Activity?, f: (ActivityRowState) -> ActivityRowState) {
+        val ui = activityCheck ?: return
+        activityCheck = ui.copy(note = null, rows = ui.rows.map { if (a == null || it.activity == a) it.copy(state = f(it.state)) else it })
+    }
+
+    /**
+     * A row was chosen: free recording → switch at once; navigating → the rest of the tour for that activity becomes
+     * the dashed proposal with the usual question (Take new route / Keep original), asked by the service.
+     */
+    fun chooseActivity(a: Activity) {
+        val ui = activityCheck ?: return
+        val row = ui.rows.firstOrNull { it.activity == a }?.takeIf { it.choosable } ?: return
+        val st = row.state
+        val session = checkSession
+        val rest = checkRest
+        closeActivityCheck()
+        if (st == ActivityRowState.Plain || session == null) {
+            selectActivity(a)
+            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) { runCatching { db.updateActivity(id, a.name, sacFor(a)) } } }
+            return
+        }
+        val fit = (st as? ActivityRowState.Ready)?.fit ?: return
+        val left = rest?.stops.orEmpty()
+        val proposed = runCatching {
+            if (session.kind == NavKind.PLAN && left.isNotEmpty()) {
+                NavSession.start(NavKind.PLAN, session.name, a, fit.sac, fit.line,
+                    stops = listOf(fit.line.first()) + left.map { it.point }, names = listOf(null) + left.map { it.name },
+                    pinned = left.indices.filter { left[it].pinned }.map { it + 1 }.toSet())
+            } else NavSession.start(session.kind, session.name, a, fit.sac, fit.line)
+        }.getOrNull() ?: return
+        val app = getApplication<Application>()
+        NavSessionStore(File(app.filesDir, com.onpath.app.navigation.ActivityCheck.PROPOSAL_FILE)).save(proposed)
+        RecordingService.send(app, RecordingService.ACTION_PROPOSE_SWITCH) { putExtra(RecordingService.EXTRA_TIME_S, fit.timeS) }
+    }
+
+    /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
+    fun closeActivityCheck() {
+        checkCancel?.cancel(); checkCancel = null
+        checkJob?.cancel(); checkJob = null
+        activityCheck = null
+    }
+
+    /** The service navigates another activity now (switch taken, also from the notification): the app follows. */
+    private fun syncNavActivity(s: NavSession?) {
+        val a = s?.activity ?: return
+        if (a == navActivitySeen) return
+        navActivitySeen = a
+        if (a != activity) {
+            followOriginal = s.original
+            adoptPlanBaseline = true
+            selectActivity(a)
+        }
     }
 
     /** The slide switch in Navigate. Recording continues. */
@@ -1018,6 +1188,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followName = name
         followLine = points
         followOriginal = points
+        planBaseline = null
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
         arrivalDone = false
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
@@ -1034,6 +1205,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followName = null
         followLine = null
         followOriginal = null
+        planBaseline = null
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
@@ -1056,7 +1228,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
-            withContext(Dispatchers.Main) { message = "Tour saved to My tours." }
+            withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
         }
     }
 
@@ -1077,7 +1249,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTour(t: Tour) {
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
-            routesScreen = null
+            routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
@@ -1185,11 +1357,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
-                routesScreen = null // show the imported track on the map
+                routesOpen = false // show the imported track on the map
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                message = buildString {
+                // The track panel with its name is the feedback; a message (until OK) only when something was odd.
+                message = if (data.warnings.isEmpty()) null else buildString {
                     append("Imported “$name”: ${data.pointCount} points")
                     if (data.waypoints.isNotEmpty()) append(", ${data.waypoints.size} waypoints")
                     append(".")

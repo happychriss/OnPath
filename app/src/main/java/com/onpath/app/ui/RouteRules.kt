@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.data.TourKind
 import com.onpath.app.routing.GeoPoint
 
-/** Which items of the ⋮ menu can be used right now (disabled ones stay visible, greyed). */
+/** Which items of the ☰ menu can be used right now (disabled ones stay visible, greyed). */
 data class RouteMenuState(
     val load: Boolean,
     val save: Boolean,
@@ -13,7 +13,7 @@ data class RouteMenuState(
     val updates: Boolean = true,
 )
 
-/** What ⋮ → Save route does: ask for a name (new entry), or offer Save (overwrite) / Save as new…. */
+/** What sheet ⋯ → Save route does: ask for a name (new entry), or offer Save (overwrite) / Save as new…. */
 enum class SaveMode { NAME_DIALOG, OVERWRITE_OR_NEW }
 
 /**
@@ -24,7 +24,7 @@ object RouteRules {
     /**
      * @param hasRoute a planned route line exists
      * @param pointCount planned points (two or more = a route is coming, even while it is calculated)
-     * @param savedCount saved routes / tours in Manage routes
+     * @param savedCount saved routes / tours in My routes
      */
     fun menu(hasRoute: Boolean, pointCount: Int, savedCount: Int, navigating: Boolean, recording: Boolean) = RouteMenuState(
         load = savedCount > 0 && !navigating && !recording,
@@ -33,10 +33,10 @@ object RouteRules {
     )
 
     /**
-     * ⋮ → Save route: when the plan was loaded from (or last saved as) a planned route that still exists, offer to
+     * Sheet ⋯ → Save route: when the plan was loaded from (or last saved as) a planned route that still exists, offer to
      * overwrite it or save a new one; otherwise the name dialog (always a new entry).
      * @param savedId tour id the plan was last saved / loaded as (-1 = none)
-     * @param plannedIds ids of the planned routes in Manage routes
+     * @param plannedIds ids of the planned routes in My routes
      */
     fun saveMode(savedId: Long, savedName: String?, plannedIds: Collection<Long>): SaveMode =
         if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE_OR_NEW else SaveMode.NAME_DIALOG
