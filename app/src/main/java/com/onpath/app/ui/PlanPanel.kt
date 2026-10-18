@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
@@ -74,7 +75,18 @@ class PlanCallbacks(
     val onRoundTrip: () -> Unit = {},
     val onPointMenu: (Int) -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
+    val onResize: (PlanSize) -> Unit = {},
 )
+
+/** Plan panel sizes: swipe down = smaller, swipe up or tap the handle = bigger. */
+enum class PlanSize {
+    FULL, COMPACT, MINI;
+
+    fun smaller() = if (this == FULL) COMPACT else MINI
+    fun bigger() = if (this == MINI) COMPACT else FULL
+    /** Handle tap: grow one step; on FULL go back to COMPACT. */
+    fun tapped() = if (this == FULL) COMPACT else bigger()
+}
 
 data class PlanUi(
     val pointCount: Int,
@@ -85,37 +97,56 @@ data class PlanUi(
     val canRedo: Boolean,
     val activity: Activity,
     val hidden: Boolean = false,
+    val size: PlanSize = PlanSize.FULL,
 )
 
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
-    BottomPanel {
-        if (ui.hidden) { HiddenBar(cb.onToggleHidden); return@BottomPanel }
+    BottomPanel(
+        onSwipe = { down -> cb.onResize(if (down) ui.size.smaller() else ui.size.bigger()) },
+        onHandleTap = { cb.onResize(ui.size.tapped()) },
+    ) {
         val route = ui.route
+        val mini = ui.size == PlanSize.MINI
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Plan a route", style = MaterialTheme.typography.titleMedium)
+            if (mini && route != null) {
+                // One line instead of the title: the key numbers.
+                Text(
+                    "${Format.distance(route.distanceM)} · ↑ ${Format.meters(route.ascentM)} · ${Format.duration(route.durationS)}",
+                    style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Text("Plan a route", style = MaterialTheme.typography.titleMedium)
+            }
             Spacer(Modifier.width(8.dp))
-            if (route != null && !ui.routing) DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
-            Spacer(Modifier.weight(1f))
-            ActionButtonSmall(Icons.Filled.Visibility, "Hide route to see the map", cb.onToggleHidden)
+            if (route != null && !ui.routing && !mini) DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
+            if (!(mini && route != null)) Spacer(Modifier.weight(1f))
+            // The eye only hides the route on the map; the panel stays as it is.
+            if (ui.hidden) ActionButtonSmall(Icons.Filled.VisibilityOff, "Show route again", cb.onToggleHidden)
+            else ActionButtonSmall(Icons.Filled.Visibility, "Hide route to see the map", cb.onToggleHidden)
             PlanOverflow(enabled = ui.pointCount >= 2, cb)
             ActionButtonSmall(Icons.Filled.Close, "Close planning", cb.onClose)
         }
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp)) else Spacer(Modifier.height(3.dp))
+        if (ui.hidden) Hint("Route hidden – tap the eye to show it. Map taps are paused.")
+        ui.error?.let { ErrorBox(it) }
+        if (mini) return@BottomPanel
         Spacer(Modifier.height(6.dp))
         when {
             ui.pointCount == 0 -> Hint("Tap the map to set the start, or use “From me”.")
             ui.pointCount == 1 -> Hint("Tap the map to set the destination.")
             route != null -> {
                 StatsRow(route.distanceM, route.ascentM, route.descentM, route.durationS)
-                Spacer(Modifier.height(6.dp))
-                ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
-                GradientLegend()
-                RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp))
+                if (ui.size == PlanSize.FULL) {
+                    Spacer(Modifier.height(6.dp))
+                    ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
+                    GradientLegend()
+                    RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp))
+                }
             }
         }
-        ui.error?.let { ErrorBox(it) }
-        if (ui.pointCount > 0) PointChips(ui.pointCount, cb.onPointMenu)
+        if (ui.pointCount > 0 && ui.size == PlanSize.FULL) PointChips(ui.pointCount, cb.onPointMenu)
         Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ActionButton(Icons.AutoMirrored.Filled.Undo, "Undo", cb.onUndo, enabled = ui.canUndo)
@@ -128,23 +159,6 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks) {
         Button(onClick = cb.onGo, enabled = route != null, modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)) {
             Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp)); Text("Follow & record", fontSize = 16.sp)
-        }
-    }
-}
-
-/** Eye-off state: the panel shrinks to one slim bar so the map is visible. */
-@Composable
-private fun HiddenBar(onShow: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        FilledTonalIconButton(onClick = onShow, modifier = Modifier.size(52.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-            Icon(Icons.Filled.VisibilityOff, "Show route again")
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("Route hidden", fontWeight = FontWeight.Medium)
-            Text("Tap the eye to show it again. Map taps are paused.", fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

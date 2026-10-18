@@ -55,8 +55,9 @@ class ScreenshotTest {
     private val route = PlannedRoute(listOf(PlannedLeg(routePts, false)), 12_480.0, 842.0, 310.0, 4.6 * 3600, null,
         wayTypes = listOf(Share("path", 6100.0), Share("track", 3300.0), Share("quiet_road", 2200.0), Share("road", 700.0), Share("steps", 180.0)),
         surfaces = listOf(Share("natural_trail", 5200.0), Share("gravel", 3900.0), Share("asphalt", 3000.0), Share("unknown", 380.0)))
-    private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null, hidden: Boolean = false) =
-        PlanUi(n, r, routing, error, canUndo = true, canRedo = false, activity = Activity.HIKE, hidden = hidden)
+    private fun planUi(n: Int = 3, r: PlannedRoute? = route, routing: Boolean = false, error: String? = null, hidden: Boolean = false,
+                       size: PlanSize = PlanSize.FULL) =
+        PlanUi(n, r, routing, error, canUndo = true, canRedo = false, activity = Activity.HIKE, hidden = hidden, size = size)
 
     @Composable
     private fun Frame(bottom: @Composable () -> Unit) {
@@ -107,9 +108,19 @@ class ScreenshotTest {
         }
     }
 
-    /** Eye button on: route hidden, panel collapsed to a slim bar. */
+    /** Eye button on: route hidden on the map, panel unchanged except the eye icon and a hint. */
     @Test fun planHidden() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(hidden = true), PlanCallbacks()) }
+    }
+
+    /** Swiped down once: profile, breakdown and point chips removed. */
+    @Test fun planCompact() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+    }
+
+    /** Swiped down twice: one line with the key numbers. */
+    @Test fun planMini() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
     }
 
     @Test fun planNotice() = paparazzi.snapshot {
