@@ -107,7 +107,7 @@ fun MapScreen(
             AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onImportGpx,
                 onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
-            AppMode.NAVIGATE -> NavigateMode(vm, rec, location, footer)
+            AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
@@ -228,6 +228,17 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
     }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
+    // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
+    // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
+    val nav = rec?.nav
+    LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
+    LaunchedEffect(c, (nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.id) {
+        c.setNavProposal((nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.line)
+    }
+    LaunchedEffect(c, nav?.toRoute?.target, nav?.prompt?.javaClass, location) {
+        val guide = nav?.toRoute?.takeIf { nav.prompt != null && nav.prompt !is com.onpath.app.navigation.NavPrompt.Question }
+        c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
+    }
     LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
