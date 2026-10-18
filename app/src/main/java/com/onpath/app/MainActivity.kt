@@ -192,9 +192,11 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         vm.tracker.start()
         vm.recheckData()
+        vm.onAppStart() // owner: the app always opens at the current location (when nothing is running)
     }
 
     override fun onStop() {
+        vm.onAppStop()
         vm.tracker.stop()
         super.onStop()
     }
