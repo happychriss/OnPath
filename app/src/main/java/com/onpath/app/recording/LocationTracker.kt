@@ -68,6 +68,13 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
         ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    /** Precise location: what recording needs (an "approximate" grant delivers nothing usable from GPS). */
+    fun hasFinePermission(): Boolean =
+        ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /** The device has a GPS provider at all (emulators and some tablets do not). */
+    fun hasGps(): Boolean = try { LocationManager.GPS_PROVIDER in lm.allProviders } catch (_: Exception) { false }
+
     fun isEnabled(): Boolean = try {
         if (Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled
         else lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
