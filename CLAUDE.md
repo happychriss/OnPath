@@ -50,6 +50,7 @@ Built per region by the pipeline, copied to the phone into
 | `routes.geojson`, `trails.geojson` | `tools/extract_overlays.py` (pyosmium) | yes |
 | `contours.pmtiles` | `tools/build_contours.py` | optional |
 | `pois.geojson` | `tools/extract_pois.py` | optional |
+| `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
 | `segments/E10_N45.rd5` | download from https://brouter.de/brouter/segments4/ | yes |
 
 Current test region: Bozen / Meran / Algund, bbox `10.85,46.35,11.60,46.85`. OSM source:

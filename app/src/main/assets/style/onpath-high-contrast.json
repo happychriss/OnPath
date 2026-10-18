@@ -4027,9 +4027,9 @@
       "zoom"
      ],
      13,
-     260,
+     200,
      16,
-     380
+     320
     ],
     "symbol-sort-key": [
      "-",
@@ -4060,7 +4060,7 @@
      12.5
     ],
     "text-letter-spacing": 0.04,
-    "text-max-angle": 28,
+    "text-max-angle": 45,
     "text-padding": 3,
     "text-offset": [
      0,
@@ -4109,9 +4109,9 @@
       "zoom"
      ],
      13,
-     260,
+     200,
      16,
-     380
+     320
     ],
     "symbol-sort-key": [
      "-",
@@ -4144,7 +4144,7 @@
      13
     ],
     "text-letter-spacing": 0.04,
-    "text-max-angle": 28,
+    "text-max-angle": 45,
     "text-padding": 3,
     "text-offset": [
      0,
@@ -4193,9 +4193,9 @@
       "zoom"
      ],
      13,
-     260,
+     200,
      16,
-     380
+     320
     ],
     "symbol-sort-key": [
      "-",
@@ -4228,7 +4228,7 @@
      14
     ],
     "text-letter-spacing": 0.04,
-    "text-max-angle": 28,
+    "text-max-angle": 45,
     "text-padding": 3,
     "text-offset": [
      0,
