@@ -393,6 +393,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
+    /** Eye button held: route lines and markers are hidden (position and recorded track stay). */
+    var routePeek by mutableStateOf(false)
 
     // ---------------- map hold menus (MapGestures, ui/MapOverlays) ----------------
     /** POI held on the map in Plan: its menu "Add to route · Open in Google Maps". */

@@ -51,8 +51,11 @@ class ScreenshotTest {
         PlanUi(n, r, routing, error, canUndo = n > 0, canRedo = false, activity = Activity.HIKE, size = size, tourRunning = tourRunning)
 
     @Composable
-    private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false) =
-        MapFooter("500 m" to 64.dp) { LocateButton(gps, following, onClick = {}) }
+    private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
+                       eye: Boolean = false, peeking: Boolean = false) =
+        MapFooter("500 m" to 64.dp) {
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking)
+        }
 
     /** Plan mode: search bar (⋮ menu), activity chip, footer, then [bottom]. Top padding stands in for the status bar. */
     @Composable
@@ -78,13 +81,26 @@ class ScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    NavigateOverlay(ui, footer = { Footer(following = true) }, onSlideToPlan = {}, slideStartFraction = slide)
+                    NavigateOverlay(ui, footer = { Footer(following = true, compass = CompassSpec(ui.headingUp, 0f) {}, eye = true) },
+                        onSlideToPlan = {}, slideStartFraction = slide)
                 }
             }
         }
     }
 
     private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0), recordedM = 5_320.0, elapsedS = 5025)
+
+    /** Grouped map controls: compass (map turned), eye held (route hidden), locate with GPS dot. */
+    @Test fun mapControlsAll() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.align(Alignment.BottomCenter)) {
+                    Footer(compass = CompassSpec(null, 35f) {}, eye = true, peeking = true)
+                }
+            }
+        }
+    }
 
     /** App start without a plan: Plan is home; no points, Start navigation = free recording. GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {

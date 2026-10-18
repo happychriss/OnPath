@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Menus + route management (⋮: Load/Save/Manage routes/Start recording; first-hold start menu) – since 2026-10-18
-- [laptop] Plan gestures v3 (hold only, smart point menu, no timed messages) – since 2026-10-18
 - [laptop] Re-routing P0–P4 per docs/plan-auto-reroute.md (owner asked laptop to build all; incl. routing parts) – since 2026-10-18
 
 ## Next
@@ -31,6 +30,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Plan gestures v3 (laptop): hold only, 1×/2× vibration, smart point/POI menus, first-hold "Start here / Go here from my
+  location", no dragging, no self-dismissing messages (the shared snackbar now stays until OK).
+- Map controls grouped (laptop, owner): one rounded group on the right – compass (Navigate always; Plan only when the
+  map is turned, tap = north up), eye (hold to hide route lines/markers, position stays; only when something
+  route-like is shown; layers in `MapController.ROUTE_OVERLAY_LAYERS`), locate with GPS dot.
 - Style (laptop): hiking route bands from z10 (fully opaque by z11, all bands fade in over one zoom), graded trails
   from z10 – Meran no longer looks empty at town zoom. Untagged paths still from z12 (base tiles).
 - Plan gestures v2 (laptop, owner spec): POI quick tap = small "Open in Google Maps" bubble, hold on POI = add as

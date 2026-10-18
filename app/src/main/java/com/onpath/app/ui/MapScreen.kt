@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -53,6 +54,7 @@ fun MapScreen(
     var panelHeightPx by remember { mutableIntStateOf(0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
+    var bearing by remember { mutableFloatStateOf(0f) }
     var showActivity by remember { mutableStateOf(false) }
     var showSave by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -72,14 +74,29 @@ fun MapScreen(
             else -> vm.followMe = true
         }
     }
-    val footer = @Composable { MapFooter(scale) { LocateButton(gps, vm.followMe, onLocate) } }
+    // One grouped control: compass (Navigate always; Plan only when the map is turned), eye (only with
+    // something route-like on the map), locate (always, with the GPS dot).
+    val footer = @Composable {
+        MapFooter(scale) {
+            MapControls(
+                compass = when {
+                    vm.mode == AppMode.NAVIGATE -> CompassSpec(vm.navHeadingUp, 0f, vm::toggleNavOrientation)
+                    kotlin.math.abs(bearing) > 1f -> CompassSpec(null, bearing) { controller?.northUp() }
+                    else -> null
+                },
+                showEye = vm.route != null || vm.shown != null || vm.followLine != null,
+                onPeek = { vm.routePeek = it },
+                gps = gps, following = vm.followMe, onLocate = onLocate,
+            )
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         MapHost(
             vm = vm,
             topInsetPx = topInsetPx,
             onReady = { controller = it },
-            onCamera = { map -> scale = computeScale(map, density.density); cameraTick++ },
+            onCamera = { map -> scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat() },
             modifier = Modifier.fillMaxSize(),
         )
         MapSync(vm, controller, rec, location, panelHeightPx)
@@ -195,6 +212,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         }
         return
     }
+    LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
     // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
     LaunchedEffect(c) {
         snapshotFlow { Triple(vm.route, vm.canEditMap, vm.waypoints.toList()) }
