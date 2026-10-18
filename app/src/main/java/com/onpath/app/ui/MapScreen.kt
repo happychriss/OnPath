@@ -115,9 +115,8 @@ fun MapScreen(
     }
 
     if (showActivity) ActivityDialog(
-        vm.activity, vm.sac, vm.overlayOn,
+        vm.activity, vm.sac,
         onSelect = { vm.selectActivity(it) }, onSac = { vm.selectSac(it) },
-        onOverlay = { vm.updateSettings(vm.settings.copy(routeOverlay = it)) },
         onDismiss = { showActivity = false },
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
@@ -246,7 +245,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
-    LaunchedEffect(c, vm.activity, vm.settings.routeOverlay) { c.setOverlay(vm.activity, vm.settings.routeOverlay) }
+    // Marked route networks always show (owner): the band of the current activity.
+    LaunchedEffect(c, vm.activity) { c.setOverlay(vm.activity, true) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it) } }
     // App start in Plan: centre once on the position (first fix, else last known), unless the user moved the map.
     LaunchedEffect(c) {

@@ -109,7 +109,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var settings by mutableStateOf(prefs.settings)
         private set
     var showSettings by mutableStateOf(false)
-    val overlayOn: Boolean get() = settings.routeOverlay
 
     // --- Navigate orientation + next turn (navigation agent; see NavigateScreen, MapController.setCamera) ---
     /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
