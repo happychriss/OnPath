@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OnPathTheme {
-                var showBatteryHint by remember { mutableStateOf(false) }
                 val needData = vm.missing.isNotEmpty() && !vm.dataScreenDismissed
 
                 Box(Modifier.fillMaxSize()) {
@@ -99,7 +98,6 @@ class MainActivity : ComponentActivity() {
                                 withLocation {
                                     val newTour = vm.recState.value == null
                                     vm.startNavigation()
-                                    if (newTour && !vm.batteryHintShown) showBatteryHint = true
                                 }
                             },
                         )
@@ -122,6 +120,7 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             settings = vm.settings,
                             onChange = vm::updateSettings,
+                            onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
@@ -159,24 +158,6 @@ class MainActivity : ComponentActivity() {
                         onExport = { vm.exportTour(t) },
                         onDelete = { vm.deleteTour(t); vm.finishedTour = null },
                         onDone = { vm.finishedTour = null })
-                }
-                if (showBatteryHint) {
-                    AlertDialog(
-                        onDismissRequest = { showBatteryHint = false; vm.batteryHintShown = true },
-                        title = { Text("Recording in the background") },
-                        text = {
-                            Text("OnPath keeps recording with the screen off; you see a notification while it runs. " +
-                                "For best reliability set OnPath's battery usage to “Unrestricted”. " +
-                                "Location “Allow all the time” is optional and not needed for recording.")
-                        },
-                        confirmButton = { TextButton(onClick = { showBatteryHint = false; vm.batteryHintShown = true }) { Text("OK") } },
-                        dismissButton = {
-                            TextButton(onClick = {
-                                showBatteryHint = false; vm.batteryHintShown = true
-                                openAppSettings()
-                            }) { Text("App settings") }
-                        },
-                    )
                 }
             }
         }

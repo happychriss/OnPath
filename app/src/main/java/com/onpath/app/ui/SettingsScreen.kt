@@ -81,6 +81,8 @@ fun SettingsScreen(
     /** Available map themes (StyleLoader.themes); the chooser is shown when there is more than one. */
     themes: List<String> = listOf("classic"),
     onImportData: () -> Unit = {},
+    /** Opens Android's app settings (battery usage). */
+    onAppSettings: () -> Unit = {},
     onDownloadRouting: () -> Unit = {},
     dataBusy: String? = null,
     /** null = updates handled elsewhere (installed from Google Play) – section hidden. */
@@ -210,6 +212,14 @@ fun SettingsScreen(
                         }
                         SwitchRow("Keep screen on while navigating", "Only while following a route", settings.keepScreenOn) {
                             onChange(settings.copy(keepScreenOn = it))
+                        }
+                        // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Recording with the screen off works best with battery usage set to “Unrestricted”.",
+                                fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f))
+                            androidx.compose.material3.TextButton(onClick = onAppSettings,
+                                modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
                         }
                         // Navigate orientation (navigation agent): heading-up default, north-up option.
                         Text("Map direction while navigating", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))

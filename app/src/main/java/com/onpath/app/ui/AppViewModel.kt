@@ -480,7 +480,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeMapOverlays() {
         // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
         // tapping elsewhere – removes the orange ring too.
-        poiMenu?.let { m -> searchMark?.let { s -> if (kotlin.math.abs(s.lat - m.lat) < 1e-7 && kotlin.math.abs(s.lon - m.lon) < 1e-7) searchMark = null } }
+        if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
         poiMenu = null; pointMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
     }
     fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays(); if (waypoints.isEmpty()) firstPointMenu = p }
