@@ -1,5 +1,12 @@
 package com.onpath.app.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.foundation.clickable
 import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -95,7 +102,12 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double)
  */
 data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null)
 
-data class ToGo(val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?)
+data class ToGo(
+    val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?,
+    val descentM: Double = 0.0,
+    /** The rest of the followed line from the current position (for the elevation profile). */
+    val profile: List<GeoPoint> = emptyList(),
+)
 
 /**
  * Navigate mode, Google Maps style. Status on top (read-only): the next-turn card, what is left and the
@@ -121,7 +133,10 @@ fun NavigateOverlay(
             ui.turn?.let { TurnCard(it) }
             // status (finding a way back / no way / kept) on top: readable at a glance
             ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }?.let { OffRouteBanner(it) }
-            if (ui.toGo != null || ui.recordedM != null) NavStatusCard(ui, onResume)
+            if (ui.toGo != null || ui.recordedM != null) {
+                var profileOpen by rememberSaveable { mutableStateOf(false) }
+                NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen })
+            }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
@@ -190,9 +205,12 @@ internal fun NorthNeedle(modifier: Modifier) {
  * The only button is "Resume" while paused (from the notification).
  */
 @Composable
-private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
+internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {}) {
+    val canOpen = (ui.toGo?.profile?.size ?: 0) >= 2
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = Modifier.fillMaxWidth().then(if (canOpen) Modifier.clickable(
+            onClickLabel = if (profileOpen) "Hide elevation profile" else "Show elevation profile", onClick = onToggleProfile) else Modifier)) {
+      Column {
         Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -200,7 +218,7 @@ private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text("${Format.distance(g.distanceM)} to go", style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text("  ·  ↑ ${Format.meters(g.ascentM)}  ·  ${Format.duration(g.timeS)}",
+                        Text("  ·  ↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}  ·  ${Format.duration(g.timeS)}",
                             style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     val off = g.offM
@@ -219,7 +237,15 @@ private fun NavStatusCard(ui: NavUi, onResume: () -> Unit) {
                 }
             }
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
+            if (canOpen) Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
         }
+        // Tap the card: elevation profile of what is left (stays open until tapped again).
+        if (profileOpen && canOpen) {
+            ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp))
+        }
+      }
     }
 }
 
@@ -301,7 +327,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     LaunchedEffect(next?.first) { vm.navTurn = next?.first }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
     val ui = NavUi(
-        toGo = remaining?.let { ToGo(it.distanceM, it.ascentM, FollowProgress.timeS(it, vm.activity), it.offM) },
+        toGo = remaining?.let { r ->
+            ToGo(r.distanceM, r.ascentM, FollowProgress.timeS(r, vm.activity), r.offM, r.descentM,
+                profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList())
+        },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true,
         offRoute = rec?.nav?.let { n ->
