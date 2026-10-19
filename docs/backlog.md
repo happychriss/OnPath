@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] **Map design 0.7.0** (owner pick 2026-10-19, docs/design/map-colour-analysis.md): one style, band #168403 40 %, paths/tracks from own data, symbols, theme switch removed. Files: tools/make_style.py, tools/extract_overlays.py, tools/themes/, assets/style, map/ (StyleLoader, OptionalSources, MapController), ui/SettingsScreen, data/AppSettings – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
