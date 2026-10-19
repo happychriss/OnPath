@@ -8,6 +8,18 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Arrival forecast jumps after plan edits during a tour (owner, 2026-10-19 – to think through, then build):**
+  owner navigated, arrival crept 12:45 → 13:15 (ok: slower / standing), then in Plan: round trip, Undo, back to
+  Navigate → 12:45 again. Code today: every change of the followed line (Continue navigation with an edited plan,
+  re-route taken, activity switch) makes the service build a new `Navigator` (`RecordingService.loadFollow`) whose
+  detector starts with unknown progress (0), and `TripPace.setLine` resets the calm limit – the arrival is recomputed
+  in one step. Also: a plan that only *looks* edited (round trip + Undo re-routes to an equal but not identical line)
+  counts as a new route (`planFollowed` compares lists exactly). Proposal: (1) same route = line within ~10 m and
+  ±1 % length → keep the session, nothing restarts; (2) on a real new line keep the time already lost (shown arrival −
+  model arrival) as an offset and blend it out over ~10 min instead of resetting; (3) apply the new line's time only
+  after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
+  why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
+  `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
 - **Elevation profile scrub in Navigate (owner todo, 2026-10-19 – start when the owner says so):** dragging a finger
   along the elevation profile ("to go" card → profile) moves a dot along the followed route on the map, so you see
   where on the way that point of the profile is (Plan's profile already has `highlight`; same for Navigate).
