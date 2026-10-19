@@ -21,9 +21,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
 - **Clear the finished tour from the overview (owner, 2026-10-19 – start when the owner says so):** after "End tour"
-  the finished route should be easy to clear from the plan overview (today only ⋯ → Clear route, with confirmation).
-  Idea: after the tour is saved, the plan sheet shows "Tour saved · Clear route" as one button (no second question,
-  the track is already stored in My tours).
+  the finished route should be easy to clear from the plan overview. ⋯ → Clear route already clears at once (no
+  question since 2026-10-18, Undo brings it back) – owner confirmed: a saved route needs no question. Open idea:
+  a direct "Clear route" button in the plan sheet right after a finished tour, so it is not hidden in ⋯.
 - **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
   paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
   `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
