@@ -24,6 +24,8 @@ region (name, bbox, OSM URL)
   │                           ├─ extract_overlays.py ──────► routes.geojson      (required)
   │                           │                            ├► trails.geojson      (required)
   │                           │                            ├► ways.geojson        (optional)
+  │                           │                            ├► lowways.geojson     (optional)
+  │                           │                            ├► paths.geojson       (optional, 0.7.0)
   │                           │                            └► trailnames.geojson  (optional)
   │                           └─ extract_pois.py ──────────► pois.geojson        (optional)
   ├─ AWS Terrarium tiles ──── build_terrain.py ────────────► terrain.pmtiles     (required)
@@ -90,7 +92,7 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
 | 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
 | 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
-| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `trailnames.geojson` | 2 min | 7.0 + 4.6 + 6.0 + 3.6 MB |
+| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `lowways.geojson`, `trailnames.geojson`, `paths.geojson` | 2 min | South Tyrol bbox 2026-10-19: 6.8 + 5.9 + 7.9 + 9.0 + 4.4 + 19.1 MB |
 | 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
 | 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
@@ -117,13 +119,15 @@ Notes per step:
 | Refinement | Data (pipeline) | Style (`tools/make_style.py` + modules) | App |
 | --- | --- | --- | --- |
 | **Trail names + route numbers** | `extract_overlays.py` → `trailnames.geojson`: `t="n"` trail name lines (German name: `name:de` or the German half of "DE - IT"; unnamed member ways get the hiking relation's name; same-name ways merged, simplified + Chaikin-smoothed; `tier` 1 = Waalweg/Höhenweg/≥2.5 km, 2 = normal, 3 = short or not a "…weg"; `len` m). `t="r"`: AVS route numbers of the way's hiking relations ("25", "24 · 25") | `tools/style_trail_names.py`: layers `trail-ref` (z14+, upright red numbers), `trail-name-t3/t2/t1` (z15/z14/z13, longer first) | optional, stripped by `OptionalSources` when missing |
-| **Trail difficulty** | `trails.geojson`: `sac` 0–6 from `sac_scale`, `mtb` "0"–"6" from `mtb:scale`, `vis` 0–5 from `trail_visibility` (see "Way quality fields") | `trails-*` layers: rhythm by SAC (solid / dots / dot-dash), faint trails sparser + lighter, light underlay; `trails-sac-label` (T, hiking), `trails-mtb-label` (S, MTB) | required |
-| **Way quality** | `ways.geojson`: `k`, `tt`, `surf`, `smooth` (see "Way quality fields") | `track-grade-*` (track edges by tracktype), `surface-loose-*` (bike activities) | optional, stripped by `OptionalSources` when missing; toggled per activity (`MapController.setOverlay`) |
-| **Route bands** | `routes.geojson`: route relations `hiking/foot` → `hike`, `bicycle` → `bike`, `mtb` → `mtb` (+ `ref`, `name`) | `route_bands()`: pale opaque bands **below** roads/paths/trails; ids `routes-hike/-bike/-mtb` | toggled per activity (`MapController`) |
+| **Trail difficulty** | `trails.geojson`: `sac` 0–6 from `sac_scale`, `mtb` "0"–"6" from `mtb:scale`, `vis` 0–5 from `trail_visibility` (see "Way quality fields") | `trails-*` layers: rhythm by SAC (solid / dots / dot-dash), faint trails sparser + lighter, no underlay (0.7.0); `trails-sac-label` (T, hiking), `trails-mtb-label` (S, MTB) | required |
+| **Paths and tracks (0.7.0)** | `paths.geojson`: every path / footway / bridleway / track (+ ways with sac_scale), exact geometry; `k` t/p, `sac`, `vis`, `st` (steps), `tt` (tracktype), `pv` (paved track) | `paths-own` (black line), `track-own-single` (< z14.5 brown dashed), `track-own-compact/medium/loose/soft` (two dotted brown edges, spacing by `tt`), `track-own-paved` (like a street) | optional; without it the base map's lines are drawn (`path-base`, `track-base` carry metadata `onpath:fallback-for: paths`, kept by `OptionalSources` only then) |
+| **Way quality** | `ways.geojson`: `k`, `tt`, `surf`, `smooth` (see "Way quality fields") | `surface-loose-*` (bike activities) | optional, stripped by `OptionalSources` when missing; toggled per activity (`MapController.setOverlay`) |
+| **Route bands** | `routes.geojson`: route relations `hiking/foot` → `hike`, `bicycle` → `bike`, `mtb` → `mtb`, **merged per kind into continuous lines** (the band is transparent); major routes (net ≥ 2) again as original pieces with `majoronly`, `ref`, `name`, `net` | `route_bands()`: transparent band #168403 at 40 % **below** roads/paths/trails (excludes `majoronly`); pink highlight + name from the `majoronly` pieces; ids `routes-hike/-bike/-mtb` | toggled per activity (`MapController`) |
 | **POIs + tiers** | `extract_pois.py`: 28 kinds (`classify()`), ways/areas → representative point; **bus de-dup**: same-name stops within 40 m merged to their midpoint (`MERGE_KINDS`) | `POI_TIERS` in `make_style.py`: `poi-tier1` (icon z12, dot until z13, label z14), `poi-tier2` (z14/z15), `poi-tier3` (z15/z16); sort key = kind rank, named first; see `docs/poi-categories.md` | Settings filter wraps every `poi-*` layer filter; tap lookup |
 | **Railways + stations** | rails from base tiles (`transportation` class `rail`); stations = POI kind `train` (railway station/halt, no subway/funicular/tourist) | `rail-casing`, `rail` (from z8), `rail-hatch` (z12); `poi-station` top POI layer, icon z10, name z11 (`station.*` tokens) | station follows the POI filter (`train`) |
 | **Sprite (POI icons)** | `tools/make_sprite.py` + `tools/icons/*.svg` → `app/src/main/assets/sprites/onpath{,@2x}.{json,png}` | `"sprite": "asset://sprites/onpath"`, images `poi-<kind>`, `poi-<kind>-small` | **APK asset** – a new kind/icon needs a new app build |
-| **Themes / design tokens** | `tools/themes/classic.json`, `high-contrast.json` (`"extends"`), read by `tools/style_theme.py` | `make_style.py --all` → `onpath.json` (classic), `onpath-<theme>.json` | bundled in APK; `styles/` override in the data folder wins (`StyleLoader`) |
+| **Design tokens** | `tools/themes/classic.json` (the one style since 0.7.0; rationale `docs/design/map-colour-analysis.md`), read by `tools/style_theme.py`; proposals in `tools/themes-proposals/` | `make_style.py` → `onpath.json` | bundled in APK; `styles/` override in the data folder wins (`StyleLoader`); extra themes only as overrides |
+| **Ground symbols (0.7.0)** | `tools/make_sprite.py` `PATTERNS` (wetland, farmland, rock, sand tiles in the sprite) | `landcover-<cls>-pattern` (fill-pattern, z14+) | bundled sprite |
 | **Contours** | `build_contours.py`: 50 m lines at z12, 20 m at z13 (MVT layer `contour`, props `ele`, `idx`=1 every 100 m) | `contour-*` layers | optional, toggle in Settings |
 | **Hillshade / 3-D relief** | `terrain.pmtiles` (Terrarium) | `hillshade.*` tokens | required |
 | **Base map** | Planetiler OpenMapTiles z0–14 | land cover, water, roads, paths, labels (German) | required |
@@ -177,7 +181,7 @@ How the data reaches the phone (data folder `/sdcard/Android/data/com.onpath.app
    `data/DataImporter.kt` maps entries by name only: `*.rd5` → `segments/`, `*.pmtiles` / `*.geojson`
    → top level, `styles/*.json` or `onpath*.json` → `styles/`; everything else is skipped. Each file is
    written to a temp file and renamed when complete, free space is checked first. Single files
-   (e.g. just a new `pois.geojson` or `onpath-high-contrast.json`) can be imported the same way.
+   (e.g. just a new `pois.geojson` or a style override `onpath-<name>.json`) can be imported the same way.
 2. **adb push**: `adb push out/<region>/onpath-data/. /sdcard/Android/data/com.onpath.app/files/onpath/`
 3. **Routing tiles from brouter.de on the phone**: missing-data screen → "Download routing data
    (≈ 200 MB, Wi-Fi)" (`data/SegmentDownloader.kt`, resumable). That is why `--no-segments` packages
