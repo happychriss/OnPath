@@ -10,6 +10,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Smart route names when saving (owner, 2026-10-19 – laptop, do at the start of the next session):** propose a short name from the route, e.g. "Algund → Meran" or "Round trip from Algund", from start/end place names (nearest village/POI/peak/hut, offline index); user can still edit it.
 - **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
 - **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
   `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
