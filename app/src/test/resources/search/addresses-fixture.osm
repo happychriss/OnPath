@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tiny OSM fixture for AddressSearchTest. Regenerate the .sqlite after a change (pyosmium + shapely):
+     python3 tools/extract_addresses.py app/src/test/resources/search/addresses-fixture.osm \
+         app/src/test/resources/search/addresses-fixture.sqlite 11.0 46.4 11.5 46.8 -->
+<osm version="0.6" generator="hand">
+  <!-- Municipality Meran: square 11.10–11.20 E, 46.64–46.70 N -->
+  <node id="1" version="1" lat="46.64" lon="11.10"/><node id="2" version="1" lat="46.64" lon="11.20"/>
+  <node id="3" version="1" lat="46.70" lon="11.20"/><node id="4" version="1" lat="46.70" lon="11.10"/>
+  <way id="1" version="1"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/></way>
+  <relation id="1" version="1">
+    <member type="way" ref="1" role="outer"/>
+    <tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="8"/>
+    <tag k="name" v="Meran - Merano"/><tag k="name:de" v="Meran"/><tag k="name:it" v="Merano"/>
+    <tag k="ref:ISTAT" v="021051"/>
+  </relation>
+  <!-- Municipality Bozen: square 11.30–11.40 E, 46.46–46.52 N -->
+  <node id="11" version="1" lat="46.46" lon="11.30"/><node id="12" version="1" lat="46.46" lon="11.40"/>
+  <node id="13" version="1" lat="46.52" lon="11.40"/><node id="14" version="1" lat="46.52" lon="11.30"/>
+  <way id="2" version="1"><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="11"/></way>
+  <relation id="2" version="1">
+    <member type="way" ref="2" role="outer"/>
+    <tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="8"/>
+    <tag k="name" v="Bolzano - Bozen"/><tag k="name:de" v="Bozen"/><tag k="name:it" v="Bolzano"/>
+    <tag k="ref:ISTAT" v="021008"/>
+  </relation>
+  <!-- Places -->
+  <node id="20" version="1" lat="46.684" lon="11.145"><tag k="place" v="quarter"/><tag k="name" v="Quarazze - Gratsch"/><tag k="name:de" v="Gratsch"/><tag k="name:it" v="Quarazze"/></node>
+  <node id="21" version="1" lat="46.671" lon="11.160"><tag k="place" v="town"/><tag k="name" v="Meran - Merano"/><tag k="name:de" v="Meran"/><tag k="name:it" v="Merano"/></node>
+  <!-- Laurinstraße in Meran, two ways -->
+  <node id="30" version="1" lat="46.6840" lon="11.1440"/><node id="31" version="1" lat="46.6843" lon="11.1460"/>
+  <node id="32" version="1" lat="46.6846" lon="11.1480"/><node id="33" version="1" lat="46.6850" lon="11.1500"/>
+  <way id="30" version="1"><nd ref="30"/><nd ref="31"/><nd ref="32"/>
+    <tag k="highway" v="residential"/><tag k="name" v="Laurinstraße - Via Laurin"/><tag k="name:de" v="Laurinstraße"/><tag k="name:it" v="Via Laurin"/></way>
+  <way id="31" version="1"><nd ref="32"/><nd ref="33"/>
+    <tag k="highway" v="residential"/><tag k="name" v="Laurinstraße - Via Laurin"/><tag k="name:de" v="Laurinstraße"/><tag k="name:it" v="Via Laurin"/></way>
+  <node id="40" version="1" lat="46.6842" lon="11.1445"><tag k="addr:housenumber" v="5"/><tag k="addr:street" v="Laurinstraße - Via Laurin"/><tag k="addr:postcode" v="39012"/><tag k="addr:city" v="Meran - Merano"/></node>
+  <node id="41" version="1" lat="46.6845" lon="11.1470"><tag k="addr:housenumber" v="7a"/><tag k="addr:street" v="Laurinstraße - Via Laurin"/><tag k="addr:postcode" v="39012"/></node>
+  <!-- Romstraße in Meran and in Bozen (there the Italian name comes first and there is no name:de) -->
+  <node id="50" version="1" lat="46.6700" lon="11.1500"/><node id="51" version="1" lat="46.6690" lon="11.1550"/>
+  <way id="50" version="1"><nd ref="50"/><nd ref="51"/><tag k="highway" v="primary"/><tag k="name" v="Romstraße - Via Roma"/><tag k="name:de" v="Romstraße"/><tag k="name:it" v="Via Roma"/></way>
+  <node id="52" version="1" lat="46.4900" lon="11.3400"/><node id="53" version="1" lat="46.4910" lon="11.3450"/>
+  <way id="51" version="1"><nd ref="52"/><nd ref="53"/><tag k="highway" v="tertiary"/><tag k="name" v="Via Roma - Romstraße"/></way>
+  <node id="54" version="1" lat="46.6695" lon="11.1520"><tag k="addr:housenumber" v="3"/><tag k="addr:street" v="Romstraße - Via Roma"/></node>
+  <node id="55" version="1" lat="46.4905" lon="11.3420"><tag k="addr:housenumber" v="3"/><tag k="addr:street" v="Via Roma - Romstraße"/><tag k="addr:postcode" v="39100"/></node>
+  <!-- A farm address without a street (addr:place) -->
+  <node id="60" version="1" lat="46.6600" lon="11.1200"><tag k="addr:housenumber" v="12"/><tag k="addr:place" v="Pawigl"/></node>
+  <!-- Outside the bbox: ignored -->
+  <node id="70" version="1" lat="47.2" lon="11.4"><tag k="addr:housenumber" v="1"/><tag k="addr:street" v="Rennweg"/></node>
+</osm>
