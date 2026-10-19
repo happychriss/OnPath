@@ -25,7 +25,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (centres on the position) → tap = north up … Today: Plan has only "turned / tap = north", Navigate only the
   heading-up ⇄ north toggle, and leaving Navigate always resets north. Open points: no direction (no GPS, no
   compass, standing) → skip the third state with a short hint; Plan editing while the map turns → tapping a point or
-  panning freezes the angle (follow ends, map stays where it is); tilt only in Navigate; remember the last state per
+  panning freezes the angle (follow ends, map stays where it is); no tilt anywhere (NAV_TILT_DEG = 0, tilt gestures off); remember the last state per
   mode; optional: higher rotate threshold so pinch-zoom does not turn the map by accident.
 - **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
   paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
