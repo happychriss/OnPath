@@ -28,5 +28,5 @@ enum class EstimateState {
 
 enum class PauseReason(val text: String) {
     NO_GPS("no GPS"),
-    NO_PROGRESS("position not found along the route"),
+    NO_PROGRESS("no progress"),
 }

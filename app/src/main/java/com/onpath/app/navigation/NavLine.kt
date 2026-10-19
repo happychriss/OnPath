@@ -141,6 +141,26 @@ class NavLine(val points: List<GeoPoint>) {
     companion object {
         /** [parts]: the distance rising by this much between two close stretches makes them two parts. */
         const val SPLIT_M = 6.0
+
+        /**
+         * Same route although not the same list (a plan re-computed after Undo): lengths within 1 % and every ~50 m
+         * of each line within [tolM] of the other, in order (a round trip is not the same as its way out).
+         */
+        fun sameRoute(a: List<GeoPoint>, b: List<GeoPoint>, tolM: Double = 10.0): Boolean {
+            if (a == b) return true
+            val la = NavLine(a); val lb = NavLine(b)
+            if (!la.isUsable || !lb.isUsable) return false
+            if (kotlin.math.abs(la.lengthM - lb.lengthM) > 0.01 * max(la.lengthM, lb.lengthM) + 5) return false
+            val n = max(2, (la.lengthM / 50).toInt())
+            for (k in 0..n) {
+                val at = la.lengthM * k / n
+                // the same place along the other line (±50 m + 2 %), not anywhere on it
+                val w = 50 + 0.02 * la.lengthM
+                val m = lb.match(la.pointAt(at), at - w, at + w) ?: return false
+                if (m.distanceM > tolM) return false
+            }
+            return true
+        }
     }
 
     /** Segment index containing [alongM] (clamped). */

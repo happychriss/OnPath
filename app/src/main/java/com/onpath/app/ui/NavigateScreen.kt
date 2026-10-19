@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.data.FollowProgress
@@ -134,7 +135,7 @@ data class ToGo(
      */
     val state: com.onpath.app.time.EstimateState = com.onpath.app.time.EstimateState.OK,
     val pausedBecause: String? = null,
-    /** Where the time counts to: the last stop's name or "destination" ("arrive at Leiter Alm ≈ 16:40"). */
+    /** Where the time counts to: the last stop's name under the arrival clock; null = the (unnamed) destination. */
     val target: String? = null,
 )
 
@@ -299,12 +300,19 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(start = 8.dp).widthIn(max = 128.dp).semantics(mergeDescendants = true) {}) {
+                modifier = Modifier.padding(start = 8.dp).width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
                 val paused = ui.toGo.state == com.onpath.app.time.EstimateState.PAUSED
-                Text(ui.toGo.target?.let { "arrive at $it ≈" } ?: "arrive ≈", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // "arrive at <target> ≈ 16:40": the clock large, the target small under it, no wider than the clock
+                // (the time and the moving line on the left keep their room)
+                Text("arrive ≈", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1,
                     color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
+                ui.toGo.target?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        modifier = Modifier.then(NoIntrinsicWidth).fillMaxWidth())
+                }
             }
             if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
                 Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -324,6 +332,20 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         }
       }
     }
+}
+
+/** The child does not widen an IntrinsicSize column (the target under the arrival clock is cut, not the clock's room). */
+private object NoIntrinsicWidth : androidx.compose.ui.layout.LayoutModifier {
+    override fun androidx.compose.ui.layout.MeasureScope.measure(
+        measurable: androidx.compose.ui.layout.Measurable, constraints: androidx.compose.ui.unit.Constraints,
+    ): androidx.compose.ui.layout.MeasureResult {
+        val p = measurable.measure(constraints)
+        return layout(p.width, p.height) { p.place(0, 0) }
+    }
+    override fun androidx.compose.ui.layout.IntrinsicMeasureScope.minIntrinsicWidth(
+        measurable: androidx.compose.ui.layout.IntrinsicMeasurable, height: Int) = 0
+    override fun androidx.compose.ui.layout.IntrinsicMeasureScope.maxIntrinsicWidth(
+        measurable: androidx.compose.ui.layout.IntrinsicMeasurable, height: Int) = 0
 }
 
 /** Own position for an emergency call; tap copies "lat, lon" (paste into a message or any map app). */
@@ -461,7 +483,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val arrive = toGoS?.let { s ->
         tt?.arrivalMs?.takeIf { tt.toGoS != null } ?: com.onpath.app.time.TimeEstimate.arrivalMs(System.currentTimeMillis(), s)
     }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
-    val target = nav?.session?.let { s -> s.stops.lastOrNull()?.name ?: "destination" }
+    // the named last stop; an unnamed one is just "the destination" (no extra line: the card has no room to spare)
+    val target = nav?.session?.stops?.lastOrNull()?.name
     val notOnRoute = nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
     val ui = NavUi(
         toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, nav?.offM, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)

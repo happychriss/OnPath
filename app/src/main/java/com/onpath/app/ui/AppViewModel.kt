@@ -25,6 +25,7 @@ import com.onpath.app.gpx.GpxWriter
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.recording.LocationTracker
 import com.onpath.app.navigation.NavKind
+import com.onpath.app.navigation.NavLine
 import com.onpath.app.navigation.NavSession
 import com.onpath.app.navigation.NavSessionStore
 import com.onpath.app.recording.RecState
@@ -257,6 +258,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var followIsTrack = prefs.followIsTrack
     /** "Continue navigation" re-plans: follow the next route result. */
     private var followNextRoute = false
+    /** The plan's points were edited (add, delete, round trip, reverse, undo …): a running tour follows the result. */
+    private var planEditPending = false
 
     init {
         recalc()
@@ -533,6 +536,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
+        planEditPending = true
         recalc()
     }
 
@@ -768,6 +772,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         canUndo = history.canUndo; canRedo = history.canRedo
         pointMenu = null; firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
+        planEditPending = true
         recalc()
     }
 
@@ -812,7 +817,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             if (!requests.isCurrent(gen) || !isActive) return@launch // superseded or cleared
+            var baseline = false
             result.onSuccess {
+                baseline = adoptPlanBaseline
                 route = it; routeError = it.error; snapToRoute(pts, pins, it)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
@@ -821,6 +828,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (followNextRoute) {
                 followNextRoute = false
                 if (route != null) followPlanned(checkNow = true) else message = "Could not re-route – still following the previous line."
+            } else if (planEditPending && result.isSuccess) {
+                // an edit of the plan during a tour: the tour follows the new plan (owner rule 2026-10-19, no question)
+                planEditPending = false
+                if (!baseline) followEditedPlan()
             }
             routing = false
         }
@@ -1346,6 +1357,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------- follow / record ----------------
+
+    /**
+     * The plan was edited while a tour follows it (round trip, Undo, points added / removed, reverse): the tour follows
+     * the new plan at once – followed line, target and arrival – without a question (owner rule 2026-10-19). A
+     * re-computed line that is the same route (Undo back to it) keeps the running session. A followed GPX track or a
+     * free recording are not touched; a plan with fewer than two points changes nothing.
+     */
+    private fun followEditedPlan() {
+        val r = route ?: return
+        if (recState.value == null || followLine == null || followIsTrack) return
+        val orig = followOriginal
+        if (planFollowed(r.points)) return
+        if (orig != null && NavLine.sameRoute(r.points, orig)) { planBaseline = r.points; return }
+        followPlanned()
+    }
 
     fun followPlanned(checkNow: Boolean = false) {
         val r = route ?: return
