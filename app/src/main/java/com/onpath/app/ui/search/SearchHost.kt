@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.onpath.app.debug.Problems
 import com.onpath.app.poi.PoiLinks
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.GoogleSearchLink
@@ -80,6 +81,8 @@ fun openGoogle(context: Context, url: String) {
     fun start(i: Intent) = try {
         if (context !is android.app.Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(i); true
-    } catch (_: ActivityNotFoundException) { false } catch (_: Exception) { false }
-    start(Intent(Intent.ACTION_VIEW, uri).setPackage(PoiLinks.GOOGLE_MAPS_PACKAGE)) || start(Intent(Intent.ACTION_VIEW, uri))
+    } catch (_: ActivityNotFoundException) { false // expected: Google Maps app not installed → try the browser
+    } catch (e: Exception) { Problems.warn("search", "Google Maps link could not be opened", e); false }
+    if (!(start(Intent(Intent.ACTION_VIEW, uri).setPackage(PoiLinks.GOOGLE_MAPS_PACKAGE)) || start(Intent(Intent.ACTION_VIEW, uri))))
+        Problems.warn("search", "No app (Google Maps or browser) could open the Google Maps link")
 }

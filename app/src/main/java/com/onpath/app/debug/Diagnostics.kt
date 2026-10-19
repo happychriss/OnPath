@@ -103,6 +103,7 @@ object Diagnostics {
                 z.putNextEntry(ZipEntry(name)); z.write(text.toByteArray()); z.closeEntry()
             }
             put("diagnostics.json", report.toString(1))
+            put("problems.json", Problems.toJson().toString(1))
             put("logcat.txt", logcat())
             if (styleJson != null) put("style-loaded.json", styleJson)
         }

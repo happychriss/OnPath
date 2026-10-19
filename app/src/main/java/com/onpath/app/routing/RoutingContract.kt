@@ -1,5 +1,7 @@
 package com.onpath.app.routing
 
+import com.onpath.app.debug.Problems
+
 /**
  * Shared contract between the app UI and the on-device routing engine.
  * Do not change without updating docs/architecture-contract.md.
@@ -56,7 +58,7 @@ data class WayAttrs(
             if (c == null || c.size < 4 || c[0].isEmpty()) null
             else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
                 c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null })
-        } catch (_: Exception) { null }
+        } catch (_: Exception) { null } // expected: an unknown / old code = no attributes
     }
 }
 
@@ -97,13 +99,17 @@ class RouteCancel {
 
     fun cancel() {
         val h = synchronized(this) { isCancelled = true; hook }
-        try { h?.invoke() } catch (_: Exception) { }
+        try { h?.invoke() } catch (e: Exception) {
+            Problems.warn("routing", "Route cancel hook failed; the request runs until its timeout", e)
+        }
     }
 
     /** Engine side: what to run on [cancel] (null = nothing running). Runs at once when already cancelled. */
     fun onCancel(h: (() -> Unit)?) {
         val now = synchronized(this) { hook = h; isCancelled }
-        if (now && h != null) try { h() } catch (_: Exception) { }
+        if (now && h != null) try { h() } catch (e: Exception) {
+            Problems.warn("routing", "Route cancel hook failed; the request runs until its timeout", e)
+        }
     }
 }
 

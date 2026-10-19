@@ -18,6 +18,7 @@ import com.onpath.app.data.Prefs
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
+import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.GpxWriter
@@ -333,7 +334,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
                 .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
             .put("styleVersion", styleVersion).put("missingData", missing.map { it.name })
-    } catch (e: Throwable) { org.json.JSONObject().put("error", e.toString()) }
+    } catch (e: Throwable) {
+        Problems.warn("ui", "Diagnostics app state could not be collected", e)
+        org.json.JSONObject().put("error", e.toString())
+    }
 
     fun recheckData() {
         missing = dataFiles.check().filter { !it.present }
@@ -388,7 +392,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (r != null && com.onpath.app.update.AppUpdater.isNewer(r.version, com.onpath.app.BuildConfig.VERSION_NAME))
                     UpdateState.Available(r) else UpdateState.UpToDate
             } catch (e: Exception) {
-                // Offline or GitHub unreachable: silent for the automatic check.
+                // Offline or GitHub unreachable: no user message for the automatic check, only the problem log.
+                Problems.info("update", "Update check failed (offline or GitHub unreachable)", e)
                 if (manual) UpdateState.Failed("Could not check for updates (${e.message ?: "no connection"}).") else UpdateState.Idle
             }
             withContext(Dispatchers.Main) { update = result }
@@ -401,7 +406,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rel = (update as? UpdateState.Available)?.release ?: return
         if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
             message = "Allow OnPath to install updates, then tap Install again."
-            try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (_: Exception) { }
+            try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (e: Exception) {
+                Problems.warn("update", "Install-permission settings screen could not be opened", e)
+            }
             return
         }
         update = UpdateState.Downloading(rel, 0)
@@ -415,6 +422,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     app.startActivity(com.onpath.app.update.AppUpdater.installIntent(app, apk))
                 }
             } catch (e: Exception) {
+                Problems.warn("update", "Update download or installer start failed; current version kept", e)
                 withContext(Dispatchers.Main) {
                     update = UpdateState.Available(rel)
                     message = "Update download failed: ${e.message ?: "no connection"}. Your current version keeps working."
@@ -453,8 +461,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 r.summary + packageNote() +
                     if (newTiles && recState.value != null) " Restart OnPath after the tour to see the new map." else ""
             } catch (e: com.onpath.app.data.DataImporter.ImportException) {
+                Problems.warn("data", "Map data import rejected", e)
                 e.message ?: "Import failed."
             } catch (e: Exception) {
+                Problems.error("data", "Map data import failed; existing data kept", e)
                 "Import failed: ${e.message ?: e.javaClass.simpleName}. Your existing map data is unchanged."
             }
             withContext(Dispatchers.Main) { dataBusy = null; message = msg }
@@ -476,6 +486,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.Main) { recheckData() }
                 "Routing data $name ready."
             } catch (e: Exception) {
+                Problems.warn("data", "Routing data download stopped", e)
                 "Routing data download stopped: ${e.message ?: e.javaClass.simpleName} Tap again to resume."
             }
             withContext(Dispatchers.Main) { dataBusy = null; message = msg }
@@ -485,7 +496,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun displayName(uri: Uri): String? = try {
         getApplication<Application>().contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-    } catch (_: Exception) { null } ?: uri.lastPathSegment?.substringAfterLast('/')
+    } catch (e: Exception) {
+        Problems.warn("data", "File name of the picked file unreadable; using the URI name", e)
+        null
+    } ?: uri.lastPathSegment?.substringAfterLast('/')
 
     // ---------------- activity ----------------
 
@@ -800,7 +814,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
-                .onFailure { route = null; routeError = it.message ?: "Routing failed." }
+                .onFailure { Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: "Routing failed." }
             if (followNextRoute) {
                 followNextRoute = false
                 if (route != null) followPlanned(checkNow = true) else message = "Could not re-route – still following the previous line."
@@ -862,7 +876,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
         com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).get(t.id)
             ?: com.onpath.app.time.TourTimes.of(t.durationS, com.onpath.app.time.BreakDetector.breaksIn(db.loadSegments(t.id)))
-    } catch (_: Exception) { null }
+    } catch (e: Exception) {
+        Problems.warn("time", "Times of a finished tour could not be computed; shown without", e)
+        null
+    }
 
     /** Pace or learned factors changed: new times for the plan and the route list (the route itself stays). */
     private fun retime() {
@@ -878,12 +895,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A planned route was saved as [id]: keep its model time per group (with way attributes) for the route list. */
     private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) {
         if (r == null || r.points.size < 2) return
-        try { planTimes.put(id, r.distanceM, com.onpath.app.time.RouteTimes.of(r.points, a).groupTotals()) } catch (_: Exception) { }
+        try { planTimes.put(id, r.distanceM, com.onpath.app.time.RouteTimes.of(r.points, a).groupTotals()) } catch (e: Exception) {
+            Problems.warn("time", "Plan times not stored for a saved route; list time falls back to the stored points", e)
+        }
     }
 
     /** Planned routes show the model time (recomputed, the stored router time is ignored); others as stored. */
     private fun withModelTime(t: Tour): Tour {
         if (t.kind != TourKind.PLANNED) return t
+        // expected: unknown/old activity name in the DB falls back to Hike
         val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: Activity.HIKE
         val f = planFactors(a)
         val key = f to t.distanceM // an overwritten route has a new distance
@@ -901,7 +921,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 plannedTimes[t.id] = key to s
                 t.copy(durationS = s)
             }
-        } catch (_: Exception) { t }
+        } catch (e: Exception) {
+            Problems.warn("time", "Model time of a planned route could not be computed; stored time shown", e)
+            t
+        }
     }
 
     /**
@@ -940,7 +963,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
                         pts.map { GpxWaypoint(it.lat, it.lon, null) },
                     ).also { storePlanTimes(it, r, act) }
-                }.getOrNull()
+                }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
             }
             if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
             setSaved(title, id, pts)
@@ -987,6 +1010,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (replaced) { setSaved(name, id, pts); refreshTours(); then?.invoke() }
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
+                Problems.error("db", "Overwriting a saved route failed", it)
                 routesProblem = "The route could not be saved. Your plan is still here – please try again."
             }
         }
@@ -1004,7 +1028,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val name = RouteRules.cleanName(input, t.name)
         if (name == t.name) return
         viewModelScope.launch {
-            val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }.isSuccess }
+            val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }
+                .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = "The route could not be renamed. Please try again."; return@launch }
             if (savedId == t.id) setSaved(name, savedId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
@@ -1197,7 +1222,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val pos = GeoPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null)
             val progress = recState.value?.nav?.progressM ?: nav.progressM
             val rest = withContext(Dispatchers.Default) {
-                runCatching { com.onpath.app.navigation.ActivityCheck.rest(session, progress, pos) }.getOrNull()
+                runCatching { com.onpath.app.navigation.ActivityCheck.rest(session, progress, pos) }
+                    .onFailure { Problems.warn("navigation", "Activity check: rest of the route could not be computed", it) }.getOrNull()
             }
             checkRest = rest
             if (rest == null) {
@@ -1220,6 +1246,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             else ActivityRowState.Ready(com.onpath.app.navigation.ActivityCheck.evaluate(rest.line, a, sacFor(a), r, planFactors(a)))
                         }
                     } catch (e: Exception) {
+                        Problems.warn("routing", "Activity check: routing for another activity failed", e)
                         ActivityRowState.Failed(e.message?.takeIf { it.length < 90 } ?: "No route found for it")
                     }
                 }
@@ -1248,7 +1275,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeActivityCheck()
         if (st == ActivityRowState.Plain || session == null) {
             selectActivity(a)
-            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) { runCatching { db.updateActivity(id, a.name, sacFor(a)) } } }
+            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
+                runCatching { db.updateActivity(id, a.name, sacFor(a)) }
+                    .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
+            } }
             return
         }
         val fit = (st as? ActivityRowState.Ready)?.fit ?: return
@@ -1259,7 +1289,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     stops = listOf(fit.line.first()) + left.map { it.point }, names = listOf(null) + left.map { it.name },
                     pinned = left.indices.filter { left[it].pinned }.map { it + 1 }.toSet())
             } else NavSession.start(session.kind, session.name, a, fit.sac, fit.line)
-        }.getOrNull() ?: return
+        }.onFailure { Problems.error("navigation", "Proposed route for the new activity could not be started", it) }.getOrNull() ?: return
         val app = getApplication<Application>()
         NavSessionStore(File(app.filesDir, com.onpath.app.navigation.ActivityCheck.PROPOSAL_FILE)).save(proposed)
         RecordingService.send(app, RecordingService.ACTION_PROPOSE_SWITCH) { putExtra(RecordingService.EXTRA_TIME_S, fit.timeS) }
@@ -1321,7 +1351,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                           stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
         val session = runCatching {
             NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
-        }.getOrNull()
+        }.onFailure { Problems.error("navigation", "Navigation session could not be started; following without it", it) }.getOrNull()
         navStore.save(session)
         prefs.saveFollow(name, points)
         followName = name
@@ -1393,6 +1423,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
+                // expected: unknown/old activity name keeps the current activity
                 t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
                 sac = t.sac
                 shown = null
@@ -1465,6 +1496,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             events += UiEvent.Share(Intent.createChooser(send, "Export GPX"))
         } catch (e: Exception) {
+            Problems.error("gpx", "GPX export failed", e)
             message = "Export failed: ${e.message}"
         }
     }
@@ -1481,7 +1513,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                             if (c.moveToFirst()) c.getString(0) else null
                         }
-                    }.getOrNull()
+                    }.onFailure { Problems.warn("gpx", "GPX import: file name unreadable; using the GPX name", it) }.getOrNull()
                     val stream = app.contentResolver.openInputStream(uri) ?: error("Cannot open the file.")
                     stream.use { GpxParser.parse(it) } to name
                 }
@@ -1510,6 +1542,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     data.warnings.forEach { append("\n").append(it) }
                 }
             } catch (e: Exception) {
+                Problems.error("gpx", "GPX import failed", e)
                 message = "Could not import this file: ${e.message ?: "unknown error"}"
             }
         }

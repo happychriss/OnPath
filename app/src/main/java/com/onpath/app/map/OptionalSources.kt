@@ -1,6 +1,7 @@
 package com.onpath.app.map
 
 import android.util.Log
+import com.onpath.app.debug.Problems
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -49,7 +50,7 @@ object OptionalSources {
             root.toString()
         }
     } catch (e: Exception) {
-        log("could not check optional sources: $e")
+        Problems.warn("map", "Optional map data not checked, style used unchanged", e)
         styleJson
     }
 }

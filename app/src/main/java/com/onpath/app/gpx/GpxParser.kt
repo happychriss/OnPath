@@ -1,5 +1,6 @@
 package com.onpath.app.gpx
 
+import com.onpath.app.debug.Problems
 import org.xml.sax.Attributes
 import org.xml.sax.SAXException
 import org.xml.sax.helpers.DefaultHandler
@@ -47,8 +48,10 @@ object GpxParser {
             factory.newSAXParser().parse(ByteArrayInputStream(bytes), handler)
         } catch (e: SAXException) {
             saxError = e.message ?: "invalid XML"
+            Problems.warn("gpx", "GPX file is not valid XML – imported the readable / recovered part", e)
         } catch (e: Exception) {
             saxError = e.message ?: e.javaClass.simpleName
+            Problems.warn("gpx", "GPX file could not be read fully – imported the readable / recovered part", e)
         }
         var result = handler.result()
         val warnings = handler.warnings.toMutableList()
@@ -67,7 +70,9 @@ object GpxParser {
     }
 
     private fun trySetFeature(f: SAXParserFactory, name: String, value: Boolean) {
-        try { f.setFeature(name, value) } catch (_: Exception) { }
+        // Not every XML parser knows every feature. These switch off external entities (XXE) – record it when one
+        // cannot be set, so a parser without that protection does not go unnoticed (INFO: Android's parser is safe).
+        try { f.setFeature(name, value) } catch (e: Exception) { Problems.info("gpx", "XML parser feature not supported: $name", e) }
     }
 
     private fun readLimited(input: InputStream): ByteArray {
@@ -98,7 +103,9 @@ object GpxParser {
             OffsetDateTime.parse(t).toInstant().toEpochMilli()
         } catch (_: Exception) {
             try { Instant.parse(t).toEpochMilli() } catch (_: Exception) {
-                try { LocalDateTime.parse(t).toInstant(ZoneOffset.UTC).toEpochMilli() } catch (_: Exception) { null }
+                try { LocalDateTime.parse(t).toInstant(ZoneOffset.UTC).toEpochMilli() } catch (_: Exception) {
+                    Problems.warn("gpx", "GPX time value unreadable, point kept without time"); null
+                }
             }
         }
     }
@@ -206,6 +213,7 @@ object GpxParser {
         /** Result so far, including an unterminated trk/rte if the file was cut off. */
         fun result(): GpxData {
             closeLine()
+            if (badPoints > 0) Problems.warn("gpx", "GPX: skipped $badPoints points without valid coordinates")
             val w = if (badPoints > 0) listOf("Skipped $badPoints points without valid coordinates.") else emptyList()
             return GpxData(gpxName ?: lines.firstOrNull()?.name, lines.toList(), wpts.toList(), w)
         }

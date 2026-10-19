@@ -5,8 +5,8 @@ import android.content.Context
 import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.util.Log
 import java.io.File
+import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONArray
@@ -47,16 +47,19 @@ class TourDb private constructor(context: Context) :
     private class KeepCorruptFile : DatabaseErrorHandler {
         override fun onCorruption(db: SQLiteDatabase) {
             val path = db.path
-            try { Log.e("OnPath", "database corrupt: $path") } catch (_: Throwable) { }
-            try { if (db.isOpen) db.close() } catch (_: Exception) { }
+            Problems.error("db", "Tour database corrupt – moved aside, starting with an empty one ($path)")
+            try { if (db.isOpen) db.close() } catch (e: Exception) { Problems.warn("db", "Corrupt tour database could not be closed", e) }
             if (path.isNullOrEmpty() || path == ":memory:") return
             try {
                 val stamp = System.currentTimeMillis()
                 for (suffix in listOf("", "-wal", "-shm", "-journal")) {
                     val f = File(path + suffix)
-                    if (f.exists() && !f.renameTo(File("$path.corrupt-$stamp$suffix"))) f.delete()
+                    if (f.exists() && !f.renameTo(File("$path.corrupt-$stamp$suffix"))) {
+                        Problems.error("db", "Corrupt tour database file ${f.name} could not be moved aside – deleted")
+                        f.delete()
+                    }
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Problems.error("db", "Corrupt tour database could not be moved aside", e) }
         }
     }
 
@@ -229,7 +232,9 @@ class TourDb private constructor(context: Context) :
         fun d(n: String) = c.getDouble(c.getColumnIndexOrThrow(n))
         return Tour(
             id = c.getLong(c.getColumnIndexOrThrow("id")),
-            kind = runCatching { TourKind.valueOf(s("kind")) }.getOrDefault(TourKind.IMPORTED),
+            kind = runCatching { TourKind.valueOf(s("kind")) }.getOrElse {
+                Problems.warn("db", "Tour with unknown kind, shown as imported", it); TourKind.IMPORTED
+            },
             name = s("name"),
             createdMs = c.getLong(c.getColumnIndexOrThrow("created")),
             activity = s("activity"),
@@ -267,7 +272,7 @@ class TourDb private constructor(context: Context) :
                         if (o.has("ele")) o.getDouble("ele") else null,
                     )
                 }
-            } catch (_: Exception) { emptyList() }
+            } catch (e: Exception) { Problems.warn("db", "Stored waypoint list unreadable, waypoints dropped", e); emptyList() }
         }
     }
 }

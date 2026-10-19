@@ -1,7 +1,7 @@
 package com.onpath.app.map
 
-import android.util.Log
 import com.onpath.app.data.AppSettings
+import com.onpath.app.debug.Problems
 import com.onpath.app.poi.POI_LAYER_PREFIX
 import com.onpath.app.poi.PoiFilter
 import com.onpath.app.poi.PoiKinds
@@ -37,10 +37,11 @@ class LayerSettings(private val style: Style) {
             setVisible("contour-", s.contours)
             setVisible("hillshade", s.hillshade)
         } catch (e: Exception) {
-            Log.w("OnPath", "layer settings not applied: $e")
+            Problems.warn("settings", "Map layer settings not applied, map keeps its previous look", e)
         }
     }
 
+    // expected: an old style throws while/after a new one loads – treated as "not current"
     private fun isCurrent(): Boolean = try { style.isFullyLoaded } catch (e: Exception) { false }
 
     private fun applyPoi(hidden: Set<String>) {
@@ -51,15 +52,18 @@ class LayerSettings(private val style: Style) {
                 val expr = if (json == null) Expression.literal(true) else Expression.raw(json)
                 setFilter(style.getLayer(id) ?: continue, expr)
             } catch (e: Exception) {
-                Log.w("OnPath", "POI filter on $id failed: $e")
+                Problems.warn("poi", "POI filter on layer $id failed, layer keeps its previous filter", e)
             }
         }
     }
 
     private fun setVisible(prefix: String, visible: Boolean) {
-        val layers = try { style.layers } catch (e: Exception) { Log.w("OnPath", "layers not readable: $e"); return }
+        val layers = try { style.layers } catch (e: Exception) {
+            Problems.warn("settings", "Map layers not readable, $prefix visibility not changed", e); return
+        }
         layers.filter { it.id.startsWith(prefix) }.forEach {
-            runCatching { it.setProperties(PropertyFactory.visibility(if (visible) Property.VISIBLE else Property.NONE)) }
+            try { it.setProperties(PropertyFactory.visibility(if (visible) Property.VISIBLE else Property.NONE)) }
+            catch (e: Exception) { Problems.warn("settings", "Visibility of map layer ${it.id} not changed", e) }
         }
     }
 
@@ -82,7 +86,7 @@ class LayerSettings(private val style: Style) {
             }
         }
     } catch (e: Exception) {
-        Log.w("OnPath", "could not read POI filters: $e")
+        Problems.warn("poi", "POI layer filters not readable, POI kind settings will not apply", e)
         emptyMap()
     }
 }

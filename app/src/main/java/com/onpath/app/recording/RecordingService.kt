@@ -30,6 +30,7 @@ import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.data.DataFiles
+import com.onpath.app.debug.Problems
 import com.onpath.app.navigation.NavKind
 import com.onpath.app.navigation.NavPrompt
 import com.onpath.app.navigation.NavSession
@@ -199,8 +200,7 @@ class RecordingService : Service() {
         val existing = try {
             if (continueId >= 0) db.getTour(continueId) else if (intent == null) db.findActiveRecording() else null
         } catch (e: Exception) {
-            Log.e("OnPath", "read tour", e)
-            failLoud("Recording could not start: the tour database cannot be read.")
+            failLoud("Recording could not start: the tour database cannot be read.", e)
             return START_NOT_STICKY
         }
         if (intent == null && existing == null) { stopSelf(); return START_NOT_STICKY }
@@ -239,9 +239,8 @@ class RecordingService : Service() {
                 saveTrip()
             }
         } catch (e: Exception) {
-            Log.e("OnPath", "start recording", e)
             tourId = -1
-            failLoud("Recording could not start: the tour cannot be saved (storage full or database broken).")
+            failLoud("Recording could not start: the tour cannot be saved (storage full or database broken).", e)
             return START_NOT_STICKY
         }
         snapshotDirty = true
@@ -263,7 +262,7 @@ class RecordingService : Service() {
         )
         true
     } catch (e: Exception) {
-        Log.e("OnPath", "startForeground failed", e)
+        Problems.error("recording", "Foreground service could not start (startForeground refused)", e)
         false
     }
 
@@ -273,7 +272,9 @@ class RecordingService : Service() {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnPath:recording").apply {
                 setReferenceCounted(false); acquire(12 * 60 * 60 * 1000L)
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Problems.warn("recording", "Wake lock could not be taken; recording may pause while the screen is off", e)
+        }
     }
 
     private fun startTicker() {
@@ -292,7 +293,9 @@ class RecordingService : Service() {
                     lastStats = now
                     safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
                 }
-                try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (_: Exception) { }
+                try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (e: Exception) {
+                    Problems.error("time", "Trip pace tick failed; times shown may be wrong", e)
+                }
                 if (now - tripSaved > 30_000) saveTrip()
                 publish()
             }
@@ -316,7 +319,7 @@ class RecordingService : Service() {
             val nav = navigator
             val onRoute = nav != null && nav.detector.state == OffRouteDetector.State.ON_ROUTE
             trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, nav?.detector?.progressM, onRoute)
-        } catch (e: Exception) { Log.e("OnPath", "trip pace", e) }
+        } catch (e: Exception) { Problems.error("time", "Trip pace update on a GPS fix failed; times shown may be wrong", e) }
 
         val prev = last
         val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost)
@@ -348,7 +351,7 @@ class RecordingService : Service() {
     private inline fun safeDb(what: String, block: () -> Unit): Boolean = try {
         block(); true
     } catch (e: Exception) {
-        Log.e("OnPath", "db $what failed", e)
+        Problems.error("db", "Recording: database write failed ($what)", e)
         if (!saveFailed) { saveFailed = true; notifySaveFailed(); vibrate() }
         false
     }
@@ -365,15 +368,17 @@ class RecordingService : Service() {
                 .setOngoing(true)
                 .setContentIntent(openAppIntent())
                 .build())
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Problems.warn("recording", "\"Recording cannot be saved\" notification could not be shown", e)
+        }
     }
 
     /**
      * The service cannot (or can no longer) record: say so in a notification that stays, then stop. The tour keeps
      * its "active" state, so the app offers Continue / Save next time. Never a silent stopSelf().
      */
-    private fun failLoud(text: String) {
-        Log.e("OnPath", "recording stopped: $text")
+    private fun failLoud(text: String, cause: Throwable? = null) {
+        Problems.error("recording", text, cause)
         try {
             nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -384,7 +389,9 @@ class RecordingService : Service() {
                 .setAutoCancel(true)
                 .setContentIntent(openAppIntent())
                 .build())
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Problems.warn("recording", "\"Recording stopped\" notification could not be shown", e)
+        }
         vibrate()
         _startFailed.value = text
         stopSelf()
@@ -438,7 +445,9 @@ class RecordingService : Service() {
         } else if (step.sessionChanged) sessionStore.save(nav.session)
         if (step.activityChanged && tourId >= 0) {
             // the tour is now recorded as the new activity; the app follows via RecState.nav.session
-            try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) { Log.e("OnPath", "activity", e) }
+            try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) {
+                Problems.error("db", "Activity switch could not be saved to the recorded tour", e)
+            }
             Prefs(this).activity = nav.session.activity
         }
         updateAlert()
@@ -456,7 +465,7 @@ class RecordingService : Service() {
                         .also { if (it !is StraightLineEngine) engine = it } // retry later if it failed
                     Rerouter(eng).reroute(job.request, cancel)
                 } catch (t: Throwable) {
-                    Log.e("OnPath", "reroute failed", t)
+                    Problems.error("navigation", "Re-route threw unexpectedly; reported as unavailable", t)
                     Rerouter.Failed(Rerouter.Reason.UNAVAILABLE, t.message ?: t.javaClass.simpleName, 0)
                 }
             }
@@ -480,7 +489,9 @@ class RecordingService : Service() {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
             vib.vibrate(VibrationEffect.createWaveform(OFF_ROUTE_VIBRATION, -1))
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Problems.warn("sensor", "Vibration failed; alert given without vibration", e)
+        }
     }
 
     /**
@@ -523,7 +534,9 @@ class RecordingService : Service() {
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
             }
             nm().notify(ALERT_ID, b.build())
-        } catch (_: SecurityException) { }
+        } catch (e: SecurityException) {
+            Problems.warn("navigation", "Off-route notification refused (notification permission?); question only shown in the app", e)
+        }
     }
 
     private fun setPaused(p: Boolean) {
@@ -546,7 +559,7 @@ class RecordingService : Service() {
                     .put(tourId, tourTimes())
                 learnAcrossTours()
                 File(filesDir, TRIP_FILE).delete()
-            } catch (e: Exception) { Log.e("OnPath", "tour times", e) }
+            } catch (e: Exception) { Problems.error("time", "Tour times / learned pace could not be saved at tour end", e) }
             _finished.value = tourId
         }
         tourId = -1
@@ -587,7 +600,9 @@ class RecordingService : Service() {
         val now = SystemClock.elapsedRealtime()
         if (force || now - lastNotify > 5000) {
             lastNotify = now
-            try { nm().notify(NOTIF_ID, buildNotification()) } catch (_: SecurityException) { }
+            try { nm().notify(NOTIF_ID, buildNotification()) } catch (e: SecurityException) {
+                Problems.warn("recording", "Recording notification update refused (notification permission?)", e)
+            }
         }
     }
 
@@ -595,7 +610,10 @@ class RecordingService : Service() {
 
     private fun tripTime(): com.onpath.app.time.TripTime = try {
         trip.snapshot()
-    } catch (_: Exception) { com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0) }
+    } catch (e: Exception) {
+        Problems.error("time", "Trip time snapshot failed; showing elapsed time only", e)
+        com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0)
+    }
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
 
@@ -610,7 +628,7 @@ class RecordingService : Service() {
             val t = tourTimes()
             val next = store.update(a, trip.factors(), p, obs, trip.prior * (1 / pace), t.movingS, t.breakS)
             if (next !== store) { prefs.paceStore = next.toJson(); Log.i("OnPath", "pace learned for $a: ${next.factors(a)}") }
-        } catch (e: Exception) { Log.e("OnPath", "learn pace", e) }
+        } catch (e: Exception) { Problems.error("time", "Pace learning across tours failed; learned pace not updated", e) }
     }
 
     private fun activityOf(name: String?) =
@@ -623,7 +641,10 @@ class RecordingService : Service() {
     private fun priorFor(a: com.onpath.app.routing.Activity): com.onpath.app.time.Factors = try {
         com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings,
             com.onpath.app.time.PaceStore.fromJson(Prefs(this).paceStore).factors(a))
-    } catch (_: Exception) { com.onpath.app.time.Factors.ONE }
+    } catch (e: Exception) {
+        Problems.warn("time", "Pace factors could not be computed; using neutral pace", e)
+        com.onpath.app.time.Factors.ONE
+    }
 
     /** The navigated line changed (start, re-route, back on the original): new times, learned factors stay. */
     private fun timeLine() {
@@ -632,7 +653,7 @@ class RecordingService : Service() {
             trip.setPrior(priorFor(timeActivity()))
             trip.setLine(nav?.session?.active?.let { com.onpath.app.time.RouteTimes.of(it, nav.session.activity) },
                 nav?.detector?.progressM ?: 0.0)
-        } catch (e: Exception) { Log.e("OnPath", "trip line", e) }
+        } catch (e: Exception) { Problems.error("time", "Trip times could not be set for the navigated line", e) }
     }
 
     /** Trip state of the running tour, written atomically (crash / restart keeps the break time). */
@@ -643,8 +664,11 @@ class RecordingService : Service() {
             val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson())
             val f = File(filesDir, TRIP_FILE); val tmp = File(f.path + ".tmp")
             tmp.writeText(o.toString())
-            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
-        } catch (e: Exception) { Log.e("OnPath", "save trip", e) }
+            if (!tmp.renameTo(f)) {
+                f.delete()
+                if (!tmp.renameTo(f)) Problems.error("time", "Trip pace file could not be saved (rename failed)")
+            }
+        } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }
 
     private fun loadTrip() {
@@ -653,7 +677,12 @@ class RecordingService : Service() {
             val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
             if (o.optLong("tour", -1) == tourId) com.onpath.app.time.TripPace.fromJson(o.optJSONObject("trip"), prior)
             else com.onpath.app.time.TripPace(prior)
-        } catch (_: Exception) { com.onpath.app.time.TripPace(prior) }
+        } catch (_: java.io.FileNotFoundException) {
+            com.onpath.app.time.TripPace(prior) // expected: no trip file yet (first start or older tour)
+        } catch (e: Exception) {
+            Problems.warn("time", "Trip pace file unreadable; trip times start fresh", e)
+            com.onpath.app.time.TripPace(prior)
+        }
         trip.onPause() // the service was gone for a while: start a new stop / piece
     }
 
@@ -751,7 +780,7 @@ class RecordingService : Service() {
                     description = "Shows distance and time while recording"
                 }
             )
-            runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) }
+            runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) } // expected to be harmless: old channel may not exist
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL_NAV, "Off route", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Asks when you leave the route you follow: take a new route or keep the original"
@@ -767,7 +796,7 @@ class RecordingService : Service() {
                 if (action == ACTION_START) ContextCompat.startForegroundService(context, i)
                 else context.startService(i)
             } catch (e: Exception) {
-                Log.e("OnPath", "service $action failed", e)
+                Problems.error("recording", "Recording service command could not be delivered ($action)", e)
             }
         }
     }

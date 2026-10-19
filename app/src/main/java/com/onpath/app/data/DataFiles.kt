@@ -1,6 +1,7 @@
 package com.onpath.app.data
 
 import android.content.Context
+import com.onpath.app.debug.Problems
 import java.io.File
 
 /** Location and presence check of the big offline data files (pushed via adb). */
@@ -14,7 +15,7 @@ class DataFiles(context: Context) {
 
     init {
         // Create the folder so `adb push` has a target and the user can see where it is.
-        try { dir.mkdirs() } catch (_: Exception) { }
+        try { dir.mkdirs() } catch (e: Exception) { Problems.warn("data", "Map data folder could not be created", e) }
     }
 
     fun check(): List<Check> {
@@ -41,7 +42,7 @@ class DataFiles(context: Context) {
     fun packageCheck(): PackageCheck? = try {
         val f = File(dir, PACKAGE_FILE)
         if (!f.isFile) null else PackageCheck.parse(f.readText()) { name -> File(dir, name).let { if (it.isFile) it.length() else -1L } }
-    } catch (_: Exception) { null }
+    } catch (e: Exception) { Problems.warn("data", "Map package list (package.json) unreadable, package check skipped", e); null }
 
     /** Pure part of [packageCheck] (unit-tested): [sizeOf] = file size on the phone, -1 = missing. */
     data class PackageCheck(val region: String, val bbox: List<Double>, val osmDate: String?, val mismatched: List<String>) {

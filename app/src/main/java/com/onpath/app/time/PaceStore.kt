@@ -1,5 +1,6 @@
 package com.onpath.app.time
 
+import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
 import org.json.JSONArray
 import org.json.JSONObject
@@ -93,7 +94,10 @@ class PaceStore private constructor(private val entries: Map<Activity, Entry>) {
                         e.optInt("n", 0))
                 }
                 PaceStore(m)
-            } catch (_: Exception) { EMPTY }
+            } catch (e: Exception) {
+                Problems.warn("time", "Learned pace unreadable; starting without learned pace", e)
+                EMPTY
+            }
         }
     }
 }

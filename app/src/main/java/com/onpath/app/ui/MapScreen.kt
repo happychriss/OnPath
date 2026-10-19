@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.onpath.app.debug.Problems
 import com.onpath.app.map.MapController
 import com.onpath.app.recording.GpsStatus
 import com.onpath.app.recording.RecState
@@ -65,7 +66,11 @@ fun MapScreen(
     }
     val onLocate = {
         when {
-            gps == GpsStatus.OFF -> { runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }; Unit }
+            gps == GpsStatus.OFF -> {
+                runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+                    .onFailure { Problems.warn("ui", "Location settings screen could not be opened", it) }
+                Unit
+            }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
             vm.tracker.location.value == null -> vm.followMe = true
             else -> vm.followMe = true
@@ -212,7 +217,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     if (c == null) {
         // share events must also work before the map is ready
         LaunchedEffect(vm.events.size) {
-            vm.events.filterIsInstance<UiEvent.Share>().forEach { runCatching { context.startActivity(it.intent) } }
+            vm.events.filterIsInstance<UiEvent.Share>().forEach {
+                runCatching { context.startActivity(it.intent) }
+                    .onFailure { e -> Problems.warn("ui", "Share screen could not be opened (no app?)", e) }
+            }
             vm.events.removeAll { it is UiEvent.Share }
         }
         return
@@ -289,6 +297,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
                 is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
                 is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
+                    .onFailure { Problems.warn("ui", "Share screen could not be opened (no app?)", it) }
             }
         }
     }
@@ -312,4 +321,7 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Fl
     val nice = listOf(5.0, 2.0, 1.0).map { it * pow10 }.first { it <= maxM }
     val label = if (nice >= 1000) "${(nice / 1000).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} km" else "${nice.toInt()} m"
     label to (nice / mPerPx / density).dp
-} catch (_: Exception) { null }
+} catch (e: Exception) {
+    Problems.warn("map", "Scale bar could not be computed; hidden", e)
+    null
+}

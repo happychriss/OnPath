@@ -8,7 +8,7 @@ import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.Typeface
 import android.location.Location
-import android.util.Log
+import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
@@ -90,16 +90,19 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * import) MapLibre throws on any access to the old one, and the app's effects can still hold this controller
      * for a moment – every update below is a no-op then instead of a crash (R-01).
      */
+    // expected: the old style throws while a new one loads → "not live", updates skipped
     private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) { false }
 
     /** GeoJSON source [id], or null when the style is gone or being replaced (the caller then does nothing). */
     private fun source(id: String): GeoJsonSource? =
-        if (!live()) null else try { style.getSourceAs<GeoJsonSource>(id) } catch (_: Exception) { null }
+        if (!live()) null else try { style.getSourceAs<GeoJsonSource>(id) } catch (e: Exception) {
+            Problems.warn("map", "Map source $id not readable, update skipped", e); null
+        }
 
     /** Runs a style update only on a live style and never lets a MapLibre exception reach the UI. */
     private inline fun guarded(what: String, block: () -> Unit) {
         if (!live()) return
-        try { block() } catch (e: Exception) { Log.w("OnPath", "map $what skipped: $e") }
+        try { block() } catch (e: Exception) { Problems.warn("map", "Map update '$what' failed and was skipped", e) }
     }
 
     private val density = context.resources.displayMetrics.density
@@ -240,7 +243,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 style.addLayer(l)
             }
         } catch (e: Exception) {
-            Log.w("OnPath", "direction arrows not added: $e")
+            Problems.warn("map", "Direction arrows on the route not added", e)
         }
     }
 
@@ -292,13 +295,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             })
             locationReady = true
         } catch (e: Exception) {
-            Log.w("OnPath", "Location component not available: $e")
+            // no location permission (yet) is expected-ish: INFO; anything else breaks the position dot: ERROR
+            Problems.report("map", "Map position dot not available – own position not shown on the map", e,
+                if (e is SecurityException) Problems.Level.INFO else Problems.Level.ERROR)
         }
     }
 
     fun updateLocation(loc: Location) {
         if (!locationReady) return
-        try { map.locationComponent.forceLocationUpdate(loc) } catch (_: Exception) { }
+        try { map.locationComponent.forceLocationUpdate(loc) } catch (e: Exception) { Problems.warn("map", "Position dot not updated", e) }
         heading.onLocation(loc)
     }
 
@@ -341,7 +346,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
-            Log.w("OnPath", "camera mode failed: $e")
+            Problems.warn("map", "Map camera mode not changed (follow / heading-up)", e)
         }
     }
 
@@ -356,7 +361,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Re-apply the eye state, e.g. after adding a route layer. */
     fun applyRouteOverlaysVisibility() {
         val v = PF.visibility(if (routeOverlaysVisible) Property.VISIBLE else Property.NONE)
-        for (id in ROUTE_OVERLAY_LAYERS) runCatching { style.getLayer(id)?.setProperties(v) }
+        for (id in ROUTE_OVERLAY_LAYERS) {
+            runCatching { style.getLayer(id)?.setProperties(v) }
+                .onFailure { if (live()) Problems.warn("map", "Route overlay layer $id not shown / hidden", it) }
+        }
     }
 
     /**
@@ -366,10 +374,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun centreOn(lat: Double, lon: Double) = runCatching {
         val zoom = map.cameraPosition.zoom.let { if (it < 13.0) 15.0 else it }
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom), 600)
-    }
+    }.onFailure { Problems.warn("map", "Map not centred on the position", it) }
 
     /** Compass button in Plan: turn the map back to north up. */
-    fun northUp() = runCatching { resetNorth() }
+    fun northUp() = runCatching { resetNorth() }.onFailure { Problems.warn("map", "Map not turned north up", it) }
 
     /** Back in Plan: north up, flat, no tracking padding (editing on a turned map is confusing). */
     private fun resetNorth() {
@@ -448,12 +456,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 "trails-sac-label" to walking, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+                .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
         }
         for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
             // the band plus its major-route highlight (pink edges + name)
             for (suffix in listOf("", "-major-low", "-major", "-major-label")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
+                    .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }
             }
         }
     }
@@ -494,7 +504,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */
     fun metersPerPixel(): Double = try {
         map.projection.getMetersPerPixelAtLatitude(map.cameraPosition.target?.latitude ?: 46.0)
-    } catch (_: Exception) { 5.0 }
+    } catch (e: Exception) { Problems.warn("map", "Map scale unreadable, using 5 m per pixel", e); 5.0 }
 
     fun dpToPx(dp: Float) = dp * density
 
@@ -534,15 +544,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val xs = FloatArray(pts.size); val ys = FloatArray(pts.size)
         pts.forEachIndexed { i, p -> map.projection.toScreenLocation(LatLng(p.lat, p.lon)).let { xs[i] = it.x; ys[i] = it.y } }
         com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP * density)
-    } catch (e: Exception) { Log.w("OnPath", "marker hit-test failed: $e"); -1 }
+    } catch (e: Exception) { Problems.warn("map", "Marker tap test failed, tap treated as no marker", e); -1 }
 
     /** Screen position of [p] in pixels of the map view, or null (projection not ready). */
+    // expected: the projection is not ready before the first layout
     fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
     /** Search result: fly to [p] at [zoom]. Never throws. */
     fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
-    }
+    }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }
 
     fun fitTo(points: List<GeoPoint>, bottomPaddingPx: Int) {
         if (points.isEmpty()) return
@@ -556,7 +567,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             val pad = (48 * density).toInt()
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(b, pad, pad * 2, pad, bottomPaddingPx + pad), 800)
         } catch (e: Exception) {
-            Log.w("OnPath", "fit failed: $e")
+            Problems.warn("map", "Map not zoomed to fit the route / places", e)
         }
     }
 

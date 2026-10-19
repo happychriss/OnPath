@@ -75,9 +75,19 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
 
         diagnosticsOn = com.onpath.app.debug.Diagnostics.enabled(this)
+        announceLastCrash()
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
+            // A new serious problem (error / crash) is said once per run – nothing stays unseen (owner).
+            val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
+            val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
+            LaunchedEffect(serious, vm.message == null) {
+                val p = serious ?: return@LaunchedEffect
+                if (vm.message != null) return@LaunchedEffect // wait until the current message is gone
+                vm.message = "Problem (${p.area}): ${p.message.take(160)}. Details: Settings → Diagnostics."
+                com.onpath.app.debug.Problems.announcedSerious()
+            }
             OnPathTheme {
                 val needData = vm.missing.isNotEmpty() && !vm.dataScreenDismissed
 
@@ -133,6 +143,8 @@ class MainActivity : ComponentActivity() {
                             diagnosticsOn = diagnosticsOn,
                             onDiagnostics = { on -> diagnosticsOn = on; com.onpath.app.debug.Diagnostics.setEnabled(this@MainActivity, on) },
                             onExportDiagnostics = ::exportDiagnostics,
+                            problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
+                            onClearProblems = { com.onpath.app.debug.Problems.clear() },
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
@@ -213,7 +225,8 @@ class MainActivity : ComponentActivity() {
     private fun launchImport() {
         try {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("ui", "No file picker available for GPX import", e)
             vm.message = "No file picker available."
         }
     }
@@ -232,12 +245,24 @@ class MainActivity : ComponentActivity() {
             org.maplibre.android.offline.OfflineManager.getInstance(this).clearAmbientCache(
                 object : org.maplibre.android.offline.OfflineManager.FileSourceCallback {
                     override fun onSuccess() = restart()
-                    override fun onError(message: String) = restart()
+                    override fun onError(message: String) {
+                        com.onpath.app.debug.Problems.warn("map", "Map tile cache could not be cleared before restart: $message"); restart()
+                    }
                 })
-        } catch (_: Exception) { restart() }
+        } catch (e: Exception) { com.onpath.app.debug.Problems.warn("map", "Map tile cache could not be cleared before restart", e); restart() }
     }
 
     private var diagnosticsOn by mutableStateOf(true)
+
+    /** The app crashed in an earlier run: say so once (the details are in Settings → Diagnostics). */
+    private fun announceLastCrash() {
+        val sp = getSharedPreferences("onpath", 0)
+        val shown = sp.getLong("crashShownUntil", 0)
+        val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
+        sp.edit().putLong("crashShownUntil", crash.last).apply()
+        if (vm.message == null) vm.message = "OnPath stopped unexpectedly last time (${crash.message}). " +
+            "Details: Settings → Diagnostics → Export diagnostics."
+    }
 
     /**
      * Settings → Diagnostics → Export: live map part on the main thread (MapLibre), the rest on IO, then the share
@@ -247,7 +272,9 @@ class MainActivity : ComponentActivity() {
         val ctrl = com.onpath.app.ui.ctrlRef[0]
         val metrics = resources.displayMetrics
         val mapPart = com.onpath.app.debug.Diagnostics.mapSnapshot(ctrl?.map, metrics.widthPixels, metrics.heightPixels)
-        val styleJson = runCatching { ctrl?.map?.style?.json }.getOrNull()
+        val styleJson = try { ctrl?.map?.style?.json } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("ui", "Diagnostics: loaded style not readable", e); null
+        }
         val state = vm.diagnosticsState()
         vm.message = "Creating diagnostics…"
         Thread {
@@ -258,8 +285,14 @@ class MainActivity : ComponentActivity() {
                     val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
                     val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    runCatching { startActivity(Intent.createChooser(send, "Send diagnostics")) }
-                }.onFailure { vm.message = "Diagnostics could not be created: ${it.message ?: it.javaClass.simpleName}" }
+                    try { startActivity(Intent.createChooser(send, "Send diagnostics")) } catch (e: Exception) {
+                        com.onpath.app.debug.Problems.warn("ui", "No app to share the diagnostics file", e)
+                        vm.message = "No app to share with. The file is in the app's cache: ${f.name}"
+                    }
+                }.onFailure {
+                    com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)
+                    vm.message = "Diagnostics could not be created: ${it.message ?: it.javaClass.simpleName}"
+                }
             }
         }.start()
     }
@@ -282,13 +315,15 @@ class MainActivity : ComponentActivity() {
         if (permanentlyDenied) { openAppSettings(); return }
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.POST_NOTIFICATIONS
-        try { permissionLauncher.launch(perms.toTypedArray()) } catch (_: Exception) { }
+        try { permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.error("gps", "Location permission request could not be shown", e)
+        }
     }
 
     private fun openAppSettings() {
-        runCatching {
+        try {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
-        }
+        } catch (e: Exception) { com.onpath.app.debug.Problems.warn("ui", "Android app settings could not be opened", e) }
     }
 
     private fun copy(text: String) {

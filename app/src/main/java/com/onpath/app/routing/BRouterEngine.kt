@@ -6,6 +6,7 @@ import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
 import btools.router.ProfileCache
 import btools.router.RoutingContext
+import com.onpath.app.debug.Problems
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -72,15 +73,20 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         } catch (e: RoutingException) {
             throw e
         } catch (e: InterruptedException) {
+            // expected: a newer request or the user cancelled
             Thread.currentThread().interrupt()
             throw RoutingException(CANCELLED)
         } catch (e: OutOfMemoryError) {
+            Problems.error("routing", "BRouter ran out of memory", e)
             throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: StackOverflowError) {
+            Problems.error("routing", "BRouter stack overflow (route too complex)", e)
             throw RoutingException("Route too complex for on-phone routing. Add via points or choose closer points.")
         } catch (e: LinkageError) {
+            Problems.error("routing", "BRouter classes could not be loaded (LinkageError)", e)
             throw RoutingException("Routing engine could not be loaded.")
         } catch (e: Exception) {
+            Problems.error("routing", "Routing threw unexpectedly", e)
             throw RoutingException("Routing failed: ${e.message ?: e.javaClass.simpleName}")
         }
 
@@ -131,8 +137,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         } catch (e: RoutingException) {
             throw e
         } catch (e: OutOfMemoryError) {
+            Problems.error("routing", "BRouter ran out of memory", e)
             throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: Exception) {
+            Problems.warn("routing", "BRouter threw an exception; shown to the user as a routing error", e)
             throw RoutingException(describeError(e.message ?: e.toString(), activity, sacLimit, timeoutMs))
         }
 
@@ -151,6 +159,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             byName[n.name]?.crosspoint?.let { c -> GeoPoint(c.ilat / 1_000_000.0 - 90.0, c.ilon / 1_000_000.0 - 180.0) }
         }
     } catch (e: Throwable) {
+        Problems.warn("routing", "BRouter matched waypoints not readable (reflection); using route geometry instead", e)
         emptyList()
     }
 
@@ -208,7 +217,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         val ways = try {
             BRouterWayStats.perNode(track.aggregateMessages(),
                 IntArray(els.size) { els[it].getILon() - 180_000_000 }, IntArray(els.size) { els[it].getILat() - 90_000_000 })
-        } catch (e: Exception) { emptyList() }
+        } catch (e: Exception) {
+            Problems.warn("routing", "Way attributes per point could not be read; times computed without them", e)
+            emptyList()
+        }
         if (ways.size == points.size) for (i in points.indices) points[i] = points[i].copy(way = ways[i])
 
         val distanceM = track.distance.toDouble()
@@ -216,6 +228,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         val stats = try {
             BRouterWayStats.fromMessages(track.aggregateMessages(), distanceM)
         } catch (e: Exception) {
+            Problems.warn("routing", "Way type / surface breakdown could not be computed; shown empty", e)
             BRouterWayStats.Breakdown(emptyList(), emptyList())
         }
         return RouteResult(
@@ -235,6 +248,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private fun ensureProfiles() {
         if (profilesReady) return
         if (!profileDir.isDirectory && !profileDir.mkdirs()) {
+            Problems.error("routing", "Routing profile folder could not be created")
             throw RoutingException("Cannot create routing profile folder.")
         }
         try {
@@ -247,12 +261,16 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 tmp.writeBytes(bytes)
                 if (!tmp.renameTo(target)) {
                     target.delete()
-                    if (!tmp.renameTo(target)) throw RoutingException("Cannot install routing profile $name.")
+                    if (!tmp.renameTo(target)) {
+                        Problems.error("routing", "Routing profile could not be installed: $name")
+                        throw RoutingException("Cannot install routing profile $name.")
+                    }
                 }
             }
         } catch (e: RoutingException) {
             throw e
         } catch (e: Exception) {
+            Problems.error("routing", "Routing profiles could not be installed", e)
             throw RoutingException("Cannot install routing profiles: ${e.message}")
         }
         profilesReady = true

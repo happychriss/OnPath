@@ -1,7 +1,7 @@
 package com.onpath.app.routing
 
 import android.content.Context
-import android.util.Log
+import com.onpath.app.debug.Problems
 import java.io.File
 
 /**
@@ -18,7 +18,7 @@ object EngineProvider {
     fun create(context: Context, segmentsDir: File): RoutingEngine = try {
         BRouterEngine(context.applicationContext, segmentsDir).also { isRealRouter = true }
     } catch (e: Throwable) {
-        Log.e("OnPath", "BRouterEngine failed to start, using straight lines", e)
+        Problems.error("routing", "Offline router (BRouter) could not start; using straight lines", e)
         isRealRouter = false
         StraightLineEngine()
     }

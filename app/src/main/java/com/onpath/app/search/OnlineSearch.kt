@@ -4,6 +4,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.onpath.app.data.Geo
+import com.onpath.app.debug.Problems
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -58,7 +59,9 @@ class PhotonProvider(
 object PhotonParser {
 
     fun parse(json: String): List<Place> {
-        val root = try { JsonParser.parseString(json) } catch (_: Exception) { return emptyList() }
+        val root = try { JsonParser.parseString(json) } catch (e: Exception) {
+            Problems.warn("search", "Online search answer unreadable; no online results", e); return emptyList()
+        }
         val feats = (root as? JsonObject)?.get("features") as? com.google.gson.JsonArray ?: return emptyList()
         val out = ArrayList<Place>()
         for (f in feats) {
@@ -84,6 +87,7 @@ object PhotonParser {
         return dedupe(out)
     }
 
+    // expected: a feature with a non-numeric coordinate is skipped
     private fun JsonElement.asDoubleOrNull(): Double? = try { asDouble } catch (_: Exception) { null }
 
     private val SKIP_KEYS = setOf("boundary")

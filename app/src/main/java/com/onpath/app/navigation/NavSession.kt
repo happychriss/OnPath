@@ -1,6 +1,7 @@
 package com.onpath.app.navigation
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.WayAttrs
 import org.json.JSONArray
@@ -61,13 +62,21 @@ class NavSessionStore(private val file: File) {
             if (s == null) { file.delete(); return }
             val tmp = File(file.path + ".tmp")
             tmp.writeText(toJson(s).toString())
-            if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
-        } catch (_: Exception) { }
+            if (!tmp.renameTo(file)) {
+                file.delete()
+                if (!tmp.renameTo(file)) Problems.error("navigation", "Navigation session file could not be saved (rename failed)")
+            }
+        } catch (e: Exception) {
+            Problems.error("navigation", "Navigation session file could not be saved; a restart may lose the route", e)
+        }
     }
 
     fun load(): NavSession? = try {
         if (!file.isFile) null else fromJson(JSONObject(file.readText()))
-    } catch (_: Exception) { null }
+    } catch (e: Exception) {
+        Problems.warn("navigation", "Navigation session file unreadable; no session restored", e)
+        null
+    }
 
     companion object {
         fun toJson(s: NavSession): JSONObject = JSONObject()
@@ -100,6 +109,7 @@ class NavSessionStore(private val file: File) {
             val current = if (o.isNull("current")) null else o.optJSONArray("current")?.let { withWays(readPts(it), o.optJSONArray("currentWays")) }?.takeIf { it.size >= 2 }
             val visited = o.optJSONArray("visited")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty()
             return NavSession(
+                // expected: missing / unknown enum names (older files) fall back to defaults
                 kind = runCatching { NavKind.valueOf(o.getString("kind")) }.getOrDefault(NavKind.TRACK),
                 name = o.optString("name", "Route"),
                 activity = runCatching { Activity.valueOf(o.getString("activity")) }.getOrDefault(Activity.HIKE),
@@ -140,7 +150,10 @@ class NavSessionStore(private val file: File) {
                 }
                 out
             }
-        } catch (_: Exception) { l }
+        } catch (e: Exception) {
+            Problems.warn("navigation", "Way attributes in navigation session unreadable; times computed without them", e)
+            l
+        }
 
         private fun readPts(a: JSONArray): List<GeoPoint> = (0 until a.length() / 3).map {
             val e = if (a.isNull(it * 3 + 2)) null else a.optDouble(it * 3 + 2).takeIf { v -> !v.isNaN() }

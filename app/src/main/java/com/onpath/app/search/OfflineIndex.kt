@@ -1,9 +1,9 @@
 package com.onpath.app.search
 
-import android.util.Log
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.onpath.app.data.Geo
+import com.onpath.app.debug.Problems
 import com.onpath.app.poi.Poi
 import com.onpath.app.routing.GeoPoint
 import java.io.File
@@ -63,11 +63,8 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             return OfflineIndex(places.map { Entry(it) }, sig)
         }
 
-        /** android.util.Log, but never throws (JVM tests, layoutlib). */
-        fun log(msg: String) { try { Log.w("OnPath", msg) } catch (_: Throwable) { } }
-
         private inline fun safe(what: String, block: () -> Unit) {
-            try { block() } catch (e: Throwable) { log("search index: $what skipped: $e") }
+            try { block() } catch (e: Throwable) { Problems.warn("search", "Search index: $what skipped (file unreadable)", e) }
         }
 
         private fun BaseMapPlaces.Item.toPlace() = Place(
@@ -83,7 +80,7 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             if (cache.isFile) try {
                 val lines = cache.readLines()
                 if (lines.firstOrNull() == key) return lines.drop(1).mapNotNull { parseCacheLine(it) }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Problems.warn("search", "Search place cache unreadable; reading the base map again", e) }
             val items = BaseMapPlaces.read(base)
             try {
                 cacheDir.mkdirs()
@@ -93,7 +90,7 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                     for (it in items) { w.write(cacheLine(it)); w.write("\n") }
                 }
                 tmp.renameTo(cache)
-            } catch (e: Exception) { log("search cache not written: $e") }
+            } catch (e: Exception) { Problems.warn("search", "Search place cache not written; rebuilt on next start", e) }
             return items
         }
 
