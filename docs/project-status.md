@@ -4,6 +4,15 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-19 (trail safety 0.6.8, owner hiking):** audit batch A (routing profiles) + Navigate tweaks.
+  Profiles (`# OnPath:` comments): hiking SAC above the limit forbidden (was 9000), preferred = min(limit, T3), via
+  ferrata / abandoned / trail_visibility=no forbidden, bad visibility +1.5, informal +1, fords ×3/+500; trekking,
+  e-bike, touring: via ferrata and T3+/S3+ forbidden, T2/S2 +30; MTB: via ferrata and T4+ forbidden (9000 timed out),
+  T3 +15. JVM check: `KTTEST=tools/routing/jvm-test/SafetyTest.kt SAFETY_VF=<via-ferrata node list> run.sh <segments>`
+  – no case uses a via ferrata any more (before: 820 m Heini-Holzer on a T2 hike). Plan shows a message when the
+  router stops ≥ 150 m from a point (summit above the T level). Navigate: open off-route question re-vibrates,
+  "Hairpin" wording, "straight line" on the arrow banner, own position line (tap = copy) in the opened card, network
+  fixes ignored after the first GPS fix, "last fix N min ago". Next: audit batches B (plan warning line) and D (pipeline).
 - **cloud, 2026-10-19 (Hetzner map server):** `tools/hetzner/` – `onpath_hetzner.py plan|apply|status|destroy` on the
   laptop creates ONE separate labelled server (+ firewall, + SSH key if new) via the Hetzner API and nothing else;
   the server installs itself (`server/install.sh`: Caddy HTTPS on `<ip>.sslip.io` + password, API, worker, weekly

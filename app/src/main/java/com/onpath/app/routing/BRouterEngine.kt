@@ -312,7 +312,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             Activity.EMTB -> {
                 kv["bikerPower"] = "180"; kv["maxSpeed"] = "25"; kv["totalMass"] = "115"
             }
-            Activity.HIKE -> kv["SAC_scale_limit"] = sacLimit.coerceIn(1, 5).toString()
+            Activity.HIKE -> {
+                // above the limit = forbidden (profile). Preferred = the limit but at most T3: a marked T2/T3 trail beats the
+                // untagged path next to it ("unknown is not easy"), yet a T5 setting means "can do", not "seek T5".
+                val sac = sacLimit.coerceIn(1, 5)
+                kv["SAC_scale_limit"] = sac.toString()
+                kv["SAC_scale_preferred"] = minOf(sac, 3).toString()
+            }
             else -> Unit
         }
         return kv

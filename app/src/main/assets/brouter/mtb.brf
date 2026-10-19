@@ -310,7 +310,11 @@ assign any_cycleroute
   if mtb:scale=4|5|6   then 9000
                        else 0.0
 
-  assign roughness_penalty max smoothness_penalty max mtb_scale_penalty  ( if ford=yes then ford_costfactor else 0 )
+  # OnPath: the MTB profile also knows sac_scale: T3 (demanding_mountain_hiking) = +15 like S3, independent of
+  # consider_smoothness. T4+ is forbidden in rawcostfactor below.
+  assign onpath_sac_penalty  if sac_scale=demanding_mountain_hiking then 15.0 else 0.0
+
+  assign roughness_penalty max onpath_sac_penalty max smoothness_penalty max mtb_scale_penalty  ( if ford=yes then ford_costfactor else 0 )
 
   # bend /roughness_penalty
 
@@ -456,6 +460,10 @@ assign any_cycleroute
   assign rawcostfactor ( # can be <1, adjusted to >=1 in final step of calculation of costfactor, uphillcostfactor,downhillcostfactor
     switch and highway= not route=ferry  10000 #only highways unless ferry
     switch highway=motorway|motorway_link|proposed|abandoned  10000
+    switch highway=via_ferrata  10000 # OnPath: via ferratas are forbidden (were cost_of_unknown 2.0)
+    # OnPath: SAC T4+ (alpine_hiking and harder) is forbidden. As a 9000 "last resort" the Ifinger case ran into the
+    # 15 s routing timeout instead of giving a route; sac_scale was ignored before (Ifinger: 1.2 km of T5).
+    switch sac_scale=alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking  10000
 
     # all other exclusions below (access, steps, ferries,..) should not be deleted by the decoder, to be available in voice-hint-processing
     min 9999

@@ -30,7 +30,8 @@ assign   path_preference          0.0  # 0.0 as default, try 20.0 to penalize no
 assign   SAC_scale_limit          3    # %SAC_scale_limit% | all paths with sac_scale higher than  SAC_scale_limit are forbidden | [0=avoid any SAC paths, 1=SAC T1, 2=SAC T2, 3=SAC T3, 4=SAC T4, 5=SAC T5, 6=SAC T6]
 assign   SAC_scale_preferred      1    # %SAC_scale_preferred% | The same, but the preferred SAC scale level. Level below are slightly, above strongly penalized | [0=avoid any SAC paths, 1=SAC T1, 2=SAC T2, 3=SAC T3, 4=SAC T4, 5=SAC T5, 6=SAC T6]
 
-assign   SAC_access_penalty       9000 # costfactor 9999 means the most horrible but allowed road.,
+# OnPath: was 9000 (= allowed as last resort, silently). Hard means forbidden, not expensive.
+assign   SAC_access_penalty       100000 # costfactor 9999 means the most horrible but allowed road.,
                                        # 100000=forbidden. This makes difference if forbidden way is the only option.
 assign  SAC_K1 0.05                    # Penalizing of SAC levels below preferred
 assign  SAC_K2 0.6                     # Penalizing of SAC levels above preferred
@@ -148,6 +149,14 @@ assign ismuddy      and or isunpaved surface=
 assign issidewalk   sidewalk=left|right|both|yes
 
 assign istrack      highway=track|road|path|footway
+
+# OnPath: unknown is not easy. Paths with bad / horrible trail_visibility cost +1.5, informal paths +1.0,
+# trail_visibility=no is forbidden. A ford on the way triples the cost (ford=stepping_stones is fine).
+assign onpath_trail_penalty
+    if trail_visibility=no then 100000
+    else add ( if trail_visibility=bad|horrible then 1.5 else 0.0 )
+             ( if informal=yes then 1.0 else 0.0 )
+assign onpath_ford_factor  if ford=yes then 3.0 else 1.0
 assign ismainroad   highway=motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified
 
 #assign turncost   switch or shortest_way  is_ldhr   0 turncost_value  #v1.5
@@ -299,11 +308,18 @@ assign rawcostfactor # can be <1.0, is treated later
                                      then  ( switch ismuddy 1.5     switch iswet   1.0 1.1 )
   else if    highway=service         then  ( switch ismuddy 1.5     switch iswet   1.1 1.2 )
 
+  # OnPath: via ferratas are forbidden for hiking (the app has no via-ferrata activity; was cost_of_unknown 2.0)
+  else if    highway=via_ferrata     then 100000
+
   else if    istrack                 then
-       ( add 1.0 add tracktype_penalty add surface_penalty      add wet_penalty        SAC_scale_penalty      )
+       ( multiply onpath_ford_factor
+         add onpath_trail_penalty
+         add 1.0 add tracktype_penalty add surface_penalty      add wet_penalty        SAC_scale_penalty      )
 
   else if highway=motorway|motorway_link  then  100000
-  else if highway=proposed|abandoned|construction then (  switch ismuddy 10  switch iswet 6 4 )
+  # OnPath: abandoned / disused / razed (one lookups.dat value) and proposed ways are forbidden (were cost 4)
+  else if highway=proposed|abandoned      then  100000
+  else if highway=construction then (  switch ismuddy 10  switch iswet 6 4 )
 
   else if highway=trunk|trunk_link    then
       ( switch iswet ( switch issidewalk 1.5 10 )    ( switch issidewalk 2.0 20 ) )
@@ -472,7 +488,9 @@ assign footaccess
                         0
                         1
 
-assign initialcost switch or bikeaccess footaccess 0 1000000
+# OnPath: a ford node costs like 500 m extra (pattern from mtb.brf ford_initialcost_node)
+assign initialcost add ( if or ford=yes highway=ford then 500 else 0 )
+                       switch or bikeaccess footaccess 0 1000000
 
 #############################################################################################
 # ****) Offroad_factor ( ported MTB_factor from bicycle Trekking profile
