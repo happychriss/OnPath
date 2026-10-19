@@ -162,3 +162,11 @@ most for cyclists. Track quality from `tracktype` sets the dash length:
 | paved track | solid |
 
 Decision pending (owner).
+
+**Owner variant 5 (2026-10-19):**
+- Street: two separate solid grey lines.
+- Farm road: two dotted brown lines (round dots).
+- Neither has any white. Both show through under the 40 % green band.
+
+Renders show that it works well from z15. At z14 the two dot rows of a farm road move close together. There, a
+single brown dashed line is suggested so that it cannot be mixed up with the single black dot row of a T2 trail.
