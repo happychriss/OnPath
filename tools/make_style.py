@@ -296,6 +296,17 @@ def paths():
               layout={"line-cap": "round", "line-join": "round"},
               paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
                      "line-dasharray": T(f"track.dash.{sid}")})
+    # Lane fill over ALL track edges (owner 2026-10-19: crossings looked messy). A two-edge track has no fill of its
+    # own, so at a crossing / T-junction the edges of one way ran straight across the other way's lane, and the round
+    # caps closed every way piece with a ring / "c"-hook at each junction. Drawn after every edge layer (all edges
+    # below all fills, like road casings), with round caps, the lanes join into one clean road at junctions and the
+    # end caps disappear under the neighbour's lane. Exactly the gap width, so the own edges stay fully visible.
+    # Slightly transparent (token), so the route band under the track still tints the lane a little.
+    lane = {"line-color": T("track.lane.color"), "line-opacity": T("track.lane.opacity")}
+    layer(id_="track-own-paved-lane", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
+          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("street.minor.gap")})
+    layer(id_="track-own-lane", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=track,
+          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("track.gap")})
 
 
 def surface_loose():
