@@ -20,6 +20,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
+- **Navigate: jump to own position when the phone is opened again (owner todo, 2026-10-19 – start when the owner
+  says so):** after the phone was in the pocket (screen off / app in background, map panned away), coming back in
+  Navigate re-centres the map on the current position (follow mode back on, heading-up as set) – no hunting for the
+  blue dot. Likely `onResume` / lifecycle ON_START in Navigate → camera to the latest fix (stale fix: still jump, the
+  card shows its age).
 - **Elevation profile scrub in Navigate (owner todo, 2026-10-19 – start when the owner says so):** dragging a finger
   along the elevation profile ("to go" card → profile) moves a dot along the followed route on the map, so you see
   where on the way that point of the profile is (Plan's profile already has `highlight`; same for Navigate).
