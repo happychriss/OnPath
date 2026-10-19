@@ -60,16 +60,16 @@ Built per region by the pipeline, copied to the phone into
 | `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
 | `segments/E10_N45.rd5` | download from https://brouter.de/brouter/segments4/ | yes |
 
-Current test region: Bozen / Meran / Algund, bbox `10.85,46.35,11.60,46.85`. OSM source:
+Current test region: Bozen / Meran / Algund / Ultental (Zoggler Stausee), bbox `10.70,46.30,11.60,46.85`. OSM source:
 `https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf`
 (Geofabrik and Overpass are blocked from the cloud build machine).
 
 Example pipeline:
 ```
 java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=out/base.pmtiles --download \
-  --bounds=10.85,46.35,11.60,46.85 --maxzoom=14 --force
-python3 tools/build_terrain.py out/terrain.pmtiles 10.85 46.35 11.60 46.85 13
-python3 tools/extract_overlays.py region.osm.pbf out 10.85 46.35 11.60 46.85
+  --bounds=10.70,46.30,11.60,46.85 --maxzoom=14 --force
+python3 tools/build_terrain.py out/terrain.pmtiles 10.70 46.30 11.60 46.85 13
+python3 tools/extract_overlays.py region.osm.pbf out 10.70 46.30 11.60 46.85
 python3 tools/build_contours.py ...   # see script header
 python3 tools/extract_pois.py ...     # see script header
 python3 tools/make_style.py           # regenerates assets/style/onpath.json

@@ -54,11 +54,11 @@ object PoiKinds {
     /**
      * Kinds hidden until the user turns them on: keep the map calm like Komoot, which shows only
      * highlights by default. On by default: huts, shelters, camping, viewpoints, water, waterfalls,
-     * castles/ruins/caves/museums, restaurants/cafés, train and lift stations.
+     * castles/ruins/caves/museums, all food (restaurants, cafés, bars, snack bars), bus stops (where a hike
+     * starts or ends – owner), train and lift stations. Parking stays off (owner).
      */
     val defaultHidden: Set<String> = setOf(
-        "bar", "fast_food", "shop", "bus", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
-        "church", "chapel",
+        "shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging", "church", "chapel",
     )
 
     fun inGroup(g: PoiGroup): List<PoiKind> = list.filter { it.group == g }

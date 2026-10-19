@@ -73,7 +73,7 @@ done
 
 REGION=${REGION:-south-tyrol}
 if [ "$REGION" = south-tyrol ]; then
-  BBOX=${BBOX:-10.85,46.35,11.60,46.85}
+  BBOX=${BBOX:-10.70,46.30,11.60,46.85}
   OSM_URL=${OSM_URL:-https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf}
 fi
 : "${BBOX:?BBOX missing (minlon,minlat,maxlon,maxlat)}"

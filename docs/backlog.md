@@ -21,10 +21,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   from brouter.de). Example: way 330547188 near Algund (46.6913, 11.1015), `fixme=tags?` between two dirt paths.
 - **Attribution (owner question pending):** short "© OpenStreetMap" on the map, full credits on tap / in About.
 - **EN + DE strings** for all UI texts (owner approved, start when no big UI work runs in parallel).
-- **[cloud] Rebuild the region package / downloads zip** after `feat/way-quality` is on main: `extract_overlays.py`
-  now writes the new optional `ways.geojson` (tracktype, loose surface, smoothness), `vis` in `trails.geojson`, and a
-  near-exact geometry for trails/ways (0.5 m instead of 3 m – fixes the second line beside paths at z17+). Old
-  packages keep working (no track grades / surface edges, trails slightly off at high zoom).
 - **EN + DE strings** (owner approved): move all UI texts to strings.xml (EN + DE) in one go – start after the time
   estimate (feat/time-estimate) is merged, it touches most screens.
 - **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
@@ -48,6 +44,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Region package rebuilt (cloud, 2026-10-19): bbox extended west/south to `10.70,46.30,11.60,46.85` (whole Ultental /
+  Zoggler Stausee for the field test), OSM 2026-10-19, all new overlay files (`ways`, `lowways`, `vis`), published as
+  two zips on the `downloads` branch (GitHub 100 MB limit). POIs (owner): bus stops + all food on by default from z14,
+  bus-stop pairs merged zoomed out and separate from z16 (`extract_pois.py` merged/detail, `make_style.py`
+  poi-bus layers) – app 0.6.2.
 - Way quality (laptop agents): track grades, faint trails, MTB S-labels (MTB only; T-labels hike only), loose-surface
   edge in bike modes, trail geometry ~0.5 m (no double lines). Time P4: SAC / surface / smoothness / MTB factors.
 - Komoot-like overview (laptop): routes thin lines below z13.5 then bands, all paths/tracks from z11 (new optional

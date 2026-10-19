@@ -5290,29 +5290,25 @@
    }
   },
   {
-   "id": "poi-tier3",
+   "id": "poi-bus-detail",
    "type": "symbol",
    "source": "pois",
-   "minzoom": 15,
+   "minzoom": 16,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bus"
     ],
     [
-     "literal",
+     "!",
      [
-      "picnic",
-      "toilets",
-      "info",
-      "bar",
-      "fast_food",
-      "bike_shop",
-      "charging",
-      "shop",
-      "parking",
-      "bus"
+      "has",
+      "merged"
      ]
     ]
    ],
@@ -5379,29 +5375,403 @@
        9,
        "cafe",
        10,
-       "shelter",
-       11,
-       "camping",
-       12,
-       "church",
-       13,
-       "ruins",
-       14,
-       "cave",
-       15,
-       "museum",
-       16,
-       "chapel",
-       17,
-       "picnic",
-       18,
-       "toilets",
-       19,
-       "info",
-       20,
        "bar",
-       21,
+       11,
        "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      2
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      1
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     16,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "text-optional": true,
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-bus",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bus"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "detail"
+     ]
+    ]
+   ],
+   "maxzoom": 16,
+   "layout": {
+    "icon-image": [
+     "concat",
+     "poi-",
+     [
+      "get",
+      "kind"
+     ]
+    ],
+    "icon-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     0.45,
+     12.9,
+     0.5,
+     13,
+     0.78,
+     15,
+     0.92,
+     17,
+     1.05
+    ],
+    "icon-allow-overlap": false,
+    "icon-padding": 1,
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "viewpoint",
+       3,
+       "spring",
+       4,
+       "waterfall",
+       5,
+       "lift",
+       6,
+       "castle",
+       7,
+       "water",
+       8,
+       "restaurant",
+       9,
+       "cafe",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      2
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      1
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     15,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "text-optional": true,
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-tier3",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 15,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "picnic",
+      "toilets",
+      "info",
+      "bike_shop",
+      "charging",
+      "shop",
+      "parking"
+     ]
+    ]
+   ],
+   "layout": {
+    "icon-image": [
+     "concat",
+     "poi-",
+     [
+      "get",
+      "kind"
+     ]
+    ],
+    "icon-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     0.45,
+     12.9,
+     0.5,
+     13,
+     0.78,
+     15,
+     0.92,
+     17,
+     1.05
+    ],
+    "icon-allow-overlap": false,
+    "icon-padding": 1,
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "viewpoint",
+       3,
+       "spring",
+       4,
+       "waterfall",
+       5,
+       "lift",
+       6,
+       "castle",
+       7,
+       "water",
+       8,
+       "restaurant",
+       9,
+       "cafe",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
        22,
        "bike_shop",
        23,
@@ -5496,6 +5866,8 @@
       "water",
       "restaurant",
       "cafe",
+      "bar",
+      "fast_food",
       "shelter",
       "camping",
       "church",
@@ -5569,29 +5941,29 @@
        9,
        "cafe",
        10,
-       "shelter",
-       11,
-       "camping",
-       12,
-       "church",
-       13,
-       "ruins",
-       14,
-       "cave",
-       15,
-       "museum",
-       16,
-       "chapel",
-       17,
-       "picnic",
-       18,
-       "toilets",
-       19,
-       "info",
-       20,
        "bar",
-       21,
+       11,
        "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
        22,
        "bike_shop",
        23,
@@ -5772,29 +6144,29 @@
        9,
        "cafe",
        10,
-       "shelter",
-       11,
-       "camping",
-       12,
-       "church",
-       13,
-       "ruins",
-       14,
-       "cave",
-       15,
-       "museum",
-       16,
-       "chapel",
-       17,
-       "picnic",
-       18,
-       "toilets",
-       19,
-       "info",
-       20,
        "bar",
-       21,
+       11,
        "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
        22,
        "bike_shop",
        23,

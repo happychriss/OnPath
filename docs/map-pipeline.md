@@ -80,7 +80,7 @@ Geofabrik works too (`https://download.geofabrik.de/europe/italy/nord-est-latest
 
 ## 4. The steps (what `build_region.sh` runs)
 
-Shown for the test region (bbox `10.85,46.35,11.60,46.85`, Bozen / Meran / Algund). `$D` = output
+Shown for the test region (bbox `10.70,46.30,11.60,46.85`, Bozen / Meran / Algund / Ultental). `$D` = output
 folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 GB cloud container
 (18 Oct 2026, OSM data of 17 Oct 2026).
 
@@ -89,10 +89,10 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 1 | OSM extract | `curl -fL -C - -o region.osm.pbf $OSM_URL` | `work/osm/*.osm.pbf` | ~1 min | 130 MB |
 | 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
 | 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
-| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.85 46.35 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
-| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `trailnames.geojson` | 2 min | 7.0 + 4.6 + 6.0 + 3.6 MB |
-| 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.85 46.35 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
-| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.85 46.35 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
+| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
+| 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `trailnames.geojson` | 2 min | 7.0 + 4.6 + 6.0 + 3.6 MB |
+| 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
+| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
 | 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~10 s | 199 MB |
 | 10 | Package | zip (`.pmtiles`/`.rd5` stored, GeoJSON deflated) + manifest + checksums | `onpath-data-<region>.zip` | 45 s | 283 MB (270 MiB) |
