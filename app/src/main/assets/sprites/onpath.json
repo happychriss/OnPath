@@ -6,6 +6,34 @@
   "x": 48,
   "y": 168
  },
+ "pattern-farmland": {
+  "height": 8,
+  "pixelRatio": 1,
+  "width": 18,
+  "x": 32,
+  "y": 192
+ },
+ "pattern-rock": {
+  "height": 32,
+  "pixelRatio": 1,
+  "width": 32,
+  "x": 50,
+  "y": 192
+ },
+ "pattern-sand": {
+  "height": 9,
+  "pixelRatio": 1,
+  "width": 9,
+  "x": 82,
+  "y": 192
+ },
+ "pattern-wetland": {
+  "height": 26,
+  "pixelRatio": 1,
+  "width": 32,
+  "x": 0,
+  "y": 192
+ },
  "poi-bar": {
   "height": 24,
   "pixelRatio": 1,

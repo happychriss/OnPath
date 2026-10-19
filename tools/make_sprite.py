@@ -116,6 +116,31 @@ def no_entry(pr, canvas=16):
     return im.resize((canvas * pr, canvas * pr), Image.LANCZOS)
 
 
+# Ground symbols (fill-pattern tiles, drawn from z14 by make_style.py landcover()): very light, a darker tone of
+# the ground colour. Ground colours = tools/themes/classic.json; design: docs/design/map-colour-analysis.md.
+# name -> (ground colour, tile w, h (1x px), darken towards ink, opacity, filled?, stroke width, SVG content)
+PATTERNS = {
+    "pattern-wetland": ("#d4e6d0", 32, 26, .55, .50, False, .8,
+                        '<path d="M2 8h9M4.5 8v-2.4M6.5 8v-3.4M8.5 8v-2.4M18 21h9M20.5 21v-2.4M22.5 21v-3.4M24.5 21v-2.4"/>'),
+    "pattern-farmland": ("#f1f0de", 18, 8, .45, .24, False, .8, '<path d="M1 2h8M10 6h7"/>'),
+    "pattern-rock": ("#e7e2d9", 32, 32, .55, .45, False, .7,
+                     '<path d="M3 11l2.5-5 5.5-1.5 2 4.5-2.5 3zM8 6.5l1 3.5M18 26l1.5-4.5 5-1 1.5 3.5-3 3zM21.5 21.5l.5 3.5'
+                     'M22 9.5l2.8-3.5 3.2 2-1 2.5z"/>'),
+    "pattern-sand": ("#efe6c9", 9, 9, .45, .38, True, 0, '<circle cx="2" cy="2" r=".5"/><circle cx="6.5" cy="6.5" r=".5"/>'),
+}
+
+
+def pattern(name, pr):
+    ground, w, h, dk, op, filled, sw, body = PATTERNS[name]
+    g = hex_rgb(ground)
+    ink = "#%02x%02x%02x" % tuple(round(v * (1 - dk) + t * dk) for v, t in zip(g, (38, 34, 26)))
+    paint = (f'fill="{ink}" stroke="none"' if filled else
+             f'fill="none" stroke="{ink}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w * pr}" height="{h * pr}" viewBox="0 0 {w} {h}">'
+           f'<g {paint} opacity="{op}">{body}</g></svg>')
+    return Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode()))).convert("RGBA")
+
+
 def build(pr):
     images = {}
     for kind, (group, icon) in KINDS.items():
@@ -128,8 +153,16 @@ def build(pr):
     cell = 24 * pr
     names = list(images)
     rows = (len(names) + cols - 1) // cols
-    sheet = Image.new("RGBA", (cols * cell, rows * cell), (0, 0, 0, 0))
+    pats = {n: pattern(n, pr) for n in PATTERNS}
+    prow = max(im.height for im in pats.values())
+    sheet = Image.new("RGBA", (max(cols * cell, sum(im.width for im in pats.values())), rows * cell + prow), (0, 0, 0, 0))
     index = {}
+    # pattern tiles in one row below the icons (they are wider than an icon cell)
+    x = 0
+    for name, img in pats.items():
+        sheet.paste(img, (x, rows * cell))
+        index[name] = {"x": x, "y": rows * cell, "width": img.width, "height": img.height, "pixelRatio": pr}
+        x += img.width
     for i, name in enumerate(names):
         img = images[name]
         x, y = (i % cols) * cell, (i // cols) * cell
