@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] **Trail safety 0.6.8 (owner hiking, wants testable today):** Navigate tweaks from the safety audit (re-vibrate while the off-route question is open, Hairpin wording, screen ignores cell fixes, coordinates in the status card, straight guide wording) + routing profiles say no (SAC hard limit, via ferrata, trail visibility, fords, bikes vs mountain paths). Files: navigation/, routing/TurnDetector, ui/NavigateScreen, ui/MapScreen location, assets/brouter/*.brf, routing/BRouterEngine – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
