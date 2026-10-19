@@ -1,0 +1,4 @@
+activity=HIKE
+pace=NORMAL
+note=Owner field test 2026-10-19: same path walked backwards from 3.7 km to the start and ~1 km beyond. plan.gpx = round trip A-B-A (what the phone followed after round trip + Undo), plan-ab.gpx = A-B. Track trimmed 300 m at both ends.
+synthetic=false

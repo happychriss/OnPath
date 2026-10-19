@@ -35,7 +35,7 @@ class TripPaceTest {
     }
 
     @Test fun walkingLikeTheModelLearnsNothing() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         walk(trip, Factors.ONE, 0.5)
         val f = trip.factors()
         assertEquals(1.0, f.up, 0.03); assertEquals(1.0, f.down, 0.03)
@@ -43,7 +43,7 @@ class TripPaceTest {
     }
 
     @Test fun fastClimberIsLearnedPerGroup() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         val me = Factors(down = 1.4, flat = 1.0, up = 0.75) // strong climber, bad knees
         val s = walk(trip, me, 0.5)
         val f = trip.factors()
@@ -60,7 +60,7 @@ class TripPaceTest {
 
     @Test fun learningBeatsTheStaticModelAtHalfWay() {
         val me = Factors(0.8, 0.8, 0.8)
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         val s = walk(trip, me, 0.5)
         val truth = (0 until 3).sumOf { me[it] * times.between(times.lengthM / 2, times.lengthM)[it] }
         val learned = abs(trip.rawToGoS()!! / truth - 1)
@@ -69,7 +69,7 @@ class TripPaceTest {
     }
 
     @Test fun breaksAreNotMovingTimeAndNotLearned() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         val s = walk(trip, Factors.ONE, 0.3)
         val before = trip.factors()
         val stop = line.pointAt(times.lengthM * 0.3 + 5)
@@ -83,7 +83,7 @@ class TripPaceTest {
     }
 
     @Test fun offRouteIsNotLearned() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         var s = walk(trip, Factors.ONE, 0.2)
         // 30 min off the line (a detour), then back where we left it
         val p = line.pointAt(times.lengthM * 0.2)
@@ -93,7 +93,7 @@ class TripPaceTest {
     }
 
     @Test fun calmDisplay() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         var lastArr: Long? = null
         var maxJump = 0.0
         // walks fast for a while then very slowly: the raw estimate moves, the shown arrival only in small steps
@@ -110,15 +110,15 @@ class TripPaceTest {
         // 1 min + 2 % of at most ~3 h per update
         assertTrue("$maxJump", maxJump <= 60 + 0.02 * 3 * 3600 + 1)
         // a new line resets the limit once
-        trip.setLine(RouteTimes.of(pts.take(30), Activity.HIKE))
+        trip.setLine(RouteTimes.of(pts.take(30), Activity.HIKE), 0.0)
         trip.tick(100_000.0, 200_000_000L)
         assertNotNull(trip.snapshot().toGoS)
-        trip.setLine(null)
+        trip.setLine(null, null)
         assertNull(trip.snapshot().toGoS)
     }
 
     @Test fun jsonRoundTripAndPriorChange() {
-        val trip = TripPace(Factors.ONE * 1.25); trip.setLine(times)
+        val trip = TripPace(Factors.ONE * 1.25); trip.setLine(times, 0.0)
         walk(trip, Factors(1.0, 1.0, 1.0), 0.5)
         val copy = TripPace.fromJson(org.json.JSONObject(trip.toJson().toString()))
         copy.setLine(times, times.lengthM / 2)
@@ -134,12 +134,63 @@ class TripPaceTest {
     }
 
     @Test fun tourTimes() {
-        val trip = TripPace(); trip.setLine(times)
+        val trip = TripPace(); trip.setLine(times, 0.0)
         val s = walk(trip, Factors(1.1, 1.1, 1.1))
         val t = trip.tourTimes(s)
         assertEquals(s, t.movingS + t.breakS, 1e-6)
         assertTrue(t.plannedS!! < t.neededS!!)
         assertEquals(0.0, TripPace().tourTimes(100.0).breakS, 0.0)
         assertNull(TripPace().tourTimes(100.0).plannedS)
+    }
+
+    @Test fun unknownPositionOnANewLineIsNotOnRouteNotTheWholeLine() {
+        val trip = TripPace(); trip.setLine(times, null)
+        trip.tick(10.0, 1_000_000L)
+        assertEquals(EstimateState.NOT_ON_ROUTE, trip.snapshot().state)
+        assertNull(trip.snapshot().toGoS)
+        val p = line.pointAt(3000.0)
+        trip.onFix(11.0, 1_001_000L, p.lat, p.lon, 3000.0, true)
+        assertEquals(EstimateState.OK, trip.snapshot().state)
+        assertEquals(TimeEstimate.round(times.remainingFrom(3000.0)), trip.snapshot().toGoS!!, 1.0)
+    }
+
+    @Test fun walkingAsShownDoesNotCreepTheArrival() {
+        // field test: at a steady pace the arrival crept later every 30 s between the 100 m updates
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val arrivals = ArrayList<Long>()
+        walk(trip, Factors.ONE, 0.6) { _, a -> if (a % 500 < 5) trip.snapshot().arrivalMs?.let { arrivals += it } }
+        // never later (no break taken: the 10 % allowance makes it a little earlier, which is right)
+        val later = (arrivals.zipWithNext { a, b -> b - a }.max()) / 60_000.0
+        assertTrue("arrival moved $later min later at the model's pace", later <= 1.0)
+        assertTrue(arrivals.last() <= arrivals.first())
+    }
+
+    @Test fun movingWithoutProgressPausesTheEstimate() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.2)
+        // 3 min walking 150 m beside the line while its progress stays (the matcher lost the way)
+        val a = times.lengthM * 0.2
+        for (k in 1..180) {
+            val p = line.pointAt(a)
+            trip.onFix(s + k, 1_000_000L + ((s + k) * 1000).toLong(), p.lat + k * 0.0000075, p.lon, a, true)
+        }
+        assertEquals(EstimateState.PAUSED, trip.snapshot().state)
+        assertEquals(PauseReason.NO_PROGRESS, trip.snapshot().pausedBecause)
+        assertNotNull(trip.snapshot().toGoS) // the last value stays (shown greyed)
+    }
+
+    @Test fun noGpsPausesButABreakDoesNot() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.2)
+        trip.tick(s + 130, 1_000_000L + ((s + 130) * 1000).toLong())
+        assertEquals(PauseReason.NO_GPS, trip.snapshot().pausedBecause)
+        // standing still with fixes (a break) for 10 min: estimate OK, "to go" unchanged
+        val trip2 = TripPace(); trip2.setLine(times, 0.0)
+        val s2 = walk(trip2, Factors.ONE, 0.2)
+        val toGo = trip2.snapshot().toGoS
+        val p = line.pointAt(times.lengthM * 0.2)
+        for (k in 1..600 step 5) trip2.onFix(s2 + k, 1_000_000L + ((s2 + k) * 1000).toLong(), p.lat, p.lon, times.lengthM * 0.2, true)
+        assertEquals(EstimateState.OK, trip2.snapshot().state)
+        assertEquals(toGo, trip2.snapshot().toGoS)
     }
 }

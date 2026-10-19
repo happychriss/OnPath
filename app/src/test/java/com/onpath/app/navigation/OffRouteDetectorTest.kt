@@ -100,14 +100,71 @@ class OffRouteDetectorTest {
         assertTrue(run(d, drift).none { it.confirmedNow })
     }
 
-    @Test fun walkingBackAlongTheRouteIsOnRoute() {
+    @Test fun walkingBackALittleStaysOnRoute() {
         val d = detector(corner)
         run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 500.0))
         assertEquals(1500.0, d.progressM, 10.0)
-        val s = run(d, walk(1000.0 to 500.0, 1000.0 to 0.0, 600.0 to 0.0, t0Ms = 2_000_000))
+        // back 150 m (looking for a lost cap): progress goes back with you, no warning
+        val s = run(d, walk(1000.0 to 500.0, 1000.0 to 350.0, t0Ms = 2_000_000))
         assertTrue(s.none { it.confirmedNow })
         assertEquals(State.ON_ROUTE, d.state)
-        assertEquals(600.0, d.progressM, 10.0)
+        assertEquals(1350.0, d.shownAlongM!!, 10.0)
+    }
+
+    @Test fun walkingBackMoreThan200mIsOffRoute() {
+        // owner rule 2026-10-19: ~200 m backwards = the normal off-route warning; the position stays known (time grows)
+        val d = detector(corner)
+        run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 500.0))
+        val s = run(d, walk(1000.0 to 500.0, 1000.0 to 0.0, 600.0 to 0.0, t0Ms = 2_000_000))
+        assertEquals(1, s.count { it.confirmedNow })
+        val at = s.indexOfFirst { it.confirmedNow }
+        assertEquals(1300.0, s[at].progressM, 25.0)
+        assertTrue(d.backward)
+        assertEquals(600.0, d.shownAlongM!!, 15.0)
+        assertEquals(1500.0, d.leftAtM, 15.0) // re-routing looks ahead of where the user turned
+        // turning round again: back on the route after walking forwards a little
+        val back = run(d, walk(600.0 to 0.0, 700.0 to 0.0, t0Ms = 3_000_000))
+        assertTrue(back.any { it.rejoinedNow })
+        assertEquals(State.ON_ROUTE, d.state)
+        assertFalse(d.backward)
+    }
+
+    @Test fun earlyTurnOnOutAndBackJumpsToTheWayBack() {
+        // out 1.5 km and back on a path 8 m beside it; the user turns after 600 m: the way back is the part running
+        // their way – far ahead along the line, but no warning
+        val ob = line(0.0 to 0.0, 1500.0 to 0.0, 1500.0 to 8.0, 0.0 to 8.0)
+        val d = detector(ob)
+        run(d, walk(0.0 to 0.0, 600.0 to 0.0))
+        val s = run(d, walk(600.0 to 0.0, 600.0 to 8.0, 300.0 to 8.0, t0Ms = 1_000_000))
+        assertTrue(s.none { it.confirmedNow })
+        assertEquals(1500.0 + 8 + 1200.0, d.progressM, 20.0)
+    }
+
+    @Test fun shortSpurDoesNotJumpToTheEnd() {
+        // a round trip whose start and end share a 50 m spur (walked out and back): the end of the line is no shortcut
+        val l = line(0.0 to 0.0, 50.0 to 0.0, 0.0 to 0.0, -500.0 to 0.0, -500.0 to 500.0, 0.0 to 500.0, 0.0 to 0.0, 50.0 to 0.0, 0.0 to 0.0)
+        val d = detector(l)
+        run(d, walk(0.0 to 0.0, 50.0 to 0.0, 0.0 to 0.0, -300.0 to 0.0))
+        assertEquals(400.0, d.progressM, 20.0)
+        assertEquals(State.ON_ROUTE, d.state)
+    }
+
+    @Test fun hairpinsAreNotWalkingBackwards() {
+        // zig-zag path up a slope: legs 10 m apart, turning every 100 m
+        val zz = line(0.0 to 0.0, 100.0 to 0.0, 100.0 to 10.0, 0.0 to 10.0, 0.0 to 20.0, 100.0 to 20.0, 100.0 to 30.0, 0.0 to 30.0, 0.0 to 40.0, 100.0 to 40.0)
+        val d = detector(zz)
+        val s = run(d, walk(0.0 to 0.0, 100.0 to 0.0, 100.0 to 10.0, 0.0 to 10.0, 0.0 to 20.0, 100.0 to 20.0, 100.0 to 30.0, 0.0 to 30.0, 0.0 to 40.0, 100.0 to 40.0))
+        assertTrue(s.none { it.confirmedNow })
+        assertEquals(zz.let { NavLine(it).lengthM }, d.progressM, 15.0)
+    }
+
+    @Test fun midRouteStartTakesThePartRunningYourWay() {
+        // started on the way back of an out-and-back: the first fix takes the earliest part, corrected once moving
+        val ob = line(0.0 to 0.0, 1500.0 to 0.0, 1500.0 to 8.0, 0.0 to 8.0)
+        val d = detector(ob)
+        val s = run(d, walk(1000.0 to 8.0, 700.0 to 8.0))
+        assertTrue(s.none { it.confirmedNow })
+        assertEquals(1508.0 + 800.0, d.progressM, 20.0)
     }
 
     @Test fun roundTripStartsAtTheStartNotTheEnd() {

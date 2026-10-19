@@ -76,6 +76,55 @@ class NavLine(val points: List<GeoPoint>) {
         return Match(along, segD[pick], pick, pointAt(along))
     }
 
+    /**
+     * The separate parts of the line within [maxM] of [p] (in the along-window), in along order: the nearest point of
+     * every stretch that comes close to [p] – a run of segments within [maxM], split again where the distance rises by
+     * [SPLIT_M] in between (the way out and back of a short spur, a tight hairpin). On an out-and-back or a round trip
+     * that shares a path, the way out and the way back are two parts; the walking direction decides between them
+     * ([OffRouteDetector]).
+     */
+    fun parts(p: GeoPoint, maxM: Double, fromM: Double = 0.0, toM: Double = lengthM): List<Match> {
+        if (!isUsable) return emptyList()
+        val lo = max(0.0, fromM); val hi = min(lengthM, toM)
+        if (hi < lo) return emptyList()
+        val kx = cos(Math.toRadians(p.lat)) * 111_320.0
+        val ky = 110_540.0
+        val out = ArrayList<Match>()
+        val first = segmentAt(lo); val last = segmentAt(hi)
+        // current part: its best segment so far, and the highest distance since then (a rise = a new part)
+        var bestI = -1; var bestD = 0.0; var bestT = 0.0; var peak = 0.0
+        fun emit() { if (bestI >= 0) { val al = cum[bestI] + bestT * (cum[bestI + 1] - cum[bestI]); out += Match(al, bestD, bestI, pointAt(al)) }; bestI = -1 }
+        for (i in first..last) {
+            val a = points[i]; val b = points[i + 1]
+            val ax = (a.lon - p.lon) * kx; val ay = (a.lat - p.lat) * ky
+            val dx = (b.lon - a.lon) * kx; val dy = (b.lat - a.lat) * ky
+            val len2 = dx * dx + dy * dy
+            var t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val segLen = cum[i + 1] - cum[i]
+            if (segLen > 0) t = t.coerceIn(((lo - cum[i]) / segLen).coerceIn(0.0, 1.0), ((hi - cum[i]) / segLen).coerceIn(0.0, 1.0))
+            val d = sqrt((ax + t * dx) * (ax + t * dx) + (ay + t * dy) * (ay + t * dy))
+            if (d > maxM) { emit(); continue }
+            when {
+                bestI < 0 -> { bestI = i; bestD = d; bestT = t; peak = d }
+                peak - bestD >= SPLIT_M && d < peak - SPLIT_M / 2 -> {
+                    // went away and is coming close again: a second part
+                    emit(); bestI = i; bestD = d; bestT = t; peak = d
+                }
+                d < bestD -> { bestI = i; bestD = d; bestT = t; peak = d }
+                else -> peak = max(peak, d)
+            }
+        }
+        emit()
+        return out
+    }
+
+    /** Direction of the line at [alongM] (degrees from north), over ±[spanM] so tiny segments do not matter. */
+    fun bearingAt(alongM: Double, spanM: Double = 15.0): Double {
+        val a = (alongM - spanM).coerceAtLeast(0.0)
+        val b = (alongM + spanM).coerceAtMost(lengthM)
+        return com.onpath.app.routing.TurnDetector.bearing(pointAt(a), pointAt(b))
+    }
+
     /** Earliest part of the line within [toleranceM] of the nearest one (start of a round trip, not its end). */
     fun matchEarliest(p: GeoPoint, fromM: Double = 0.0, toleranceM: Double = 30.0): Match? {
         val best = match(p, fromM) ?: return null
@@ -87,6 +136,11 @@ class NavLine(val points: List<GeoPoint>) {
             from += 500.0
         }
         return best
+    }
+
+    companion object {
+        /** [parts]: the distance rising by this much between two close stretches makes them two parts. */
+        const val SPLIT_M = 6.0
     }
 
     /** Segment index containing [alongM] (clamped). */

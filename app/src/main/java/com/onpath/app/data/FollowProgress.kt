@@ -28,6 +28,19 @@ class FollowProgress(private val line: List<GeoPoint>) {
         return Remaining(seg, dist, up, down, off)
     }
 
+    /**
+     * Remaining distance/ascent/descent from [alongM] metres along the line – the navigation service's progress, which
+     * knows the walking direction (out-and-back, round trips); [offM] = distance to the line.
+     */
+    fun at(alongM: Double, offM: Double?): Remaining? {
+        if (line.size < 2) return null
+        val a = alongM.coerceIn(0.0, cum.last())
+        val seg = java.util.Arrays.binarySearch(cum, a).let { if (it >= 0) it else -it - 2 }.coerceIn(0, line.size - 2)
+        val i = seg + 1
+        val (up, down) = Geo.climb(line.subList(i, line.size).map { it.ele })
+        return Remaining(seg, cum.last() - a, up, down, offM ?: 0.0)
+    }
+
     private fun nearest(p: GeoPoint, from: Int): Pair<Int, Double>? {
         if (from >= line.size - 1) return null
         var bestI = -1; var bestD = Double.MAX_VALUE

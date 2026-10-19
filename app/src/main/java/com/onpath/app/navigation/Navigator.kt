@@ -51,6 +51,8 @@ data class NavState(
     val session: NavSession? = null,
     /** Progress along [line] (metres from its start). */
     val progressM: Double = 0.0,
+    /** Progress to show "to go" from; null = not on the route (not matched / confirmed off it). */
+    val shownAlongM: Double? = null,
 )
 
 /**
@@ -119,7 +121,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     val state: NavState
         get() = NavState(session.active, session.version, if (session.rerouted) session.original else null, prompt, toRoute,
-            detector.lastDistanceM, session, detector.progressM)
+            detector.lastDistanceM, session, detector.progressM, detector.shownAlongM)
 
     /** An activity switch is being asked (check sheet → chosen activity). */
     private val switchAsked: Boolean get() = (prompt as? NavPrompt.Question)?.switch != null
@@ -145,12 +147,12 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (forceCheck) {
             forceCheck = false
             if (detector.forceCheck(f)) {
-                if (!session.rerouted) leftAtM = detector.progressM
+                if (!session.rerouted) leftAtM = detector.leftAtM
                 if (enabled && prompt == null) return step + ask(f, vibrate = false)
             }
         }
         val st = detector.onFix(f)
-        if (!session.rerouted && st.state != OffRouteDetector.State.OFF_ROUTE) leftAtM = detector.progressM
+        if (!session.rerouted && (st.state != OffRouteDetector.State.OFF_ROUTE || st.confirmedNow)) leftAtM = detector.leftAtM
 
         // on a new route: back on the original (rest reached, or walked back onto it) → use the original again
         if (session.rerouted) {

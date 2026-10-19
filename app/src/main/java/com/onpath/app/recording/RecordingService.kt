@@ -316,9 +316,9 @@ class RecordingService : Service() {
 
         checkOffRoute(p, loc.accuracy.toDouble(), nowEl)
         try {
-            val nav = navigator
-            val onRoute = nav != null && nav.detector.state == OffRouteDetector.State.ON_ROUTE
-            trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, nav?.detector?.progressM, onRoute)
+            // position on the line (null = not on the route) and whether it may be learned (forwards, on the line)
+            val det = navigator?.detector
+            trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, det?.shownAlongM, det?.learnable == true)
         } catch (e: Exception) { Problems.error("time", "Trip pace update on a GPS fix failed; times shown may be wrong", e) }
 
         val prev = last
@@ -414,7 +414,9 @@ class RecordingService : Service() {
                 NavSession(NavKind.TRACK, follow?.first ?: "Route", prefs.activity, prefs.sac, line)
             }
         }
-        navigator = session?.let { Navigator(it).apply { setNavigating(navigating) } }
+        val old = navigator
+        // the walking direction carries over to the new line (plan edited mid-walk: the way back of a round trip)
+        navigator = session?.let { Navigator(it).apply { setNavigating(navigating); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
         timeLine()
         alertKey = null; nm().cancel(ALERT_ID)
@@ -609,10 +611,26 @@ class RecordingService : Service() {
     // ---- time estimate (docs/plan-time-estimate.md) ----
 
     private fun tripTime(): com.onpath.app.time.TripTime = try {
-        trip.snapshot()
+        trip.snapshot().also { reportEstimate(it) }
     } catch (e: Exception) {
         Problems.error("time", "Trip time snapshot failed; showing elapsed time only", e)
         com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0)
+    }
+
+    private var estimatePaused: com.onpath.app.time.PauseReason? = null
+
+    /** "Estimate paused" is never silent (owner rule 8): reported once per pause in Settings → Diagnostics. */
+    private fun reportEstimate(t: com.onpath.app.time.TripTime) {
+        val why = t.pausedBecause.takeIf { t.state == com.onpath.app.time.EstimateState.PAUSED }
+        if (why == estimatePaused) return
+        estimatePaused = why
+        when (why) {
+            null -> Unit
+            com.onpath.app.time.PauseReason.NO_GPS ->
+                Problems.info("time", "Arrival estimate paused: no GPS fix for 2 min while recording")
+            com.onpath.app.time.PauseReason.NO_PROGRESS ->
+                Problems.warn("time", "Arrival estimate paused: moving for 2 min but the progress along the route did not change")
+        }
     }
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
@@ -651,8 +669,9 @@ class RecordingService : Service() {
         try {
             val nav = navigator
             trip.setPrior(priorFor(timeActivity()))
+            // a new line: "not on route" until the position is matched on it (never "the whole line from its start")
             trip.setLine(nav?.session?.active?.let { com.onpath.app.time.RouteTimes.of(it, nav.session.activity) },
-                nav?.detector?.progressM ?: 0.0)
+                nav?.detector?.shownAlongM)
         } catch (e: Exception) { Problems.error("time", "Trip times could not be set for the navigated line", e) }
     }
 

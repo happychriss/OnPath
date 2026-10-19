@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.data.FollowProgress
@@ -127,6 +128,14 @@ data class ToGo(
     val descentM: Double = 0.0,
     /** The rest of the followed line from the current position (for the elevation profile). */
     val profile: List<GeoPoint> = emptyList(),
+    /**
+     * Can the time be trusted now? NOT_ON_ROUTE: "— not on route" instead of a time; PAUSED: the last time greyed with
+     * "estimate paused · [pausedBecause]" (owner rules 6 and 8, docs/plan-time-estimate.md).
+     */
+    val state: com.onpath.app.time.EstimateState = com.onpath.app.time.EstimateState.OK,
+    val pausedBecause: String? = null,
+    /** Where the time counts to: the last stop's name or "destination" ("arrive at Leiter Alm ≈ 16:40"). */
+    val target: String? = null,
 )
 
 /**
@@ -256,14 +265,26 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             }
             Column(Modifier.weight(1f)) {
                 ui.toGo?.let { g ->
-                    // the time first: with the activity icon and the arrival clock beside it, an ellipsis cuts the distance, never the time
-                    Text("${Format.duration(g.timeS)} · ${Format.distance(g.distanceM)}", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
-                        style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val off = g.offM
-                    if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
+                    if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
+                        // never a stale time (owner rule 6): what is left counts again once back on the route
+                        Text("— not on route", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        val off = g.offM
+                        if (off != null && off > 0) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    } else {
+                        val paused = g.state == com.onpath.app.time.EstimateState.PAUSED
+                        // the time first: with the activity icon and the arrival clock beside it, an ellipsis cuts the distance, never the time
+                        Text("${Format.duration(g.timeS)} · ${Format.distance(g.distanceM)}", style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
+                        if (paused) Text("estimate paused · ${g.pausedBecause ?: "no position"}", style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
+                            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val off = g.offM
+                        if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error)
+                    }
                 }
                 ui.recordedM?.let { d ->
                     Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -276,10 +297,14 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
             }
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text("Resume") }
-            else if (ui.toGo != null && ui.arriveAt != null) Column(horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(start = 8.dp).semantics(mergeDescendants = true) {}) {
-                Text("arrive ≈", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+            else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 8.dp).widthIn(max = 128.dp).semantics(mergeDescendants = true) {}) {
+                val paused = ui.toGo.state == com.onpath.app.time.EstimateState.PAUSED
+                Text(ui.toGo.target?.let { "arrive at $it ≈" } ?: "arrive ≈", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1,
+                    color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
             }
             if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
                 Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -399,10 +424,15 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
     }
 }
 
-/** Stateful wrapper: remaining distance along the followed line and the arrival check. */
+/**
+ * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,
+ * its progress is the one truth (the same as the time to go: direction-aware, "not on route" when off it); without
+ * it (no tour yet) the nearest point of the line.
+ */
 @Composable
 internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float, footer: @Composable () -> Unit) {
-    val line = vm.followLine
+    val nav = rec?.nav?.takeIf { it.line.size >= 2 }
+    val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
     // turns on the followed line, computed once per line (pure, TurnDetector)
     val turns = remember(line) { line?.let { TurnDetector.turns(it) } ?: emptyList() }
@@ -411,8 +441,13 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
     val hint = remember(line) { intArrayOf(0) }
     val here = location?.let { GeoPoint(it.latitude, it.longitude) }
-    val remaining = remember(progress, location) {
-        if (progress == null || here == null) null else progress.remaining(here, hint[0])?.also { hint[0] = it.index }
+    val remaining = remember(progress, location, nav?.shownAlongM, nav?.offM) {
+        when {
+            progress == null -> null
+            nav != null -> nav.shownAlongM?.let { progress.at(it, nav.offM) }
+            here == null -> null
+            else -> progress.remaining(here, hint[0])?.also { hint[0] = it.index }
+        }
     }
     LaunchedEffect(location) { if (here != null) vm.checkArrival(here, remaining?.distanceM) }
     val next = remember(turns, remaining, rec?.offRouteAlert) {
@@ -426,10 +461,14 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val arrive = toGoS?.let { s ->
         tt?.arrivalMs?.takeIf { tt.toGoS != null } ?: com.onpath.app.time.TimeEstimate.arrivalMs(System.currentTimeMillis(), s)
     }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
+    val target = nav?.session?.let { s -> s.stops.lastOrNull()?.name ?: "destination" }
+    val notOnRoute = nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
     val ui = NavUi(
-        toGo = remaining?.let { r ->
+        toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, nav?.offM, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
+        else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
-                profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList())
+                profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
+                state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true,
