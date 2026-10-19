@@ -54,6 +54,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
         const val SRC_MARK = "search-mark"
+        /** MapLibre's own position layers (dot, accuracy circle, bearing) all start with this. */
+        const val POSITION_LAYER_PREFIX = "mapbox-location"
         /**
          * App layers hidden while the eye button is held: everything route-like, but not the own
          * position or the recorded track. New route layers (e.g. a grey original route) belong here.
@@ -311,8 +313,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun setFollow(follow: Boolean, onDismissed: () -> Unit) = setCamera(follow, navigating = false, headingUp = false, onDismissed)
 
     /**
-     * Camera and puck for both modes. Following: the camera tracks the position – in Navigate heading-up
-     * (map turns with the walking direction, [HeadingEngine]) or north-up; in Plan without turning.
+     * Camera and puck for both modes. Following: the camera tracks the position – walking direction up
+     * ([headingUp], map turns with [HeadingEngine]; both modes, compass cycle) or north up (Navigate) / as the user
+     * left it (Plan).
      * MapLibre ends following when the user pans ([onDismissed]); "centre on me" calls this again.
      * The puck is always the small dot with a direction triangle ([PUCK_MODE]); the compass sensor runs while
      * the map is visible (MapLibre releases it when the map stops).
@@ -328,7 +331,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             wasNavigating = navigating
             if (follow) {
                 val (mode, tilt, bearing) = when {
-                    navigating && headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
+                    // walking direction up – Navigate and (owner, compass cycle) Plan
+                    headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
                     navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                     else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
                 }
@@ -508,14 +512,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun dpToPx(dp: Float) = dp * density
 
+    /**
+     * Adds a layer created after the position dot (owner: the dot must never be under a line): directly below
+     * MapLibre's location layers ("mapbox-location-*", LocationComponentConstants), or on top if there are none.
+     */
+    private fun addBelowPosition(l: org.maplibre.android.style.layers.Layer) {
+        val firstPosition = style.layers.firstOrNull { it.id.startsWith(POSITION_LAYER_PREFIX) }?.id
+        if (firstPosition != null) style.addLayerBelow(l, firstPosition) else style.addLayer(l)
+    }
+
     /** Search result mark (orange ring around the place, with its name); null removes it. Never throws. */
     fun setSearchMark(p: GeoPoint?, name: String?) = guarded("search mark") {
         if (style.getSource(SRC_MARK) == null) {
             style.addSource(GeoJsonSource(SRC_MARK))
             // One orange ring around the place's icon (owner: not a red dot covering it), clearly outside the icon.
-            style.addLayer(CircleLayer("search-mark", SRC_MARK).withProperties(
+            addBelowPosition(CircleLayer("search-mark", SRC_MARK).withProperties(
                 PF.circleRadius(22f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F28C00"), PF.circleStrokeWidth(3.5f)))
-            style.addLayer(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
+            addBelowPosition(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
                 PF.textField(Expression.get("name")), PF.textFont(arrayOf("Noto Sans Medium")), PF.textSize(13f),
                 PF.textOffset(arrayOf(0f, 2.2f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
                 PF.textColor("#B35C00"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
@@ -551,6 +564,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
     /** Search result: fly to [p] at [zoom]. Never throws. */
+    fun panTo(p: GeoPoint) = runCatching {
+        map.moveCamera(CameraUpdateFactory.newLatLng(LatLng(p.lat, p.lon)))
+    }.onFailure { Problems.warn("map", "Map did not move to the profile point", it) }
+
     fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
     }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }

@@ -51,6 +51,8 @@ fun ElevationProfile(
     /** Colour the line by steepness (< 5 % route colour, 5–10 amber, 10–15 orange, > 15 red). */
     gradient: Boolean = false,
     onHighlight: (GeoPoint?) -> Unit = {},
+    /** The finger left the profile (drag end / tap release). */
+    onRelease: () -> Unit = {},
 ) {
     val data = remember(points) { profileData(points) }
     if (data == null) {
@@ -80,8 +82,8 @@ fun ElevationProfile(
             .pointerInput(data) {
                 detectDragGestures(
                     onDragStart = { o -> cursor = indexAt(o.x, size.width.toFloat(), 40.dp.toPx()); onHighlight(points[data.idx[cursor!!]]) },
-                    onDragEnd = {},
-                    onDragCancel = {},
+                    onDragEnd = { onRelease() },
+                    onDragCancel = { onRelease() },
                     onDrag = { change, _ ->
                         cursor = indexAt(change.position.x, size.width.toFloat(), 40.dp.toPx())
                         onHighlight(points[data.idx[cursor!!]])
@@ -92,6 +94,7 @@ fun ElevationProfile(
                 detectTapGestures(onPress = { o ->
                     cursor = indexAt(o.x, size.width.toFloat(), 40.dp.toPx()); onHighlight(points[data.idx[cursor!!]])
                     tryAwaitRelease()
+                    onRelease()
                 })
             }
     ) {

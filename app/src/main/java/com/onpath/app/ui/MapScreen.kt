@@ -81,10 +81,8 @@ fun MapScreen(
     val footer = @Composable {
         MapFooter(scale) {
             MapControls(
-                compass = when {
-                    vm.mode == AppMode.NAVIGATE -> CompassSpec(vm.navHeadingUp, 0f, vm::toggleNavOrientation)
-                    else -> CompassSpec(null, bearing) { controller?.northUp() }
-                },
+                // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
+                compass = CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
                 showEye = vm.route != null || vm.shown != null || vm.followLine != null,
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
@@ -284,10 +282,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
             }
         }
     }
-    // Camera: follow in Plan, heading-up / north-up in Navigate; next-turn arrow (see NavigateScreen).
-    LaunchedEffect(c, vm.followMe, vm.mode, vm.navHeadingUp) {
-        c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.navHeadingUp) { vm.followMe = false }
+    // Camera: follow the position, walking direction up or north up (both modes); next-turn arrow (see NavigateScreen).
+    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick) {
+        c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.headingUp) { vm.followMe = false }
     }
+    LaunchedEffect(c, vm.northTick) { if (vm.northTick > 0) c.northUp() }
     LaunchedEffect(c, vm.navTurn) { c.setTurnArrow(vm.navTurn) }
     LaunchedEffect(c, vm.events.size) {
         val pending = vm.events.toList()
@@ -296,6 +295,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
             when (e) {
                 is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
                 is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
+                is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
                     .onFailure { Problems.warn("ui", "Share screen could not be opened (no app?)", it) }
             }
