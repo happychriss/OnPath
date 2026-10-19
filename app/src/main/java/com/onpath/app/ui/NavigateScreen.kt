@@ -157,6 +157,9 @@ fun NavigateOverlay(
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
+    /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
+    onProfileScrub: (GeoPoint) -> Unit = {},
+    onProfileRelease: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -168,7 +171,8 @@ fun NavigateOverlay(
             ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }?.let { OffRouteBanner(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
-                NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity)
+                NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
+                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
@@ -243,7 +247,8 @@ internal fun NorthNeedle(modifier: Modifier) {
  */
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
-                           onActivity: () -> Unit = {}) {
+                           onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
+                           onProfileRelease: () -> Unit = {}) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val canOpen = hasProfile || ui.position != null
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
@@ -323,7 +328,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
-                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp))
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
             ui.paceNote?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
@@ -518,7 +524,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
-        onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck)
+        onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+        onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd)
 }
 
 /** Moving time from the position ([remainingM] before the end) to the end of the line, rounded for display. */

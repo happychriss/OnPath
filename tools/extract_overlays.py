@@ -2,7 +2,8 @@
 """Extract trail and route-network overlays from an OSM .pbf into small GeoJSON files.
 
 Output (in OUT_DIR):
-  routes.geojson  - official hiking / bicycle / mtb route relations (line geometries)
+  routes.geojson  - official hiking / bicycle / mtb route relations, merged per kind into continuous lines (the
+      band is transparent); major routes (net >= 2) again as original pieces with "majoronly": 1, ref, name, net
   trails.geojson  - paths with SAC scale (hiking difficulty), mtb:scale and/or poor trail_visibility.
       Props: sac 0-6 (always), mtb "0".."6" (first char of mtb:scale), vis 0-5 (trail_visibility, if tagged)
   ways.geojson    - OPTIONAL way quality (docs/map-pipeline.md "Way quality"): tracks with tracktype, and
@@ -16,6 +17,9 @@ Output (in OUT_DIR):
              2 = normal, 3 = short), len (m).
       t="r": hiking route numbers (AVS "25", "24A"; several on one way joined as "24 · 25").
 
+  paths.geojson   - every path / footway / bridleway / track (+ ways with sac_scale), exact geometry (~0.5 m), drawn
+      by the map from z13 instead of the base map's lines. Props: k "t"/"p", sac 0-6, vis (if tagged), st 1 (steps),
+      tt 1-5 (tracktype), pv 1 (paved track)
 Usage: python3 extract_overlays.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat
 """
 import json
@@ -24,8 +28,8 @@ import re
 import sys
 
 import osmium
-from shapely.geometry import LineString, MultiLineString, box, mapping
-from shapely.ops import linemerge
+from shapely.geometry import LineString, MultiLineString, box, mapping, shape
+from shapely.ops import linemerge, unary_union
 
 pbf, out_dir = sys.argv[1], sys.argv[2]
 minlon, minlat, maxlon, maxlat = map(float, sys.argv[3:7])
@@ -149,6 +153,7 @@ class WayPass(osmium.SimpleHandler):
         self.trails = []
         self.ways = []
         self.low = []
+        self.paths = []
         self.by_name = {}  # label -> list of raw coordinate lists
         self.by_ref = {}   # "24 · 25" -> list of raw coordinate lists
 
@@ -259,6 +264,22 @@ class WayPass(osmium.SimpleHandler):
                              "properties": {"k": "t"} if hw == "track" else {}})
         if quality:
             self.ways.append({"type": "Feature", "geometry": fine, "properties": quality})
+        if low or sac:
+            # paths.geojson: every path / track with exact geometry – the map draws these instead of the base map's
+            # lines from z13 (no solid line under a dotted trail); tt / pv set the track drawing (surface)
+            pp = {"k": "t" if hw == "track" else "p", "sac": sac}
+            if vis is not None:
+                pp["vis"] = vis
+            if hw == "steps":
+                pp["st"] = 1
+            if hw == "track":
+                tt = TRACKTYPE.get(w.tags.get("tracktype", ""))
+                if tt:
+                    pp["tt"] = tt
+                if SURF.get(w.tags.get("surface", "").split(";")[0]) == 1:
+                    pp["pv"] = 1
+            self.paths.append({"type": "Feature", "geometry": fine or rounded(mapping(self.geom(w, FINE_SIMPLIFY))),
+                               "properties": pp})
 
     @staticmethod
     def quality(w):
@@ -285,13 +306,34 @@ def rounded(geom):
     return geom
 
 
+def merged_routes(routes):
+    """Route bands are drawn transparent: where two pieces meet the band would get darker. So every route kind
+    becomes as few continuous lines as possible. The original pieces of major routes (net >= 2) follow as
+    "majoronly" copies for the pink highlight and the route name (make_style.py route_bands)."""
+    out, by_kind = [], {}
+    for f in routes:
+        by_kind.setdefault(f["properties"]["kind"], []).append(shape_of(f["geometry"]))
+    for kind, lines in by_kind.items():
+        m = linemerge(unary_union(lines))
+        for g in (m.geoms if hasattr(m, "geoms") else [m]):
+            out.append({"type": "Feature", "geometry": rounded(mapping(g)), "properties": {"kind": kind}})
+    for f in routes:
+        if f["properties"].get("net", 0) >= 2:
+            out.append({"type": "Feature", "geometry": f["geometry"], "properties": {**f["properties"], "majoronly": 1}})
+    return out
+
+
+def shape_of(geom):
+    return shape(geom)
+
+
 def main():
     rp = RelationPass()
     rp.apply_file(pbf)
     wp = WayPass(rp.way_routes, rp.way_hikes)
     wp.apply_file(pbf, locations=True)
-    for name, feats in (("routes", wp.routes), ("trails", wp.trails), ("ways", wp.ways), ("lowways", wp.low),
-                        ("trailnames", wp.label_features())):
+    for name, feats in (("routes", merged_routes(wp.routes)), ("trails", wp.trails), ("ways", wp.ways),
+                        ("lowways", wp.low), ("trailnames", wp.label_features()), ("paths", wp.paths)):
         with open(f"{out_dir}/{name}.geojson", "w") as f:
             json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
         print(name, len(feats))

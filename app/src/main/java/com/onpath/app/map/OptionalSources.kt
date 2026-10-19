@@ -12,11 +12,17 @@ import java.io.File
  * Only `base` and `terrain` are essential; everything else (contours, pois, trail names, …) is optional
  * data that a region may not have. MapLibre would otherwise log errors or show nothing for those layers,
  * and new optional files can be added to the style without any app change.
+ *
+ * A layer with `"metadata": {"onpath:fallback-for": "<source>"}` is the opposite: it is drawn only when that
+ * source is missing (e.g. the base map's paths when an older map package has no paths.geojson).
  */
 object OptionalSources {
 
     /** Sources that are never stripped (the map cannot work without them anyway). */
     private val ESSENTIAL = setOf("base", "terrain")
+
+    /** Layer metadata key: the layer stands in for the named source and is drawn only when that source is missing. */
+    const val FALLBACK_KEY = "onpath:fallback-for"
 
     /** The local file a source points to ("file://…" or "pmtiles://file://…"), or null if remote/inline. */
     fun localFile(source: JSONObject): String? {
@@ -37,16 +43,20 @@ object OptionalSources {
             val file = sources.optJSONObject(id)?.let { localFile(it) } ?: return@forEach
             if (!exists(file)) missing += id
         }
-        if (missing.isEmpty()) styleJson else {
+        val layers = root.optJSONArray("layers") ?: JSONArray()
+        fun fallbackFor(l: JSONObject) = l.optJSONObject("metadata")?.optString(FALLBACK_KEY)?.takeIf { it.isNotEmpty() }
+        val hasFallbacks = (0 until layers.length()).any { i -> layers.optJSONObject(i)?.let { fallbackFor(it) } != null }
+        if (missing.isEmpty() && !hasFallbacks) styleJson else {
             missing.forEach { sources.remove(it) }
-            val layers = root.optJSONArray("layers") ?: JSONArray()
             val kept = JSONArray()
             for (i in 0 until layers.length()) {
                 val l = layers.optJSONObject(i) ?: continue
-                if (l.optString("source") !in missing) kept.put(l)
+                val fb = fallbackFor(l)
+                val keep = if (fb != null) fb in missing else l.optString("source") !in missing
+                if (keep) kept.put(l)
             }
             root.put("layers", kept)
-            log("Optional map data missing, layers hidden: $missing")
+            if (missing.isNotEmpty()) log("Optional map data missing, layers hidden: $missing")
             root.toString()
         }
     } catch (e: Exception) {

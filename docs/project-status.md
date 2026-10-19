@@ -4,6 +4,23 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-19 (0.7.1 owner todos):** compass cycle in both modes (`AppViewModel.onCompass`: turned → north
+  → walking direction (follows) → north; no fix = hint; editing the plan stops the turning map); Navigate re-centres
+  when the app comes back (`onReturnToApp`, MapHost ON_START); profile scrub in Navigate (`navScrub`/`navScrubEnd`:
+  dot + map at the spot, back to the position 4 s after release); search ring added below MapLibre's position layers
+  (`addBelowPosition`); "Clear route from map" in the Tour-saved dialog when an unsaved plan is left. Arrival time:
+  laptop.
+- **cloud, 2026-10-19 (map design 0.7.0, owner pick):** one map style from a colour analysis
+  (`docs/design/map-colour-analysis.md`, script `tools/style_analysis/route_green.py`): route band #168403 at 40 %
+  without edges; no white casings; streets = two grey edges; tracks brown, one dashed line < z14.5, then two dotted
+  edges whose spacing shows tracktype (paved track = street); paths/tracks drawn from new `paths.geojson` (exact, from
+  `extract_overlays.py`) from z13, base-map lines only as fallback (`onpath:fallback-for`, OptionalSources); routes
+  merged into continuous lines (+ `majoronly` copies for the pink highlight); ground symbols in the sprite (wetland,
+  farmland, rock, sand); residential light grey; lighter forest/meadow; greenish hill shadow; wider cable-car ropes;
+  high-contrast theme removed (Settings shows no style choice; an old "high-contrast" pref falls back silently).
+  New map package on `downloads` (part2 44 MB; both zips carry the new package.json). Also 0.6.8 trail safety and
+  0.6.9 (saved plan leaves the map after the tour). Field-test status: `docs/field-test-2026-10-19.md`.
+  Next: owner tests 0.7.0 + new map part; open owner todos in backlog (dot on top, recentre, compass, ...).
 - **cloud, 2026-10-19 (trail safety 0.6.8, owner hiking):** audit batch A (routing profiles) + Navigate tweaks.
   Profiles (`# OnPath:` comments): hiking SAC above the limit forbidden (was 9000), preferred = min(limit, T3), via
   ferrata / abandoned / trail_visibility=no forbidden, bad visibility +1.5, informal +1, fords ×3/+500; trekking,

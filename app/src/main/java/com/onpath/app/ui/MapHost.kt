@@ -68,7 +68,7 @@ fun MapHost(
         var resumed = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { mapView.onStart(); started = true }
+                Lifecycle.Event.ON_START -> { mapView.onStart(); started = true; vm.onReturnToApp() }
                 Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
                 Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
                 Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false }
