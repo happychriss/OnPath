@@ -302,6 +302,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
+                    // owner: a saved plan is safe in My routes – take it off the map after the tour (Undo brings it
+                    // back); an unsaved plan stays so nothing is lost
+                    if (waypoints.size >= 2 && !planUnsaved) clearPlan()
                     enter(AppMode.PLAN)
                 }
             }
