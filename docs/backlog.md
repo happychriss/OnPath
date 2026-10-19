@@ -11,6 +11,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
+  `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
+  as one vector PMTiles −75 %, base trims −27 %), routing by 1° rd5 part 199 → 8–31 MB; joining cells via MBTiles
+  (spike) or PMTiles rewrite.
 - **Map packages from the Hetzner server – design talk (owner, 2026-10-19, not decided yet):** owner leans to
   *grid cells built on demand* (~40 × 27 km zoom-10 cells, server only runs while building, ~5–8 min for a new cell,
   cached for everyone after; phone joins cells without seams). Also discussed: monthly big build + phone cuts its own
