@@ -57,7 +57,7 @@ object Diagnostics {
         val layers = JSONArray()
         for (l in style.layers) {
             layers.put(JSONObject().put("id", l.id).put("visibility", runCatching { l.visibility.value }.getOrNull())
-                .put("minzoom", l.minZoom.toDouble()).put("maxzoom", l.maxZoom.toDouble()))
+                .put("minzoom", finite(l.minZoom)).put("maxzoom", finite(l.maxZoom)))
         }
         o.put("layers", layers)
         o.put("layerCount", style.layers.size)
@@ -181,6 +181,9 @@ object Diagnostics {
             .redirectErrorStream(true).start()
         p.inputStream.bufferedReader().use { it.readText() }.ifBlank { "(empty)" }
     } catch (e: Exception) { "logcat not readable: $e" }
+
+    /** JSON has no ±Infinity / NaN (MapLibre reports "no zoom limit" as ±Infinity). */
+    private fun finite(v: Float): Any = if (v.isFinite()) v.toDouble() else JSONObject.NULL
 
     private fun iso(ms: Long): String =
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ROOT).format(Date(ms))
