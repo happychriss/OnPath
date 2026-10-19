@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.WrongLocation
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.DisposableEffect
@@ -105,6 +106,12 @@ data class NavUi(
     val sac: Int = 3,
     /** The check-and-switch sheet is open (stays until a choice is made). */
     val activityCheck: ActivityCheckUi? = null,
+    /** "46.54120 N 10.90320 E · ±8 m · 1234 m" (emergency calls) in the opened card; null = no fix yet. */
+    val position: String? = null,
+    /** "46.54120, 10.90320" – copied when the position line is tapped. */
+    val positionCopy: String? = null,
+    /** Age of the last fix (s) – shown with "Waiting for GPS" so an old position is not taken for the current one. */
+    val fixAgeS: Long? = null,
 )
 
 data class TurnHint(val kind: TurnKind, val distanceM: Double)
@@ -227,7 +234,8 @@ internal fun NorthNeedle(modifier: Modifier) {
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}) {
-    val canOpen = (ui.toGo?.profile?.size ?: 0) >= 2
+    val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
+    val canOpen = hasProfile || ui.position != null
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {
@@ -279,16 +287,39 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        // Chevron: elevation profile of what is left (stays open until tapped again).
+        // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
-            ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
+            if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp))
             ui.paceNote?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
             }
+            ui.position?.let { PositionLine(it, ui.positionCopy) }
         }
       }
+    }
+}
+
+/** Own position for an emergency call; tap copies "lat, lon" (paste into a message or any map app). */
+@Composable
+private fun PositionLine(text: String, copy: String?) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        .clickable(enabled = copy != null, onClickLabel = "Copy position") {
+            try {
+                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("Position", copy))
+                android.widget.Toast.makeText(context, "Position copied", android.widget.Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                com.onpath.app.debug.Problems.warn("ui", "Position could not be copied", e)
+            }
+        }
+        .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Filled.MyLocation, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -298,7 +329,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
  * Without moving time: the elapsed clock as before.
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double): String {
-    val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS"; else -> "Recording" }
+    val age = ui.fixAgeS?.takeIf { it >= 60 }?.let { " · last fix ${it / 60} min ago" }.orEmpty()
+    val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS$age"; else -> "Recording" }
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
     val parts = mutableListOf<String>()
     if (ui.toGo == null || ui.paused || ui.waitingGps) parts += status
@@ -413,6 +445,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,
         activityCheck = vm.activityCheck,
+        position = location?.let { l ->
+            NavText.position(l.latitude, l.longitude, l.accuracy.takeIf { l.hasAccuracy() }, l.altitude.takeIf { l.hasAltitude() },
+                com.onpath.app.recording.LocationTracker.ageSeconds(l))
+        },
+        positionCopy = location?.let { NavText.positionCopy(it.latitude, it.longitude) },
+        fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }

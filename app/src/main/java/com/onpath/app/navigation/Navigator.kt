@@ -267,7 +267,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val since = f.timeMs - askAtMs
         return when (val pr = prompt) {
             is NavPrompt.Question ->
-                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) { markAsked(f); Step(job = newJob(f, true, false)) } else Step()
+                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) { markAsked(f); Step(job = newJob(f, true, vibrateOnResult = true)) } else Step()
             is NavPrompt.NoWay ->
                 if (failures < MAX_FAILURES && pr.reason != Rerouter.Reason.UNAVAILABLE && (moved >= RETRY_MOVE_M || since >= RETRY_MS)) {
                     markAsked(f); Step(job = newJob(f, false, vibrateOnResult = true))
