@@ -1,0 +1,30 @@
+== ground today, blue shadow
+  today light     alpha 0.40: band dE2000   3.7 (weakest: wood           ) path contrast  7.5
+  today light     alpha 0.75: band dE2000   6.8 (weakest: wood           ) path contrast  9.8
+  yellow-green    alpha 0.40: band dE2000   7.2 (weakest: wood           ) path contrast  7.4
+  yellow-green    alpha 0.75: band dE2000  12.2 (weakest: wood           ) path contrast  9.8
+  today dark      alpha 0.40: band dE2000   6.5 (weakest: wood in shadow ) path contrast  4.8
+  today dark      alpha 0.75: band dE2000  10.7 (weakest: wood in shadow ) path contrast  4.4
+  dark            alpha 0.40: band dE2000   8.3 (weakest: wood in shadow ) path contrast  4.1
+  dark            alpha 0.75: band dE2000  15.1 (weakest: wood in shadow ) path contrast  3.3
+  chosen #168403  alpha 0.40: band dE2000  11.4 (weakest: wood           ) path contrast  4.2
+  chosen #168403  alpha 0.75: band dE2000  18.2 (weakest: wood in shadow ) path contrast  3.4
+  very dark       alpha 0.40: band dE2000  14.3 (weakest: wood in shadow ) path contrast  3.2
+  very dark       alpha 0.75: band dE2000  28.3 (weakest: wood in shadow ) path contrast  2.0
+  optimum alpha 0.40, path >= 3.5: #06630f band 12.4 (wood in shadow) path 3.6
+  optimum alpha 0.40, path >= 4.5: #1aa200 band 10.3 (wood) path 4.7
+== ground lighter, green shadow
+  today light     alpha 0.40: band dE2000   3.7 (weakest: wood           ) path contrast  9.1
+  today light     alpha 0.75: band dE2000   6.5 (weakest: wood           ) path contrast 10.6
+  yellow-green    alpha 0.40: band dE2000   8.3 (weakest: wood           ) path contrast  9.1
+  yellow-green    alpha 0.75: band dE2000  13.4 (weakest: wood           ) path contrast 10.6
+  today dark      alpha 0.40: band dE2000   8.1 (weakest: wood in shadow ) path contrast  6.0
+  today dark      alpha 0.75: band dE2000  14.5 (weakest: wood in shadow ) path contrast  4.9
+  dark            alpha 0.40: band dE2000  10.4 (weakest: wood in shadow ) path contrast  5.3
+  dark            alpha 0.75: band dE2000  20.0 (weakest: wood in shadow ) path contrast  3.7
+  chosen #168403  alpha 0.40: band dE2000  12.4 (weakest: wood in shadow ) path contrast  5.3
+  chosen #168403  alpha 0.75: band dE2000  21.8 (weakest: wood in shadow ) path contrast  3.8
+  very dark       alpha 0.40: band dE2000  16.0 (weakest: wood in shadow ) path contrast  4.2
+  very dark       alpha 0.75: band dE2000  33.3 (weakest: wood in shadow ) path contrast  2.3
+  optimum alpha 0.40, path >= 3.5: #003a01 band 17.9 (wood in shadow) path 3.8
+  optimum alpha 0.40, path >= 4.5: #06630f band 14.2 (wood in shadow) path 4.6

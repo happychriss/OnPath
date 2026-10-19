@@ -1,0 +1,307 @@
+<title>OnPath Routengrün</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@500;700&family=Fira+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: notes, settings strip, wide matrix (rows = ground with symbols, columns = route green) scrolling sideways on phones, then symbol overview grid */
+:root{
+  --bg:#f3f4ef; --surface:#ffffff; --fg:#1d221b; --muted:#5b6457; --line:#d5dacd;
+  --accent:#2f8f3c; --accent-ink:#ffffff; --good:#2f8f3c; --ok:#b07a12; --weak:#b3372b;
+  --display:"Fira Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Fira Sans",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151915; --surface:#1e231d; --fg:#e7ebe2; --muted:#a3ad9d; --line:#343b31; --accent:#5cc066; --accent-ink:#0d130c;
+  --good:#6fd17a; --ok:#e0a93a; --weak:#ef7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151915; --surface:#1e231d; --fg:#e7ebe2; --muted:#a3ad9d; --line:#343b31; --accent:#5cc066; --accent-ink:#0d130c;
+  --good:#6fd17a; --ok:#e0a93a; --weak:#ef7b6e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1500px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px;display:grid;gap:16px;min-width:0}
+.wrap>*{min-width:0}
+h1{font-family:var(--display);font-weight:700;font-size:1.7rem;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:1.3rem;margin:12px 0 0}
+.lead{margin:0;color:var(--muted);max-width:72ch}
+.news{margin:0;padding-left:1.2em;max-width:72ch}
+.news li{margin-bottom:2px}
+.controls{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;border-block:1px solid var(--line);padding-block:12px}
+.group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.group>span{font-family:var(--display);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:4px}
+button.chip{font:500 .95rem var(--body);min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+button.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.chip:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input[type=range]{width:160px;accent-color:var(--accent)}
+output{font-variant-numeric:tabular-nums;min-width:3.5ch;display:inline-block}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:4px;text-align:center;vertical-align:top}
+thead th{font-family:var(--display);font-weight:500;font-size:.8rem;color:var(--muted);background:var(--surface)}
+.sw{display:block;width:100%;height:12px;border-radius:3px;margin-bottom:3px;border:1px solid var(--line)}
+tbody th{font-family:var(--display);font-size:.85rem;text-align:left;white-space:nowrap;padding-right:10px;position:sticky;left:0;background:var(--surface);z-index:1}
+@media (max-width:600px){tbody th{white-space:normal;max-width:84px;font-size:.78rem;padding-right:6px}}
+tbody th small{display:block;color:var(--muted);font-family:var(--body);font-weight:400}
+td svg{display:block;width:160px;height:100px;border-radius:4px}
+.v{font-size:.78rem;margin-top:2px}
+.good{color:var(--good)} .ok{color:var(--ok)} .weak{color:var(--weak);font-weight:500}
+tr.sum th,tr.sum td{border-top:2px solid var(--line);font-family:var(--display);font-size:.9rem;padding-block:8px}
+td.best{outline:3px solid var(--accent);outline-offset:-3px;border-radius:6px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 24px}
+.notes h3{font-family:var(--display);margin:0 0 4px;font-size:1rem}
+.notes p{margin:0;color:var(--muted);font-size:.9rem}
+.tech{margin:0;font-size:.85rem;color:var(--muted);max-width:90ch}
+.tech code{font-size:.85em}
+.ov{display:grid;gap:18px}
+.ovrow h3{font-family:var(--display);margin:0 0 6px;font-size:1rem}
+.ovrow h3 small{font-family:var(--body);font-weight:400;color:var(--muted);font-size:.85rem}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+figure{margin:0}
+figure svg{display:block;width:220px;height:140px;border-radius:6px;border:1px solid var(--line)}
+figcaption{font-size:.82rem;color:var(--muted);margin-top:3px;max-width:220px}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+</style>
+
+<div class="defs" id="defs" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <h1>Welches Grün für die Routen? (Version 3)</h1>
+    <p class="lead">Jede Zeile ist ein Untergrund der Karte, jede Spalte ein Grünton für das Routenband. Das Band hat keinen Rand und ist leicht transparent. Der Weg liegt schwarz darüber. Unter jedem Bild stehen zwei Zahlen. <b>Band</b> ist der Farbabstand zwischen Band und Untergrund (ΔE 2000, wie das Auge Farben unterscheidet): ab 12 klar, ab 7 gerade noch, darunter verschwimmt das Band. <b>Weg</b> ist der Helligkeitskontrast des schwarzen Weges auf dem Band: ab 4,5 sehr gut lesbar, unter 3 wird der Weg schwer zu sehen. Die letzte Zeile zeigt pro Grün den schwächsten Untergrund. Die beste Spalte ist umrandet.</p>
+  </header>
+
+  <ul class="news">
+    <li>Deine Wahl ist eingestellt: dunkles Grün, Symbole Variante 1, weniger Deckkraft (40 %).</li>
+    <li>Wald und Wiese ohne Symbole.</li>
+    <li>Schatten am Hang wahlweise grünlich statt blaugrau, damit Wiese im Schatten nicht grau wirkt.</li>
+    <li>Neu: zwei gerechnete Grüntöne und eine Spalte „Optimum“, die für die eingestellte Deckkraft das beste Grün sucht.</li>
+  </ul>
+
+  <section class="math">
+    <h2>Was die Rechnung sagt</h2>
+    <ul class="news">
+      <li><b>Dein Gefühl stimmt:</b> Ein dunkles Grün mit wenig Deckkraft ist rechnerisch die beste Art. Das Band wirkt dann, weil es den Untergrund etwas abdunkelt und grüner macht. Ein helles Grün hebt sich vom hellen Wald kaum ab.</li>
+      <li><b>Der Preis:</b> Je dunkler das Band, desto weniger hebt sich der schwarze Weg darauf ab. Man muss beides gegeneinander abwägen. Die Rechnung sucht deshalb das Grün, bei dem das Band auf dem schwächsten Untergrund am besten sichtbar ist und der Weg trotzdem gut lesbar bleibt.</li>
+      <li><b>Schwächster Untergrund</b> ist fast immer der Wald, besonders im Hangschatten. Ein hellerer Wald bringt mehr als jede Grünwahl.</li>
+      <li><b>Ergebnis bei 40 % Deckkraft</b> (hellerer Untergrund, grünlicher Schatten): Dein Dunkelgrün #2e7d32 erreicht Band 10 / Weg 5,3. Das gerechnete satte Mittelgrün #168403 erreicht Band 12 / Weg 5,3. Die Optimum-Spalte erreicht Band 14 bei Weg 4,6. Das sehr dunkle #014e08 schafft Band 16, aber der Weg sinkt auf 4,2. Mehr Band-Abstand kostet also immer etwas Lesbarkeit des Weges.</li>
+      <li><b>Grenzen:</b> Die Zahlen gelten für Farben auf dem Bildschirm, nicht für Sonne und spiegelndes Glas. Symbole und Relief sind nur grob einbezogen. Am Ende entscheidet das echte Kartenbild.</li>
+    </ul>
+  </section>
+
+  <div class="controls">
+    <div class="group" id="g-set"><span>Untergrund</span></div>
+    <div class="group" id="g-zoom"><span>Zoom</span></div>
+    <div class="group" id="g-way"><span>Weg</span></div>
+    <div class="group" id="g-sym"><span>Symbole</span></div>
+    <div class="group" id="g-res"><span>Siedlung</span></div>
+    <div class="group" id="g-shade"><span>Hangschatten</span></div>
+    <div class="group" id="g-floor"><span>Optimum: Weg mindestens</span></div>
+    <div class="group"><span>Deckkraft</span><input type="range" id="alpha" min="20" max="100" step="5" value="40" aria-label="Deckkraft des Bandes"><output id="alphaOut">40 %</output></div>
+  </div>
+
+  <div class="scroll"><table id="m"></table></div>
+
+  <section class="notes">
+    <div><h3>So lesen</h3><p>Wichtig ist die schwächste Zeile, nicht der Durchschnitt. Ein Band, das im Wald verschwindet, fehlt genau dort, wo die meisten Wanderwege liegen.</p></div>
+    <div><h3>Fahrweg A und B</h3><p>A: zwei dünne braune Strichkanten, dazwischen scheint der Untergrund durch. B: eine einzelne dunkelbraune Strichlinie, etwas dicker als der Pfad.</p></div>
+    <div><h3>Symbole</h3><p>Die Symbole kommen erst ab Zoom 14. Sie haben auf jeder Zoomstufe dieselbe Größe auf dem Bildschirm, nur Band und Wege werden breiter. Bei Zoom 12 sind sie deshalb hier ausgeblendet.</p></div>
+    <div><h3>Optimum-Spalte</h3><p>Sucht bei jeder Änderung (Deckkraft, Untergrund, Schatten) unter etwa 5000 Grüntönen das mit dem größten Abstand auf dem schwächsten Untergrund, bei dem der Weg den eingestellten Mindestkontrast behält.</p></div>
+  </section>
+
+  <p class="tech"><b>Technik:</b> Billig in der App ist MapLibre <code>fill-pattern</code> mit kleinen PNG-Kacheln (16–32 px), die zur Laufzeit mit <code>style.addImage</code> geladen und auf einer zweiten Flächenebene über der Grundfarbe gekachelt werden. Darum sind alle Symbole hier sich wiederholende Kacheln, keine frei gesetzten Zeichen. Fahrweg A entspricht <code>line-gap-width</code> mit gestrichelter Linie.<br>
+  <b>Geröll:</b> OpenMapTiles kennt Geröll nicht als eigene Klasse (es steckt in <code>class=rock</code>), Planetiler schreibt aber <code>subclass=scree</code> bzw. <code>bare_rock</code> in die Landcover-Ebene; <code>make_style.py</code> nutzt subclass bisher nur bei Wegen, also ginge Geröll ohne neue Pipeline.</p>
+
+  <h2>Symbole im Überblick</h2>
+  <p class="lead">Jeder Untergrund ohne Band, damit man nur die Symbole sieht. Maßstab 1:1 wie auf dem Handy. Die Farben folgen der Wahl „Untergrund“ oben.</p>
+  <div class="ov" id="ov"></div>
+</div>
+
+<script>
+/* Ground rows: n = name, k = class shown, tag = OSM tag, c = colour, sh = hillshade mix, p = symbol kind */
+const R=(n,k,tag,c,p,sh)=>({n,k,tag,c,p,sh:sh||0});
+const SETS={
+  heute:[R("Wald","wood","landuse=forest","#a9cd8b"),R("Wald im Schatten","wood + Relief","landuse=forest","#a9cd8b","",.30),
+    R("Wiese","grass","landuse=meadow","#d2e2b4"),R("Wiese im Schatten","grass + Relief","landuse=meadow","#d2e2b4","",.30),
+    R("Park, Sportplatz","leisure","leisure=park","#cfe0b5"),R("Feuchtwiese","wetland","natural=wetland","#d4e6d0","wetland"),
+    R("Acker","farmland","landuse=farmland","#eeecd5","farmland"),R("Offenes Land","land","–","#f4f1e8"),
+    R("Siedlung","residential","landuse=residential","RES","residential"),R("Fels","rock · bare_rock","natural=bare_rock","#e7e2d9","rock"),
+    R("Geröll","rock · scree","natural=scree","#e7e2d9","scree"),R("Sand","sand","natural=sand","#efe6c9","sand"),R("Gletscher","ice","natural=glacier","#f6fafc")],
+  hell:[R("Wald","wood","landuse=forest","#c3dcab"),R("Wald im Schatten","wood + Relief","landuse=forest","#c3dcab","",.25),
+    R("Wiese","grass","landuse=meadow","#dfeacb"),R("Wiese im Schatten","grass + Relief","landuse=meadow","#dfeacb","",.25),
+    R("Park, Sportplatz","leisure","leisure=park","#d9e8c4"),R("Feuchtwiese","wetland","natural=wetland","#d4e6d0","wetland"),
+    R("Acker","farmland","landuse=farmland","#f1f0de","farmland"),R("Offenes Land","land","–","#f6f4ec"),
+    R("Siedlung","residential","landuse=residential","RES","residential"),R("Fels","rock · bare_rock","natural=bare_rock","#e7e2d9","rock"),
+    R("Geröll","rock · scree","natural=scree","#e7e2d9","scree"),R("Sand","sand","natural=sand","#efe6c9","sand"),R("Gletscher","ice","natural=glacier","#f6fafc")]
+};
+const RES=[["heute","heute","#e3ddd5"],["g1","grau hell","#e3e2df"],["g2","grau mittel","#dad8d4"],["g3","grau dunkel","#cfcdc9"]];
+const FIXED=[["#2e7d32","dunkel (deine Wahl)"],["#168403","gerechnet: satt"],["#014e08","gerechnet: sehr dunkel"],["#3e9a4e","heute dunkel"],["#d6f25a","gelbgrün"],["#c9f29b","heute hell"]];
+let GREENS=FIXED;
+const SHADOWS={blau:[50,62,96],gruen:[40,70,35]}, INK="#33251a";
+const ZOOMS={"12":{band:4,path:1,trail:1,gap:1.6,edge:.6},"14":{band:7,path:1.35,trail:1.6,gap:2.4,edge:.8},"15":{band:9.5,path:1.8,trail:2.0,gap:3.0,edge:.9},"16":{band:12,path:2.2,trail:2.4,gap:3.6,edge:1.0}};
+const WAYS=[["path","Pfad"],["trail","Bergweg T2"],["alpine","Alpinweg T4"],["trackA","Fahrweg A"],["trackB","Fahrweg B"]];
+
+/* Symbol tiles. Each: w,h tile size (px), dk = how far the ink moves from the ground towards dark, op = opacity, fill = filled shapes, s = SVG content.
+   Ink colour is a darker tone of the ground, except wetland V2 (blue, like Swiss maps). */
+const SYM={
+  wetland:{label:"Feuchtwiese",tag:"natural=wetland",
+    v1:{name:"Sumpfbüschel",w:32,h:26,dk:.55,op:.50,s:'<path d="M2 8h9M4.5 8v-2.4M6.5 8v-3.4M8.5 8v-2.4M18 21h9M20.5 21v-2.4M22.5 21v-3.4M24.5 21v-2.4"/>'},
+    v2:{name:"blaue Striche",w:20,h:10,ink:"#3f7fb0",op:.45,s:'<path d="M2 3h7M12 8h7"/>'}},
+  farmland:{label:"Acker",tag:"landuse=farmland",
+    v1:{name:"Furchen",w:18,h:8,dk:.45,op:.24,s:'<path d="M1 2h8M10 6h7"/>'},
+    v2:{name:"Pünktchen",w:8,h:8,dk:.45,op:.35,fill:1,s:'<circle cx="2" cy="2" r=".55"/><circle cx="6" cy="6" r=".55"/>'}},
+  residential:{label:"Siedlung",tag:"landuse=residential",
+    v1:{name:"feine Schraffur",w:6,h:6,dk:.40,op:.22,s:'<path d="M0 6L6 0M-1 1L1-1M5 7L7 5"/>',sw:.6},
+    v2:{name:"Punktraster",w:5,h:5,dk:.40,op:.28,fill:1,s:'<circle cx="2.5" cy="2.5" r=".5"/>'}},
+  rock:{label:"Fels",tag:"natural=bare_rock",
+    v1:{name:"Felsbrocken",w:32,h:32,dk:.55,op:.45,s:'<path d="M3 11l2.5-5 5.5-1.5 2 4.5-2.5 3zM8 6.5l1 3.5M18 26l1.5-4.5 5-1 1.5 3.5-3 3zM21.5 21.5l.5 3.5M22 9.5l2.8-3.5 3.2 2-1 2.5z"/>',sw:.7},
+    v2:{name:"Schraffen",w:24,h:24,dk:.55,op:.42,s:'<path d="M3 8l4-4M5 9.5l4-4M7 11l4-4M14 21l5-2M14.6 23l5-2M18 3.5l1 4.5M20 3l1 4.5"/>',sw:.7}},
+  scree:{label:"Geröll",tag:"natural=scree",
+    v1:{name:"Steinchen",w:22,h:22,dk:.55,op:.45,fill:1,s:'<circle cx="3" cy="4" r=".9"/><circle cx="11" cy="7" r=".6"/><circle cx="17" cy="3" r=".7"/><circle cx="6" cy="13" r=".6"/><circle cx="15" cy="15" r="1"/><circle cx="20" cy="11" r=".5"/><circle cx="3" cy="19" r=".7"/><circle cx="10" cy="20" r=".5"/>'},
+    v2:{name:"Dreiecke",w:24,h:24,dk:.55,op:.40,fill:1,s:'<path d="M3 7l1.8-3 1.8 3zM14 12l1.4-2.4 1.4 2.4zM6 20l1.2-2 1.2 2zM19 22l1.6-2.7 1.6 2.7zM19 4l1-1.7 1 1.7z"/>'}},
+  sand:{label:"Sand",tag:"natural=sand",
+    v1:{name:"Punkte",w:9,h:9,dk:.45,op:.38,fill:1,s:'<circle cx="2" cy="2" r=".5"/><circle cx="6.5" cy="6.5" r=".5"/>'},
+    v2:{name:"Streupunkte",w:14,h:14,dk:.45,op:.40,fill:1,s:'<circle cx="2" cy="3" r=".45"/><circle cx="8" cy="1.5" r=".4"/><circle cx="12" cy="6" r=".45"/><circle cx="5" cy="8" r=".4"/><circle cx="10" cy="11.5" r=".45"/><circle cx="2.5" cy="12.5" r=".4"/>'}}
+};
+
+let st={set:"hell",zoom:"14",way:"path",alpha:40,sym:"v1",res:"heute",shade:"gruen",floor:"4.5"};
+try{Object.assign(st,JSON.parse(localStorage.getItem("routengruen3")||"{}"))}catch(e){}
+if(!ZOOMS[st.zoom])st.zoom="14";
+
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mix=(a,b,t)=>a.map((v,i)=>v*(1-t)+b[i]*t);
+const toHex=c=>"#"+c.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+function lab(c){
+  const l=c.map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});
+  let x=(l[0]*.4124+l[1]*.3576+l[2]*.1805)/.95047,y=l[0]*.2126+l[1]*.7152+l[2]*.0722,z=(l[0]*.0193+l[1]*.1192+l[2]*.9505)/1.08883;
+  const f=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;x=f(x);y=f(y);z=f(z);
+  return [116*y-16,500*(x-y),200*(y-z)];
+}
+function dE(c1,c2){ /* CIEDE2000 */
+  const [L1,a1,b1]=lab(c1),[L2,a2,b2]=lab(c2),R=Math.PI/180;
+  const C1=Math.hypot(a1,b1),C2=Math.hypot(a2,b2),Cb=(C1+C2)/2,G=.5*(1-Math.sqrt(Cb**7/(Cb**7+25**7)));
+  const a1p=(1+G)*a1,a2p=(1+G)*a2,C1p=Math.hypot(a1p,b1),C2p=Math.hypot(a2p,b2);
+  const h1=(Math.atan2(b1,a1p)/R+360)%360,h2=(Math.atan2(b2,a2p)/R+360)%360;
+  let dh=h2-h1; if(C1p*C2p===0)dh=0; else if(dh>180)dh-=360; else if(dh<-180)dh+=360;
+  const dL=L2-L1,dC=C2p-C1p,dH=2*Math.sqrt(C1p*C2p)*Math.sin(dh/2*R);
+  const Lb=(L1+L2)/2,Cbp=(C1p+C2p)/2;
+  let hb=Math.abs(h1-h2)<=180?(h1+h2)/2:(h1+h2+360)/2; if(C1p*C2p===0)hb=h1+h2;
+  const T=1-.17*Math.cos((hb-30)*R)+.24*Math.cos(2*hb*R)+.32*Math.cos((3*hb+6)*R)-.2*Math.cos((4*hb-63)*R);
+  const dt=30*Math.exp(-(((hb-275)/25)**2)),RC=2*Math.sqrt(Cbp**7/(Cbp**7+25**7));
+  const SL=1+.015*(Lb-50)**2/Math.sqrt(20+(Lb-50)**2),SC=1+.045*Cbp,SH=1+.015*Cbp*T,RT=-Math.sin(2*dt*R)*RC;
+  return Math.sqrt((dL/SL)**2+(dC/SC)**2+(dH/SH)**2+RT*(dC/SC)*(dH/SH));
+}
+const lum=c=>{const l=c.map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*l[0]+.7152*l[1]+.0722*l[2]};
+const wcag=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+const cls=v=>v>=12?"good":v>=7?"ok":"weak";
+const clsW=v=>v>=4.5?"good":v>=3?"ok":"weak";
+function lch(L,C,H){
+  const a=C*Math.cos(H*Math.PI/180),b=C*Math.sin(H*Math.PI/180),fy=(L+16)/116,fx=fy+a/500,fz=fy-b/200;
+  const inv=t=>t**3>.008856?t**3:(t-16/116)/7.787, x=inv(fx)*.95047,y=inv(fy),z=inv(fz)*1.08883;
+  const lin=[3.2406*x-1.5372*y-.4986*z,-.9689*x+1.8758*y+.0415*z,.0557*x-.2040*y+1.0570*z];
+  const out=lin.map(v=>255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055));
+  return out.some(v=>!(v>-.5&&v<255.5))?null:out.map(v=>Math.min(255,Math.max(0,v)));
+}
+/* best green (hue 120–150) for the current opacity: largest weakest band ΔE with the path contrast ≥ floor */
+let optCache={};
+function optimum(rows,a){
+  const key=[st.set,st.shade,st.res,st.floor,a].join("|"); if(optCache[key])return optCache[key];
+  const gs=rows.map(groundOf), ink=hex(INK), floor=+st.floor; let best=null;
+  for(let L=20;L<=90;L+=2)for(let C=20;C<=84;C+=4)for(let H=120;H<=150;H+=3){
+    const g=lch(L,C,H); if(!g)continue;
+    let mn=1e9,pm=1e9;
+    for(const bg of gs){const band=mix(bg,g,a);pm=Math.min(pm,wcag(band,ink));if(pm<floor)break;mn=Math.min(mn,dE(band,bg))}
+    if(pm<floor)continue;
+    if(!best||mn>best[0])best=[mn,toHex(g)];
+  }
+  return optCache[key]=best?best[1]:null;
+}
+const resCol=()=>RES.find(r=>r[0]===st.res)[2];
+const groundOf=r=>{const c=hex(r.c==="RES"?resCol():r.c);return r.sh?mix(c,SHADOWS[st.shade],st.shade==="gruen"?r.sh*.7:r.sh):c};
+
+/* Pattern defs are collected per render; id = kind-variant-groundcolour */
+let defs={};
+function patId(kind,v,bg){
+  const t=SYM[kind]&&SYM[kind][v]; if(!t)return "";
+  const id=`p-${kind}-${v}-${bg.slice(1)}`;
+  if(!defs[id]){
+    const ink=t.ink||toHex(mix(hex(bg),[38,34,26],t.dk));
+    const paint=t.fill?`fill="${ink}" stroke="none"`:`fill="none" stroke="${ink}" stroke-width="${t.sw||.8}" stroke-linecap="round" stroke-linejoin="round"`;
+    defs[id]=`<pattern id="${id}" patternUnits="userSpaceOnUse" width="${t.w}" height="${t.h}"><g ${paint} opacity="${t.op}">${t.s}</g></pattern>`;
+  }
+  return id;
+}
+function ground(bg,kind,v,w,h){
+  let s=`<rect width="${w}" height="${h}" fill="${bg}"/>`;
+  const id=v!=="off"&&kind?patId(kind,v,bg):"";
+  if(id)s+=`<rect width="${w}" height="${h}" fill="url(#${id})"/>`;
+  return s;
+}
+
+const D="M-8 74 C 34 6, 78 104, 116 42 S 156 22, 170 30";
+function wayLines(z){
+  const w=st.way;
+  if(w==="path")return `<path d="${D}" fill="none" stroke="${INK}" stroke-width="${z.path}" stroke-linecap="round"/>`;
+  if(w==="trail")return `<path d="${D}" fill="none" stroke="${INK}" stroke-width="${z.trail}" stroke-linecap="round" stroke-dasharray="0.05 ${z.trail*2}"/>`;
+  if(w==="alpine"){const t=z.trail;return `<path d="${D}" fill="none" stroke="${INK}" stroke-width="${t*.85}" stroke-linecap="round" stroke-dasharray="${t*2.2} ${t*1.9} 0.05 ${t*1.9}"/>`}
+  if(w==="trackA"){const o=z.gap+2*z.edge;return `<path d="${D}" fill="none" stroke="#6b543c" stroke-width="${o}" stroke-dasharray="${(z.gap*1.2).toFixed(2)} ${(z.gap*.8).toFixed(2)}" mask="url(#gap${st.zoom})"/>`}
+  return `<path d="${D}" fill="none" stroke="#5a4330" stroke-width="${z.path*1.15}" stroke-dasharray="${z.path*3} ${z.path*2}"/>`;
+}
+function cell(bg,kind,green,a){
+  const z=ZOOMS[st.zoom], v=st.zoom==="12"?"off":st.sym;
+  return `<svg viewBox="0 0 160 100" role="img" aria-label="Band ${green} auf ${bg}">${ground(bg,kind,v,160,100)}`+
+    `<path d="${D}" fill="none" stroke="${green}" stroke-opacity="${a}" stroke-width="${z.band}" stroke-linecap="round"/>${wayLines(z)}</svg>`;
+}
+function masks(){
+  return Object.entries(ZOOMS).map(([k,z])=>`<mask id="gap${k}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="220" height="140"><rect x="-20" y="-20" width="220" height="140" fill="#fff"/><path d="${D}" fill="none" stroke="#000" stroke-width="${z.gap}"/></mask>`).join("");
+}
+
+function renderMatrix(){
+  const a=st.alpha/100, rows=SETS[st.set];
+  const o=optimum(rows,a); GREENS=o?[[o,"Optimum für "+st.alpha+" %"],...FIXED]:FIXED;
+  let h="<thead><tr><th></th>"+GREENS.map(([g,n])=>`<th><span class="sw" style="background:${g}"></span>${n}<br>${g}</th>`).join("")+"</tr></thead><tbody>";
+  const mins=GREENS.map(()=>Infinity), worst=GREENS.map(()=>""), pmins=GREENS.map(()=>Infinity);
+  rows.forEach(r=>{
+    const bgc=groundOf(r), bg=toHex(bgc);
+    h+=`<tr><th>${r.n}<small>${r.k}</small></th>`;
+    GREENS.forEach(([g],i)=>{
+      const band=mix(bgc,hex(g),a), v=dE(band,bgc), w=wcag(band,hex(INK));
+      if(v<mins[i]){mins[i]=v;worst[i]=r.n}
+      pmins[i]=Math.min(pmins[i],w);
+      h+=`<td>${cell(bg,r.p,g,a)}<div class="v"><span class="${cls(v)}">Band ${v.toFixed(0)}</span> · <span class="${clsW(w)}">Weg ${w.toFixed(1).replace(".",",")}</span></div></td>`;
+    });
+    h+="</tr>";
+  });
+  const ok=mins.map((v,i)=>pmins[i]>=+st.floor?v:-1), best=ok.indexOf(Math.max(...ok));
+  h+=`<tr class="sum"><th>Schwächster Untergrund</th>`+mins.map((v,i)=>`<td class="${i===best?"best":""}"><span class="${cls(v)}">Band ${v.toFixed(0)}</span> · <span class="${clsW(pmins[i])}">Weg ${pmins[i].toFixed(1).replace(".",",")}</span><br><small>${worst[i]}</small></td>`).join("")+"</tr></tbody>";
+  document.getElementById("m").innerHTML=h;
+}
+function swatch(bg,kind,v,cap){
+  return `<figure><svg viewBox="0 0 220 140" role="img" aria-label="${cap}">${ground(bg,kind,v,220,140)}</svg><figcaption>${cap}</figcaption></figure>`;
+}
+function renderOverview(){
+  const rows=SETS[st.set];
+  let h="";
+  Object.entries(SYM).forEach(([kind,s])=>{
+    const r=rows.find(x=>x.p===kind&&!x.sh), bg=toHex(groundOf(r));
+    h+=`<div class="ovrow"><h3>${s.label} <small>· ${s.tag} · ${bg}</small></h3><div class="swatches">`+
+      swatch(bg,kind,"off","ohne Symbole")+swatch(bg,kind,"v1","Variante 1 · "+s.v1.name)+swatch(bg,kind,"v2","Variante 2 · "+s.v2.name)+"</div></div>";
+  });
+  const v=st.sym, vn=v==="off"?"ohne Symbole":(v==="v1"?"Variante 1":"Variante 2");
+  h+=`<div class="ovrow"><h3>Siedlung: Grautöne <small>· landuse=residential · ${vn}</small></h3><div class="swatches">`+
+    RES.map(([,n,c])=>swatch(c,"residential",v,`${n} · ${c}`)).join("")+"</div></div>";
+  document.getElementById("ov").innerHTML=h;
+}
+function render(){
+  defs={};
+  renderMatrix(); renderOverview();
+  document.getElementById("defs").innerHTML=`<svg width="0" height="0"><defs>${masks()}${Object.values(defs).join("")}</defs></svg>`;
+  document.querySelectorAll("button.chip").forEach(b=>b.setAttribute("aria-pressed",st[b.dataset.k]===b.dataset.v));
+  document.getElementById("alpha").value=st.alpha;document.getElementById("alphaOut").textContent=st.alpha+" %";
+  try{localStorage.setItem("routengruen3",JSON.stringify(st))}catch(e){}
+}
+function chips(id,k,list){const g=document.getElementById(id);list.forEach(([v,l])=>{const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=l;b.dataset.k=k;b.dataset.v=v;b.onclick=()=>{st[k]=v;render()};g.appendChild(b)})}
+chips("g-set","set",[["heute","heute"],["hell","heller"]]);
+chips("g-zoom","zoom",[["12","12"],["14","14"],["15","15"],["16","16"]]);
+chips("g-way","way",WAYS);
+chips("g-sym","sym",[["off","aus"],["v1","Variante 1"],["v2","Variante 2"]]);
+chips("g-res","res",RES.map(([k,n])=>[k,n]));
+chips("g-shade","shade",[["blau","blaugrau (heute)"],["gruen","grünlich, leichter"]]);
+chips("g-floor","floor",[["3.5","3,5"],["4.5","4,5"]]);
+document.getElementById("alpha").oninput=e=>{st.alpha=+e.target.value;render()};
+render();
+</script>
