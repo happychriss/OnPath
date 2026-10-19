@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] **Owner todos 0.7.1:** position dot on top, recentre when the phone is opened again, one compass model (Plan + Navigate), elevation-profile scrub dot, Clear-route button after a tour. Files: map/MapController, ui/MapScreen, ui/MapFooter, ui/MapHost, ui/ElevationProfile, small hooks in ui/NavigateScreen + AppViewModel (laptop: arrival work there – I keep those edits minimal) – since 2026-10-19
 - [laptop] Arrival/time-to-go robustness: plan edits follow automatically, walking backwards, out-and-back matching, no stale times (owner field test 2026-10-19) – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
