@@ -8,6 +8,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Map todo (owner, 2026-10-19 – start only when the owner says so):** (1) always show a little contour detail
+  (every zoom, also with hillshade); (2) more contrast between the green land types + Komoot-like shrub
+  ("Sträucher") symbols; (3) trail numbers like the AVS numbers in South Tyrol must also appear in other
+  countries / regions (route-relation `ref`, `osmc:symbol`, network-specific refs) – `tools/make_style.py`,
+  `tools/themes/*.json`, `tools/extract_overlays.py`.
+- **Safety audit (cloud, 2026-10-18):** https://claude.ai/artifact/3KJ4LidPD9uxi1QngAmPNr – four batches A–D
+  (profiles say no; one amber warning line in the plan sheet; Navigate tweaks; pipeline: via ferrata, trail
+  visibility, cliffs, fords, bus stops, manifest date/bbox). Owner picks the batch.
 - **Unverified paths (owner: keep as todo):** OSM ways with no tags (or only fixme/note) that connect two paths/tracks
   at both ends, ≤ 300 m, drawn as a grey dashed "unverified path" + point-menu hint; never used for routing (rd5 comes
   from brouter.de). Example: way 330547188 near Algund (46.6913, 11.1015), `fixme=tags?` between two dirt paths.
