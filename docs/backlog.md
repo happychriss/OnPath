@@ -20,6 +20,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
+- **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
+  paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
+  `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
+  `make_style.py` already takes the new tokens (`route.band.width`, `route.band.edge.*`, `lowways.*.width`).
 - **Own position dot sometimes drawn under lines (owner, 2026-10-19 – start when the owner says so):** the blue dot
   must always be on top of every line (route, track, guide, arrows). Analysis: all app layers are added in
   `MapController.init` before `activateLocation()`, so the puck starts on top; the lazily added `search-mark` layers

@@ -194,6 +194,12 @@ def route_bands():
     for kind, minz in (("hike", 10), ("bike", 9), ("mtb", 9)):
         vis = "visible" if kind == "hike" else "none"
         flt = ["==", ["get", "kind"], kind]
+        band_w = Z("route.band.width", interp(9, 1.2, 12, 2.0, 13, 2.6, 14, 7, 15, 12, 18, 18, base=1))
+        # optional dark edge on both sides of the band (theme token): the band reads on forest green and on pale land
+        if T("route.band.edge.color", None):
+            layer(id_=f"routes-{kind}-edge", type="line", source="routes", minzoom=minz, filter=flt,
+                  layout={"line-join": "round", "line-cap": "round", "visibility": vis},
+                  paint={"line-color": T("route.band.edge.color"), "line-width": Z("route.band.edge.width")})
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
               filter=flt,
               layout={"line-join": "round", "line-cap": "round", "visibility": vis},
@@ -201,7 +207,7 @@ def route_bands():
               # soft band. Our own look (owner: similar to Komoot, not a copy).
               paint={"line-color": ["interpolate", ["linear"], ["zoom"], 13, T("route.line.color"), 14, T("route.band.color")],
                      "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
-                     "line-width": interp(9, 1.2, 12, 2.0, 13, 2.6, 14, 7, 15, 12, 18, 18, base=1)})
+                     "line-width": band_w})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
@@ -326,8 +332,8 @@ def trails():
           paint={"line-color": ["case", ["==", ["get", "k"], "t"], T("track.low.color"), T("trail.low.color")],
                  # one zoom curve with the case inside (MapLibre allows only one zoom expression per property;
                  # a zoom curve inside "case" made MapLibre drop the whole layer)
-                 "line-width": interp(11, ["case", ["==", ["get", "k"], "t"], 0.6, 0.8],
-                                      13, ["case", ["==", ["get", "k"], "t"], 1.0, 1.3], base=1)})
+                 "line-width": interp(11, ["case", ["==", ["get", "k"], "t"], T("lowways.track.width.z11", 0.6), T("lowways.path.width.z11", 0.8)],
+                                      13, ["case", ["==", ["get", "k"], "t"], T("lowways.track.width.z13", 1.0), T("lowways.path.width.z13", 1.3)], base=1)})
     for sid, flt in (("mountain", ["all", [">=", sac, 2], ["<=", sac, 3]]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=["all", flt, ["!", faint]],
               layout={"line-cap": "round", "line-join": "round"},
