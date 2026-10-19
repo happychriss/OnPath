@@ -170,3 +170,17 @@ Decision pending (owner).
 
 Renders show that it works well from z15. At z14 the two dot rows of a farm road move close together. There, a
 single brown dashed line is suggested so that it cannot be mixed up with the single black dot row of a T2 trail.
+
+**Track quality in the dots (variant 5, from z15).** Where OSM has a `tracktype` (61 % of the tracks in the test
+area), the spacing of the dots shows the surface:
+
+| Surface | Drawing |
+|---|---|
+| paved | two solid brown lines |
+| grade1, compact | dense dots (dash 0.1 / 1.0) |
+| grade2 or unknown | normal dots (0.1 / 1.7) |
+| grade3 | wider dots (0.1 / 2.6) |
+| grade4–5, soft or grass | sparse dots (0.1 / 4.0) |
+
+Up to z14.5 a track is one brown dashed line. Tracks then come from our own `paths.geojson` (with `tt` and a paved
+flag), like paths, so no base-map track line shows underneath.
