@@ -324,7 +324,10 @@ def trails():
     layer(id_="trails-low", type="line", source="lowways", minzoom=11, maxzoom=LOW_ZOOM_SOLID,
           layout={"line-join": "round"},
           paint={"line-color": ["case", ["==", ["get", "k"], "t"], T("track.low.color"), T("trail.low.color")],
-                 "line-width": ["case", ["==", ["get", "k"], "t"], interp(11, 0.6, 13, 1.0, base=1), Z("trail.width")]})
+                 # one zoom curve with the case inside (MapLibre allows only one zoom expression per property;
+                 # a zoom curve inside "case" made MapLibre drop the whole layer)
+                 "line-width": interp(11, ["case", ["==", ["get", "k"], "t"], 0.6, 0.8],
+                                      13, ["case", ["==", ["get", "k"], "t"], 1.0, 1.3], base=1)})
     for sid, flt in (("mountain", ["all", [">=", sac, 2], ["<=", sac, 3]]), ("alpine", [">=", sac, 4])):
         layer(id_=f"trails-{sid}", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=["all", flt, ["!", faint]],
               layout={"line-cap": "round", "line-join": "round"},

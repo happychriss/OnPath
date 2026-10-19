@@ -355,6 +355,15 @@ for root, _, names in os.walk(data):
         p = os.path.join(root, n)
         files.append(os.path.relpath(p, data))
 files.sort(key=lambda r: (r.count("/"), r))
+# package.json goes onto the phone with the data: the app compares each file's size with it and says which files
+# come from another package (mixed imports leave gaps at the old package's edge)
+built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+pkg = {"format": 1, "region": region, "bbox": [float(v) for v in bbox.split(",")], "built": built,
+       "osm_date": osm_date,
+       "files": {r: os.path.getsize(os.path.join(data, r)) for r in files if not r.startswith("segments/")}}
+with open(os.path.join(data, "package.json"), "w") as f:
+    json.dump(pkg, f, indent=1)
+files = [r for r in files if r != "package.json"] + ["package.json"]
 tmp = zpath + ".tmp"
 with zipfile.ZipFile(tmp, "w", allowZip64=True) as z:
     for rel in files:
@@ -367,7 +376,7 @@ manifest = {
     "format": 1,
     "region": region,
     "bbox": [float(v) for v in bbox.split(",")],
-    "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "built": built,
     "osm": {"url": osm_url or None, "file": os.path.basename(osm), "date": osm_date},
     "tools": {"planetiler": pt_ver, "onpath_git": git_rev, "terrain_maxzoom": int(tz)},
     "attribution": "© OpenStreetMap contributors (ODbL), © OpenMapTiles; terrain: Mapzen/AWS Terrarium "
