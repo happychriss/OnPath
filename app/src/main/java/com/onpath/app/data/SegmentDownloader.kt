@@ -1,5 +1,6 @@
 package com.onpath.app.data
 
+import com.onpath.app.debug.Problems
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -39,7 +40,8 @@ object SegmentDownloader {
         try {
             val code = conn.responseCode
             if (code == 416) { // already complete
-                part.renameTo(dest); return
+                if (!part.renameTo(dest)) Problems.error("data", "Downloaded routing data $name could not be saved (rename failed)")
+                return
             }
             if (code != 200 && code != 206) throw IllegalStateException("Server answered $code for $name.")
             if (code == 200) done = 0 // server ignored the range: start over

@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import com.onpath.app.debug.Problems
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -73,12 +74,18 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
         ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     /** The device has a GPS provider at all (emulators and some tablets do not). */
-    fun hasGps(): Boolean = try { LocationManager.GPS_PROVIDER in lm.allProviders } catch (_: Exception) { false }
+    fun hasGps(): Boolean = try { LocationManager.GPS_PROVIDER in lm.allProviders } catch (e: Exception) {
+        Problems.warn("gps", "Location providers could not be listed; treating device as without GPS", e)
+        false
+    }
 
     fun isEnabled(): Boolean = try {
         if (Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled
         else lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-    } catch (_: Exception) { false }
+    } catch (e: Exception) {
+        Problems.warn("gps", "Location on/off state could not be read; treating location as off", e)
+        false
+    }
 
     @SuppressLint("MissingPermission")
     fun start() {
@@ -96,21 +103,26 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
             // Seed with the last known position so the map has something immediately.
             if (_location.value == null) {
                 val last = listOfNotNull(
+                    // expected: a provider may be missing or have no last fix; it is only a seed for the map
                     runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
                     runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
                 ).maxByOrNull { it.elapsedRealtimeNanos }
                 if (last != null) _location.value = last
             }
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            Problems.error("gps", "Location updates refused (permission withdrawn?); no GPS fixes", e)
             running = false
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Problems.error("gps", "Location updates could not be started; no GPS fixes", e)
             running = false
         }
     }
 
     fun stop() {
         if (!running) return
-        try { lm.removeUpdates(gpsListener); lm.removeUpdates(netListener) } catch (_: Exception) { }
+        try { lm.removeUpdates(gpsListener); lm.removeUpdates(netListener) } catch (e: Exception) {
+            Problems.warn("gps", "Location updates could not be removed on stop", e)
+        }
         running = false
     }
 

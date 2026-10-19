@@ -98,6 +98,9 @@ fun SettingsScreen(
     diagnosticsOn: Boolean? = null,
     onDiagnostics: (Boolean) -> Unit = {},
     onExportDiagnostics: () -> Unit = {},
+    /** Problem log (debug/Problems), most recent first. */
+    problems: List<com.onpath.app.debug.Problems.Entry> = emptyList(),
+    onClearProblems: () -> Unit = {},
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -269,6 +272,7 @@ fun SettingsScreen(
                                 "Nothing is sent by itself.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (diagnosticsOn) androidx.compose.material3.OutlinedButton(onClick = onExportDiagnostics,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
+                            ProblemList(problems, onClearProblems)
                         }
                     }
                 }
@@ -276,6 +280,26 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+/** Problems the app noticed (errors it recovered from, map engine warnings, crashes) – nothing is hidden. */
+@Composable
+private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onClear: () -> Unit) {
+    val serious = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR }
+    Text(if (problems.isEmpty()) "No problems noticed." else "Problems noticed: ${problems.size}" +
+        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    val fmt = remember { java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault()) }
+    problems.take(15).forEach { p ->
+        val color = when (p.level) {
+            com.onpath.app.debug.Problems.Level.CRASH, com.onpath.app.debug.Problems.Level.ERROR -> OnPathColors.Bad
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        Text("${fmt.format(java.util.Date(p.last))} · ${p.level.name.lowercase()} · ${p.area}: ${p.message}" +
+            (if (p.count > 1) " (× ${p.count})" else ""), fontSize = 12.sp, color = color)
+    }
+    if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", fontSize = 12.sp)
+    if (problems.isNotEmpty()) androidx.compose.material3.TextButton(onClick = onClear,
+        modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear problem list") }
 }
 
 @Composable

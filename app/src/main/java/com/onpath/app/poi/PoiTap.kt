@@ -3,7 +3,7 @@ package com.onpath.app.poi
 import android.content.res.Resources
 import android.graphics.PointF
 import android.graphics.RectF
-import android.util.Log
+import com.onpath.app.debug.Problems
 import org.json.JSONArray
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLng
@@ -33,7 +33,7 @@ fun findPoiAt(map: MapLibreMap, screenPoint: PointF, boxDp: Float = 24f): Poi? =
             }
     }
 } catch (e: Exception) {
-    Log.w("OnPath", "POI query failed: $e")
+    Problems.warn("poi", "POI lookup at the tapped point failed, tap treated as no POI", e)
     null
 }
 
@@ -57,7 +57,7 @@ fun stripPoisIfMissing(styleJson: String, dataDir: File): String {
         root.put("layers", kept)
         root.toString()
     } catch (e: Exception) {
-        Log.w("OnPath", "could not strip POI layers: $e")
+        Problems.warn("poi", "POI layers not removed although pois.geojson is missing, style used unchanged", e)
         styleJson
     }
 }

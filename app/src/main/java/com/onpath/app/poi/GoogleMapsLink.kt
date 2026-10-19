@@ -4,7 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
+import com.onpath.app.debug.Problems
 import java.net.URLEncoder
 import java.util.Locale
 
@@ -130,9 +130,10 @@ object PoiIntents {
         context.startActivity(intent)
         true
     } catch (e: ActivityNotFoundException) {
+        Problems.info("poi", "No app on the phone opens this link (${intent.action})")
         false
     } catch (e: Exception) {
-        Log.w("OnPath", "cannot open link: $e")
+        Problems.warn("poi", "Link could not be opened", e)
         false
     }
 }

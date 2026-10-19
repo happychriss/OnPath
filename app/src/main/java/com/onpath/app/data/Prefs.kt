@@ -1,6 +1,7 @@
 package com.onpath.app.data
 
 import android.content.Context
+import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
@@ -13,8 +14,18 @@ class Prefs(context: Context) {
     private val followFile = File(context.applicationContext.filesDir, "follow.json")
 
     var activity: Activity
-        get() = runCatching { Activity.valueOf(sp.getString("activity", null)!!) }.getOrDefault(Activity.HIKE)
+        get() = activityPref("activity")
         set(v) = sp.edit().putString("activity", v.name).apply()
+
+    /** Stored activity [key]; not set yet → Hike (expected), unknown value → Hike with a warning. */
+    private fun activityPref(key: String): Activity {
+        val v = try { sp.getString(key, null) } catch (e: Exception) {
+            Problems.warn("settings", "Setting $key unreadable, using Hike", e); null
+        } ?: return Activity.HIKE
+        return try { Activity.valueOf(v) } catch (e: Exception) {
+            Problems.warn("settings", "Setting $key has unknown activity '$v', using Hike", e); Activity.HIKE
+        }
+    }
 
     var sac: Int
         get() = sp.getInt("sac", 3)
@@ -42,8 +53,7 @@ class Prefs(context: Context) {
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
-            defaultActivity = runCatching { com.onpath.app.routing.Activity.valueOf(sp.getString("defaultActivity", null)!!) }
-                .getOrDefault(com.onpath.app.routing.Activity.HIKE),
+            defaultActivity = activityPref("defaultActivity"),
             defaultSac = sp.getInt("defaultSac", 3).coerceIn(1, 5),
             hikePace = com.onpath.app.time.Pace.of(sp.getString("hikePace", null)),
             bikePace = com.onpath.app.time.Pace.of(sp.getString("bikePace", null)),
@@ -106,8 +116,8 @@ class Prefs(context: Context) {
             points.forEach { arr.put(it.lat); arr.put(it.lon); ele.put(it.ele ?: org.json.JSONObject.NULL) }
             val tmp = File(followFile.path + ".tmp")
             tmp.writeText(org.json.JSONObject().put("name", name).put("pts", arr).put("ele", ele).toString())
-            tmp.renameTo(followFile)
-        } catch (_: Exception) { }
+            if (!tmp.renameTo(followFile)) Problems.error("data", "Followed line not saved (rename failed) – lost after a restart")
+        } catch (e: Exception) { Problems.error("data", "Followed line not saved – lost after a restart", e) }
     }
 
     fun loadFollow(): Pair<String, List<GeoPoint>>? = try {
@@ -120,5 +130,5 @@ class Prefs(context: Context) {
                 GeoPoint(a.getDouble(it * 2), a.getDouble(it * 2 + 1), h?.takeIf { v -> !v.isNaN() })
             }
         }
-    } catch (_: Exception) { null }
+    } catch (e: Exception) { Problems.warn("data", "Saved followed line unreadable, not restored", e); null }
 }

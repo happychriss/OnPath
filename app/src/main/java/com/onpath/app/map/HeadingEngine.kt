@@ -7,7 +7,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
-import android.util.Log
+import com.onpath.app.debug.Problems
 import android.view.Surface
 import android.view.WindowManager
 import org.maplibre.android.location.CompassEngine
@@ -87,7 +87,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     private val sm = app.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val sensor: Sensor? = try {
         sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) ?: sm?.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
-    } catch (_: Exception) { null }
+    } catch (e: Exception) { Problems.warn("sensor", "Rotation sensor lookup failed, heading from GPS only", e); null }
     private val listeners = LinkedHashSet<CompassListener>()
     private val filter = HeadingFilter()
     private var registered = false
@@ -96,11 +96,20 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     private val r = FloatArray(9)
 
     val isListening: Boolean get() = registered
+    private var noSensorReported = false
 
     override fun addCompassListener(l: CompassListener) {
         listeners += l
+        if (!registered && sensor == null && !noSensorReported) {
+            noSensorReported = true
+            Problems.info("sensor", "No rotation sensor – map heading follows the GPS bearing only")
+        }
         if (!registered && sensor != null) {
-            registered = try { sm?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI) == true } catch (_: Exception) { false }
+            registered = try {
+                sm?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI) == true
+            } catch (e: Exception) {
+                Problems.warn("sensor", "Compass sensor could not be registered, heading from GPS only", e); false
+            }
         }
     }
 
@@ -110,7 +119,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     }
 
     fun release() {
-        if (registered) try { sm?.unregisterListener(this) } catch (_: Exception) { }
+        if (registered) try { sm?.unregisterListener(this) } catch (e: Exception) { Problems.warn("sensor", "Compass sensor could not be released", e) }
         registered = false
     }
 
@@ -121,7 +130,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     fun onLocation(loc: Location) {
         try {
             declination = GeomagneticField(loc.latitude.toFloat(), loc.longitude.toFloat(), loc.altitude.toFloat(), loc.time).declination
-        } catch (_: Exception) { }
+        } catch (e: Exception) { Problems.warn("sensor", "Magnetic declination not computed, compass keeps the last value", e) }
         if (listeners.isEmpty()) return
         val h = filter.onGps(if (loc.hasBearing()) loc.bearing else null, if (loc.hasSpeed()) loc.speed else null, now())
         if (h != null) emit(h)
@@ -145,21 +154,25 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
             val h = filter.onSensor(HeadingFilter.norm(magnetic + declination), now()) ?: return
             emit(h)
         } catch (e: Exception) {
-            Log.w("OnPath", "heading: $e")
+            Problems.warn("sensor", "Compass reading failed, reading skipped", e)
         }
     }
 
     override fun onAccuracyChanged(s: Sensor?, acc: Int) {
         accuracy = acc
-        listeners.toList().forEach { runCatching { it.onCompassAccuracyChange(acc) } }
+        listeners.toList().forEach { l ->
+            try { l.onCompassAccuracyChange(acc) } catch (e: Exception) { Problems.warn("sensor", "Compass accuracy not passed to the map", e) }
+        }
     }
 
-    private fun emit(h: Double) = listeners.toList().forEach { runCatching { it.onCompassChanged(h.toFloat()) } }
+    private fun emit(h: Double) = listeners.toList().forEach { l ->
+        try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) }
+    }
 
     @Suppress("DEPRECATION")
     private fun displayRotation(): Int = try {
         (app.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-    } catch (_: Exception) { Surface.ROTATION_0 }
+    } catch (e: Exception) { Problems.warn("sensor", "Display rotation unreadable, assuming portrait", e); Surface.ROTATION_0 }
 
     private fun now() = android.os.SystemClock.elapsedRealtime()
 }

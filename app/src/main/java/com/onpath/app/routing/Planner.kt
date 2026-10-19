@@ -1,6 +1,7 @@
 package com.onpath.app.routing
 
 import com.onpath.app.data.Geo
+import com.onpath.app.debug.Problems
 
 /** One leg of a planned route; [straight] = routing failed, drawn dashed (R-12/R-13). */
 data class PlannedLeg(val points: List<GeoPoint>, val straight: Boolean)
@@ -71,6 +72,8 @@ class Planner(private val engine: RoutingEngine) {
                     WaypointSnap.onRoute(waypoints, r.points, r.matched))
             }
         } catch (e: Exception) {
+            // expected: RoutingException = no route (the user sees its message); anything else is an engine bug
+            if (e !is RoutingException) Problems.error("routing", "Route request threw unexpectedly", e)
             // Two points: no need to retry leg by leg (BRouter can take ~30 s to fail).
             if (waypoints.size == 2) {
                 val d = Geo.distance(waypoints[0], waypoints[1])
@@ -98,6 +101,8 @@ class Planner(private val engine: RoutingEngine) {
                 if (snapped[i - 1] == null) snapped[i - 1] = s[0]
                 snapped[i] = s[1]
             } catch (e: Exception) {
+                // expected: RoutingException = no route for this leg (shown as a straight dashed line)
+                if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
                 if (firstError == null) firstError = (e.message ?: "No route found.") .let {
                     "Leg ${i + offset}→${i + offset + 1}: $it Shown as a straight dashed line. Try moving the point or changing the activity."
                 }

@@ -1,5 +1,6 @@
 package com.onpath.app.search
 
+import com.onpath.app.debug.Problems
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.RandomAccessFile
@@ -44,11 +45,15 @@ object BaseMapPlaces {
                 for (e in dir) {
                     if (e.runLength == 0L) { walk(leafOff + e.offset, e.length, depth + 1); continue }
                     if (e.tileId + e.runLength <= zStart || e.tileId >= zEnd) continue
-                    val tile = try { decompress(readBytes(dataOff + e.offset, e.length), tileComp) } catch (_: Exception) { continue }
+                    val tile = try { decompress(readBytes(dataOff + e.offset, e.length), tileComp) } catch (ex: Exception) {
+                        Problems.warn("search", "Base map tile unreadable; its places are missing from search", ex); continue
+                    }
                     for (id in e.tileId until e.tileId + e.runLength) {
                         if (id < zStart || id >= zEnd) continue
                         val (tz, tx, ty) = tileIdToZxy(id)
-                        try { decodeTile(tile, tz, tx, ty, out) } catch (_: Exception) { }
+                        try { decodeTile(tile, tz, tx, ty, out) } catch (ex: Exception) {
+                            Problems.warn("search", "Base map tile not decodable; its places are missing from search", ex)
+                        }
                     }
                 }
             }

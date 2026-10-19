@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.onpath.app.data.Geo
+import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.OfflineIndex
 import com.onpath.app.search.Place
@@ -122,7 +123,9 @@ class SearchSession(
             if (gen != generation) return@launch
             ui = ui.copy(onlineState = OnlineState.LOADING)
             val res = withContext(Dispatchers.IO) {
-                try { online.search(text, ctx.refLat, ctx.refLon, 10) } catch (e: Exception) { Log.i("OnPath", "online search: $e"); null }
+                try { online.search(text, ctx.refLat, ctx.refLon, 10) } catch (e: Exception) {
+                    Problems.info("search", "Online search failed (offline or server unreachable)", e); null
+                }
             }
             if (gen != generation) return@launch
             offlineJob?.join()

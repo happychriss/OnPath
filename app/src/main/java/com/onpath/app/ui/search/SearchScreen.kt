@@ -79,6 +79,7 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
     val de = Poi.isGerman()
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    // expected: requestFocus throws if the field is not attached yet (e.g. screen closing); keyboard just stays closed
     if (autoFocus) LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {

@@ -105,7 +105,7 @@ fun MapHost(
                         ctrlRef[0] = c
                         onReady(c)
                     } catch (e: Exception) {
-                        Log.e("OnPath", "map setup failed", e)
+                        com.onpath.app.debug.Problems.error("map", "Map setup failed after the style loaded (app layers missing)", e)
                     }
                 }
             }
@@ -122,7 +122,9 @@ fun MapHost(
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = ctrlRef[0]
-                val screen = try { map.projection.toScreenLocation(ll) } catch (_: Exception) { return false }
+                val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
+                    com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
+                }
                 if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
                 val marker = if (edit) c?.waypointAt(screen) ?: -1 else -1
@@ -169,7 +171,7 @@ fun MapHost(
                 false
             }
             mapView.addOnDidFailLoadingMapListener { msg ->
-                Log.w("OnPath", "style failed: $msg")
+                // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style)
                 StyleLoader.noteFailure(msg ?: "?")
                 if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }
             }
@@ -210,7 +212,7 @@ private fun buzz(view: View, b: MapGestures.Buzz) {
         else @Suppress("DEPRECATION") ctx.getSystemService(Vibrator::class.java)
         if (v == null || !v.hasVibrator()) false
         else { v.vibrate(VibrationEffect.createWaveform(MapGestures.pattern(b), -1)); true }
-    }.getOrDefault(false)
+    }.onFailure { com.onpath.app.debug.Problems.info("ui", "Vibration failed, haptic feedback used instead", it) }.getOrDefault(false)
     if (!done) view.performHapticFeedback(
         if (b == MapGestures.Buzz.TWO) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.CONTEXT_CLICK)
 }

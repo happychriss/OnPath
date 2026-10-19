@@ -2,6 +2,7 @@ package com.onpath.app.map
 
 import android.content.Context
 import android.util.Log
+import com.onpath.app.debug.Problems
 import java.io.File
 
 /**
@@ -26,7 +27,10 @@ object StyleLoader {
         private set
 
     /** MapLibre rejected the style ([msg]) and the app switched to the fallback – kept for diagnostics. */
-    fun noteFailure(msg: String) { lastLoaded = "FAILED (${lastLoaded ?: "?"}): $msg → fallback" }
+    fun noteFailure(msg: String) {
+        Problems.error("map", "Map style failed to load: $msg – fallback style used, map mostly empty")
+        lastLoaded = "FAILED (${lastLoaded ?: "?"}): $msg → fallback"
+    }
 
     /** File name of a theme: classic is "onpath.json", others "onpath-<theme>.json". */
     fun fileName(theme: String): String =
@@ -43,7 +47,8 @@ object StyleLoader {
     /** All themes available (bundled + overrides), classic first. */
     fun themes(context: Context, dataDir: File): List<String> {
         val names = linkedSetOf(DEFAULT_THEME)
-        try { context.assets.list(ASSET_DIR)?.forEach { f -> themeOf(f)?.let { names += it } } } catch (_: Exception) { }
+        try { context.assets.list(ASSET_DIR)?.forEach { f -> themeOf(f)?.let { names += it } } }
+        catch (e: Exception) { Problems.warn("map", "Bundled map themes not listable, only classic offered", e) }
         File(dataDir, OVERRIDE_DIR).listFiles()?.forEach { f -> themeOf(f.name)?.let { names += it } }
         return names.toList()
     }
@@ -56,7 +61,8 @@ object StyleLoader {
         val dir = dataDir.absolutePath
         val attempts = buildList<Pair<String, () -> String>> {
             val override = File(File(dataDir, OVERRIDE_DIR), fileName(theme))
-            add("override ${override.name}" to { override.readText() })
+            // expected: usually there is no override file – only a present but broken one is reported
+            if (override.exists()) add("override ${override.name}" to { override.readText() })
             add("asset ${fileName(theme)}" to { context.assets.open("$ASSET_DIR/${fileName(theme)}").bufferedReader().use { it.readText() } })
             if (theme != DEFAULT_THEME) add("asset classic" to { context.assets.open(STYLE_ASSET).bufferedReader().use { it.readText() } })
         }
@@ -68,10 +74,10 @@ object StyleLoader {
                 lastLoaded = what
                 return OptionalSources.strip(json.replace("{DATA_DIR}", dir))
             } catch (e: Exception) {
-                if (!what.startsWith("override")) Log.w("OnPath", "Style $what not usable: $e")
+                Problems.warn("map", "Map style $what not usable, trying the next one", e)
             }
         }
-        Log.w("OnPath", "No style file usable, using fallback")
+        Problems.error("map", "No map style file usable – minimal fallback style used, map mostly empty")
         lastLoaded = "fallback"
         return fallback(dataDir)
     }

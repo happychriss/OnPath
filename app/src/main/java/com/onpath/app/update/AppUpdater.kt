@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import com.onpath.app.debug.Problems
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -156,5 +157,8 @@ object AppUpdater {
             context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
         else @Suppress("DEPRECATION") context.packageManager.getInstallerPackageName(context.packageName)
         installer == "com.android.vending"
-    } catch (_: Exception) { false }
+    } catch (e: Exception) {
+        Problems.warn("update", "Installer of the app unknown; in-app updates stay on", e)
+        false
+    }
 }

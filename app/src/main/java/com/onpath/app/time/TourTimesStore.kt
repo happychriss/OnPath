@@ -1,5 +1,6 @@
 package com.onpath.app.time
 
+import com.onpath.app.debug.Problems
 import org.json.JSONObject
 import java.io.File
 
@@ -12,7 +13,10 @@ class TourTimesStore(private val file: File) {
 
     fun get(tourId: Long): TourTimes? = try {
         read().optJSONObject(tourId.toString())?.let { TourTimes.fromJson(it) }
-    } catch (_: Exception) { null }
+    } catch (e: Exception) {
+        Problems.warn("time", "Tour times file (tour-times.json) entry unreadable; breaks computed from the stored points", e)
+        null
+    }
 
     fun put(tourId: Long, t: TourTimes) {
         try {
@@ -23,13 +27,21 @@ class TourTimesStore(private val file: File) {
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
             val tmp = File(file.path + ".tmp")
             tmp.writeText(o.toString())
-            if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
-        } catch (_: Exception) { }
+            if (!tmp.renameTo(file)) {
+                file.delete()
+                if (!tmp.renameTo(file)) Problems.error("time", "Tour times file (tour-times.json) could not be saved (rename failed)")
+            }
+        } catch (e: Exception) {
+            Problems.error("time", "Tour times file (tour-times.json) could not be saved", e)
+        }
     }
 
     private fun read(): JSONObject = try {
         if (file.isFile) JSONObject(file.readText()) else JSONObject()
-    } catch (_: Exception) { JSONObject() }
+    } catch (e: Exception) {
+        Problems.warn("time", "Tour times file (tour-times.json) unreadable; starting empty", e)
+        JSONObject()
+    }
 
     companion object {
         const val FILE = "tour-times.json"

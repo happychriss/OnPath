@@ -1,12 +1,14 @@
 package com.onpath.app.navigation
 
 import com.onpath.app.data.Geo
+import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.RouteCancel
 import com.onpath.app.routing.RouteLimits
 import com.onpath.app.routing.RouteResult
 import com.onpath.app.routing.RoutingEngine
+import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.StraightLineEngine
 
 /**
@@ -80,6 +82,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
                 engine.route(listOf(req.position, t.point), req.activity, req.sac,
                     RouteLimits(minOf(req.perRequestMs, left), cancel))
             } catch (e: Exception) {
+                // expected: RoutingException = no way to this candidate; anything else is an engine bug
+                if (e !is RoutingException) Problems.error("routing", "Re-route candidate request threw unexpectedly", e)
                 val msg = e.message ?: "No route found"
                 if (firstError == null) firstError = msg
                 if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, msg, clock() - t0)

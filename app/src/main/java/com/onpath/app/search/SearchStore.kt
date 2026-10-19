@@ -44,6 +44,7 @@ class SearchStore(context: Context) {
             val p = l.split('\t'); if (p.size < 9) return null
             return Place(p[0], p[1].ifEmpty { null }, p[2], p[4].toDoubleOrNull() ?: return null, p[5].toDoubleOrNull() ?: return null,
                 p[6].toIntOrNull(), p[3].ifEmpty { null }, p[7].ifEmpty { null },
+                // expected: unknown/old source name → POI
                 runCatching { Place.Source.valueOf(p[8]) }.getOrDefault(Place.Source.POI))
         }
     }

@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] **No silent errors (owner):** central `debug/Problems` log, MapLibre native log + crash capture, every swallowed catch reviewed (≈120 sites in all packages), Settings → Diagnostics problem list, export. Touches many files briefly – please pull before editing – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -61,6 +60,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- No silent errors (cloud, 0.6.7, owner): `debug/Problems` central log (dedupe, persisted, crash capture,
+  MapLibre native logger), ≈120 catch sites in all packages reviewed and reported (or marked `// expected:`),
+  Settings → Diagnostics problem list + Clear, new ERROR announced once per run, last crash announced at start,
+  `problems.json` in the diagnostics export.
 - Region package rebuilt (cloud, 2026-10-19): bbox extended west/south to `10.70,46.30,11.60,46.85` (whole Ultental /
   Zoggler Stausee for the field test), OSM 2026-10-19, all new overlay files (`ways`, `lowways`, `vis`), published as
   two zips on the `downloads` branch (GitHub 100 MB limit). POIs (owner): bus stops + all food on by default from z14,
