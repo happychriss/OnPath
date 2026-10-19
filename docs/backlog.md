@@ -20,6 +20,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
+- **One compass for both modes (owner idea, 2026-10-19 – proposal, waiting for the owner's go):** three states,
+  same in Plan and Navigate: *turned by hand* (needle shows the angle) → tap = *north up* → tap = *walking direction up*
+  (centres on the position) → tap = north up … Today: Plan has only "turned / tap = north", Navigate only the
+  heading-up ⇄ north toggle, and leaving Navigate always resets north. Open points: no direction (no GPS, no
+  compass, standing) → skip the third state with a short hint; Plan editing while the map turns → tapping a point or
+  panning freezes the angle (follow ends, map stays where it is); tilt only in Navigate; remember the last state per
+  mode; optional: higher rotate threshold so pinch-zoom does not turn the map by accident.
 - **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
   paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
   `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
