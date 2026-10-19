@@ -12,4 +12,21 @@ data class TripTime(
     val arrivalMs: Long? = null,
     /** Learned on this trip, relative to the plan (1 = as planned); null until ~20 min of learning. */
     val learned: Factors? = null,
+    /** Can the to-go / arrival be trusted now (docs/plan-time-estimate.md, owner rules 6 and 8)? */
+    val state: EstimateState = EstimateState.OK,
+    /** Why the estimate is paused ([EstimateState.PAUSED]). */
+    val pausedBecause: PauseReason? = null,
 )
+
+enum class EstimateState {
+    OK,
+    /** Not on the followed line (confirmed off route, or not matched yet): show "— not on route", no stale time. */
+    NOT_ON_ROUTE,
+    /** The estimate cannot follow for a while: the last values are shown greyed with "estimate paused". */
+    PAUSED,
+}
+
+enum class PauseReason(val text: String) {
+    NO_GPS("no GPS"),
+    NO_PROGRESS("position not found along the route"),
+}

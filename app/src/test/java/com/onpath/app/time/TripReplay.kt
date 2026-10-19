@@ -16,7 +16,8 @@ import kotlin.math.max
  * Replay harness (docs/plan-time-estimate.md §6): feeds a recorded track (GPX with times) as fixes into the same
  * [TripPace] the recording service uses, along the planned line (GPX with DEM elevation), and measures how far off the
  * shown "to go" was at 25 / 50 / 75 % of the line against the real remaining moving time, and how calm the arrival
- * clock was. Progress matching is a simple forward window on [NavLine] (like the service's off-route detector).
+ * clock was. Progress comes from the service's own pipeline ([NavReplay]: navigator → off-route detector → TripPace),
+ * so the replay shows what the phone shows; checkpoints count up to the last progress reached (a tour may end early).
  *
  * Fixture folder: src/test/resources/tracks/<name>/ with plan.gpx, track.gpx and info.txt (activity=HIKE, pace=NORMAL,
  * note=…). Owner tours: export the plan (Manage routes → Export GPX) and the recorded tour, trim ~300 m at both ends
@@ -50,70 +51,16 @@ object TripReplay {
     }
 
     fun replay(name: String, plan: List<GeoPoint>, track: List<List<TrackPoint>>, activity: Activity, prior: Factors): Result {
-        val line = NavLine(plan)
-        val times = RouteTimes.of(plan, activity)
-        val trip = TripPace(prior)
-        trip.setLine(times)
-        // active clock: time inside segments (a new segment = pause / GPS gap: its time is not counted)
-        data class Fix(val activeS: Double, val wallMs: Long, val p: GeoPoint, val along: Double?, val onRoute: Boolean)
-        val fixes = ArrayList<Fix>()
-        var active = 0.0
-        var progress = 0.0
-        var started = false
-        for (seg in track) {
-            var lastT: Long? = null
-            for (tp in seg) {
-                val t = tp.timeMs ?: continue
-                lastT?.let { active += (t - it) / 1000.0 }
-                lastT = t
-                val p = GeoPoint(tp.lat, tp.lon)
-                // forward window (out-and-back routes: the way back must not match the way out)
-                val m = if (!started) line.matchEarliest(p) else line.match(p, progress - 5, progress + 600, preferAlongM = progress + 20)
-                val on = m != null && m.distanceM <= 40
-                if (on) { progress = m!!.alongM; started = true }
-                else if (DEBUG && started && (fixes.lastOrNull()?.onRoute != false)) println("  $name lost at progress ${progress.toInt()} d ${m?.distanceM?.toInt()} t ${active.toInt()}")
-                fixes += Fix(active, t, p, if (on) progress else null, on)
-            }
-        }
-        val total = times.lengthM
-        val cps = doubleArrayOf(0.25, 0.5, 0.75)
-        val shownAt = DoubleArray(3) { Double.NaN }; val staticAt = DoubleArray(3) { Double.NaN }
-        val movingAt = DoubleArray(3) { Double.NaN }; val rawAt = DoubleArray(3) { Double.NaN }
-        val jumps = ArrayList<Double>()
-        var lastArr: Long? = null; var lastJumpAlong = -1e9; var lastBreak = 0.0
-        var cp = 0
-        for (f in fixes) {
-            val bBefore = trip.snapshot().breakS
-            trip.onFix(f.activeS, f.wallMs, f.p.lat, f.p.lon, f.along, f.onRoute)
-            val snap = trip.snapshot()
-            if (DEBUG && snap.breakS - bBefore > 30) println("  $name break +${(snap.breakS - bBefore).toInt()} s at ${f.along?.toInt()} m on ${f.onRoute}, active ${f.activeS.toInt()}")
-            val a = f.along ?: continue
-            snap.arrivalMs?.let { arr ->
-                // a break moves the arrival by its length – that is real, not a jump: start over after it
-                if (snap.breakS != lastBreak) { lastBreak = snap.breakS; lastArr = null }
-                if (a - lastJumpAlong >= 100 || lastArr == null) {
-                    lastArr?.let { jumps += abs(arr - it) / 60_000.0 }
-                    lastArr = arr; lastJumpAlong = a
-                }
-            }
-            while (cp < 3 && a >= cps[cp] * total) {
-                shownAt[cp] = snap.toGoS ?: Double.NaN
-                staticAt[cp] = TimeEstimate.round(times.remainingFrom(a, prior))
-                movingAt[cp] = trip.movingS()
-                rawAt[cp] = trip.rawToGoS() ?: Double.NaN
-                if (DEBUG) println("  $name @${cps[cp]}: moving ${trip.movingS().toInt()} observed ${trip.observedS().toInt()} f ${trip.factors()} raw ${rawAt[cp].toInt()} static ${staticAt[cp].toInt()}")
-                cp++
-            }
-        }
-        val endMoving = trip.movingS()
-        // real remaining moving time from each checkpoint to the end of the line (the track's end)
-        val err = DoubleArray(3) { i -> if (movingAt[i].isNaN()) Double.NaN else abs(shownAt[i] / (endMoving - movingAt[i]) - 1) }
-        val stat = DoubleArray(3) { i -> if (movingAt[i].isNaN()) Double.NaN else abs(staticAt[i] / (endMoving - movingAt[i]) - 1) }
-        val raw = DoubleArray(3) { i -> if (movingAt[i].isNaN()) Double.NaN else abs(rawAt[i] / (endMoving - movingAt[i]) - 1) }
-        val sj = jumps.sorted()
-        return Result(name, err, stat, raw, times.total(prior) / endMoving - 1, sj.lastOrNull() ?: 0.0,
+        // the service's pipeline: Navigator (progress matching, off route) -> TripPace
+        val r = NavReplay(plan, activity, prior).run(track)
+        val cps = r.checkpoints(prior)
+        fun err(sel: (NavReplay.Checkpoint) -> Double) = DoubleArray(3) { i -> cps[i]?.let { abs(sel(it) / it.realS - 1) } ?: Double.NaN }
+        val sj = r.arrivalJumps().sorted()
+        val planError = r.planError(prior)
+        if (DEBUG) println(r.timeline())
+        return Result(name, err { it.shownS }, err { it.staticS }, err { it.rawS }, planError, sj.lastOrNull() ?: 0.0,
             if (sj.isEmpty()) 0.0 else sj[(sj.size * 0.9).toInt().coerceAtMost(sj.size - 1)],
-            endMoving, trip.snapshot().breakS, trip.factors())
+            r.trip.movingS(), r.trip.snapshot().breakS, r.trip.factors())
     }
 
     /** All fixture folders (plan.gpx + track.gpx + info.txt). */

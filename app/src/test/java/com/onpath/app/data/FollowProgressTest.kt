@@ -36,4 +36,15 @@ class FollowProgressTest {
         assertNull(FollowProgress(listOf(GeoPoint(1.0, 1.0))).remaining(GeoPoint(1.0, 1.0)))
         assertNotNull(FollowProgress(line.take(2)).remaining(GeoPoint(46.67, 11.10)))
     }
+
+    @Test fun atTheServiceProgressOnTheWayBack() {
+        // out-and-back: the service says "3/4 along" (the way back) – no guessing which leg
+        val back = line + line.reversed().drop(1)
+        val total = Geo.length(back)
+        val r = FollowProgress(back).at(total * 0.75, 4.0)!!
+        assertEquals(total / 4, r.distanceM, 1.0)
+        assertEquals(0.0, r.ascentM, 1.0)
+        assertEquals(250.0, r.descentM, 10.0)
+        assertEquals(4.0, r.offM, 0.0)
+    }
 }

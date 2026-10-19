@@ -1,0 +1,4 @@
+activity=HIKE
+pace=NORMAL
+note=Owner field test 2026-10-19 (2000-2270 m, T3): plan A-B 4.7 km walked forwards, turned back after 3.7 km. Track trimmed 300 m at both ends.
+synthetic=false
