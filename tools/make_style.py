@@ -146,47 +146,103 @@ def buildings():
                  "line-opacity": interp(15, 0.6, 16, 1, base=1)})
 
 
+ROAD_GROUPS = [
+    # id, classes, minzoom, colour token prefix
+    ("service", ["service"], 13, "road"),
+    ("minor", ["minor"], 11, "road"),
+    # busier roads stand out by a yellow-to-orange scale by road class (OSM has no traffic counts)
+    ("tertiary", ["tertiary"], 10, "tertiary"),
+    ("secondary", ["secondary"], 8, "secondary"),
+    ("primary", ["primary"], 7, "primary"),
+    ("motorway", ["motorway", "trunk"], 6, "motorway"),
+]
+ON_BRIDGE = ["case", ["==", ["get", "brunnel"], "bridge"], 1, 0]  # bridges over the way below at crossings
+STREETS = ("service", "minor")  # small streets: two grey edges with a light lane (owner: no white lines)
+
+
 def roads():
     cls = ["get", "class"]
     tunnel = ["==", ["get", "brunnel"], "tunnel"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
-    groups = [
-        # id, classes, minzoom, colour token prefix
-        ("service", ["service"], 13, "road"),
-        ("minor", ["minor"], 11, "road"),
-        # busier roads stand out by a yellow-to-orange scale by road class (OSM has no traffic counts)
-        ("tertiary", ["tertiary"], 10, "tertiary"),
-        ("secondary", ["secondary"], 8, "secondary"),
-        ("primary", ["primary"], 7, "primary"),
-        ("motorway", ["motorway", "trunk"], 6, "motorway"),
-    ]
     # casings (non-tunnel), then fills; tunnels faint
-    street = {"service", "minor"}  # small streets: two grey edges, no fill (owner: no white lines)
-    for gid, classes, minz, col in groups:
+    for gid, classes, minz, col in ROAD_GROUPS:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
         paint = ({"line-color": T("street.edge.color"), "line-gap-width": Z(f"street.{gid}.gap"),
-                  "line-width": Z("street.edge.width")} if gid in street else
+                  "line-width": Z("street.edge.width")} if gid in STREETS else
                  {"line-color": T(f"{col}.casing"), "line-gap-width": Z(f"road.{gid}.width"),
                   "line-width": Z("road.casing.width")})
         layer(id_=f"road-{gid}-casing", type="line", source="base", **{"source-layer": "transportation"},
-              minzoom=max(minz, 10), filter=f, layout={"line-join": "round", "line-cap": "round"}, paint=paint)
-    for gid, classes, minz, col in groups:
+              minzoom=max(minz, 10), filter=f, layout={"line-join": "round", "line-cap": "round", "line-sort-key": ON_BRIDGE},
+              paint=paint)
+    for gid, classes, minz, col in ROAD_GROUPS:
         layer(id_=f"road-{gid}-tunnel", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=12, filter=["all", ["in", cls, ["literal", classes]], tunnel],
               layout={"line-join": "round"},
               paint={"line-color": T("tunnel.color"), "line-width": Z(f"road.{gid}.width"),
                      "line-opacity": T("tunnel.opacity"), "line-dasharray": [2, 1]})
-    for gid, classes, minz, col in groups:
-        if gid in street:
-            continue
+
+
+def track_edges():
+    """Edges of two-edge tracks (and the single dashed track below TRACK_DOTS_ZOOM). Drawn with the road casings,
+    below every lane / road fill (lanes()), so a track meeting a street or road stops at that road's edge."""
+    own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
+    k = ["get", "k"]
+    track = ["all", ["==", k, "t"], ["!", ["has", "pv"]]]
+    tt = ["coalesce", ["get", "tt"], 0]
+    layer(id_="track-own-paved", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
+          layout={"line-join": "round"},
+          paint={"line-color": T("street.edge.color"), "line-width": Z("street.edge.width"), "line-gap-width": Z("street.minor.gap")})
+    layer(id_="track-own-single", type="line", **own, maxzoom=TRACK_DOTS_ZOOM, filter=track, layout={"line-join": "round"},
+          paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
+    for sid, f in (("compact", ["==", tt, 1]), ("medium", ["any", ["==", tt, 2], ["==", tt, 0]]),
+                   ("loose", ["==", tt, 3]), ("soft", [">=", tt, 4])):
+        layer(id_=f"track-own-{sid}", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=["all", track, f],
+              layout={"line-cap": "round", "line-join": "round"},
+              paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
+                     "line-dasharray": T(f"track.dash.{sid}")})
+
+
+def lanes():
+    """All lane fills, after ALL edges / casings (track_edges(), roads()) – classic casing-then-fill order across every
+    way class (owner 2026-10-19: crossings looked messy, side-street edges ran across the main street). A two-edge way
+    without a fill let the edges of one way run straight across the other way's lane, and the round caps closed every
+    way piece with a ring / "c"-hook at each junction. With the lanes on top, junctions merge into one road and end caps
+    disappear under the neighbour's lane. Order = who wins at a junction: tracks < paved tracks < service < minor <
+    tertiary … motorway, so a smaller way's lane never cuts the bigger road's lane. Bridges sort above (line-sort-key)."""
+    own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
+    k = ["get", "k"]
+    track = ["all", ["==", k, "t"], ["!", ["has", "pv"]]]
+    cls = ["get", "class"]
+    not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
+    rl = {"line-join": "round", "line-cap": "round"}
+    # Track lanes: exactly the gap width, so the own edges stay fully visible; slightly transparent (token), so the
+    # route band under the track still tints the lane a little.
+    lane = {"line-color": T("track.lane.color"), "line-opacity": T("track.lane.opacity")}
+    layer(id_="track-own-lane", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=track,
+          layout=rl, paint={**lane, "line-width": Z("track.gap")})
+    # paved track = small street: street lane
+    slane = {"line-color": T("street.lane.color"), "line-opacity": T("street.lane.opacity")}
+    layer(id_="track-own-paved-lane", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
+          layout=rl, paint={**slane, "line-width": Z("street.minor.gap")})
+    for gid, classes, minz, col in ROAD_GROUPS:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
+        lay = {**rl, "line-sort-key": ON_BRIDGE}
+        if gid in STREETS:
+            # small streets: light lane exactly the gap between the two grey edges (edges stay as in 0.7.0)
+            layer(id_=f"road-{gid}-lane", type="line", source="base", **{"source-layer": "transportation"},
+                  minzoom=max(minz, 10), filter=f, layout=lay, paint={**slane, "line-width": Z(f"street.{gid}.gap")})
+            continue
         fill = T(f"{col}.fill")
         layer(id_=f"road-{gid}", type="line", source="base", **{"source-layer": "transportation"},
-              minzoom=minz, filter=f, layout={"line-join": "round", "line-cap": "round"},
+              minzoom=minz, filter=f, layout=lay,
               # below z10 there is no casing: draw major roads in their casing colour so they stay visible
               paint={"line-color": fill if minz >= 10 else ["step", ["zoom"], T(f"{col}.casing"), 10, fill],
                      "line-width": Z(f"road.{gid}.width")})
-    # railways
+
+
+def railways():
+    cls = ["get", "class"]
+    not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     # Railways are an important orientation feature (owner request): visible from z8, with a light
     # casing so they read on any background, and a classic white hatch from z12.
     layer(id_="rail-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=11,
@@ -287,33 +343,9 @@ def paths():
     # own exact data
     own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
     k = ["get", "k"]
-    track = ["all", ["==", k, "t"], ["!", ["has", "pv"]]]
-    tt = ["coalesce", ["get", "tt"], 0]
     layer(id_="paths-own", type="line", **own,
           filter=["all", ["==", k, "p"], ["!", ["has", "st"]], ["<", ["get", "sac"], 2], ["<", ["coalesce", ["get", "vis"], 0], 3]],
           layout={"line-join": "round", "line-cap": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
-    layer(id_="track-own-paved", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
-          layout={"line-join": "round"},
-          paint={"line-color": T("street.edge.color"), "line-width": Z("street.edge.width"), "line-gap-width": Z("street.minor.gap")})
-    layer(id_="track-own-single", type="line", **own, maxzoom=TRACK_DOTS_ZOOM, filter=track, layout={"line-join": "round"},
-          paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
-    for sid, f in (("compact", ["==", tt, 1]), ("medium", ["any", ["==", tt, 2], ["==", tt, 0]]),
-                   ("loose", ["==", tt, 3]), ("soft", [">=", tt, 4])):
-        layer(id_=f"track-own-{sid}", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=["all", track, f],
-              layout={"line-cap": "round", "line-join": "round"},
-              paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
-                     "line-dasharray": T(f"track.dash.{sid}")})
-    # Lane fill over ALL track edges (owner 2026-10-19: crossings looked messy). A two-edge track has no fill of its
-    # own, so at a crossing / T-junction the edges of one way ran straight across the other way's lane, and the round
-    # caps closed every way piece with a ring / "c"-hook at each junction. Drawn after every edge layer (all edges
-    # below all fills, like road casings), with round caps, the lanes join into one clean road at junctions and the
-    # end caps disappear under the neighbour's lane. Exactly the gap width, so the own edges stay fully visible.
-    # Slightly transparent (token), so the route band under the track still tints the lane a little.
-    lane = {"line-color": T("track.lane.color"), "line-opacity": T("track.lane.opacity")}
-    layer(id_="track-own-paved-lane", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
-          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("street.minor.gap")})
-    layer(id_="track-own-lane", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=track,
-          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("track.gap")})
 
 
 def surface_loose():
@@ -594,7 +626,7 @@ def build(theme=DEFAULT_THEME):
     style_theme.use(theme)
     L.clear()
     # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
-    bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); paths()
+    bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); track_edges(); lanes(); railways(); paths()
     trails(); surface_loose(); access_restrictions(); bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())

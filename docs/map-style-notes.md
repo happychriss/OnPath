@@ -93,6 +93,17 @@ Used for every map decision on 2026-10-19 (renders in `docs/design/`):
   `track.lane.color` light earth tone at `track.lane.opacity` 0.9 – not white, the route band still tints it) **after
   all track edge layers** – like road casings below road fills – so junctions merge into one road and end caps
   inside a junction disappear under the neighbour's lane. Below z14.5 (single dashed line) nothing changed.
+- **Street junctions (same day).** Small streets (`service`, `minor` = residential / unclassified / living street …,
+  and paved tracks) were two grey edges with an open middle, so a side street's edges ran into / across the street it
+  joins and every way piece ended in a small hook. Now every way class follows one casing-then-fill order **across all
+  classes**: `roads()` (all casings / street edges) → `track_edges()` (track edges, single dashed track) → `lanes()`
+  (`track-own-lane` < `track-own-paved-lane` < `road-service-lane` < `road-minor-lane` < `road-tertiary` … `road-motorway`)
+  → `railways()` → `paths()` (paths, cycleways, steps stay on top). The street lane is exactly the gap width
+  (`street.lane.color` #f9f7f1, opacity 0.92 – warm, lighter than the land, not white), so the 0.7.0 edges keep their
+  colour and width. Layer order decides who wins at a junction: the bigger way's lane is drawn later, so a side street
+  / track stops at the bigger road's edge. Casings and fills/lanes sort bridges on top (`line-sort-key`, `ON_BRIDGE`);
+  `bridge-casing` still redraws bridge outlines above everything. Track edges and the single dashed track now sit
+  below road fills (before: on top of yellow roads).
 - **Ground symbols** (OpenMapTiles landcover class / subclass): `grass` (meadow, grassland, grass, scrub, heath, park …)
   and `wood` = plain colour, no symbol. `wetland` (natural=wetland incl. marsh, wet_meadow, swamp, bog, reedbed) = marsh
   tufts. `farmland`: only `orchard` (small rings = trees) and `vineyard` (short upright stakes); plain farmland / farm no
