@@ -1,0 +1,18 @@
+[Unit]
+Description=OnPath map server API (127.0.0.1:8090, behind Caddy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=onpath
+Group=onpath
+WorkingDirectory=@SRV@
+Environment=ONPATH_HOME=@HOME@ ONPATH_REPO=@REPO@
+ExecStart=@VENV@/bin/python -m onpath_maps.api
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

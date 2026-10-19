@@ -4,6 +4,12 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-19 (Hetzner map server):** `tools/hetzner/` – `onpath_hetzner.py plan|apply|status|destroy` on the
+  laptop creates ONE separate labelled server (+ firewall, + SSH key if new) via the Hetzner API and nothing else;
+  the server installs itself (`server/install.sh`: Caddy HTTPS on `<ip>.sslip.io` + password, API, worker, weekly
+  refresh). Web page: search a place / my position → 100/150/200 km square → build from Geofabrik leaf extracts
+  (osmium extract + merge) → `build_region.sh` → public unguessable download link. Tested here end to end (30 km
+  around Zoggler Stausee: 2 min, 31 MB) and 13 offline unit tests; not yet run on a real Hetzner account (owner).
 - **cloud, 2026-10-19 (Ultental package + POIs, 0.6.2):** region bbox extended to `10.70,46.30,11.60,46.85` (Ultental
   / Zoggler Stausee test), package rebuilt with OSM 2026-10-19 and the laptop's new overlay files; published as two
   zips on the `downloads` branch (README there has the phone steps). POI rules per owner: bus stops and all food on

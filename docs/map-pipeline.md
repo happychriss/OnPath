@@ -211,6 +211,11 @@ How the data reaches the phone (data folder `/sdcard/Android/data/com.onpath.app
 
 ## 9. Server (Hetzner) runbook
 
+**Use `tools/hetzner/` first** (README there): one command on the laptop creates a separate Hetzner server that
+builds regions **on demand** (100–200 km square around a searched place or your position, from Geofabrik
+extracts), serves the zips over HTTPS and refreshes the regions in use. The manual setup below is the fallback /
+background for whole-country builds.
+
 **Machine:** for regional packages a CX32/CPX31-class cloud server (4 vCPU, 8–16 GB RAM, 80+ GB disk)
 is plenty (test region ≈ 20 min). For whole countries (Italy, Austria, Germany): CCX33 / AX-line
 (8+ cores, 32–64 GB RAM, NVMe 250 GB+), `JAVA_XMX=24g`; the Python overlay/POI passes keep node
