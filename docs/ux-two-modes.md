@@ -16,6 +16,11 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
    Plan keeps recording. A small bar in Plan shows "Tour running · 6.4 km · Continue navigation".
 2. **Continue = smart re-route:** the route is recalculated from the current position to the remaining stops
    (stops already passed are dropped; a new point was placed by `WaypointInsertion`).
+   **Plan edited during a tour (owner 2026-10-19):** round trip, Undo, points added / removed, reverse – the tour
+   follows the new plan **at once, without a question** (followed line, target and arrival change as soon as the
+   route is computed; also while still in Plan). "Continue navigation" is just the way back to Navigate. A line that
+   is the same route again (e.g. Undo to it) keeps the running session. A followed GPX track and a free recording are
+   not changed by plan edits; a plan with fewer than two points changes nothing.
 3. **Ending a tour:** (a) on arrival (within ~50 m of the destination) the app asks "You have arrived – end tour?"
    (End & save / Keep going), or (b) in Plan mode via "End tour" (with confirmation). Never from Navigate directly.
 4. **Navigate without a route** = free recording (position + track only).

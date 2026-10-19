@@ -136,6 +136,60 @@ get +35 % / +60 %. Valley and T1/T2 routes are unchanged.
 
 **Field test (owner):** see the checklist in `docs/project-status.md` (Last session).
 
+### Field test 2026-10-19 – arrival "never updated" (branch `fix/arrival-estimate`)
+
+**What happened** (2000–2270 m, Hike T3): plan A→B (4.7 km). Tour 3 walked it forwards and turned after 3.7 km;
+tour 4 walked the same path back to A and ~1 km beyond. During the tour the plan was switched to round trip and back
+(Undo); the tour kept following the round-trip line A→B→A. On the phone the arrival never updated – "even 300 m
+before the target a completely off arrival time". Learned pace was close (down ×1.08, flat ×1.07, up ×0.80): the error
+was matching and following, not the pace model.
+
+**Root causes** (replayed through the service pipeline, `NavReplay` / `NavReplayTest`, fixtures
+`tracks/owner-2026-10-19-tour3|4`, trimmed 300 m at both ends):
+1. **Progress matched to the wrong part of a line used twice.** The detector's window (−300 m … +2 km around the
+   progress) never reached the way back of A→B→A when turning before B, so walking back counted as walking the way
+   out *backwards*: to go grew towards A (2:40 → 3:20) and froze at "3:20" once past A.
+2. **Walking backwards was hidden by the calm display:** the arrival may move only 1 min + 2 % per 100 m, so a growing
+   time to go was shown *shrinking* (1:40 → 1:05 while walking away from B).
+3. **The arrival crept later while walking at the shown pace:** between the 100 m updates "to go" stayed and the
+   arrival was pushed to now + to go every 30 s (the backlog's 12:45 → 13:15).
+4. **A new line started "from its start":** after Continue / a plan edit the time was set for progress 0 and then only
+   allowed to move slowly. And the Navigate card's distance came from a second matcher (`FollowProgress`) that could
+   disagree with the service's time.
+5. **Plan edits during a tour were not followed** until "Continue navigation" – the plan sheet showed A→B while the
+   tour followed A→B→A.
+
+**Owner rules (decided 2026-10-19) and what the code does now**
+
+| # | Rule | Implementation |
+| --- | --- | --- |
+| 1 | Plan changed during a tour → followed at once, no question | `AppViewModel.followEditedPlan` after every edited plan's route; same route again (`NavLine.sameRoute`, ±10 m, ±1 %) keeps the session; the walking direction carries over to the new line (`OffRouteDetector.adoptHeading`) |
+| 2 | Walking backwards: target stays, time grows; ~200 m backwards = off-route warning | progress goes back with you (shown at once, no calm limit); `BACKWARD_M` = 200 m from the furthest point → the normal question (re-routing from where you turned, `leftAtM`); back on the route after walking forwards 30 m |
+| 3 | Out-and-back / shared path: walking direction decides, jump ahead to the way back allowed | `NavLine.parts` (separate stretches near you, split also where a spur's legs coincide) + path-based direction (where was the fix 30 m ago: just before or just after on the line?); a part running clearly your way (score > 0.6) for 40 m of walking wins, also far ahead |
+| 4 | Going home: delete the target → rule 1 | via rule 1 (a plan left with one point changes nothing – see "open") |
+| 5 | Stopping before the end: unchanged; card names the target | the last stop's name under the arrival clock |
+| 6 | Not on the route → "— not on route" | `EstimateState.NOT_ON_ROUTE` (confirmed off route, or not matched yet on a new line) |
+| 7 | Long break: to go stays, arrival clock refreshes | between updates to go follows the progress (stays when standing) and the arrival moves later every 30 s |
+| 8 | Estimate cannot follow for > 2 min while moving → greyed "estimate paused · reason" | `PAUSED` with `NO_GPS` (no fix for 2 min, not in a break; Problems INFO) or `NO_PROGRESS` (moved ≥ 60 m in 2 min, progress < 20 m; Problems WARN) |
+| 9 | Tour started mid-route: matched correctly | first fixes search the whole line (earliest part until the direction is known, then the part running your way) |
+
+**Replay, before → after** (|shown to go − real moving time| / real at 25 / 50 / 75 % of the walked progress):
+
+| Case | Before | After |
+| --- | --- | --- |
+| Tour 3, A→B forwards | 13 / 11 / 24 % | 17 / 13 / 24 % (no warning; frozen ≤ 52 m) |
+| Tour 4 on A→B→A (what the phone followed) | to go 3:20 → 2:40 → 3:20 (way out, backwards), frozen 3:20 past A | counts down on the way back 1:10 → 0:12: 23 / 4 / 3 %; "not on route" past A |
+| Tour 4 on A→B (walked backwards) | to go shown shrinking 1:40 → 1:05, warning only at A | warning after ~200 m, to go grows 0:40 → 1:35, "not on route" past A |
+| Synthetic H5 / H7 / H9 | 24/24/0, 11/11/10, 11/13/5 % (old harness, own matcher) | 27/21/4, 12/10/13, 11/15/4 % (service pipeline) |
+
+Synthetic rule cases in `NavReplayTest` (out-and-back, turn early, backwards, mid-route start, off route, 40 min break,
+plan edited mid-walk with round trip + Undo, GPS gap) and matcher unit tests (`OffRouteDetectorTest`, `NavLineTest`).
+
+**Open / to check on the next walk:** round trip + Undo while walking (the line should switch at once, no question);
+turning back early on an out-and-back (the time should count down to the start within ~50 m of turning); 200 m
+backwards → the usual question; "— not on route" when leaving the line; a plan reduced to one point during a tour
+keeps the old line (deleting the only target of A→B does not navigate home – to decide).
+
 ---
 
 ## 1. Goals and non-goals
