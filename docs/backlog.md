@@ -8,6 +8,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Elevation profile scrub in Navigate (owner todo, 2026-10-19 – start when the owner says so):** dragging a finger
+  along the elevation profile ("to go" card → profile) moves a dot along the followed route on the map, so you see
+  where on the way that point of the profile is (Plan's profile already has `highlight`; same for Navigate).
 - **Map todo (owner, 2026-10-19 – start only when the owner says so):** (1) always show a little contour detail
   (every zoom, also with hillshade); (2) more contrast between the green land types + Komoot-like shrub
   ("Sträucher") symbols; (3) trail numbers like the AVS numbers in South Tyrol must also appear in other
