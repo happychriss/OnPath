@@ -94,6 +94,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- data check ---
     var missing by mutableStateOf(dataFiles.check().filter { !it.present })
         private set
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = packageNote()
+            val p = dataFiles.packageCheck()
+            withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && message == null) message = note.trim() }
+        }
+    }
     var dataScreenDismissed by mutableStateOf(false)
 
     // --- screens and mode ---
@@ -306,7 +314,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = getApplication<Application>().getSharedPreferences("onpath", 0).getBoolean("batteryHint", false)
         set(v) { getApplication<Application>().getSharedPreferences("onpath", 0).edit().putBoolean("batteryHint", v).apply() }
 
-    fun recheckData() { missing = dataFiles.check().filter { !it.present } }
+    fun recheckData() {
+        missing = dataFiles.check().filter { !it.present }
+        packageCheck = dataFiles.packageCheck()
+    }
+
+    /** Installed map package and files that do not belong to it (Settings → About; message when mixed). */
+    var packageCheck by mutableStateOf<com.onpath.app.data.DataFiles.PackageCheck?>(null)
+        private set
+
+    /** After importing new .pmtiles: MainActivity restarts the app so MapLibre opens the new files. */
+    var restartForData by mutableStateOf(false)
+
+    /** " Mixed map files: …" when files from different packages are on the phone, else "". */
+    private fun packageNote(): String {
+        val p = dataFiles.packageCheck() ?: return ""
+        return if (p.ok) "" else " Map files from another package: ${p.mismatched.joinToString()} – the map has gaps there. " +
+            "Import every part of the map package (for South Tyrol: both zips)."
+    }
 
     // ---------------- map data on the phone (no adb) ----------------
 
@@ -396,11 +421,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val r = com.onpath.app.data.DataImporter.import(input, name, dataFiles.dir) { f ->
                     dataBusy = "Importing $f…"
                 }
+                // MapLibre keeps an opened .pmtiles file's index in memory: a replaced file would be read with the
+                // old index (gaps, wrong tiles) until the process restarts. So after new .pmtiles: restart the app
+                // (not during a tour – then the user is asked to restart after it).
+                val newTiles = r.imported.any { it.endsWith(".pmtiles") }
                 withContext(Dispatchers.Main) {
                     recheckData()
-                    styleVersion++
+                    if (newTiles && recState.value == null) restartForData = true else styleVersion++
                 }
-                r.summary
+                r.summary + packageNote() +
+                    if (newTiles && recState.value != null) " Restart OnPath after the tour to see the new map." else ""
             } catch (e: com.onpath.app.data.DataImporter.ImportException) {
                 e.message ?: "Import failed."
             } catch (e: Exception) {

@@ -39,6 +39,7 @@ object DataImporter {
         return when {
             name.endsWith(".rd5") -> "segments/$name"
             name.endsWith(".pmtiles") || name.endsWith(".geojson") -> name
+            name == DataFiles.PACKAGE_FILE -> name // which package the files belong to (consistency check)
             name.endsWith(".json") && (parent == "styles" || name.startsWith("onpath")) -> "styles/$name"
             else -> null
         }

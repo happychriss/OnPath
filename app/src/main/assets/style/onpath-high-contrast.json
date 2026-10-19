@@ -4061,46 +4061,41 @@
      "#1e150e"
     ],
     "line-width": [
-     "case",
+     "interpolate",
      [
-      "==",
-      [
-       "get",
-       "k"
-      ],
-      "t"
+      "exponential",
+      1
      ],
      [
-      "interpolate",
+      "zoom"
+     ],
+     11,
+     [
+      "case",
       [
-       "exponential",
-       1
+       "==",
+       [
+        "get",
+        "k"
+       ],
+       "t"
       ],
-      [
-       "zoom"
-      ],
-      11,
       0.6,
-      13,
-      1.0
+      0.8
      ],
+     13,
      [
-      "interpolate",
+      "case",
       [
-       "exponential",
-       1.2
+       "==",
+       [
+        "get",
+        "k"
+       ],
+       "t"
       ],
-      [
-       "zoom"
-      ],
-      11,
-      0.95,
-      14,
-      1.9,
-      16,
-      2.8,
-      18,
-      4.1
+      1.0,
+      1.3
      ]
     ]
    }

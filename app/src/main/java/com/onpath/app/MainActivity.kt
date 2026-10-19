@@ -75,6 +75,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
 
         setContent {
+            // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
+            LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
             OnPathTheme {
                 val needData = vm.missing.isNotEmpty() && !vm.dataScreenDismissed
 
@@ -126,6 +128,7 @@ class MainActivity : ComponentActivity() {
                             onChange = vm::updateSettings,
                             onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
+                            mapPackage = vm.packageCheck,
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
@@ -209,6 +212,25 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             vm.message = "No file picker available."
         }
+    }
+
+    /**
+     * Clears MapLibre's tile cache and restarts the app process: MapLibre keeps the index of an opened .pmtiles file
+     * in memory, so replaced map files would show gaps until a restart. Only called when no tour is recording.
+     */
+    private fun restartForNewMapData() {
+        val restart = {
+            val launch = packageManager.getLaunchIntentForPackage(packageName)?.component
+            if (launch != null) startActivity(Intent.makeRestartActivityTask(launch))
+            Runtime.getRuntime().exit(0)
+        }
+        try {
+            org.maplibre.android.offline.OfflineManager.getInstance(this).clearAmbientCache(
+                object : org.maplibre.android.offline.OfflineManager.FileSourceCallback {
+                    override fun onSuccess() = restart()
+                    override fun onError(message: String) = restart()
+                })
+        } catch (_: Exception) { restart() }
     }
 
     private fun hasLocation() =

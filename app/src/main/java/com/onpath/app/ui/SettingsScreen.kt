@@ -92,6 +92,8 @@ fun SettingsScreen(
     /** Pace learned from earlier tours, one entry per activity with data (time estimate). */
     learnedPace: List<LearnedPace> = emptyList(),
     onResetPace: (com.onpath.app.routing.Activity) -> Unit = {},
+    /** Installed map package (package.json) and files from another package – shown in About. */
+    mapPackage: DataFiles.PackageCheck? = null,
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -250,14 +252,14 @@ fun SettingsScreen(
                 if (update != null) item {
                     Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                 }
-                item { AboutSection(checks, dataDir, version) }
+                item { AboutSection(checks, mapPackage, dataDir, version) }
             }
         }
     }
 }
 
 @Composable
-private fun AboutSection(checks: List<DataFiles.Check>, dataDir: String, version: String) {
+private fun AboutSection(checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String, version: String) {
     Section("About") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("OnPath $version", fontWeight = FontWeight.SemiBold)
@@ -270,6 +272,12 @@ private fun AboutSection(checks: List<DataFiles.Check>, dataDir: String, version
                     Spacer(Modifier.width(6.dp))
                     Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", fontSize = 13.sp)
                 }
+            }
+            if (mapPackage != null) {
+                Text("Map package: ${mapPackage.region} · ${mapPackage.area}" +
+                    (mapPackage.osmDate?.let { " · OSM ${it.take(10)}" } ?: ""), fontSize = 13.sp)
+                if (!mapPackage.ok) Text("From another package (map has gaps there): ${mapPackage.mismatched.joinToString()}. " +
+                    "Import every part of the map package again.", fontSize = 13.sp, color = OnPathColors.Bad)
             }
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ATTRIBUTIONS.forEach { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
