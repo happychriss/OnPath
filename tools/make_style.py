@@ -57,9 +57,16 @@ def landcover():
               paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
     # Ground symbols (sprite "pattern-*", tools/make_sprite.py) from z14, very light: special ground at a glance.
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
-    for cls in ("wetland", "farmland", "rock", "sand"):
-        layer(id_=f"landcover-{cls}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
-              filter=["==", ["get", "class"], cls], paint={"fill-pattern": f"pattern-{cls}"})
+    # OpenMapTiles classes / subclasses (Planetiler): grass = meadow, grassland, grass, scrub, heath, park … → plain colour;
+    # wetland = natural=wetland (subclasses wetland, marsh, wet_meadow, swamp, bog, reedbed, …) → marsh tufts;
+    # farmland: only subclasses orchard / vineyard get a symbol, plain farmland / farm none (see make_sprite.py).
+    for pid, cls, sub in (("wetland", "wetland", None), ("orchard", "farmland", "orchard"),
+                          ("vineyard", "farmland", "vineyard"), ("rock", "rock", None), ("sand", "sand", None)):
+        flt = ["==", ["get", "class"], cls]
+        if sub:
+            flt = ["all", flt, ["==", ["get", "subclass"], sub]]
+        layer(id_=f"landcover-{pid}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
+              filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
           paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),

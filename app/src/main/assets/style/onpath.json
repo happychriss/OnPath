@@ -231,21 +231,61 @@
    }
   },
   {
-   "id": "landcover-farmland-pattern",
+   "id": "landcover-orchard-pattern",
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
    "minzoom": 14,
    "filter": [
-    "==",
+    "all",
     [
-     "get",
-     "class"
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "farmland"
     ],
-    "farmland"
+    [
+     "==",
+     [
+      "get",
+      "subclass"
+     ],
+     "orchard"
+    ]
    ],
    "paint": {
-    "fill-pattern": "pattern-farmland"
+    "fill-pattern": "pattern-orchard"
+   }
+  },
+  {
+   "id": "landcover-vineyard-pattern",
+   "type": "fill",
+   "source": "base",
+   "source-layer": "landcover",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "farmland"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "subclass"
+     ],
+     "vineyard"
+    ]
+   ],
+   "paint": {
+    "fill-pattern": "pattern-vineyard"
    }
   },
   {
