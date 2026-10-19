@@ -52,8 +52,22 @@ object NavText {
         }
     }
 
-    /** "120 m to the route · north-east". */
-    fun toRoute(h: RouteHint?): String? = h?.let { "${Format.distance(round10(it.distanceM))} to the route · ${compass(it.bearingDeg)}" }
+    /** "120 m to the route · north-east · straight line" – a bearing, not a path: it may cross cliffs or water. */
+    fun toRoute(h: RouteHint?): String? = h?.let { "${Format.distance(round10(it.distanceM))} to the route · ${compass(it.bearingDeg)} · straight line" }
+
+    /**
+     * "46.54120 N 10.90320 E · ±8 m · 1234 m" for an emergency call; "· fix 4 min old" when the fix is old.
+     * Five decimals ≈ 1 m. Pure.
+     */
+    fun position(lat: Double, lon: Double, accuracyM: Float?, altitudeM: Double?, ageS: Long): String = buildString {
+        append("%.5f %s %.5f %s".format(java.util.Locale.ROOT, abs(lat), if (lat >= 0) "N" else "S", abs(lon), if (lon >= 0) "E" else "W"))
+        accuracyM?.let { append(" · ±").append(it.roundToInt()).append(" m") }
+        altitudeM?.let { append(" · ").append(it.roundToInt()).append(" m") }
+        if (ageS >= 60) append(" · fix ").append(ageS / 60).append(" min old")
+    }
+
+    /** "46.54120, 10.90320" – what is copied (pastes into any map app or message). */
+    fun positionCopy(lat: Double, lon: Double): String = "%.5f, %.5f".format(java.util.Locale.ROOT, lat, lon)
 
     fun compass(deg: Double): String {
         val names = listOf("north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west")

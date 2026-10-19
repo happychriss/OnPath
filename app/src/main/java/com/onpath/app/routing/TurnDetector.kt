@@ -22,8 +22,8 @@ data class Turn(
 }
 
 enum class TurnKind(val label: String) {
-    SLIGHT_LEFT("Slight left"), LEFT("Left"), SHARP_LEFT("Sharp left"), U_TURN_LEFT("U-turn"),
-    SLIGHT_RIGHT("Slight right"), RIGHT("Right"), SHARP_RIGHT("Sharp right"), U_TURN_RIGHT("U-turn");
+    SLIGHT_LEFT("Slight left"), LEFT("Left"), SHARP_LEFT("Sharp left"), U_TURN_LEFT("Hairpin left"),
+    SLIGHT_RIGHT("Slight right"), RIGHT("Right"), SHARP_RIGHT("Sharp right"), U_TURN_RIGHT("Hairpin right");
 
     companion object {
         fun of(angle: Double): TurnKind {

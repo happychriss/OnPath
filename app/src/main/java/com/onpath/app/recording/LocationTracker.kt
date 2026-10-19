@@ -25,7 +25,8 @@ enum class GpsStatus(val label: String) {
 
 /**
  * Thin wrapper over the platform LocationManager (GPS + network), no Play Services.
- * GPS fixes win; network fixes are only used while there is no recent GPS fix.
+ * GPS fixes win; network fixes only seed the position until the first GPS fix. After that a stale GPS fix is
+ * kept (its age is shown) rather than a cell/Wi-Fi guess that can be kilometres off in the mountains.
  */
 class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L) {
     private val app = context.applicationContext
@@ -52,7 +53,7 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
     }
     private val netListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
-            if (SystemClock.elapsedRealtime() - lastGpsElapsed > 10_000) publish(loc)
+            if (lastGpsElapsed == 0L) publish(loc)
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
         override fun onProviderDisabled(provider: String) { _enabled.value = isEnabled() }
