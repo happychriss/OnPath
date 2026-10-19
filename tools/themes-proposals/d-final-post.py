@@ -35,7 +35,5 @@ for n, (img, f) in enumerate(syms):
     L.insert(at + n, {"id": img, "type": "fill", "source": "base", "source-layer": "landcover", "minzoom": 14, "filter": f,
                       "paint": {"fill-pattern": img}})
 ids = [l['id'] for l in L]
-L.insert(ids.index('landuse-residential') + 1, {"id": "sym-residential", "type": "fill", "source": "base", "source-layer": "landuse", "minzoom": 14,
-    "filter": ["in", ["get", "class"], ["literal", ["residential", "suburb", "neighbourhood"]]], "paint": {"fill-pattern": "sym-residential"}})
 json.dump(st, open(sys.argv[2], 'w'))
 print('ok', len(L))

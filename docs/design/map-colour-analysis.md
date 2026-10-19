@@ -31,7 +31,7 @@ The owner tested 0.6.x on a hike and found the map too pale:
 | 2 | Colour matrix: every ground colour × 10 greens, band without edge, path on top, colour difference per cell | Look at grounds and symbols too |
 | 3 | Matrix v2: ground symbols (z14–16), no white anywhere in the path drawing | **No white casings or underlays** ("too nervous"). No symbols for normal forest and meadow. Symbol variant 1. Meadow in shadow should not look grey. Prefer a dark green at **lower opacity** |
 | 4 | Matrix v3 with a computed optimum (below) | **Band #168403 at 40 %**; real map renders requested |
-| 5 | Real renders (maplibre-gl, same tiles as the app) | (pending owner review) |
+| 5 | Real renders (maplibre-gl, same tiles as the app) | **Residential: no hatch** (too busy when cycling through a town), a lighter neutral grey instead |
 
 ## Method
 
@@ -84,7 +84,8 @@ the real map renders and a field test have the last word. Symbols and relief tex
 - **Route band:** `#168403`, 40 % opacity at every zoom, no edge. Route pieces are merged into continuous lines
   in the pipeline, so the transparent band does not darken where pieces meet. Only real junctions and tight
   hairpins overlap slightly.
-- **Ground:** wood `#c3dcab`, grass `#dfeacb`, leisure `#d9e8c4`, farmland `#f1f0de`, land `#f6f4ec`.
+- **Ground:** wood `#c3dcab`, grass `#dfeacb`, leisure `#d9e8c4`, farmland `#f1f0de`, land `#f6f4ec`,
+  residential `#e6e5e1` (light neutral grey, no pattern; band 23.6 · path 7.0 on it).
 - **Hill shadow:** greenish `rgba(45,68,45,0.40)` instead of blue-grey, so shaded meadow does not look grey.
 - **Paths:** black lines only, no white casing, no light underlay. From z13.5 paths are drawn from our own exact
   path data (`paths.geojson`, pipeline change). A dotted mountain trail then no longer needs to hide a solid
@@ -94,7 +95,6 @@ the real map renders and a field test have the last word. Symbols and relief tex
 - **Ground symbols** from z14, as small `fill-pattern` tiles, very light:
   - wetland: marsh tufts
   - farmland: furrow dashes
-  - residential: fine hatch
   - rock: rock outlines
   - sand: dots
 
