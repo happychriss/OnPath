@@ -21,6 +21,13 @@ object StyleLoader {
     private const val ASSET_DIR = "style"
     const val OVERRIDE_DIR = "styles"
 
+    /** Which style the last [load] used ("override onpath.json", "asset onpath.json", "fallback") – diagnostics. */
+    @Volatile var lastLoaded: String? = null
+        private set
+
+    /** MapLibre rejected the style ([msg]) and the app switched to the fallback – kept for diagnostics. */
+    fun noteFailure(msg: String) { lastLoaded = "FAILED (${lastLoaded ?: "?"}): $msg → fallback" }
+
     /** File name of a theme: classic is "onpath.json", others "onpath-<theme>.json". */
     fun fileName(theme: String): String =
         if (theme == DEFAULT_THEME || theme.isBlank()) "onpath.json" else "onpath-$theme.json"
@@ -58,12 +65,14 @@ object StyleLoader {
                 val json = read()
                 if (!json.trimStart().startsWith("{")) error("not JSON")
                 Log.i("OnPath", "Map style: $what")
+                lastLoaded = what
                 return OptionalSources.strip(json.replace("{DATA_DIR}", dir))
             } catch (e: Exception) {
                 if (!what.startsWith("override")) Log.w("OnPath", "Style $what not usable: $e")
             }
         }
         Log.w("OnPath", "No style file usable, using fallback")
+        lastLoaded = "fallback"
         return fallback(dataDir)
     }
 

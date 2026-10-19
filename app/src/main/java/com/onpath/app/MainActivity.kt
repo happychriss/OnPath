@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
 
+        diagnosticsOn = com.onpath.app.debug.Diagnostics.enabled(this)
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
@@ -129,6 +130,9 @@ class MainActivity : ComponentActivity() {
                             onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
+                            diagnosticsOn = diagnosticsOn,
+                            onDiagnostics = { on -> diagnosticsOn = on; com.onpath.app.debug.Diagnostics.setEnabled(this@MainActivity, on) },
+                            onExportDiagnostics = ::exportDiagnostics,
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
@@ -231,6 +235,33 @@ class MainActivity : ComponentActivity() {
                     override fun onError(message: String) = restart()
                 })
         } catch (_: Exception) { restart() }
+    }
+
+    private var diagnosticsOn by mutableStateOf(true)
+
+    /**
+     * Settings → Diagnostics → Export: live map part on the main thread (MapLibre), the rest on IO, then the share
+     * sheet (send by mail / chat / save to Files). Never throws.
+     */
+    private fun exportDiagnostics() {
+        val ctrl = com.onpath.app.ui.ctrlRef[0]
+        val metrics = resources.displayMetrics
+        val mapPart = com.onpath.app.debug.Diagnostics.mapSnapshot(ctrl?.map, metrics.widthPixels, metrics.heightPixels)
+        val styleJson = runCatching { ctrl?.map?.style?.json }.getOrNull()
+        val state = vm.diagnosticsState()
+        vm.message = "Creating diagnostics…"
+        Thread {
+            val result = runCatching { com.onpath.app.debug.Diagnostics.export(this, mapPart, styleJson, state) }
+            runOnUiThread {
+                result.onSuccess { f ->
+                    vm.message = null
+                    val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
+                    val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
+                        .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    runCatching { startActivity(Intent.createChooser(send, "Send diagnostics")) }
+                }.onFailure { vm.message = "Diagnostics could not be created: ${it.message ?: it.javaClass.simpleName}" }
+            }
+        }.start()
     }
 
     private fun hasLocation() =
