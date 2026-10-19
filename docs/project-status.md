@@ -1,9 +1,16 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-18 (release 0.6.1 – track safety).
+Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-19 (Ultental package + POIs, 0.6.2):** region bbox extended to `10.70,46.30,11.60,46.85` (Ultental
+  / Zoggler Stausee test), package rebuilt with OSM 2026-10-19 and the laptop's new overlay files; published as two
+  zips on the `downloads` branch (README there has the phone steps). POI rules per owner: bus stops and all food on
+  by default from z14; bus-stop pairs are one symbol (`merged`) until z16, then each stop (`detail`) – needs the new
+  package. Safety audit of the whole app (routing profiles, navigation, planning): backlog "Safety audit" link,
+  batches A–D wait for the owner's pick. **Test at the lake:** POIs at z14 (bus "Zoggler Staudamm", Café Seerast,
+  water), zoom to z16 → two bus stops; routing into the upper valley (Weißbrunn) now inside the map.
 - **laptop, 2026-10-18 (late evening):** merged many owner-driven changes (all on main, installed on the Pixel 8 as
   clean installs): hold-only gestures + smart menus, re-routing (ask always), time estimate P0–P4 + Time details
   screen, plan sheet redesign (tour controls on top, mini profile, Undo on map), layout (search + ☰, route actions in
