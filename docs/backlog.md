@@ -32,7 +32,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   developer account)**
 
 ## Later
-- Hetzner: static hosting of region packages + monthly `tools/build_region.sh` run; in-app region download.
+- In-app region download from the map server (`tools/hetzner/`, done as a web page): app asks the server for the
+  map around the planned route / current view, shows build progress, imports the zip and the routing tile itself.
 - Worldwide use outside prepared regions: stream OpenFreeMap + AWS terrain, auto-download BRouter tiles.
 - Reroute back to the route after an off-route warning (offline).
 - Keep pinned POI stops when a saved tour is reopened.
