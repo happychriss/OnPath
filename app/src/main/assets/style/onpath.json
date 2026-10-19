@@ -2961,8 +2961,25 @@
     ]
    ],
    "paint": {
-    "line-color": "#5e5963",
-    "line-width": 1
+    "line-color": "#4a4550",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     1.0,
+     14,
+     1.6,
+     16,
+     2.4,
+     18,
+     3.2
+    ]
    }
   },
   {
