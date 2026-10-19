@@ -58,6 +58,9 @@ object StyleLoader {
         theme.replace('-', ' ').replace('_', ' ').replaceFirstChar { it.uppercase() }
 
     fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME): String {
+        // a theme that no longer exists (e.g. "high-contrast", removed in 0.7.0) is simply the default – no error
+        @Suppress("NAME_SHADOWING")
+        val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
         val dir = dataDir.absolutePath
         val attempts = buildList<Pair<String, () -> String>> {
             val override = File(File(dataDir, OVERRIDE_DIR), fileName(theme))

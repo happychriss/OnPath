@@ -55,6 +55,11 @@ def landcover():
         layer(id_=f"landcover-{cls}", type="fill", source="base", **{"source-layer": "landcover"},
               minzoom=minz, filter=["==", ["get", "class"], cls],
               paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
+    # Ground symbols (sprite "pattern-*", tools/make_sprite.py) from z14, very light: special ground at a glance.
+    # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
+    for cls in ("wetland", "farmland", "rock", "sand"):
+        layer(id_=f"landcover-{cls}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
+              filter=["==", ["get", "class"], cls], paint={"fill-pattern": f"pattern-{cls}"})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
           paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),
@@ -149,12 +154,15 @@ def roads():
         ("motorway", ["motorway", "trunk"], 6, "motorway"),
     ]
     # casings (non-tunnel), then fills; tunnels faint
+    street = {"service", "minor"}  # small streets: two grey edges, no fill (owner: no white lines)
     for gid, classes, minz, col in groups:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
+        paint = ({"line-color": T("street.edge.color"), "line-gap-width": Z(f"street.{gid}.gap"),
+                  "line-width": Z("street.edge.width")} if gid in street else
+                 {"line-color": T(f"{col}.casing"), "line-gap-width": Z(f"road.{gid}.width"),
+                  "line-width": Z("road.casing.width")})
         layer(id_=f"road-{gid}-casing", type="line", source="base", **{"source-layer": "transportation"},
-              minzoom=max(minz, 10), filter=f, layout={"line-join": "round", "line-cap": "round"},
-              paint={"line-color": T(f"{col}.casing"), "line-gap-width": Z(f"road.{gid}.width"),
-                     "line-width": Z("road.casing.width")})
+              minzoom=max(minz, 10), filter=f, layout={"line-join": "round", "line-cap": "round"}, paint=paint)
     for gid, classes, minz, col in groups:
         layer(id_=f"road-{gid}-tunnel", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=12, filter=["all", ["in", cls, ["literal", classes]], tunnel],
@@ -162,6 +170,8 @@ def roads():
               paint={"line-color": T("tunnel.color"), "line-width": Z(f"road.{gid}.width"),
                      "line-opacity": T("tunnel.opacity"), "line-dasharray": [2, 1]})
     for gid, classes, minz, col in groups:
+        if gid in street:
+            continue
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
         fill = T(f"{col}.fill")
         layer(id_=f"road-{gid}", type="line", source="base", **{"source-layer": "transportation"},
@@ -188,9 +198,11 @@ def roads():
 
 
 def route_bands():
-    # Opaque pale bands (no stacking artefacts where segments overlap), drawn under roads, paths and trails.
-    # One green for every activity (owner: the activity is visible everywhere, no colour coding needed); the
-    # app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
+    # One transparent green band without edges for every activity (owner 2026-10-19, colour from the analysis in
+    # docs/design/map-colour-analysis.md), drawn under roads, paths and trails, so the ways stay readable on it.
+    # extract_overlays.py merges route pieces into continuous lines (the transparent band would darken where pieces
+    # meet); the original pieces of major routes come again as "majoronly" copies for the pink highlight and labels.
+    # The app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
     for kind, minz in (("hike", 10), ("bike", 9), ("mtb", 9)):
         vis = "visible" if kind == "hike" else "none"
         flt = ["==", ["get", "kind"], kind]
@@ -201,12 +213,12 @@ def route_bands():
                   layout={"line-join": "round", "line-cap": "round", "visibility": vis},
                   paint={"line-color": T("route.band.edge.color"), "line-width": Z("route.band.edge.width")})
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
-              filter=flt,
+              filter=["all", flt, ["!", ["has", "majoronly"]]],
               layout={"line-join": "round", "line-cap": "round", "visibility": vis},
               # Zoomed out the route IS a thin line on the way (no empty band); from z13.5 it widens into the
               # soft band. Our own look (owner: similar to Komoot, not a copy).
               paint={"line-color": ["interpolate", ["linear"], ["zoom"], 13, T("route.line.color"), 14, T("route.band.color")],
-                     "line-opacity": interp(minz, T("route.opacity.start"), minz + 1, 1, base=1),
+                     "line-opacity": T("route.opacity"),
                      "line-width": band_w})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
@@ -230,73 +242,60 @@ def route_bands():
 
 
 def paths():
+    """Ways for walking and riding (owner 2026-10-19, docs/design/map-colour-analysis.md), all without white:
+    path = thin black line; mountain trail = black dots (trails()); track (forest / farm road) = brown – one dashed
+    line up to z14.5, then two dotted edges whose dot spacing shows the surface (tracktype); paved track = like a
+    small street (two grey edges). From z13 paths and tracks come from our own exact paths.geojson (extract_overlays),
+    so a dotted trail has no solid base-map line underneath. Without that file (older map packages) the base map's
+    lines are drawn instead (layers marked "onpath:fallback-for": "paths", kept by the app's OptionalSources only then)."""
     cls = ["get", "class"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     paved = ["==", ["get", "surface"], "paved"]
-    # tracks (Feldweg / farm and forest tracks, highway=track): Komoot-like narrow light road with
-    # brown edges – dashed when unpaved, solid when paved. A wide edge line is drawn first, then a
-    # narrower light fill on top, so only the two edges remain visible. At z12 just a thin dashed line.
-    track = ["all", ["==", cls, "track"], not_tunnel]
-    ew = Z("track.edge.width")
-    # Zoomed out: one thin solid darker line per track (dashes would only read as noise).
-    layer(id_="track-low", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
-          maxzoom=LOW_ZOOM_SOLID, filter=track, layout={"line-join": "round"},
-          paint={"line-color": T("track.low.color"), "line-width": Z("track.low.width")})
-    layer(id_="track-casing", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
-          filter=["all", track, ["!", paved]],
-          paint={"line-color": T("track.edge.color"), "line-width": ew, "line-dasharray": T("track.edge.dash")})
-    layer(id_="track-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
-          filter=["all", track, paved], layout={"line-join": "round"},
-          paint={"line-color": T("track.edge.color"), "line-width": ew})
-    layer(id_="track", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=track, layout={"line-join": "round"},
-          paint={"line-color": T("track.fill.color"), "line-width": Z("track.fill.width")})
-    track_grades(ew)
-    # cycleways (solid; unpaved dashed)
-    cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
-    cw = Z("cycleway.width")
-    layer(id_="cycleway", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
-          paint={"line-color": T("cycleway.color"), "line-width": cw})
-    layer(id_="cycleway-unpaved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
-          paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+    base_track = ["all", ["==", cls, "track"], not_tunnel]
     foot = ["all", ["==", cls, "path"], ["!=", ["get", "subclass"], "cycleway"], not_tunnel]
     steps = ["==", ["get", "subclass"], "steps"]
     pw = Z("path.width")
-    layer(id_="path-casing", type="line", source="base", **{"source-layer": "transportation"},
-          minzoom=T("path.casing.minzoom"), filter=foot,
-          paint={"line-color": T("path.casing.color"), "line-width": Z("path.casing.width")})
-    layer(id_="path-paved", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
-          filter=["all", foot, paved, ["!", steps]], paint={"line-color": T("path.paved.color"), "line-width": pw})
-    layer(id_="path-low", type="line", source="base", **{"source-layer": "transportation"}, minzoom=12,
-          maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]], layout={"line-join": "round"},
-          paint={"line-color": T("path.low.color"), "line-width": pw})
-    layer(id_="path", type="line", source="base", **{"source-layer": "transportation"}, minzoom=LOW_ZOOM_SOLID,
-          filter=["all", foot, ["!", paved], ["!", steps]],
-          # Komoot: ordinary paths are solid black whatever the surface; graded trails get dots (trails()).
-          paint={"line-color": T("path.color"), "line-width": pw})
-    layer(id_="path-steps", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
-          filter=["all", foot, steps],
+    fb = {"onpath:fallback-for": "paths"}
+    tl = {"source": "base", "source-layer": "transportation"}
+    # zoomed out (base map): one thin solid darker line
+    layer(id_="track-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=base_track,
+          layout={"line-join": "round"}, paint={"line-color": T("track.color"), "line-width": Z("track.low.width")})
+    layer(id_="path-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]],
+          layout={"line-join": "round"}, paint={"line-color": T("path.low.color"), "line-width": pw})
+    # fallback without paths.geojson
+    layer(id_="track-base", type="line", **tl, minzoom=LOW_ZOOM_SOLID, filter=base_track, metadata=fb,
+          layout={"line-join": "round"},
+          paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
+    layer(id_="path-base", type="line", **tl, minzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]], metadata=fb,
+          layout={"line-join": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
+    # cycleways (solid; unpaved dashed)
+    cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
+    cw = Z("cycleway.width")
+    layer(id_="cycleway", type="line", **tl, minzoom=13, filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
+          paint={"line-color": T("cycleway.color"), "line-width": cw})
+    layer(id_="cycleway-unpaved", type="line", **tl, minzoom=13, filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
+          paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+    layer(id_="path-steps", type="line", **tl, minzoom=14, filter=["all", foot, steps],
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
-
-
-def track_grades(ew):
-    """OSM tracktype from the optional ways.geojson redraws a track's edges (the base tiles only know
-    paved / unpaved): grade1–2 solid (compact), grade3 fine dots, grade4–5 sparse dots (soft / grass).
-    A light cover as wide as the edges hides the base map's own edges of the same way first."""
+    # own exact data
+    own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
+    k = ["get", "k"]
+    track = ["all", ["==", k, "t"], ["!", ["has", "pv"]]]
     tt = ["coalesce", ["get", "tt"], 0]
-    graded = ["all", ["==", ["get", "k"], "t"], [">=", tt, 1]]
-    src = {"source": "ways", "minzoom": LOW_ZOOM_SOLID}
-    layer(id_="track-grade-cover", type="line", **src, filter=graded, layout={"line-join": "round"},
-          paint={"line-color": T("track.fill.color"), "line-width": Z("track.cover.width")})
-    layer(id_="track-grade-solid", type="line", **src, filter=["all", graded, ["<=", tt, 2]],
-          layout={"line-join": "round"}, paint={"line-color": T("track.edge.color"), "line-width": ew})
-    for sid, flt, dash in (("dotted", ["==", tt, 3], "track.edge.dash"), ("soft", [">=", tt, 4], "track.soft.dash")):
-        layer(id_=f"track-grade-{sid}", type="line", **src, filter=["all", graded, flt],
-              paint={"line-color": T("track.edge.color"), "line-width": ew, "line-dasharray": T(dash)})
-    layer(id_="track-grade-fill", type="line", **src, filter=graded, layout={"line-join": "round"},
-          paint={"line-color": T("track.fill.color"), "line-width": Z("track.fill.width")})
+    layer(id_="paths-own", type="line", **own,
+          filter=["all", ["==", k, "p"], ["!", ["has", "st"]], ["<", ["get", "sac"], 2], ["<", ["coalesce", ["get", "vis"], 0], 3]],
+          layout={"line-join": "round", "line-cap": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
+    layer(id_="track-own-paved", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
+          layout={"line-join": "round"},
+          paint={"line-color": T("street.edge.color"), "line-width": Z("street.edge.width"), "line-gap-width": Z("street.minor.gap")})
+    layer(id_="track-own-single", type="line", **own, maxzoom=TRACK_DOTS_ZOOM, filter=track, layout={"line-join": "round"},
+          paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
+    for sid, f in (("compact", ["==", tt, 1]), ("medium", ["any", ["==", tt, 2], ["==", tt, 0]]),
+                   ("loose", ["==", tt, 3]), ("soft", [">=", tt, 4])):
+        layer(id_=f"track-own-{sid}", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=["all", track, f],
+              layout={"line-cap": "round", "line-join": "round"},
+              paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
+                     "line-dasharray": T(f"track.dash.{sid}")})
 
 
 def surface_loose():
@@ -304,8 +303,8 @@ def surface_loose():
     edge on both sides of ways with a loose surface (gravel/stony or natural soft ground, ways.geojson surf ≥ 3)
     or bad smoothness (smooth ≥ 3). Compacted / fine gravel do not count – fine on any bike."""
     loose = ["any", [">=", ["coalesce", ["get", "surf"], 0], 3], [">=", ["coalesce", ["get", "smooth"], 0], 3]]
-    for sid, kind, gap in (("track", ["==", ["get", "k"], "t"], "track.edge.width"),
-                           ("path", ["!=", ["get", "k"], "t"], "path.casing.width")):
+    for sid, kind, gap in (("track", ["==", ["get", "k"], "t"], "track.gap"),
+                           ("path", ["!=", ["get", "k"], "t"], "path.loose.gap")):
         layer(id_=f"surface-loose-{sid}", type="line", source="ways", minzoom=13, filter=["all", kind, loose],
               layout={"line-join": "round", "visibility": "none"},
               paint={"line-color": T("surface.loose.color"), "line-width": Z("surface.loose.width"),
@@ -321,9 +320,6 @@ def trails():
     # trail_visibility bad or worse: same rhythm, but sparser and lighter dots (faint trail on the ground)
     faint = [">=", ["coalesce", ["get", "vis"], 0], 3]
     graded = ["any", [">=", sac, 2], faint]
-    layer(id_="trails-casing", type="line", source="trails", minzoom=LOW_ZOOM_SOLID, filter=graded,
-          layout={"line-join": "round", "line-cap": "round"},
-          paint={"line-color": T("trail.casing.color"), "line-width": Z("trail.casing.width")})
     # Zoomed out: one thin solid dark line for every graded trail (dots would only read as noise).
     # Zoomed out every path / track from our own data (the base map has them only from z12–13), so every route line
     # sits on a visible way – like Komoot. Tracks lighter than paths.
@@ -509,6 +505,7 @@ POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_
 POI_KINDS = set(POI_PRIO)
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
+TRACK_DOTS_ZOOM = 14.5  # from here a track is two dotted edges (dot spacing = surface), below one dashed line
 
 
 def _match(values, fallback):
@@ -607,6 +604,9 @@ def build(theme=DEFAULT_THEME):
                         "tolerance": 1.0},
             "ways": {"type": "geojson", "data": "file://{DATA_DIR}/ways.geojson", "maxzoom": 16,
                      "tolerance": 0.25},
+            # every path / track with exact geometry (k, sac, vis, tt, pv, st) – drawn from z13 instead of the base map's
+            "paths": {"type": "geojson", "data": "file://{DATA_DIR}/paths.geojson", "maxzoom": 16,
+                      "tolerance": 0.25},
             **style_trail_names.sources(),
             "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
                      "buffer": 32},
