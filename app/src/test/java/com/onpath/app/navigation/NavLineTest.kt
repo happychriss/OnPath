@@ -3,6 +3,8 @@ package com.onpath.app.navigation
 import com.onpath.app.navigation.Trace.line
 import com.onpath.app.navigation.Trace.pt
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavLineTest {
@@ -33,5 +35,14 @@ class NavLineTest {
         val l = NavLine(line(0.0 to 0.0, 100.0 to 0.0, 100.0 to 100.0))
         assertEquals(90.0, l.bearingAt(50.0), 1.0)
         assertEquals(0.0, l.bearingAt(150.0), 1.0)
+    }
+
+    @Test fun sameRouteToleratesARecomputedLine() {
+        val a = line(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 500.0)
+        val b = line(0.0 to 2.0, 1000.0 to 3.0, 1000.0 to 500.0, stepM = 7.0) // other points, a few metres apart
+        assertTrue(NavLine.sameRoute(a, b))
+        // a round trip is not its way out; another route is not the same
+        assertFalse(NavLine.sameRoute(a, a + a.reversed()))
+        assertFalse(NavLine.sameRoute(a, line(0.0 to 0.0, 0.0 to 500.0, 1000.0 to 500.0)))
     }
 }

@@ -15,7 +15,9 @@ import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.time.EstimateState
 import com.onpath.app.time.Factors
+import com.onpath.app.time.PauseReason
 import com.onpath.app.time.Pace
 import com.onpath.app.time.TourTimes
 import org.junit.Rule
@@ -46,6 +48,27 @@ class TimeScreenshotTest {
                     NavStatusCard(ui, onResume = {}, profileOpen = true) // opened: profile + learned pace
                     NavStatusCard(ui.copy(paused = true), onResume = {})
                     NavStatusCard(NavUi(recordedM = 2_150.0, elapsedS = 1820, movingS = 28 * 60.0, breakS = 0.0), onResume = {})
+                }
+            }
+        }
+    }
+
+    /**
+     * Navigate card states (field test 2026-10-19): the target named, "— not on route" instead of a stale time,
+     * "estimate paused" greyed with the reason.
+     */
+    @Test fun navigateEstimateStates() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Column(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NavStatusCard(ui.copy(toGo = ui.toGo!!.copy(target = "Leiter Alm")), onResume = {})
+                    NavStatusCard(ui, onResume = {}) // unnamed destination
+                    NavStatusCard(ui.copy(toGo = ToGo(0.0, 0.0, 0.0, 320.0, state = EstimateState.NOT_ON_ROUTE, target = "Leiter Alm")), onResume = {})
+                    NavStatusCard(ui.copy(toGo = ui.toGo!!.copy(target = "Leiter Alm", state = EstimateState.PAUSED,
+                        pausedBecause = PauseReason.NO_GPS.text)), onResume = {})
+                    NavStatusCard(ui.copy(toGo = ui.toGo!!.copy(target = "Hirzer Hütte (Rifugio Punta Cervina)", state = EstimateState.PAUSED,
+                        pausedBecause = PauseReason.NO_PROGRESS.text)), onResume = {})
                 }
             }
         }
