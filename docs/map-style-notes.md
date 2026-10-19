@@ -85,3 +85,16 @@ Used for every map decision on 2026-10-19 (renders in `docs/design/`):
    `OptionalSources` does this; without it the base-map paths are drawn under the own ones.
 4. `new maplibregl.Map({..., canvasContextAttributes:{preserveDrawingBuffer:true}})`, wait for `idle`, screenshot
    with Playwright (viewport 400×400, deviceScaleFactor 2). Colour maths: `tools/style_analysis/route_green.py`.
+
+## Track junctions and ground symbols (2026-10-19, owner field report)
+- **Track crossings.** Two-edge tracks (`line-gap-width` dotted edges, round caps) had no fill, so at crossings and
+  T-junctions the edges of one way ran across the other way's lane, and every way piece closed with its own ring /
+  "c"-hook at each junction. Now `track-own-lane` / `track-own-paved-lane` draw a lane (gap width, round caps,
+  `track.lane.color` light earth tone at `track.lane.opacity` 0.9 – not white, the route band still tints it) **after
+  all track edge layers** – like road casings below road fills – so junctions merge into one road and end caps
+  inside a junction disappear under the neighbour's lane. Below z14.5 (single dashed line) nothing changed.
+- **Ground symbols** (OpenMapTiles landcover class / subclass): `grass` (meadow, grassland, grass, scrub, heath, park …)
+  and `wood` = plain colour, no symbol. `wetland` (natural=wetland incl. marsh, wet_meadow, swamp, bog, reedbed) = marsh
+  tufts. `farmland`: only `orchard` (small rings = trees) and `vineyard` (short upright stakes); plain farmland / farm no
+  symbol. The former furrow dashes on all farmland looked like the German wet-meadow symbol and covered every apple
+  orchard in the valley – that was the "symbols on many meadows" the owner saw. `rock`, `sand` unchanged.

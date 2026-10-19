@@ -57,9 +57,16 @@ def landcover():
               paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
     # Ground symbols (sprite "pattern-*", tools/make_sprite.py) from z14, very light: special ground at a glance.
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
-    for cls in ("wetland", "farmland", "rock", "sand"):
-        layer(id_=f"landcover-{cls}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
-              filter=["==", ["get", "class"], cls], paint={"fill-pattern": f"pattern-{cls}"})
+    # OpenMapTiles classes / subclasses (Planetiler): grass = meadow, grassland, grass, scrub, heath, park … → plain colour;
+    # wetland = natural=wetland (subclasses wetland, marsh, wet_meadow, swamp, bog, reedbed, …) → marsh tufts;
+    # farmland: only subclasses orchard / vineyard get a symbol, plain farmland / farm none (see make_sprite.py).
+    for pid, cls, sub in (("wetland", "wetland", None), ("orchard", "farmland", "orchard"),
+                          ("vineyard", "farmland", "vineyard"), ("rock", "rock", None), ("sand", "sand", None)):
+        flt = ["==", ["get", "class"], cls]
+        if sub:
+            flt = ["all", flt, ["==", ["get", "subclass"], sub]]
+        layer(id_=f"landcover-{pid}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
+              filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
           paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),
@@ -296,6 +303,17 @@ def paths():
               layout={"line-cap": "round", "line-join": "round"},
               paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
                      "line-dasharray": T(f"track.dash.{sid}")})
+    # Lane fill over ALL track edges (owner 2026-10-19: crossings looked messy). A two-edge track has no fill of its
+    # own, so at a crossing / T-junction the edges of one way ran straight across the other way's lane, and the round
+    # caps closed every way piece with a ring / "c"-hook at each junction. Drawn after every edge layer (all edges
+    # below all fills, like road casings), with round caps, the lanes join into one clean road at junctions and the
+    # end caps disappear under the neighbour's lane. Exactly the gap width, so the own edges stay fully visible.
+    # Slightly transparent (token), so the route band under the track still tints the lane a little.
+    lane = {"line-color": T("track.lane.color"), "line-opacity": T("track.lane.opacity")}
+    layer(id_="track-own-paved-lane", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
+          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("street.minor.gap")})
+    layer(id_="track-own-lane", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=track,
+          layout={"line-join": "round", "line-cap": "round"}, paint={**lane, "line-width": Z("track.gap")})
 
 
 def surface_loose():

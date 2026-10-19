@@ -6,10 +6,10 @@
   "x": 48,
   "y": 168
  },
- "pattern-farmland": {
-  "height": 8,
+ "pattern-orchard": {
+  "height": 12,
   "pixelRatio": 1,
-  "width": 18,
+  "width": 14,
   "x": 32,
   "y": 192
  },
@@ -17,14 +17,21 @@
   "height": 32,
   "pixelRatio": 1,
   "width": 32,
-  "x": 50,
+  "x": 54,
   "y": 192
  },
  "pattern-sand": {
   "height": 9,
   "pixelRatio": 1,
   "width": 9,
-  "x": 82,
+  "x": 86,
+  "y": 192
+ },
+ "pattern-vineyard": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 8,
+  "x": 46,
   "y": 192
  },
  "pattern-wetland": {
