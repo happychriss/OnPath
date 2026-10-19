@@ -35,6 +35,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
+- **Small open findings (2026-10-19):** (a) via ferratas mapped as `highway=path` are only caught by their
+  sac_scale – mark them in the pipeline (no via_ferrata key in BRouter lookups); (b) route band sits ~3 m beside the
+  path at z16+ (routes use 3 m simplification, paths 0.5 m); (c) "Waiting for GPS · last fix N min ago" may be cut
+  in the narrow Navigate card – check on the phone; (d) `classic.json` still has unused tokens from the old path /
+  track drawing (track.edge.*, track.fill.*, track.cover.*, trail.casing gone) – tidy up; (e) owner may delete
+  branches `wip-0.6`, `wip-no-silent-errors`.
 - **Overlays as PMTiles (follow-up of 0.7.0):** paths.geojson (19 MB), routes, trails, ways, lowways, trailnames are
   GeoJSON read fully into memory (~50 MB together). Pack them into one vector PMTiles (tippecanoe or Planetiler
   custom profile) – several times smaller, faster start. Then lowways can go (paths covers low zooms).

@@ -17,15 +17,16 @@ Komoot, onX basemap redesign write-up). We took the principles, not code or pale
 7. **Relief without mud.** Hillshade shadows are a cool blue-grey at moderate opacity instead of a warm purple-grey;
    brown-grey shadows on green forest turn olive/muddy.
 8. **Colour-blind safety.** Trail difficulty is coded by colour *and* dash pattern (T1–2 dashes, T3 shorter, T4+ dots).
-9. **Sunlight.** Labels are darker with a 1.5 px white halo; the `high-contrast` theme goes further
-   (near-black paths, opaque casings, darker road casings, Medium-weight labels, lighter relief).
+9. **Sunlight.** Labels are darker with a 1.5 px white halo. Since 0.7.0 there is one style for all light: black
+   paths without white casings, lighter forest/meadow, a transparent dark-green route band chosen by a contrast
+   analysis (`docs/design/map-colour-analysis.md`); the separate high-contrast theme was removed.
 
 ## How to change the look
 All colours, widths / zoom stops, opacities, fonts and hillshade settings are design tokens in
 `tools/themes/<theme>.json`. `tools/make_style.py` only holds the layer structure and order.
 
 1. Edit tokens in `tools/themes/classic.json` (or a theme that `"extends": "classic"` and overrides a few tokens).
-2. Regenerate: `python3 tools/make_style.py --all` (or `--theme high-contrast`; no argument = classic).
+2. Regenerate: `python3 tools/make_style.py` (one style since 0.7.0; why each colour: `docs/design/map-colour-analysis.md`).
    `classic` → `app/src/main/assets/style/onpath.json`; any other theme `X` → `onpath-X.json`.
 3. Check: render with the headless MapLibre GL JS harness / validate with the style-spec validator; then commit and push.
 
@@ -70,3 +71,17 @@ Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`)
 Compacted and fine gravel do not count as loose (fine on any bike). The app switches the activity-dependent layers
 in `MapController.setOverlay`. Tracktype edges come from `ways.geojson`, drawn over the base map's track with a
 light cover (`track.cover.width`) that hides the base map's own edges.
+
+## Checking the style without a phone (headless render)
+
+Used for every map decision on 2026-10-19 (renders in `docs/design/`):
+1. In a scratch folder: `npm install maplibre-gl@4.7.1 pmtiles@3.2.1 playwright` (Chromium is preinstalled in the
+   cloud container: `/opt/pw-browsers/...`; launch with `--use-gl=swiftshader --enable-unsafe-swiftshader`).
+2. A small Node HTTP server **with Range support** (PMTiles needs it) serving `/data/` = the map package folder,
+   `/assets/` = `app/src/main/assets/`, `/nm/` = node_modules.
+3. Page: fetch `assets/style/onpath.json`, replace `pmtiles://file://{DATA_DIR}/` → `pmtiles://<origin>/data/`,
+   `file://{DATA_DIR}/` → `<origin>/data/`, `asset://` → `<origin>/assets/` (fonts + sprite incl. ground patterns),
+   then **drop layers whose metadata has `onpath:fallback-for` when that source's file exists** – the app's
+   `OptionalSources` does this; without it the base-map paths are drawn under the own ones.
+4. `new maplibregl.Map({..., canvasContextAttributes:{preserveDrawingBuffer:true}})`, wait for `idle`, screenshot
+   with Playwright (viewport 400×400, deviceScaleFactor 2). Colour maths: `tools/style_analysis/route_green.py`.
