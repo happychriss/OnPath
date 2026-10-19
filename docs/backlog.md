@@ -20,6 +20,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
+- **Own position dot sometimes drawn under lines (owner, 2026-10-19 – start when the owner says so):** the blue dot
+  must always be on top of every line (route, track, guide, arrows). Analysis: all app layers are added in
+  `MapController.init` before `activateLocation()`, so the puck starts on top; the lazily added `search-mark` layers
+  go above it, and if MapLibre's LocationComponent re-adds its layers on a style reload before our layers they end
+  up below. Fix idea: add every later layer with `addLayerBelow(<lowest location layer>)` and/or give the component
+  `layerAbove(<top app layer>)`; check with a screenshot from the owner which lines cover it.
 - **Navigate: jump to own position when the phone is opened again (owner todo, 2026-10-19 – start when the owner
   says so):** after the phone was in the pocket (screen off / app in background, map panned away), coming back in
   Navigate re-centres the map on the current position (follow mode back on, heading-up as set) – no hunting for the
