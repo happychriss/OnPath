@@ -126,3 +126,39 @@ the real map renders and a field test have the last word. Symbols and relief tex
    - Remove the theme switch in Settings.
    - Add `paths.geojson` to `OptionalSources`.
 4. **Field test** in sunlight.
+
+## Road types: street, track, path (2026-10-19, proposal)
+
+For hiking and cycling the key question is the surface. Is it a paved street, an unpaved track (forest or farm
+road, `highway=track`, theoretically drivable) or a path? The owner rejected white street fills with a dark casing
+as too busy. Four variants without any white were rendered
+(https://claude.ai/artifact/JfUteXEasokSfqgJeCn8hq, `tools/themes-proposals/roads-post.py`):
+
+| Variant | Street (minor, service) | Track |
+|---|---|---|
+| 1 | solid grey line | grey dashed line |
+| 2 | solid grey line | brown dashed line |
+| 3 | two thin grey edges (open, no fill) | two grey dashed edges |
+| **4 (recommended)** | two thin grey edges | brown dashed line |
+
+The rule behind variant 4 is that every type gets its own **shape**, not only a colour, because colour differences
+fade in sunlight:
+
+| Type | Shape |
+|---|---|
+| street | double line, reads as "wide, paved" |
+| track | dashed, reads as "not paved"; brown |
+| path | thin solid black |
+| mountain trail | black dots |
+
+A solid grey street (1, 2) reads like a thick path. Grey double-dashed tracks (3) are too faint, and tracks matter
+most for cyclists. Track quality from `tracktype` sets the dash length:
+
+| `tracktype` | Dash |
+|---|---|
+| grade1–2 (compact) | long dashes |
+| grade3 | medium dashes |
+| grade4–5 (soft, grass) | short dashes |
+| paved track | solid |
+
+Decision pending (owner).
