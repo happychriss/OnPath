@@ -1784,7 +1784,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#7d766d",
@@ -1858,7 +1871,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#7d766d",
@@ -1932,7 +1958,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#cdbf96",
@@ -2004,7 +2043,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#c7aa52",
@@ -2078,7 +2130,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#b38a2c",
@@ -2153,7 +2218,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#b06d26",
@@ -2561,6 +2639,698 @@
    }
   },
   {
+   "id": "track-own-paved",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "has",
+     "pv"
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#7d766d",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     0.6,
+     14,
+     0.9,
+     16,
+     1.2,
+     18,
+     1.6
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     0.6,
+     14,
+     2.0,
+     16,
+     3.6,
+     18,
+     7
+    ]
+   }
+  },
+  {
+   "id": "track-own-single",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 13,
+   "maxzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "pv"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4a2b",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.1,
+     14,
+     1.5,
+     14.5,
+     1.6
+    ],
+    "line-dasharray": [
+     2.4,
+     1.4
+    ]
+   }
+  },
+  {
+   "id": "track-own-compact",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "k"
+      ],
+      "t"
+     ],
+     [
+      "!",
+      [
+       "has",
+       "pv"
+      ]
+     ]
+    ],
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "tt"
+      ],
+      0
+     ],
+     1
+    ]
+   ],
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4a2b",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     1.3,
+     16,
+     1.8,
+     18,
+     2.4
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.4,
+     16,
+     3.8,
+     18,
+     7
+    ],
+    "line-dasharray": [
+     0.1,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "track-own-medium",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "k"
+      ],
+      "t"
+     ],
+     [
+      "!",
+      [
+       "has",
+       "pv"
+      ]
+     ]
+    ],
+    [
+     "any",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "tt"
+       ],
+       0
+      ],
+      2
+     ],
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "tt"
+       ],
+       0
+      ],
+      0
+     ]
+    ]
+   ],
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4a2b",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     1.3,
+     16,
+     1.8,
+     18,
+     2.4
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.4,
+     16,
+     3.8,
+     18,
+     7
+    ],
+    "line-dasharray": [
+     0.1,
+     1.7
+    ]
+   }
+  },
+  {
+   "id": "track-own-loose",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "k"
+      ],
+      "t"
+     ],
+     [
+      "!",
+      [
+       "has",
+       "pv"
+      ]
+     ]
+    ],
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "tt"
+      ],
+      0
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4a2b",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     1.3,
+     16,
+     1.8,
+     18,
+     2.4
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.4,
+     16,
+     3.8,
+     18,
+     7
+    ],
+    "line-dasharray": [
+     0.1,
+     2.6
+    ]
+   }
+  },
+  {
+   "id": "track-own-soft",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "k"
+      ],
+      "t"
+     ],
+     [
+      "!",
+      [
+       "has",
+       "pv"
+      ]
+     ]
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "tt"
+      ],
+      0
+     ],
+     4
+    ]
+   ],
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#6b4a2b",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     1.3,
+     16,
+     1.8,
+     18,
+     2.4
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.4,
+     16,
+     3.8,
+     18,
+     7
+    ],
+    "line-dasharray": [
+     0.1,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "track-own-lane",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "pv"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": "#ebe2cf",
+    "line-opacity": 0.9,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.4,
+     16,
+     3.8,
+     18,
+     7
+    ]
+   }
+  },
+  {
+   "id": "track-own-paved-lane",
+   "type": "line",
+   "source": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "has",
+     "pv"
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": "#f9f7f1",
+    "line-opacity": 0.92,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     0.6,
+     14,
+     2.0,
+     16,
+     3.6,
+     18,
+     7
+    ]
+   }
+  },
+  {
+   "id": "road-service-lane",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "in",
+     [
+      "get",
+      "class"
+     ],
+     [
+      "literal",
+      [
+       "service"
+      ]
+     ]
+    ],
+    [
+     "!=",
+     [
+      "get",
+      "brunnel"
+     ],
+     "tunnel"
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
+   },
+   "paint": {
+    "line-color": "#f9f7f1",
+    "line-opacity": 0.92,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.6,
+     14,
+     1.6,
+     16,
+     3.0,
+     18,
+     5.5
+    ]
+   }
+  },
+  {
+   "id": "road-minor-lane",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 11,
+   "filter": [
+    "all",
+    [
+     "in",
+     [
+      "get",
+      "class"
+     ],
+     [
+      "literal",
+      [
+       "minor"
+      ]
+     ]
+    ],
+    [
+     "!=",
+     [
+      "get",
+      "brunnel"
+     ],
+     "tunnel"
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
+   },
+   "paint": {
+    "line-color": "#f9f7f1",
+    "line-opacity": 0.92,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     0.6,
+     14,
+     2.0,
+     16,
+     3.6,
+     18,
+     7
+    ]
+   }
+  },
+  {
    "id": "road-tertiary",
    "type": "line",
    "source": "base",
@@ -2592,7 +3362,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": "#fdf4cf",
@@ -2648,7 +3431,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": [
@@ -2714,7 +3510,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": [
@@ -2781,7 +3590,20 @@
    ],
    "layout": {
     "line-join": "round",
-    "line-cap": "round"
+    "line-cap": "round",
+    "line-sort-key": [
+     "case",
+     [
+      "==",
+      [
+       "get",
+       "brunnel"
+      ],
+      "bridge"
+     ],
+     1,
+     0
+    ]
    },
    "paint": {
     "line-color": [
@@ -3510,558 +4332,6 @@
      2.2,
      18,
      3.3
-    ]
-   }
-  },
-  {
-   "id": "track-own-paved",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 13,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "k"
-     ],
-     "t"
-    ],
-    [
-     "has",
-     "pv"
-    ]
-   ],
-   "layout": {
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#7d766d",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     0.6,
-     14,
-     0.9,
-     16,
-     1.2,
-     18,
-     1.6
-    ],
-    "line-gap-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
-    ]
-   }
-  },
-  {
-   "id": "track-own-single",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 13,
-   "maxzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "k"
-     ],
-     "t"
-    ],
-    [
-     "!",
-     [
-      "has",
-      "pv"
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     1.1,
-     14,
-     1.5,
-     14.5,
-     1.6
-    ],
-    "line-dasharray": [
-     2.4,
-     1.4
-    ]
-   }
-  },
-  {
-   "id": "track-own-compact",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "k"
-      ],
-      "t"
-     ],
-     [
-      "!",
-      [
-       "has",
-       "pv"
-      ]
-     ]
-    ],
-    [
-     "==",
-     [
-      "coalesce",
-      [
-       "get",
-       "tt"
-      ],
-      0
-     ],
-     1
-    ]
-   ],
-   "layout": {
-    "line-cap": "round",
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     1.3,
-     16,
-     1.8,
-     18,
-     2.4
-    ],
-    "line-gap-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     2.4,
-     16,
-     3.8,
-     18,
-     7
-    ],
-    "line-dasharray": [
-     0.1,
-     1.0
-    ]
-   }
-  },
-  {
-   "id": "track-own-medium",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "k"
-      ],
-      "t"
-     ],
-     [
-      "!",
-      [
-       "has",
-       "pv"
-      ]
-     ]
-    ],
-    [
-     "any",
-     [
-      "==",
-      [
-       "coalesce",
-       [
-        "get",
-        "tt"
-       ],
-       0
-      ],
-      2
-     ],
-     [
-      "==",
-      [
-       "coalesce",
-       [
-        "get",
-        "tt"
-       ],
-       0
-      ],
-      0
-     ]
-    ]
-   ],
-   "layout": {
-    "line-cap": "round",
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     1.3,
-     16,
-     1.8,
-     18,
-     2.4
-    ],
-    "line-gap-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     2.4,
-     16,
-     3.8,
-     18,
-     7
-    ],
-    "line-dasharray": [
-     0.1,
-     1.7
-    ]
-   }
-  },
-  {
-   "id": "track-own-loose",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "k"
-      ],
-      "t"
-     ],
-     [
-      "!",
-      [
-       "has",
-       "pv"
-      ]
-     ]
-    ],
-    [
-     "==",
-     [
-      "coalesce",
-      [
-       "get",
-       "tt"
-      ],
-      0
-     ],
-     3
-    ]
-   ],
-   "layout": {
-    "line-cap": "round",
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     1.3,
-     16,
-     1.8,
-     18,
-     2.4
-    ],
-    "line-gap-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     2.4,
-     16,
-     3.8,
-     18,
-     7
-    ],
-    "line-dasharray": [
-     0.1,
-     2.6
-    ]
-   }
-  },
-  {
-   "id": "track-own-soft",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "k"
-      ],
-      "t"
-     ],
-     [
-      "!",
-      [
-       "has",
-       "pv"
-      ]
-     ]
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "tt"
-      ],
-      0
-     ],
-     4
-    ]
-   ],
-   "layout": {
-    "line-cap": "round",
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     1.3,
-     16,
-     1.8,
-     18,
-     2.4
-    ],
-    "line-gap-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     2.4,
-     16,
-     3.8,
-     18,
-     7
-    ],
-    "line-dasharray": [
-     0.1,
-     4.0
-    ]
-   }
-  },
-  {
-   "id": "track-own-paved-lane",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 13,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "k"
-     ],
-     "t"
-    ],
-    [
-     "has",
-     "pv"
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round"
-   },
-   "paint": {
-    "line-color": "#ebe2cf",
-    "line-opacity": 0.9,
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
-    ]
-   }
-  },
-  {
-   "id": "track-own-lane",
-   "type": "line",
-   "source": "paths",
-   "minzoom": 14.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "k"
-     ],
-     "t"
-    ],
-    [
-     "!",
-     [
-      "has",
-      "pv"
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round"
-   },
-   "paint": {
-    "line-color": "#ebe2cf",
-    "line-opacity": 0.9,
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     2.4,
-     16,
-     3.8,
-     18,
-     7
     ]
    }
   },
