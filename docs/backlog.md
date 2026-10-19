@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Address search (city, street, number, country) offline + "nearby country first" ranking; new optional `addresses` data file (owner) – since 2026-10-19
 - [laptop] Grid-cell map packages – design doc (`docs/design/map-cells.md`), server side then for cloud/zo – since 2026-10-19
 - [laptop] Map style: dotted unpaved tracks overlapping at crossings; meadow vs wet-meadow symbols (owner) – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
