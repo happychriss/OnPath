@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Arrival/time-to-go robustness: plan edits follow automatically, walking backwards, out-and-back matching, no stale times (owner field test 2026-10-19) – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -85,6 +84,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Arrival / time-to-go robustness (laptop, owner field test 2026-10-19): plan edits followed at once (same route
+  within 10 m / 1 % keeps the session), walking backwards raises the time and asks after 200 m, out-and-back picks
+  the stretch by walking direction, "— not on route", arrival moves during breaks, "estimate paused", mid-route
+  start; Navigate card distance from the service. Replays + fixtures in `app/src/test/.../time/NavReplay*`.
+  Open for the owner: deleting the target of a 2-point plan does not route home; unnamed target shows no name.
 - No silent errors (cloud, 0.6.7, owner): `debug/Problems` central log (dedupe, persisted, crash capture,
   MapLibre native logger), ≈120 catch sites in all packages reviewed and reported (or marked `// expected:`),
   Settings → Diagnostics problem list + Clear, new ERROR announced once per run, last crash announced at start,
