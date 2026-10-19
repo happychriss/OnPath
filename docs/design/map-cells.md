@@ -337,7 +337,9 @@ Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones);
 | **2. App trigger + card** | Overview in the APK, trigger on setting a point, card, download/verify/activate, corridor cells, monthly refresh | Owner plans in a new valley with an empty phone and gets the detailed map + route without touching Settings |
 | **3. Hetzner** | Doorman on Hetzner, builder from snapshot, Object Storage, migration | zo switched off; cost per month as in §11 |
 
-## 16. Open questions for the owner
+## 16. Owner decisions (2026-10-19: "all as recommended")
+
+All questions below are decided as recommended (owner, 2026-10-19). The "Recommendation" column is now the decision.
 
 | # | Question | Recommendation |
 | --- | --- | --- |

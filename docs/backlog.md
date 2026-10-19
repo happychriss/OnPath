@@ -10,7 +10,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
-- **Grid-cell map packages – design ready (`docs/design/map-cells.md`), waiting for the owner's answers Q1–Q11** and the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
+- **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
 - **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
   `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
   as one vector PMTiles −75 %, base trims −27 %), routing by 1° rd5 part 199 → 8–31 MB; joining cells via MBTiles
