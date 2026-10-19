@@ -98,7 +98,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
-- Map style (laptop, owner): track junctions clean (lane fill `track-own-lane` drawn after all track edges); ground symbols: no symbol on meadow/grass/fields, marsh tufts only on wetland, new orchard rings + vineyard stakes. Open: paved minor/service streets could get the same lane fix; track ending on a street may show a small hook.
+- Map style (laptop, owner): track junctions clean (lane fill `track-own-lane` drawn after all track edges); ground symbols: no symbol on meadow/grass/fields, marsh tufts only on wetland, new orchard rings + vineyard stakes. Streets too (owner): light street lane `road-service-lane`/`road-minor-lane` (#f9f7f1), one order for all ways (edges/casings → track edges → fills smallest first → rail → paths), side streets stop at the bigger road's edge, tracks pass under yellow roads. Open: street bridge over a small street can be cut by the lower fill.
 - Arrival / time-to-go robustness (laptop, owner field test 2026-10-19): plan edits followed at once (same route
   within 10 m / 1 % keeps the session), walking backwards raises the time and asks after 200 m, out-and-back picks
   the stretch by walking direction, "— not on route", arrival moves during breaks, "estimate paused", mid-route
