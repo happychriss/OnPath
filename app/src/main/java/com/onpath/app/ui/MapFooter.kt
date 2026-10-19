@@ -85,8 +85,9 @@ private fun ScaleBar(label: String, width: Dp) {
 }
 
 /**
- * Compass / orientation button content. [headingUp] true/false = Navigate (walking direction up / north
- * up, tap toggles); null = Plan, always shown (needle turned by the map [bearing], tap = north up).
+ * Compass / orientation button (both modes): [headingUp] true = the map turns with the walking direction (arrow);
+ * otherwise the needle shows the map's [bearing]. Tap cycles turned → north up → walking direction up (AppViewModel.onCompass).
+ * null is treated like false.
  */
 data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick: () -> Unit)
 
@@ -135,10 +136,10 @@ private fun GroupDivider() =
 
 @Composable
 private fun CompassControl(c: CompassSpec) {
-    val what = when (c.headingUp) {
-        true -> "Map turns with your walking direction. Tap for north up"
-        false -> "Map is north up. Tap to turn it with your walking direction"
-        null -> if (kotlin.math.abs(c.bearing) > 1f) "Map is turned. Tap for north up" else "Compass. Map is north up"
+    val what = when {
+        c.headingUp == true -> "Map turns with your walking direction. Tap for north up"
+        kotlin.math.abs(c.bearing) > 1f -> "Map is turned. Tap for north up"
+        else -> "Map is north up. Tap to turn it with your walking direction"
     }
     Box(
         Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },

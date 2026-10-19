@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
@@ -77,6 +78,8 @@ sealed interface UiEvent {
     data class Fit(val points: List<GeoPoint>) : UiEvent
     /** Fly to one place at [zoom] (search results). */
     data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
+    /** Move the map to [point] at once, same zoom (profile scrubbing in Navigate). */
+    data class PanTo(val point: GeoPoint) : UiEvent
 }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -139,6 +142,67 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleNavOrientation() {
         settings = settings.copy(navHeadingUp = !settings.navHeadingUp); prefs.settings = settings
         if (tracker.location.value != null) followMe = true
+    }
+
+    /** Plan: walking direction up while following (compass cycle, owner 2026-10-19); not kept across starts. */
+    var planHeadingUp by mutableStateOf(false)
+    /** Walking direction up in the current mode (Navigate: persisted setting; Plan: [planHeadingUp]). */
+    val headingUp: Boolean get() = if (mode == AppMode.NAVIGATE) navHeadingUp else planHeadingUp
+    /** Bumped to turn the map north (MapScreen → MapController.northUp). */
+    var northTick by mutableIntStateOf(0)
+    /** Bumped when the camera must follow the position again although [followMe] did not change. */
+    var recentreTick by mutableIntStateOf(0)
+
+    private fun setHeadingUp(on: Boolean) {
+        if (mode == AppMode.NAVIGATE) {
+            if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }
+        } else planHeadingUp = on
+    }
+
+    /**
+     * Compass button, same in both modes (owner): map turned by hand → north up; north up → walking direction up
+     * (follows the position); walking direction up → north up. Without a position fix the third state is skipped.
+     */
+    fun onCompass(mapTurned: Boolean) {
+        val turningWithMe = headingUp && followMe
+        val hasFix = tracker.location.value != null
+        when {
+            turningWithMe || mapTurned -> {
+                setHeadingUp(false); northTick++
+                if (mode == AppMode.NAVIGATE && hasFix) followMe = true
+            }
+            !hasFix -> message = "No position yet – the map can turn with your walking direction once GPS has a fix."
+            else -> { setHeadingUp(true); followMe = true; recentreTick++ }
+        }
+    }
+
+    private var scrubWasFollowing = false
+    private var scrubEndJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Navigate: a finger on the elevation profile (owner): a dot marks that spot on the route and the map shows it
+     * (following pauses). After the finger leaves, the dot stays [SCRUB_HOLD_MS], then the map returns to the position.
+     */
+    fun navScrub(p: GeoPoint) {
+        scrubEndJob?.cancel(); scrubEndJob = null
+        if (followMe) { scrubWasFollowing = true; followMe = false }
+        highlight = p
+        events += UiEvent.PanTo(p)
+    }
+
+    fun navScrubEnd() {
+        scrubEndJob?.cancel()
+        scrubEndJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(SCRUB_HOLD_MS)
+            highlight = null
+            if (scrubWasFollowing && mode == AppMode.NAVIGATE) { followMe = true; recentreTick++ }
+            scrubWasFollowing = false
+        }
+    }
+
+    /** The app is on screen again (e.g. taken out of the pocket): in Navigate jump back to the own position (owner). */
+    fun onReturnToApp() {
+        if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
@@ -528,6 +592,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** One undoable change of the planned points. */
     private fun change(block: MutableList<GeoPoint>.() -> Unit) {
+        // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
+        if (mode == AppMode.PLAN && planHeadingUp && followMe) followMe = false
         history.record(waypoints)
         waypoints.block()
         canUndo = history.canUndo; canRedo = history.canRedo
@@ -1574,3 +1640,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
 /** A plan point the router reached only this far away (m) gets a message. */
 private const val FAR_SNAP_M = 150.0
+
+/** Navigate profile scrubbing: how long the dot and the map stay at the spot after the finger leaves (ms). */
+private const val SCRUB_HOLD_MS = 4000L

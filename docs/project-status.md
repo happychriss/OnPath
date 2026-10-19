@@ -4,6 +4,12 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-19 (0.7.1 owner todos):** compass cycle in both modes (`AppViewModel.onCompass`: turned → north
+  → walking direction (follows) → north; no fix = hint; editing the plan stops the turning map); Navigate re-centres
+  when the app comes back (`onReturnToApp`, MapHost ON_START); profile scrub in Navigate (`navScrub`/`navScrubEnd`:
+  dot + map at the spot, back to the position 4 s after release); search ring added below MapLibre's position layers
+  (`addBelowPosition`); "Clear route from map" in the Tour-saved dialog when an unsaved plan is left. Arrival time:
+  laptop.
 - **cloud, 2026-10-19 (map design 0.7.0, owner pick):** one map style from a colour analysis
   (`docs/design/map-colour-analysis.md`, script `tools/style_analysis/route_green.py`): route band #168403 at 40 %
   without edges; no white casings; streets = two grey edges; tracks brown, one dashed line < z14.5, then two dotted
