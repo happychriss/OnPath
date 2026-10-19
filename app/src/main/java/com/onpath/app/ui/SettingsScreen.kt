@@ -94,6 +94,10 @@ fun SettingsScreen(
     onResetPace: (com.onpath.app.routing.Activity) -> Unit = {},
     /** Installed map package (package.json) and files from another package – shown in About. */
     mapPackage: DataFiles.PackageCheck? = null,
+    /** Diagnostics export (debug): switch + export button; null = section hidden. */
+    diagnosticsOn: Boolean? = null,
+    onDiagnostics: (Boolean) -> Unit = {},
+    onExportDiagnostics: () -> Unit = {},
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -251,6 +255,22 @@ fun SettingsScreen(
                 }
                 if (update != null) item {
                     Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
+                }
+                if (diagnosticsOn != null) item {
+                    Section("Diagnostics") {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Diagnostics export", modifier = Modifier.weight(1f))
+                                androidx.compose.material3.Switch(checked = diagnosticsOn, onCheckedChange = onDiagnostics)
+                            }
+                            Text("Creates a file with the app version, map files, the loaded map style, what the map shows " +
+                                "right now and the app log – to send to the developer when something looks wrong. Leave the map at the " +
+                                "problem spot before you export. " +
+                                "Nothing is sent by itself.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (diagnosticsOn) androidx.compose.material3.OutlinedButton(onClick = onExportDiagnostics,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
+                        }
+                    }
                 }
                 item { AboutSection(checks, mapPackage, dataDir, version) }
             }

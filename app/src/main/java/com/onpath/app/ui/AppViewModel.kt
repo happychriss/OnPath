@@ -314,6 +314,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = getApplication<Application>().getSharedPreferences("onpath", 0).getBoolean("batteryHint", false)
         set(v) { getApplication<Application>().getSharedPreferences("onpath", 0).edit().putBoolean("batteryHint", v).apply() }
 
+    /** App state for the diagnostics export (Settings → Diagnostics); never throws. */
+    fun diagnosticsState(): org.json.JSONObject = try {
+        val rec = recState.value
+        val loc = tracker.location.value
+        org.json.JSONObject()
+            .put("mode", mode.name).put("activity", activity.name).put("sac", sac)
+            .put("waypoints", waypoints.size).put("routeMeters", route?.distanceM)
+            .put("routeLegsStraight", route?.legs?.count { it.straight })
+            .put("routeError", routeError)
+            .put("followName", followName).put("followPoints", followLine?.size)
+            .put("recording", rec?.let { org.json.JSONObject().put("tourId", it.tourId).put("paused", it.paused)
+                .put("distanceM", it.distanceM).put("elapsedS", it.elapsedS).put("gpsLost", it.gpsLost)
+                .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
+                .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
+            .put("gps", tracker.status().name)
+            .put("location", loc?.let { org.json.JSONObject().put("lat", "%.5f".format(java.util.Locale.ROOT, it.latitude))
+                .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
+                .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
+            .put("styleVersion", styleVersion).put("missingData", missing.map { it.name })
+    } catch (e: Throwable) { org.json.JSONObject().put("error", e.toString()) }
+
     fun recheckData() {
         missing = dataFiles.check().filter { !it.present }
         packageCheck = dataFiles.packageCheck()

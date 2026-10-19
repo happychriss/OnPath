@@ -170,6 +170,7 @@ fun MapHost(
             }
             mapView.addOnDidFailLoadingMapListener { msg ->
                 Log.w("OnPath", "style failed: $msg")
+                StyleLoader.noteFailure(msg ?: "?")
                 if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }
             }
             loadedTheme[0] = vm.settings.mapTheme
