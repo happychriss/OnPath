@@ -304,6 +304,9 @@
  "track.gap.z14": 2.4,
  "track.gap.z16": 3.8,
  "track.gap.z18": 7,
+ "// track.lane": "lane fill drawn over all track edges so crossings merge (light earth tone, not white; nearly opaque)",
+ "track.lane.color": "#ebe2cf",
+ "track.lane.opacity": 0.9,
  "track.dash.single": [
   2.4,
   1.4
