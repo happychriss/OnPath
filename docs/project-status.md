@@ -4,6 +4,12 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-19 (arrival estimate + map packages):** arrival/time-to-go fix merged (see backlog Done,
+  `docs/plan-time-estimate.md` "Field test 2026-10-19"). Map packages: owner chose **grid cells (z10) built on
+  demand**, server first on the owner's home server *zo* (code `~/onpath`, data `~/onpath-data`, Cloudflare tunnel,
+  domain free-your-pictures.org for now), later Hetzner (small always-on doorman + builder created from a snapshot,
+  deleted after). Running: build-time test of one cell on zo; proposal "map data size on the phone"
+  (`docs/design/map-data-size.md`, coming) – pipeline changes need the cloud's agreement.
 - **cloud, 2026-10-19 (0.7.1 owner todos):** compass cycle in both modes (`AppViewModel.onCompass`: turned → north
   → walking direction (follows) → north; no fix = hint; editing the plan stops the turning map); Navigate re-centres
   when the app comes back (`onReturnToApp`, MapHost ON_START); profile scrub in Navigate (`navScrub`/`navScrubEnd`:
