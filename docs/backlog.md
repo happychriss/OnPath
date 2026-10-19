@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Arrival/time-to-go robustness: plan edits follow automatically, walking backwards, out-and-back matching, no stale times (owner field test 2026-10-19) – since 2026-10-19
-- [cloud] **Map design 0.7.0** (owner pick 2026-10-19, docs/design/map-colour-analysis.md): one style, band #168403 40 %, paths/tracks from own data, symbols, theme switch removed. Files: tools/make_style.py, tools/extract_overlays.py, tools/themes/, assets/style, map/ (StyleLoader, OptionalSources, MapController), ui/SettingsScreen, data/AppSettings – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -29,7 +28,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   compass, standing) → skip the third state with a short hint; Plan editing while the map turns → tapping a point or
   panning freezes the angle (follow ends, map stays where it is); no tilt anywhere (NAV_TILT_DEG = 0, tilt gestures off); remember the last state per
   mode; optional: higher rotate threshold so pinch-zoom does not turn the map by accident.
-- **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
+- **Overlays as PMTiles (follow-up of 0.7.0):** paths.geojson (19 MB), routes, trails, ways, lowways, trailnames are
+  GeoJSON read fully into memory (~50 MB together). Pack them into one vector PMTiles (tippecanoe or Planetiler
+  custom profile) – several times smaller, faster start. Then lowways can go (paths covers low zooms).
+- **(done 0.7.0) One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
   paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
   `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
   `make_style.py` already takes the new tokens (`route.band.width`, `route.band.edge.*`, `lowways.*.width`).

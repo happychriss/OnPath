@@ -59,6 +59,7 @@ Built per region by the pipeline, copied to the phone into
 | `ways.geojson` | `tools/extract_overlays.py` (tracktype, loose surface, smoothness) | optional |
 | `lowways.geojson` | `tools/extract_overlays.py` (all paths/tracks, coarse, drawn below z13) | optional |
 | `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
+| `paths.geojson` | `tools/extract_overlays.py` (every path/track, exact; drawn from z13 instead of the base map, tracktype → dots) | optional (without it the base map's lines are drawn) |
 | `segments/E10_N45.rd5` | download from https://brouter.de/brouter/segments4/ | yes |
 
 Current test region: Bozen / Meran / Algund / Ultental (Zoggler Stausee), bbox `10.70,46.30,11.60,46.85`. OSM source:
@@ -96,7 +97,9 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   errors (no stack traces) to the user.
 - **Routing**: always via the `RoutingEngine` interface; blocking calls on a background thread;
   newer requests supersede older ones in the UI.
-- **Map style**: edit `tools/make_style.py`, regenerate JSON, keep to MapLibre Native features (no JS-only).
+- **Map style**: one style since 0.7.0 (`tools/themes/classic.json`; why each colour: `docs/design/map-colour-analysis.md`).
+  Edit `tools/make_style.py`, regenerate JSON, keep to MapLibre Native features (no JS-only). Ground symbols are
+  sprite images (`tools/make_sprite.py`). Layers with metadata `onpath:fallback-for` are drawn only when that source is missing.
   Layer ids the app depends on: `routes-hike`, `routes-bike`, `routes-mtb`, `poi-*`; the app's own layers
   (`planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`) go on top.
 - **Map labels** in German (`name:de` → `name`); UI strings currently English, hard-coded (to move to
