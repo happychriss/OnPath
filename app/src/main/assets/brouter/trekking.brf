@@ -286,12 +286,22 @@ assign costfactor
   else if ( highway=proposed|abandoned|construction ) then   10000
 
   #
+  # OnPath: hard means forbidden. No via ferratas, no paths of SAC T3+ (demanding_mountain_hiking and harder)
+  # or mtb:scale S3+ for a trekking bike / e-bike (before: a path without tracktype cost 5, any grade)
+  #
+  else if ( highway=via_ferrata ) then 10000
+  else if ( or sac_scale=demanding_mountain_hiking|alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking
+               mtb:scale=3|4|5|6 ) then 10000
+
+  #
   # all other exclusions below (access, steps, ferries,..)
   # should not be deleted by the decoder, to be available
   # in voice-hint-processing
   #
   else min 9999
 
+  # OnPath: SAC T2 (mountain_hiking) or mtb:scale S2 = very expensive (+30), only when nothing else goes
+  add ( if ( or sac_scale=mountain_hiking mtb:scale=2-|2|2+ ) then 30 else 0 )
   add town_penalty
   add no_forest_penalty
   add no_river_penalty

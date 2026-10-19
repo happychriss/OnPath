@@ -935,12 +935,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
         if (waypoints.toList() != routed) return
+        warnFarSnap(routed, r)
         val keep = pins + routed.indices.filter { stopName(routed[it]) != null }
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (!RouteRules.isUnsaved(routed, savedPoints)) setSaved(savedName, savedId, snapped)
         history.replacePoints(WaypointSnap.moves(routed, snapped))
         prefs.planWaypoints = waypoints.toList()
+    }
+
+    /**
+     * The router reaches a point only by its nearest allowed way (up to 1 km away): a summit above the T level, a
+     * via ferrata, a point off any path. Say so, or the hiker trusts a line that stops short of where they want to go.
+     */
+    private fun warnFarSnap(routed: List<GeoPoint>, r: PlannedRoute) {
+        val far = routed.indices.mapNotNull { i ->
+            r.snapped.getOrNull(i)?.let { i to com.onpath.app.data.Geo.distance(routed[i], it) }
+        }.filter { it.second >= FAR_SNAP_M }.maxByOrNull { it.second } ?: return
+        val (i, d) = far
+        val what = when (i) { 0 -> "starts"; routed.lastIndex -> "ends"; else -> "passes" }
+        message = "The route $what ${com.onpath.app.data.Format.distance(Math.round(d / 10.0) * 10.0)} away from point ${i + 1}: " +
+            "the last part is too difficult for ${com.onpath.app.navigation.NavText.activityName(activity, sac)}, closed or has no path."
     }
 
     /**
@@ -1553,3 +1568,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         super.onCleared()
     }
 }
+
+/** A plan point the router reached only this far away (m) gets a message. */
+private const val FAR_SNAP_M = 150.0
