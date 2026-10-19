@@ -486,11 +486,17 @@ def labels():
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
     (1, 12, 14, ["hut", "bivouac", "viewpoint", "spring", "waterfall", "lift", "castle"]),
-    (2, 14, 15, ["water", "restaurant", "cafe", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
-    (3, 15, 16, ["picnic", "toilets", "info", "bar", "fast_food", "bike_shop", "charging", "shop", "parking",
-                 "bus"]),
+    # food and bus stops from z14 (owner): where a hike starts, ends or eats
+    (2, 14, 15, ["water", "restaurant", "cafe", "bar", "fast_food", "shelter", "camping", "church", "ruins", "cave",
+                 "museum", "chapel"]),
+    (3, 15, 16, ["picnic", "toilets", "info", "bike_shop", "charging", "shop", "parking"]),
 ]
-POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds]
+# Bus stops have their own two layers (see pois()): zoomed out one symbol per stop name (the pair of stops on both
+# sides of the road merged by extract_pois.py), from BUS_DETAIL_ZOOM every stop on its own.
+BUS_ZOOM = 14
+BUS_DETAIL_ZOOM = 16
+POI_PRIO_EXTRA = ["bus"]
+POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_PRIO_EXTRA
 POI_KINDS = set(POI_PRIO)
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
@@ -511,12 +517,19 @@ def pois():
     badge = ["concat", "poi-", kind]
     name = ["coalesce", ["get", "name"], ""]
     # Bottom-most layer = least important tier; MapLibre places symbols of upper layers first.
-    for tier, minz, label_z, kinds in reversed(POI_TIERS):
+    # Bus stops: the merged pair symbol (plus unpaired stops) until BUS_DETAIL_ZOOM, then every stop.
+    is_bus = ["==", kind, "bus"]
+    specs = [
+        (f"poi-bus-detail", 3, BUS_DETAIL_ZOOM, None, BUS_DETAIL_ZOOM, ["all", is_bus, ["!", ["has", "merged"]]]),
+        (f"poi-bus", 3, BUS_ZOOM, BUS_DETAIL_ZOOM, 15, ["all", is_bus, ["!", ["has", "detail"]]]),
+    ] + [(f"poi-tier{tier}", tier, minz, None, label_z, ["in", kind, ["literal", kinds]])
+         for tier, minz, label_z, kinds in reversed(POI_TIERS)]
+    for id_, tier, minz, maxz, label_z, flt in specs:
         icon = badge
         if minz < POI_SMALL_UNTIL:
             icon = ["step", ["zoom"], ["concat", "poi-", kind, "-small"], POI_SMALL_UNTIL, badge]
-        layer(id_=f"poi-tier{tier}", type="symbol", source="pois", minzoom=minz,
-              filter=["in", kind, ["literal", kinds]],
+        extra = {"maxzoom": maxz} if maxz else {}
+        layer(id_=id_, type="symbol", source="pois", minzoom=minz, filter=flt, **extra,
               layout={"icon-image": icon,
                       # small dots stay tiny while zoomed out, badges from z13
                       "icon-size": interp(12, 0.45, 12.9, 0.5, 13, 0.78, 15, 0.92, 17, 1.05, base=1),

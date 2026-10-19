@@ -177,12 +177,14 @@ class Handler(osmium.SimpleHandler):
         self.add("r", a.orig_id(), kind, a.tags, pt.x, pt.y)
 
 
-MERGE_KINDS = {"bus": 40.0}  # kind -> merge radius in metres (same-name stops on both sides of a road)
+MERGE_KINDS = {"bus": 80.0}  # kind -> merge radius in metres (same-name stops on both sides of a road)
 
 
 def merge_duplicates(feats):
-    """Merge same-kind, same-name POIs closer than MERGE_KINDS[kind] metres into one point (midpoint).
-    The kept feature is the one with the most properties; ids of merged features are dropped."""
+    """Same-kind, same-name POIs closer than MERGE_KINDS[kind] metres (the two bus stops of a pair) get one
+    extra feature at their midpoint with "merged": 1 (drawn zoomed out, one symbol per stop name), while the
+    originals stay with "detail": 1 (drawn zoomed in, so the user can pick the right side). The merged feature
+    carries the properties of the member with the most tags. Returns (features, number of merged members)."""
     groups = defaultdict(list)
     rest = []
     for f in feats:
@@ -207,13 +209,17 @@ def merge_duplicates(feats):
             else:
                 clusters.append([f])
         for cl in clusters:
+            if len(cl) == 1:
+                rest.append(cl[0])
+                continue
+            merged += len(cl) - 1
             keep = max(cl, key=lambda f: (len(f["properties"]), f["properties"]["id"]))
-            if len(cl) > 1:
-                merged += len(cl) - 1
-                lon = sum(f["geometry"]["coordinates"][0] for f in cl) / len(cl)
-                lat = sum(f["geometry"]["coordinates"][1] for f in cl) / len(cl)
-                keep = {**keep, "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]}}
-            rest.append(keep)
+            lon = sum(f["geometry"]["coordinates"][0] for f in cl) / len(cl)
+            lat = sum(f["geometry"]["coordinates"][1] for f in cl) / len(cl)
+            rest.append({**keep, "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]},
+                         "properties": {**keep["properties"], "merged": 1}})
+            for f in cl:
+                rest.append({**f, "properties": {**f["properties"], "detail": 1}})
     return rest, merged
 
 
