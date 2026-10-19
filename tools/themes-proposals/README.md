@@ -12,3 +12,8 @@ Comparison (z11–16, Algund / Ulten / Meran 2000): https://claude.ai/artifact/S
 To adopt one: copy its tokens into `tools/themes/classic.json`, delete `high-contrast.json` (+ the theme switch in
 Settings / `StyleLoader`), add `"-edge"` to the route layer suffixes in `MapController.setOverlay`, run
 `python3 tools/make_style.py --all`, check FontGlyphsTest.
+
+## d-final (owner pick, 2026-10-19)
+`d-final.json` + `d-final-post.py` (post-processing of the generated style: own exact paths, track variant A,
+symbol layers, 40 % route band). Rationale and numbers: `docs/design/map-colour-analysis.md`. A/B/C above were
+rejected (no band edges, no white).

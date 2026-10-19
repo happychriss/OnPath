@@ -34,6 +34,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   Owner feedback: **no edges on the route band, ever** (too many lines) – only a slightly transparent band whose green
   contrasts with the ground. Colour matrix (every ground × 10 greens, ΔE per cell): https://claude.ai/artifact/EZPjuSSjivcLNjfdBASb8W
   – today's light green #c9f29b is ΔE 12 on forest (weakest); yellow-green #d6f25a / fresh #8fd94a ≈ 30–38.
+  **Owner pick:** band #168403 at 40 %, lighter ground, greenish hill shadow, no white, track variant A, symbols V1
+  (none for forest/meadow). Full analysis + steps to ship: `docs/design/map-colour-analysis.md`; renders
+  https://claude.ai/artifact/Ya7yRACjBEY6TtWePbqmJD
 - **Own position dot sometimes drawn under lines (owner, 2026-10-19 – start when the owner says so):** the blue dot
   must always be on top of every line (route, track, guide, arrows). Analysis: all app layers are added in
   `MapController.init` before `activateLocation()`, so the puck starts on top; the lazily added `search-mark` layers
