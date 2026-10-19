@@ -485,10 +485,10 @@ def labels():
 # Collision is on, so dense areas thin out; place/peak labels (above) win over POIs.
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
-    (1, 12, 14, ["hut", "bivouac", "viewpoint", "spring", "waterfall", "lift", "castle"]),
-    # food and bus stops from z14 (owner): where a hike starts, ends or eats
-    (2, 14, 15, ["water", "restaurant", "cafe", "bar", "fast_food", "shelter", "camping", "church", "ruins", "cave",
-                 "museum", "chapel"]),
+    # restaurants and cafés with huts and lifts from z12 (owner): a hike is planned around where you can eat
+    (1, 12, 14, ["hut", "bivouac", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
+    # bars / snack bars and bus stops from z14
+    (2, 14, 15, ["water", "bar", "fast_food", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
     (3, 15, 16, ["picnic", "toilets", "info", "bike_shop", "charging", "shop", "parking"]),
 ]
 # Bus stops have their own two layers (see pois()): zoomed out one symbol per stop name (the pair of stops on both
