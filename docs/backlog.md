@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Address search (city, street, number, country) offline + "nearby country first" ranking; new optional `addresses` data file (owner) – since 2026-10-19
-- [laptop] Map style: dotted unpaved tracks overlapping at crossings; meadow vs wet-meadow symbols (owner) – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -98,6 +97,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Map style (laptop, owner): track junctions clean (lane fill `track-own-lane` drawn after all track edges); ground symbols: no symbol on meadow/grass/fields, marsh tufts only on wetland, new orchard rings + vineyard stakes. Open: paved minor/service streets could get the same lane fix; track ending on a street may show a small hook.
 - Arrival / time-to-go robustness (laptop, owner field test 2026-10-19): plan edits followed at once (same route
   within 10 m / 1 % keeps the session), walking backwards raises the time and asks after 200 m, out-and-back picks
   the stretch by walking direction, "— not on route", arrival moves during breaks, "estimate paused", mid-route
