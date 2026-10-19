@@ -1,6 +1,6 @@
 # Map colours: how the OnPath route band and ground colours were derived
 
-Status: analysis done 2026-10-19 (owner + Claude, cloud session), chosen values not yet in the app.
+Status: analysis done 2026-10-19 (owner + Claude, cloud session); built into the app in **0.7.0** (map package with paths.geojson).
 Reproduce the numbers with `python3 tools/style_analysis/route_green.py`. The interactive matrix is
 [`route-green-matrix.html`](route-green-matrix.html) (open in a browser).
 
@@ -110,7 +110,7 @@ the real map renders and a field test have the last word. Symbols and relief tex
 | ![](img/before-ulten-15.jpg) | ![](img/after-ulten-15.jpg) |
 | ![](img/before-meran2000-14.jpg) | ![](img/after-meran2000-14.jpg) |
 
-## Still to do before it ships
+## Shipped in 0.7.0 (what was done)
 
 1. **Pipeline:** `extract_overlays.py` writes `paths.geojson` (every path and track, exact geometry, `k`, `sac`,
    `vis`, steps flag) and merges route pieces per kind into continuous lines.

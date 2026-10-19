@@ -230,7 +230,7 @@ fi
 done_step "$(size "$DATA/terrain.pmtiles")"
 
 # ---------------------------------------------------- 5. overlays: routes, trails, trail names
-step "overlays (routes.geojson, trails.geojson, ways.geojson, trailnames.geojson)"
+step "overlays (routes, trails, ways, lowways, trailnames, paths .geojson)"
 if up_to_date "$DATA/routes.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
    && up_to_date "$DATA/trails.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
    && { [ -s "$DATA/trailnames.geojson" ] || ! grep -q trailnames "$TOOLS/extract_overlays.py"; }; then

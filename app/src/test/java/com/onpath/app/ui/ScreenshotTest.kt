@@ -446,7 +446,7 @@ class ScreenshotTest {
                     listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("terrain.pmtiles", true, "Relief / elevation"),
                         DataFiles.Check("segments/*.rd5", false, "Routing data")),
                     "/storage/emulated/0/Android/data/com.onpath.app/files/onpath", "0.2.0 (build 2)", {},
-                    themes = listOf("classic", "high-contrast"),
+                    themes = listOf("classic"),
                 )
             }
         }

@@ -6,10 +6,23 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [laptop] Arrival/time-to-go robustness: plan edits follow automatically, walking backwards, out-and-back matching, no stale times (owner field test 2026-10-19) – since 2026-10-19
-- [cloud] **Map design 0.7.0** (owner pick 2026-10-19, docs/design/map-colour-analysis.md): one style, band #168403 40 %, paths/tracks from own data, symbols, theme switch removed. Files: tools/make_style.py, tools/extract_overlays.py, tools/themes/, assets/style, map/ (StyleLoader, OptionalSources, MapController), ui/SettingsScreen, data/AppSettings – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Map packages from the Hetzner server – design talk (owner, 2026-10-19, not decided yet):** owner leans to
+  *grid cells built on demand* (~40 × 27 km zoom-10 cells, server only runs while building, ~5–8 min for a new cell,
+  cached for everyone after; phone joins cells without seams). Also discussed: monthly big build + phone cuts its own
+  area; future payment by region and month (downloaded maps keep working after the month). Agreed UX so far:
+  - Overview map shipped in the app → never a blank screen in a new place.
+  - **Trigger = setting a point, not looking:** search only moves the map and shows the orange ring (as today);
+    scrolling only looks. The detailed map for an area is fetched when the user *sets a point there* (hold on the
+    map / hold on the ring → Start here / Go here) – same gestures as today, one rule: "the map comes where you plan".
+    The route corridor's cells follow once the route is calculated.
+  - Persistent card in the plan sheet (no self-dismissing messages): "Preparing map for this area – about 6 min",
+    progress per cell, own cell first; straight-line route until routing data is there, then it recalculates.
+  - **Explain it to the user (owner: "we need to explain it later"):** the overview map shows a hint where no
+    detailed map exists ("Overview only – set a point and the detailed map follows"); first-run / help page text;
+    the card says *why* it is downloading ("because you planned here").
 - **Arrival forecast jumps after plan edits during a tour (owner, 2026-10-19 – to think through, then build):**
   owner navigated, arrival crept 12:45 → 13:15 (ok: slower / standing), then in Plan: round trip, Undo, back to
   Navigate → 12:45 again. Code today: every change of the followed line (Continue navigation with an edited plan,
@@ -22,14 +35,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
   why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
   `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
-- **One compass for both modes (owner idea, 2026-10-19 – proposal, waiting for the owner's go):** three states,
-  same in Plan and Navigate: *turned by hand* (needle shows the angle) → tap = *north up* → tap = *walking direction up*
-  (centres on the position) → tap = north up … Today: Plan has only "turned / tap = north", Navigate only the
-  heading-up ⇄ north toggle, and leaving Navigate always resets north. Open points: no direction (no GPS, no
-  compass, standing) → skip the third state with a short hint; Plan editing while the map turns → tapping a point or
-  panning freezes the angle (follow ends, map stays where it is); no tilt anywhere (NAV_TILT_DEG = 0, tilt gestures off); remember the last state per
-  mode; optional: higher rotate threshold so pinch-zoom does not turn the map by accident.
-- **One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
+- **Overlays as PMTiles (follow-up of 0.7.0):** paths.geojson (19 MB), routes, trails, ways, lowways, trailnames are
+  GeoJSON read fully into memory (~50 MB together). Pack them into one vector PMTiles (tippecanoe or Planetiler
+  custom profile) – several times smaller, faster start. Then lowways can go (paths covers low zooms).
+- **(done 0.7.0) One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
   paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
   `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
   `make_style.py` already takes the new tokens (`route.band.width`, `route.band.edge.*`, `lowways.*.width`).
@@ -39,20 +48,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   **Owner pick:** band #168403 at 40 %, lighter ground, greenish hill shadow, no white, track variant A, symbols V1
   (none for forest/meadow). Full analysis + steps to ship: `docs/design/map-colour-analysis.md`; renders
   https://claude.ai/artifact/Ya7yRACjBEY6TtWePbqmJD
-- **Own position dot sometimes drawn under lines (owner, 2026-10-19 – start when the owner says so):** the blue dot
-  must always be on top of every line (route, track, guide, arrows). Analysis: all app layers are added in
-  `MapController.init` before `activateLocation()`, so the puck starts on top; the lazily added `search-mark` layers
-  go above it, and if MapLibre's LocationComponent re-adds its layers on a style reload before our layers they end
-  up below. Fix idea: add every later layer with `addLayerBelow(<lowest location layer>)` and/or give the component
-  `layerAbove(<top app layer>)`; check with a screenshot from the owner which lines cover it.
-- **Navigate: jump to own position when the phone is opened again (owner todo, 2026-10-19 – start when the owner
-  says so):** after the phone was in the pocket (screen off / app in background, map panned away), coming back in
-  Navigate re-centres the map on the current position (follow mode back on, heading-up as set) – no hunting for the
-  blue dot. Likely `onResume` / lifecycle ON_START in Navigate → camera to the latest fix (stale fix: still jump, the
-  card shows its age).
-- **Elevation profile scrub in Navigate (owner todo, 2026-10-19 – start when the owner says so):** dragging a finger
-  along the elevation profile ("to go" card → profile) moves a dot along the followed route on the map, so you see
-  where on the way that point of the profile is (Plan's profile already has `highlight`; same for Navigate).
 - **Map todo (owner, 2026-10-19 – start only when the owner says so):** (1) always show a little contour detail
   (every zoom, also with hillshade); (2) more contrast between the green land types + Komoot-like shrub
   ("Sträucher") symbols; (3) trail numbers like the AVS numbers in South Tyrol must also appear in other

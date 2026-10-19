@@ -36,5 +36,19 @@ class OptionalSourcesTest {
 
     @Test fun allPresentReturnsInputUnchanged() = assertEquals(style, OptionalSources.strip(style) { true })
 
+    private val withFallback = """
+        {"version":8,"sources":{
+          "base":{"type":"vector","url":"pmtiles://file:///d/base.pmtiles"},
+          "paths":{"type":"geojson","data":"file:///d/paths.geojson"}},
+         "layers":[{"id":"path-base","type":"line","source":"base","metadata":{"onpath:fallback-for":"paths"}},
+          {"id":"paths-own","type":"line","source":"paths"},
+          {"id":"roads","type":"line","source":"base"}]}
+    """.trimIndent()
+
+    @Test fun fallbackLayerOnlyWhenItsSourceIsMissing() {
+        assertEquals(listOf("paths-own", "roads"), ids(OptionalSources.strip(withFallback) { true }))
+        assertEquals(listOf("path-base", "roads"), ids(OptionalSources.strip(withFallback) { it == "/d/base.pmtiles" }))
+    }
+
     @Test fun brokenJsonIsReturnedAsIs() = assertEquals("{nope", OptionalSources.strip("{nope") { false })
 }
