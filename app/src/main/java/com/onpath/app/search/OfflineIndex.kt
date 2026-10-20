@@ -40,7 +40,7 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
         )
     }
 
-    fun search(q: SearchQuery): List<SearchHit> = SearchRanking.rank(entries, q)
+    fun search(q: SearchQuery, addresses: List<AddressHit> = emptyList()): List<SearchHit> = SearchRanking.rank(entries, q, addresses)
 
     companion object {
         const val POIS = "pois.geojson"
@@ -228,7 +228,13 @@ object SearchRanking {
     /** Distance penalty in score points: 0 next to you, ~18 at 5 km, ~30 at 20 km. */
     fun distancePenalty(m: Double) = 10.0 * ln(1.0 + m / 1000.0)
 
-    fun rank(entries: List<OfflineIndex.Entry>, q: SearchQuery): List<SearchHit> {
+    /** An offline address hit as a [SearchHit] (same score scale as names: text, kind boost, distance). */
+    fun addressHit(a: AddressHit, q: SearchQuery): SearchHit {
+        val d = Geo.distance(q.refLat, q.refLon, a.place.lat, a.place.lon)
+        return SearchHit(a.place, 100.0 * a.text + SearchKinds.boost(a.place.kind, a.place.sub) - distancePenalty(d), a.tier, d, false)
+    }
+
+    fun rank(entries: List<OfflineIndex.Entry>, q: SearchQuery, addresses: List<AddressHit> = emptyList()): List<SearchHit> {
         val qTokens = SearchText.tokens(q.text)
         if (qTokens.isEmpty() && q.category == null) return emptyList()
         val qFull = qTokens.joinToString(" ")
@@ -244,6 +250,7 @@ object SearchRanking {
             val score = 100.0 * text + SearchKinds.boost(e.place.kind, e.place.sub) - distancePenalty(d)
             cand += SearchHit(e.place, score, tier, d, false)
         }
+        if (kinds == null) addresses.forEach { cand += addressHit(it, q) }
         // Best few hundred by text, then the (more expensive) route check.
         val top = cand.sortedWith(compareByDescending<SearchHit> { it.tier }.thenByDescending { it.score }).take(400)
         val line = q.route?.takeIf { it.size >= 2 }?.let { simplify(it, 400) }

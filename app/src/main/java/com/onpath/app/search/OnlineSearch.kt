@@ -33,7 +33,9 @@ class PhotonProvider(
     fun url(query: String, lat: Double, lon: Double, limit: Int): String {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val f = { v: Double -> String.format(Locale.ROOT, "%.5f", v) }
-        return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&limit=$limit&lang=de"
+        // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
+        // with higher importance win; a stronger bias dropped towns named in the query (tested 2026-10-19).
+        return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
     }
 
     override fun search(query: String, lat: Double, lon: Double, limit: Int): List<Place> {
@@ -82,7 +84,8 @@ object PhotonParser {
             val address = addressLine(name, kind, street, s("postcode"), s("city") ?: s("town") ?: s("village"),
                 s("district"), s("county"), s("state"), s("country"))
             val id = "o:" + (s("osm_type") ?: "?") + (s("osm_id") ?: "${lat},${lon}")
-            out += Place(id, name, kind, lat, lon, ele = null, sub = sub, address = address, source = Place.Source.ONLINE)
+            out += Place(id, name, kind, lat, lon, ele = null, sub = sub, address = address, source = Place.Source.ONLINE,
+                cc = s("countrycode")?.uppercase(), town = s("city") ?: s("town") ?: s("village"))
         }
         return dedupe(out)
     }
@@ -163,10 +166,38 @@ object PhotonParser {
         return parts.filter { it != name }.distinct().joinToString(", ").ifEmpty { country?.takeIf { it != name } }
     }
 
-    /** Same normalised name within 100 m: keep the first. */
+    /** Same normalised name within 100 m, or pieces of one street (same name and town): keep the first. */
     fun dedupe(list: List<Place>): List<Place> {
         val out = ArrayList<Place>()
-        for (p in list) if (out.none { SearchMerge.samePlace(it, p) }) out += p
+        for (p in list) if (out.none { SearchMerge.samePlace(it, p) || sameStreet(it, p) }) out += p
+        return out
+    }
+
+    private fun sameStreet(a: Place, b: Place) = a.kind == "street" && b.kind == "street" && a.town == b.town &&
+        SearchText.normalize(a.name) == SearchText.normalize(b.name) && Geo.distance(a.lat, a.lon, b.lat, b.lon) < 5000
+}
+
+/**
+ * Re-ranks online results (pure, unit-tested). Photon weighs importance against distance and ignores the town
+ * typed in the query ("via Roma 3 Bolzano" from Meran gave Meran's Romstraße first). Here: a result in a town
+ * named in the query wins, then the user's country, then distance; Photon's own order breaks ties.
+ */
+object OnlineRanking {
+    fun rank(results: List<Place>, refLat: Double, refLon: Double, userCc: String?, queryTowns: Set<String>): List<Place> =
+        results.withIndex().sortedByDescending { (i, p) ->
+            val d = Geo.distance(refLat, refLon, p.lat, p.lon)
+            var s = -1.5 * i - SearchRanking.distancePenalty(d)
+            if (userCc != null && p.cc == userCc) s += 15.0
+            if (p.town != null && SearchText.normalize(p.town) in queryTowns) s += 30.0
+            s
+        }.map { it.value }
+
+    /** Town names a query may mean: its words and word pairs, plus all language variants of known towns. */
+    fun queryTowns(text: String, known: List<AddressFile.Town>): Set<String> {
+        val t = SearchText.tokens(text)
+        val out = HashSet<String>(t)
+        for (i in 0 until t.size - 1) out += t[i] + " " + t[i + 1]
+        for (k in known) out += k.norms
         return out
     }
 }
@@ -184,7 +215,14 @@ object SearchMerge {
 
     /** Online results not already among the offline ones (the offline copy wins: it has more details). */
     fun onlineExtras(offline: List<Place>, online: List<Place>): List<Place> =
-        online.filter { o -> offline.none { samePlace(it, o) } }
+        online.filter { o -> offline.none { samePlace(it, o) || sameStreet(it, o) } }
+
+    /** An offline street (point anywhere on it) and Photon's piece of it: same name, under 2 km apart. */
+    private fun sameStreet(off: Place, on: Place): Boolean {
+        if (on.kind != "street" || off.kind != "street" || Geo.distance(off.lat, off.lon, on.lat, on.lon) >= 2000.0) return false
+        val n = SearchText.normalize(on.name)
+        return off.alt.any { SearchText.normalize(it) == n }
+    }
 }
 
 /** Google Maps text search as a link-out (nothing from Google is fetched or stored). */
