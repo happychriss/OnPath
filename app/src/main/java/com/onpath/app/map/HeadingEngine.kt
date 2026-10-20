@@ -167,6 +167,8 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
 
     override fun addCompassListener(l: CompassListener) {
         listeners += l
+        // a (re)added listener gets the current direction at once – it must not wait for the next change
+        filter.heading?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
         if (!registered && sensor == null && !noSensorReported) {
             noSensorReported = true
             Problems.info("sensor", "No rotation sensor – map heading follows the GPS bearing only")
@@ -203,8 +205,14 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         } catch (e: Exception) { Problems.warn("sensor", "Movement direction not updated", e) }
         if (listeners.isEmpty()) return
         val h = filter.onGps(if (loc.hasBearing()) loc.bearing else null, if (loc.hasSpeed()) loc.speed else null, now())
-        if (h != null) emit(h)
+        // Every fix passes the current direction on, changed or not (field test 2026-10-20: after Plan → Navigate the
+        // camera stayed north up until the direction changed by 3°, the deadband – walking straight it never did).
+        val cur = h ?: filter.heading
+        if (cur != null) emit(cur)
     }
+
+    /** Passes the current direction on again (camera mode changed: the new tracking starts from it). */
+    fun reemit() { filter.heading?.let { if (listeners.isNotEmpty()) emit(it) } }
 
     /** Direction of the followed route ahead (Navigate, on the route); null = none (compass / GPS again). */
     fun setRoute(bearingDeg: Double?) {
