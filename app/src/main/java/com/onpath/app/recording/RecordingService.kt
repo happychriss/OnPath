@@ -290,7 +290,7 @@ class RecordingService : Service() {
                 if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
                 pausedBefore = paused
                 lastTick = now
-                // the lock times out after 12 h: long days go on; paused = no GPS, no lock (battery audit)
+                // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery audit, 0.7.5)
                 if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (now - lastStats >= 10_000) {
