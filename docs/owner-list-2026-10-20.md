@@ -36,6 +36,7 @@ linked here.
 | 0.7.15 | Dot like Google Maps: cone shows where you face (view heading), map turns by the route (map heading) – camera turned by the app; Google Maps share checked against the address (> 3 km → address) | **test**: turn 90° on the route (only the cone turns); free look with two fingers; share Gelateria Costantin |
 | 0.7.16 | Bike profiles: wrong way on one-ways ×100 (MTB 1.9 km → 23 m in 56 Meran routes, `tools/routing/jvm-test/OnewayTest.kt`); arrow instead of cone; no "Check for updates" in ☰ | **test**: bike route through Meran centre |
 | 0.7.17 | Green ways like Komoot by activity (hiking: footways + pedestrian zones; bike: cycleways + bike-allowed footways) from the base map; pedestrian zones drawn again (missing since 0.7.0) | **test**: Meran centre, switch hike ⇄ bike |
+| 0.7.18 | Compass in Navigate switched back after seconds: mode-mismatch "gesture" check removed; every stop of following logged with its reason in Diagnostics | **test**: tap compass, wait 30 s; if it flips back, look at Diagnostics |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
