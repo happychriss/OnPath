@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Battery audit (Navigate first): GPS, sensors, wake locks, map rendering, screen-off behaviour – audit + proposal, no behaviour change before owner OK – since 2026-10-20
 - [laptop] Grid cells phase 1 on zo: builder Docker image (`tools/cells/`), osmium cut, 2 neighbouring cells, timing + seam check – since 2026-10-20
   waiting for the owner's field test, then merge – since 2026-10-18
 
