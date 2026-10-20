@@ -873,6 +873,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
             if (mode != AppMode.PLAN) enter(AppMode.PLAN)
             var p = shared
+            var fromPage = false
             if (!p.hasPoint && p.link != null) {
                 val link = p.link!!
                 val r = withContext(Dispatchers.IO) {
@@ -880,11 +881,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))).resolve(link)
                 }
                 r.place?.let { rp -> p = p.copy(lat = rp.lat, lon = rp.lon, name = p.name ?: rp.name, query = p.query ?: rp.query) }
+                fromPage = r.fromPage
                 if (!p.hasPoint) Problems.info("search", "Shared map link gave no position (${r.reason}); searching the address instead")
             }
-            val lat = p.lat; val lon = p.lon
+            var lat = p.lat; var lon = p.lon
+            // A point read from the downloaded Google page (the link itself had none) is checked against the address
+            // in the link: the page can carry other places' markers (field test 2026-10-20: Gelateria Costantin in
+            // Meran landed far away). More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
+            if (fromPage && lat != null && lon != null && p.searchTexts().isNotEmpty()) {
+                val byAddress = try { search.findOne(p.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                    Problems.info("search", "Address check for a shared place failed", e); null
+                }
+                if (byAddress != null) {
+                    val off = Geo.distance(lat, lon, byAddress.first.lat, byAddress.first.lon)
+                    if (off > SHARED_PAGE_MAX_OFF_M) {
+                        Problems.warn("search", "Shared place: the map page pointed ${(off / 1000).toInt()} km away from the " +
+                            "address – using the address (${byAddress.second.name.lowercase()} search)")
+                        lat = byAddress.first.lat; lon = byAddress.first.lon
+                    }
+                }
+            }
             if (lat != null && lon != null) {
-                showSharedPlace(com.onpath.app.search.Place("shared:$lat,$lon", p.name, "other", lat, lon, address = p.address))
+                Problems.info("search", "Shared place at %.5f, %.5f (%s)".format(java.util.Locale.ROOT, lat, lon,
+                    if (fromPage) "from the map page" else if (shared.hasPoint) "in the shared text / link" else "from the resolved link"))
+                // "Gelateria Costantin, Passeggiata …, Italien" (Google's place path) → the name only on the ring
+                val shownName = p.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: p.name
+                showSharedPlace(com.onpath.app.search.Place("shared:$lat,$lon", shownName, "other", lat, lon, address = p.address))
                 return@launch
             }
             val found = search.findOne(p.searchTexts())
@@ -1835,5 +1857,7 @@ private const val FAR_SNAP_M = 150.0
 
 /** Navigate profile scrubbing: how long the dot and the map stay at the spot after the finger leaves (ms). */
 private const val SCRUB_HOLD_MS = 4000L
+/** A shared place's point from the Google page may be this far from its address before the address wins. */
+private const val SHARED_PAGE_MAX_OFF_M = 3_000.0
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
 private const val FREE_LOOK_BACK_M = 25.0
