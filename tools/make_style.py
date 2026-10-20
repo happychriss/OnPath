@@ -55,7 +55,8 @@ def landcover():
         layer(id_=f"landcover-{cls}", type="fill", source="base", **{"source-layer": "landcover"},
               minzoom=minz, filter=["==", ["get", "class"], cls],
               paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
-    # Ground symbols (sprite "pattern-*", tools/make_sprite.py) from z14, very light: special ground at a glance.
+    # Ground symbols (sprite "pattern-*", tools/make_sprite.py) only close in (GROUND_SYMBOLS_ZOOM, the last two zoom
+    # steps before the app's max zoom 18 – owner 2026-10-20: below that plain landcover colour), very light.
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
     # OpenMapTiles classes / subclasses (Planetiler): grass = meadow, grassland, grass, scrub, heath, park … → plain colour;
     # wetland = natural=wetland (subclasses wetland, marsh, wet_meadow, swamp, bog, reedbed, …) → marsh tufts;
@@ -65,8 +66,8 @@ def landcover():
         flt = ["==", ["get", "class"], cls]
         if sub:
             flt = ["all", flt, ["==", ["get", "subclass"], sub]]
-        layer(id_=f"landcover-{pid}-pattern", type="fill", source="base", **{"source-layer": "landcover"}, minzoom=14,
-              filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
+        layer(id_=f"landcover-{pid}-pattern", type="fill", source="base", **{"source-layer": "landcover"},
+              minzoom=GROUND_SYMBOLS_ZOOM, filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
           paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),
@@ -194,10 +195,15 @@ def track_edges():
           paint={"line-color": T("street.edge.color"), "line-width": Z("street.edge.width"), "line-gap-width": Z("street.minor.gap")})
     layer(id_="track-own-single", type="line", **own, maxzoom=TRACK_DOTS_ZOOM, filter=track, layout={"line-join": "round"},
           paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
+    # Dotted edges: butt caps + miter joins, dots = short dashes (theme track.dash.*, square). MapLibre gives every
+    # vertex of a round join fan and of a round cap the same distance along the line, so with round caps / joins
+    # the whole join arc (outer side of every bend) and the half ring at each way end took one dash value – nearly
+    # always "on" with dots that close together – and drew solid brown (owner 2026-10-20). Butt caps end the edges
+    # flat under the lane's round cap; miter joins add no fan (sharp hairpins fall back to a small bevel).
     for sid, f in (("compact", ["==", tt, 1]), ("medium", ["any", ["==", tt, 2], ["==", tt, 0]]),
                    ("loose", ["==", tt, 3]), ("soft", [">=", tt, 4])):
         layer(id_=f"track-own-{sid}", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=["all", track, f],
-              layout={"line-cap": "round", "line-join": "round"},
+              layout={"line-cap": "butt", "line-join": "miter"},
               paint={"line-color": T("track.color"), "line-width": Z("track.dot.width"), "line-gap-width": Z("track.gap"),
                      "line-dasharray": T(f"track.dash.{sid}")})
 
@@ -555,6 +561,7 @@ POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_
 POI_KINDS = set(POI_PRIO)
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
+GROUND_SYMBOLS_ZOOM = 16  # ground symbol patterns only from here (app max zoom 18: the last two zoom steps)
 TRACK_DOTS_ZOOM = 14.5  # from here a track is two dotted edges (dot spacing = surface), below one dashed line
 
 
