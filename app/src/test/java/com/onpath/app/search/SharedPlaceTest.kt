@@ -206,4 +206,18 @@ class SharedPlaceTest {
         val notFound = ShortLinkResolver({ HttpHop(404, null, null) }).resolve("https://maps.app.goo.gl/nope")
         assertNull(notFound.place)
     }
+
+    @Test fun googlePlacePathIsSplitIntoNameAndAddress() {
+        val p = SharedPlaceParser.fromUrl("https://www.google.com/maps/place/PRIMUS+Garden+Bistrot,+Via+Goethe,+28,+39012+Merano+BZ,+Italien/data=!4m2!3m1!1s0x4782b9baa2ea61cb:0x587c29ffbf318d91!18m1!1e1?entry=gps")!!
+        org.junit.Assert.assertEquals("PRIMUS Garden Bistrot", p.name)
+        org.junit.Assert.assertEquals("Via Goethe 28, 39012 Merano", p.searchTexts().first().replace(", 28", " 28"))
+        val g = SharedPlaceParser.fromUrl("https://www.google.com/maps/place/Gelateria+Costantin,+Passeggiata+Lungo+Passirio,+54,+39012+Merano+BZ,+Italien/data=!4m2")!!
+        org.junit.Assert.assertEquals("Gelateria Costantin", g.name)
+        org.junit.Assert.assertTrue(g.searchTexts().first().startsWith("Passeggiata Lungo Passirio"))
+    }
+
+    @Test fun plainNamesStayWhole() {
+        org.junit.Assert.assertEquals("Hotel Aurora" to null, SharedPlaceParser.splitPlace("Hotel Aurora"))
+        org.junit.Assert.assertEquals("Bar, Café" to null, SharedPlaceParser.splitPlace("Bar, Café"))
+    }
 }
