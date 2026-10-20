@@ -24,11 +24,12 @@ class DataFiles(context: Context) {
         return listOf(
             f("base.pmtiles", "Base map"),
             f("terrain.pmtiles", "Relief / elevation"),
-            f("routes.geojson", "Marked route networks"),
-            f("trails.geojson", "Trail difficulty"),
-            Check("segments/*.rd5", rd5.isNotEmpty(), "Routing data"),
-        )
+        ) + overlayChecks { name -> File(dir, name).let { it.isFile && it.length() > 0 } } +
+            Check("segments/*.rd5", rd5.isNotEmpty(), "Routing data")
     }
+
+    /** Map package format of the data folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
+    fun format(): Int = formatOf { File(dir, it).isFile }
 
     fun allPresent() = check().all { it.present }
 
@@ -74,6 +75,26 @@ class DataFiles(context: Context) {
     }
 
     companion object {
+        /** Format 2 (docs/design/map-data-size.md): routes, trails, paths, ways, trail names as one vector tile file. */
+        const val OVERLAYS = "overlays.pmtiles"
+
+        /** 2 when [OVERLAYS] exists (it wins over leftover format-1 GeoJSON files), else 1. Pure, unit-tested. */
+        fun formatOf(exists: (String) -> Boolean): Int = if (exists(OVERLAYS)) 2 else 1
+
+        /**
+         * Required overlay data: either the format-2 [OVERLAYS] file or the format-1 pair routes.geojson + trails.geojson.
+         * With neither, a format-1 pair partly present lists that pair (what is missing); an empty folder asks for
+         * [OVERLAYS] (what new packages contain). Pure, unit-tested.
+         */
+        fun overlayChecks(present: (String) -> Boolean): List<Check> = when {
+            present(OVERLAYS) -> listOf(Check(OVERLAYS, true, "Trails and route networks"))
+            present("routes.geojson") || present("trails.geojson") -> listOf(
+                Check("routes.geojson", present("routes.geojson"), "Marked route networks"),
+                Check("trails.geojson", present("trails.geojson"), "Trail difficulty"),
+            )
+            else -> listOf(Check(OVERLAYS, false, "Trails and route networks"))
+        }
+
         /** Written by tools/build_region.sh into the package: region, bbox, OSM date, size of every file. */
         const val PACKAGE_FILE = "package.json"
         const val ADB_COMMAND = "adb push onpath-data/. /sdcard/Android/data/com.onpath.app/files/onpath/"
