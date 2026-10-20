@@ -1352,12 +1352,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob?.cancel()
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
-            if (started) enter(AppMode.NAVIGATE)
+            if (started) { enter(AppMode.NAVIGATE); maybeAskBackground() }
             else if (message == null) message = "Recording did not start. Check the location permission (precise) and notifications, then try again."
         }
     }
 
     private var startJob: Job? = null
+
+    /** First tour: offer "Allow all the time" once, so a restart / update does not stop recording (0.7.8). */
+    var askBackground by mutableStateOf(false)
+
+    private fun maybeAskBackground() {
+        if (android.os.Build.VERSION.SDK_INT < 29 || prefs.backgroundAsked) return
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(getApplication(),
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted) askBackground = true
+    }
+
+    fun backgroundAnswered() { prefs.backgroundAsked = true; askBackground = false }
     /** How long Start waits for the service's first state before saying that recording did not start. */
     private val START_TIMEOUT_MS = 6_000L
 

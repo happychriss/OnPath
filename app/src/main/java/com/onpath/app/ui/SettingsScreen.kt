@@ -238,6 +238,19 @@ fun SettingsScreen(
                             androidx.compose.material3.TextButton(onClick = onAppSettings,
                                 modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
                         }
+                        if (android.os.Build.VERSION.SDK_INT >= 29) {
+                            val ctx = androidx.compose.ui.platform.LocalContext.current
+                            val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
+                                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (bg) "A tour continues by itself after a restart or update (location: Allow all the time)."
+                                    else "After a restart or update you tap Continue. To continue by itself: location → “Allow all the time”.",
+                                    fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f))
+                                if (!bg) androidx.compose.material3.TextButton(onClick = onAppSettings,
+                                    modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
+                            }
+                        }
                         // Navigate orientation (navigation agent): heading-up default, north-up option.
                         Text("Map direction while navigating", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
