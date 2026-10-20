@@ -183,8 +183,11 @@ class AddressIndex(val files: List<AddressFile>, val signature: String = "") : C
 
 /** [AddressDb] on Android's SQLite, read-only. */
 class AndroidAddressDb(file: File) : AddressDb {
+    // Own error handler: Android's default one DELETES a database file it finds corrupt – a map data file must stay
+    // (the query fails, AddressIndex skips the file and reports it).
     private val db = android.database.sqlite.SQLiteDatabase.openDatabase(file.path, null,
-        android.database.sqlite.SQLiteDatabase.OPEN_READONLY or android.database.sqlite.SQLiteDatabase.NO_LOCALIZED_COLLATORS)
+        android.database.sqlite.SQLiteDatabase.OPEN_READONLY or android.database.sqlite.SQLiteDatabase.NO_LOCALIZED_COLLATORS,
+        { Problems.warn("search", "Offline address file ${file.name} is corrupt; not deleted, no addresses from it") })
 
     override fun rows(sql: String, vararg args: String): List<Array<Any?>> = db.rawQuery(sql, args).use { c ->
         val out = ArrayList<Array<Any?>>()

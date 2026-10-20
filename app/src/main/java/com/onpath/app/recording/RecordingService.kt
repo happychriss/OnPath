@@ -314,7 +314,10 @@ class RecordingService : Service() {
         lastGoodFixElapsed = nowEl
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
-        checkOffRoute(p, loc.accuracy.toDouble(), nowEl)
+        // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
+        try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
+            Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
+        }
         try {
             // position on the line (null = not on the route) and whether it may be learned (forwards, on the line)
             val det = navigator?.detector

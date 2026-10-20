@@ -1490,6 +1490,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun followEditedPlan() {
         val r = route ?: return
         if (recState.value == null || followLine == null || followIsTrack) return
+        if (r.points.size < 2) return // nothing to follow (e.g. all points on one spot): keep the running line
         val orig = followOriginal
         if (planFollowed(r.points)) return
         if (orig != null && NavLine.sameRoute(r.points, orig)) { planBaseline = r.points; return }
