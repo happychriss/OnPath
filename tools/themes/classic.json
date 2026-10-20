@@ -172,6 +172,10 @@
  "track.low.color": "#5e4228",
  "track.low.width.z12": 0.9,
  "track.low.width.z13": 1.2,
+ "greenway.color": "#2e9e3a",
+ "greenway.width.z13": 0.9,
+ "greenway.width.z16": 2.2,
+ "greenway.width.z18": 3.8,
  "cycleway.color": "#2f74a8",
  "cycleway.dash": [
   3,

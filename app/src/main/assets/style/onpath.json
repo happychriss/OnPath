@@ -4336,6 +4336,295 @@
    }
   },
   {
+   "id": "pedestrian-line",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "==",
+     [
+      "get",
+      "subclass"
+     ],
+     "pedestrian"
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": "#33251a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.9,
+     16,
+     2.2,
+     18,
+     3.8
+    ]
+   }
+  },
+  {
+   "id": "greenway-foot",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "any",
+     [
+      "all",
+      [
+       "in",
+       [
+        "get",
+        "subclass"
+       ],
+       [
+        "literal",
+        [
+         "footway",
+         "pedestrian"
+        ]
+       ]
+      ],
+      [
+       "!=",
+       [
+        "coalesce",
+        [
+         "get",
+         "foot"
+        ],
+        ""
+       ],
+       "no"
+      ]
+     ],
+     [
+      "all",
+      [
+       "in",
+       [
+        "get",
+        "subclass"
+       ],
+       [
+        "literal",
+        [
+         "cycleway",
+         "path"
+        ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "foot"
+        ],
+        ""
+       ],
+       "designated"
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": "#2e9e3a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.9,
+     16,
+     2.2,
+     18,
+     3.8
+    ]
+   }
+  },
+  {
+   "id": "greenway-bike",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "any",
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "subclass"
+       ],
+       "cycleway"
+      ],
+      [
+       "!=",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       "no"
+      ]
+     ],
+     [
+      "all",
+      [
+       "in",
+       [
+        "get",
+        "subclass"
+       ],
+       [
+        "literal",
+        [
+         "footway",
+         "pedestrian",
+         "path"
+        ]
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "yes",
+         "designated"
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#2e9e3a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.9,
+     16,
+     2.2,
+     18,
+     3.8
+    ]
+   }
+  },
+  {
    "id": "trails-low",
    "type": "line",
    "source": "lowways",

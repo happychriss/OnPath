@@ -126,3 +126,13 @@ Used for every map decision on 2026-10-19 (renders in `docs/design/`):
   0.8/1.0, loose 0.8/1.9, soft 0.8/3.3 – same period as the old round dots, so surface spacing reads the same). On the
   inner side of a tight hairpin the dots still crowd (the pattern is measured along the centre line); that is MapLibre's
   dash model and only a few pixels long.
+
+## Green ways (2026-10-20, owner: Komoot-like "good for walking / riding")
+`green_ways()` in `tools/make_style.py`: thin green line (`greenway.color` #2e9e3a, `greenway.width.*`) from the base
+map's `transportation` layer (class `path` + `subclass` + `foot` / `bicycle`), so it works with existing packages.
+`greenway-foot` (hiking): footway / pedestrian unless foot=no, cycleway / path with foot=designated. `greenway-bike`
+(bike profiles): cycleway unless bicycle=no, footway / pedestrian / path with bicycle=yes|designated. Switched by
+`MapController.setOverlay`. `pedestrian-line` draws pedestrian zones as a plain path for every activity (they were
+lost in 0.7.0: `paths.geojson` has no highway=pedestrian, the base path layer is fallback-only). Render:
+`docs/design/img/greenways-meran-z15.png` (before · hiking · bike). Not yet: cycle lanes on roads (`cycleway:*`,
+not in the base map – pipeline), oneway arrows on the map.
