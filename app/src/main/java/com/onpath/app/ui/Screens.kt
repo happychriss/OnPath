@@ -235,6 +235,8 @@ fun RoutesScreen(
     onExport: (Tour) -> Unit,
     onDelete: (Tour) -> Unit,
     navigating: Boolean = false,
+    /** The tour being recorded right now: it cannot be deleted (that would lose the track). */
+    recordingId: Long = -1L,
     onRename: (Tour, String) -> Unit = { _, _ -> },
     initialConfirmDelete: Tour? = null,
     initialRename: Tour? = null,
@@ -261,7 +263,8 @@ fun RoutesScreen(
                     items(tours, key = { it.id }) { t ->
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
                         TourCard(t, onOpen = if (openable) ({ onOpen(t) }) else null,
-                            onRename = { rename = t }, onExport = { onExport(t) }, onDelete = { confirmDelete = t })
+                            onRename = { rename = t }, onExport = { onExport(t) },
+                            onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }))
                     }
                 }
             }
@@ -305,7 +308,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 
 @Composable
 private fun TourCard(
-    t: Tour, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit,
+    t: Tour, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -324,16 +327,17 @@ private fun TourCard(
                 Text("${t.kind.label} · " + SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t.createdMs)),
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
-                if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onDelete == null) Text("Recording now", fontSize = 12.sp, color = OnPathColors.Rec)
+                else if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete)
         }
     }
 }
 
-/** ⋮ per item in My routes: Rename, Export GPX, Delete (asks first). */
+/** ⋮ per item in My routes: Rename, Export GPX, Delete (asks first; not for the tour being recorded). */
 @Composable
-private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
@@ -345,7 +349,7 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
                 onClick = run(onRename), modifier = Modifier.heightIn(min = 48.dp))
             DropdownMenuItem(text = { Text("Export GPX") }, leadingIcon = { Icon(Icons.Filled.Share, null) },
                 onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
-            DropdownMenuItem(text = { Text("Delete", color = OnPathColors.Bad) },
+            if (onDelete != null) DropdownMenuItem(text = { Text("Delete", color = OnPathColors.Bad) },
                 leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
                 onClick = run(onDelete), modifier = Modifier.heightIn(min = 48.dp))
         }

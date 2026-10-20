@@ -1,0 +1,68 @@
+package com.onpath.app.recording
+
+import android.Manifest
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.onpath.app.MainActivity
+import com.onpath.app.R
+import com.onpath.app.data.TourDb
+import com.onpath.app.debug.Problems
+
+/**
+ * A tour was still recording when the phone restarted or OnPath was updated (owner 2026-10-20: ending a recording
+ * must never happen by accident). With "Allow all the time" location the recording simply continues; otherwise
+ * Android does not let it start from here, so a notification says so and opens OnPath (which offers Continue).
+ * The track so far is in the database either way. Never throws.
+ */
+class TourInterruptedReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        val pending = goAsync()
+        Thread {
+            try { handle(context.applicationContext, intent.action == Intent.ACTION_BOOT_COMPLETED) } catch (e: Exception) {
+                Problems.error("recording", "Interrupted tour could not be checked after restart / update", e)
+            } finally { pending.finish() }
+        }.start()
+    }
+
+    private fun handle(app: Context, boot: Boolean) {
+        if (RecordingService.state.value != null) return
+        val tour = TourDb.get(app).findActiveRecording() ?: return
+        val background = ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        if (background) {
+            try {
+                RecordingService.send(app, RecordingService.ACTION_START) { putExtra(RecordingService.EXTRA_CONTINUE_ID, tour.id) }
+                Problems.info("recording", "Recording of '${tour.name}' continued after ${if (boot) "a restart" else "an update"}")
+                return
+            } catch (e: Exception) {
+                Problems.warn("recording", "Recording could not continue by itself after ${if (boot) "a restart" else "an update"}", e)
+            }
+        }
+        RecordingService.createChannels(app)
+        val open = PendingIntent.getActivity(app, 0, Intent(app, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(app, RecordingService.CHANNEL_NAV)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Tour recording interrupted")
+            .setContentText("${if (boot) "The phone restarted" else "OnPath was updated"} – open OnPath and tap Continue to record on.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("${if (boot) "The phone restarted" else "OnPath was updated"} " +
+                "while “${tour.name}” was recording. The track so far is saved. Open OnPath and tap Continue to record on."))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        try { NotificationManagerCompat.from(app).notify(INTERRUPTED_ID, n) } catch (e: SecurityException) {
+            Problems.warn("recording", "Interrupted-tour notification refused (notification permission?)", e)
+        }
+        Problems.warn("recording", "Recording of '${tour.name}' was interrupted by ${if (boot) "a restart" else "an update"}; user asked to continue")
+    }
+
+    companion object { private const val INTERRUPTED_ID = 45 }
+}
