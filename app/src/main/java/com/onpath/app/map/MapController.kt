@@ -80,7 +80,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
         const val NAV_TOP_PADDING = 0.30
-        /** Position puck in both modes: MapLibre's blue dot + a cone towards where you face (view heading). */
+        /** Position puck in both modes: MapLibre's blue dot + its small arrow towards where you face (view heading). */
         private const val PUCK_MODE = RenderMode.COMPASS
     }
 
@@ -284,9 +284,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .staleStateTimeout(30_000)
                 // HeadingEngine turns smoothly at display rate itself (polish audit B1)
                 .compassAnimationEnabled(false)
-                // a soft cone towards where you face, like Google Maps (owner 2026-10-20), not the small triangle
-                .bearingDrawable(com.onpath.app.R.drawable.puck_cone)
-                .bearingTintColor(null)
+                // the small direction arrow (owner 2026-10-20: clearer than a Google-like cone); it shows where you face
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
