@@ -29,7 +29,8 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `app/src/main/assets/style/onpath.json` | Map style – **generated**, edit `tools/make_style.py` instead |
 | `app/src/main/assets/fonts/` | Glyph PBFs (Noto Sans), no sprite |
 | `tools/` | Data pipeline (Python/Java): terrain, contours, overlays, POIs, style generator, routing jar build + JVM test |
-| `tools/hetzner/` | On-demand map server: `onpath_hetzner.py` (laptop: creates only its own labelled Hetzner server), `server/` (install.sh, API, worker, web page) – see its README |
+| `tools/cells/`, `tools/cloud/` | Map cells (`build_cell.sh`, zo: `run.sh`); cloud hosting: Cloud Run Job image + `job_build.py`, Cloudflare Worker doorman (`worker/`), `gcp-setup.sh`; deployed by `.github/workflows/maps-deploy.yml` – see `docs/design/map-hosting.md` |
+| `tools/hetzner/` | Superseded region server (Hetzner): `onpath_hetzner.py` (laptop: creates only its own labelled Hetzner server), `server/` (install.sh, API, worker, web page) – see its README |
 | `docs/` | Requirements, architecture contract, project status |
 
 ## Build and test

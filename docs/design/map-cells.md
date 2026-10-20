@@ -94,6 +94,11 @@ refreshed. Accepted; refreshes of a used area happen together (§9).
 
 ## 5. Server: doorman + builder
 
+> **Hosting decided 2026-10-20 (owner): Cloudflare Worker (doorman, D1 queue) + R2 (cells) + Google Cloud Run
+> Jobs (builder) – see `docs/design/map-hosting.md`.** It replaces the Hetzner mode below (`BUILDER_MODE=hetzner`,
+> `STORAGE=s3` on Hetzner, the Hetzner builder rules); zo keeps `BUILDER_MODE=local` as the test machine. Queue,
+> dedupe and priorities below are implemented as described, in D1.
+
 Same Docker images everywhere (`docker compose`), switched by settings. On zo: code in `~/onpath` (git clone),
 data in `~/onpath-data`. Public address through the owner's Cloudflare tunnel: **`maps.free-your-pictures.org`**
 for now – in the app it is a **setting** (preset in dev builds), so a later move needs no app release.
@@ -306,6 +311,8 @@ format 1 is in use. A short spike decides (map-data-size.md §7).
 
 ## 11. Costs
 
+> Superseded for phase 3 by `docs/design/map-hosting.md` §3 (Cloudflare + Cloud Run: ≈ 0–1 €/month at test use).
+
 | Item | zo (phase 1–2) | Hetzner (phase 3) |
 | --- | --- | --- |
 | Doorman | 0 € (zo runs anyway) | smallest shared server, ~4–5 €/month |
@@ -318,6 +325,10 @@ format 1 is in use. A short spike decides (map-data-size.md §7).
 Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones); 2026 prices rose.
 
 ## 12. Migration zo → Hetzner
+
+> **Superseded:** the target is Cloudflare + Google Cloud (`docs/design/map-hosting.md`, owner setup §6). Cells
+> built on zo can be copied into the R2 bucket with the same keys (`cells/f1/…`), e.g. `rclone sync` with the R2
+> S3 endpoint; the doorman then needs their rows (or a refresh request) in D1.
 
 1. Same compose files; on Hetzner set `BUILDER_MODE=hetzner`, `STORAGE=s3`.
 2. Copy `~/onpath-data/store` to the bucket (`rclone sync`), queue DB along.
@@ -351,7 +362,7 @@ Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones);
 | --- | --- | --- |
 | **1. zo + manual test** | `build_cell.sh` with osmium cut + clipping; doorman + builder in Docker on zo; API reachable via the tunnel | Two neighbouring cells built on zo, measured (target 3–4 min/cell), pushed to the phone by hand, **no seam visible** at the border (headless render + phone) |
 | **2. App trigger + card** | Overview in the APK, trigger on setting a point, card, download/verify/activate, corridor cells, monthly refresh | Owner plans in a new valley with an empty phone and gets the detailed map + route without touching Settings |
-| **3. Hetzner** | Doorman on Hetzner, builder from snapshot, Object Storage, migration | zo switched off; cost per month as in §11 |
+| **3. Cloud** (was Hetzner) | Doorman = Cloudflare Worker + D1, cells in R2, builder = Cloud Run Job (`docs/design/map-hosting.md`) | test + production deployed by GitHub Actions; cost as in map-hosting.md §3 |
 
 ## 16. Owner decisions (2026-10-19: "all as recommended")
 
