@@ -145,19 +145,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (tracker.location.value != null) followMe = true
     }
 
-    /** Plan: walking direction up while following (compass cycle, owner 2026-10-19); not kept across starts. */
-    var planHeadingUp by mutableStateOf(false)
-    /** Walking direction up in the current mode (Navigate: persisted setting; Plan: [planHeadingUp]). */
-    val headingUp: Boolean get() = if (mode == AppMode.NAVIGATE) navHeadingUp else planHeadingUp
+    /**
+     * Walking direction up – one setting for Plan and Navigate (owner 2026-10-20: switching modes must keep the compass
+     * choice, anything else is confusing). Persisted.
+     */
+    val headingUp: Boolean get() = navHeadingUp
     /** Bumped to turn the map north (MapScreen → MapController.northUp). */
     var northTick by mutableIntStateOf(0)
     /** Bumped when the camera must follow the position again although [followMe] did not change. */
     var recentreTick by mutableIntStateOf(0)
 
     private fun setHeadingUp(on: Boolean) {
-        if (mode == AppMode.NAVIGATE) {
-            if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }
-        } else planHeadingUp = on
+        if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }
     }
 
     /**
@@ -628,7 +627,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** One undoable change of the planned points. */
     private fun change(block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
-        if (mode == AppMode.PLAN && planHeadingUp && followMe) followMe = false
+        if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         history.record(waypoints)
         waypoints.block()
         canUndo = history.canUndo; canRedo = history.canRedo
@@ -1349,7 +1348,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun enter(m: AppMode) {
         mode = m
         if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; pointMenu = null; firstPointMenu = null; highlight = null; followMe = true }
-        else followMe = false
+        // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
+        // map); north up stops following as before
+        else followMe = headingUp && followMe && tracker.location.value != null
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }

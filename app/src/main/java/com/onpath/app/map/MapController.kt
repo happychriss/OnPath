@@ -404,7 +404,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 cameraGen++
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
-                if (leavingNav) resetNorth()
+                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner)
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
