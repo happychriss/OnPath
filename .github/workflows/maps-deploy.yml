@@ -1,0 +1,225 @@
+# Deploys the map hosting (docs/design/map-hosting.md): builder image → Artifact Registry, Cloud Run Job, R2 bucket,
+# D1 database and the doorman Worker on Cloudflare.
+#
+#   push to main (pipeline / cloud code changed)  → environment "test"       (automatic)
+#   Actions → Maps deploy → Run workflow          → "test" or "production"   (production waits for the owner's
+#                                                    approval: GitHub Environment "production" with required reviewer)
+#
+# Nothing runs until the owner finished the setup (repository variables GCP_PROJECT_ID and CLOUDFLARE_ACCOUNT_ID).
+# Google: Workload Identity Federation (no key in GitHub); each GitHub Environment can only act as its own
+# gh-deployer-<env> account. Cloudflare: API token (environment secret CLOUDFLARE_API_TOKEN).
+# Keys are never printed: the invoker key goes from gcloud through a 0600 temp file straight into `wrangler secret put`.
+name: Maps deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/cells/**"
+      - "tools/cloud/**"
+      - "tools/*.py"
+      - "tools/build_region.sh"
+      - ".github/workflows/maps-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Where to deploy"
+        type: choice
+        options: [test, production]
+        default: test
+      rotate_invoker_key:
+        description: "Create a new Google key for the doorman (old keys are deleted)"
+        type: boolean
+        default: false
+      update_r2_keys:
+        description: "Copy R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY from GitHub into Google Secret Manager again"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maps-deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'test' }}
+  cancel-in-progress: false
+
+env:
+  WRANGLER_VERSION: "4.141.0"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Worker tests
+        working-directory: tools/cloud/worker
+        run: node --test
+      - name: Builder tests
+        run: |
+          python3 tools/cells/cells.py selftest
+          (cd tools/cloud && python3 -m unittest -v test_cloud)
+          bash -n tools/cloud/gcp-setup.sh tools/cloud/worker/smoke.sh tools/cells/build_cell.sh
+
+  deploy:
+    needs: check
+    if: vars.GCP_PROJECT_ID != '' && vars.CLOUDFLARE_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'test' }}
+      url: https://${{ (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') && (vars.MAPS_HOST_PRODUCTION || 'maps.free-your-pictures.org') || (vars.MAPS_HOST_TEST || 'maps-test.free-your-pictures.org') }}/v1/health
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    env:
+      ENV_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'test' }}
+      ROTATE_INVOKER_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.rotate_invoker_key || false }}
+      UPDATE_R2_KEYS: ${{ github.event_name == 'workflow_dispatch' && inputs.update_r2_keys || false }}
+      GCP_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      SRC_BUCKET: ${{ vars.GCP_SRC_BUCKET }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      HOST_TEST: ${{ vars.MAPS_HOST_TEST || 'maps-test.free-your-pictures.org' }}
+      HOST_PRODUCTION: ${{ vars.MAPS_HOST_PRODUCTION || 'maps.free-your-pictures.org' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Names for this environment
+        run: |
+          case "$ENV_NAME" in
+            test)       SHORT="test"; HOST=$HOST_TEST ;;
+            production) SHORT=prod; HOST=$HOST_PRODUCTION ;;
+            *) echo "unknown environment $ENV_NAME"; exit 1 ;;
+          esac
+          [ -n "$GCP_REGION" ] && [ -n "$SRC_BUCKET" ] || { echo "Set the repository variables GCP_REGION and GCP_SRC_BUCKET (printed by gcp-setup.sh)"; exit 1; }
+          {
+            echo "ENV_SHORT=$SHORT"
+            echo "JOB_NAME=onpath-cell-$SHORT"
+            echo "R2_BUCKET=onpath-maps-$ENV_NAME"
+            echo "D1_NAME=onpath-doorman-$ENV_NAME"
+            echo "MAPS_HOST=$HOST"
+            echo "BUILDER_SA=cell-builder-$SHORT@$GCP_PROJECT.iam.gserviceaccount.com"
+            echo "INVOKER_SA=doorman-invoker-$SHORT@$GCP_PROJECT.iam.gserviceaccount.com"
+            echo "IMAGE=$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/onpath/cell-builder:${GITHUB_SHA::12}"
+          } >> "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------------------------------- Google
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Build and push the builder image
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build -t onpath-cell-builder -f tools/cells/Dockerfile tools/cells
+          docker build --build-arg BASE=onpath-cell-builder --build-arg "PIPELINE_REV=${GITHUB_SHA::7}" \
+            -t "$IMAGE" -f tools/cloud/Dockerfile.job tools
+          docker push "$IMAGE"
+
+      - name: R2 upload keys → Google Secret Manager (only when missing or asked)
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          put() { # SECRET_NAME VALUE_ENV
+            local name=$1 val=${!2}
+            local have
+            have=$(gcloud secrets versions list "$name" --filter=state:ENABLED --limit=1 --format='value(name)')
+            if [ -n "$have" ] && [ "$UPDATE_R2_KEYS" != true ]; then echo "$name: has a version – kept"; return; fi
+            [ -n "$val" ] || { echo "::error::GitHub secret $2 (environment $ENV_NAME) is empty – see map-hosting.md, Cloudflare step"; exit 1; }
+            printf '%s' "$val" | gcloud secrets versions add "$name" --data-file=- >/dev/null
+            echo "$name: new version added"
+          }
+          put "r2-access-key-id-$ENV_SHORT" R2_ACCESS_KEY_ID
+          put "r2-secret-access-key-$ENV_SHORT" R2_SECRET_ACCESS_KEY
+
+      - name: Cloud Run Job (create or update)
+        env:
+          TASK_TIMEOUT_S: ${{ vars.JOB_TIMEOUT_S || '3600' }}
+          JOB_CPU: ${{ vars.JOB_CPU || '2' }}
+          JOB_MEMORY: ${{ vars.JOB_MEMORY || '8Gi' }}
+        run: |
+          export JOB_NAME ENV_NAME ENV_SHORT BUILDER_SA IMAGE R2_BUCKET SRC_BUCKET TASK_TIMEOUT_S JOB_CPU JOB_MEMORY
+          export R2_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID
+          # shellcheck disable=SC2016  # the list names the variables for envsubst, it is not expanded here
+          envsubst '${JOB_NAME} ${ENV_NAME} ${ENV_SHORT} ${BUILDER_SA} ${IMAGE} ${R2_ACCOUNT_ID} ${R2_BUCKET} ${SRC_BUCKET} ${TASK_TIMEOUT_S} ${JOB_CPU} ${JOB_MEMORY}' \
+            < tools/cloud/job.yaml > "$RUNNER_TEMP/job.yaml"
+          # shellcheck disable=SC2016  # a literal "${" = a placeholder envsubst did not fill
+          if grep -n '\${' "$RUNNER_TEMP/job.yaml"; then echo "unfilled placeholder in job.yaml"; exit 1; fi
+          gcloud run jobs replace "$RUNNER_TEMP/job.yaml" --region "$GCP_REGION"
+
+      # ------------------------------------------------------------------------------------------- Cloudflare
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: R2 bucket + D1 database (create when missing), fill wrangler.toml
+        working-directory: tools/cloud/worker
+        run: |
+          W="npx --yes wrangler@$WRANGLER_VERSION"
+          if ! out=$($W r2 bucket create "$R2_BUCKET" 2>&1); then
+            grep -qi "already exists" <<<"$out" || { echo "$out"; exit 1; }
+          fi
+          echo "R2 bucket $R2_BUCKET ok"
+          d1_id() { $W d1 list --json | python3 -c 'import json,sys; n=sys.argv[1]; print(next((d.get("uuid") or d.get("id") for d in json.load(sys.stdin) if d.get("name")==n), ""))' "$D1_NAME"; }
+          ID=$(d1_id)
+          if [ -z "$ID" ]; then $W d1 create "$D1_NAME" >/dev/null; ID=$(d1_id); fi
+          [ -n "$ID" ] || { echo "D1 database $D1_NAME not found after create"; exit 1; }
+          echo "D1 $D1_NAME = $ID"
+          upper=$(tr '[:lower:]' '[:upper:]' <<<"$ENV_NAME")
+          sed -i "s/__D1_ID_${upper}__/$ID/; s/__MAPS_HOST_${upper}__/$MAPS_HOST/" wrangler.toml
+          $W d1 migrations apply DB --remote --env "$ENV_NAME"
+
+      - name: Deploy the doorman Worker
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        env:
+          GCP_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          BUILD_REV: ${{ github.sha }}
+          APP_KEYS: ${{ secrets.ONPATH_APP_KEYS }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: tools/cloud/worker
+          environment: ${{ env.ENV_NAME }}
+          vars: |
+            GCP_PROJECT
+            GCP_REGION
+            BUILD_REV
+          secrets: |
+            APP_KEYS
+
+      - name: Doorman's Google key (only when missing, or rotate on request)
+        working-directory: tools/cloud/worker
+        run: |
+          W="npx --yes wrangler@$WRANGLER_VERSION"
+          if $W secret list --env "$ENV_NAME" 2>/dev/null | grep -q 'GCP_INVOKER_KEY' && [ "$ROTATE_INVOKER_KEY" != true ]; then
+            echo "GCP_INVOKER_KEY exists – kept (rotate: run this workflow by hand with 'rotate_invoker_key')"
+            exit 0
+          fi
+          umask 077
+          KEYFILE="$RUNNER_TEMP/invoker-key.json"
+          trap 'shred -u "$KEYFILE" 2>/dev/null || rm -f "$KEYFILE"' EXIT
+          gcloud iam service-accounts keys create "$KEYFILE" --iam-account="$INVOKER_SA" --quiet 2>/dev/null
+          NEW_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["private_key_id"])' "$KEYFILE")
+          $W secret put GCP_INVOKER_KEY --env "$ENV_NAME" < "$KEYFILE" >/dev/null
+          echo "GCP_INVOKER_KEY set (key id ${NEW_ID::8}…)"
+          for k in $(gcloud iam service-accounts keys list --iam-account="$INVOKER_SA" --managed-by=user --format='value(name.basename())'); do
+            [ "$k" = "$NEW_ID" ] || { gcloud iam service-accounts keys delete "$k" --iam-account="$INVOKER_SA" --quiet; echo "old key ${k::8}… deleted"; }
+          done
+
+      - name: Smoke test (health)
+        run: |
+          for _ in $(seq 1 30); do
+            if out=$(curl -fsS "https://$MAPS_HOST/v1/health" 2>&1); then echo "$out"; exit 0; fi
+            sleep 10
+          done
+          echo "::warning::https://$MAPS_HOST/v1/health not answering yet (a new custom domain can take a few minutes): $out"
