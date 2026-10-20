@@ -222,11 +222,28 @@ asks again (requests are idempotent). Stop polling when all cells are `ready` or
 
 ## 9. On the phone
 
-### Trigger (agreed UX)
-- Search only moves the map + orange ring; scrolling only looks. **Nothing downloads from looking.**
-- **Setting a point** (hold on map / hold on ring → Start here / Go here) where no cell is on the phone requests
-  that cell (`point`) and its **close neighbours** (`near`, see Q1).
-- When the route is computed, the **corridor cells** (cells within ~10 km of the route, F-OFF-02) are requested.
+### Trigger – when the map is fetched (owner, updated 2026-10-20)
+Rule: **the map comes where you plan or where you are** – a point, the orange search ring or your own position.
+Only scrolling / zooming around ("just looking") never downloads.
+
+| # | Situation | What is requested | Since |
+|---|---|---|---|
+| T1 | **Setting a point** (hold on map / hold on ring → Start here / Go here, POI → Go here) where no cell is on the phone | that cell (`point`) + close neighbours (`near`, Q1) | 2026-10-19 |
+| T2 | **Search result** – the orange ring is placed (search, or a place shared from Google Maps / geo: link) | the ring's cell (`point`) + close neighbours | **2026-10-20 (owner; replaces "search only moves the map")** |
+| T3 | **App opened in Plan mode at a new place** – own GPS position has no cell on the phone (first start, holiday, travel) | own cell (`point`) + close neighbours | **2026-10-20 (owner)** |
+| T4 | **Route computed** | corridor cells (within ~10 km of the route, F-OFF-02) | 2026-10-19 |
+| T5 | **Navigate / recording** and the own position moves towards the edge of the cells on the phone (e.g. a tour leaves the planned corridor) | the next cell ahead (`near`) | proposal – to decide |
+| T6 | **Refresh** – a cell used in the last 6 months is older than the monthly build | new version (`refresh`, Wi-Fi only, Q5) | 2026-10-19 |
+| – | Scrolling / zooming the map, looking at a POI, opening a saved tour that is fully covered | nothing | – |
+
+Notes:
+- T2/T3 are "own point" requests, so the same data rule applies as for T1 (own cell automatic, more asks with size on
+  mobile data, Q2). Repeated searches in the same area request nothing new (cell already on the phone or queued).
+- T3 runs once per app start / return to the app, only with a usable fix (accuracy ≤ ~500 m; a network fix is enough
+  to pick the cell). No fix → nothing, and the overview map stays.
+- The card says *why*: "Because you planned here" (T1/T4), "Because you searched here" (T2), "Because you are here" (T3).
+- Not built yet (phase 2, laptop side: "App: trigger on Start/Go here" in §14) – T2, T3 (and T5 if decided) must be added
+  to that work.
 
 ### The card (persistent, in the plan sheet – no self-dismissing messages)
 
@@ -326,7 +343,7 @@ Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones);
 | `build_cell.sh` (cut, clip, owner rule, manifest), contours ring, overview pack | cloud |
 | Doorman (API, queue, storage modes), builder image, Hetzner mode, compose files | cloud |
 | zo setup (clone, compose up, Cloudflare tunnel route, app keys), measurements on zo | laptop (with the owner) |
-| App: server setting + key, request/status client, card, trigger on Start/Go here, corridor request | laptop |
+| App: server setting + key, request/status client, card, triggers T1–T4 (§9: point, search ring, own position on open, corridor), corridor request | laptop |
 | App: download/verify/activate, local store join, overview hint, cells list in Settings | laptop (store format agreed with cloud via map-data-size.md) |
 
 ## 15. Phases

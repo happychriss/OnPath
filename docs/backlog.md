@@ -20,8 +20,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   cached for everyone after; phone joins cells without seams). Also discussed: monthly big build + phone cuts its own
   area; future payment by region and month (downloaded maps keep working after the month). Agreed UX so far:
   - Overview map shipped in the app → never a blank screen in a new place.
-  - **Trigger = setting a point, not looking:** search only moves the map and shows the orange ring (as today);
-    scrolling only looks. The detailed map for an area is fetched when the user *sets a point there* (hold on the
+  - **Trigger (updated by the owner 2026-10-20, full list `docs/design/map-cells.md` §9 "Trigger"):** setting a
+    point, a search result (orange ring), opening the app in Plan mode at a new place (own position), the route
+    corridor – only scrolling never downloads. (Before: search only moved the map.) The detailed map for an area is fetched when the user *sets a point there* (hold on the
     map / hold on the ring → Start here / Go here) – same gestures as today, one rule: "the map comes where you plan".
     The route corridor's cells follow once the route is calculated.
   - Persistent card in the plan sheet (no self-dismissing messages): "Preparing map for this area – about 6 min",
