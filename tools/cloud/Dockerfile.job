@@ -6,6 +6,8 @@
 #   docker build --network host --build-arg BASE=onpath-cell-builder --build-arg PIPELINE_REV=<short sha> \
 #     -t onpath-cell-job -f tools/cloud/Dockerfile.job tools
 #
+# tippecanoe 2.79.0 + tile-join (format 2 cells) are built from source in a builder stage of the base image
+# (tools/cells/Dockerfile); the RUN below fails the build on an old base image without them.
 # Build context = tools/ (Dockerfile.job.dockerignore keeps the Worker, Hetzner and icon folders out).
 ARG BASE=onpath-cell-builder
 FROM ${BASE}
@@ -18,6 +20,7 @@ COPY . /onpath/tools
 RUN install -m 0755 /onpath/tools/cloud/git-shim.sh /usr/local/bin/git \
  && chmod -R a+rX /onpath \
  && python3 /onpath/tools/cells/cells.py selftest \
+ && tippecanoe --version && command -v tile-join \
  && python3 -c "import sys; sys.path.insert(0, '/onpath/tools/cloud'); import job_build"
 ENV PIPELINE_REV=${PIPELINE_REV} WORK=/tmp/onpath/work DATA_ROOT=/tmp/onpath/store SRC_DIR=/src \
     PYTHONUNBUFFERED=1
