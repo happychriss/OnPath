@@ -27,8 +27,10 @@ enum class GpsStatus(val label: String) {
  * Thin wrapper over the platform LocationManager (GPS + network), no Play Services.
  * GPS fixes win; network fixes only seed the position until the first GPS fix. After that a stale GPS fix is
  * kept (its age is shown) rather than a cell/Wi-Fi guess that can be kilometres off in the mountains.
+ * Battery (docs/design/battery-audit.md): the network provider is dropped at the first GPS fix (its fixes are
+ * ignored from then on anyway); [useNetwork] = false never asks for it (recording service: GPS fixes only).
  */
-class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L) {
+class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
     private val app = context.applicationContext
     private val lm = app.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
@@ -38,12 +40,14 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
     val enabled: StateFlow<Boolean> = _enabled
 
     private var running = false
+    private var netRunning = false
     private var lastGpsElapsed = 0L
     var onFix: ((Location) -> Unit)? = null
 
     private val gpsListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
             lastGpsElapsed = SystemClock.elapsedRealtime()
+            stopNetwork() // from now on network fixes are ignored: stop asking for them (Wi-Fi / cell scans)
             publish(loc)
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
@@ -97,8 +101,9 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
             if (LocationManager.GPS_PROVIDER in providers) {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsIntervalMs, 0f, gpsListener, Looper.getMainLooper())
             }
-            if (LocationManager.NETWORK_PROVIDER in providers) {
+            if (useNetwork && lastGpsElapsed == 0L && LocationManager.NETWORK_PROVIDER in providers) {
                 lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 0f, netListener, Looper.getMainLooper())
+                netRunning = true
             }
             running = true
             // Seed with the last known position so the map has something immediately.
@@ -106,7 +111,7 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
                 val last = listOfNotNull(
                     // expected: a provider may be missing or have no last fix; it is only a seed for the map
                     runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
-                    runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
+                    if (useNetwork) runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull() else null,
                 ).maxByOrNull { it.elapsedRealtimeNanos }
                 if (last != null) _location.value = last
             }
@@ -121,10 +126,19 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L)
 
     fun stop() {
         if (!running) return
-        try { lm.removeUpdates(gpsListener); lm.removeUpdates(netListener) } catch (e: Exception) {
+        try { lm.removeUpdates(gpsListener) } catch (e: Exception) {
             Problems.warn("gps", "Location updates could not be removed on stop", e)
         }
+        stopNetwork()
         running = false
+    }
+
+    private fun stopNetwork() {
+        if (!netRunning) return
+        netRunning = false
+        try { lm.removeUpdates(netListener) } catch (e: Exception) {
+            Problems.warn("gps", "Network location updates could not be removed", e)
+        }
     }
 
     /** Status shown in the GPS chip. */

@@ -223,7 +223,7 @@ fun SettingsScreen(
                                     modifier = Modifier.heightIn(min = 44.dp))
                             }
                         }
-                        SwitchRow("Keep screen on while navigating", "Only while following a route", settings.keepScreenOn) {
+                        SwitchRow("Keep screen on while navigating", "Only while following a route; off in your pocket", settings.keepScreenOn) {
                             onChange(settings.copy(keepScreenOn = it))
                         }
                         // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.

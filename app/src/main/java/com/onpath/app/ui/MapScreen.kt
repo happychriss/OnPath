@@ -310,15 +310,6 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
 }
 
-@Composable
-private fun KeepScreenOn(on: Boolean) {
-    val view = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(on) {
-        view.keepScreenOn = on
-        onDispose { view.keepScreenOn = false }
-    }
-}
-
 /** Nice round scale bar length (max ~100dp). */
 private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Float): Pair<String, Dp>? = try {
     val lat = map.cameraPosition.target?.latitude ?: 0.0
