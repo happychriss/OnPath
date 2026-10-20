@@ -7,7 +7,7 @@ Replaces the earlier home / plan / record mix. Mockups of the old proposals: `do
 | | **Plan** | **Navigate** |
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
-| Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here from my location"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
+| Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
 | Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route, position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
 
@@ -83,7 +83,7 @@ nothing is dragged any more (points and the route line can't be moved by draggin
 
 | Hold on… | Vibration | Result |
 | --- | --- | --- |
-| Empty map, plan still empty (also after Clear) | 1× | Menu **Start here** · **Go here from my location** (start = GPS position, this spot = destination; disabled with "Location off" / "No location permission" / "Searching GPS…" without a fresh fix) |
+| Empty map, plan still empty (also after Clear) | 1× | Menu **Start here** · **Go here (from my location)** (start = GPS position, this spot = destination; disabled with "Location off" / "No location permission" / "Searching GPS…" without a fresh fix) |
 | Empty map or the route line | 1× | New point (smart insertion, as before). No message |
 | POI that is not a route point | 1× | Menu **Add to route** · **Open in Google Maps** |
 | Route point (marker; a POI that already is a stop counts as a marker) | 2× (double pulse) | Point menu, only sensible options: **Make starting point** (not on the start), **End route here** (middle points only), **Open in Google Maps** (named place / POI only), **Delete** (always; Undo brings it back) |

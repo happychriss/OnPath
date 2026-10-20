@@ -10,7 +10,7 @@ import kotlin.math.min
  *
  * | hold ≥ 0.3 s on…                         | vibration | result |
  * | --- | --- | --- |
- * | empty map, plan still empty              | 1×        | first-point menu: Start here · Go here from my location |
+ * | empty map, plan still empty              | 1×        | first-point menu: Start here · Go here (from my location) |
  * | empty map / route line                   | 1×        | add point (smart insertion), no message |
  * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
  * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
@@ -31,7 +31,7 @@ object MapGestures {
         data class PointMenu(val index: Int) : Action
         data object PoiMenu : Action
         data object AddPoint : Action
-        /** First hold on an empty plan: "Start here" · "Go here from my location". */
+        /** First hold on an empty plan: "Start here" · "Go here". */
         data object FirstPointMenu : Action
         data object CloseMenu : Action
         data object PoiDetails : Action
@@ -61,7 +61,7 @@ object MapGestures {
     }
 
     /**
-     * Why "Go here from my location" in the first-point menu is disabled, or null when a usable position exists.
+     * Why "Go here" in the first-point menu is disabled, or null when a usable position exists.
      * A stale fix (status SEARCHING) is not used: the route would start in the wrong place.
      */
     fun fromMeBlocked(status: GpsStatus, hasFix: Boolean): String? = when (status) {

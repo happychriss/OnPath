@@ -148,7 +148,7 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
 }
 
 /**
- * First hold on an empty plan: "Start here" or "Go here from my location" (this spot = destination). The second
+ * First hold on an empty plan: "Start here" or "Go here" (this spot = destination). The second
  * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
  */
 @Composable
@@ -158,14 +158,14 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onStartHere)
-        HoldMenuItem(Icons.Outlined.MyLocation, "Go here from my location", enabled = fromMeBlocked == null,
+        HoldMenuItem(Icons.Outlined.MyLocation, "Go here", enabled = fromMeBlocked == null,
             supporting = fromMeBlocked, onClick = onFromMe)
     }
 }
 
 /**
  * Menu of a held POI that is not a route point: its name + "Add to route" · "Open in Google Maps". On an empty plan
- * it asks like the first-point menu (owner): "Start here" · "Go here from my location" · "Open in Google Maps".
+ * it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
  */
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
@@ -182,7 +182,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (emptyPlan) {
             HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onAdd)
-            HoldMenuItem(Icons.Outlined.MyLocation, "Go here from my location", enabled = fromMeBlocked == null,
+            HoldMenuItem(Icons.Outlined.MyLocation, "Go here", enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
         } else {
             HoldMenuItem(Icons.Outlined.AddLocationAlt, if (de) "Zur Route hinzufügen" else "Add to route", onClick = onAdd)
