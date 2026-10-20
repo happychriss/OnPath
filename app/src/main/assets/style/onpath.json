@@ -3,7 +3,8 @@
  "name": "OnPath Topo",
  "metadata": {
   "onpath:version": 1,
-  "onpath:theme": "classic"
+  "onpath:theme": "classic",
+  "onpath:format": 1
  },
  "center": [
   11.16,
@@ -4456,17 +4457,22 @@
      [
       "all",
       [
-       "in",
+       "any",
        [
-        "get",
-        "subclass"
+        "==",
+        [
+         "get",
+         "subclass"
+        ],
+        "cycleway"
        ],
        [
-        "literal",
+        "==",
         [
-         "cycleway",
-         "path"
-        ]
+         "get",
+         "subclass"
+        ],
+        "path"
        ]
       ],
       [
@@ -4564,18 +4570,28 @@
      [
       "all",
       [
-       "in",
+       "any",
        [
-        "get",
-        "subclass"
+        "in",
+        [
+         "get",
+         "subclass"
+        ],
+        [
+         "literal",
+         [
+          "footway",
+          "pedestrian"
+         ]
+        ]
        ],
        [
-        "literal",
+        "==",
         [
-         "footway",
-         "pedestrian",
-         "path"
-        ]
+         "get",
+         "subclass"
+        ],
+        "path"
        ]
       ],
       [

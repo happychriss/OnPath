@@ -6,6 +6,20 @@
   "x": 96,
   "y": 336
  },
+ "bike-both-ways": {
+  "height": 16,
+  "pixelRatio": 2,
+  "width": 28,
+  "x": 192,
+  "y": 336
+ },
+ "oneway-arrow": {
+  "height": 16,
+  "pixelRatio": 2,
+  "width": 28,
+  "x": 144,
+  "y": 336
+ },
  "pattern-orchard": {
   "height": 24,
   "pixelRatio": 2,
