@@ -104,6 +104,11 @@ class Prefs(context: Context) {
         get() = sp.getString("paceStore", null)
         set(v) = sp.edit().putString("paceStore", v).apply()
 
+    /** "Allow all the time" was offered once (first tour); never nag again – Settings has the way back. */
+    var backgroundAsked: Boolean
+        get() = sp.getBoolean("backgroundAsked", false)
+        set(v) = sp.edit().putBoolean("backgroundAsked", v).apply()
+
     /** The followed line is a shown/imported track, not the plan ("Continue navigation" then does not re-plan). */
     var followIsTrack: Boolean
         get() = sp.getBoolean("followIsTrack", false)
