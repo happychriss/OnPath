@@ -111,6 +111,8 @@ fun MapScreen(
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
         }
+        // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
+        controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
             topPx = topInsetPx + with(density) { 80.dp.roundToPx() }, // below the search pill + ☰ row
