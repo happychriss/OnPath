@@ -40,6 +40,7 @@ linked here.
 | 0.7.19 | One compass setting for Plan and Navigate (kept when switching; heading-up keeps following in Plan until an edit / pan) | **test**: Navigate heading-up → Plan → Navigate |
 | 0.7.20 | Plan: finger on the map stops heading-up turning (points could not be held since 0.7.19); following stops only after a real touch (≤ 1.5 s) – compass flip-back guarded; root cause still unknown, see Diagnostics "Following stop without a touch" | **test**: delete a point in Plan; compass in Navigate stays |
 | 0.7.21 | **Revert of the 0.7.15 camera** (manual per-frame turning fought MapLibre tracking → flip-back + jerky turning): TRACKING_COMPASS + smooth heading again (0.7.14 code + later fixes); arrow = map direction again; route point taken at finger-down | **test**: compass stays, turns smoothly, delete points |
+| 0.7.22 | Review fixes: 1.5 s guard removed (undid app camera moves), compass after free look → back to walking direction, no extra north camera move while following, settings label | **test**: search result in Plan stays; free look + compass |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
@@ -58,6 +59,7 @@ Also answered: off-route warning = vibration + notification with sound (since 0.
    today ("don't change the map"). Rebuild when the laptop's map work allows – laptop or cloud?
 
 ## Questions for tonight
+- **Plan turning by itself?** Since 0.7.19 one compass setting: with "walking direction up", the locate button in Plan makes the map turn with you. Wanted, or Plan always north/hand-turned (as decided 2026-10-19)? (review 2.1)
 - **Foot & bike network in towns (Komoot comparison, Meran):** Komoot's green lines are footways / pedestrian zones /
   cycleways (Meran centre: footways 20 km, pedestrian 4.2 km, cycleways 5.2 km, sidewalks + crossings 4.1 km left out
   on purpose). **Bug:** pedestrian zones (Passerpromenade …) are not drawn since 0.7.0 – `paths.geojson` has no

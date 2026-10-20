@@ -139,11 +139,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- Navigate orientation + next turn (navigation agent; see NavigateScreen, MapController.setCamera) ---
     /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
     val navHeadingUp: Boolean get() = settings.navHeadingUp
-    /** Orientation button in Navigate: toggles and re-centres on the position (when there is a fix). */
-    fun toggleNavOrientation() {
-        settings = settings.copy(navHeadingUp = !settings.navHeadingUp); prefs.settings = settings
-        if (tracker.location.value != null) followMe = true
-    }
 
     /**
      * Walking direction up – one setting for Plan and Navigate (owner 2026-10-20: switching modes must keep the compass
@@ -167,9 +162,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val turningWithMe = headingUp && followMe
         val hasFix = tracker.location.value != null
         when {
+            // Navigate, looked around by hand (free look) with walking direction chosen: back to it, not to north
+            // (requirements review 2026-10-20)
+            mode == AppMode.NAVIGATE && headingUp && !followMe && hasFix -> { followMe = true; recentreTick++ }
             turningWithMe || mapTurned -> {
-                setHeadingUp(false); northTick++
-                if (mode == AppMode.NAVIGATE && hasFix) followMe = true
+                setHeadingUp(false)
+                // Following north up turns the map to north itself; an extra north-up camera move from the app would
+                // make MapLibre drop the following again (it ends tracking on every app camera move).
+                if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
             }
             !hasFix -> message = "No position yet – the map can turn with your walking direction once GPS has a fix."
             else -> { setHeadingUp(true); followMe = true; recentreTick++ }
@@ -294,17 +294,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == AppMode.PLAN && followMe && headingUp) followMe = false
     }
 
+    /**
+     * MapLibre stopped following. It does that for finger gestures and also for every camera move of the app itself
+     * (fly to a search result, show a route, profile scrub) – both mean "not following any more". Only a stop right
+     * after a real touch starts free look (back to following after walking on); the 0.7.20 "ignore without touch"
+     * guard is gone – it undid the app's own camera moves (requirements review 2026-10-20).
+     */
     fun onMapGesture() {
-        // Field test 2026-10-20: "walking direction up" switched itself off a few seconds after the compass tap, with
-        // nobody touching the map. Only a stop within 1.5 s of a real touch counts; anything else is noted and ignored.
-        if (android.os.SystemClock.uptimeMillis() - lastMapTouchMs > 1_500) {
-            Problems.info("map", "Following stop without a touch on the map ignored")
-            if (followMe) recentreTick++
-            return
-        }
         followMe = false
+        val touched = android.os.SystemClock.uptimeMillis() - lastMapTouchMs <= 1_500
         val loc = tracker.location.value
-        freeLookAt = if (mode == AppMode.NAVIGATE && loc != null) GeoPoint(loc.latitude, loc.longitude) else null
+        freeLookAt = if (touched && mode == AppMode.NAVIGATE && loc != null) GeoPoint(loc.latitude, loc.longitude) else null
     }
 
     /** Every fix: back to following after free look once the walker moved on. */
