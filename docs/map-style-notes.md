@@ -109,3 +109,20 @@ Used for every map decision on 2026-10-19 (renders in `docs/design/`):
   tufts. `farmland`: only `orchard` (small rings = trees) and `vineyard` (short upright stakes); plain farmland / farm no
   symbol. The former furrow dashes on all farmland looked like the German wet-meadow symbol and covered every apple
   orchard in the valley – that was the "symbols on many meadows" the owner saw. `rock`, `sand` unchanged.
+- **Ground symbols only close in (2026-10-20).** The `landcover-*-pattern` layers start at `GROUND_SYMBOLS_ZOOM` = 16
+  (was 14). The app's max zoom is 18 (`MapHost` → `setMaxZoomPreference(18.0)`), so the symbols show on the last two
+  zoom steps only; below z16 orchard, vineyard, wetland, rock and sand are plain landcover colour.
+
+## Solid track edges at way ends and in bends (2026-10-20, owner field report)
+- **Cause.** The dotted track edges (`track-own-compact/medium/loose/soft`, from z14.5) used `line-cap: round` and
+  `line-join: round` with dots made of 0.1-long dashes. MapLibre gives every vertex of a round join fan and of a round
+  cap the *same* distance along the line, so the dash pattern does not advance over them: the whole arc on the outer
+  side of each bend and the half ring at each way end took one dash value. With dots that close together that value is
+  nearly always "on" → solid brown arcs in bends (dense OSM vertices = a fan at every vertex) and a solid ring / "c"-hook
+  at every way end and every way split (also visible at junctions).
+- **Fix.** Edges now use `line-cap: butt` and `line-join: miter`: no cap ring (the edges end flat, the track lane's
+  round cap closes the end in light earth colour), no join fan (sharp hairpins fall back to a small bevel). Because the
+  dash shape follows `line-cap`, the dots are now short square dashes (theme `track.dash.*`: compact 0.6/0.5, medium
+  0.8/1.0, loose 0.8/1.9, soft 0.8/3.3 – same period as the old round dots, so surface spacing reads the same). On the
+  inner side of a tight hairpin the dots still crowd (the pattern is measured along the centre line); that is MapLibre's
+  dash model and only a few pixels long.
