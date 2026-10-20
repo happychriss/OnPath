@@ -54,4 +54,6 @@ grep -q "Source data not available" /tmp/onpath-smoke-body || { echo "FAIL  no-s
 IFS=- read -r Z X Y <<<"$CELL"
 code=$(curl -sS -o /dev/null -w '%{http_code}' "${H[@]}" "$BASE/v1/cells/$Z/$X/$Y/manifest" || true)
 echo "info  manifest: HTTP $code (404 until the cell is built, then 200)"
-[ "$fail" = 0 ] && echo "SMOKE OK" || { echo "SMOKE FAILED"; [ -f /tmp/onpath-smoke-dev.log ] && tail -20 /tmp/onpath-smoke-dev.log; exit 1; }
+if [ "$fail" = 0 ]; then echo "SMOKE OK"; else
+  echo "SMOKE FAILED"; [ -f /tmp/onpath-smoke-dev.log ] && tail -20 /tmp/onpath-smoke-dev.log; exit 1
+fi
