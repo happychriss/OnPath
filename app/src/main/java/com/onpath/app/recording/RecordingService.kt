@@ -309,7 +309,13 @@ class RecordingService : Service() {
     private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > 8_000
 
     private fun onFix(loc: Location) {
-        if (tourId < 0 || paused) return
+        if (tourId >= 0 && paused) {
+            if (pauseWatch.onFix(loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy.toDouble() else Double.NaN)) {
+                notifyWalkingWhilePaused()
+            }
+            return
+        }
+        if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) return
 
@@ -557,17 +563,44 @@ class RecordingService : Service() {
         }
     }
 
+    private val pauseWatch = PauseWatch()
+
+    /** Paused but walking away: vibrate and ask (Resume in the notification); never resumes by itself. */
+    private fun notifyWalkingWhilePaused() {
+        vibrate()
+        try {
+            val b = NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Recording is paused")
+                .setContentText("You are moving – resume recording?")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(openAppIntent())
+                .addAction(0, "Resume", actionIntent(ACTION_RESUME, 2))
+            nm().notify(PAUSE_ALERT_ID, b.build())
+        } catch (e: SecurityException) {
+            Problems.warn("recording", "Paused-but-moving reminder refused (notification permission?)", e)
+        }
+        Problems.info("recording", "Moved ${PauseWatch.MOVE_M.toInt()} m while paused – asked to resume")
+    }
+
     private fun setPaused(p: Boolean) {
         if (tourId < 0) return
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
-        // Battery: a pause records nothing, so GPS and the wake lock rest until Resume (manual pause only).
+        // Battery: a pause records nothing – GPS runs slowly (never off: owner 2026-10-20, walking on with the pause
+        // still on is noticed by PauseWatch), the wake lock rests until Resume.
+        pauseWatch.reset()
+        nm().cancel(PAUSE_ALERT_ID)
         if (p) {
-            tracker.stop()
+            tracker.setInterval(PauseWatch.GPS_MS)
             try { wakeLock?.let { if (it.isHeld) it.release() } } catch (e: Exception) { Problems.warn("recording", "Wake lock not released on pause", e) }
         } else {
-            tracker.start()
+            tracker.setInterval(1000L)
             acquireWakeLock()
         }
         trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
@@ -590,9 +623,11 @@ class RecordingService : Service() {
         }
         tourId = -1
         tracker.stop()
+        tracker.setInterval(1000L) // a tour ended while paused must not start the next one at the pause rate
         cancelReroute()
         scope.cancel()
         nm().cancel(ALERT_ID)
+        nm().cancel(PAUSE_ALERT_ID)
         _state.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         wakeLock?.let { if (it.isHeld) it.release() }
@@ -809,6 +844,7 @@ class RecordingService : Service() {
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
         private const val NOTIF_ID = 42
         private const val ALERT_ID = 43
+        private const val PAUSE_ALERT_ID = 44
         /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
         private const val SAVE_FAIL_ID = 44
 

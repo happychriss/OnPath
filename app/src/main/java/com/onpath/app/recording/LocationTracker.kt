@@ -30,7 +30,7 @@ enum class GpsStatus(val label: String) {
  * Battery (docs/design/battery-audit.md): the network provider is dropped at the first GPS fix (its fixes are
  * ignored from then on anyway); [useNetwork] = false never asks for it (recording service: GPS fixes only).
  */
-class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
+class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
     private val app = context.applicationContext
     private val lm = app.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
@@ -131,6 +131,22 @@ class LocationTracker(context: Context, private val gpsIntervalMs: Long = 1000L,
         }
         stopNetwork()
         running = false
+    }
+
+    /** Change the GPS rate while running (pause = slower); GPS is never switched off by this. */
+    @SuppressLint("MissingPermission")
+    fun setInterval(ms: Long) {
+        if (ms == gpsIntervalMs) return
+        gpsIntervalMs = ms
+        if (!running) return
+        try {
+            lm.removeUpdates(gpsListener)
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, ms, 0f, gpsListener, Looper.getMainLooper())
+        } catch (e: Exception) {
+            Problems.error("gps", "GPS rate could not be changed; trying to keep GPS running", e)
+            running = false
+            start()
+        }
     }
 
     private fun stopNetwork() {
