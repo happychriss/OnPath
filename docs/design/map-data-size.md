@@ -1,7 +1,7 @@
 # Map data size – how to make it compact on the phone (proposal)
 
-Status: **proposal, waiting for the owner.** The cloud session owns the pipeline (`tools/`, `tools/hetzner/`) and must
-agree before anything changes. Nothing in the app or the pipeline has been changed for this.
+Status: **being implemented as "format 2"** (laptop, map rework 2026-10-20). Done: terrain + contours
+(`--format 2`, §1a) and the overview map for the APK (§1b). Format 1 stays the default until the app reads all of it.
 Measured 2026-10-19 (laptop) on the Bozen/Meran data (OSM of 17 Oct 2026), Planetiler 0.10.2, tippecanoe 2.79.0,
 MapLibre Native Android 13.7.1. Scratch scripts were not committed; the method for each number is described below.
 
@@ -71,6 +71,44 @@ belong to the overview map shipped with the app.
 Contours must keep their 20 m lines: `build_contours.py` should read the z13 AWS tiles (or a temporary z13 file),
 not the shipped terrain. Not measured: 512 px tiles (small gain expected), dropping flat/ocean tiles (no ocean in
 the Alps; PMTiles already de-duplicates identical tiles).
+
+### 1a. Result: terrain format 2 is implemented (2026-10-20, laptop)
+
+`tools/build_terrain.py --format 2` (= `--webp --round 0.25 --maxzoom 12`), `--cell Z/X/Y` (only a cell's own
+z10–12 tiles), `--cache DIR`; `tile_range()` edge bug fixed (max edges exclusive); `build_contours.py aws …`
+reads the original AWS z12/z13 tiles; `tools/build_region.sh --format 2` uses both. Measured with the real tools:
+
+| Data | Format 1 | Format 2 | Change |
+| --- | --- | --- | --- |
+| Test region terrain (10.85–11.60 E, 46.35–46.85 N, z5–13 → z5–12) | 54.6 MB (433 tiles) | **6.6 MB** (127 tiles) | −88 % |
+| Meran cell 10/543/361 terrain, own tiles only (z10–13 → z10–12) | 10.8 MB (85 tiles; 19 MB in the zo build with the edge bug + ring + z5–9) | **1.0 MB** (21 tiles) | −91 % (−95 % vs zo) |
+| Contours (region) | 3.2 MB | 3.2 MB, **byte-identical** (`aws` source vs format-1 terrain, same bbox) | 0 |
+| Small region build `--format 2` (11.00–11.40 E, 46.50–46.70 N) | – | terrain 2.5 MB, contours 0.65 MB, whole run 1 m 56 s | |
+
+- Format 1 output is unchanged (same 433 tiles, only the PMTiles metadata gained `format`).
+- **Hill shade before/after** (maplibre-gl JS in headless Chrome, 400 × 400 px @2×, full style and hill shade only;
+  images in the laptop scratchpad `t2/render/img/`, `hs-cmp-*.png` side by side): mean brightness difference
+  0.07–4.9 / 255, p99 ≤ 11, > 12 levels on ≤ 0.5 % of pixels (z11–15, Texelgruppe and Etsch valley floor).
+  Visible difference: at z12–14 the z12 relief is a little softer – small "blobs" of the z13 data (upsampling
+  artefacts) are gone; ridges and valleys are the same. Valley floors (0.25 m rounding): no visible change (0.17).
+- **WebP on MapLibre Native Android 13.7.1 – what is verified:** from the source of the tag `android-v13.7.1`,
+  every raster/raster-dem tile image is decoded by `platform/android/src/image.cpp` → `BitmapFactory.decodeByteArray`
+  (no format check; Android decodes lossless WebP since 4.2, minSdk 26); `pmtiles_file_source.cpp` ignores the
+  header's `tile_type` (only MLT is special) and supports compression none/gzip. **Not yet verified on the phone**
+  (the phone was not connected) – the headless check uses maplibre-gl JS, which proves the files, not Native.
+  Phone test: push a format-2 `terrain.pmtiles` under another name and point a debug style at it.
+
+### 1b. Result: overview map (z0–9) for the APK (2026-10-20, laptop)
+
+Built with `tools/build_overview.sh` for the Alps (5.0–17.0 E, 43.5–48.5 N): **base z0–8 4.5 MB + hill shade z5–9
+(WebP lossless, heights 4 m) 9.2 MB = 13.7 MB; APK 33.4 → 47.6 MB.** Base z0–9 would be 16 MB (25 MB together),
+not worth one zoom level. Optional in the build (`-Ponpath.overviewAssets=DIR`), drawn below z10 only
+(details: map-pipeline.md §9b). Rendered headlessly (maplibre-gl JS, merged style): z6 Alps, z7 Tirol, z9 Innsbruck
+(no detailed data) and Meran, z10 Meran (detailed) look as expected; z11 Innsbruck is empty (no cell).
+**Not yet verified on the phone:** `pmtiles://asset://…` on Native – from the 13.7.1 source the PMTiles source
+passes the inner URL to the resource loader, and `AssetManagerFileSource` serves `asset://` with byte ranges
+(`AAssetManager_open(…, AASSET_MODE_RANDOM)`, `AAsset_seek64`), so it should work; fallback if not: copy the two
+files to internal storage once and use `pmtiles://file://`.
 
 ## 2. Overlays: GeoJSON → one vector `overlays.pmtiles`
 
