@@ -61,4 +61,36 @@ class HeadingFilterTest {
         assertNull(f.onSensor(Double.NaN, 0))
         assertNull(f.heading)
     }
+
+    @Test fun routeDirectionWinsOverCompassAndGps() {
+        val f = HeadingFilter()
+        f.onSensor(80.0, 0)
+        assertNotNull(f.onRoute(0.0, 1_000))
+        // compass says 80°, GPS (moving, slightly off) says 15°: neither moves the map off the route direction
+        assertNull(f.onSensor(80.0, 1_100))
+        assertNull(f.onGps(15f, 1.2f, 1_200))
+        repeat(20) { f.onRoute(0.0, 2_000L + it * 1_000) }
+        assertTrue(abs(HeadingFilter.diff(f.heading!!, 0.0)) < HeadingFilter.DEADBAND_DEG)
+        assertTrue(f.usingRoute(21_000))
+    }
+
+    @Test fun walkingAgainstTheRouteFallsBackToGps() {
+        val f = HeadingFilter()
+        f.onRoute(0.0, 0)
+        f.onGps(180f, 1.3f, 500)
+        assertFalse(f.usingRoute(600))
+        repeat(10) { f.onGps(180f, 1.3f, 1_000L + it * 1_000) }
+        assertTrue(abs(HeadingFilter.diff(f.heading!!, 180.0)) < HeadingFilter.DEADBAND_DEG)
+    }
+
+    @Test fun routeDirectionExpiresAndClears() {
+        val f = HeadingFilter()
+        f.onRoute(90.0, 0)
+        assertTrue(f.usingRoute(HeadingFilter.ROUTE_VALID_MS))
+        assertFalse(f.usingRoute(HeadingFilter.ROUTE_VALID_MS + 1))
+        f.onRoute(90.0, 20_000)
+        f.onRoute(null, 20_100)
+        assertFalse(f.usingRoute(20_200))
+        assertNotNull(f.onSensor(200.0, 20_300))
+    }
 }

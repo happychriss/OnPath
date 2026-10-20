@@ -87,6 +87,7 @@ fun MapScreen(
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (vm.mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
+                large = vm.mode == AppMode.NAVIGATE,
             )
         }
     }
@@ -246,6 +247,12 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
     val nav = rec?.nav
     LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
+    // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
+    // the line, not off route; otherwise null = compass / GPS bearing as before.
+    val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
+    val routeAhead = if (vm.mode == AppMode.NAVIGATE && nav != null && nav.prompt == null &&
+        (nav.offM ?: Double.MAX_VALUE) <= ROUTE_UP_MAX_OFF_M) nav.shownAlongM?.let { navLine?.aheadBearing(it) } else null
+    LaunchedEffect(c, routeAhead, nav?.shownAlongM) { c.setRouteHeading(routeAhead) }
     LaunchedEffect(c, (nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.id) {
         c.setNavProposal((nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.line)
     }
@@ -325,3 +332,6 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Fl
     Problems.warn("map", "Scale bar could not be computed; hidden", e)
     null
 }
+
+/** Farther from the followed line than this, heading-up uses the compass / GPS bearing instead of the route. */
+private const val ROUTE_UP_MAX_OFF_M = 30.0

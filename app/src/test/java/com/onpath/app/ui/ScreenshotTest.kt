@@ -52,9 +52,9 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false) =
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
-            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking)
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large)
         }
 
     /** Plan mode: search bar + ☰ menu, footer, then [bottom]. Top padding stands in for the status bar. */
@@ -81,7 +81,7 @@ class ScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    NavigateOverlay(ui, footer = { Footer(following = true, compass = CompassSpec(ui.headingUp, 0f) {}, eye = true) },
+                    NavigateOverlay(ui, footer = { Footer(following = true, compass = CompassSpec(ui.headingUp, 0f) {}, eye = true, large = true) },
                         onSlideToPlan = {}, slideStartFraction = slide)
                 }
             }

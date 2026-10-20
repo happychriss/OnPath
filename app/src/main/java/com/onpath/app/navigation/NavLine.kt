@@ -125,6 +125,18 @@ class NavLine(val points: List<GeoPoint>) {
         return com.onpath.app.routing.TurnDetector.bearing(pointAt(a), pointAt(b))
     }
 
+    /**
+     * Direction of the route ahead of [alongM] (degrees from north): from the position on the line to the point
+     * [aheadM] further on, so the next stretch points straight up in heading-up. null near the end (< 10 m left).
+     */
+    fun aheadBearing(alongM: Double, aheadM: Double = AHEAD_M): Double? {
+        if (!isUsable) return null
+        val a = alongM.coerceIn(0.0, lengthM)
+        val b = min(lengthM, a + aheadM)
+        if (b - a < 10.0) return null
+        return com.onpath.app.routing.TurnDetector.bearing(pointAt(a), pointAt(b))
+    }
+
     /** Earliest part of the line within [toleranceM] of the nearest one (start of a round trip, not its end). */
     fun matchEarliest(p: GeoPoint, fromM: Double = 0.0, toleranceM: Double = 30.0): Match? {
         val best = match(p, fromM) ?: return null
@@ -141,6 +153,8 @@ class NavLine(val points: List<GeoPoint>) {
     companion object {
         /** [parts]: the distance rising by this much between two close stretches makes them two parts. */
         const val SPLIT_M = 6.0
+        /** Look-ahead for the route direction in heading-up ([aheadBearing]). */
+        const val AHEAD_M = 40.0
 
         /**
          * Same route although not the same list (a plan re-computed after Undo): lengths within 1 % and every ~50 m
