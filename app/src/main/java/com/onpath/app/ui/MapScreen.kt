@@ -149,7 +149,8 @@ private fun PlanMode(
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.showSettings = true },
                 onOpened = vm::refreshTours,
-                onUpdates = if (vm.updatesEnabled) ({ vm.checkForUpdates(manual = true); vm.showSettings = true }) else null,
+                // owner 2026-10-20: no "Check for updates" in the ☰ menu – Settings has the Updates section
+                onUpdates = null,
             ),
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
         )
