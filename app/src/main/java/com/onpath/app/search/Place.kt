@@ -27,6 +27,10 @@ data class Place(
     val alt: List<String> = emptyList(),
     /** Full OSM details when the place is a POI from pois.geojson. */
     val poi: Poi? = null,
+    /** ISO country code (online results, offline addresses) – for "same country first". */
+    val cc: String? = null,
+    /** Town / municipality (online results, offline addresses). */
+    val town: String? = null,
 ) {
     enum class Source { POI, MAP, TRAIL, ONLINE }
 
