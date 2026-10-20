@@ -106,7 +106,9 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - **Map labels** in German (`name:de` → `name`); UI strings currently English, hard-coded (to move to
   `strings.xml` with EN + DE).
 - **Data/licences**: show "© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution. Google
-  content is never stored or drawn; only link out to Google Maps.
+  content is never stored or drawn; only link out to Google Maps. Exception (owner decision 2026-10-20): the coordinate
+  of a place the user shares from Google Maps (share sheet / link, `search/SharedPlace.kt`) may be used to place our own
+  marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name.
 - **Activities** (exactly six): Bike touring, Bike trekking, E-bike, MTB, MTB e-bike, Hike (SAC T1–T5,
   default T3). Mapping to BRouter profiles is in `BRouterEngine`.
 - **Git**: small commits with clear messages on `main` (single developer for now); never commit map data,
