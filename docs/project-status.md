@@ -4,6 +4,23 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-20 (map rework format 2 + cloud hosting):**
+  - **Done on main:** format 2 = one `overlays.pmtiles` (tippecanoe; paths smoothed, green ways/bike/via-ferrata data),
+    trimmed base, terrain WebP z12, contours from z12, overview map (Alps, optional APK assets), format-2 cells
+    (`tools/cells/build_cell.sh`, ~9 MB/cell, seams checked; map-cells.md §18), addresses search + import, share-to-OnPath,
+    route names. Test region package (format 2): `/home/development/Projects/onpath-build/out-f2/` (laptop only).
+  - **Cloud hosting live (test):** Cloudflare Worker `maps-test.free-your-pictures.org` (D1 queue, R2 EU bucket
+    `onpath-maps-test`) + Google Cloud Run job `onpath-cell-test` (project `onpath-maps`, europe-west1), deploy via
+    `.github/workflows/maps-deploy.yml` (push to main → test; production needs owner approval). Secrets in GitHub
+    environments (set with `tools/cloud/set-secrets.sh`), app keys in laptop `~/.gradle/gradle.properties`.
+    `/v1/health` OK. **First real cloud build of cell 10/543/361 (format 1) was started 2026-10-20 ~21:00 – check
+    status** (`/v1/cells/status?ids=10-543-361` with the test app key; Cloud Run → Jobs log). Doorman offers only
+    format 1 (`formats:[1]`) – switch it + job.yaml to format 2, rebuild image (needs tippecanoe – merged Dockerfiles).
+  - **Next (laptop):** (1) check the cloud build; (2) phone test of format 2: APK with overview
+    `/home/development/Projects/onpath-build/f2-test.apk` + data `out-f2/onpath-data/` – back up the phone's format-1
+    data to `files/onpath-f1-backup/` first, keep `segments/`; check WebP hillshade + `pmtiles://asset://` overview on
+    the device; (3) steps 8–9 (app cell store, downloads, card, triggers); (4) release.yml: production URL + app key
+    for release APKs (open decision). zo: test machine only (`~/onpath`, `~/onpath-data`, builder `--network host`).
 - **cloud, 2026-10-20 – HANDOFF to the laptop (end of the hike day, releases 0.7.2 → 0.7.26):**
   - **Read first:** `docs/owner-list-2026-10-20.md` (every release of the day with what to field-test, owner rules,
     open items, questions for the owner) and `docs/requirements-review-2026-10-20.md` (review of all owner
