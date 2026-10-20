@@ -5,7 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Grid cells phase 1 on zo: builder Docker image (`tools/cells/`), osmium cut, 2 neighbouring cells, timing + seam check – since 2026-10-20
+
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
@@ -107,6 +107,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Grid cells phase 1 on zo (laptop): `tools/cells/` builder image + build_cell.sh, 2 neighbouring cells in ~2.7 min each, no seams; results in map-cells.md §17. Next: doorman container, then Cloudflare hostname (owner), then format 2.
 - Share a place into OnPath (laptop, owner): Google Maps share text/short+full links (coordinate from the link, owner decision 2026-10-20, see CLAUDE.md), geo: URIs → Plan mode, fly there, orange ring; fallback address search. Open: "Position from the address (offline)" note not built.
 - Address search (laptop, owner): offline `addresses.sqlite` (`tools/extract_addresses.py`, optional step in build_region.sh; 2.5 MB region / 0.6 MB per cell), German+Italian names, house numbers; online Photon re-ranked (town in query, same country, distance; street pieces merged). Open for owner: mix online into one list? municipality vs village as town?
 - Smart route names (laptop, owner): save dialog proposes "Algund → Meran" / "Round trip from Algund" (`search/RouteNamer.kt`); finished tours named "Tour <date>" are renamed in the background from the track.
