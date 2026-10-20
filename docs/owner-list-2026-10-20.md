@@ -44,6 +44,7 @@ linked here.
 | 0.7.23 | "Where I face" arrow: HeadingEngine view + map channels; MapLibre gets the map direction only in heading-up following (puck NORMAL, own arrow `ui/FacingArrow` at the camera target), else the view direction; the app never moves the camera | **test**: Navigate heading-up, stand on the route, turn 90° → only the arrow turns |
 | 0.7.24 | Google share: place path split into name + address, address searched first (whole text found nothing online) | **test**: share PRIMUS Garden Bistrot |
 | 0.7.25 | Google share faster: stop at the redirect with an address (no page download), page only as fallback; "Finding the shared place…" pill | **test**: share a place, time to the ring |
+| 0.7.26 | Re-route = fresh route position → stops not passed → destination (owner: "completely new, like Google"); tracks / failure → way back as before (`Rerouter.fresh`) | **test**: leave the route, Take new route |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 

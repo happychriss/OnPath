@@ -39,7 +39,8 @@ object NavText {
             return@buildString
         }
         append(extra(q.extraM))
-        append(" · rejoins in ").append(Format.distance(round10(q.rejoinInM)))
+        if (q.rejoinInM.isNaN()) append(" · new route ").append(Format.distance(round10(q.legM)))   // fresh route (Rerouter.fresh)
+        else append(" · rejoins in ").append(Format.distance(round10(q.rejoinInM)))
         if (q.startOffM > FAR_START_M) append(" · nearest way ").append(Format.distance(round10(q.startOffM))).append(" away")
     }
 
