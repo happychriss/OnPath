@@ -59,13 +59,8 @@ fun MapHost(
     val density = LocalDensity.current.density
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { MapView(context).apply { onCreate(null) } }
-    // Battery (docs/design/battery-audit.md): no redraw at 120 Hz. Navigate mostly follows the position (30 fps is
-    // plenty); Plan keeps 60 for smooth panning.
-    androidx.compose.runtime.LaunchedEffect(mapView, vm.mode) {
-        try { mapView.setMaximumFps(if (vm.mode == AppMode.NAVIGATE) 30 else 60) } catch (e: Exception) {
-            Problems.warn("map", "Map frame-rate limit not set", e)
-        }
-    }
+    // No frame-rate cap (owner 2026-10-20): the map runs at the display's full rate while you look at it.
+    // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
     val hold = remember { HoldTracker() }
     val holdAt = remember { mutableStateOf<Offset?>(null) }
