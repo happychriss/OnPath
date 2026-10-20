@@ -101,7 +101,8 @@ def hillshade():
 
 def contours():
     major = ["==", ["get", "idx"], 1]
-    layer(id_="contour-minor", type="line", source="contours", **{"source-layer": "contour"}, minzoom=13,
+    # owner 2026-10-20: contour lines always from z12 (z12 tiles carry the 50 m lines, z13+ the 20 m lines)
+    layer(id_="contour-minor", type="line", source="contours", **{"source-layer": "contour"}, minzoom=12,
           filter=["all", ["!", major], ["any", [">=", ["zoom"], 14], ["==", ["%", ["get", "ele"], 50], 0]]],
           paint={"line-color": T("contour.minor.color"), "line-opacity": Z("contour.minor.opacity"),
                  "line-width": Z("contour.minor.width")})

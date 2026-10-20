@@ -534,7 +534,7 @@
    "type": "line",
    "source": "contours",
    "source-layer": "contour",
-   "minzoom": 13,
+   "minzoom": 12,
    "filter": [
     "all",
     [
