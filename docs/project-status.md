@@ -4,6 +4,15 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-20 (Navigate buttons + route-up, not released):** Navigate map controls are separate round
+  buttons, 56 dp (was 48), 8 dp apart (`MapControls(large = true)`; Plan keeps the compact pill). Heading-up on a
+  followed route now turns the map by the **route ahead** (40 m look-ahead from the matched position,
+  `NavLine.aheadBearing`) instead of compass / GPS bearing – owner: map looked slightly turned, the way should be a
+  straight line ahead. Used only in Navigate, matched (`shownAlongM`), ≤ 30 m off, no off-route prompt; walking
+  clearly against the route (GPS bearing > 100° off) or no update for 15 s falls back to GPS / compass
+  (`HeadingFilter.onRoute`, tests). Cause before: below 1 m/s (steep uphill) the compass was used, which depends on
+  how the phone is held. No map-style changes (laptop owns the current map work); not released – main also carries
+  the laptop's unreleased map/search/share changes, the owner decides when to release.
 - **laptop, 2026-10-19 (arrival estimate + map packages):** arrival/time-to-go fix merged (see backlog Done,
   `docs/plan-time-estimate.md` "Field test 2026-10-19"). Map packages: owner chose **grid cells (z10) built on
   demand**, server first on the owner's home server *zo* (code `~/onpath`, data `~/onpath-data`, Cloudflare tunnel,

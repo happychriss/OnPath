@@ -68,6 +68,9 @@ fun MapFooter(scale: Pair<String, Dp>?, fabs: @Composable ColumnScope.() -> Unit
 
 /** Size of one map control (48 dp = full touch target). */
 val MAP_FAB = 48.dp
+/** Navigate (owner, 2026-10-20): used while walking, so bigger and a little apart from each other. */
+val MAP_FAB_LARGE = 56.dp
+private val LARGE_GAP = 8.dp
 
 fun gpsColor(status: GpsStatus): Color = when (status) {
     GpsStatus.GOOD -> OnPathColors.Good
@@ -95,6 +98,8 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
  * The map controls as one group (owner: "center, eye and compass grouped"):
  * compass on top (always), the eye in the middle (only when there is a route,
  * track or followed line – hold to hide them, position stays), locate at the bottom (always, GPS dot).
+ * [large] (Navigate): each control its own bigger round button with a small gap, so the wrong one is not hit
+ * while walking; Plan keeps the compact pill.
  */
 @Composable
 fun MapControls(
@@ -107,58 +112,69 @@ fun MapControls(
     peeking: Boolean = false,
     /** Plan: undo the last edit (shown only when there is something to undo). */
     onUndo: (() -> Unit)? = null,
+    large: Boolean = false,
 ) {
+    val size = if (large) MAP_FAB_LARGE else MAP_FAB
+    val items = buildList<@Composable () -> Unit> {
+        if (compass != null) add { CompassControl(compass, size) }
+        if (showEye) add { EyeControl(onPeek, peeking, size) }
+        if (onUndo != null) add {
+            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = "Undo" },
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+            }
+        }
+        add { LocateControl(gps, following, onLocate, size) }
+    }
+    if (large) {
+        Column(verticalArrangement = Arrangement.spacedBy(LARGE_GAP), horizontalAlignment = Alignment.CenterHorizontally) {
+            items.forEach { item ->
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) { item() }
+            }
+        }
+        return
+    }
     Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (compass != null) {
-                CompassControl(compass)
-                GroupDivider()
+            items.forEachIndexed { i, item ->
+                if (i > 0) GroupDivider()
+                item()
             }
-            if (showEye) {
-                EyeControl(onPeek, peeking)
-                GroupDivider()
-            }
-            if (onUndo != null) {
-                Box(Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = "Undo" },
-                    contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                GroupDivider()
-            }
-            LocateControl(gps, following, onLocate)
         }
     }
 }
+
+private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
 
 @Composable
 private fun GroupDivider() =
     HorizontalDivider(Modifier.width(28.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
 @Composable
-private fun CompassControl(c: CompassSpec) {
+private fun CompassControl(c: CompassSpec, size: Dp) {
     val what = when {
         c.headingUp == true -> "Map turns with your walking direction. Tap for north up"
         kotlin.math.abs(c.bearing) > 1f -> "Map is turned. Tap for north up"
         else -> "Map is north up. Tap to turn it with your walking direction"
     }
     Box(
-        Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },
+        Modifier.size(size).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center,
     ) {
-        if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(24.dp))
-        else NorthNeedle(Modifier.size(34.dp).rotate(-c.bearing))
+        if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(iconSize(size)))
+        else NorthNeedle(Modifier.size(if (size > MAP_FAB) 42.dp else 34.dp).rotate(-c.bearing))
     }
 }
 
 /** Hold to hide route lines and markers; release shows them again. */
 @Composable
-private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean) {
+private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp) {
     val peek by rememberUpdatedState(onPeek)
     var held by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { if (held) peek(false) } }
     val down = held || peekingPreview
     Box(
-        Modifier.size(MAP_FAB).clip(CircleShape)
+        Modifier.size(size).clip(CircleShape)
             .background(if (down) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
             .semantics { contentDescription = "Hold to hide the route" }
             .pointerInput(Unit) {
@@ -170,21 +186,22 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(if (down) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
     }
 }
 
 @Composable
-private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit) {
+private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp) {
     val what = when (status) {
         GpsStatus.OFF -> "Location is off, tap to turn it on"
         GpsStatus.NO_PERMISSION -> "Location not allowed, tap to allow"
         else -> "Centre on my position. GPS ${status.label}"
     }
-    Box(Modifier.size(MAP_FAB).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
+    Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
         Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, null,
-            tint = if (following) OnPathColors.Route else MaterialTheme.colorScheme.onSurfaceVariant)
+            tint = if (following) OnPathColors.Route else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(iconSize(size)))
         Box(
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)
                 .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),

@@ -309,6 +309,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         heading.onLocation(loc)
     }
 
+    /** Heading-up on a followed route: direction of the route ahead (null = compass / GPS bearing). Never throws. */
+    fun setRouteHeading(bearingDeg: Double?) {
+        try { heading.setRoute(bearingDeg) } catch (e: Exception) { Problems.warn("map", "Route direction not passed to the map", e) }
+    }
+
     /** Plan mode follow (north stays where the user left it). */
     fun setFollow(follow: Boolean, onDismissed: () -> Unit) = setCamera(follow, navigating = false, headingUp = false, onDismissed)
 

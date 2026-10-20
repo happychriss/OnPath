@@ -19,8 +19,12 @@ import kotlin.math.hypot
 /**
  * Walking direction for the Navigate camera (heading-up). Pure, unit-tested.
  *
- * Moving (GPS speed ≥ [MOVING_MPS] with a bearing): the GPS bearing wins – it is where you walk, not where
- * the phone points. Standing or slow: the compass (rotation-vector sensor). Both are smoothed and a change
+ * On a followed route (Navigate, matched to the line): the direction of the route ahead wins ([onRoute]) – the
+ * next stretch points straight up, whatever the compass or a wobbly GPS bearing says (owner, 2026-10-20: "the way
+ * should be a straight line in front of me"). Exception: walking clearly against it (GPS bearing > [OPPOSED_DEG]
+ * off) – then the GPS bearing, so the map never shows you walking down the screen.
+ * Otherwise, moving (GPS speed ≥ [MOVING_MPS] with a bearing): the GPS bearing – it is where you walk, not where
+ * the phone points. Standing or slow: the compass (rotation-vector sensor). All are smoothed and a change
  * smaller than [DEADBAND_DEG] is not passed on, so the map does not jitter while you stand still.
  */
 class HeadingFilter {
@@ -32,6 +36,11 @@ class HeadingFilter {
         const val DEADBAND_DEG = 3.0
         private const val SENSOR_ALPHA = 0.12
         private const val GPS_ALPHA = 0.5
+        private const val ROUTE_ALPHA = 0.5
+        /** A route direction older than this is dropped (no new fix matched to the line). */
+        const val ROUTE_VALID_MS = 15_000L
+        /** Moving with a GPS bearing this far from the route direction = walking against the route. */
+        const val OPPOSED_DEG = 100.0
 
         fun diff(from: Double, to: Double): Double {
             var d = (to - from) % 360.0
@@ -47,9 +56,30 @@ class HeadingFilter {
     var heading: Double? = null; private set
     private var gpsAt = -1L
     private var gpsMoving = false
+    private var gpsBearing = 0.0
+    private var route: Double? = null
+    private var routeAt = -1L
 
     /** True while the GPS bearing is used (moving). */
     fun usingGps(nowMs: Long) = gpsMoving && gpsAt >= 0 && nowMs - gpsAt <= GPS_VALID_MS
+
+    /** True while the route direction is used (on the route, not walking against it). */
+    fun usingRoute(nowMs: Long): Boolean {
+        val r = route ?: return false
+        if (nowMs - routeAt > ROUTE_VALID_MS) return false
+        return !(usingGps(nowMs) && abs(diff(r, gpsBearing)) > OPPOSED_DEG)
+    }
+
+    /**
+     * Direction of the route ahead (null = not on a followed route any more); returns the new heading to show
+     * or null when it did not change enough / is not used.
+     */
+    fun onRoute(bearingDeg: Double?, nowMs: Long): Double? {
+        if (bearingDeg == null || bearingDeg.isNaN()) { route = null; return null }
+        route = norm(bearingDeg); routeAt = nowMs
+        if (!usingRoute(nowMs)) return null
+        return step(route!!, ROUTE_ALPHA)
+    }
 
     /** A GPS fix; returns the new heading to show or null when it did not change enough. */
     fun onGps(bearing: Float?, speedMps: Float?, nowMs: Long): Double? {
@@ -57,12 +87,14 @@ class HeadingFilter {
         gpsMoving = bearing != null && if (gpsMoving) speed >= SLOW_MPS else speed >= MOVING_MPS
         if (!gpsMoving || bearing == null) return null
         gpsAt = nowMs
-        return step(bearing.toDouble(), GPS_ALPHA)
+        gpsBearing = bearing.toDouble()
+        if (usingRoute(nowMs)) return null
+        return step(gpsBearing, GPS_ALPHA)
     }
 
-    /** A compass reading (degrees from true north); ignored while moving with GPS. */
+    /** A compass reading (degrees from true north); ignored while moving with GPS or on a followed route. */
     fun onSensor(headingDeg: Double, nowMs: Long): Double? {
-        if (headingDeg.isNaN() || usingGps(nowMs)) return null
+        if (headingDeg.isNaN() || usingGps(nowMs) || usingRoute(nowMs)) return null
         return step(headingDeg, SENSOR_ALPHA)
     }
 
@@ -134,6 +166,12 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         if (listeners.isEmpty()) return
         val h = filter.onGps(if (loc.hasBearing()) loc.bearing else null, if (loc.hasSpeed()) loc.speed else null, now())
         if (h != null) emit(h)
+    }
+
+    /** Direction of the followed route ahead (Navigate, on the route); null = none (compass / GPS again). */
+    fun setRoute(bearingDeg: Double?) {
+        val h = filter.onRoute(bearingDeg, now())
+        if (h != null && listeners.isNotEmpty()) emit(h)
     }
 
     override fun onSensorChanged(event: SensorEvent) {

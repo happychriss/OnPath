@@ -31,6 +31,14 @@ class NavLineTest {
         assertEquals(0, l.parts(pt(400.0, 300.0), 40.0).size)
     }
 
+    @Test fun aheadBearingLooksForwardAndStopsAtTheEnd() {
+        val l = NavLine(line(0.0 to 0.0, 100.0 to 0.0, 100.0 to 100.0))
+        assertEquals(90.0, l.aheadBearing(30.0)!!, 1.0)
+        assertEquals(45.0, l.aheadBearing(80.0)!!, 1.0)   // the bend ahead already turns the map halfway
+        assertEquals(0.0, l.aheadBearing(150.0)!!, 1.0)
+        assertEquals(null, l.aheadBearing(195.0))
+    }
+
     @Test fun bearingFollowsTheLine() {
         val l = NavLine(line(0.0 to 0.0, 100.0 to 0.0, 100.0 to 100.0))
         assertEquals(90.0, l.bearingAt(50.0), 1.0)
