@@ -33,6 +33,21 @@ ask() { # ask PROMPT DEFAULT → answer
   echo "${a:-$2}"
 }
 quiet() { "$@" >/dev/null 2>&1; }
+retry() { # retry CMD… – reruns CMD (up to 5 attempts, 65 s apart) when Google answers with a rate limit / quota
+  # error (HTTP 429, RESOURCE_EXHAUSTED, e.g. "Service accounts created per minute"); any other error fails at once.
+  local n=1 max=5 err rc
+  err=$(mktemp)
+  while :; do
+    if "$@" 2>"$err"; then cat "$err" >&2; rm -f "$err"; return 0; else rc=$?; fi
+    cat "$err" >&2
+    if [ "$n" -lt "$max" ] && grep -qiE '429|RESOURCE_EXHAUSTED|quota|rate limit' "$err"; then
+      warn "Google rate limit – waiting 65 s, then retrying… (attempt $((n + 1)) of $max)"
+      sleep 65; n=$((n + 1))
+    else
+      rm -f "$err"; return "$rc"   # other errors (or still limited after $max attempts) fail as before
+    fi
+  done
+}
 
 command -v gcloud >/dev/null || { echo "gcloud not found – run this in Google Cloud Shell." >&2; exit 1; }
 
@@ -76,7 +91,7 @@ info "ok"
 bold "3/10 Artifact Registry Docker repository '$AR_REPO' (builder images)"
 if quiet gcloud artifacts repositories describe "$AR_REPO" --location "$REGION"; then info "exists"
 else
-  gcloud artifacts repositories create "$AR_REPO" --repository-format=docker --location "$REGION" \
+  retry gcloud artifacts repositories create "$AR_REPO" --repository-format=docker --location "$REGION" \
     --description="OnPath map cell builder images" --labels=app=onpath-maps
 fi
 POLICY=$(mktemp)
@@ -93,7 +108,7 @@ info "cleanup policy: keep the 5 newest images, delete others after 30 days (sto
 bold "4/10 Source bucket gs://$SRC_BUCKET (OSM extracts, Planetiler sources – public data, private bucket)"
 if quiet gcloud storage buckets describe "gs://$SRC_BUCKET"; then info "exists"
 else
-  gcloud storage buckets create "gs://$SRC_BUCKET" --location "$REGION" --default-storage-class=STANDARD \
+  retry gcloud storage buckets create "gs://$SRC_BUCKET" --location "$REGION" --default-storage-class=STANDARD \
     --uniform-bucket-level-access --public-access-prevention
 fi
 LC=$(mktemp)
@@ -109,7 +124,7 @@ for e in test prod; do
               "doorman-invoker-$e|Cloudflare doorman: starts builder job ($e)"; do
     name=${pair%%|*}; title=${pair#*|}
     if quiet gcloud iam service-accounts describe "$(sa "$name")"; then info "$name exists"
-    else gcloud iam service-accounts create "$name" --display-name="$title" --description="OnPath maps, see docs/design/map-hosting.md"
+    else retry gcloud iam service-accounts create "$name" --display-name="$title" --description="OnPath maps, see docs/design/map-hosting.md"
     fi
   done
 done
@@ -118,13 +133,13 @@ bold "6/10 Secret Manager: R2 upload keys for the builder (empty now, filled by 
 for e in test prod; do
   for s in "r2-access-key-id-$e" "r2-secret-access-key-$e"; do
     if quiet gcloud secrets describe "$s"; then info "$s exists"
-    else gcloud secrets create "$s" --replication-policy=user-managed --locations="$REGION" --labels=app=onpath-maps,env=$e
+    else retry gcloud secrets create "$s" --replication-policy=user-managed --locations="$REGION" --labels=app=onpath-maps,env=$e
     fi
-    gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "cell-builder-$e")" \
+    retry gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "cell-builder-$e")" \
       --role=roles/secretmanager.secretAccessor >/dev/null
-    gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "gh-deployer-$e")" \
+    retry gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "gh-deployer-$e")" \
       --role=roles/secretmanager.secretVersionAdder >/dev/null
-    gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "gh-deployer-$e")" \
+    retry gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$(sa "gh-deployer-$e")" \
       --role=roles/secretmanager.viewer >/dev/null   # metadata only (does a version exist?), no values
   done
 done
@@ -133,9 +148,9 @@ info "cell-builder-<env> may read, gh-deployer-<env> may add versions (not read)
 bold "7/10 Custom roles (smallest permission sets for the doorman)"
 role() { # role ID TITLE PERMISSIONS
   if quiet gcloud iam roles describe "$1" --project "$PROJECT_ID"; then
-    gcloud iam roles update "$1" --project "$PROJECT_ID" --permissions="$3" --quiet >/dev/null; info "$1 updated"
+    retry gcloud iam roles update "$1" --project "$PROJECT_ID" --permissions="$3" --quiet >/dev/null; info "$1 updated"
   else
-    gcloud iam roles create "$1" --project "$PROJECT_ID" --title="$2" --permissions="$3" --stage=GA >/dev/null; info "$1 created"
+    retry gcloud iam roles create "$1" --project "$PROJECT_ID" --title="$2" --permissions="$3" --stage=GA >/dev/null; info "$1 created"
   fi
 }
 role onpathJobRunner "OnPath: run one Cloud Run job" \
@@ -148,26 +163,26 @@ for e in test prod; do
   job="onpath-cell-$e"
   if quiet gcloud run jobs describe "$job" --region "$REGION"; then info "$job exists"
   else
-    gcloud run jobs create "$job" --region "$REGION" --image "$PLACEHOLDER_IMAGE" --service-account "$(sa "cell-builder-$e")" \
+    retry gcloud run jobs create "$job" --region "$REGION" --image "$PLACEHOLDER_IMAGE" --service-account "$(sa "cell-builder-$e")" \
       --tasks 1 --max-retries 0 --labels=app=onpath-maps,env=$e >/dev/null
     info "$job created (placeholder)"
   fi
-  gcloud run jobs add-iam-policy-binding "$job" --region "$REGION" --member="serviceAccount:$(sa "doorman-invoker-$e")" \
+  retry gcloud run jobs add-iam-policy-binding "$job" --region "$REGION" --member="serviceAccount:$(sa "doorman-invoker-$e")" \
     --role="projects/$PROJECT_ID/roles/onpathJobRunner" >/dev/null
-  gcloud run jobs add-iam-policy-binding "$job" --region "$REGION" --member="serviceAccount:$(sa "gh-deployer-$e")" \
+  retry gcloud run jobs add-iam-policy-binding "$job" --region "$REGION" --member="serviceAccount:$(sa "gh-deployer-$e")" \
     --role=roles/run.developer >/dev/null
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$(sa "doorman-invoker-$e")" \
+  retry gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$(sa "doorman-invoker-$e")" \
     --role="projects/$PROJECT_ID/roles/onpathExecutionReader" --condition=None >/dev/null
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$(sa "gh-deployer-$e")" \
+  retry gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$(sa "gh-deployer-$e")" \
     --role=roles/run.viewer --condition=None >/dev/null
   # deployer: run the job as cell-builder-<env>, push images, create/rotate the invoker's key (nothing else)
-  gcloud iam service-accounts add-iam-policy-binding "$(sa "cell-builder-$e")" \
+  retry gcloud iam service-accounts add-iam-policy-binding "$(sa "cell-builder-$e")" \
     --member="serviceAccount:$(sa "gh-deployer-$e")" --role=roles/iam.serviceAccountUser >/dev/null
-  gcloud iam service-accounts add-iam-policy-binding "$(sa "doorman-invoker-$e")" \
+  retry gcloud iam service-accounts add-iam-policy-binding "$(sa "doorman-invoker-$e")" \
     --member="serviceAccount:$(sa "gh-deployer-$e")" --role=roles/iam.serviceAccountKeyAdmin >/dev/null
-  gcloud artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$REGION" \
+  retry gcloud artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$REGION" \
     --member="serviceAccount:$(sa "gh-deployer-$e")" --role=roles/artifactregistry.writer >/dev/null
-  gcloud storage buckets add-iam-policy-binding "gs://$SRC_BUCKET" \
+  retry gcloud storage buckets add-iam-policy-binding "gs://$SRC_BUCKET" \
     --member="serviceAccount:$(sa "cell-builder-$e")" --role=roles/storage.objectUser >/dev/null
   info "$e: bindings applied"
 done
@@ -185,23 +200,23 @@ REPO_ID=$(curl -fsS "https://api.github.com/repos/$GH_REPO" 2>/dev/null | python
 [ -n "$REPO_ID" ] || { echo "Need the repository id." >&2; exit 1; }
 info "repository id: $REPO_ID (survives renames; a deleted+recreated repo with the same name gets a new id)"
 if quiet gcloud iam workload-identity-pools describe "$POOL" --location global; then info "pool $POOL exists"
-else gcloud iam workload-identity-pools create "$POOL" --location global --display-name="GitHub Actions"
+else retry gcloud iam workload-identity-pools create "$POOL" --location global --display-name="GitHub Actions"
 fi
 MAPPING="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.repository_id=assertion.repository_id,attribute.environment=assertion.environment,attribute.ref=assertion.ref"
 COND="assertion.repository_id == '$REPO_ID' && assertion.ref == 'refs/heads/main' && assertion.environment in ['test', 'production']"
 if quiet gcloud iam workload-identity-pools providers describe "$PROVIDER" --workload-identity-pool "$POOL" --location global; then
-  gcloud iam workload-identity-pools providers update-oidc "$PROVIDER" --workload-identity-pool "$POOL" --location global \
+  retry gcloud iam workload-identity-pools providers update-oidc "$PROVIDER" --workload-identity-pool "$POOL" --location global \
     --attribute-mapping="$MAPPING" --attribute-condition="$COND" >/dev/null
   info "provider $PROVIDER updated"
 else
-  gcloud iam workload-identity-pools providers create-oidc "$PROVIDER" --workload-identity-pool "$POOL" --location global \
+  retry gcloud iam workload-identity-pools providers create-oidc "$PROVIDER" --workload-identity-pool "$POOL" --location global \
     --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="$MAPPING" --attribute-condition="$COND" \
     --display-name="OnPath repository"
 fi
 PRINCIPALS="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL"
-gcloud iam service-accounts add-iam-policy-binding "$(sa gh-deployer-test)" --role=roles/iam.workloadIdentityUser \
+retry gcloud iam service-accounts add-iam-policy-binding "$(sa gh-deployer-test)" --role=roles/iam.workloadIdentityUser \
   --member="$PRINCIPALS/attribute.environment/test" >/dev/null
-gcloud iam service-accounts add-iam-policy-binding "$(sa gh-deployer-prod)" --role=roles/iam.workloadIdentityUser \
+retry gcloud iam service-accounts add-iam-policy-binding "$(sa gh-deployer-prod)" --role=roles/iam.workloadIdentityUser \
   --member="$PRINCIPALS/attribute.environment/production" >/dev/null
 info "GitHub Environment 'test' → gh-deployer-test, 'production' → gh-deployer-prod; nothing else can log in"
 
