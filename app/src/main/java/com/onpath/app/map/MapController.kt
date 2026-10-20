@@ -121,6 +121,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private var mapTurning = false
     private var cameraGen = 0
 
+    /** The user moved the map: stop following; the reason goes to Diagnostics (field test: following stopped by itself). */
+    private fun dismissed(why: String) {
+        val cb = onTrackingDismissed ?: return
+        Problems.info("map", "Following stopped: $why")
+        cb()
+    }
+
     private fun startMapTurning() {
         mapTurning = true
         try { heading.startMapFrom(map.cameraPosition.bearing) } catch (e: Exception) { Problems.warn("map", "Map turning not started", e) }
@@ -299,7 +306,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             // a two-finger turn while we turn the map = look around (free look): stop following like a pan does
             map.addOnRotateListener(object : org.maplibre.android.maps.MapLibreMap.OnRotateListener {
                 override fun onRotateBegin(detector: org.maplibre.android.gestures.RotateGestureDetector) {
-                    if (mapTurning) { mapTurning = false; onTrackingDismissed?.invoke() }
+                    if (mapTurning) { mapTurning = false; dismissed("two-finger turn") }
                 }
                 override fun onRotate(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
                 override fun onRotateEnd(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
@@ -313,11 +320,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             lc.renderMode = PUCK_MODE
             lc.cameraMode = CameraMode.NONE
             lc.addOnCameraTrackingChangedListener(object : org.maplibre.android.location.OnCameraTrackingChangedListener {
-                override fun onCameraTrackingDismissed() { onTrackingDismissed?.invoke() }
+                override fun onCameraTrackingDismissed() { dismissed("MapLibre: pan / fling gesture") }
                 override fun onCameraTrackingChanged(currentMode: Int) {
-                    // A rotate gesture turns compass tracking into plain tracking: treat as "not following"
-                    // so "centre on me" brings the chosen orientation back.
-                    if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode) onTrackingDismissed?.invoke()
+                    // Only noted, never taken as "the user moved the map" any more (field test 2026-10-20: following
+                    // stopped a few seconds after the compass tap). Gestures come through onCameraTrackingDismissed and
+                    // our rotate listener.
+                    if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode && onTrackingDismissed != null)
+                        Problems.info("map", "Camera mode changed by the map to $currentMode (wanted $wantedCameraMode) – following kept")
                 }
             })
             locationReady = true
