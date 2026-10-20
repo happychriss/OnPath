@@ -296,6 +296,8 @@ data class HttpHop(val code: Int, val location: String?, val body: String?)
 class ShortLinkResolver(
     private val fetch: (String) -> HttpHop,
     private val maxHops: Int = 5,
+    /** Stop at a redirect that names the place with an address (search that; no ~200 KB page download – faster). */
+    private val stopAtAddress: Boolean = false,
 ) {
     /** The coordinate (and name / q text found on the way) or null when nothing could be read. */
     data class Result(val place: SharedPlace?, val reason: String?, val fromPage: Boolean = false)
@@ -311,6 +313,7 @@ class ShortLinkResolver(
                     val info = SharedPlaceParser.fromUrl(loc)
                     if (info != null && info.hasPoint) return Result(info.copy(link = null), null)
                     if (info != null && info.link == null) lastInfo = merge(lastInfo, info)
+                    if (stopAtAddress && lastInfo?.address != null) return Result(lastInfo, "address in the link")
                     url = loc
                     return@repeat
                 }

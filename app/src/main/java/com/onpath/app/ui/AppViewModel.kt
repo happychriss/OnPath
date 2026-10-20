@@ -872,6 +872,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- shared places (another app → OnPath; parsing in search/SharedPlace) ----------------
     private var sharedJob: Job? = null
+    /** A shared place is being looked up (short link, address search): the map shows "Finding the shared place…". */
+    var sharedLookup by mutableStateOf(false)
     /** Until then (elapsedRealtime) the start camera must not move the map away from a shared place. */
     private var keepCameraUntil = 0L
 
@@ -887,7 +889,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (shown != null) closeShown()
         holdCameraForSharedPlace()
         sharedJob?.cancel()
+        sharedLookup = true
         sharedJob = viewModelScope.launch {
+          try {
             // Cold start: the start mode (Plan / Navigate) is decided after a database check – switch after that.
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
             if (mode != AppMode.PLAN) enter(AppMode.PLAN)
@@ -895,9 +899,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var fromPage = false
             if (!p.hasPoint && p.link != null) {
                 val link = p.link!!
-                val r = withContext(Dispatchers.IO) {
-                    com.onpath.app.search.ShortLinkResolver(com.onpath.app.search.ShortLinkResolver.http(
-                        com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))).resolve(link)
+                val http = com.onpath.app.search.ShortLinkResolver.http(
+                    com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))
+                // Faster (owner: 2–3 s before anything moved): when the redirect already names the address, search that
+                // and skip the Google page; the page is only read when the address is not found.
+                var r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http, stopAtAddress = true).resolve(link) }
+                val quick = r.place?.takeIf { !it.hasPoint && it.address != null }
+                if (quick != null) {
+                    val q = p.copy(name = p.name ?: quick.name, address = quick.address, query = p.query ?: quick.query)
+                    val hit = try { search.findOne(q.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                        Problems.info("search", "Address search for a shared place failed", e); null
+                    }
+                    if (hit != null) {
+                        Problems.info("search", "Shared place found by its address (${hit.second.name.lowercase()} search)")
+                        val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.first.name
+                        showSharedPlace(hit.first.copy(name = shownName))
+                        return@launch
+                    }
+                    r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http).resolve(link) }
                 }
                 r.place?.let { rp -> p = p.copy(lat = rp.lat, lon = rp.lon, name = p.name ?: rp.name, address = p.address ?: rp.address, query = p.query ?: rp.query) }
                 fromPage = r.fromPage
@@ -934,6 +953,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val (place, from) = found
             Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
             showSharedPlace(place.copy(name = p.name ?: place.name))
+          } finally { sharedLookup = false }
         }
     }
 
