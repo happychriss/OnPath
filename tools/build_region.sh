@@ -21,10 +21,12 @@
 #   --no-addresses    skip addresses.sqlite (offline address search; optional for the app)
 #   --with-styles     put styles/onpath*.json into the zip (they then override the APK's bundled styles!)
 #   --sprite          regenerate the POI sprite in the repo (app/src/main/assets/sprites; needs cairosvg)
-#   --format 1|2      map package format (env FORMAT, default 1). 1 = overlays as GeoJSON files (what the app
-#                     ships today); 2 = overlays as ONE overlays.pmtiles (tippecanoe + tile-join needed, env
-#                     TIPPECANOE / TILE_JOIN), smoothed paths, base map without unused layers / languages and
-#                     without path / track lines at z13-14 (docs/design/map-data-size.md, docs/map-pipeline.md)
+#   --format 1|2      map package format (env FORMAT, default 1), one switch for every file (docs/design/
+#                     map-data-size.md, docs/map-pipeline.md). 1 = what the app ships today: overlays as GeoJSON
+#                     files, terrain PNG z5-13. 2 = overlays as ONE overlays.pmtiles (tippecanoe + tile-join
+#                     needed, env TIPPECANOE / TILE_JOIN), smoothed paths, base map without unused layers /
+#                     languages and without path / track lines at z13-14, terrain WebP lossless (0.25 m) z5-12,
+#                     contours from the cached AWS z12/z13 tiles. package.json / manifest say format 2 only then.
 #   --no-smooth       format 2 without path smoothing (extract_overlays.py --smooth is the format-2 default)
 #   --force           rebuild every step even if its output is up to date
 #   -h, --help        this text
@@ -34,7 +36,7 @@
 #   PLANETILER_JAR=/path/planetiler.jar  use this jar (default $WORK/planetiler-$PLANETILER_VERSION.jar)
 #   PLANETILER_VERSION=0.10.2            release downloaded from GitHub when no jar is given
 #   PLANETILER_SOURCES=DIR               Planetiler's water / Natural Earth downloads (~1.4 GB, cached)
-#   JAVA_XMX=6g  TERRAIN_MAXZOOM=13  OSM_MAX_AGE_DAYS=6  SEGMENTS_MAX_AGE_DAYS=30
+#   JAVA_XMX=6g  TERRAIN_MAXZOOM=13 (format 2: 12)  OSM_MAX_AGE_DAYS=6  SEGMENTS_MAX_AGE_DAYS=30
 #
 # Idempotent: every step is skipped when its output is newer than its inputs (OSM file, the tool
 # script) and the bbox did not change. Outputs are written to a temp name and renamed when complete.
@@ -87,13 +89,13 @@ if [ "$REGION" = south-tyrol ]; then
   OSM_URL=${OSM_URL:-https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf}
 fi
 : "${BBOX:?BBOX missing (minlon,minlat,maxlon,maxlat)}"
+[[ "$FORMAT" =~ ^[12]$ ]] || { echo "--format must be 1 or 2" >&2; exit 2; }
 [[ "$REGION" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { echo "REGION must be lower-case letters, digits, - or _" >&2; exit 2; }
 IFS=, read -r MINLON MINLAT MAXLON MAXLAT <<<"$BBOX"
 for v in "$MINLON" "$MINLAT" "$MAXLON" "$MAXLAT"; do
   [[ "$v" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || { echo "bad BBOX '$BBOX' (want minlon,minlat,maxlon,maxlat)" >&2; exit 2; }
 done
 BBOX_ARGS=("$MINLON" "$MINLAT" "$MAXLON" "$MAXLAT")
-[[ "$FORMAT" =~ ^[12]$ ]] || { echo "--format must be 1 or 2" >&2; exit 2; }
 
 OUT=$(mkdir -p "${OUT:-./out/$REGION}" && cd "${OUT:-./out/$REGION}" && pwd)
 WORK=$(mkdir -p "${WORK:-./work}" && cd "${WORK:-./work}" && pwd)
@@ -102,7 +104,9 @@ PLANETILER_VERSION=${PLANETILER_VERSION:-0.10.2}
 PLANETILER_JAR=${PLANETILER_JAR:-$WORK/planetiler-$PLANETILER_VERSION.jar}
 PLANETILER_SOURCES=${PLANETILER_SOURCES:-$WORK/planetiler-sources}
 JAVA_XMX=${JAVA_XMX:-6g}
-TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}
+if [ "$FORMAT" = 2 ]; then TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-12}; else TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}; fi
+TERRAIN_ARGS=(); [ "$FORMAT" = 2 ] && TERRAIN_ARGS=(--format 2)
+TERRARIUM_CACHE="$WORK/terrarium"   # AWS Terrarium PNGs, shared by terrain (format 2) and contours (format 2)
 OSM_MAX_AGE_DAYS=${OSM_MAX_AGE_DAYS:-6}
 SEGMENTS_MAX_AGE_DAYS=${SEGMENTS_MAX_AGE_DAYS:-30}
 BROUTER_URL=https://brouter.de/brouter/segments4
@@ -247,13 +251,18 @@ fi
 done_step "$(size "$DATA/base.pmtiles")"
 
 # ------------------------------------------------------------------------------------ 4. terrain
-step "terrain.pmtiles (AWS Terrarium tiles, z5-$TERRAIN_MAXZOOM)"
-if [ -s "$DATA/terrain.pmtiles" ] && up_to_date "$DATA/terrain.pmtiles" "$TOOLS/build_terrain.py"; then
+step "terrain.pmtiles (AWS Terrarium tiles, z5-$TERRAIN_MAXZOOM, format $FORMAT)"
+TSTAMP="$DATA/.terrain-format"   # rebuild when the format / max zoom changes
+if [ -s "$DATA/terrain.pmtiles" ] && up_to_date "$DATA/terrain.pmtiles" "$TOOLS/build_terrain.py" \
+   && [ "$(cat "$TSTAMP" 2>/dev/null || echo "1 13")" = "$FORMAT $TERRAIN_MAXZOOM" ]; then
   log "    up to date"
 else
+  CACHE_ARGS=(); [ "$FORMAT" = 2 ] && CACHE_ARGS=(--cache "$TERRARIUM_CACHE")
   python3 "$TOOLS/build_terrain.py" "$WORK/tmp/terrain.pmtiles" "${BBOX_ARGS[@]}" "$TERRAIN_MAXZOOM" \
+    "${TERRAIN_ARGS[@]}" "${CACHE_ARGS[@]}" \
     > "$LOGS/terrain.log" 2>&1 || { tail -5 "$LOGS/terrain.log" >&2; die "terrain download failed"; }
   mv -f "$WORK/tmp/terrain.pmtiles" "$DATA/terrain.pmtiles"
+  echo "$FORMAT $TERRAIN_MAXZOOM" > "$TSTAMP"
 fi
 done_step "$(size "$DATA/terrain.pmtiles")"
 
@@ -326,14 +335,16 @@ else
 fi
 
 # ------------------------------------------------------------------------------------- 7. contours
-step "contours.pmtiles (50 m at z12, 20 m at z13)"
+step "contours.pmtiles (50 m at z12, 20 m at z13$([ "$FORMAT" = 2 ] && echo ", from the AWS tiles"))"
 if [ "$NO_CONTOURS" = 1 ]; then
   rm -f "$DATA/contours.pmtiles"; done_step "skipped (--no-contours)"
 else
   if up_to_date "$DATA/contours.pmtiles" "$DATA/terrain.pmtiles" "$TOOLS/build_contours.py"; then
     log "    up to date"
   else
-    python3 "$TOOLS/build_contours.py" "$DATA/terrain.pmtiles" "$WORK/tmp/contours.pmtiles" "${BBOX_ARGS[@]}" \
+    # format 2 ships terrain only to z12: the 20 m lines come from the original z13 AWS tiles (same lines as format 1)
+    if [ "$FORMAT" = 2 ]; then CSRC=(aws); CEXTRA=(--cache "$TERRARIUM_CACHE"); else CSRC=("$DATA/terrain.pmtiles"); CEXTRA=(); fi
+    python3 "$TOOLS/build_contours.py" "${CSRC[@]}" "$WORK/tmp/contours.pmtiles" "${BBOX_ARGS[@]}" "${CEXTRA[@]}" \
       > "$LOGS/contours.log" 2>&1 || { tail -5 "$LOGS/contours.log" >&2; die "contours failed"; }
     mv -f "$WORK/tmp/contours.pmtiles" "$DATA/contours.pmtiles"
   fi

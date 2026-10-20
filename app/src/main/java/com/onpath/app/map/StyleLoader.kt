@@ -100,7 +100,7 @@ object StyleLoader {
                 if (!json.trimStart().startsWith("{")) error("not JSON")
                 Log.i("OnPath", "Map style: $what")
                 lastLoaded = what
-                return OptionalSources.strip(json.replace("{DATA_DIR}", dir))
+                return OptionalSources.strip(Overview.merge(json.replace("{DATA_DIR}", dir), Overview.bundled(context)))
             } catch (e: Exception) {
                 Problems.warn("map", "Map style $what not usable, trying the next one", e)
             }
