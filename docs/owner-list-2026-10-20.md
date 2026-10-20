@@ -52,6 +52,12 @@ Also answered: off-route warning = vibration + notification with sound (since 0.
    today ("don't change the map"). Rebuild when the laptop's map work allows – laptop or cloud?
 
 ## Questions for tonight
+- **Foot & bike network in towns (Komoot comparison, Meran):** Komoot's green lines are footways / pedestrian zones /
+  cycleways (Meran centre: footways 20 km, pedestrian 4.2 km, cycleways 5.2 km, sidewalks + crossings 4.1 km left out
+  on purpose). **Bug:** pedestrian zones (Passerpromenade …) are not drawn since 0.7.0 – `paths.geojson` has no
+  `highway=pedestrian` and the base map's path layer is fallback-only. Fix: style (base-map pedestrian always, no new
+  package) now, pipeline later. Styling of footways / cycleways in towns: green clashes with our route green –
+  proposals (pedestrian as light warm lane, stronger footways, cycleway blue distinct from water) + renders. Go?
 - **Bike map (Komoot comparison, Meran):** oneway arrows (+ "bikes both ways"), green cycleways, cycle lanes beside
   streets – see backlog "Bike map". Which of the three, and lanes always or only for bike activities? Laptop or cloud?
 - Pause reminder after **150 m**, free look back after **25 m**, route look-ahead **40 m** – right values after the test?
