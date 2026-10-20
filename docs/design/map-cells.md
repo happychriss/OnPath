@@ -370,3 +370,26 @@ All questions below are decided as recommended (owner, 2026-10-19). The "Recomme
 | Q9 | Keep the current region zips (`south-tyrol`) working next to cells? | Yes until phase 2 is done, then drop them |
 | Q10 | Routing: rd5 from brouter.de – fetch only the 1° parts (5–13 MB) by HTTP range, or whole 200 MB files? | 1° parts (map-data-size.md §6); own part automatic, others ask with size like neighbours |
 | Q11 | Go straight to format 2 (≈ 10 MB/cell) for the first app release with cells, skipping GeoJSON cells? | Yes – phase 1 may test with format 1, but the app ships cells only in format 2 |
+
+## 17. Phase 1 results on zo (2026-10-20)
+
+Built with `tools/cells/run.sh` (Docker `onpath-cell-builder`, `--memory 3g --cpus 3 --cpu-shares 512 --network host`),
+format 1, source = Trentino extract of 2026-10-19, 5 km buffer.
+
+| | Cell 10/543/361 (Meran) | Cell 10/544/361 (Bozen side) |
+| --- | --- | --- |
+| Wall time | **2 min 42 s** (region-style build before: 9 min) | 2 min 36 s |
+| Biggest steps | base 63 s (peak 0.9 GB), contours 24 s, overlays 23 s, pois 19 s, renumber 10 s, terrain 9 s, cut 5 s | similar |
+| Size (format 1) | 28 MB | 23 MB |
+
+- **Cut memory:** `osmium extract -s smart` needs ~4 GB with today's node ids (~13e9) → over the 3 GB limit; the
+  source is renumbered once first (`osmium renumber`, ~10 s, cached) → cut 5 s / 127 MB.
+- **Seams (`tools/cells/seam_check.py`, border lon 11.25):** 0 lines crossing the border, 0 features in both cells,
+  0 POIs in both cells, 0 pmtiles tiles (z ≥ 10) in both cells; line ends on the border pair up (paths 70/73, trails
+  27/29, ways 44/46, routes 57/59 – the few unpaired ends are lines that end at the border in OSM or are merged
+  differently); visual check of the lines across the border: they join.
+- **zo impact:** load stayed low, Immich/Forgejo healthy. Docker containers on the default bridge made the owner's
+  Docbox mDNS daemon crash and systemd restart the Docbox services (converter 7×, scanner 2× on 2026-10-20 during the
+  first tests) → `--network host` is now the default; no further restarts over two builds.
+- **Next:** doorman (API + queue) as a second container on zo, then `maps.free-your-pictures.org` in the Cloudflare
+  tunnel (owner-approved step), then format 2 (map-data-size.md).
