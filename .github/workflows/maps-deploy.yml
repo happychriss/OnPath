@@ -164,7 +164,7 @@ jobs:
           envsubst '${JOB_NAME} ${ENV_NAME} ${ENV_SHORT} ${BUILDER_SA} ${IMAGE} ${R2_ACCOUNT_ID} ${R2_JURISDICTION} ${R2_BUCKET} ${SRC_BUCKET} ${TASK_TIMEOUT_S} ${JOB_CPU} ${JOB_MEMORY}' \
             < tools/cloud/job.yaml > "$RUNNER_TEMP/job.yaml"
           # shellcheck disable=SC2016  # a literal "${" = a placeholder envsubst did not fill
-          if grep -n '\${' "$RUNNER_TEMP/job.yaml"; then echo "unfilled placeholder in job.yaml"; exit 1; fi
+          if grep -v '^\s*#' "$RUNNER_TEMP/job.yaml" | grep -n '\${'; then echo "unfilled placeholder in job.yaml"; exit 1; fi
           gcloud run jobs replace "$RUNNER_TEMP/job.yaml" --region "$GCP_REGION"
 
       # ------------------------------------------------------------------------------------------- Cloudflare

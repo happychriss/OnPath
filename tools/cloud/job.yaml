@@ -1,5 +1,5 @@
 # Cloud Run Job definition of the cell builder, one per environment (docs/design/map-hosting.md §Builder).
-# Applied by .github/workflows/maps-deploy.yml with `gcloud run jobs replace` after envsubst fills the ${…} values
+# Applied by .github/workflows/maps-deploy.yml with `gcloud run jobs replace` after envsubst fills the placeholder values
 # (create-or-update, declarative – the IAM bindings set by gcp-setup.sh on the job stay).
 #
 # Resources: a cell peaks at ~2.3 GB RAM (map-cells.md §3). Cloud Run's disk is memory, and it also holds the
