@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("app.cash.paparazzi")
 }
+
+// Map server (docs/design/map-hosting.md): debug builds talk to the test doorman, release builds to production.
+// Hostnames can be overridden with -Ponpath.mapServer.test=… / -Ponpath.mapServer.production=…; the app keys are
+// never committed: -Ponpath.mapKey.test=… / -Ponpath.mapKey.production=… (or ~/.gradle/gradle.properties,
+// local.properties, env ONPATH_MAP_KEY_TEST / ONPATH_MAP_KEY_PRODUCTION). Empty key = "not set" in Diagnostics.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+fun mapSetting(name: String, env: String, default: String): String =
+    (project.findProperty(name) as String?) ?: localProps.getProperty(name) ?: System.getenv(env) ?: default
+fun quoted(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.onpath.app"
@@ -38,8 +51,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "MAP_SERVER_ENV", quoted("test"))
+            buildConfigField("String", "MAP_SERVER_URL", quoted(mapSetting("onpath.mapServer.test",
+                "ONPATH_MAP_SERVER_TEST", "https://maps-test.free-your-pictures.org")))
+            buildConfigField("String", "MAP_SERVER_KEY", quoted(mapSetting("onpath.mapKey.test", "ONPATH_MAP_KEY_TEST", "")))
+        }
         release {
             isMinifyEnabled = false
+            buildConfigField("String", "MAP_SERVER_ENV", quoted("production"))
+            buildConfigField("String", "MAP_SERVER_URL", quoted(mapSetting("onpath.mapServer.production",
+                "ONPATH_MAP_SERVER_PRODUCTION", "https://maps.free-your-pictures.org")))
+            buildConfigField("String", "MAP_SERVER_KEY", quoted(mapSetting("onpath.mapKey.production",
+                "ONPATH_MAP_KEY_PRODUCTION", "")))
         }
     }
     compileOptions {

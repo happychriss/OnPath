@@ -115,6 +115,7 @@ object Diagnostics {
 
     private fun app() = JSONObject().put("version", BuildConfig.VERSION_NAME).put("build", BuildConfig.VERSION_CODE)
         .put("debug", BuildConfig.DEBUG).put("package", BuildConfig.APPLICATION_ID)
+        .put("map_server", com.onpath.app.data.MapServer.describe()) // masked key only
 
     private fun device() = JSONObject().put("model", Build.MODEL).put("manufacturer", Build.MANUFACTURER)
         .put("sdk", Build.VERSION.SDK_INT).put("release", Build.VERSION.RELEASE)

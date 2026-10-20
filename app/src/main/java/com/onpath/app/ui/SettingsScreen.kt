@@ -289,6 +289,8 @@ fun SettingsScreen(
                                 "Nothing is sent by itself.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (diagnosticsOn) androidx.compose.material3.OutlinedButton(onClick = onExportDiagnostics,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
+                            Text("Map server: ${com.onpath.app.data.MapServer.describe()}", fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                             ProblemList(problems, onClearProblems)
                         }
                     }
