@@ -27,6 +27,15 @@ data class AddressQuery(val words: List<String>, val number: String?, val postco
             add("LI", "liechtenstein")
         }
 
+        /** Street-type endings split off a joined query word (same idea as the extractor's SUFFIXES). */
+        private val SPLIT_SUFFIXES = listOf("strasse", "gasse", "weg", "platz", "allee")
+
+        /** "garibaldistrasse" → ["garibaldi", "strasse"]; other words unchanged. */
+        fun splitSuffix(w: String): List<String> {
+            val suf = SPLIT_SUFFIXES.firstOrNull { w.endsWith(it) && w.length > it.length + 2 } ?: return listOf(w)
+            return listOf(w.dropLast(suf.length), suf)
+        }
+
         fun parse(text: String): AddressQuery {
             val t = SearchText.tokens(text)
             val words = ArrayList<String>()
@@ -46,7 +55,11 @@ data class AddressQuery(val words: List<String>, val number: String?, val postco
                         } else w
                     }
                     w in COUNTRIES && country == null && t.size > 1 -> country = COUNTRIES[w]
-                    else -> words += w
+                    else -> {
+                        // "garibaldistrasse" → "garibaldi" + "strasse": the file stores hyphenated names
+                        // ("Giuseppe-Garibaldi-Straße") as separate words
+                        words += splitSuffix(w)
+                    }
                 }
                 i++
             }

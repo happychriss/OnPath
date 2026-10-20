@@ -58,8 +58,14 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     fun search(q: AddressQuery, max: Int = 30): List<AddressHit> {
         val words = q.words.filter { it.length >= 2 }.ifEmpty { q.words }
         if (words.isEmpty()) return emptyList()
-        val streetSets = words.map { w -> streetsWithPrefix(w) }
+        val streetSets = words.map { w -> streetsWithPrefix(w) }.toMutableList()
         val townSets = words.map { w -> towns.values.filter { t -> t.words.any { it.startsWith(w) } }.map { it.id }.toSet() }
+        // Typo tolerance: a word that matches nothing ("garibali") is retried with up to 1 (2 for long words) wrong
+        // letters; such matches rank lower (tier 1).
+        val fuzzy = HashSet<Int>()
+        for (i in words.indices) if (streetSets[i].isEmpty() && townSets[i].isEmpty() && words[i].length >= 5) {
+            streetSets[i] = streetsFuzzy(words[i]); if (streetSets[i].isNotEmpty()) fuzzy += i
+        }
         val anchor = streetSets.withIndex().filter { it.value.isNotEmpty() }.minByOrNull { it.value.size } ?: return emptyList()
         val matched = words.indices.filter { streetSets[it].isNotEmpty() || townSets[it].isNotEmpty() }
         val streets = streetRows(anchor.value).filter { s ->
@@ -67,18 +73,18 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         }
         val out = ArrayList<AddressHit>()
         for (s in streets) {
-            val sWords = (listOf(s.name) + s.alt).flatMap { SearchText.tokens(it) }.toSet()
+            val sWords = (listOf(s.name) + s.alt).flatMap { SearchText.tokens(it) }.flatMap { listOf(it) + AddressQuery.splitSuffix(it) }.toSet()
             val byStreet = matched.filter { s.id in streetSets[it] }.map { words[it] }
             var score = 0.0
             for (i in matched) {
                 val w = words[i]
-                score += if (s.id in streetSets[i]) (if (w in sWords) 1.0 else 0.85) else 0.9
+                score += if (i in fuzzy) 0.7 else if (s.id in streetSets[i]) (if (w in sWords) 1.0 else 0.85) else 0.9
             }
             score = score / words.size + (if (q.postcode != null && q.postcode == s.pc) 0.1 else 0.0)
             val joined = byStreet.joinToString(" ")
-            val exactName = (listOf(s.name) + s.alt).any { SearchText.normalize(it) == joined }
+            val exactName = (listOf(s.name) + s.alt).any { SearchText.normalize(it).replace(" ", "") == joined.replace(" ", "") }
             var tier = when { exactName -> 3; byStreet.all { it in sWords } -> 2; else -> 1 }
-            if (matched.size < words.size) tier = 1
+            if (matched.size < words.size || fuzzy.isNotEmpty()) tier = 1
             val house = q.number?.let { n -> houseOf(s.id, n) }
             if (house != null) out += AddressHit(place(s, house.first, house.second, house.third), score + 0.05, tier)
             out += AddressHit(place(s, null, s.lat, s.lon), score - if (q.number != null) 0.1 else 0.0,
@@ -86,6 +92,21 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
             if (out.size >= max) break
         }
         return out
+    }
+
+    /** Streets with a word that starts like [w] give or take one or two wrong letters (first two letters exact). */
+    private fun streetsFuzzy(w: String): Set<Long> {
+        val head = w.take(2)
+        val maxD = if (w.length >= 8) 2 else 1
+        val cands = db.rows("SELECT DISTINCT w FROM word WHERE w >= ? AND w < ? LIMIT 20000", head, upper(head))
+            .mapNotNull { it[0] as? String }
+            .filter { c -> (-1..1).any { d -> val n = w.length + d; n in 1..c.length && editDistance(w, c.take(n)) <= maxD } }
+            .take(200)
+        if (cands.isEmpty()) return emptySet()
+        return cands.chunked(100).flatMap { chunk ->
+            db.rows("SELECT street FROM word WHERE w IN (${chunk.joinToString(",") { "?" }}) LIMIT 5000", *chunk.toTypedArray())
+                .map { it[0] as Long }
+        }.toSet()
     }
 
     private fun streetsWithPrefix(w: String): Set<Long> =
@@ -130,6 +151,17 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     companion object {
         private fun e5(v: Any?) = ((v as? Long) ?: 0L) / 1e5
         private fun split(v: Any?) = (v as? String)?.split('|')?.filter { it.isNotEmpty() } ?: emptyList()
+
+        /** Levenshtein distance (insert, delete, replace = 1). */
+        fun editDistance(a: String, b: String): Int {
+            var prev = IntArray(b.length + 1) { it }
+            for (i in 1..a.length) {
+                val cur = IntArray(b.length + 1); cur[0] = i
+                for (j in 1..b.length) cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+                prev = cur
+            }
+            return prev[b.length]
+        }
 
         /** Smallest string greater than every string starting with [w]. */
         fun upper(w: String): String = w.dropLast(1) + (w.last() + 1)
