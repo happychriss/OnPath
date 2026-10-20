@@ -56,6 +56,7 @@ Built per region by the pipeline, copied to the phone into
 | `routes.geojson`, `trails.geojson` | `tools/extract_overlays.py` (pyosmium) | yes |
 | `contours.pmtiles` | `tools/build_contours.py` | optional |
 | `pois.geojson` | `tools/extract_pois.py` | optional |
+| `addresses.sqlite` | `tools/extract_addresses.py` (streets, house numbers, bilingual towns; SQLite, prefix word index; per cell also `addresses/<cell>.sqlite`) | optional (without it: no offline addresses) |
 | `ways.geojson` | `tools/extract_overlays.py` (tracktype, loose surface, smoothness) | optional |
 | `lowways.geojson` | `tools/extract_overlays.py` (all paths/tracks, coarse, drawn below z13) | optional |
 | `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
