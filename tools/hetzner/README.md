@@ -1,5 +1,9 @@
 # OnPath map server on Hetzner
 
+> **Superseded (2026-10-20).** Map hosting is now Cloudflare (Worker + R2) + Google Cloud Run Jobs, built per cell –
+> see `docs/design/map-hosting.md` and `tools/cloud/`. This region server is kept only for reference and for the
+> Geofabrik source choice (`server/onpath_maps/sources.py`), which the cloud builder may reuse.
+
 A small server of its own that builds OnPath map packages **on demand** for the area you plan to hike in
 (a 100, 150 or 200 km square around a place), keeps them for download and refreshes the ones you use. You
 open a web page on the phone, search "Zoggler Stausee" (or tap "My position"), pick the size, and 15–60 minutes
