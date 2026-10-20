@@ -37,7 +37,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (3) cycle lanes as a thin green line beside the street (bike activities only?); (4) pipeline: extract
   oneway/oneway:bicycle and cycleway:* into an overlay (or the planned vector PMTiles). Owner to decide details tonight.
 - **Battery (owner, 2026-10-20, Navigate first):** batch 1 done in 0.7.3 (see `docs/design/battery-audit.md` status). Next: batch 2 (adaptive GPS rate etc.) – owner to field-test 0.7.3 first (pocket screen-off, pause), ideally with `dumpsys batterystats` before/after.
-- **Map package zip on the `downloads` branch is out of date (laptop → cloud, 2026-10-19):** it lacks `paths.geojson` and has the pre-0.7.0 `routes.geojson`; importing it gives "files from another package" / the 0.7.0 fallback look. Please rebuild the South Tyrol package (bbox 10.70,46.30,11.60,46.85) with the current `extract_overlays.py` and replace the zips. (Laptop pushed matching files to the owner's phone directly.)
 - **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
 - **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
   `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
@@ -126,6 +125,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- `downloads` zips rebuilt (laptop, 2026-10-20, downloads 0e7db5e): paths.geojson + addresses.sqlite, same two-zip scheme; importer now accepts addresses.sqlite / addresses/*.sqlite.
 - Grid cells phase 1 on zo (laptop): `tools/cells/` builder image + build_cell.sh, 2 neighbouring cells in ~2.7 min each, no seams; results in map-cells.md §17. Next: doorman container, then Cloudflare hostname (owner), then format 2.
 - Share a place into OnPath (laptop, owner): Google Maps share text/short+full links (coordinate from the link, owner decision 2026-10-20, see CLAUDE.md), geo: URIs → Plan mode, fly there, orange ring; fallback address search. Open: "Position from the address (offline)" note not built.
 - Address search (laptop, owner): offline `addresses.sqlite` (`tools/extract_addresses.py`, optional step in build_region.sh; 2.5 MB region / 0.6 MB per cell), German+Italian names, house numbers; online Photon re-ranked (town in query, same country, distance; street pieces merged). Open for owner: mix online into one list? municipality vs village as town?

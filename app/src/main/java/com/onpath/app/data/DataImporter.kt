@@ -39,6 +39,9 @@ object DataImporter {
         return when {
             name.endsWith(".rd5") -> "segments/$name"
             name.endsWith(".pmtiles") || name.endsWith(".geojson") -> name
+            // offline address search: addresses.sqlite, or one file per map cell in addresses/
+            name.endsWith(".sqlite") && parent == "addresses" -> "addresses/$name"
+            name == "addresses.sqlite" -> name
             name == DataFiles.PACKAGE_FILE -> name // which package the files belong to (consistency check)
             name.endsWith(".json") && (parent == "styles" || name.startsWith("onpath")) -> "styles/$name"
             else -> null
@@ -75,7 +78,7 @@ object DataImporter {
             }
         } else {
             val target = targetPath(displayName) ?: throw ImportException(
-                "“$displayName” is not OnPath map data. Pick the onpath-data zip, or a .pmtiles, .geojson, .rd5 or style .json file.")
+                "“$displayName” is not OnPath map data. Pick the onpath-data zip, or a .pmtiles, .geojson, .rd5, addresses .sqlite or style .json file.")
             onProgress(target)
             input.use { write(it, File(dataDir, target), -1) }
             imported += target
