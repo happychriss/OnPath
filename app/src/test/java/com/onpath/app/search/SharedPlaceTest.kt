@@ -220,4 +220,14 @@ class SharedPlaceTest {
         org.junit.Assert.assertEquals("Hotel Aurora" to null, SharedPlaceParser.splitPlace("Hotel Aurora"))
         org.junit.Assert.assertEquals("Bar, Café" to null, SharedPlaceParser.splitPlace("Bar, Café"))
     }
+
+    @Test fun resolverStopsAtAnAddressWithoutDownloadingThePage() {
+        val hops = ArrayList<String>()
+        val loc = "https://www.google.com/maps/place/PRIMUS+Garden+Bistrot,+Via+Goethe,+28,+39012+Merano+BZ,+Italien/data=!4m2"
+        val r = ShortLinkResolver({ u -> hops += u; if (u.contains("goo.gl")) HttpHop(302, loc, null) else HttpHop(200, null, "<html></html>") },
+            stopAtAddress = true).resolve("https://maps.app.goo.gl/XkkXbKza9yV23AFA8")
+        org.junit.Assert.assertEquals(1, hops.size)
+        org.junit.Assert.assertEquals("PRIMUS Garden Bistrot", r.place?.name)
+        org.junit.Assert.assertTrue(r.place?.address?.startsWith("Via Goethe") == true)
+    }
 }
