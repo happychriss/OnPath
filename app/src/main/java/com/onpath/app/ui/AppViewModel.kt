@@ -899,7 +899,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.search.ShortLinkResolver(com.onpath.app.search.ShortLinkResolver.http(
                         com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))).resolve(link)
                 }
-                r.place?.let { rp -> p = p.copy(lat = rp.lat, lon = rp.lon, name = p.name ?: rp.name, query = p.query ?: rp.query) }
+                r.place?.let { rp -> p = p.copy(lat = rp.lat, lon = rp.lon, name = p.name ?: rp.name, address = p.address ?: rp.address, query = p.query ?: rp.query) }
                 fromPage = r.fromPage
                 if (!p.hasPoint) Problems.info("search", "Shared map link gave no position (${r.reason}); searching the address instead")
             }

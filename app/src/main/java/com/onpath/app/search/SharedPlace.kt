@@ -144,10 +144,13 @@ object SharedPlaceParser {
         if (inner != null) return fromUrl(inner)
         if (!isMapsLink(raw) && !host.endsWith("openstreetmap.org") && !host.endsWith("osm.org")) return null
         val c = coordsInUrl(raw)
-        val name = placeName(raw)
+        // Google's place path is "Name, Street, No, Postcode Town, Country": name and address apart, so the address
+        // can be searched on its own (field test 2026-10-20: "PRIMUS Garden Bistrot, Via Goethe, 28, 39012 Merano"
+        // found nothing online and landed far away; "Via Goethe, 28, 39012 Merano" is found exactly)
+        val (name, addr) = splitPlace(placeName(raw))
         val q = (param(raw, "q") ?: param(raw, "query"))?.takeIf { PAIR_RX.matchEntire(it.replace('+', ' ')) == null }?.trim()?.takeIf { it.isNotEmpty() }
         if (c == null && name == null && q == null) return null
-        return SharedPlace(c?.first, c?.second, name ?: if (c != null) q else null, query = q)
+        return SharedPlace(c?.first, c?.second, name ?: if (c != null) q else null, address = addr, query = q)
     }
 
     /** The coordinate inside a map link, or null. Order: place (!3d!4d), coordinate parameters, path, camera (@). */
@@ -265,6 +268,16 @@ object SharedPlaceParser {
         return null
     }
 
+    /** "Name, Via Roma, 3, 39012 Meran BZ, Italien" → name + address (only when the rest looks like an address). */
+    fun splitPlace(n: String?): Pair<String?, String?> {
+        if (n == null) return null to null
+        val parts = n.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        if (parts.size < 3) return n to null
+        val rest = parts.drop(1)
+        if (rest.none { p -> p.any(Char::isDigit) }) return n to null
+        return parts[0] to rest.joinToString(", ")
+    }
+
     /** "Moonraft+Innovation+Labs" from `/maps/place/Moonraft+Innovation+Labs/@…` (not when it is a coordinate). */
     private fun placeName(url: String): String? {
         val seg = Regex("""/maps/place/([^/?#@]+)""").find(url)?.groupValues?.get(1) ?: return null
@@ -315,7 +328,7 @@ class ShortLinkResolver(
     }
 
     private fun merge(a: SharedPlace?, b: SharedPlace) =
-        if (a == null) b else a.copy(name = a.name ?: b.name, query = a.query ?: b.query)
+        if (a == null) b else a.copy(name = a.name ?: b.name, address = a.address ?: b.address, query = a.query ?: b.query)
 
     private fun absolute(base: String, loc: String): String = try { URL(URL(base), loc).toString() } catch (e: Exception) {
         loc // expected: Location is already absolute or unparsable – use as is

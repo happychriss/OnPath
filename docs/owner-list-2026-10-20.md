@@ -42,6 +42,7 @@ linked here.
 | 0.7.21 | **Revert of the 0.7.15 camera** (manual per-frame turning fought MapLibre tracking → flip-back + jerky turning): TRACKING_COMPASS + smooth heading again (0.7.14 code + later fixes); arrow = map direction again; route point taken at finger-down | **test**: compass stays, turns smoothly, delete points |
 | 0.7.22 | Review fixes: 1.5 s guard removed (undid app camera moves), compass after free look → back to walking direction, no extra north camera move while following, settings label | **test**: search result in Plan stays; free look + compass |
 | 0.7.23 | "Where I face" arrow: HeadingEngine view + map channels; MapLibre gets the map direction only in heading-up following (puck NORMAL, own arrow `ui/FacingArrow` at the camera target), else the view direction; the app never moves the camera | **test**: Navigate heading-up, stand on the route, turn 90° → only the arrow turns |
+| 0.7.24 | Google share: place path split into name + address, address searched first (whole text found nothing online) | **test**: share PRIMUS Garden Bistrot |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
