@@ -26,6 +26,8 @@ import kotlin.math.hypot
  * Otherwise, moving (GPS speed ≥ [MOVING_MPS] with a bearing): the GPS bearing – it is where you walk, not where
  * the phone points. Standing or slow: the compass (rotation-vector sensor). All are smoothed and a change
  * smaller than [DEADBAND_DEG] is not passed on, so the map does not jitter while you stand still.
+ * Route and GPS (1 fix/s) are smoothed only lightly (owner 2026-10-20: turning lagged a few seconds at 0.5 –
+ * now ~90 % of a turn after 1–2 fixes).
  */
 class HeadingFilter {
     companion object {
@@ -35,8 +37,8 @@ class HeadingFilter {
         const val GPS_VALID_MS = 4_000L
         const val DEADBAND_DEG = 3.0
         private const val SENSOR_ALPHA = 0.12
-        private const val GPS_ALPHA = 0.5
-        private const val ROUTE_ALPHA = 0.5
+        private const val GPS_ALPHA = 0.8
+        private const val ROUTE_ALPHA = 0.85
         /** A route direction older than this is dropped (no new fix matched to the line). */
         const val ROUTE_VALID_MS = 15_000L
         /** Moving with a GPS bearing this far from the route direction = walking against the route. */
