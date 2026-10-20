@@ -415,6 +415,34 @@ def trails():
                  "text-halo-width": 1.2})
 
 
+def green_ways():
+    """Ways made for walking or cycling, like Komoot's thin green line (owner 2026-10-20: "there I know I can walk /
+    ride well"). From the base map's transportation layer (class path + subclass + foot / bicycle tags), so no new map
+    package is needed. Depends on the activity – the app switches them (MapController.setOverlay):
+    - "-foot" (hiking, visible by default): footways and pedestrian zones (unless foot=no), plus cycleways / paths
+      marked foot=designated (shared foot-and-cycle paths);
+    - "-bike" (bike profiles, hidden by default): cycleways (unless bicycle=no), plus footways / pedestrian zones /
+      paths with bicycle=yes|designated.
+    Pedestrian zones are also drawn as a plain path line (all activities) – they were missing since 0.7.0 because
+    paths.geojson has no highway=pedestrian and the base map's path layer is only a fallback."""
+    cls = ["get", "class"]; sub = ["get", "subclass"]
+    path = ["all", ["==", cls, "path"], ["!=", ["get", "brunnel"], "tunnel"]]
+    ok = ["literal", ["yes", "designated"]]
+    layer(id_="pedestrian-line", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+          filter=["all", path, ["==", sub, "pedestrian"]], layout={"line-join": "round", "line-cap": "round"},
+          paint={"line-color": T("path.color"), "line-width": Z("greenway.width")})
+    foot = ["all", path, ["any",
+            ["all", ["in", sub, ["literal", ["footway", "pedestrian"]]], ["!=", ["coalesce", ["get", "foot"], ""], "no"]],
+            ["all", ["in", sub, ["literal", ["cycleway", "path"]]], ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
+    bike = ["all", path, ["any",
+            ["all", ["==", sub, "cycleway"], ["!=", ["coalesce", ["get", "bicycle"], ""], "no"]],
+            ["all", ["in", sub, ["literal", ["footway", "pedestrian", "path"]]], ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
+    for mode, flt, visible in (("foot", foot, True), ("bike", bike, False)):
+        layer(id_=f"greenway-{mode}", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+              filter=flt, layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if visible else "none"},
+              paint={"line-color": T("greenway.color"), "line-width": Z("greenway.width")})
+
+
 def access_restrictions():
     """Ways you may not use, like Komoot's blocked sign: a light red tint along the way (z14+) and a small red
     no-entry sign repeated along it (z15+). OpenMapTiles sets "access": "no" for OSM access=no/private, but many
@@ -634,6 +662,7 @@ def build(theme=DEFAULT_THEME):
     L.clear()
     # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); track_edges(); lanes(); railways(); paths()
+    green_ways()
     trails(); surface_loose(); access_restrictions(); bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())

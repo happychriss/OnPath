@@ -513,7 +513,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
                 "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
                 "trails-sac-label" to walking, "trails-mtb-label" to mtb,
-                "surface-loose-track" to !walking, "surface-loose-path" to !walking)) {
+                "surface-loose-track" to !walking, "surface-loose-path" to !walking,
+                // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
+                "greenway-foot" to walking, "greenway-bike" to !walking)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
                 .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
         }
