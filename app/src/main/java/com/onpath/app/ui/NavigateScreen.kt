@@ -166,9 +166,10 @@ fun NavigateOverlay(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ui.turn?.let { TurnCard(it) }
+            // cards glide in and out instead of popping and pushing the status card (polish audit A3)
+            Appearing(ui.turn) { TurnCard(it) }
             // status (finding a way back / no way / kept) on top: readable at a glance
-            ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }?.let { OffRouteBanner(it) }
+            Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteBanner(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
@@ -177,7 +178,7 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
-            (ui.offRoute?.prompt as? NavPrompt.Question)?.let { q ->
+            Appearing(ui.offRoute?.prompt as? NavPrompt.Question) { q ->
                 RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) },
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
             }
@@ -548,4 +549,21 @@ internal fun nextTurnHint(
 ): Pair<com.onpath.app.routing.Turn, Double>? {
     if (turns.isEmpty() || remainingM == null || offRouteAlert || (offM ?: 0.0) > TURN_HIDE_OFF_M) return null
     return TurnDetector.nextTurn(turns, (totalM - remainingM).coerceAtLeast(0.0))
+}
+
+/**
+ * Shows [content] for a non-null [value] with a short expand + fade (≈220 ms, ease-out) and lets it leave the same
+ * way, keeping the last value while it goes. Nothing disappears by itself – only how it comes and goes changes.
+ */
+@Composable
+fun <T : Any> Appearing(value: T?, content: @Composable (T) -> Unit) {
+    var last by remember { mutableStateOf(value) }
+    if (value != null) last = value
+    androidx.compose.animation.AnimatedVisibility(
+        visible = value != null,
+        enter = androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)),
+        exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)),
+    ) { last?.let { content(it) } }
 }

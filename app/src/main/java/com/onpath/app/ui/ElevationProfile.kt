@@ -63,38 +63,42 @@ fun ElevationProfile(
         return
     }
     val steep = remember(data, gradient) { if (gradient) RouteSummary.steepness(data.dist, data.ele) else null }
-    var cursor by remember(points) { mutableStateOf<Int?>(null) }
+    var cursor by remember { mutableStateOf<Int?>(null) }
+    // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag – polish audit A6)
+    val cur by androidx.compose.runtime.rememberUpdatedState(data)
+    val pts by androidx.compose.runtime.rememberUpdatedState(points)
+    val highlight by androidx.compose.runtime.rememberUpdatedState(onHighlight)
+    val release by androidx.compose.runtime.rememberUpdatedState(onRelease)
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = Color(0xFF555A55))
     val gridColor = Color(0x22000000)
 
     fun indexAt(x: Float, width: Float, left: Float): Int {
-        val target = ((x - left) / (width - left)).coerceIn(0f, 1f) * data.total
-        var lo = 0; var hi = data.dist.size - 1
-        while (lo < hi) { val mid = (lo + hi) / 2; if (data.dist[mid] < target) lo = mid + 1 else hi = mid }
+        val d = cur
+        val target = ((x - left) / (width - left)).coerceIn(0f, 1f) * d.total
+        var lo = 0; var hi = d.dist.size - 1
+        while (lo < hi) { val mid = (lo + hi) / 2; if (d.dist[mid] < target) lo = mid + 1 else hi = mid }
         return lo
     }
+    fun show(i: Int) { cursor = i; pts.getOrNull(cur.idx.getOrElse(i) { 0 })?.let { highlight(it) } }
 
     Canvas(
         modifier
             .fillMaxWidth()
             .height(height)
-            .pointerInput(data) {
+            .pointerInput(Unit) {
                 detectDragGestures(
-                    onDragStart = { o -> cursor = indexAt(o.x, size.width.toFloat(), 40.dp.toPx()); onHighlight(points[data.idx[cursor!!]]) },
-                    onDragEnd = { onRelease() },
-                    onDragCancel = { onRelease() },
-                    onDrag = { change, _ ->
-                        cursor = indexAt(change.position.x, size.width.toFloat(), 40.dp.toPx())
-                        onHighlight(points[data.idx[cursor!!]])
-                    },
+                    onDragStart = { o -> show(indexAt(o.x, size.width.toFloat(), 40.dp.toPx())) },
+                    onDragEnd = { release() },
+                    onDragCancel = { release() },
+                    onDrag = { change, _ -> show(indexAt(change.position.x, size.width.toFloat(), 40.dp.toPx())) },
                 )
             }
-            .pointerInput(data) {
+            .pointerInput(Unit) {
                 detectTapGestures(onPress = { o ->
-                    cursor = indexAt(o.x, size.width.toFloat(), 40.dp.toPx()); onHighlight(points[data.idx[cursor!!]])
+                    show(indexAt(o.x, size.width.toFloat(), 40.dp.toPx()))
                     tryAwaitRelease()
-                    onRelease()
+                    release()
                 })
             }
     ) {
