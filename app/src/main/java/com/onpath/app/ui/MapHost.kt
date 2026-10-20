@@ -160,6 +160,7 @@ fun MapHost(
             }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.onMapTouch()
                 hold.track(ev, slopPx = 8 * density)
                 if (!hold.pressing) holdAt.value = null
                 else if (ev.actionMasked == MotionEvent.ACTION_DOWN) {

@@ -38,6 +38,7 @@ linked here.
 | 0.7.17 | Green ways like Komoot by activity (hiking: footways + pedestrian zones; bike: cycleways + bike-allowed footways) from the base map; pedestrian zones drawn again (missing since 0.7.0) | **test**: Meran centre, switch hike ⇄ bike |
 | 0.7.18 | Compass in Navigate switched back after seconds: mode-mismatch "gesture" check removed; every stop of following logged with its reason in Diagnostics | **test**: tap compass, wait 30 s; if it flips back, look at Diagnostics |
 | 0.7.19 | One compass setting for Plan and Navigate (kept when switching; heading-up keeps following in Plan until an edit / pan) | **test**: Navigate heading-up → Plan → Navigate |
+| 0.7.20 | Plan: finger on the map stops heading-up turning (points could not be held since 0.7.19); following stops only after a real touch (≤ 1.5 s) – compass flip-back guarded; root cause still unknown, see Diagnostics "Following stop without a touch" | **test**: delete a point in Plan; compass in Navigate stays |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
