@@ -146,7 +146,7 @@ class RecordingService : Service() {
     override fun onCreate() {
         super.onCreate()
         db = TourDb.get(this)
-        tracker = LocationTracker(this, 1000L)
+        tracker = LocationTracker(this, 1000L, useNetwork = false) // network fixes were never recorded (battery audit)
         createChannels(this)
     }
 
@@ -281,13 +281,17 @@ class RecordingService : Service() {
         scope.launch {
             var lastTick = SystemClock.elapsedRealtime()
             var lastStats = lastTick
+            var pausedBefore = paused
             while (isActive) {
                 delay(1000)
                 val now = SystemClock.elapsedRealtime()
-                // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes
-                if (!paused) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
+                // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes.
+                // Not across a pause: without the wake lock a paused tick can come late (resume counts from here).
+                if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
+                pausedBefore = paused
                 lastTick = now
-                if (wakeLock?.isHeld != true) acquireWakeLock() // the lock times out after 12 h: long days go on
+                // the lock times out after 12 h: long days go on; paused = no GPS, no lock (battery audit)
+                if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (now - lastStats >= 10_000) {
                     lastStats = now
@@ -549,6 +553,14 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
+        // Battery: a pause records nothing, so GPS and the wake lock rest until Resume (manual pause only).
+        if (p) {
+            tracker.stop()
+            try { wakeLock?.let { if (it.isHeld) it.release() } } catch (e: Exception) { Problems.warn("recording", "Wake lock not released on pause", e) }
+        } else {
+            tracker.start()
+            acquireWakeLock()
+        }
         trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
         saveTrip()
         navigator?.onGpsLost() // no fixes while paused: timers start from zero again
@@ -602,9 +614,13 @@ class RecordingService : Service() {
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed,
         )
+        // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
+        // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
         val now = SystemClock.elapsedRealtime()
-        if (force || now - lastNotify > 5000) {
+        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "")
+        if (force || (now - lastNotify > 5000 && key != lastNotifyKey) || now - lastNotify > 60_000) {
             lastNotify = now
+            lastNotifyKey = key
             try { nm().notify(NOTIF_ID, buildNotification()) } catch (e: SecurityException) {
                 Problems.warn("recording", "Recording notification update refused (notification permission?)", e)
             }
@@ -720,16 +736,24 @@ class RecordingService : Service() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+    private var lastNotifyKey = ""
+
+    private fun notifStatus() = when {
+        paused -> "Paused"
+        tourId >= 0 && gpsLost() -> "Searching GPS…"
+        navigator?.prompt != null -> "Off route"
+        else -> "Recording"
+    }
+
     private fun buildNotification(): Notification {
-        val status = when {
-            paused -> "Paused"
-            tourId >= 0 && gpsLost() -> "Searching GPS…"
-            navigator?.prompt != null -> "Off route"
-            else -> "Recording"
-        }
+        val status = notifStatus()
         val b = NotificationCompat.Builder(this, CHANNEL_REC)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("${Format.distance(distance)} · ${Format.clock(elapsedS)}")
+            // running: distance + a system-run clock (no re-post every second); paused: the clock stands still
+            .setContentTitle(if (paused) "${Format.distance(distance)} · ${Format.clock(elapsedS)}" else Format.distance(distance))
+            .setShowWhen(!paused)
+            .setUsesChronometer(!paused)
+            .setWhen(System.currentTimeMillis() - elapsedS * 1000)
             .setContentText(status + (follow?.let { " · following ${it.first}" } ?: ""))
             .setOngoing(true)
             .setOnlyAlertOnce(true)

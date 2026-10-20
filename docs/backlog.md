@@ -9,7 +9,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
-- **Battery (owner, 2026-10-20, Navigate first):** audit done – `docs/design/battery-audit.md`. Quick wins: map fps cap, no network location in the service, GPS off + wake lock released while paused, notification chronometer, fewer UI updates per map frame. Bigger: adaptive GPS rate (thresholds scale with the interval), recorded track as frozen part + tail, battery %/h in the tour summary. **Owner decides:** keep-screen-on default (today on) and go for batch 1.
+- **Battery (owner, 2026-10-20, Navigate first):** batch 1 done in 0.7.3 (see `docs/design/battery-audit.md` status). Next: batch 2 (adaptive GPS rate etc.) – owner to field-test 0.7.3 first (pocket screen-off, pause), ideally with `dumpsys batterystats` before/after.
 - **Map package zip on the `downloads` branch is out of date (laptop → cloud, 2026-10-19):** it lacks `paths.geojson` and has the pre-0.7.0 `routes.geojson`; importing it gives "files from another package" / the 0.7.0 fallback look. Please rebuild the South Tyrol package (bbox 10.70,46.30,11.60,46.85) with the current `extract_overlays.py` and replace the zips. (Laptop pushed matching files to the owner's phone directly.)
 - **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
 - **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
