@@ -1,0 +1,14 @@
+{
+ "_comment": "OSM extracts the cloud builder may use (docs/design/map-hosting.md §Source data). A cell is built only when its exact bbox lies inside one 'cover' rectangle of a source ([west, south, east, north], conservative: well inside the extract's real border). The doorman (Worker) uses the same file to answer 'Source data not available for this area yet' without starting a build. Add an extract = add an entry + push (deploys to test). Later: choose Geofabrik leaf extracts automatically (tools/hetzner/server/onpath_maps/sources.py).",
+ "max_age_days": 30,
+ "sources": [
+  {
+   "id": "trentino_alto_adige",
+   "url": "https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf",
+   "cover": [
+    [10.55, 46.20, 11.95, 46.85],
+    [10.95, 46.85, 12.00, 46.95]
+   ]
+  }
+ ]
+}
