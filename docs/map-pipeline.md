@@ -13,7 +13,13 @@ tools/build_region.sh south-tyrol                       # test region, built-in 
 tools/build_region.sh dolomites 11.5,46.2,12.3,46.8 \
     https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf
 tools/build_region.sh --help                            # all options / env overrides
+tools/build_region.sh --format 2 south-tyrol            # format 2 (docs/design/map-data-size.md), see below
 ```
+
+**Format 2** (`--format 2`, in progress – steps land one by one; format 1 stays the default until the app reads
+all of it): terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
+10.8 → 1.0 MB); contours built from the original AWS z12/z13 tiles (cached in `$WORK/terrarium`), so they stay
+identical to format 1. The overlays part of format 2 (`overlays.pmtiles`) is added by its own step.
 
 ## 1. Overview
 
@@ -92,11 +98,11 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 1 | OSM extract | `curl -fL -C - -o region.osm.pbf $OSM_URL` | `work/osm/*.osm.pbf` | ~1 min | 130 MB |
 | 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
 | 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
-| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
+| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` (format 2: `… --format 2 --cache $WORK/terrarium`) | `$D/terrain.pmtiles` | 25 s | 55 MB (format 2: 6.6 MB) |
 | 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `lowways.geojson`, `trailnames.geojson`, `paths.geojson` | 2 min | South Tyrol bbox 2026-10-19: 6.8 + 5.9 + 7.9 + 9.0 + 4.4 + 19.1 MB |
 | 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
 | 6b | Addresses | `python3 tools/extract_addresses.py region.osm.pbf $D/addresses.sqlite 10.70 46.30 11.60 46.85` | `$D/addresses.sqlite` (SQLite: town, street, house, word; schema in the script) | 1 min | 2.5 MB (Meran z10 cell: 0.6 MB) |
-| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
+| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` (format 2: `aws` instead of `terrain.pmtiles`, plus `--cache $WORK/terrarium`) | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
 | 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~10 s | 199 MB |
 | 10 | Package | zip (`.pmtiles`/`.rd5` stored, GeoJSON deflated) + manifest + checksums | `onpath-data-<region>.zip` | 45 s | 283 MB (270 MiB) |
@@ -108,11 +114,17 @@ Notes per step:
 - **3 Planetiler** writes temporary files (`--tmpdir`) and caches the side data (`--download_dir`);
   the script runs it inside `work/tmp/` so nothing lands in the current folder. The OpenMapTiles
   profile keeps `name:de`, which the style prefers (`name:de` → `name_de` → `name`).
-- **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 4 retries). It does not depend on
-  the OSM data, so the script only rebuilds it when the bbox or the script changes.
+- **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 6 tries with back-off). It does not depend on
+  the OSM data, so the script only rebuilds it when the bbox, the script or the format changes. Tile ranges treat
+  the bbox's east/south edge as exclusive (a bbox ending exactly on a tile edge – a z10 cell – takes no extra
+  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 12`), `--cell 10/543/361` (only the
+  cell's own tiles z10–max), `--cache DIR` (keep the AWS PNGs; contours read the same folder). WebP needs Pillow
+  with WebP support (the normal wheels have it).
 - **5 Overlays** do two passes over the PBF (relations, then ways with node locations, in memory –
   fine for regional extracts; for a whole country give the machine ≥ 16 GB).
-- **7 Contours** read `terrain.pmtiles` only (no extra download).
+- **7 Contours** read `terrain.pmtiles` (format 1, no extra download) or, with source `aws`, the original AWS
+  z12/z13 PNGs (format 2: the shipped terrain stops at z12 but the 20 m lines need z13). Both give byte-identical
+  tiles for the same bbox. One extra tile ring is read so lines run through to the neighbour.
 - **8 Styles**: the script builds them from a copy of `tools/` in `work/tmp/stylebuild`, so a data build
   never changes the repo's bundled `app/src/main/assets/style/*.json`.
 
