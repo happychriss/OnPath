@@ -116,6 +116,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Camera mode we asked for while following (to notice when a gesture changed it). */
     private var wantedCameraMode = CameraMode.NONE
     private var wasNavigating = false
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var reemitJob: Runnable? = null
 
     init {
         addNavOriginal() // below the followed line
@@ -346,7 +348,18 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 lc.renderMode = PUCK_MODE
                 wantedCameraMode = mode
                 val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
+                // a north-up animation from Plan must not run on into the walking-direction camera
+                if (mode == CameraMode.TRACKING_COMPASS) map.cancelTransitions()
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, null)
+                // the camera takes the walking direction at once, after the transition and a north-up animation
+                // that may still run (Plan → Navigate); it must not wait for the next change of direction
+                if (mode == CameraMode.TRACKING_COMPASS) {
+                    reemitJob?.let { mainHandler.removeCallbacks(it) }
+                    val r = Runnable { try { heading.reemit() } catch (e: Exception) { Problems.warn("map", "Heading not re-sent", e) } }
+                    reemitJob = r
+                    mainHandler.postDelayed(r, 800L)
+                    heading.reemit()
+                }
                 val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
                 lc.paddingWhileTracking(doubleArrayOf(0.0, top, 0.0, 0.0), 750L)
             } else {
