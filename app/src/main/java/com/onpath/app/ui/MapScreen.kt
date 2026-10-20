@@ -252,7 +252,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
     val routeAhead = if (vm.mode == AppMode.NAVIGATE && nav != null && nav.prompt == null &&
         (nav.offM ?: Double.MAX_VALUE) <= ROUTE_UP_MAX_OFF_M) nav.shownAlongM?.let { navLine?.aheadBearing(it) } else null
-    LaunchedEffect(c, routeAhead, nav?.shownAlongM) { c.setRouteHeading(routeAhead) }
+    // re-sent on every fix: standing still on the route must keep the route direction (field test 2026-10-20: after
+    // 15 s without progress the compass took over and, with the phone tilted / in the pocket, turned the map 180°)
+    LaunchedEffect(c, routeAhead, nav?.shownAlongM, location) { c.setRouteHeading(routeAhead) }
     LaunchedEffect(c, (nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.id) {
         c.setNavProposal((nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.line)
     }

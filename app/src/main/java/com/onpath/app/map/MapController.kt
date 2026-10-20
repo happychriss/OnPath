@@ -281,8 +281,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .build()
             )
             lc.setCompassEngine(heading)
-            // Battery: the position dot glides between fixes; 20 fps is smooth enough (default = every display frame)
-            lc.setMaxAnimationFps(20)
+            // No frame cap on the position dot (owner 2026-10-20: while you look at the app it must run smooth;
+            // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
             // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
             // (owner: "as earlier"; GPS mode drew the big white navigation puck). The direction comes from
