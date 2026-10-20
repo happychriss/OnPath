@@ -1,0 +1,26 @@
+# Cloud Run Job image of the cell builder (docs/design/map-hosting.md §Builder).
+# The zo image (tools/cells/Dockerfile) mounts the repo; on Cloud Run the pipeline code must be IN the image, so this
+# adds tools/ on top of that unchanged base image and starts tools/cloud/job_build.py.
+#
+#   docker build --network host -t onpath-cell-builder -f tools/cells/Dockerfile tools/cells
+#   docker build --network host --build-arg BASE=onpath-cell-builder --build-arg PIPELINE_REV=<short sha> \
+#     -t onpath-cell-job -f tools/cloud/Dockerfile.job tools
+#
+# Build context = tools/ (Dockerfile.job.dockerignore keeps the Worker, Hetzner and icon folders out).
+ARG BASE=onpath-cell-builder
+FROM ${BASE}
+
+ARG PIPELINE_REV=unknown
+USER root
+COPY . /onpath/tools
+# build_cell.sh asks git for the pipeline revision (manifest "pipeline"); there is no .git in the image, so a
+# tiny shim answers with PIPELINE_REV (any other git call goes to the real git).
+RUN install -m 0755 /onpath/tools/cloud/git-shim.sh /usr/local/bin/git \
+ && chmod -R a+rX /onpath \
+ && python3 /onpath/tools/cells/cells.py selftest \
+ && python3 -c "import sys; sys.path.insert(0, '/onpath/tools/cloud'); import job_build"
+ENV PIPELINE_REV=${PIPELINE_REV} WORK=/tmp/onpath/work DATA_ROOT=/tmp/onpath/store SRC_DIR=/src \
+    PYTHONUNBUFFERED=1
+USER builder
+WORKDIR /tmp
+ENTRYPOINT ["python3", "/onpath/tools/cloud/job_build.py"]

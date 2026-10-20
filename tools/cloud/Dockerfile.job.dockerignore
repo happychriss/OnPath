@@ -1,0 +1,10 @@
+# context = tools/ – only the pipeline goes into the job image
+cloud/worker
+hetzner
+icons
+routing
+style_analysis
+themes-proposals
+**/__pycache__
+**/*.pyc
+**/node_modules
