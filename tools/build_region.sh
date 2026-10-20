@@ -18,6 +18,7 @@
 #                     (the phone can download them itself from brouter.de)
 #   --no-contours     skip contours.pmtiles (optional for the app)
 #   --no-pois         skip pois.geojson (optional for the app)
+#   --no-addresses    skip addresses.sqlite (offline address search; optional for the app)
 #   --with-styles     put styles/onpath*.json into the zip (they then override the APK's bundled styles!)
 #   --sprite          regenerate the POI sprite in the repo (app/src/main/assets/sprites; needs cairosvg)
 #   --force           rebuild every step even if its output is up to date
@@ -44,7 +45,7 @@ TOOLS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO=$(cd "$TOOLS/.." && pwd)
 
 # ---------------------------------------------------------------------------------------------- args
-SKIP_DOWNLOAD=0; NO_SEGMENTS=0; NO_CONTOURS=0; NO_POIS=0; WITH_STYLES=0; SPRITE=0; FORCE=0
+SKIP_DOWNLOAD=0; NO_SEGMENTS=0; NO_CONTOURS=0; NO_POIS=0; NO_ADDRESSES=0; WITH_STYLES=0; SPRITE=0; FORCE=0
 POS=()
 usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; }
 while [ $# -gt 0 ]; do
@@ -58,6 +59,7 @@ while [ $# -gt 0 ]; do
     --no-segments) NO_SEGMENTS=1 ;;
     --no-contours) NO_CONTOURS=1 ;;
     --no-pois) NO_POIS=1 ;;
+    --no-addresses) NO_ADDRESSES=1 ;;
     --with-styles) WITH_STYLES=1 ;;
     --sprite) SPRITE=1 ;;
     --force) FORCE=1 ;;
@@ -260,6 +262,21 @@ else
     mv -f "$WORK/tmp/pois/pois.geojson" "$DATA/pois.geojson"
   fi
   done_step "$(size "$DATA/pois.geojson")"
+fi
+
+# --------------------------------------------------------------- 6b. offline addresses (optional)
+step "addresses.sqlite (streets, house numbers, towns for the offline search)"
+if [ "$NO_ADDRESSES" = 1 ]; then
+  rm -f "$DATA/addresses.sqlite"; done_step "skipped (--no-addresses)"
+else
+  if up_to_date "$DATA/addresses.sqlite" "$OSM" "$TOOLS/extract_addresses.py"; then
+    log "    up to date"
+  else
+    python3 "$TOOLS/extract_addresses.py" "$OSM" "$WORK/tmp/addresses.sqlite" "${BBOX_ARGS[@]}" 2>&1 \
+      | tee "$LOGS/addresses.log" | tail -2 | sed 's/^/    /'
+    mv -f "$WORK/tmp/addresses.sqlite" "$DATA/addresses.sqlite"
+  fi
+  done_step "$(size "$DATA/addresses.sqlite")"
 fi
 
 # ------------------------------------------------------------------------------------- 7. contours
