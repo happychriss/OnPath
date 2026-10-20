@@ -50,7 +50,7 @@ ARGS = _ap.parse_args()
 pbf, out_dir = ARGS.pbf, ARGS.out_dir
 minlon, minlat, maxlon, maxlat = ARGS.bbox
 TILES = ARGS.tiles
-SMOOTH = ARGS.smooth
+DO_SMOOTH = ARGS.smooth  # (SMOOTH is the smoothness table below)
 BBOX = box(minlon, minlat, maxlon, maxlat)
 SIMPLIFY = 0.00003  # about 3 m
 FINE_SIMPLIFY = 0.000005  # about 0.5 m: trails / ways are drawn over the base map's own lines (no ghost lines)
@@ -100,7 +100,7 @@ SMOOTH_WAYS = LOW_WAYS | {"cycleway", "steps", "via_ferrata", "pedestrian"}
 SMOOTH_ANGLE = 20.0    # degrees of turn
 SMOOTH_MAX_DEV = 1.5   # metres from the OSM line (at the bend's corner)
 SMOOTH_MAX_CUT = 20.0  # metres along each leg at most
-JUNCTIONS = set()      # node ids used by more than one highway way (filled by RelationPass when SMOOTH)
+JUNCTIONS = set()      # node ids used by more than one highway way (filled by RelationPass with --smooth)
 
 
 def round_corners(coords):
@@ -217,7 +217,7 @@ class RelationPass(osmium.SimpleHandler):
         self.node_refs = array("q")  # --smooth: node ids of all highway ways (junctions = ids seen twice)
 
     def way(self, w):
-        if SMOOTH and "highway" in w.tags:
+        if DO_SMOOTH and "highway" in w.tags:
             self.node_refs.extend(n.ref for n in w.nodes)
 
     def junctions(self):
@@ -381,7 +381,7 @@ class WayPass(osmium.SimpleHandler):
     def fine_geom(self, w, hw):
         """Near-exact geometry (~0.5 m) for paths, trails, ways and (with --smooth) route bands; with --smooth,
         path-like ways (not streets) get rounded bends (round_corners)."""
-        if not SMOOTH or not (hw in SMOOTH_WAYS or "sac_scale" in w.tags):
+        if not DO_SMOOTH or not (hw in SMOOTH_WAYS or "sac_scale" in w.tags):
             return self.geom(w, FINE_SIMPLIFY)
         try:
             coords = [(n.lon, n.lat) for n in w.nodes]
@@ -410,7 +410,7 @@ class WayPass(osmium.SimpleHandler):
             return
         g = rounded(mapping(line))
         fine = None
-        if SMOOTH:
+        if DO_SMOOTH:
             # route bands on the exact (smoothed) path line - a 3 m simplified band ran beside the path at z16+
             fine = rounded(mapping(self.fine_geom(w, hw)), 6)
             if routes:
