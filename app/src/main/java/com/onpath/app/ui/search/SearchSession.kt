@@ -108,6 +108,9 @@ class SearchSession(
         SearchHit(p, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, p.lat, p.lon), false)
     }
 
+    /** The offline index, built (off the main thread) when needed; for route names (search/RouteNamer). */
+    suspend fun offlineIndex(): OfflineIndex = ensureIndex()
+
     private suspend fun ensureIndex(): OfflineIndex = indexLock.withLock {
         val cur = index ?: cached
         val sig = withContext(Dispatchers.IO) { OfflineIndex.signature(dataDir) }
