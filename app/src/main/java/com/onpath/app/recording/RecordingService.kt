@@ -442,7 +442,7 @@ class RecordingService : Service() {
     /** Carries out what the navigator asks for. */
     private fun handle(step: Navigator.Step, publishNow: Boolean = true) {
         val nav = navigator ?: return
-        if (step.vibrate) vibrate()
+        if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
         if (step.lineChanged) {
@@ -497,7 +497,16 @@ class RecordingService : Service() {
             val vib = if (Build.VERSION.SDK_INT >= 31) {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            vib.vibrate(VibrationEffect.createWaveform(OFF_ROUTE_VIBRATION, -1))
+            val effect = VibrationEffect.createWaveform(OFF_ROUTE_VIBRATION, -1)
+            // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
+            // pocket – field test 2026-10-20: the warning only blinked). Alarm vibrations also pass the touch setting.
+            if (Build.VERSION.SDK_INT >= 33) {
+                vib.vibrate(effect, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
+            } else {
+                @Suppress("DEPRECATION")
+                vib.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            }
         } catch (e: Exception) {
             Problems.warn("sensor", "Vibration failed; alert given without vibration", e)
         }

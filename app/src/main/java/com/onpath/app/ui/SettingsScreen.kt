@@ -214,6 +214,10 @@ fun SettingsScreen(
                     Section("Navigation") {
                         SwitchRow("Off-route warning", "Vibration and notification when you leave the followed route",
                             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
+                        SwitchRow("Vibrate when off route", "Felt in the pocket, also with the screen off",
+                            settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
+                            onChange(settings.copy(offRouteVibrate = it))
+                        }
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text("Warn after", fontSize = 14.sp)
@@ -351,14 +355,14 @@ internal fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
         .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp)
             if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }

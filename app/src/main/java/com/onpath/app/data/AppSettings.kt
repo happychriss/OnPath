@@ -8,6 +8,8 @@ data class AppSettings(
     val contours: Boolean = true,
     val hillshade: Boolean = true,
     val offRouteWarning: Boolean = true,
+    /** Vibrate with the off-route warning (owner 2026-10-20: on by default – the phone is in the pocket). */
+    val offRouteVibrate: Boolean = true,
     val offRouteM: Int = 40,
     val keepScreenOn: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled since 0.7.0 (one style); others = adb overrides. */
