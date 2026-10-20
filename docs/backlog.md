@@ -5,8 +5,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] **Map rework format 2, steps 0–6** (owner, 2026-10-20): terrain z12 WebP, one `overlays.pmtiles` (tippecanoe) incl. green-way/bike tags, style switch, base trim, cells format 2, overview pack; plus rebuild of the `downloads` zip (format 1). **Laptop owns map pipeline + `make_style.py`/themes + cells during the rework – cloud: please don't edit style/pipeline files, put map requests in the backlog.** Doorman/hosting (step 7) waits for the owner (zo vs Hetzner). – since 2026-10-20
 
-  waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
 - **Handoff 2026-10-20 (cloud → laptop):** field-test list + owner questions in `docs/owner-list-2026-10-20.md`;
