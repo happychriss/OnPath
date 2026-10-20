@@ -12,7 +12,11 @@ import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.StraightLineEngine
 
 /**
- * Finds a way back onto the original line ahead (docs/plan-auto-reroute.md §5, option C). Blocking – call it on a
+ * "Take new route" (owner 2026-10-20: compute it completely new, like Google Maps): for a plan with stops, a fresh
+ * route from the position via the stops not yet passed to the destination ([fresh]) – the old line no longer counts.
+ * A followed track (no stops), or when the fresh route cannot be found, falls back to the way back below.
+ *
+ * Way back: finds a way back onto the original line ahead (docs/plan-auto-reroute.md §5, option C). Blocking – call it on a
  * background thread. At most [RerouteTargets.MAX_CANDIDATES] short engine requests ([PER_REQUEST_MS] each,
  * [TOTAL_MS] together); the candidate with the lowest "way back + rest of the original" time wins (ties → nearer).
  * Candidates whose way back would skip much of the route ahead (round trip end, out-and-back) are not taken.
@@ -64,8 +68,10 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         if (!req.original.isUsable) return Failed(Reason.NO_WAY, "Nothing to rejoin", 0)
         val base = RerouteTargets.base(req.original, req.position, req.progressM)
         val skipped = RerouteTargets.passed(req.stops, base, req.visited)
-        val targets = RerouteTargets.candidates(req.original, base, req.stops, req.visited)
         val deadline = t0 + req.totalMs
+        if (req.stops.size >= 2) fresh(req, base, skipped, t0, deadline, cancel)?.let { return it }
+        if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, "Cancelled", clock() - t0)
+        val targets = RerouteTargets.candidates(req.original, base, req.stops, req.visited)
         // same time model as the plan sheet and "to go" (time/RouteTimes)
         val restTimes = com.onpath.app.time.RouteTimes.of(req.original.points, req.activity)
         var best: Pair<RejoinTarget, RouteResult>? = null
@@ -119,6 +125,37 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             skippedStops = skipped,
             tried = tried,
             tookMs = took,
+        )
+    }
+
+    /** Fresh route position → stops not yet passed → destination; null = not possible (then: way back). */
+    private fun fresh(req: Request, base: Double, skipped: Set<Int>, t0: Long, deadline: Long, cancel: RouteCancel?): Found? {
+        val ahead = req.stops.indices.filter { it !in skipped && it > 0 }
+        if (ahead.isEmpty()) return null
+        val left = deadline - clock()
+        if (left < MIN_LEFT_MS) return null
+        val r = try {
+            engine.route(listOf(req.position) + ahead.map { req.stops[it].point }, req.activity, req.sac,
+                RouteLimits(minOf(req.perRequestMs, left), cancel))
+        } catch (e: Exception) {
+            // expected: RoutingException = no fresh route (e.g. a stop unreachable now) – the way back is tried instead
+            if (e !is RoutingException) Problems.error("routing", "Fresh re-route request threw unexpectedly", e)
+            else Problems.info("routing", "No fresh route to the remaining stops (${e.message}); trying the way back to the route")
+            return null
+        }
+        if (r.points.size < 2) return null
+        val len = Geo.length(r.points)
+        return Found(
+            line = r.points,
+            legM = len,                          // the whole new line is "new": nothing of the original is spliced in
+            resumeAlongM = req.original.lengthM,
+            extraM = len - (req.original.lengthM - base),
+            rejoinInM = Double.NaN,              // NaN = fresh route (NavText says "new route", not "rejoins in")
+            startOffM = Geo.distance(req.position, r.points.first()),
+            targetStop = ahead.first(),
+            skippedStops = skipped,
+            tried = 1,
+            tookMs = clock() - t0,
         )
     }
 
