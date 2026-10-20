@@ -1,0 +1,13 @@
+{
+  "name": "onpath-doorman",
+  "private": true,
+  "type": "module",
+  "description": "OnPath map-cell doorman (Cloudflare Worker) – docs/design/map-hosting.md",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "test": "node --test",
+    "dev": "npx --yes wrangler@4.141.0 dev",
+    "dry-run": "npx --yes wrangler@4.141.0 deploy --dry-run --outdir dist --env test"
+  }
+}
