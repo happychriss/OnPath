@@ -45,8 +45,8 @@ class AddressSearchTest {
     private fun find(q: String) = index.search(AddressQuery.parse(q))
 
     @Test fun parsesAddressQueries() {
-        assertEquals(AddressQuery(listOf("laurinstrasse", "meran"), "5", null, null), AddressQuery.parse("Laurinstraße 5, Meran"))
-        assertEquals(AddressQuery(listOf("meran", "laurinstrasse"), null, null, null), AddressQuery.parse("Meran Laurinstraße"))
+        assertEquals(AddressQuery(listOf("laurin", "strasse", "meran"), "5", null, null), AddressQuery.parse("Laurinstraße 5, Meran"))
+        assertEquals(AddressQuery(listOf("meran", "laurin", "strasse"), null, null, null), AddressQuery.parse("Meran Laurinstraße"))
         assertEquals(AddressQuery(listOf("via", "roma", "bolzano"), "3", null, "IT"), AddressQuery.parse("via Roma 3 Bolzano Italia"))
         assertEquals(AddressQuery(listOf("laurin", "str"), "7a", "39012", null), AddressQuery.parse("Laurin Str. 7 a 39012"))
         assertEquals("12b", AddressQuery.parse("Dorf 12/b").number)
@@ -94,6 +94,15 @@ class AddressSearchTest {
         val q = SearchQuery("Laurinstraße 5", refLat = 46.67, refLon = 11.16)
         val hits = SearchRanking.rank(emptyList(), q, find(q.text))
         assertEquals("Laurinstraße 5 · Meran", hits.first().place.name)
+    }
+
+    @Test fun joinedStreetWordAndTypo() {
+        // owner, 2026-10-20: "garibalistrasse 13, Merano" found nothing (typo + joined word)
+        assertEquals(listOf("garibali", "strasse", "merano"), AddressQuery.parse("garibalistrasse 13, Merano").words)
+        assertEquals("Laurinstraße 5 · Meran", find("Laurnstrasse 5, Meran").first().place.name)
+        assertEquals("Laurinstraße 5 · Meran", find("Laurinstrase 5 Meran").first().place.name)
+        assertEquals(1, AddressFile.editDistance("garibali", "garibald"))
+        assertTrue(find("Xyzqw 5").isEmpty())
     }
 
     @Test fun upperBound() { assertEquals("laus", AddressFile.upper("laur")) }
