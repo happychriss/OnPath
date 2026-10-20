@@ -275,6 +275,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .accuracyAlpha(0.18f)
                 .enableStaleState(true)
                 .staleStateTimeout(30_000)
+                // HeadingEngine turns smoothly at display rate itself (polish audit B1)
+                .compassAnimationEnabled(false)
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
@@ -350,7 +352,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
                 // a north-up animation from Plan must not run on into the walking-direction camera
                 if (mode == CameraMode.TRACKING_COMPASS) map.cancelTransitions()
-                lc.setCameraMode(mode, 750L, zoom, bearing, tilt, null)
+                val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
+                // MapLibre ignores paddingWhileTracking while the camera moves into tracking (polish audit A2):
+                // set it again when the transition ends, so the dot always sits at the same place
+                lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
+                    override fun onLocationCameraTransitionFinished(cameraMode: Int) = pad(top)
+                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) = pad(top)
+                })
                 // the camera takes the walking direction at once, after the transition and a north-up animation
                 // that may still run (Plan → Navigate); it must not wait for the next change of direction
                 if (mode == CameraMode.TRACKING_COMPASS) {
@@ -360,8 +368,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     mainHandler.postDelayed(r, 800L)
                     heading.reemit()
                 }
-                val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
-                lc.paddingWhileTracking(doubleArrayOf(0.0, top, 0.0, 0.0), 750L)
+                pad(top)
             } else {
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
@@ -371,6 +378,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
             Problems.warn("map", "Map camera mode not changed (follow / heading-up)", e)
+        }
+    }
+
+    private fun pad(top: Double) {
+        try { map.locationComponent.paddingWhileTracking(doubleArrayOf(0.0, top, 0.0, 0.0), 450L) } catch (e: Exception) {
+            Problems.warn("map", "Map padding while following not set", e)
         }
     }
 
@@ -584,8 +597,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
     /** Search result: fly to [p] at [zoom]. Never throws. */
+    private var lastPanMs = 0L
+
+    /** Profile scrub: the first move glides (no jump of several km), then the map follows the finger directly. */
     fun panTo(p: GeoPoint) = runCatching {
-        map.moveCamera(CameraUpdateFactory.newLatLng(LatLng(p.lat, p.lon)))
+        val now = android.os.SystemClock.uptimeMillis()
+        val update = CameraUpdateFactory.newLatLng(LatLng(p.lat, p.lon))
+        if (now - lastPanMs > 400) map.easeCamera(update, 280) else map.moveCamera(update)
+        lastPanMs = now
     }.onFailure { Problems.warn("map", "Map did not move to the profile point", it) }
 
     fun flyTo(p: GeoPoint, zoom: Double) = runCatching {

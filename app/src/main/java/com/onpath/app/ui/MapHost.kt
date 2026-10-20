@@ -250,10 +250,13 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
         }
     }
     if (at == null) return
-    val color = OnPathColors.Route
+    // a pan or quick tap ends within the first third: show nothing then, fade in after it (polish audit A1)
+    val a = ((progress.value - 0.33f) / 0.27f).coerceIn(0f, 1f)
+    if (a <= 0f) return
+    val color = OnPathColors.Route.copy(alpha = a)
     Canvas(Modifier.fillMaxSize()) {
         val r = 26.dp.toPx()
-        drawCircle(color.copy(alpha = 0.15f), r, at)
+        drawCircle(color.copy(alpha = 0.15f * a), r, at)
         drawArc(color, -90f, 360f * progress.value, useCenter = false,
             topLeft = Offset(at.x - r, at.y - r), size = Size(2 * r, 2 * r), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
     }

@@ -31,6 +31,7 @@ linked here.
 | 0.7.10 | Map never upside down when walking slowly against the route (last 15 m of movement wins) | **test** |
 | 0.7.11 | Fix map 180° after standing still on the route (compass took over after 15 s); full frame rate again | **test** |
 | 0.7.12 | Fix map stuck north up after Plan → Navigate (no new direction while walking straight); heading re-sent every fix | **test**: Navigate → Plan → Navigate, walk straight |
+| 0.7.13 | Smoothness batch from the polish audit (`docs/design/polish-audit.md`): continuous map turning, fixed dot position, gliding cards, no hold-ring flash, profile scrub fixes, dark status icons | **test**: walk a bend, start navigation, profile scrub |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
@@ -38,8 +39,9 @@ Also answered: off-route warning = vibration + notification with sound (since 0.
 1. **Path smoothing (angular bends):** proposal = round bends ≥ 20° in the pipeline, max ~1.5 m from the real path,
    junctions exact, route bands smoothed the same way; streets stay as in the base map. **Owner: send examples
    (place + zoom / screenshots)** → before/after renders; then agree with the laptop (map owner) and the cells work.
-2. **Polish audit:** running in the background (cloud) – list of proposals arrives tonight
-   (`docs/design/polish-audit.md` when done). Owner picks what to do.
+2. **Polish audit:** done – `docs/design/polish-audit.md`. Quick wins A1–A3, A6, A7 and B1 shipped in 0.7.13. Owner
+   picks from the rest (plan sheet "breathing" while routing A4, recomposition per frame A5, slide-to-plan snap A8,
+   Plan ⇄ Navigate transition B2, dot after the pocket B3, real draggable sheet B4, ...).
 3. **Battery batch 2** (`docs/design/battery-audit.md`): slower GPS when standing / screen off in the pocket (with
    thresholds that scale, so no point is lost), recorded track drawn as frozen part + tail, battery %/h in the tour
    summary, one-time battery hint for Samsung-type phones. Owner: field-test 0.7.3+ first; measure %/h if possible.

@@ -35,7 +35,7 @@ class HeadingFilter {
         /** Below this the GPS bearing is no longer trusted (hysteresis). */
         const val SLOW_MPS = 0.6f
         const val GPS_VALID_MS = 4_000L
-        const val DEADBAND_DEG = 3.0
+        const val DEADBAND_DEG = 2.0
         private const val SENSOR_ALPHA = 0.12
         private const val GPS_ALPHA = 0.8
         private const val ROUTE_ALPHA = 0.85
@@ -150,12 +150,42 @@ class HeadingFilter {
  * Without a sensor it still works from the GPS bearing; nothing here throws.
  */
 class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
+    companion object {
+        /** Ease-out time constant of the map turn: ~90 % of a turn in 0.5 s. */
+        const val TURN_TAU_S = 0.22
+    }
     private val app = context.applicationContext
     private val sm = app.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val sensor: Sensor? = try {
         sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) ?: sm?.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
     } catch (e: Exception) { Problems.warn("sensor", "Rotation sensor lookup failed, heading from GPS only", e); null }
     private val listeners = LinkedHashSet<CompassListener>()
+
+    // ---- smooth turning at display rate (polish audit B1, owner: "nothing jerky") ----
+    // The filter gives a target per sensor reading / fix; the map is turned towards it every frame with an ease-out
+    // (time constant TURN_TAU_S), so a bend is one continuous turn instead of 0.5 s steps. Runs only while the map
+    // listens (screen on); stops when the target is reached.
+    private val choreographer: android.view.Choreographer? = try { android.view.Choreographer.getInstance() } catch (e: Exception) {
+        Problems.warn("sensor", "No frame clock – the map turns without smoothing", e); null
+    }
+    private var shown: Double? = null
+    private var target: Double? = null
+    private var lastFrameNs = 0L
+    private var animating = false
+    private val frame = object : android.view.Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            val s = shown; val t = target
+            if (s == null || t == null || listeners.isEmpty()) { animating = false; return }
+            val dt = if (lastFrameNs == 0L) 1.0 / 60 else ((frameTimeNanos - lastFrameNs) / 1e9).coerceIn(0.0, 0.1)
+            lastFrameNs = frameTimeNanos
+            val d = HeadingFilter.diff(s, t)
+            if (abs(d) < 0.05) { shown = t; push(t); animating = false; return }
+            val next = HeadingFilter.norm(s + d * (1 - Math.exp(-dt / TURN_TAU_S)))
+            shown = next
+            push(next)
+            choreographer?.postFrameCallback(this)
+        }
+    }
     private val filter = HeadingFilter()
     private var registered = false
     private var accuracy = SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
@@ -168,7 +198,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     override fun addCompassListener(l: CompassListener) {
         listeners += l
         // a (re)added listener gets the current direction at once – it must not wait for the next change
-        filter.heading?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
+        (shown ?: filter.heading)?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
         if (!registered && sensor == null && !noSensorReported) {
             noSensorReported = true
             Problems.info("sensor", "No rotation sensor – map heading follows the GPS bearing only")
@@ -184,7 +214,10 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
 
     override fun removeCompassListener(l: CompassListener) {
         listeners -= l
-        if (listeners.isEmpty()) release()
+        if (listeners.isEmpty()) {
+            release()
+            if (animating) { choreographer?.removeFrameCallback(frame); animating = false }
+        }
     }
 
     fun release() {
@@ -192,7 +225,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         registered = false
     }
 
-    override fun getLastHeading(): Float = (filter.heading ?: 0.0).toFloat()
+    override fun getLastHeading(): Float = (shown ?: filter.heading ?: 0.0).toFloat()
     override fun getLastAccuracySensorStatus(): Int = accuracy
 
     /** Every fix: GPS bearing while moving, and the magnetic declination for the compass. */
@@ -207,12 +240,11 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         val h = filter.onGps(if (loc.hasBearing()) loc.bearing else null, if (loc.hasSpeed()) loc.speed else null, now())
         // Every fix passes the current direction on, changed or not (field test 2026-10-20: after Plan → Navigate the
         // camera stayed north up until the direction changed by 3°, the deadband – walking straight it never did).
-        val cur = h ?: filter.heading
-        if (cur != null) emit(cur)
+        if (h != null) emit(h) else reemit()
     }
 
     /** Passes the current direction on again (camera mode changed: the new tracking starts from it). */
-    fun reemit() { filter.heading?.let { if (listeners.isNotEmpty()) emit(it) } }
+    fun reemit() { (shown ?: filter.heading)?.let { if (listeners.isNotEmpty()) push(it) } }
 
     /** Direction of the followed route ahead (Navigate, on the route); null = none (compass / GPS again). */
     fun setRoute(bearingDeg: Double?) {
@@ -249,7 +281,17 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         }
     }
 
-    private fun emit(h: Double) = listeners.toList().forEach { l ->
+    /** New target direction: the map turns towards it smoothly (see [frame]). */
+    private fun emit(h: Double) {
+        target = h
+        if (shown == null || choreographer == null) { shown = h; push(h); return }
+        if (!animating && listeners.isNotEmpty()) {
+            animating = true; lastFrameNs = 0L
+            choreographer.postFrameCallback(frame)
+        }
+    }
+
+    private fun push(h: Double) = listeners.toList().forEach { l ->
         try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) }
     }
 
