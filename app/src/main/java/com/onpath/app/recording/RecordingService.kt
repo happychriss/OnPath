@@ -807,7 +807,8 @@ class RecordingService : Service() {
             .setContentIntent(openAppIntent())
         if (paused) b.addAction(0, "Resume", actionIntent(ACTION_RESUME, 2))
         else b.addAction(0, "Pause", actionIntent(ACTION_PAUSE, 1))
-        b.addAction(0, "Stop & save", actionIntent(ACTION_STOP, 3))
+        // No "Stop & save" here (owner 2026-10-20: ending a tour must be deliberate) – one tap on the lock screen or
+        // in the pocket would end the recording. Ending is in the app, with a question first.
         return b.build()
     }
 

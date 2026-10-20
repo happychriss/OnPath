@@ -497,8 +497,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** A tour is recording and the user tapped Install: ask first (installing closes OnPath, recording stops). */
+    var askUpdateDuringTour by mutableStateOf(false)
+
     /** Downloads the update and opens the Android installer (the user confirms there). */
-    fun installUpdate() {
+    fun installUpdate(duringTourOk: Boolean = false) {
+        if (!duringTourOk && recState.value != null) { askUpdateDuringTour = true; return }
+        askUpdateDuringTour = false
         val app = getApplication<Application>()
         val rel = (update as? UpdateState.Available)?.release ?: return
         if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
@@ -1705,6 +1710,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeShown() { shown = null; highlight = null }
 
     fun deleteTour(t: Tour) {
+        // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
+        if (recState.value?.tourId == t.id) { message = "This tour is being recorded – end it first."; return }
         viewModelScope.launch(Dispatchers.IO) {
             db.deleteTour(t.id)
             withContext(Dispatchers.Main) {

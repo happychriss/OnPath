@@ -116,9 +116,11 @@ class MainActivity : ComponentActivity() {
                         )
                         if (vm.routesOpen) {
                             BackHandler { vm.routesOpen = false }
+                            val recNow = vm.recState.collectAsState().value
                             RoutesScreen(
                                 tours = vm.tours,
-                                navigating = vm.navigating(vm.recState.collectAsState().value != null),
+                                navigating = vm.navigating(recNow != null),
+                                recordingId = recNow?.tourId ?: -1L,
                                 onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },
                                 onOpen = { vm.requestOpen(it) },
@@ -175,6 +177,16 @@ class MainActivity : ComponentActivity() {
                 }
 
                 RouteDialogs(vm)
+                if (vm.askUpdateDuringTour) {
+                    AlertDialog(
+                        onDismissRequest = { vm.askUpdateDuringTour = false },
+                        title = { Text("A tour is being recorded") },
+                        text = { Text("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
+                            "open OnPath afterwards and tap Continue. Better: install after the tour.") },
+                        confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text("After the tour") } },
+                        dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text("Install now") } },
+                    )
+                }
                 vm.unfinished?.let { t ->
                     UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.saveUnfinished(t) })
                 }

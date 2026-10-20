@@ -4,6 +4,13 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-20 (0.7.3–0.7.7, owner on a hike):** battery batch 1 (0.7.3, `docs/design/battery-audit.md`);
+  off-route vibration as alarm usage + setting (0.7.4); pause keeps GPS at 10 s + `PauseWatch` reminder after 150 m
+  (0.7.5); free look in Navigate, back after 25 m (0.7.6); **recording safety (0.7.7, owner: "ending a recording must
+  be deliberate")**: no Stop in the notification, running tour not deletable, update asks during a tour,
+  `TourInterruptedReceiver` (boot / package replaced: continue with background location, else notify). Plan mode
+  never stopped recording (checked). Open ideas: auto-continue needs "Allow all the time" – ask the owner whether
+  to suggest it once at the first tour.
 - **cloud, 2026-10-20 – release 0.7.2 (owner: "alles von main"):** everything on main incl. the laptop's arrival fix,
   address search, share-to-OnPath, route names and small map-style changes. Owner rule: map **loading** (cells)
   is not released until the laptop says it is ready (not in the app yet); UI work may be released.
