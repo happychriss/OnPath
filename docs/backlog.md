@@ -13,7 +13,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   cycling; map work → agree with the laptop):** measured in Meran centre (OSM 2026-10-19): 53 `highway=cycleway`
   (drawn today, but thin blue `#2f74a8` – lost next to the Passer), ~30 roads with `cycleway:left/right=lane|track`
   (not in the base map → not drawn), ~15 footways/pedestrian with `bicycle=yes|designated`, ~170 oneway pieces, 30 of
-  them `oneway:bicycle=no` / `cycleway=opposite*`. Routing already respects oneways (BRouter). Proposal: (1) oneway
+  them `oneway:bicycle=no` / `cycleway=opposite*`. Routing: done in 0.7.16 (wrong way ×100 in all bike profiles). Proposal: (1) oneway
   arrows on streets from z15, "bikes both ways" marked; (2) cycleways green and a bit stronger, arrows when oneway;
   (3) cycle lanes as a thin green line beside the street (bike activities only?); (4) pipeline: extract
   oneway/oneway:bicycle and cycleway:* into an overlay (or the planned vector PMTiles). Owner to decide details tonight.

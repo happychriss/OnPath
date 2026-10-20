@@ -205,11 +205,11 @@ assign onewaypenalty =
                                                              ) then 0
          else if ( oneway:bicycle=no                         ) then 0
          else if ( not footaccess                            ) then 100
-         else if ( junction=roundabout|circular              ) then 60
-         else if ( highway=primary|primary_link              ) then 50
-         else if ( highway=secondary|secondary_link          ) then 30
-         else if ( highway=tertiary|tertiary_link            ) then 20
-         else 4.0
+         else if ( junction=roundabout|circular              ) then 100
+         else if ( highway=primary|primary_link              ) then 100
+         else if ( highway=secondary|secondary_link          ) then 100
+         else if ( highway=tertiary|tertiary_link            ) then 100
+         else 100.0  # OnPath: wrong way on a oneway is (almost) never used – owner 2026-10-20 (was 4 = "push the bike")
        )
        else 0.0
 

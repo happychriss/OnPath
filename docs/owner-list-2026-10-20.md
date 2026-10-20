@@ -34,7 +34,7 @@ linked here.
 | 0.7.13 | Smoothness batch from the polish audit (`docs/design/polish-audit.md`): continuous map turning, fixed dot position, gliding cards, no hold-ring flash, profile scrub fixes, dark status icons | **test**: walk a bend, start navigation, profile scrub |
 | 0.7.14 | Position via Wi-Fi indoors when GPS is silent 30 s (≤ 150 m accurate; never cell guesses; track stays GPS) | **test**: plan indoors |
 | 0.7.15 | Dot like Google Maps: cone shows where you face (view heading), map turns by the route (map heading) – camera turned by the app; Google Maps share checked against the address (> 3 km → address) | **test**: turn 90° on the route (only the cone turns); free look with two fingers; share Gelateria Costantin |
-| (main, next release) | ☰ menu without "Check for updates" (Settings has Updates); direction arrow instead of the cone at the dot (still shows where you face) | – |
+| 0.7.16 | Bike profiles: wrong way on one-ways ×100 (MTB 1.9 km → 23 m in 56 Meran routes, `tools/routing/jvm-test/OnewayTest.kt`); arrow instead of cone; no "Check for updates" in ☰ | **test**: bike route through Meran centre |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
