@@ -41,8 +41,10 @@ from cells import cell_bbox  # noqa: E402
 NO_SOURCE = "Source data not available for this area yet"
 # progress at the start of each build_cell.sh step (from the phase-1 timings, map-cells.md §17); unknown steps
 # (format 2) keep the last value
-STEP_PROGRESS = {"source": 0.0, "renumber": 0.02, "cut": 0.06, "base": 0.10, "base-own": 0.48, "overlays": 0.50,
-                 "pois": 0.62, "pois-ids": 0.72, "clip": 0.73, "terrain": 0.76, "contours": 0.80,
+# step names of build_cell.sh (format 1 and 2) -> rough progress for the app's card
+STEP_PROGRESS = {"source": 0.0, "renumber": 0.02, "cut": 0.06, "base": 0.10, "base-own": 0.45, "base-trim": 0.47,
+                 "overlays": 0.50, "overlays-tiles": 0.58, "overlays-own": 0.61,
+                 "pois": 0.62, "pois-ids": 0.70, "clip": 0.71, "addresses": 0.72, "terrain": 0.76, "contours": 0.80,
                  "terrain-own": 0.93, "contours-own": 0.95, "manifest": 0.97, "upload": 0.98}
 IMMUTABLE = "public, max-age=31536000, immutable"
 
@@ -211,7 +213,9 @@ class Builder:
             if os.path.getsize(p) != e["size"]:
                 raise RuntimeError(f"{e['name']}: size differs from the manifest")
         prefix = f"cells/f{self.fmt}/{z}/{x}/{y}"
-        names = [n for n in sorted(os.listdir(vdir)) if n != "manifest.json" and not n.startswith(".")]
+        # every file below the version folder (format 2 has addresses/<cell>.sqlite in a sub folder)
+        names = sorted(os.path.relpath(os.path.join(r, n), vdir) for r, _, ns in os.walk(vdir) for n in ns)
+        names = [n for n in names if n != "manifest.json" and not os.path.basename(n).startswith(".")]
         for n in names:  # files first, manifest after them, current.json last (readers never see half a cell)
             self.store.put_file(f"{prefix}/{version}/{n}", os.path.join(vdir, n), content_type(n), IMMUTABLE)
         self.store.put_file(f"{prefix}/{version}/manifest.json", os.path.join(vdir, "manifest.json"),

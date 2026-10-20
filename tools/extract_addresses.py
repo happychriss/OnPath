@@ -4,7 +4,10 @@
 Output: OUT_FILE (normally addresses.sqlite), read by the app's offline search (search/AddressSearch.kt).
 Missing file = no offline addresses; the app works as before.
 
-Usage: python3 extract_addresses.py input.osm.pbf OUT_FILE minlon minlat maxlon maxlat
+Usage: python3 extract_addresses.py input.osm.pbf OUT_FILE minlon minlat maxlon maxlat [--owner]
+  --owner  map cell build (docs/design/map-cells.md §2): the bbox is a cell, the input its buffered cut; streets and
+           places are kept by the half-open owner rule (west <= lon < east, south < lat <= north), so a point on a
+           cell border lands in exactly one cell. Without it the bbox edges are inclusive.
 
 What goes in (only what lies in the bbox; one file per region or per z10 map cell):
   town    municipalities (admin_level 8, bilingual names, country) and places (city … hamlet, suburb, quarter)
@@ -203,9 +206,14 @@ def house_of(t, lat, lon):
 
 
 # ------------------------------------------------------------------------------------------ build
-def build(pbf, out, bbox):
+def build(pbf, out, bbox, owner=False):
     t0 = time.time()
     minlon, minlat, maxlon, maxlat = bbox
+
+    def own(lat, lon):
+        if owner:
+            return minlon <= lon < maxlon and minlat < lat <= maxlat
+        return minlat <= lat <= maxlat and minlon <= lon <= maxlon
     munis, places, ways, houses = read(pbf, bbox)
     print(f"  read: {len(munis)} municipalities, {len(places)} places, {len(ways)} street ways, "
           f"{len(houses)} addresses ({time.time() - t0:.0f}s)")
@@ -368,7 +376,7 @@ def build(pbf, out, bbox):
     used_towns = set()
     keep = []
     for si, s in enumerate(streets):
-        if not (minlat <= s["lat"] <= maxlat and minlon <= s["lon"] <= maxlon):
+        if not own(s["lat"], s["lon"]):
             continue
         keep.append(si)
     keep_set = set(keep)
@@ -399,7 +407,7 @@ def build(pbf, out, bbox):
     trows = []
     for i, (kind, disp, var, cc, lat, lon) in enumerate(towns):
         tid = i + 1
-        in_box = minlat <= lat <= maxlat and minlon <= lon <= maxlon
+        in_box = own(lat, lon)
         if tid in used_towns or (in_box and kind != "m"):
             alt = [v for v in var if v != disp]
             trows.append((tid, kind, disp, "|".join(alt) or None, cc or None, round(lat * E5), round(lon * E5)))
@@ -416,7 +424,8 @@ def build(pbf, out, bbox):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 7:
+    args = [a for a in sys.argv[1:] if a != "--owner"]
+    if len(args) != 6:
         print(__doc__)
         sys.exit(2)
-    build(sys.argv[1], sys.argv[2], tuple(map(float, sys.argv[3:7])))
+    build(args[0], args[1], tuple(map(float, args[2:6])), owner="--owner" in sys.argv[1:])
