@@ -1,0 +1,87 @@
+# OnPath doorman (Cloudflare Worker) – docs/design/map-hosting.md
+# Two deployed environments: `--env test` (auto on push to main) and `--env production` (owner approval).
+# The top level is only for local `wrangler dev` (smoke.sh). Placeholders __…__ are filled by
+# .github/workflows/maps-deploy.yml (D1 ids, hostnames); GCP_PROJECT / GCP_REGION / BUILD_REV come as --var.
+# Secrets (never in this file): APP_KEYS (comma-separated app keys), GCP_INVOKER_KEY (service-account JSON).
+name = "onpath-doorman"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = true
+
+# every minute: check the running build, start the next one (inherited by both environments)
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+ENVIRONMENT = "dev"
+FORMATS = "1"
+BUILDS_ENABLED = "false"
+GCP_JOB = "onpath-cell-dev"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "onpath-maps-dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "onpath-doorman-dev"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# ------------------------------------------------------------------------------------------------ test
+[env.test]
+name = "onpath-doorman-test"
+routes = [{ pattern = "__MAPS_HOST_TEST__", custom_domain = true }]
+
+[env.test.vars]
+ENVIRONMENT = "test"
+FORMATS = "1"
+BUILDS_ENABLED = "true"
+GCP_JOB = "onpath-cell-test"
+MAX_CELLS_PER_REQUEST = "40"
+CELLS_PER_EXECUTION = "4"
+MAX_EXEC_PER_HOUR = "4"
+MAX_EXEC_PER_DAY = "20"
+MAX_QUEUE = "200"
+RATE_LIMIT_PER_MIN = "30"
+
+[[env.test.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "onpath-maps-test"
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "onpath-doorman-test"
+database_id = "__D1_ID_TEST__"
+migrations_dir = "migrations"
+
+# ------------------------------------------------------------------------------------------------ production
+[env.production]
+name = "onpath-doorman-production"
+routes = [{ pattern = "__MAPS_HOST_PRODUCTION__", custom_domain = true }]
+
+[env.production.vars]
+ENVIRONMENT = "production"
+FORMATS = "1"
+BUILDS_ENABLED = "true"
+GCP_JOB = "onpath-cell-prod"
+MAX_CELLS_PER_REQUEST = "40"
+CELLS_PER_EXECUTION = "4"
+MAX_EXEC_PER_HOUR = "6"
+MAX_EXEC_PER_DAY = "40"
+MAX_QUEUE = "300"
+RATE_LIMIT_PER_MIN = "30"
+
+[[env.production.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "onpath-maps-production"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "onpath-doorman-production"
+database_id = "__D1_ID_PRODUCTION__"
+migrations_dir = "migrations"
