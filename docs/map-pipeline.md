@@ -189,6 +189,12 @@ How the data reaches the phone (data folder `/sdcard/Android/data/com.onpath.app
    (≈ 200 MB, Wi-Fi)" (`data/SegmentDownloader.kt`, resumable). That is why `--no-segments` packages
    are fine and much smaller.
 
+**Test downloads (`downloads` branch on GitHub):** the South Tyrol package built with `--no-segments`, split in
+two because GitHub refuses files over 100 MB: `onpath-data-south-tyrol-part1-terrain.zip` (`terrain.pmtiles`) and
+`onpath-data-south-tyrol-part2-map.zip` (every other file), each with the same `package.json`, plus the build's
+`manifest.json`, a `SHA256SUMS` of the two zips and a README. Rebuilt 2026-10-20 (OSM data of 2026-10-19):
+69 MB + 43 MB. Same entry order and compression as the build zip (`.pmtiles` stored, the rest deflated).
+
 ## 7. Add a new region
 
 1. Pick a bbox (`minlon,minlat,maxlon,maxlat`; e.g. from bboxfinder.com) – keep it regional: Planetiler,
