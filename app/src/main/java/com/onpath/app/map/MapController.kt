@@ -1,5 +1,7 @@
 package com.onpath.app.map
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -118,6 +120,33 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private var wasNavigating = false
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var reemitJob: Runnable? = null
+
+    /**
+     * "Where I face" arrow drawn by the app (heading-up following only): while MapLibre tracks, the dot stays at the
+     * camera target on screen, so the arrow is placed there and turned by the view direction – no map layer updates,
+     * no camera moves. Compose snapshot state, read by ui/FacingArrow.
+     */
+    class Facing {
+        var visible by androidx.compose.runtime.mutableStateOf(false)
+        var x by androidx.compose.runtime.mutableFloatStateOf(0f)
+        var y by androidx.compose.runtime.mutableFloatStateOf(0f)
+        var viewHeading by androidx.compose.runtime.mutableFloatStateOf(0f)
+    }
+    val facing = Facing()
+
+    private fun showFacing(on: Boolean) {
+        if (!on || wantedCameraMode != CameraMode.TRACKING_COMPASS) return
+        placeFacing()
+        heading.viewHeading?.let { facing.viewHeading = it.toFloat() }
+        facing.visible = true
+    }
+
+    private fun placeFacing() {
+        try {
+            val p = map.projection.toScreenLocation(map.cameraPosition.target ?: return)
+            facing.x = p.x; facing.y = p.y
+        } catch (e: Exception) { Problems.warn("map", "Facing arrow not placed", e) }
+    }
 
     /** The user moved the map: stop following; the reason goes to Diagnostics. */
     private fun dismissed(why: String) {
@@ -292,6 +321,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .build()
             )
             lc.setCompassEngine(heading)
+            heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
+            // the app's own "where I face" arrow sits on the dot; keep its screen position with every camera move
+            map.addOnCameraMoveListener { if (facing.visible) placeFacing() }
             // No frame cap on the position dot (owner 2026-10-20: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
@@ -355,7 +387,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                     else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
                 }
-                lc.renderMode = PUCK_MODE
+                // heading-up: MapLibre turns camera + puck with the map direction, so its own arrow would show the
+                // route; the dot gets no arrow and the app draws the "where I face" arrow (ui/FacingArrow)
+                heading.mapToCompass = headingUp
+                lc.renderMode = if (headingUp) RenderMode.NORMAL else PUCK_MODE
+                facing.visible = false
                 wantedCameraMode = mode
                 val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
                 // a north-up animation from Plan must not run on into the walking-direction camera
@@ -364,8 +400,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // MapLibre ignores paddingWhileTracking while the camera moves into tracking (polish audit A2):
                 // set it again when the transition ends, so the dot always sits at the same place
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
-                    override fun onLocationCameraTransitionFinished(cameraMode: Int) = pad(top)
-                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) = pad(top)
+                    override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp) }
+                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) { pad(top); showFacing(headingUp) }
                 })
                 // the camera takes the walking direction at once, after the transition and a north-up animation
                 // that may still run (Plan → Navigate); it must not wait for the next change of direction
@@ -378,6 +414,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 }
                 pad(top)
             } else {
+                heading.mapToCompass = false
+                facing.visible = false
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
