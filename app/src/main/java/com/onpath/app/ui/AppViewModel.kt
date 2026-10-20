@@ -365,6 +365,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     RecordingService.finished.value = null
                     finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                     finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
+                    finishedTour?.let { nameRecordedTour(it) }
                     reloadPace()
                     refreshTours()
                     clearFollow()
@@ -1072,7 +1073,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.size < 2) return
         when (currentSaveMode()) {
             SaveMode.OVERWRITE_OR_NEW -> saveChoice = SaveChoice(null)
-            SaveMode.NAME_DIALOG -> saveDialog = true
+            SaveMode.NAME_DIALOG -> { suggestName(); saveDialog = true }
         }
     }
 
@@ -1115,6 +1116,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveChoiceAsNew() {
         val choice = saveChoice ?: return
         saveChoice = null
+        suggestName()
         if (choice.thenOpen != null) saveFirst = choice.thenOpen else saveDialog = true
     }
 
@@ -1158,13 +1160,68 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun replaceSaveFirst() {
         val t = replaceAsk ?: return
         replaceAsk = null
-        if (currentSaveMode() == SaveMode.OVERWRITE_OR_NEW) saveChoice = SaveChoice(t) else saveFirst = t
+        if (currentSaveMode() == SaveMode.OVERWRITE_OR_NEW) saveChoice = SaveChoice(t) else { suggestName(); saveFirst = t }
     }
 
     fun saveFirstDone(name: String) {
         val t = saveFirst ?: return
         saveFirst = null
         saveRoute(name) { openTour(t) }
+    }
+
+    /**
+     * Proposed name for the open "Save route" dialog ("Algund → Meran", search/RouteNamer), null until computed or
+     * when nothing fits. The dialog opens at once with [defaultName] and takes this over while the user has not typed.
+     */
+    var suggestedName by mutableStateOf<String?>(null)
+        private set
+    private var nameJob: Job? = null
+
+    /** Computes [suggestedName] off the main thread from the offline place index (built first if needed). */
+    private fun suggestName() {
+        suggestedName = null
+        nameJob?.cancel()
+        val pts = waypoints.toList()
+        if (pts.size < 2) return
+        val line = route?.points?.takeIf { it.size >= 2 } ?: pts
+        val startName = stopName(pts.first()); val endName = stopName(pts.last())
+        val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
+        nameJob = viewModelScope.launch {
+            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); emptyList() }
+            suggestedName = withContext(Dispatchers.Default) {
+                try { com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via) } catch (e: Exception) {
+                    Problems.warn("search", "No route name proposed (naming failed)", e); null
+                }
+            }
+        }
+    }
+
+    /**
+     * A finished recording still called "Tour 20 Oct 2026, 10:12" gets a place name ("Algund → Meran", RouteNamer)
+     * in the background; the "Tour saved" dialog follows. Nothing fits / index missing → the date name stays.
+     * The date is still shown in My routes; Rename there changes it.
+     */
+    private fun nameRecordedTour(t: Tour) {
+        if (!t.name.startsWith("Tour ")) return
+        viewModelScope.launch {
+            val name = try {
+                val places = search.offlineIndex().entries.map { it.place }
+                withContext(Dispatchers.IO) {
+                    val line = db.loadSegments(t.id).flatten().map { GeoPoint(it.lat, it.lon) }
+                    com.onpath.app.search.RouteNamer.name(line, places)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
+            } ?: return@launch
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.rename(t.id, name) }.onFailure { Problems.warn("db", "Naming the recorded tour failed; it keeps its date name", it) }.isSuccess
+            }
+            if (!ok) return@launch
+            finishedTour?.let { if (it.id == t.id) finishedTour = it.copy(name = name) }
+            refreshTours()
+        }
     }
 
     fun defaultName(prefix: String) =

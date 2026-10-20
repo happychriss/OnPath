@@ -7,7 +7,13 @@ import androidx.compose.runtime.setValue
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.search.AddressDb
+import com.onpath.app.search.AddressIndex
+import com.onpath.app.search.AddressQuery
+import com.onpath.app.search.AndroidAddressDb
 import com.onpath.app.search.OfflineIndex
+import com.onpath.app.search.OnlineRanking
+import com.onpath.app.search.SearchText
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
@@ -55,8 +61,20 @@ class SearchSession(
     private val cacheDir: File,
     private val store: SearchStore,
     private val online: SearchProvider?,
+    /** Opens an offline address file (addresses.sqlite); replaced in tests. */
+    private val openAddresses: (File) -> AddressDb = { AndroidAddressDb(it) },
     private val context: () -> SearchContext,
 ) {
+    @Volatile private var addresses: AddressIndex? = null
+
+    /** Address files (re)opened when they changed; never throws. */
+    @Synchronized private fun ensureAddresses(): AddressIndex {
+        val sig = AddressIndex.signature(dataDir)
+        addresses?.let { if (it.signature == sig) return it }
+        addresses?.close()
+        return AddressIndex.open(dataDir, openAddresses).also { addresses = it }
+    }
+
     var ui by mutableStateOf(SearchUi())
         private set
 
@@ -90,6 +108,9 @@ class SearchSession(
         SearchHit(p, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, p.lat, p.lon), false)
     }
 
+    /** The offline index, built (off the main thread) when needed; for route names (search/RouteNamer). */
+    suspend fun offlineIndex(): OfflineIndex = ensureIndex()
+
     private suspend fun ensureIndex(): OfflineIndex = indexLock.withLock {
         val cur = index ?: cached
         val sig = withContext(Dispatchers.IO) { OfflineIndex.signature(dataDir) }
@@ -113,7 +134,10 @@ class SearchSession(
         val q = SearchQuery(u.query, u.category, ctx.refLat, ctx.refLon, ctx.route)
         offlineJob = scope.launch {
             val idx = ensureIndex()
-            val hits = withContext(Dispatchers.Default) { idx.search(q) }
+            val hits = withContext(Dispatchers.IO) {
+                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) else emptyList()
+                idx.search(q, addr)
+            }
             if (gen == generation) ui = ui.copy(hits = hits, hasRoute = ctx.route != null)
         }
         val text = u.query.trim()
@@ -123,7 +147,17 @@ class SearchSession(
             if (gen != generation) return@launch
             ui = ui.copy(onlineState = OnlineState.LOADING)
             val res = withContext(Dispatchers.IO) {
-                try { online.search(text, ctx.refLat, ctx.refLon, 10) } catch (e: Exception) {
+                // A town named in the query ("via Roma 3 Bolzano") centres the search there; the user's country
+                // (from the nearest offline town) ranks first.
+                val addr = ensureAddresses()
+                val named = addr.townsNamed(SearchText.tokens(text))
+                val centre = named.minByOrNull { Geo.distance(ctx.refLat, ctx.refLon, it.lat, it.lon) }
+                val (bLat, bLon) = if (centre != null) centre.lat to centre.lon else ctx.refLat to ctx.refLon
+                try {
+                    val r = online.search(text, bLat, bLon, 20)
+                    OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon),
+                        OnlineRanking.queryTowns(text, named)).take(10)
+                } catch (e: Exception) {
                     Problems.info("search", "Online search failed (offline or server unreachable)", e); null
                 }
             }

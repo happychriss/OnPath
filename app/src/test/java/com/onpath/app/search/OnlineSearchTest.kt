@@ -56,7 +56,7 @@ class OnlineSearchTest {
 
     @Test fun urlAndUserAgent() {
         val u = PhotonProvider("x").url("Meraner Hütte", 46.67, 11.16, 10)
-        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67000&lon=11.16000&limit=10&lang=de", u)
+        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67000&lon=11.16000&zoom=12&location_bias_scale=0.3&limit=10&lang=de", u)
         assertEquals("OnPath-Android/0.6.0 (github.com/happychriss/OnPath)", PhotonProvider.userAgent("0.6.0"))
         assertEquals("https://www.google.com/maps/search/?api=1&query=Spar%20Algund", GoogleSearchLink.url(" Spar Algund "))
     }
@@ -90,5 +90,26 @@ class OnlineSearchTest {
         org.junit.Assert.assertEquals(1, r.size)
         org.junit.Assert.assertEquals("city", r[0].sub)
         org.junit.Assert.assertEquals(46.4985, r[0].lat, 1e-3)
+    }
+
+    @Test fun onlineRankingPrefersNamedTownThenCountryThenDistance() {
+        fun pl(id: String, name: String, town: String, cc: String, lat: Double, lon: Double, kind: String = "address") =
+            Place(id, name, kind, lat, lon, source = Place.Source.ONLINE, cc = cc, town = town)
+        val meran = pl("a", "Romstraße 3", "Meran", "IT", 46.6695, 11.152)
+        val bozen = pl("b", "Romstraße 3", "Bozen", "IT", 46.4905, 11.342)
+        val r = OnlineRanking.rank(listOf(meran, bozen), 46.67, 11.16, "IT", OnlineRanking.queryTowns("via Roma 3 Bozen", emptyList()))
+        assertEquals("b", r.first().id)
+        val de = pl("d", "Hauptstraße 10", "Peißenberg", "DE", 47.8, 11.07)
+        val it = pl("i", "Hauptstraße 10", "Terlan", "IT", 46.53, 11.25)
+        assertEquals("i", OnlineRanking.rank(listOf(de, it), 46.67, 11.16, "IT", emptySet()).first().id)
+    }
+
+    @Test fun streetPiecesAreOneResult() {
+        val json = """{"features":[
+          {"properties":{"osm_type":"W","osm_id":1,"osm_key":"highway","osm_value":"primary","name":"Romstraße","city":"Meran","countrycode":"IT"},"geometry":{"coordinates":[11.15,46.67]}},
+          {"properties":{"osm_type":"W","osm_id":2,"osm_key":"highway","osm_value":"tertiary","name":"Romstraße","city":"Meran","countrycode":"IT"},"geometry":{"coordinates":[11.16,46.672]}}]}"""
+        val r = PhotonParser.parse(json)
+        assertEquals(1, r.size)
+        assertEquals("IT", r[0].cc); assertEquals("Meran", r[0].town)
     }
 }
