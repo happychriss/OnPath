@@ -69,3 +69,7 @@ docker run --rm -v ~/onpath-data:/data -v ~/onpath:/onpath:ro onpath-cell-builde
   Never `docker build` on zo on the default bridge (use `docker build --network host`).
 - Low zooms (z < 10) are not in a cell (overview map, map-cells.md §7): a cell alone shows nothing below z10.
 - `DOCKER_ARGS="--dns 1.1.1.1"` where the Docker bridge has no working DNS (the laptop).
+- Local test (laptop, 2026-10-20): `docker build --network host -t onpath-cell-builder:f2 …`, then
+  `DATA=<dir> IMAGE=onpath-cell-builder:f2 KEEP_WORK=1 tools/cells/run.sh 10 543 361` (`FORMAT=1` for the old set).
+  Inside a git worktree the container cannot read the revision (manifest `pipeline: git:unknown`); on zo and in the
+  job image it is set.
