@@ -404,3 +404,54 @@ format 1, source = Trentino extract of 2026-10-19, 5 km buffer.
   first tests) → `--network host` is now the default; no further restarts over two builds.
 - **Next:** doorman (API + queue) as a second container on zo, then `maps.free-your-pictures.org` in the Cloudflare
   tunnel (owner-approved step), then format 2 (map-data-size.md).
+
+## 18. Format 2 cells (2026-10-20, laptop)
+
+`tools/cells/build_cell.sh` builds **format 2 by default** (`FORMAT=2`, `FORMAT=1` still works; output under
+`cells/f<FORMAT>/…`). File set and how each file is made: `tools/cells/README.md` "Format 1 and 2". In short:
+trimmed base (Planetiler `--exclude_layers … --languages=de` + `trim_base.sh`), **one `overlays.pmtiles`**
+(`extract_overlays.py --tiles --smooth` on the buffered cut → tippecanoe with `--clip <buffered bbox>` → only the
+cell's own z ≥ 10 tiles), WebP terrain z10–12 (`build_terrain.py --cell`), contours from the AWS z12/z13 PNGs
+(shared `TERRARIUM_CACHE`), `pois.geojson` (owner rule), **`addresses/10-X-Y.sqlite`** (`extract_addresses.py
+--owner`: streets / places by the half-open owner rule; municipalities from whole boundaries – the cut now also
+completes `boundary` relations). Manifest `format: 2`; files in sub folders are listed with their path
+(`addresses/10-543-361.sqlite`), `job_build.py` uploads them too.
+
+**Decision: contours stay a separate `contours.pmtiles`** (not joined into overlays via `build_overlays.sh --extra`):
+same file and style source as the region package, optional on its own (OptionalSources strips it), and joining
+would not make the cell smaller. Routes' z9 tiles are dropped like every z < 10 tile (the overview's job, §7).
+
+Built locally (laptop, Docker image with tippecanoe built from source, `--memory 3g --cpus 3`), Trentino extract of
+2026-10-19, 5 km buffer, warm caches (Planetiler sources, part of the AWS tiles):
+
+| | 10/543/361 f1 | 10/543/361 **f2** | 10/544/361 f1 | 10/544/361 **f2** |
+| --- | --- | --- | --- | --- |
+| Wall time | 165 s | **129 s** | 132 s | **137 s** |
+| Peak RAM (one step) | 0.92 GB (base) | 0.74 GB (base) | 0.86 GB | 0.84 GB |
+| base | 5.14 MB | 3.56 | 3.58 | 2.63 |
+| overlays | 11.1 MB (6 GeoJSON) | 2.77 (`overlays.pmtiles`) | 7.95 | 2.25 |
+| terrain | 10.79 | 1.02 | 10.79 | 1.01 |
+| contours | 0.69 | 0.69 | 0.63 | 0.63 |
+| pois | 0.63 | 0.63 | 0.26 | 0.26 |
+| addresses | – | 0.63 | – | 0.30 |
+| **Total** | **28.3 MB** | **9.3 MB** | **23.2 MB** | **7.1 MB** |
+
+Format 2 steps (10/543/361): cut 3 s, base 51 s, base-trim 3 s, overlays 13 s + tippecanoe 8 s, pois 8 s,
+addresses 8 s, terrain 24 s (partly AWS downloads), contours 9 s. A cell is ~3× smaller than format 1 and as fast.
+
+**Seams (`seam_check.py`, border lon 11.25, format 2):** tiles held by both cells: 0 in base, terrain, contours and
+overlays. Lines crossing the shared tile edge at z14 (west cell's tile vs east cell's tile): overlays paths 79/79
+joined, trails 28/28, ways 49/49, routes 64/64, all with equal attributes; base transportation 24/24, waterway 15/15.
+POIs in both cells 0; house numbers in both cells 0; 83 street names in both cells (streets crossing the border: one
+row per cell, the app merges the same name within 2 km). Render of the overlay z14 tiles across the border: lines
+meet. Contours (z13): 323 of 412 crossings within 3/4096 tile units, all 412 within 40 units – the same offset as at
+any internal tile edge of one cell (339 of 449 within 3 units there): contour lines are traced per tile, not a seam
+effect of cells. The format 1 check still passes unchanged (0 crossing lines, 0 duplicates).
+
+Test region package in format 2 (`tools/build_region.sh --format 2`, bbox 10.70,46.30,11.60,46.85, OSM 2026-10-17):
+base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 → **53 MB, zip 50 MB** (format 1:
+~130 MB). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
+
+Open: the builder image on zo / in the cloud must be rebuilt (tippecanoe); `job.yaml` still says `FORMAT=1` (the
+doorman decides per execution); the app does not download cells yet (phase 2) and has to join cell tiles into one
+store (§9 "Joining cells").
