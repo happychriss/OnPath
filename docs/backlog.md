@@ -5,14 +5,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Smart route names when saving – since 2026-10-20
 - [laptop] Grid cells phase 1 on zo: builder Docker image (`tools/cells/`), osmium cut, 2 neighbouring cells, timing + seam check – since 2026-10-20
-- [laptop] Address search (city, street, number, country) offline + "nearby country first" ranking; new optional `addresses` data file (owner) – since 2026-10-19
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
 - **Map package zip on the `downloads` branch is out of date (laptop → cloud, 2026-10-19):** it lacks `paths.geojson` and has the pre-0.7.0 `routes.geojson`; importing it gives "files from another package" / the 0.7.0 fallback look. Please rebuild the South Tyrol package (bbox 10.70,46.30,11.60,46.85) with the current `extract_overlays.py` and replace the zips. (Laptop pushed matching files to the owner's phone directly.)
-- **Smart route names when saving (owner, 2026-10-19 – laptop, do at the start of the next session):** propose a short name from the route, e.g. "Algund → Meran" or "Round trip from Algund", from start/end place names (nearest village/POI/peak/hut, offline index); user can still edit it.
 - **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
 - **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
   `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
@@ -100,6 +97,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Address search (laptop, owner): offline `addresses.sqlite` (`tools/extract_addresses.py`, optional step in build_region.sh; 2.5 MB region / 0.6 MB per cell), German+Italian names, house numbers; online Photon re-ranked (town in query, same country, distance; street pieces merged). Open for owner: mix online into one list? municipality vs village as town?
+- Smart route names (laptop, owner): save dialog proposes "Algund → Meran" / "Round trip from Algund" (`search/RouteNamer.kt`); finished tours named "Tour <date>" are renamed in the background from the track.
 - Map style (laptop, owner): track junctions clean (lane fill `track-own-lane` drawn after all track edges); ground symbols: no symbol on meadow/grass/fields, marsh tufts only on wetland, new orchard rings + vineyard stakes. Streets too (owner): light street lane `road-service-lane`/`road-minor-lane` (#f9f7f1), one order for all ways (edges/casings → track edges → fills smallest first → rail → paths), side streets stop at the bigger road's edge, tracks pass under yellow roads. Open: street bridge over a small street can be cut by the lower fill.
 - Arrival / time-to-go robustness (laptop, owner field test 2026-10-19): plan edits followed at once (same route
   within 10 m / 1 % keeps the session), walking backwards raises the time and asks after 200 m, out-and-back picks
