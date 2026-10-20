@@ -273,6 +273,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- position / camera ---
     var followMe by mutableStateOf(false)
+
+    /** Navigate: where the user turned / moved the map by hand (free look); null = not looking around. */
+    private var freeLookAt: GeoPoint? = null
+
+    /**
+     * The map stopped following because of a finger (turn, move). Navigate (owner 2026-10-20): look around freely –
+     * e.g. turn the map to match a mountain range – and once you walk on ([FREE_LOOK_BACK_M]) the map comes back to
+     * your position and the chosen orientation by itself. Compass / locate bring it back at once, as before.
+     */
+    fun onMapGesture() {
+        followMe = false
+        val loc = tracker.location.value
+        freeLookAt = if (mode == AppMode.NAVIGATE && loc != null) GeoPoint(loc.latitude, loc.longitude) else null
+    }
+
+    /** Every fix: back to following after free look once the walker moved on. */
+    fun checkFreeLook(lat: Double, lon: Double) {
+        val at = freeLookAt ?: return
+        if (followMe || mode != AppMode.NAVIGATE) { freeLookAt = null; return }
+        if (Geo.distance(at.lat, at.lon, lat, lon) < FREE_LOOK_BACK_M) return
+        freeLookAt = null
+        followMe = true
+        recentreTick++
+    }
     /** The start mode (Plan / Navigate) is decided (database checked for an unfinished tour). */
     var startModeKnown by mutableStateOf(false)
         private set
@@ -1792,3 +1816,5 @@ private const val FAR_SNAP_M = 150.0
 
 /** Navigate profile scrubbing: how long the dot and the map stay at the spot after the finger leaves (ms). */
 private const val SCRUB_HOLD_MS = 4000L
+/** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
+private const val FREE_LOOK_BACK_M = 25.0
