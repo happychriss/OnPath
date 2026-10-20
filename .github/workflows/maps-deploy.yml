@@ -93,6 +93,9 @@ jobs:
       SRC_BUCKET: ${{ vars.GCP_SRC_BUCKET }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # R2 buckets live in the EU jurisdiction (map-hosting.md); "default" = buckets without a jurisdiction
+      R2_JURISDICTION: ${{ vars.R2_JURISDICTION || 'eu' }}
+      D1_LOCATION: ${{ vars.D1_LOCATION || 'weur' }}
       HOST_TEST: ${{ vars.MAPS_HOST_TEST || 'maps-test.free-your-pictures.org' }}
       HOST_PRODUCTION: ${{ vars.MAPS_HOST_PRODUCTION || 'maps.free-your-pictures.org' }}
     steps:
@@ -155,10 +158,10 @@ jobs:
           JOB_CPU: ${{ vars.JOB_CPU || '2' }}
           JOB_MEMORY: ${{ vars.JOB_MEMORY || '8Gi' }}
         run: |
-          export JOB_NAME ENV_NAME ENV_SHORT BUILDER_SA IMAGE R2_BUCKET SRC_BUCKET TASK_TIMEOUT_S JOB_CPU JOB_MEMORY
+          export JOB_NAME ENV_NAME ENV_SHORT BUILDER_SA IMAGE R2_BUCKET R2_JURISDICTION SRC_BUCKET TASK_TIMEOUT_S JOB_CPU JOB_MEMORY
           export R2_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID
           # shellcheck disable=SC2016  # the list names the variables for envsubst, it is not expanded here
-          envsubst '${JOB_NAME} ${ENV_NAME} ${ENV_SHORT} ${BUILDER_SA} ${IMAGE} ${R2_ACCOUNT_ID} ${R2_BUCKET} ${SRC_BUCKET} ${TASK_TIMEOUT_S} ${JOB_CPU} ${JOB_MEMORY}' \
+          envsubst '${JOB_NAME} ${ENV_NAME} ${ENV_SHORT} ${BUILDER_SA} ${IMAGE} ${R2_ACCOUNT_ID} ${R2_JURISDICTION} ${R2_BUCKET} ${SRC_BUCKET} ${TASK_TIMEOUT_S} ${JOB_CPU} ${JOB_MEMORY}' \
             < tools/cloud/job.yaml > "$RUNNER_TEMP/job.yaml"
           # shellcheck disable=SC2016  # a literal "${" = a placeholder envsubst did not fill
           if grep -n '\${' "$RUNNER_TEMP/job.yaml"; then echo "unfilled placeholder in job.yaml"; exit 1; fi
@@ -173,13 +176,17 @@ jobs:
         working-directory: tools/cloud/worker
         run: |
           W="npx --yes wrangler@$WRANGLER_VERSION"
-          if ! out=$($W r2 bucket create "$R2_BUCKET" 2>&1); then
+          # always with the jurisdiction: without it wrangler would create a second, non-EU bucket of the same name
+          J=(); [ "$R2_JURISDICTION" != default ] && J=(--jurisdiction "$R2_JURISDICTION")
+          if ! out=$($W r2 bucket create "$R2_BUCKET" "${J[@]}" 2>&1); then
             grep -qi "already exists" <<<"$out" || { echo "$out"; exit 1; }
           fi
-          echo "R2 bucket $R2_BUCKET ok"
+          echo "R2 bucket $R2_BUCKET ($R2_JURISDICTION) ok"
+          grep -q "jurisdiction = \"$R2_JURISDICTION\"" wrangler.toml || [ "$R2_JURISDICTION" = default ] \
+            || { echo "::error::wrangler.toml bucket bindings do not say jurisdiction = \"$R2_JURISDICTION\""; exit 1; }
           d1_id() { $W d1 list --json | python3 -c 'import json,sys; n=sys.argv[1]; print(next((d.get("uuid") or d.get("id") for d in json.load(sys.stdin) if d.get("name")==n), ""))' "$D1_NAME"; }
           ID=$(d1_id)
-          if [ -z "$ID" ]; then $W d1 create "$D1_NAME" >/dev/null; ID=$(d1_id); fi
+          if [ -z "$ID" ]; then $W d1 create "$D1_NAME" --location "$D1_LOCATION" >/dev/null; ID=$(d1_id); fi  # EU placement
           [ -n "$ID" ] || { echo "D1 database $D1_NAME not found after create"; exit 1; }
           echo "D1 $D1_NAME = $ID"
           upper=$(tr '[:lower:]' '[:upper:]' <<<"$ENV_NAME")

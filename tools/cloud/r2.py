@@ -1,7 +1,7 @@
 """Tiny S3 client (AWS Signature V4, Python stdlib only) for Cloudflare R2 – keeps the builder image small
 (no aws-cli / boto3). Only what the builder needs: PUT an object, GET an object (status files).
 
-R2: endpoint https://<account_id>.r2.cloudflarestorage.com, region "auto", path-style /<bucket>/<key>.
+R2: endpoint https://<account_id>[.<jurisdiction>].r2.cloudflarestorage.com (our buckets: jurisdiction "eu"), region "auto", path-style /<bucket>/<key>.
 `LocalStore` writes the same keys into a folder instead (zo / tests: R2_LOCAL_DIR).
 """
 import datetime
@@ -146,8 +146,20 @@ class LocalStore:
 
 
 def from_env(env=os.environ):
-    """R2_LOCAL_DIR → LocalStore; else R2Store from R2_ENDPOINT (or R2_ACCOUNT_ID), R2_BUCKET and the keys."""
+    """R2_LOCAL_DIR → LocalStore; else R2Store from R2_ENDPOINT (or R2_ACCOUNT_ID + R2_JURISDICTION), R2_BUCKET and
+    the keys."""
     if env.get("R2_LOCAL_DIR"):
         return LocalStore(env["R2_LOCAL_DIR"])
-    endpoint = env.get("R2_ENDPOINT") or f"https://{env['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
-    return R2Store(endpoint, env["R2_BUCKET"], env["R2_ACCESS_KEY_ID"].strip(), env["R2_SECRET_ACCESS_KEY"].strip())
+    return R2Store(endpoint_from_env(env), env["R2_BUCKET"], env["R2_ACCESS_KEY_ID"].strip(),
+                   env["R2_SECRET_ACCESS_KEY"].strip())
+
+
+def endpoint_from_env(env=os.environ):
+    """R2_ENDPOINT if set; else https://<R2_ACCOUNT_ID>.<R2_JURISDICTION>.r2.cloudflarestorage.com.
+    R2_JURISDICTION defaults to "eu" (our buckets were created with EU jurisdiction – they are only reachable on the
+    .eu. endpoint); "default" or "" (set explicitly) gives the plain endpoint for buckets without a jurisdiction."""
+    if env.get("R2_ENDPOINT"):
+        return env["R2_ENDPOINT"].rstrip("/")
+    j = env.get("R2_JURISDICTION", "eu").strip().lower()
+    host = env["R2_ACCOUNT_ID"].strip() + (f".{j}" if j and j != "default" else "")
+    return f"https://{host}.r2.cloudflarestorage.com"

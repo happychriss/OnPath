@@ -44,6 +44,9 @@ spec:
                   value: /src
                 - name: R2_ACCOUNT_ID
                   value: ${R2_ACCOUNT_ID}
+                # buckets were created with EU jurisdiction → https://<account>.eu.r2.cloudflarestorage.com
+                - name: R2_JURISDICTION
+                  value: ${R2_JURISDICTION}
                 - name: R2_BUCKET
                   value: ${R2_BUCKET}
                 - name: JAVA_XMX
