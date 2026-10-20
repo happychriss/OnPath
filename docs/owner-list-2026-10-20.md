@@ -32,6 +32,7 @@ linked here.
 | 0.7.11 | Fix map 180° after standing still on the route (compass took over after 15 s); full frame rate again | **test** |
 | 0.7.12 | Fix map stuck north up after Plan → Navigate (no new direction while walking straight); heading re-sent every fix | **test**: Navigate → Plan → Navigate, walk straight |
 | 0.7.13 | Smoothness batch from the polish audit (`docs/design/polish-audit.md`): continuous map turning, fixed dot position, gliding cards, no hold-ring flash, profile scrub fixes, dark status icons | **test**: walk a bend, start navigation, profile scrub |
+| 0.7.14 | Position via Wi-Fi indoors when GPS is silent 30 s (≤ 150 m accurate; never cell guesses; track stays GPS) | **test**: plan indoors |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 

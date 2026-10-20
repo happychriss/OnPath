@@ -15,6 +15,15 @@ import com.onpath.app.debug.Problems
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+/** GPS silent this long → an accurate network fix may stand in (indoors). */
+const val GPS_STALE_MS = 30_000L
+/** Network fixes worse than this are never shown once GPS was seen (cell towers: km off). */
+const val NET_MAX_ACCURACY_M = 150f
+
+/** Whether a network fix is shown: before the first GPS fix, or when GPS is stale and the fix is Wi-Fi accurate. Pure. */
+fun useNetworkFix(lastGpsElapsed: Long, nowElapsed: Long, hasAccuracy: Boolean, accuracyM: Float): Boolean =
+    lastGpsElapsed == 0L || (nowElapsed - lastGpsElapsed > GPS_STALE_MS && hasAccuracy && accuracyM <= NET_MAX_ACCURACY_M)
+
 enum class GpsStatus(val label: String) {
     NO_PERMISSION("No location permission"),
     OFF("Location is off"),
@@ -25,10 +34,10 @@ enum class GpsStatus(val label: String) {
 
 /**
  * Thin wrapper over the platform LocationManager (GPS + network), no Play Services.
- * GPS fixes win; network fixes only seed the position until the first GPS fix. After that a stale GPS fix is
- * kept (its age is shown) rather than a cell/Wi-Fi guess that can be kilometres off in the mountains.
- * Battery (docs/design/battery-audit.md): the network provider is dropped at the first GPS fix (its fixes are
- * ignored from then on anyway); [useNetwork] = false never asks for it (recording service: GPS fixes only).
+ * GPS fixes win. A network (Wi-Fi / cell) fix is used before the first GPS fix, and again when GPS has been silent
+ * for [GPS_STALE_MS] (indoors, a restaurant – owner 2026-10-20: "when I plan it must know where I am") – but only
+ * when it is at least [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
+ * [useNetwork] = false never asks for it (recording service: the track is GPS only).
  */
 class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
     private val app = context.applicationContext
@@ -47,7 +56,6 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     private val gpsListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
             lastGpsElapsed = SystemClock.elapsedRealtime()
-            stopNetwork() // from now on network fixes are ignored: stop asking for them (Wi-Fi / cell scans)
             publish(loc)
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
@@ -57,7 +65,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     }
     private val netListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
-            if (lastGpsElapsed == 0L) publish(loc)
+            if (useNetworkFix(lastGpsElapsed, SystemClock.elapsedRealtime(), loc.hasAccuracy(), loc.accuracy)) publish(loc)
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
         override fun onProviderDisabled(provider: String) { _enabled.value = isEnabled() }
@@ -101,7 +109,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
             if (LocationManager.GPS_PROVIDER in providers) {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsIntervalMs, 0f, gpsListener, Looper.getMainLooper())
             }
-            if (useNetwork && lastGpsElapsed == 0L && LocationManager.NETWORK_PROVIDER in providers) {
+            if (useNetwork && LocationManager.NETWORK_PROVIDER in providers) {
                 lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 0f, netListener, Looper.getMainLooper())
                 netRunning = true
             }
