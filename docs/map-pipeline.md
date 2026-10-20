@@ -16,10 +16,10 @@ tools/build_region.sh --help                            # all options / env over
 tools/build_region.sh --format 2 south-tyrol            # format 2 (docs/design/map-data-size.md), see below
 ```
 
-**Format 2** (`--format 2`, in progress – steps land one by one; format 1 stays the default until the app reads
-all of it): terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
+**Format 2** (`--format 2`, one switch for every file; format 1 stays the default until map cells are live):
+terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
 10.8 → 1.0 MB); contours built from the original AWS z12/z13 tiles (cached in `$WORK/terrarium`), so they stay
-identical to format 1. The overlays part of format 2 (`overlays.pmtiles`) is added by its own step.
+identical to format 1; overlays as `overlays.pmtiles` and a trimmed base map (below).
 
 ## 1. Overview
 
