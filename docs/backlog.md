@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Share a place from Google Maps / geo: links to OnPath → Plan mode, fly there, orange ring (owner) – since 2026-10-20
 - [laptop] Grid cells phase 1 on zo: builder Docker image (`tools/cells/`), osmium cut, 2 neighbouring cells, timing + seam check – since 2026-10-20
   waiting for the owner's field test, then merge – since 2026-10-18
 
@@ -98,6 +97,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- Share a place into OnPath (laptop, owner): Google Maps share text/short+full links (coordinate from the link, owner decision 2026-10-20, see CLAUDE.md), geo: URIs → Plan mode, fly there, orange ring; fallback address search. Open: "Position from the address (offline)" note not built.
 - Address search (laptop, owner): offline `addresses.sqlite` (`tools/extract_addresses.py`, optional step in build_region.sh; 2.5 MB region / 0.6 MB per cell), German+Italian names, house numbers; online Photon re-ranked (town in query, same country, distance; street pieces merged). Open for owner: mix online into one list? municipality vs village as town?
 - Smart route names (laptop, owner): save dialog proposes "Algund → Meran" / "Round trip from Algund" (`search/RouteNamer.kt`); finished tours named "Tour <date>" are renamed in the background from the track.
 - Map style (laptop, owner): track junctions clean (lane fill `track-own-lane` drawn after all track edges); ground symbols: no symbol on meadow/grass/fields, marsh tufts only on wetland, new orchard rings + vineyard stakes. Streets too (owner): light street lane `road-service-lane`/`road-minor-lane` (#f9f7f1), one order for all ways (edges/casings → track edges → fills smallest first → rail → paths), side streets stop at the bigger road's edge, tracks pass under yellow roads. Open: street bridge over a small street can be cut by the lower fill.
