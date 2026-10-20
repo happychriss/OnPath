@@ -30,6 +30,7 @@ linked here.
 | 0.7.9 | Map turns faster (≈1–2 s instead of 3–4) | **test** |
 | 0.7.10 | Map never upside down when walking slowly against the route (last 15 m of movement wins) | **test** |
 | 0.7.11 | Fix map 180° after standing still on the route (compass took over after 15 s); full frame rate again | **test** |
+| 0.7.12 | Fix map stuck north up after Plan → Navigate (no new direction while walking straight); heading re-sent every fix | **test**: Navigate → Plan → Navigate, walk straight |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
