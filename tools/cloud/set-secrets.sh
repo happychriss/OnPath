@@ -25,13 +25,27 @@ if [ -n "$CF" ]; then
 fi
 unset CF
 
-echo "== R2 token onpath-builder-test"
-put R2_ACCESS_KEY_ID test "Access Key ID (test)"
-put R2_SECRET_ACCESS_KEY test "Secret Access Key (test)"
-
-echo "== R2 token onpath-builder-production"
-put R2_ACCESS_KEY_ID production "Access Key ID (production)"
-put R2_SECRET_ACCESS_KEY production "Secret Access Key (production)"
+# R2 S3 credentials are derived from the R2 API token (Cloudflare docs, r2/api/s3/tokens):
+#   Access Key ID = the token's id (from the verify API), Secret Access Key = SHA-256 hex of the token value.
+ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-30454d39e2d3e562cf5ef7f0730c5bae}
+r2() {  # r2 ENV : read the R2 token value, store R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY for ENV
+  local tok id sec
+  read -rs -p "R2 token value ($1, onpath-builder-$1): " tok; echo
+  if [ -z "$tok" ]; then echo "   skipped R2 keys ($1)"; return; fi
+  id=$(curl -fsS -H "Authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/tokens/verify" 2>/dev/null \
+       | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["id"])' 2>/dev/null) \
+    || id=$(curl -fsS -H "Authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/user/tokens/verify" 2>/dev/null \
+       | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["id"])' 2>/dev/null) || true
+  if [ -z "$id" ]; then echo "   ✗ Cloudflare did not accept this R2 token ($1) – nothing stored"; unset tok; return; fi
+  sec=$(printf '%s' "$tok" | sha256sum | cut -d' ' -f1)
+  printf '%s' "$id"  | "$GH" secret set R2_ACCESS_KEY_ID     --repo "$R" --env "$1" >/dev/null
+  printf '%s' "$sec" | "$GH" secret set R2_SECRET_ACCESS_KEY --repo "$R" --env "$1" >/dev/null
+  echo "   ✓ R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY ($1)"
+  unset tok id sec
+}
+echo "== R2 tokens (paste the token VALUE; Access Key ID and secret are derived from it)"
+r2 test
+r2 production
 
 echo "== App keys (random, generated here, never shown)"
 mkdir -p "$HOME/.gradle"; touch "$HOME/.gradle/gradle.properties"
