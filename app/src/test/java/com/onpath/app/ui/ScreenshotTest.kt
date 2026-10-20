@@ -356,7 +356,7 @@ class ScreenshotTest {
         AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }
 
-    /** First hold on an empty plan: Start here · Go here from my location (position known). */
+    /** First hold on an empty plan: Start here · Go here (from my location) (position known). */
     @Test fun firstPointMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(200.dp, 430.dp), empty = true) {
@@ -365,7 +365,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Same without a position: "Go here from my location" disabled with the reason. */
+    /** Same without a position: "Go here" disabled with the reason. */
     @Test fun firstPointMenuNoGps() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(200.dp, 430.dp), empty = true) {

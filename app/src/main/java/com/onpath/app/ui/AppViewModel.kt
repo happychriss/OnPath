@@ -642,7 +642,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** POI held on the map in Plan: its menu "Add to route · Open in Google Maps". */
     var poiMenu by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
-    /** First hold on an empty plan: the held spot, its menu "Start here · Go here from my location" is open. */
+    /** First hold on an empty plan: the held spot, its menu "Start here · Go here (from my location)" is open. */
     var firstPointMenu by mutableStateOf<GeoPoint?>(null)
 
     val mapOverlayOpen: Boolean get() = poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null
@@ -658,7 +658,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** First-point menu → "Start here": the held spot is the start; later holds add points as usual. */
     fun startHere(p: GeoPoint) { firstPointMenu = null; addPoint(p) }
 
-    /** First-point menu → "Go here from my location": start = current position, the held spot = destination. */
+    /** First-point menu → "Go here": start = current position, the held spot = destination. */
     fun routeFromMyLocation(p: GeoPoint) {
         firstPointMenu = null
         val loc = tracker.location.value ?: return // the menu only offers this with a position
@@ -666,7 +666,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays(); poiMenu = poi }
 
-    /** POI menu on an empty plan → "Go here from my location": start = position, the POI (pinned, named) = destination. */
+    /** POI menu on an empty plan → "Go here": start = position, the POI (pinned, named) = destination. */
     fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
         closeMapOverlays()
         val loc = tracker.location.value ?: return // the menu only offers this with a position
