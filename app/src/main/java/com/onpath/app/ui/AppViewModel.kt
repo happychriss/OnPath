@@ -295,6 +295,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun onAppStart() {
         val away = if (backgroundSince == 0L) Long.MAX_VALUE else android.os.SystemClock.elapsedRealtime() - backgroundSince
         if (away < 10 * 60_000L || recState.value != null || mode != AppMode.PLAN) return
+        // A place was just shared into the app: the map shows it, not the position.
+        if (android.os.SystemClock.elapsedRealtime() < keepCameraUntil) return
         startCameraDone = false; userMovedMap = false; followMe = false; startCameraGen++
     }
 
@@ -819,6 +821,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchStore.saveNames(placeNames)
     }
     // ---------------- end search ----------------
+
+    // ---------------- shared places (another app → OnPath; parsing in search/SharedPlace) ----------------
+    private var sharedJob: Job? = null
+    /** Until then (elapsedRealtime) the start camera must not move the map away from a shared place. */
+    private var keepCameraUntil = 0L
+
+    /**
+     * A place shared from Google Maps, a `geo:` link … (MainActivity): back to the map in Plan (a running tour goes on
+     * untouched), fly there and show the orange ring like a search result – nothing is added to the route. Without a
+     * coordinate (short link offline, address only) the address is searched offline, then online, with a note.
+     */
+    fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {
+        routesOpen = false; showSettings = false; timeDetails = null; searchOpen = false
+        closeMapOverlays()
+        // A shown track hides the plan sheet and blocks map holds – the ring's menu must work.
+        if (shown != null) closeShown()
+        holdCameraForSharedPlace()
+        sharedJob?.cancel()
+        sharedJob = viewModelScope.launch {
+            // Cold start: the start mode (Plan / Navigate) is decided after a database check – switch after that.
+            if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
+            if (mode != AppMode.PLAN) enter(AppMode.PLAN)
+            var p = shared
+            if (!p.hasPoint && p.link != null) {
+                val link = p.link!!
+                val r = withContext(Dispatchers.IO) {
+                    com.onpath.app.search.ShortLinkResolver(com.onpath.app.search.ShortLinkResolver.http(
+                        com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))).resolve(link)
+                }
+                r.place?.let { rp -> p = p.copy(lat = rp.lat, lon = rp.lon, name = p.name ?: rp.name, query = p.query ?: rp.query) }
+                if (!p.hasPoint) Problems.info("search", "Shared map link gave no position (${r.reason}); searching the address instead")
+            }
+            val lat = p.lat; val lon = p.lon
+            if (lat != null && lon != null) {
+                showSharedPlace(com.onpath.app.search.Place("shared:$lat,$lon", p.name, "other", lat, lon, address = p.address))
+                return@launch
+            }
+            val found = search.findOne(p.searchTexts())
+            // Stays until OK (owner rule: no message disappears by itself).
+            if (found == null) { message = "Couldn't find this place – try again with internet"; return@launch }
+            val (place, from) = found
+            Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
+            showSharedPlace(place.copy(name = p.name ?: place.name))
+        }
+    }
+
+    private fun showSharedPlace(p: com.onpath.app.search.Place) {
+        if (mode != AppMode.PLAN) enter(AppMode.PLAN)
+        closeMapOverlays()
+        holdCameraForSharedPlace()
+        searchPlace = p
+        searchMark = p
+        followMe = false
+        // Outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear.
+        val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
+        events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
+    }
+
+    private fun holdCameraForSharedPlace() {
+        startCameraDone = true; userMovedMap = true
+        keepCameraUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
+    }
+    // ---------------- end shared places ----------------
 
     fun makeStart(index: Int) { if (index > 0 && index in waypoints.indices) set(PlanEdits.move(waypoints, index, 0)) }
     fun makeDestination(index: Int) {

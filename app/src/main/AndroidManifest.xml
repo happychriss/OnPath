@@ -62,6 +62,19 @@
                 <data android:pathPattern=".*\\..*\\.gpx" />
                 <data android:pathPattern=".*\\..*\\..*\\.gpx" />
             </intent-filter>
+            <!-- A place shared from Google Maps or any app (text with a map link / address), see search/SharedPlace -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- geo: links ("open in a map app") -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
             <!-- "Share to OnPath" -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

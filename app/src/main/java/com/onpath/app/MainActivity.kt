@@ -213,6 +213,13 @@ class MainActivity : ComponentActivity() {
     /** GPX from "open with" (VIEW) or "share" (SEND). */
     private fun handleIntent(intent: Intent?) {
         intent ?: return
+        // Reopened from recents: that share was handled already.
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        sharedPlaceOf(intent)?.let { place ->
+            vm.dataScreenDismissed = true
+            vm.receiveSharedPlace(place)
+            return
+        }
         val uri: Uri? = when (intent.action) {
             Intent.ACTION_VIEW -> intent.data
             Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
@@ -222,6 +229,25 @@ class MainActivity : ComponentActivity() {
             vm.dataScreenDismissed = true
             vm.importGpx(uri)
         }
+    }
+
+    /** A place shared as text (Google Maps "Share") or opened as a `geo:` link; null for files and everything else. */
+    private fun sharedPlaceOf(intent: Intent): com.onpath.app.search.SharedPlace? = try {
+        when {
+            intent.action == Intent.ACTION_VIEW && intent.data?.scheme.equals("geo", ignoreCase = true) ->
+                com.onpath.app.search.SharedPlaceParser.fromGeoUri(intent.data.toString())
+            intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/plain") == true &&
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) == null ->
+                com.onpath.app.search.SharedPlaceParser.fromText(intent.getStringExtra(Intent.EXTRA_TEXT),
+                    intent.getStringExtra(Intent.EXTRA_SUBJECT)).also {
+                    if (it == null) vm.message = "OnPath found no place in the shared text."
+                }
+            else -> null
+        }
+    } catch (e: Exception) {
+        com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
+        vm.message = "OnPath could not read the shared place."
+        null
     }
 
     private fun launchImport() {

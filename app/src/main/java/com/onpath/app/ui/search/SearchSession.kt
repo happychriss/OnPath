@@ -125,6 +125,48 @@ class SearchSession(
         built
     }
 
+    /** Where a [findOne] result came from. */
+    enum class Found { OFFLINE, ONLINE }
+
+    /**
+     * The one best place for a shared address / name (no search view): offline first – a good match only (name or
+     * street equal / starting with the text, tier ≥ 2) – then the online provider. Null when nothing is found
+     * (offline and no offline match, or no match at all). Never throws.
+     */
+    suspend fun findOne(texts: List<String>): Pair<Place, Found>? {
+        if (texts.isEmpty()) return null
+        val ctx = context()
+        val idx = try { ensureIndex() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+            Problems.warn("search", "Place index unavailable; shared place searched online only", e); null
+        }
+        val offline = withContext(Dispatchers.IO) {
+            texts.firstNotNullOfOrNull { t ->
+                try {
+                    val q = SearchQuery(t, null, ctx.refLat, ctx.refLon, null, limit = 5)
+                    val addr = ensureAddresses().search(AddressQuery.parse(t))
+                    (idx?.search(q, addr) ?: addr.map { com.onpath.app.search.SearchRanking.addressHit(it, q) })
+                        .firstOrNull { it.tier >= 2 }?.place
+                } catch (e: Exception) {
+                    Problems.warn("search", "Offline search for a shared place failed", e); null
+                }
+            }
+        }
+        if (offline != null) return offline to Found.OFFLINE
+        val provider = online ?: return null
+        return withContext(Dispatchers.IO) {
+            texts.firstNotNullOfOrNull { t ->
+                try {
+                    val addr = ensureAddresses()
+                    OnlineRanking.rank(provider.search(t, ctx.refLat, ctx.refLon, 10), ctx.refLat, ctx.refLon,
+                        addr.countryNear(ctx.refLat, ctx.refLon), OnlineRanking.queryTowns(t, addr.townsNamed(SearchText.tokens(t))))
+                        .firstOrNull()
+                } catch (e: Exception) {
+                    Problems.info("search", "Online search for a shared place failed (offline or server unreachable)", e); null
+                }
+            }?.let { it to Found.ONLINE }
+        }
+    }
+
     private fun run() {
         val gen = ++generation
         val u = ui
