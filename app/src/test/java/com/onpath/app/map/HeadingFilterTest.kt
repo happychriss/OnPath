@@ -93,4 +93,21 @@ class HeadingFilterTest {
         assertFalse(f.usingRoute(20_200))
         assertNotNull(f.onSensor(200.0, 20_300))
     }
+
+    @Test fun slowWalkAgainstTheRouteDropsTheRouteDirection() {
+        val f = HeadingFilter()
+        f.onRoute(0.0, 0) // route ahead points north
+        // walking slowly south (0.5 m/s, below the GPS threshold): 20 m in 40 s
+        for (i in 0..40) f.onPosition(46.6 - i * 0.5 / 110_540.0, 11.1, 5.0, i * 1_000L)
+        assertFalse(f.usingRoute(40_000))
+        // the compass takes over (phone pointing south)
+        repeat(50) { f.onSensor(180.0, 40_000L + it * 60) }
+        assertTrue(abs(HeadingFilter.diff(f.heading!!, 180.0)) < 10)
+    }
+
+    @Test fun slowWalkWithTheRouteKeepsIt() {
+        val f = HeadingFilter()
+        for (i in 0..40) { f.onPosition(46.6 + i * 0.5 / 110_540.0, 11.1, 5.0, i * 1_000L); f.onRoute(10.0, i * 1_000L) }
+        assertTrue(f.usingRoute(40_000))
+    }
 }

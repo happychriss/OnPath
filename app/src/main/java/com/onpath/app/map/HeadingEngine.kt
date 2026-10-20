@@ -43,6 +43,12 @@ class HeadingFilter {
         const val ROUTE_VALID_MS = 15_000L
         /** Moving with a GPS bearing this far from the route direction = walking against the route. */
         const val OPPOSED_DEG = 100.0
+        /** Walked this far → a movement direction from positions (works also below [MOVING_MPS]). */
+        const val MOVE_STEP_M = 15.0
+        /** A movement direction is trusted this long. */
+        const val MOVE_VALID_MS = 30_000L
+        /** Positions worse than this do not count for the movement direction. */
+        const val MOVE_MAX_ACCURACY_M = 20.0
 
         fun diff(from: Double, to: Double): Double {
             var d = (to - from) % 360.0
@@ -61,6 +67,33 @@ class HeadingFilter {
     private var gpsBearing = 0.0
     private var route: Double? = null
     private var routeAt = -1L
+    private var anchorLat = Double.NaN
+    private var anchorLon = Double.NaN
+    private var moveBearing: Double? = null
+    private var moveAt = -1L
+
+    /**
+     * A position (any speed): every [MOVE_STEP_M] walked gives the direction you really move in. Slow uphill or a
+     * wrong match on an out-and-back route made the route direction point backwards (field test 2026-10-20: map
+     * turned by 180°); walking against the route ahead now switches to compass / GPS.
+     */
+    fun onPosition(lat: Double, lon: Double, accuracyM: Double, nowMs: Long) {
+        if (accuracyM.isNaN() || accuracyM > MOVE_MAX_ACCURACY_M) return
+        if (anchorLat.isNaN()) { anchorLat = lat; anchorLon = lon; return }
+        val kx = Math.cos(Math.toRadians(lat)) * 111_320.0
+        val dx = (lon - anchorLon) * kx
+        val dy = (lat - anchorLat) * 110_540.0
+        if (hypot(dx, dy) < MOVE_STEP_M) return
+        moveBearing = norm(Math.toDegrees(atan2(dx, dy)))
+        moveAt = nowMs
+        anchorLat = lat; anchorLon = lon
+    }
+
+    private fun movingAgainst(r: Double, nowMs: Long): Boolean {
+        if (usingGps(nowMs) && abs(diff(r, gpsBearing)) > OPPOSED_DEG) return true
+        val m = moveBearing ?: return false
+        return nowMs - moveAt <= MOVE_VALID_MS && abs(diff(r, m)) > OPPOSED_DEG
+    }
 
     /** True while the GPS bearing is used (moving). */
     fun usingGps(nowMs: Long) = gpsMoving && gpsAt >= 0 && nowMs - gpsAt <= GPS_VALID_MS
@@ -69,7 +102,7 @@ class HeadingFilter {
     fun usingRoute(nowMs: Long): Boolean {
         val r = route ?: return false
         if (nowMs - routeAt > ROUTE_VALID_MS) return false
-        return !(usingGps(nowMs) && abs(diff(r, gpsBearing)) > OPPOSED_DEG)
+        return !movingAgainst(r, nowMs)
     }
 
     /**
@@ -165,6 +198,9 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         try {
             declination = GeomagneticField(loc.latitude.toFloat(), loc.longitude.toFloat(), loc.altitude.toFloat(), loc.time).declination
         } catch (e: Exception) { Problems.warn("sensor", "Magnetic declination not computed, compass keeps the last value", e) }
+        try {
+            filter.onPosition(loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy.toDouble() else Double.NaN, now())
+        } catch (e: Exception) { Problems.warn("sensor", "Movement direction not updated", e) }
         if (listeners.isEmpty()) return
         val h = filter.onGps(if (loc.hasBearing()) loc.bearing else null, if (loc.hasSpeed()) loc.speed else null, now())
         if (h != null) emit(h)
