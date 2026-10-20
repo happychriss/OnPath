@@ -15,8 +15,9 @@ west <= lon < east, south < lat <= north (half-open: a point on a border has exa
                                              points kept by the owner rule; other files copied unchanged
   cells.py remap-ids IDX_DIR FILE.geojson    POI ids of a renumbered extract ("n12", "w3") back to OSM ids
                                              (IDX_DIR from `osmium renumber -i`)
-  cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX
-                                             write DIR/manifest.json (sizes + sha256 of every file in DIR)
+  cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX [--format N]
+                                             write DIR/manifest.json (sizes + sha256 of every file in DIR and its
+                                             sub folders, e.g. addresses/10-543-361.sqlite; format default 1)
   cells.py selftest                          checks the Meran example (10/543/361)
 """
 import hashlib
@@ -26,8 +27,8 @@ import os
 import sys
 import time
 
-FORMAT = 1
-MIN_APP = "0.8.0"
+FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-cells.md §18)
+MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 
 
@@ -197,15 +198,27 @@ def sha256(path):
     return h.hexdigest()
 
 
-def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix):
+def list_files(d):
+    """Every file below d as a relative path ("base.pmtiles", "addresses/10-543-361.sqlite"), hidden files,
+    manifest.json and build.json left out."""
+    out = []
+    for root, dirs, names in os.walk(d):
+        dirs[:] = sorted(n for n in dirs if not n.startswith("."))
+        for name in names:
+            rel = os.path.relpath(os.path.join(root, name), d)
+            if name.startswith(".") or rel in ("manifest.json", "build.json") or name.endswith(".tmp"):
+                continue
+            out.append(rel)
+    return sorted(out, key=lambda r: (r.count("/"), r))
+
+
+def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT):
     files = []
-    for name in sorted(os.listdir(d)):
+    for name in list_files(d):
         p = os.path.join(d, name)
-        if name.startswith(".") or name == "manifest.json" or not os.path.isfile(p):
-            continue
         files.append({"name": name, "size": os.path.getsize(p), "sha256": sha256(p),
                       "url": f"{url_prefix.rstrip('/')}/{name}"})
-    m = {"cell": cell_id(z, x, y), "format": FORMAT, "bbox": [round(v, 6) for v in cell_bbox(z, x, y)],
+    m = {"cell": cell_id(z, x, y), "format": fmt, "bbox": [round(v, 6) for v in cell_bbox(z, x, y)],
          "osm_date": osm_date, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "pipeline": f"git:{git_rev}", "min_app": MIN_APP, "files": files,
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
@@ -259,7 +272,8 @@ def main(argv):
     elif cmd == "clip":
         clip_dir(z, x, y, a[0], a[1])
     elif cmd == "manifest":
-        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3])
+        fmt = int(a[a.index("--format") + 1]) if "--format" in a else FORMAT
+        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt)
         print(f"    manifest: {len(m['files'])} files, {m['total_size'] / 1e6:.1f} MB")
     else:
         print(__doc__)
