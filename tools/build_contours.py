@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Build contour-line vector tiles (PMTiles, MVT layer "contour") from the Terrarium terrain PMTiles.
+"""Build contour-line vector tiles (PMTiles, MVT layer "contour") from Terrarium terrain tiles.
 
 Zoom 12 tiles hold 50 m lines (from the z12 DEM), zoom 13 tiles hold 20 m lines (from the z13 DEM);
 MapLibre overzooms z13 for higher zooms. Feature properties: ele (int metres), idx (1 = multiple of 100 m).
 
-Usage: python3 build_contours.py terrain.pmtiles contours.pmtiles minlon minlat maxlon maxlat
+Usage: python3 build_contours.py SOURCE contours.pmtiles minlon minlat maxlon maxlat [--cache DIR]
+  SOURCE = terrain.pmtiles (format 1: needs z12 + z13 tiles), or
+  SOURCE = aws: the original AWS Terrarium PNGs z12 + z13 (downloaded, kept in --cache DIR – the same folder as
+           build_terrain.py --cache). Format 2 ships terrain only up to z12, so its contours come from here and
+           keep exactly today's quality (docs/design/map-data-size.md §1).
+Tile ranges: bbox max edges exclusive (build_terrain.tile_bounds); one extra tile ring is read so lines run
+through to the neighbour.
 Needs: numpy, pillow, contourpy, shapely, mapbox-vector-tile, pmtiles.
 """
+import contextlib
 import gzip
 import io
 import math
+import os
 import sys
 
 import contourpy
@@ -21,19 +29,16 @@ from pmtiles.tile import Compression, TileType, zxy_to_tileid
 from pmtiles.writer import Writer
 from shapely.geometry import LineString
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from build_terrain import fetch_all, tile_bounds  # noqa: E402
+
 LEVELS = {12: 50, 13: 20}
 EXTENT = 4096
 BUF = 8  # DEM pixels of context around each tile
 
 
 def tile_range(z, minlon, minlat, maxlon, maxlat):
-    def xy(lon, lat):
-        n = 2 ** z
-        return (int((lon + 180) / 360 * n),
-                int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n))
-    x0, y0 = xy(minlon, maxlat)
-    x1, y1 = xy(maxlon, minlat)
-    return x0, y0, x1, y1
+    return tile_bounds(z, minlon, minlat, maxlon, maxlat)
 
 
 def gauss(a, sigma):
@@ -46,25 +51,47 @@ def gauss(a, sigma):
     return p
 
 
+class AwsTiles:
+    """Original AWS Terrarium PNGs, downloaded per zoom level (cached in --cache DIR when given)."""
+
+    def __init__(self, cache):
+        self.cache, self.tiles = cache, {}
+
+    def prefetch(self, tiles):
+        self.tiles = fetch_all(tiles, self.cache)
+
+    def get(self, z, x, y):
+        return self.tiles.get((z, x, y))
+
+
 def main():
-    src, dst = sys.argv[1], sys.argv[2]
-    bbox = list(map(float, sys.argv[3:7]))
-    with open(src, "rb") as f:
-        reader = Reader(MmapSource(f))
+    args = sys.argv[1:]
+    cache = None
+    if "--cache" in args:
+        i = args.index("--cache")
+        cache = args[i + 1]
+        del args[i:i + 2]
+    src, dst = args[0], args[1]
+    bbox = list(map(float, args[2:6]))
+    with contextlib.ExitStack() as stack:
+        reader = AwsTiles(cache) if src == "aws" else Reader(MmapSource(stack.enter_context(open(src, "rb"))))
         out_tiles = []
         for z, step in LEVELS.items():
             x0, y0, x1, y1 = tile_range(z, *bbox)
+            n = 2 ** z
+            ring = [(z, x, y) for x in range(x0 - 1, x1 + 2) for y in range(y0 - 1, y1 + 2) if 0 <= x < n and 0 <= y < n]
+            if src == "aws":
+                reader.prefetch(ring)
             # mosaic with one extra tile ring
             W, H = (x1 - x0 + 3) * 256, (y1 - y0 + 3) * 256
             dem = np.full((H, W), np.nan, dtype=np.float32)
-            for x in range(x0 - 1, x1 + 2):
-                for y in range(y0 - 1, y1 + 2):
-                    data = reader.get(z, x, y)
-                    if not data:
-                        continue
-                    rgb = np.asarray(Image.open(io.BytesIO(data)).convert("RGB")).astype(np.float32)
-                    e = rgb[..., 0] * 256 + rgb[..., 1] + rgb[..., 2] / 256 - 32768
-                    dem[(y - y0 + 1) * 256:(y - y0 + 2) * 256, (x - x0 + 1) * 256:(x - x0 + 2) * 256] = e
+            for _, x, y in ring:
+                data = reader.get(z, x, y)
+                if not data:
+                    continue
+                rgb = np.asarray(Image.open(io.BytesIO(data)).convert("RGB")).astype(np.float32)
+                e = rgb[..., 0] * 256 + rgb[..., 1] + rgb[..., 2] / 256 - 32768
+                dem[(y - y0 + 1) * 256:(y - y0 + 2) * 256, (x - x0 + 1) * 256:(x - x0 + 2) * 256] = e
             fill = np.nanmin(dem) if np.isfinite(dem).any() else 0
             dem = np.where(np.isfinite(dem), dem, fill)
             dem = gauss(dem, 1.2 if z == 12 else 1.6)

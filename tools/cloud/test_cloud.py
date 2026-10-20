@@ -59,6 +59,7 @@ echo "[00:00:00] ==> cut"; echo "[00:00:01] ==> base"
 [ "$3" = 999 ] && { echo "ERROR: step base failed (log: x)"; exit 1; }
 D="$DATA_ROOT/cells/f$FORMAT/$1/$2/$3"; V="$D/2026-10-19"; mkdir -p "$V"
 printf 'tiles' > "$V/base.pmtiles"; printf '{}' > "$V/build.json"
+mkdir -p "$V/addresses"; printf "db" > "$V/addresses/$1-$2-$3.sqlite"
 cat > "$V/manifest.json" <<EOF
 {"cell": "$1-$2-$3", "osm_date": "2026-10-19", "total_size": 5,
  "files": [{"name": "base.pmtiles", "size": 5, "sha256": "x", "url": "cells/f1/$1/$2/$3/2026-10-19/base.pmtiles"}]}
@@ -107,6 +108,7 @@ class BuilderFlow(unittest.TestCase):
         self.assertEqual(json.load(open(os.path.join(r, "current.json"))), {"version": "2026-10-19"})
         self.assertTrue(os.path.exists(os.path.join(r, "2026-10-19", "base.pmtiles")))
         self.assertTrue(os.path.exists(os.path.join(r, "2026-10-19", "manifest.json")))
+        self.assertTrue(os.path.exists(os.path.join(r, "2026-10-19", "addresses", "10-543-361.sqlite")))  # sub folder
         s = self.status("10-543-361")
         self.assertEqual((s["state"], s["version"], s["size"], s["execution"]),
                          ("ready", "2026-10-19", 5, "onpath-cell-test-abc12"))

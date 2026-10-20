@@ -13,7 +13,13 @@ tools/build_region.sh south-tyrol                       # test region, built-in 
 tools/build_region.sh dolomites 11.5,46.2,12.3,46.8 \
     https://download.openstreetmap.fr/extracts/europe/italy/trentino_alto_adige-latest.osm.pbf
 tools/build_region.sh --help                            # all options / env overrides
+tools/build_region.sh --format 2 south-tyrol            # format 2 (docs/design/map-data-size.md), see below
 ```
+
+**Format 2** (`--format 2`, one switch for every file; format 1 stays the default until map cells are live):
+terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
+10.8 → 1.0 MB); contours built from the original AWS z12/z13 tiles (cached in `$WORK/terrarium`), so they stay
+identical to format 1; overlays as `overlays.pmtiles` and a trimmed base map (below).
 
 ## 1. Overview
 
@@ -99,11 +105,11 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 1 | OSM extract | `curl -fL -C - -o region.osm.pbf $OSM_URL` | `work/osm/*.osm.pbf` | ~1 min | 130 MB |
 | 2 | Planetiler jar | `curl -fL -o planetiler.jar …/v0.10.2/planetiler.jar` | `work/planetiler-0.10.2.jar` | <1 min | 93 MB |
 | 3 | Base map | `java -Xmx6g -jar planetiler.jar --osm-path=region.osm.pbf --output=base.pmtiles --download --download_dir=work/planetiler-sources --bounds=$BBOX --maxzoom=14 --force` | `$D/base.pmtiles` | 9–14 min | 23 MB |
-| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
+| 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` (format 2: `… --format 2 --cache $WORK/terrarium`) | `$D/terrain.pmtiles` | 25 s | 55 MB (format 2: 6.6 MB) |
 | 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `lowways.geojson`, `trailnames.geojson`, `paths.geojson` | 2 min | South Tyrol bbox 2026-10-19: 6.8 + 5.9 + 7.9 + 9.0 + 4.4 + 19.1 MB |
 | 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
 | 6b | Addresses | `python3 tools/extract_addresses.py region.osm.pbf $D/addresses.sqlite 10.70 46.30 11.60 46.85` | `$D/addresses.sqlite` (SQLite: town, street, house, word; schema in the script) | 1 min | 2.5 MB (Meran z10 cell: 0.6 MB) |
-| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
+| 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` (format 2: `aws` instead of `terrain.pmtiles`, plus `--cache $WORK/terrarium`) | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
 | 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~10 s | 199 MB |
 | 10 | Package | zip (`.pmtiles`/`.rd5` stored, GeoJSON deflated) + manifest + checksums | `onpath-data-<region>.zip` | 45 s | 283 MB (270 MiB) |
@@ -115,11 +121,17 @@ Notes per step:
 - **3 Planetiler** writes temporary files (`--tmpdir`) and caches the side data (`--download_dir`);
   the script runs it inside `work/tmp/` so nothing lands in the current folder. The OpenMapTiles
   profile keeps `name:de`, which the style prefers (`name:de` → `name_de` → `name`).
-- **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 4 retries). It does not depend on
-  the OSM data, so the script only rebuilds it when the bbox or the script changes.
+- **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 6 tries with back-off). It does not depend on
+  the OSM data, so the script only rebuilds it when the bbox, the script or the format changes. Tile ranges treat
+  the bbox's east/south edge as exclusive (a bbox ending exactly on a tile edge – a z10 cell – takes no extra
+  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 12`), `--cell 10/543/361` (only the
+  cell's own tiles z10–max), `--cache DIR` (keep the AWS PNGs; contours read the same folder). WebP needs Pillow
+  with WebP support (the normal wheels have it).
 - **5 Overlays** do two passes over the PBF (relations, then ways with node locations, in memory –
   fine for regional extracts; for a whole country give the machine ≥ 16 GB).
-- **7 Contours** read `terrain.pmtiles` only (no extra download).
+- **7 Contours** read `terrain.pmtiles` (format 1, no extra download) or, with source `aws`, the original AWS
+  z12/z13 PNGs (format 2: the shipped terrain stops at z12 but the 20 m lines need z13). Both give byte-identical
+  tiles for the same bbox. One extra tile ring is read so lines run through to the neighbour.
 - **8 Styles**: the script builds them from a copy of `tools/` in `work/tmp/stylebuild`, so a data build
   never changes the repo's bundled `app/src/main/assets/style/*.json`.
 
@@ -334,6 +346,40 @@ after a download compare `sha256sum onpath-data-<region>.zip` with `manifest.jso
 **What is not automated:** choosing bbox/extract for a new region; visually checking the result
 (headless render or a phone); publishing a new APK when sprite/style changes must be bundled; the
 importer does not verify checksums yet (the app could read `manifest.json` later).
+
+## 9b. Overview map (in the APK, optional)
+
+The app can ship a small **overview** for the Alps so a place without downloaded data is never blank at low zoom
+(map-cells.md §7). `tools/build_overview.sh [OUT_DIR]` builds `OUT_DIR/overview/base.pmtiles` (Planetiler,
+`--maxzoom=8 --exclude_layers=housenumber,poi,aeroway,aerodrome_label,building --languages=de`) and
+`OUT_DIR/overview/terrain.pmtiles` (`build_terrain.py --minzoom 5 --maxzoom 9 --webp --round 4`), bbox
+`5.0,43.5,17.0,48.5` (Nice/Genoa – Vienna/Ljubljana, Lyon/Geneva – Munich/Salzburg: the whole Alpine arc plus the
+cities people travel from), source `https://download.geofabrik.de/europe/alps-latest.osm.pbf` (2.3 GB).
+Measured 2026-10-20 on the laptop (16 threads): Planetiler 4 m 40 s, peak RAM 6.6 GB (`JAVA_XMX=8g`).
+
+| Variant | base | terrain | together | APK |
+| --- | --- | --- | --- | --- |
+| **base z0–8 + terrain z5–9, heights 4 m (default)** | 4.5 MB | 9.2 MB | **13.7 MB** | 33.4 → **47.6 MB** |
+| base z0–9 + terrain z5–9, 4 m | 16 MB | 9.2 MB | 25 MB | ≈ 59 MB |
+| terrain z5–9 with 1 m / 2 m / 8 m heights | | 13.9 / 11.8 / 7.2 MB | | |
+
+Heights 4 m vs 1 m at z7/z9: hill shade differs by 0.1–0.2 / 255 (invisible; a z9 pixel is ~200 m). Base z9 would
+add 11.5 MB for one zoom level that the over-zoomed z8 covers well enough (roads, places, water, borders).
+
+App side (`map/Overview.kt`, called by `StyleLoader`): the APK includes the files only when built with
+`-Ponpath.overviewAssets=OUT_DIR` (or env `ONPATH_OVERVIEW_ASSETS`) – map data is not committed; without it the
+style is unchanged. With it, every `base` / `terrain` layer that starts below z10 gets a copy `<id>~overview` on
+source `overview` / `overview-terrain` (`pmtiles://asset://overview/…`) drawn below z10, and the original starts
+at z10. MapLibre cannot draw a layer only where another source has no data, so the split is by zoom: no doubled
+hill shade, lines or labels, the same look, and cells (z ≥ 10 only) fit exactly. Consequences: below z10 the map
+always shows the overview, even where a region package has its own low zooms (same OpenMapTiles data, so this
+looks the same inside the Alps; outside the overview bbox low zooms are empty); above z10 where no data is on the
+phone the map is empty (background colour) – the planned "Overview only – set a point" hint covers that.
+PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource` reads byte ranges with
+`AAsset_seek64`, which would otherwise inflate from the start for every tile.
+
+To build the full overview on zo/Hetzner: `WORK=~/work tools/build_overview.sh ~/overview-assets` (needs Java 21,
+the Python venv, ~10 GB RAM, ~3 GB disk for the extract and Planetiler's sources).
 
 ## 10. Troubleshooting
 
