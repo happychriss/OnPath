@@ -9,11 +9,16 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Owner map decisions 2026-10-20 (laptop, part of the map rework):** path smoothing in the pipeline (bends ≥ 20°,
+  ≤ ~1.5 m off, junctions exact, route bands smoothed the same way; owner sends 2–3 example spots); planned (blue)
+  route NOT smoothed; bike map (oneway arrows, "bikes both ways", cycle lanes beside streets – bike activities only)
+  = laptop; via ferrata gets its own warning look; route band offset at z16+ fixed; contours always visible from z12;
+  trail numbers abroad come with cells.
 - **Owner answers to the cloud's owner list (2026-10-20 evening, via laptop) – cloud:**
   - 7: **Plan orientation is always the same as the Navigate view** (one compass setting for both; with walking
     direction up, Plan turns too). Supersedes the 2026-10-19 "Plan north/hand-turned" note.
   - 8: values OK – pause reminder 150 m, free look back 25 m, route look-ahead 40 m.
-  - 9: open – laptop explains the "End tour…" notification button to the owner, answer follows.
+  - 9: **yes – "End tour…" button in the recording notification**; it only opens the app on the question "End tour? Save / Continue" (never ends directly).
   - 10: keep "Allow all the time"; Play declaration + video when publishing.
   - 11: yes – one-time "battery unrestricted" hint for Samsung/Xiaomi-type phones at the first tour (persistent
     notice with OK; owner cannot test it).
