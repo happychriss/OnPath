@@ -15,7 +15,7 @@ Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execu
   SRC_DIR=/src                    source bucket (Cloud Storage volume mount): osm/<id>.osm.pbf, planetiler-sources/
   SOURCES_JSON=<this dir>/sources.json   which extract covers which area
   WORK=/tmp/onpath/work  DATA_ROOT=/tmp/onpath/store   local (in-memory on Cloud Run) work + output folders
-  R2_ACCOUNT_ID or R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY   upload target
+  R2_ACCOUNT_ID (+ R2_JURISDICTION, default eu) or R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY   upload target
   R2_LOCAL_DIR=/data/store        instead of R2: write into this folder (zo, tests)
   BUILD_CELL=<repo>/tools/cells/build_cell.sh
   CLOUD_RUN_EXECUTION / CLOUD_RUN_TASK_ATTEMPT   set by Cloud Run

@@ -52,6 +52,7 @@ RATE_LIMIT_PER_MIN = "30"
 [[env.test.r2_buckets]]
 binding = "BUCKET"
 bucket_name = "onpath-maps-test"
+jurisdiction = "eu" # bucket created with EU jurisdiction (map-hosting.md)
 
 [[env.test.d1_databases]]
 binding = "DB"
@@ -79,6 +80,7 @@ RATE_LIMIT_PER_MIN = "30"
 [[env.production.r2_buckets]]
 binding = "BUCKET"
 bucket_name = "onpath-maps-production"
+jurisdiction = "eu" # bucket created with EU jurisdiction (map-hosting.md)
 
 [[env.production.d1_databases]]
 binding = "DB"

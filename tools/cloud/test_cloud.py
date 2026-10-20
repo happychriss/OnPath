@@ -28,6 +28,23 @@ class SigV4(unittest.TestCase):
         self.assertTrue(h["authorization"].endswith(
             "Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41"), h["authorization"])
 
+    def test_endpoint_eu_jurisdiction_by_default(self):
+        # our buckets were created with EU jurisdiction: only the .eu. endpoint reaches them
+        self.assertEqual(r2.endpoint_from_env({"R2_ACCOUNT_ID": "abc123"}),
+                         "https://abc123.eu.r2.cloudflarestorage.com")
+        self.assertEqual(r2.endpoint_from_env({"R2_ACCOUNT_ID": "abc123", "R2_JURISDICTION": "default"}),
+                         "https://abc123.r2.cloudflarestorage.com")
+        self.assertEqual(r2.endpoint_from_env({"R2_ACCOUNT_ID": "x", "R2_ENDPOINT": "http://localhost:9000/"}),
+                         "http://localhost:9000")
+        s = r2.from_env({"R2_ACCOUNT_ID": "abc123", "R2_BUCKET": "onpath-maps-test",
+                         "R2_ACCESS_KEY_ID": "k", "R2_SECRET_ACCESS_KEY": "s"})
+        self.assertEqual(s._url("a/b.json"), "https://abc123.eu.r2.cloudflarestorage.com/onpath-maps-test/a/b.json")
+
+    def test_wrangler_toml_buckets_are_eu(self):
+        toml = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "worker", "wrangler.toml")).read()
+        for b in ("onpath-maps-test", "onpath-maps-production"):
+            self.assertIn(f'bucket_name = "{b}"\njurisdiction = "eu"', toml)
+
     def test_local_store_refuses_escape(self):
         with tempfile.TemporaryDirectory() as d:
             s = r2.LocalStore(d)

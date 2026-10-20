@@ -143,8 +143,18 @@ the repo. Commands with `gh` run on the laptop (`gh auth login` once).
 ### Step 3 – Cloudflare (dashboard, account that has the zone `free-your-pictures.org`)
 1. Note the **Account ID** (Workers & Pages → right column, or the dashboard URL).
 2. **R2 → enable** (accept the plan; it stays free within the allowance). Create two buckets: `onpath-maps-test` and
-   `onpath-maps-production` (location: automatic / Europe hint). (The workflow would create them too, but the
-   bucket tokens below need them to exist.)
+   `onpath-maps-production` with **jurisdiction: European Union** (done – both exist with EU jurisdiction). (The
+   workflow would create them too, but the bucket tokens below need them to exist.)
+   **Why EU jurisdiction:** the data (map cells, status files) is guaranteed to stay in the EU – the owner and the
+   users are in Europe, and it is the simplest GDPR answer. Consequences, all handled in the code:
+   - S3 endpoint has `.eu.`: `https://<account>.eu.r2.cloudflarestorage.com/<bucket>` – the builder builds it from
+     `R2_ACCOUNT_ID` + `R2_JURISDICTION` (default `eu`, `tools/cloud/r2.py`; `R2_ENDPOINT` overrides). The S3
+     signing region stays `auto`.
+   - Worker bindings in `wrangler.toml` carry `jurisdiction = "eu"` (without it the binding finds no bucket).
+   - Every `wrangler r2 bucket …` call passes `--jurisdiction eu` – without it wrangler would look at (or create!) a
+     second, non-EU bucket of the same name. The workflow takes this from the GitHub variable `R2_JURISDICTION`
+     (default `eu`; `default` = buckets without jurisdiction). The D1 database is created with location hint
+     `weur` (variable `D1_LOCATION`).
 3. **R2 → Manage R2 API Tokens → Create API token** – once per environment:
    - name `onpath-builder-test`, permission **Object Read & Write**, **apply to specific bucket: `onpath-maps-test`
      only**, TTL: forever → copy *Access Key ID* and *Secret Access Key* (shown once) into step 4.
