@@ -437,7 +437,8 @@ files.sort(key=lambda r: (r.count("/"), r))
 built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 pkg = {"format": fmt, "region": region, "bbox": [float(v) for v in bbox.split(",")], "built": built,
        "osm_date": osm_date,
-       "files": {r: os.path.getsize(os.path.join(data, r)) for r in files if not r.startswith("segments/")}}
+       "files": {r: os.path.getsize(os.path.join(data, r)) for r in files
+                 if not r.startswith("segments/") and r != "package.json"}}  # not itself (left from a re-run)
 with open(os.path.join(data, "package.json"), "w") as f:
     json.dump(pkg, f, indent=1)
 files = [r for r in files if r != "package.json"] + ["package.json"]
