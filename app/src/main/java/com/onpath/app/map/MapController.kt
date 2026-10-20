@@ -80,7 +80,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
         const val NAV_TOP_PADDING = 0.30
-        /** Position puck in both modes: MapLibre's blue dot + its small arrow towards where you face (view heading). */
+        /** Position puck in both modes: MapLibre's small blue dot + bearing triangle (not the big GPS puck). */
         private const val PUCK_MODE = RenderMode.COMPASS
     }
 
@@ -117,20 +117,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private var wantedCameraMode = CameraMode.NONE
     private var wasNavigating = false
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    /** Heading-up: we turn the camera with HeadingEngine's map heading (true once the follow transition is over). */
-    private var mapTurning = false
-    private var cameraGen = 0
+    private var reemitJob: Runnable? = null
 
-    /** The user moved the map: stop following; the reason goes to Diagnostics (field test: following stopped by itself). */
+    /** The user moved the map: stop following; the reason goes to Diagnostics. */
     private fun dismissed(why: String) {
         val cb = onTrackingDismissed ?: return
         Problems.info("map", "Following stopped: $why")
         cb()
-    }
-
-    private fun startMapTurning() {
-        mapTurning = true
-        try { heading.startMapFrom(map.cameraPosition.bearing) } catch (e: Exception) { Problems.warn("map", "Map turning not started", e) }
     }
 
     init {
@@ -291,7 +284,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .staleStateTimeout(30_000)
                 // HeadingEngine turns smoothly at display rate itself (polish audit B1)
                 .compassAnimationEnabled(false)
-                // the small direction arrow (owner 2026-10-20: clearer than a Google-like cone); it shows where you face
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
@@ -300,17 +292,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .build()
             )
             lc.setCompassEngine(heading)
-            heading.onMapHeading = { b ->
-                if (mapTurning) map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.bearingTo(b))
-            }
-            // a two-finger turn while we turn the map = look around (free look): stop following like a pan does
-            map.addOnRotateListener(object : org.maplibre.android.maps.MapLibreMap.OnRotateListener {
-                override fun onRotateBegin(detector: org.maplibre.android.gestures.RotateGestureDetector) {
-                    if (mapTurning) { mapTurning = false; dismissed("two-finger turn") }
-                }
-                override fun onRotate(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
-                override fun onRotateEnd(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
-            })
             // No frame cap on the position dot (owner 2026-10-20: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
@@ -320,13 +301,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             lc.renderMode = PUCK_MODE
             lc.cameraMode = CameraMode.NONE
             lc.addOnCameraTrackingChangedListener(object : org.maplibre.android.location.OnCameraTrackingChangedListener {
-                override fun onCameraTrackingDismissed() { dismissed("MapLibre: pan / fling gesture") }
+                // MapLibre ends tracking only for gestures (pan, fling, two-finger turn) – that is "the user moved the map"
+                override fun onCameraTrackingDismissed() { dismissed("map gesture (pan / fling / turn)") }
                 override fun onCameraTrackingChanged(currentMode: Int) {
-                    // Only noted, never taken as "the user moved the map" any more (field test 2026-10-20: following
-                    // stopped a few seconds after the compass tap). Gestures come through onCameraTrackingDismissed and
-                    // our rotate listener.
+                    // Only noted (field test 2026-10-20): a mode change alone is never taken as a gesture any more.
                     if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode && onTrackingDismissed != null)
-                        Problems.info("map", "Camera mode changed by the map to $currentMode (wanted $wantedCameraMode) – following kept")
+                        Problems.info("map", "Camera mode changed by the map to $currentMode (wanted $wantedCameraMode)")
                 }
             })
             locationReady = true
@@ -369,12 +349,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             val leavingNav = wasNavigating && !navigating
             wasNavigating = navigating
             if (follow) {
-                mapTurning = false
                 val (mode, tilt, bearing) = when {
-                    // walking direction up – Navigate and (owner, compass cycle) Plan. The camera only tracks the
-                    // position; we turn it ourselves with the map heading (route ahead), so the cone at the dot can show
-                    // where you face (like Google Maps, owner 2026-10-20)
-                    headingUp -> Triple(CameraMode.TRACKING, NAV_TILT_DEG, heading.mapHeading)
+                    // walking direction up – Navigate and (owner, compass cycle) Plan
+                    headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
                     navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                     else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
                 }
@@ -382,29 +359,29 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 wantedCameraMode = mode
                 val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
                 // a north-up animation from Plan must not run on into the walking-direction camera
-                if (headingUp) map.cancelTransitions()
+                if (mode == CameraMode.TRACKING_COMPASS) map.cancelTransitions()
                 val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
                 // MapLibre ignores paddingWhileTracking while the camera moves into tracking (polish audit A2):
                 // set it again when the transition ends, so the dot always sits at the same place
-                val gen = ++cameraGen
-                fun arrived() {
-                    pad(top)
-                    if (headingUp && gen == cameraGen && wantedCameraMode == CameraMode.TRACKING) startMapTurning()
-                }
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
-                    override fun onLocationCameraTransitionFinished(cameraMode: Int) = arrived()
-                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) = arrived()
+                    override fun onLocationCameraTransitionFinished(cameraMode: Int) = pad(top)
+                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) = pad(top)
                 })
-                // fallback: no transition callback (no position yet) – turn anyway once the move is surely over
-                if (headingUp) mainHandler.postDelayed({ if (gen == cameraGen && !mapTurning && wantedCameraMode == CameraMode.TRACKING) startMapTurning() }, 900L)
+                // the camera takes the walking direction at once, after the transition and a north-up animation
+                // that may still run (Plan → Navigate); it must not wait for the next change of direction
+                if (mode == CameraMode.TRACKING_COMPASS) {
+                    reemitJob?.let { mainHandler.removeCallbacks(it) }
+                    val r = Runnable { try { heading.reemit() } catch (e: Exception) { Problems.warn("map", "Heading not re-sent", e) } }
+                    reemitJob = r
+                    mainHandler.postDelayed(r, 800L)
+                    heading.reemit()
+                }
                 pad(top)
             } else {
                 wantedCameraMode = CameraMode.NONE
-                mapTurning = false
-                cameraGen++
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
-                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner)
+                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner, 0.7.19)
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {

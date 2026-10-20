@@ -39,10 +39,12 @@ linked here.
 | 0.7.18 | Compass in Navigate switched back after seconds: mode-mismatch "gesture" check removed; every stop of following logged with its reason in Diagnostics | **test**: tap compass, wait 30 s; if it flips back, look at Diagnostics |
 | 0.7.19 | One compass setting for Plan and Navigate (kept when switching; heading-up keeps following in Plan until an edit / pan) | **test**: Navigate heading-up → Plan → Navigate |
 | 0.7.20 | Plan: finger on the map stops heading-up turning (points could not be held since 0.7.19); following stops only after a real touch (≤ 1.5 s) – compass flip-back guarded; root cause still unknown, see Diagnostics "Following stop without a touch" | **test**: delete a point in Plan; compass in Navigate stays |
+| 0.7.21 | **Revert of the 0.7.15 camera** (manual per-frame turning fought MapLibre tracking → flip-back + jerky turning): TRACKING_COMPASS + smooth heading again (0.7.14 code + later fixes); arrow = map direction again; route point taken at finger-down | **test**: compass stays, turns smoothly, delete points |
 
 Also answered: off-route warning = vibration + notification with sound (since 0.6.x).
 
 ## Open – waiting for the owner
+0. **"Where I face" arrow (Google-like)** – reverted in 0.7.21; rebuild as an own map symbol (rotated by the compass) that never moves the camera.
 1. **Path smoothing (angular bends):** proposal = round bends ≥ 20° in the pipeline, max ~1.5 m from the real path,
    junctions exact, route bands smoothed the same way; streets stay as in the base map. **Owner: send examples
    (place + zoom / screenshots)** → before/after renders; then agree with the laptop (map owner) and the cells work.

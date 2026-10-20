@@ -123,6 +123,9 @@ fun MapHost(
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) vm.userMovedMap = true
             }
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
+            // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
+            // move the map – field test 2026-10-20: holding a point added a new one instead of opening its menu).
+            var downMarker = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = ctrlRef[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
@@ -130,7 +133,8 @@ fun MapHost(
                 }
                 if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
-                val marker = if (edit) c?.waypointAt(screen) ?: -1 else -1
+                val marker = if (!edit) -1 else (c?.waypointAt(screen) ?: -1).takeIf { it >= 0 }
+                    ?: downMarker.takeIf { press == MapGestures.Press.HOLD && it in vm.waypoints.indices } ?: -1
                 // A marked search result (pin) counts as a POI: holding it opens the POI menu.
                 val mark = vm.searchMark?.takeIf { m ->
                     c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true
@@ -168,6 +172,7 @@ fun MapHost(
                     val at = PointF(hold.downX, hold.downY)
                     val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) ctrlRef[0]?.waypointAt(at) ?: -1 else -1
+                    downMarker = marker
                     val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null
