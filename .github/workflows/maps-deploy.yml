@@ -64,6 +64,15 @@ jobs:
           (cd tools/cloud && python3 -m unittest -v test_cloud)
           bash -n tools/cloud/gcp-setup.sh tools/cloud/worker/smoke.sh tools/cells/build_cell.sh
 
+  setup-pending:
+    # Until the owner has set the repository variables, the deploy job is skipped (not failed); say why.
+    needs: check
+    if: vars.GCP_PROJECT_ID == '' || vars.CLOUDFLARE_ACCOUNT_ID == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "::notice title=Maps deploy skipped::Repository variables GCP_PROJECT_ID / CLOUDFLARE_ACCOUNT_ID are not set yet – nothing deployed. See docs/design/map-hosting.md (owner setup)."
+
   deploy:
     needs: check
     if: vars.GCP_PROJECT_ID != '' && vars.CLOUDFLARE_ACCOUNT_ID != ''
