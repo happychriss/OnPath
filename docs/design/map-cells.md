@@ -449,8 +449,8 @@ any internal tile edge of one cell (339 of 449 within 3 units there): contour li
 effect of cells. The format 1 check still passes unchanged (0 crossing lines, 0 duplicates).
 
 Test region package in format 2 (`tools/build_region.sh --format 2`, bbox 10.70,46.30,11.60,46.85, OSM 2026-10-17):
-base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 → **53 MB, zip 50 MB** (format 1:
-~130 MB). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
+base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 → **53 MB, zip 50 MB** (format 1, older build in
+`onpath-build/out/`: ~125 MB without addresses). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
 
 Open: the builder image on zo / in the cloud must be rebuilt (tippecanoe); `job.yaml` still says `FORMAT=1` (the
 doorman decides per execution); the app does not download cells yet (phase 2) and has to join cell tiles into one
