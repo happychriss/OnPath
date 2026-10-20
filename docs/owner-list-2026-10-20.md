@@ -52,6 +52,8 @@ Also answered: off-route warning = vibration + notification with sound (since 0.
    today ("don't change the map"). Rebuild when the laptop's map work allows – laptop or cloud?
 
 ## Questions for tonight
+- **Bike map (Komoot comparison, Meran):** oneway arrows (+ "bikes both ways"), green cycleways, cycle lanes beside
+  streets – see backlog "Bike map". Which of the three, and lanes always or only for bike activities? Laptop or cloud?
 - Pause reminder after **150 m**, free look back after **25 m**, route look-ahead **40 m** – right values after the test?
 - Notification without "Stop & save": OK, or an "End tour…" button that opens the app with the question?
 - Background location ("Allow all the time"): fine for sideloading; **Google Play** will need a declaration + video
