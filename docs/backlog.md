@@ -9,6 +9,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Owner answers to the cloud's owner list (2026-10-20 evening, via laptop) – cloud:**
+  - 7: **Plan orientation is always the same as the Navigate view** (one compass setting for both; with walking
+    direction up, Plan turns too). Supersedes the 2026-10-19 "Plan north/hand-turned" note.
+  - 8: values OK – pause reminder 150 m, free look back 25 m, route look-ahead 40 m.
+  - 9: open – laptop explains the "End tour…" notification button to the owner, answer follows.
+  - 10: keep "Allow all the time"; Play declaration + video when publishing.
+  - 11: yes – one-time "battery unrestricted" hint for Samsung/Xiaomi-type phones at the first tour (persistent
+    notice with OK; owner cannot test it).
+  - 12: polish audit next: real draggable sheet (B4) and smooth Plan ⇄ Navigate transition (B2).
+  - 13: **do battery batch 2 now** (slower GPS when standing / screen off with scaling thresholds – never lose a
+    point; frozen track + tail; battery %/h in the tour summary); owner field-tests this week.
 - **Handoff 2026-10-20 (cloud → laptop):** field-test list + owner questions in `docs/owner-list-2026-10-20.md`;
   requirements review `docs/requirements-review-2026-10-20.md`. To check: routing JVM test "unreachable: hike T1 to
   the Ifinger summit" fails (finds a 7.2 km route) – expectation from before the 0.6.8 profiles or a real gap?
