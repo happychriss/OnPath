@@ -116,6 +116,39 @@ def no_entry(pr, canvas=16):
     return im.resize((canvas * pr, canvas * pr), Image.LANCZOS)
 
 
+def way_arrow(pr, color, both=False, canvas=(14, 8)):
+    """Small arrow along a way (drawn with symbol-placement line, icon-rotation-alignment map: points in the line's
+    direction). both=True: two half arrows in opposite directions ("bikes both ways" in a one-way street)."""
+    w, h = canvas[0] * pr * SS, canvas[1] * pr * SS
+    sc = pr * SS
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    rgb = hex_rgb(color) + (255,)
+    halo = (255, 255, 255, 230)
+    def arrow(y0, y1, right, upper):
+        # shaft + head, with a white outline drawn first
+        x0, x1 = 1.5 * sc, w - 1.5 * sc
+        tip, back = (x1, x0) if right else (x0, x1)
+        head = 4.0 * sc * (1 if right else -1)
+        ym = (y0 + y1) / 2
+        for col, grow in ((halo, 1.0 * sc), (rgb, 0)):
+            d.line((back, ym, tip - head * 0.6, ym), fill=col, width=int(1.6 * sc + 2 * grow))
+            if upper is None:
+                pts = [(tip + (grow if right else -grow), ym), (tip - head - (grow if right else -grow), ym - 2.8 * sc - grow),
+                       (tip - head - (grow if right else -grow), ym + 2.8 * sc + grow)]
+            else:  # half head (one barb) so two arrows fit on one line
+                yb = ym - 2.6 * sc - grow if upper else ym + 2.6 * sc + grow
+                pts = [(tip + (grow if right else -grow), ym + (grow if upper else -grow)),
+                       (tip - head - (grow if right else -grow), yb), (tip - head - (grow if right else -grow), ym)]
+            d.polygon(pts, fill=col)
+    if both:
+        arrow(0, h * 0.45, True, True)
+        arrow(h * 0.55, h, False, False)
+    else:
+        arrow(0, h, True, None)
+    return im.resize((canvas[0] * pr, canvas[1] * pr), Image.LANCZOS)
+
+
 # Ground symbols (fill-pattern tiles, drawn from z14 by make_style.py landcover()): very light, a darker tone of
 # the ground colour. Ground colours = tools/themes/classic.json; design: docs/design/map-colour-analysis.md.
 # name -> (ground colour, tile w, h (1x px), darken towards ink, opacity, filled?, stroke width, SVG content)
@@ -153,6 +186,9 @@ def build(pr):
         images[f"poi-{kind}"] = badge(col, icon, pr)
         images[f"poi-{kind}-small"] = badge(col, None, pr, canvas=12, r_out=4.6, ring=1.3, shadow=True)
     images["access-no"] = no_entry(pr)
+    # bike map (format 2, make_style.py bike_map): one-way streets, and one-way streets open to bikes both ways
+    images["oneway-arrow"] = way_arrow(pr, "#5a5a5a")
+    images["bike-both-ways"] = way_arrow(pr, "#2f74a8", both=True)
     # simple shelf packing
     cols = 8
     cell = 24 * pr

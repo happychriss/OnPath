@@ -136,3 +136,29 @@ map's `transportation` layer (class `path` + `subclass` + `foot` / `bicycle`), s
 lost in 0.7.0: `paths.geojson` has no highway=pedestrian, the base path layer is fallback-only). Render:
 `docs/design/img/greenways-meran-z15.png` (before · hiking · bike). Not yet: cycle lanes on roads (`cycleway:*`,
 not in the base map – pipeline), oneway arrows on the map.
+
+## Map package format 2 (2026-10-20, map rework steps 3 + 4)
+`make_style.py` writes two styles per theme: `style/onpath.json` (format 1, GeoJSON overlays – unchanged) and
+`style/f2/onpath.json` (format 2, metadata `onpath:format` 2). The app takes format 2 when the data folder has
+`overlays.pmtiles` (`StyleLoader`, `DataFiles.formatOf`); an override in `styles/` written for the other format is
+skipped. Pipeline and schema: `docs/map-pipeline.md` section 5b.
+- **Same layer ids.** Every GeoJSON source (`routes`, `trails`, `ways`, `paths`, `lowways`, `trailnames`) becomes a
+  `source-layer` of the one vector source `overlays` (`lowways` → `paths`, which holds the coarse copy at z11–12).
+  The only layers missing in format 2 are the base-map fallbacks `track-base` / `path-base` (format 2 always has the
+  overlay).
+- **No base-map path lines at z13+.** The format-2 base map has no path / track lines at z13–14, so `cycleway`,
+  `cycleway-unpaved`, `path-steps`, `pedestrian-line`, `greenway-foot` / `greenway-bike` and the path / track part of
+  `access-no-*` read overlay `paths` (`sub` = OSM highway, `tn`, `ac`, `foot`, `bicycle`, `uv`). The service-road part
+  of the access marks stays on the base map as `access-no-{tint,sign}-{foot,bike}-service`. `track-low` / `path-low`
+  (z12) still read the base map. Side effect: green ways now lie exactly on the black path line (format 1 showed the
+  base map's line a little beside the own path at z17) – `docs/design/img/format2-vs-1-meran-z16.jpg`.
+- **Smoothed paths** (pipeline `--smooth`): bends rounded within 1.5 m; route bands on the same line –
+  `docs/design/img/format2-smoothing-*.jpg` (format 1 · format 2 unsmoothed · format 2 smoothed).
+- **Via ferrata** (`via-ferrata`, `via-ferrata-ticks`, all activities): dark red (`viaferrata.color` #9e1b1b) dashed
+  line with short cross ticks (a wide line with a very short dash = ticks across the way), like the "Klettersteig"
+  signature of Alpine maps; red so it never reads as an ordinary trail. Drawn above the trail dots.
+  `docs/design/img/format2-via-ferrata-z17.jpg`.
+- **Bike map (first draft, bike activities only, switched by `MapController.setOverlay`):** `bike-lane-left/right`
+  (cycle lane / track beside the street, solid; `-shared` dashed for shared / bus lanes; `line-offset` by road class),
+  `bike-oneway` (grey arrows on one-way streets from the base map's `oneway`, z15+), `bike-both-ways` (blue double
+  arrow where `oneway:bicycle=no`). Sprite images `oneway-arrow`, `bike-both-ways`. Needs an owner look on the phone.
