@@ -27,7 +27,8 @@ region (name, bbox, OSM URL)
   │                           │                            ├► lowways.geojson     (optional)
   │                           │                            ├► paths.geojson       (optional, 0.7.0)
   │                           │                            └► trailnames.geojson  (optional)
-  │                           └─ extract_pois.py ──────────► pois.geojson        (optional)
+  │                           ├─ extract_pois.py ──────────► pois.geojson        (optional)
+  │                           └─ extract_addresses.py ─────► addresses.sqlite    (optional, offline address search)
   ├─ AWS Terrarium tiles ──── build_terrain.py ────────────► terrain.pmtiles     (required)
   │                           └─ build_contours.py ────────► contours.pmtiles    (optional)
   ├─ brouter.de segments4 ─── download ────────────────────► segments/E10_N45.rd5 (required; phone can download)
@@ -94,6 +95,7 @@ folder `out/<region>/onpath-data`. Times and sizes measured on the 4-core / 16 G
 | 4 | Terrain | `python3 tools/build_terrain.py terrain.pmtiles 10.70 46.30 11.60 46.85 13` | `$D/terrain.pmtiles` | 25 s | 55 MB |
 | 5 | Overlays | `python3 tools/extract_overlays.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/routes.geojson`, `trails.geojson`, `ways.geojson`, `lowways.geojson`, `trailnames.geojson`, `paths.geojson` | 2 min | South Tyrol bbox 2026-10-19: 6.8 + 5.9 + 7.9 + 9.0 + 4.4 + 19.1 MB |
 | 6 | POIs | `python3 tools/extract_pois.py region.osm.pbf $D 10.70 46.30 11.60 46.85` | `$D/pois.geojson` | 3 min | 1.8 MB |
+| 6b | Addresses | `python3 tools/extract_addresses.py region.osm.pbf $D/addresses.sqlite 10.70 46.30 11.60 46.85` | `$D/addresses.sqlite` (SQLite: town, street, house, word; schema in the script) | 1 min | 2.5 MB (Meran z10 cell: 0.6 MB) |
 | 7 | Contours | `python3 tools/build_contours.py terrain.pmtiles contours.pmtiles 10.70 46.30 11.60 46.85` | `$D/contours.pmtiles` | 70 s | 3.2 MB |
 | 8 | Styles (+ sprite) | `python3 tools/make_style.py --all` (sprite: `python3 tools/make_sprite.py`) | `out/<region>/styles/onpath*.json` | <1 s | ~64 KB each |
 | 9 | Routing tiles | `curl -fL -C - -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5` | `$D/segments/*.rd5` | ~10 s | 199 MB |

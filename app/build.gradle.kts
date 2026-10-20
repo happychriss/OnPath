@@ -85,4 +85,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Real org.json for JVM unit tests (Android's is stubbed there).
     testImplementation("org.json:json:20240303")
+    // SQLite on the JVM for the offline address search tests (Android's SQLite is not available there).
+    testImplementation("org.xerial:sqlite-jdbc:3.46.1.3")
 }
