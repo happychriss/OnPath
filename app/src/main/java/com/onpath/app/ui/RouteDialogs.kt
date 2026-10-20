@@ -23,10 +23,12 @@ fun RouteDialogs(vm: AppViewModel) {
     }
     if (vm.saveDialog) NameDialog(if (vm.savedName != null) "Save as new route" else "Save route",
         vm.savedName ?: vm.defaultName("Route"),
-        onDone = { vm.saveDialog = false; vm.saveRoute(it) }, onDismiss = { vm.saveDialog = false })
+        onDone = { vm.saveDialog = false; vm.saveRoute(it) }, onDismiss = { vm.saveDialog = false },
+        suggestion = vm.suggestedName.takeIf { vm.savedName == null })
     vm.saveFirst?.let { _ ->
         NameDialog("Save current route", vm.savedName ?: vm.defaultName("Route"),
-            onDone = { vm.saveFirstDone(it) }, onDismiss = { vm.saveFirst = null })
+            onDone = { vm.saveFirstDone(it) }, onDismiss = { vm.saveFirst = null },
+            suggestion = vm.suggestedName.takeIf { vm.savedName == null })
     }
     vm.replaceAsk?.let { _ ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null })
