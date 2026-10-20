@@ -9,6 +9,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   waiting for the owner's field test, then merge – since 2026-10-18
 
 ## Next
+- **Handoff 2026-10-20 (cloud → laptop):** field-test list + owner questions in `docs/owner-list-2026-10-20.md`;
+  requirements review `docs/requirements-review-2026-10-20.md`. To check: routing JVM test "unreachable: hike T1 to
+  the Ifinger summit" fails (finds a 7.2 km route) – expectation from before the 0.6.8 profiles or a real gap?
 - **Bike map: oneways, cycle lanes, green cycleways (owner 2026-10-20, Komoot comparison in Meran – important for
   cycling; map work → agree with the laptop):** measured in Meran centre (OSM 2026-10-19): 53 `highway=cycleway`
   (drawn today, but thin blue `#2f74a8` – lost next to the Passer), ~30 roads with `cycleway:left/right=lane|track`
