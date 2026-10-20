@@ -37,6 +37,12 @@ region (name, bbox, OSM URL)
   → onpath-data/ + onpath-data-<region>.zip + manifest.json + SHA256SUMS
 ```
 
+**Format 2** (`--format 2`, design: `docs/design/map-data-size.md`): the six overlay GeoJSON files become ONE vector
+tile file `overlays.pmtiles` (`extract_overlays.py --tiles --smooth` → `tools/build_overlays.sh`, tippecanoe), and
+the base map is trimmed (`--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de`, then
+`tools/trim_base.sh` drops path / track lines at z13–14). Details: section 5b. Format 1 stays the default until map
+cells are live (owner Q9); the app reads both.
+
 "Required" = the app's missing-data screen (`data/DataFiles.kt`) asks for it. Optional files may be
 missing: `map/OptionalSources.kt` removes every style source whose local file is absent, together with
 its layers, so the app never breaks on a partial package (robustness rule R-02).
@@ -57,6 +63,7 @@ its layers, so the app never breaks on a partial package (robustness rule R-02).
 | mapbox-vector-tile | 2.2.0 | contours (MVT encode) | `pip install mapbox-vector-tile` |
 | cairosvg | 2.9.1 (+ `libcairo2`) | sprite only (`make_sprite.py`) | `apt install libcairo2 && pip install cairosvg` |
 | curl, unzip, sha256sum | any | downloads, checksums | `apt install curl unzip coreutils` |
+| tippecanoe + tile-join | 2.79.0 (≥ 2.17 for `.pmtiles`) | **format 2 only**: `overlays.pmtiles`, base trim | `apt install build-essential libsqlite3-dev zlib1g-dev && git clone https://github.com/felt/tippecanoe && make -j` (~1 min; or env `TIPPECANOE` / `TILE_JOIN`) |
 | Node 22 + maplibre-gl JS | – | **preview only** (headless style rendering) | not needed for the pipeline |
 
 One-line Python setup: `pip install osmium shapely pmtiles numpy pillow contourpy mapbox-vector-tile cairosvg`.
@@ -153,6 +160,54 @@ earlier 3 m simplification showed as a second line beside the path at z17+.
 cycleway / bridleway ways (no sidewalks / crossings) with a tracktype, `surf` ≥ 3 or `smooth` ≥ 3 – ways the map
 draws differently; it does not list every surface.
 
+## 5b. Overlays as vector tiles (format 2)
+
+`tools/build_region.sh --format 2` (and later the cell builder, step 5 of the map rework) runs:
+
+```
+python3 tools/extract_overlays.py region.osm.pbf OUT bbox… --no-geojson --tiles TILES --smooth   # *.ndjson per layer
+tools/build_overlays.sh TILES overlays.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra contours.pmtiles]
+java -jar planetiler.jar … --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de
+tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track at z>=13
+```
+
+`build_overlays.sh` runs tippecanoe once per layer (`-r1 --no-feature-limit --no-tile-size-limit
+--simplify-only-low-zooms --buffer=8`, extent 4096 = 0.4 m grid at z14) and joins them with `tile-join`. A cell build
+passes its buffered bbox as `--clip` and keeps only its own z ≥ 10 tiles (`tools/cells/cells.py tiles`).
+Contours stay in `contours.pmtiles` for now (terrain work); `--extra contours.pmtiles` joins them as layer `contour`
+once the style reads them from `overlays`.
+
+**Schema of `overlays.pmtiles`** (one source-layer per former GeoJSON file; props as in section 5 unless listed):
+
+| Layer | Zooms | Content |
+| --- | --- | --- |
+| `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" |
+| `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` 1 tunnel, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded) |
+| `trails` | 13–14 | as `trails.geojson` |
+| `ways` | 13–14 | as `ways.geojson` |
+| `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped) |
+| `trailnames` | 13–14 | as `trailnames.geojson` (the app's search reads them from here when the GeoJSON is missing) |
+| (`contour`) | 12–13 | later: the layer of `contours.pmtiles` |
+
+**Smoothing (`--smooth`, default for format 2, owner 2026-10-20):** every bend ≥ 20° of a path / track / cycleway /
+steps / pedestrian way (or any way with `sac_scale`) becomes a short quadratic curve that stays within 1.5 m of the OSM
+line (cut ≤ 45 % of each leg, ≤ 20 m). Way ends and junction nodes (shared with any other highway) stay exact, so the
+network stays connected; a way is smoothed whole before any clipping, so neighbouring cells compute the same line.
+Streets are not smoothed (the base map draws them). Route bands use the same 0.5 m / smoothed geometry as the path
+below them – the former 3 m simplification put the band ~3 m beside the path at z16+. Smoothed lines keep 6 decimals.
+
+**Sizes** (test region 10.70–11.60 E / 46.30–46.85 N, OSM of 17 Oct 2026; cell = z10 10/543/361 Meran, own z ≥ 10 tiles):
+
+| | Format 1 | Format 2 | Change |
+| --- | --- | --- | --- |
+| Overlays, region | 53.1 MB GeoJSON (paths 19.1, lowways 9.0, ways 7.9, routes 6.8, trails 5.9, trailnames 4.4) | **14.2 MB** `overlays.pmtiles` (paths 6.0, routes 3.9, ways 1.7, trails 1.4, trailnames 1.2); 11.3 MB without smoothing | −73 % |
+| Overlays, Meran cell | 11.0 MB GeoJSON (map-cells.md §3) | **2.8 MB** (2.2 MB without smoothing) | −75 % |
+| Base map, region | 28.7 MB | **21.1 MB** (24.7 after the Planetiler flags, then −15 % path/track z13–14) | −27 % |
+| Base map, Meran cell | 5.3 MB | **3.6 MB** | −31 % |
+| Build time (region) | overlays 45 s | overlays ~100 s (smoothing) + tippecanoe 10 s; base trim 5 s | |
+
+Smoothing costs ~3 MB (region) because curves have more vertices and route bands now follow the exact path.
+
 Token reference and the "why" of the look: `docs/map-style-notes.md`. POI kinds and counts:
 `docs/poi-categories.md`, `docs/poi-integration.md`.
 
@@ -163,6 +218,7 @@ out/<region>/
   onpath-data/                  ← exactly the phone's data folder
     base.pmtiles  terrain.pmtiles  contours.pmtiles
     routes.geojson  trails.geojson  ways.geojson  trailnames.geojson  pois.geojson
+    (format 2: overlays.pmtiles instead of the overlay .geojson files; package.json / manifest "format": 2)
     segments/E10_N45.rd5        (not with --no-segments)
     styles/onpath*.json         (only with --with-styles)
   onpath-data-<region>.zip      ← the same, under "onpath-data/" in the zip

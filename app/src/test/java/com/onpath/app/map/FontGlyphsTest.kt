@@ -12,7 +12,7 @@ import java.io.File
  */
 class FontGlyphsTest {
     private val fonts = File("src/main/assets/fonts")
-    private val styles = File("src/main/assets/style").listFiles { f -> f.name.endsWith(".json") }!!.toList()
+    private val styles = File("src/main/assets/style").walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
 
     private fun fontsUsed(): Set<String> {
         val re = Regex("\"Noto Sans [A-Za-z ]+\"")

@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """Generate the OnPath MapLibre styles from design-token themes.
 
-  python3 tools/make_style.py                  classic theme -> app/src/main/assets/style/onpath.json
-  python3 tools/make_style.py --theme NAME     tools/themes/NAME.json -> .../style/onpath-NAME.json
+  python3 tools/make_style.py                  classic theme -> app/src/main/assets/style/onpath.json (format 1)
+                                               and .../style/f2/onpath.json (format 2)
+  python3 tools/make_style.py --theme NAME     tools/themes/NAME.json -> .../style/onpath-NAME.json (+ f2/)
   python3 tools/make_style.py --all            every theme in tools/themes/
+  python3 tools/make_style.py --format 1|2     only one map package format (default: both)
+
+Two map package formats (docs/design/map-data-size.md, docs/map-pipeline.md):
+  format 1  overlays as GeoJSON files (routes, trails, ways, lowways, paths, trailnames .geojson)
+  format 2  overlays as ONE vector tile file overlays.pmtiles (source "overlays", one source-layer per former GeoJSON
+            file, lowways -> paths at z11-12); the base map has no path / track lines at z13-14, so every layer that
+            read them reads overlays "paths" instead. Layer ids are the same in both (the app switches them by id).
+The app picks format 2 when overlays.pmtiles exists (StyleLoader); metadata "onpath:format" says which one a file is.
 
 All colours, widths / zoom stops, opacities, fonts and hillshade settings live in tools/themes/*.json
 (token names: docs/map-style-notes.md). This file only holds the layer structure and order.
@@ -26,10 +35,29 @@ T, Z = token, zoom
 NAME = ["coalesce", ["get", "name:de"], ["get", "name_de"], ["get", "name"]]
 
 L = []
+FMT = 1  # map package format the style is built for (build())
+# format 1 GeoJSON source -> format 2 source-layer of "overlays"
+OVERLAY_LAYERS = {"routes": "routes", "trails": "trails", "ways": "ways", "paths": "paths", "lowways": "paths",
+                  "trailnames": "trailnames"}
 
 
-def out_path(theme):
-    return os.path.join(STYLE_DIR, "onpath.json" if theme == DEFAULT_THEME else f"onpath-{theme}.json")
+def out_path(theme, fmt=1):
+    name = "onpath.json" if theme == DEFAULT_THEME else f"onpath-{theme}.json"
+    return os.path.join(STYLE_DIR, name) if fmt == 1 else os.path.join(STYLE_DIR, f"f{fmt}", name)
+
+
+def own_paths():
+    """Format 2: the overlay's "paths" source-layer (every path, track, cycleway, steps, pedestrian way …)."""
+    return {"source": "overlays", "source-layer": "paths"}
+
+
+# format 2 "paths" attributes (extract_overlays.py tile_attrs): k t/p/x, sub = OSM highway unless path / track,
+# tn tunnel, ac access=no, foot / bicycle, uv unpaved cycleway, vf via ferrata. OpenMapTiles' class "path" =
+# highway path, footway, cycleway, bridleway, steps, pedestrian (subclass = highway).
+SUB = ["coalesce", ["get", "sub"], ""]
+NOT_TUNNEL_OWN = ["!", ["has", "tn"]]
+OWN_PATH = ["all", ["!", ["has", "sub"]], ["!=", ["get", "k"], "t"]]  # highway=path
+OWN_PATH_CLASS = ["any", OWN_PATH, ["in", SUB, ["literal", ["footway", "cycleway", "bridleway", "steps", "pedestrian"]]]]
 
 
 def interp(*stops, base=1.2):
@@ -331,13 +359,41 @@ def paths():
           layout={"line-join": "round"}, paint={"line-color": T("track.color"), "line-width": Z("track.low.width")})
     layer(id_="path-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]],
           layout={"line-join": "round"}, paint={"line-color": T("path.low.color"), "line-width": pw})
-    # fallback without paths.geojson
+    # fallback without paths.geojson (format 1 only: format 2 always has the overlay)
+    if FMT == 1:
+        paths_base_fallback(tl, base_track, foot, steps, pw, fb)
+    if FMT == 2:
+        own = own_paths()
+        cw = Z("cycleway.width")
+        cyc = ["all", ["==", SUB, "cycleway"], NOT_TUNNEL_OWN]
+        layer(id_="cycleway", type="line", **own, minzoom=13, filter=["all", cyc, ["!", ["has", "uv"]]],
+              paint={"line-color": T("cycleway.color"), "line-width": cw})
+        layer(id_="cycleway-unpaved", type="line", **own, minzoom=13, filter=["all", cyc, ["has", "uv"]],
+              paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+        layer(id_="path-steps", type="line", **own, minzoom=14, filter=["all", ["==", SUB, "steps"], NOT_TUNNEL_OWN],
+              paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
+    else:
+        paths_base_lines(tl, foot, steps)
+    # own exact data
+    own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
+    k = ["get", "k"]
+    layer(id_="paths-own", type="line", **own,
+          filter=["all", ["==", k, "p"], ["!", ["has", "st"]], ["<", ["get", "sac"], 2], ["<", ["coalesce", ["get", "vis"], 0], 3]],
+          layout={"line-join": "round", "line-cap": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
+
+
+def paths_base_fallback(tl, base_track, foot, steps, pw, fb):
     layer(id_="track-base", type="line", **tl, minzoom=LOW_ZOOM_SOLID, filter=base_track, metadata=fb,
           layout={"line-join": "round"},
           paint={"line-color": T("track.color"), "line-width": Z("track.single.width"), "line-dasharray": T("track.dash.single")})
     layer(id_="path-base", type="line", **tl, minzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]], metadata=fb,
           layout={"line-join": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
-    # cycleways (solid; unpaved dashed)
+
+
+def paths_base_lines(tl, foot, steps):
+    """Format 1: cycleways (solid; unpaved dashed) and steps from the base map."""
+    cls = ["get", "class"]
+    not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
     cw = Z("cycleway.width")
     layer(id_="cycleway", type="line", **tl, minzoom=13, filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
@@ -346,12 +402,6 @@ def paths():
           paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
     layer(id_="path-steps", type="line", **tl, minzoom=14, filter=["all", foot, steps],
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
-    # own exact data
-    own = {"source": "paths", "minzoom": LOW_ZOOM_SOLID}
-    k = ["get", "k"]
-    layer(id_="paths-own", type="line", **own,
-          filter=["all", ["==", k, "p"], ["!", ["has", "st"]], ["<", ["get", "sac"], 2], ["<", ["coalesce", ["get", "vis"], 0], 3]],
-          layout={"line-join": "round", "line-cap": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
 
 
 def surface_loose():
@@ -425,20 +475,30 @@ def green_ways():
       paths with bicycle=yes|designated.
     Pedestrian zones are also drawn as a plain path line (all activities) – they were missing since 0.7.0 because
     paths.geojson has no highway=pedestrian and the base map's path layer is only a fallback."""
-    cls = ["get", "class"]; sub = ["get", "subclass"]
-    path = ["all", ["==", cls, "path"], ["!=", ["get", "brunnel"], "tunnel"]]
     ok = ["literal", ["yes", "designated"]]
-    layer(id_="pedestrian-line", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+    if FMT == 2:
+        # same rules on the overlay's paths (sub = OSM highway; no sub + not a track = highway=path)
+        src = own_paths()
+        path = NOT_TUNNEL_OWN
+        sub = SUB
+        is_path = OWN_PATH
+    else:
+        src = {"source": "base", "source-layer": "transportation"}
+        cls = ["get", "class"]; sub = ["get", "subclass"]
+        path = ["all", ["==", cls, "path"], ["!=", ["get", "brunnel"], "tunnel"]]
+        is_path = ["==", sub, "path"]
+    layer(id_="pedestrian-line", type="line", **src, minzoom=13,
           filter=["all", path, ["==", sub, "pedestrian"]], layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("path.color"), "line-width": Z("greenway.width")})
     foot = ["all", path, ["any",
             ["all", ["in", sub, ["literal", ["footway", "pedestrian"]]], ["!=", ["coalesce", ["get", "foot"], ""], "no"]],
-            ["all", ["in", sub, ["literal", ["cycleway", "path"]]], ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
+            ["all", ["any", ["==", sub, "cycleway"], is_path], ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
     bike = ["all", path, ["any",
             ["all", ["==", sub, "cycleway"], ["!=", ["coalesce", ["get", "bicycle"], ""], "no"]],
-            ["all", ["in", sub, ["literal", ["footway", "pedestrian", "path"]]], ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
+            ["all", ["any", ["in", sub, ["literal", ["footway", "pedestrian"]]], is_path],
+             ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
     for mode, flt, visible in (("foot", foot, True), ("bike", bike, False)):
-        layer(id_=f"greenway-{mode}", type="line", source="base", **{"source-layer": "transportation"}, minzoom=13,
+        layer(id_=f"greenway-{mode}", type="line", **src, minzoom=13,
               filter=flt, layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if visible else "none"},
               paint={"line-color": T("greenway.color"), "line-width": Z("greenway.width")})
 
@@ -457,17 +517,87 @@ def access_restrictions():
             ["any", ["in", cls, ["literal", ["path", "track"]]],
              ["all", ["==", cls, "service"],
               ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]]
+    # format 2: paths and tracks come from the overlay (ac = access no/private); the service roads stay in the base
+    # map – own layers "access-no-*-<mode>-service" (switched with the others by MapController.setOverlay)
+    own = ["all", ["has", "ac"], ["any", ["==", ["get", "k"], "t"], OWN_PATH_CLASS]]
+    service = ["all", ["==", ["get", "access"], "no"], ["==", cls, "service"],
+               ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]
+    bsrc = {"source": "base", "source-layer": "transportation"}
+    parts = [("", own_paths(), own), ("-service", bsrc, service)] if FMT == 2 else [("", bsrc, base)]
     for mode, tag, visible in (("foot", "foot", True), ("bike", "bicycle", False)):
-        blocked = ["all", base, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
-        vis = {"visibility": "visible" if visible else "none"}
-        layer(id_=f"access-no-tint-{mode}", type="line", source="base", **{"source-layer": "transportation"}, minzoom=14,
-              filter=blocked, layout={"line-join": "round", "line-cap": "round", **vis},
-              paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
-        layer(id_=f"access-no-sign-{mode}", type="symbol", source="base", **{"source-layer": "transportation"}, minzoom=15,
-              filter=blocked,
-              layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
-                      "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
-                      "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1, **vis})
+        for suffix, src, where in parts:
+            blocked = ["all", where, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+            vis = {"visibility": "visible" if visible else "none"}
+            layer(id_=f"access-no-tint-{mode}{suffix}", type="line", **src, minzoom=14,
+                  filter=blocked, layout={"line-join": "round", "line-cap": "round", **vis},
+                  paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
+        for suffix, src, where in parts:
+            blocked = ["all", where, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+            vis = {"visibility": "visible" if visible else "none"}
+            layer(id_=f"access-no-sign-{mode}{suffix}", type="symbol", **src, minzoom=15,
+                  filter=blocked,
+                  layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
+                          "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
+                          "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1, **vis})
+
+
+def via_ferrata():
+    """Format 2: via ferratas (highway=via_ferrata or via_ferrata_scale, overlay paths "vf") get a warning look of their
+    own (owner 2026-10-20): a dark red dashed line with short cross ticks – like the cross-hatched "Klettersteig"
+    lines of Alpine club / swisstopo maps, and in red so it never reads as an ordinary trail. Drawn above the trail
+    dots of the same way."""
+    own = own_paths()
+    vf = ["has", "vf"]
+    layer(id_="via-ferrata-ticks", type="line", **own, minzoom=13, filter=vf,
+          layout={"line-cap": "butt", "line-join": "miter"},
+          paint={"line-color": T("viaferrata.color"), "line-width": Z("viaferrata.tick.width"),
+                 "line-dasharray": T("viaferrata.tick.dash")})
+    layer(id_="via-ferrata", type="line", **own, minzoom=13, filter=vf,
+          layout={"line-cap": "butt", "line-join": "round"},
+          paint={"line-color": T("viaferrata.color"), "line-width": Z("viaferrata.width"),
+                 "line-dasharray": T("viaferrata.dash")})
+
+
+# line-offset of a cycle lane beside the street: half the drawn street (lane / road fill + edge) plus ~1 px
+BIKE_LANE_BIG = ["literal", ["motorway", "trunk", "primary", "secondary", "motorway_link", "trunk_link",
+                             "primary_link", "secondary_link"]]
+
+
+def bike_map():
+    """Format 2, bike activities only (hidden by default, MapController.setOverlay): cycle lanes beside streets
+    (overlay paths k="x" with cwl / cwr: lane / track solid, shared lane / bus lane dashed), one-way arrows on streets
+    (base map "oneway") and a blue double arrow where a one-way street is open to bikes both ways (oneway:bicycle=no)."""
+    own = own_paths()
+    sub = SUB
+
+    def offset(sign):  # line-offset > 0 = right of the way's direction; one zoom curve with the class case inside
+        return interp(*[x for z, big, ter, small in ((14, 4.5, 3.5, 2.5), (16, 7.5, 6.5, 4.0), (18, 13, 11.5, 6.5))
+                        for x in (z, ["case", ["in", sub, BIKE_LANE_BIG], sign * big, ["==", sub, "tertiary"], sign * ter,
+                                      sign * small])], base=1)
+    hidden = {"visibility": "none"}
+    for side, key, sign in (("left", "cwl", -1), ("right", "cwr", 1)):
+        val = ["get", key]
+        side_offset = offset(sign)
+        for suffix, flt, dash in (("", ["in", val, ["literal", ["l", "t", "o"]]], None),
+                                  ("-shared", ["in", val, ["literal", ["s", "b"]]], T("bike.lane.shared.dash"))):
+            paint = {"line-color": T("bike.lane.color"), "line-width": Z("bike.lane.width"), "line-offset": side_offset}
+            if dash:
+                paint["line-dasharray"] = dash
+            layer(id_=f"bike-lane-{side}{suffix}", type="line", **own, minzoom=14,
+                  filter=["all", ["==", ["get", "k"], "x"], ["has", key], flt],
+                  layout={"line-join": "round", **hidden}, paint=paint)
+    cls = ["get", "class"]
+    layer(id_="bike-oneway", type="symbol", source="base", **{"source-layer": "transportation"}, minzoom=15,
+          filter=["all", ["in", ["coalesce", ["get", "oneway"], 0], ["literal", [1, -1]]],
+                  ["!", ["in", cls, ["literal", ["path", "track", "rail", "transit", "aerialway", "cable_car"]]]]],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "oneway-arrow",
+                  "icon-rotate": ["case", ["==", ["get", "oneway"], -1], 180, 0], "icon-rotation-alignment": "map",
+                  "icon-size": interp(15, 0.75, 18, 1.0, base=1), "icon-padding": 2, **hidden})
+    layer(id_="bike-both-ways", type="symbol", **own, minzoom=15,
+          filter=["all", ["has", "ow"], ["==", ["coalesce", ["get", "owb"], 1], 0]],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "bike-both-ways",
+                  "icon-rotation-alignment": "map", "icon-size": interp(15, 0.8, 18, 1.05, base=1),
+                  "icon-padding": 2, **hidden})
 
 
 def bridges():
@@ -657,29 +787,62 @@ def stations():
                  "text-halo-color": T("label.halo.color"), "text-halo-width": T("label.halo.width")})
 
 
-def build(theme=DEFAULT_THEME):
+def build(theme=DEFAULT_THEME, fmt=1):
+    global FMT
+    FMT = fmt
     style_theme.use(theme)
     L.clear()
     # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); track_edges(); lanes(); railways(); paths()
     green_ways()
-    trails(); surface_loose(); access_restrictions(); bridges(); boundaries(); pois(); stations()
+    trails(); surface_loose(); access_restrictions()
+    if FMT == 2:
+        via_ferrata(); bike_map()
+    bridges(); boundaries(); pois(); stations()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())
     labels()
+    if FMT == 2:
+        # GeoJSON overlay sources -> source-layers of the one vector source "overlays"
+        for lyr in L:
+            if lyr.get("source") in OVERLAY_LAYERS:
+                lyr["source-layer"] = OVERLAY_LAYERS[lyr["source"]]
+                lyr["source"] = "overlays"
+        # the order of keys does not matter to MapLibre, but keep id/type/source/source-layer first for reading
+        L[:] = [{k: lyr[k] for k in ("id", "type", "source", "source-layer") if k in lyr} | lyr for lyr in L]
+    sources = {
+        "base": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/base.pmtiles",
+                 "attribution": "© OpenStreetMap contributors"},
+        "terrain": {"type": "raster-dem", "url": "pmtiles://file://{DATA_DIR}/terrain.pmtiles",
+                    "encoding": "terrarium", "tileSize": 256},
+        "contours": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/contours.pmtiles"},
+    }
+    if FMT == 2:
+        # paths z11-14, trails / ways / trailnames z13-14, routes z9-14 (tools/build_overlays.sh)
+        sources["overlays"] = {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/overlays.pmtiles"}
+    else:
+        sources.update(geojson_overlay_sources())
+    sources["pois"] = {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14, "buffer": 32}
     style = {
         "version": 8,
         "name": T("style.name", "OnPath"),
-        "metadata": {"onpath:version": 1, "onpath:theme": theme},
+        "metadata": {"onpath:version": 1, "onpath:theme": theme, "onpath:format": FMT},
         "center": [11.16, 46.67], "zoom": 12,
         "glyphs": "asset://fonts/{fontstack}/{range}.pbf",
         "sprite": "asset://sprites/onpath",
-        "sources": {
-            "base": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/base.pmtiles",
-                     "attribution": "© OpenStreetMap contributors"},
-            "terrain": {"type": "raster-dem", "url": "pmtiles://file://{DATA_DIR}/terrain.pmtiles",
-                        "encoding": "terrarium", "tileSize": 256},
-            "contours": {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/contours.pmtiles"},
+        "sources": sources,
+        "layers": list(L),
+    }
+    out = out_path(theme, FMT)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
+        json.dump(style, f, ensure_ascii=False, indent=1)
+    print("wrote", os.path.abspath(out), len(L), "layers")
+
+
+def geojson_overlay_sources():
+    """Format 1: one GeoJSON source per overlay file."""
+    return {
             "routes": {"type": "geojson", "data": "file://{DATA_DIR}/routes.geojson", "maxzoom": 14,
                        "tolerance": 0.5},
             # trails / ways lie exactly on the base map's lines: little simplification, maxzoom 16 (extract_overlays)
@@ -694,26 +857,20 @@ def build(theme=DEFAULT_THEME):
             "paths": {"type": "geojson", "data": "file://{DATA_DIR}/paths.geojson", "maxzoom": 16,
                       "tolerance": 0.25},
             **style_trail_names.sources(),
-            "pois": {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14,
-                     "buffer": 32},
-        },
-        "layers": list(L),
     }
-    out = out_path(theme)
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-    with open(out, "w") as f:
-        json.dump(style, f, ensure_ascii=False, indent=1)
-    print("wrote", os.path.abspath(out), len(L), "layers")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--theme", default=DEFAULT_THEME, help="theme name in tools/themes/ (default classic)")
     ap.add_argument("--all", action="store_true", help="build every theme in tools/themes/")
+    ap.add_argument("--format", choices=["1", "2", "all"], default="all", help="map package format (default: both)")
     a = ap.parse_args()
     themes = sorted(f[:-5] for f in os.listdir(style_theme.THEMES_DIR) if f.endswith(".json")) if a.all else [a.theme]
+    fmts = [1, 2] if a.format == "all" else [int(a.format)]
     for t in themes:
-        build(t)
+        for fmt in fmts:
+            build(t, fmt)
 
 
 if __name__ == "__main__":

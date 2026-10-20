@@ -21,6 +21,11 @@
 #   --no-addresses    skip addresses.sqlite (offline address search; optional for the app)
 #   --with-styles     put styles/onpath*.json into the zip (they then override the APK's bundled styles!)
 #   --sprite          regenerate the POI sprite in the repo (app/src/main/assets/sprites; needs cairosvg)
+#   --format 1|2      map package format (env FORMAT, default 1). 1 = overlays as GeoJSON files (what the app
+#                     ships today); 2 = overlays as ONE overlays.pmtiles (tippecanoe + tile-join needed, env
+#                     TIPPECANOE / TILE_JOIN), smoothed paths, base map without unused layers / languages and
+#                     without path / track lines at z13-14 (docs/design/map-data-size.md, docs/map-pipeline.md)
+#   --no-smooth       format 2 without path smoothing (extract_overlays.py --smooth is the format-2 default)
 #   --force           rebuild every step even if its output is up to date
 #   -h, --help        this text
 #
@@ -46,6 +51,7 @@ REPO=$(cd "$TOOLS/.." && pwd)
 
 # ---------------------------------------------------------------------------------------------- args
 SKIP_DOWNLOAD=0; NO_SEGMENTS=0; NO_CONTOURS=0; NO_POIS=0; NO_ADDRESSES=0; WITH_STYLES=0; SPRITE=0; FORCE=0
+FORMAT=${FORMAT:-1}; SMOOTH=1
 POS=()
 usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; }
 while [ $# -gt 0 ]; do
@@ -63,6 +69,8 @@ while [ $# -gt 0 ]; do
     --with-styles) WITH_STYLES=1 ;;
     --sprite) SPRITE=1 ;;
     --force) FORCE=1 ;;
+    --format) FORMAT=$2; shift ;;
+    --no-smooth) SMOOTH=0 ;;
     -h|--help) usage; exit 0 ;;
     -*) echo "unknown option $1 (see --help)" >&2; exit 2 ;;
     *) POS+=("$1") ;;
@@ -85,6 +93,7 @@ for v in "$MINLON" "$MINLAT" "$MAXLON" "$MAXLAT"; do
   [[ "$v" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || { echo "bad BBOX '$BBOX' (want minlon,minlat,maxlon,maxlat)" >&2; exit 2; }
 done
 BBOX_ARGS=("$MINLON" "$MINLAT" "$MAXLON" "$MAXLAT")
+[[ "$FORMAT" =~ ^[12]$ ]] || { echo "--format must be 1 or 2" >&2; exit 2; }
 
 OUT=$(mkdir -p "${OUT:-./out/$REGION}" && cd "${OUT:-./out/$REGION}" && pwd)
 WORK=$(mkdir -p "${WORK:-./work}" && cd "${WORK:-./work}" && pwd)
@@ -110,9 +119,12 @@ trap 'rc=$?; [ $rc -ne 0 ] && log "FAILED in step: ${STEP_NAME:-setup} (logs: $L
 
 # up_to_date OUTPUT DEP... : output exists, is not empty, is newer than every dep, bbox unchanged
 STAMP="$DATA/.bbox"
+# the stamp holds the bbox (format 1, as before) or "bbox format2[ nosmooth]": a format switch rebuilds everything
+STAMP_VAL=$BBOX
+[ "$FORMAT" = 2 ] && STAMP_VAL="$BBOX format2$([ "$SMOOTH" = 0 ] && echo " nosmooth" || true)"
 BBOX_CHANGED=0
-if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" != "$BBOX" ]; then
-  log "bbox changed ($(cat "$STAMP") -> $BBOX): rebuilding everything"; BBOX_CHANGED=1
+if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" != "$STAMP_VAL" ]; then
+  log "bbox / format changed ($(cat "$STAMP") -> $STAMP_VAL): rebuilding everything"; BBOX_CHANGED=1
 fi
 up_to_date() {
   local out=$1; shift
@@ -161,6 +173,11 @@ JV=$(java -version 2>&1 | awk -F'"' '/version/{print $2; exit}')
 command -v curl >/dev/null || die "curl missing"
 command -v sha256sum >/dev/null || die "sha256sum missing"
 PYMODS="osmium shapely pmtiles numpy PIL"
+TIPPECANOE=${TIPPECANOE:-tippecanoe}; TILE_JOIN=${TILE_JOIN:-tile-join}; export TIPPECANOE TILE_JOIN
+if [ "$FORMAT" = 2 ]; then
+  command -v "$TIPPECANOE" >/dev/null && command -v "$TILE_JOIN" >/dev/null \
+    || die "format 2 needs tippecanoe + tile-join >= 2.17 (build from github.com/felt/tippecanoe, needs libsqlite3-dev; or set TIPPECANOE / TILE_JOIN)"
+fi
 [ "$NO_CONTOURS" = 0 ] && PYMODS="$PYMODS contourpy mapbox_vector_tile"
 [ "$SPRITE" = 1 ] && PYMODS="$PYMODS cairosvg"
 python3 -c "import ${PYMODS// /,}" 2>/dev/null \
@@ -201,7 +218,11 @@ PT_VER=$(unzip -p "$PLANETILER_JAR" META-INF/maven/com.onthegomap.planetiler/pla
 done_step "$PLANETILER_JAR (version ${PT_VER:-unknown})"
 
 # --------------------------------------------------------------------------- 3. base map (Planetiler)
-step "base.pmtiles (Planetiler, OpenMapTiles schema, z0-14)"
+step "base.pmtiles (Planetiler, OpenMapTiles schema, z0-14$([ "$FORMAT" = 2 ] && echo ", format 2 trims"))"
+# format 2 (map-data-size.md §3): no layers / languages the app never reads, and (trim_base.sh) no path / track
+# lines at z13-14 – the overlay's "paths" draws them there
+PT_TRIM=()
+[ "$FORMAT" = 2 ] && PT_TRIM=(--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de)
 if up_to_date "$DATA/base.pmtiles" "$OSM" "$PLANETILER_JAR"; then
   log "    up to date"
 else
@@ -213,8 +234,13 @@ else
   ( cd "$WORK/tmp" && java -Xmx"$JAVA_XMX" -jar "$PLANETILER_JAR" \
       --osm-path="$OSM" --output="$WORK/tmp/base.pmtiles" "${DL[@]}" \
       --download_dir="$PLANETILER_SOURCES" --tmpdir="$WORK/tmp/planetiler" \
-      --bounds="$BBOX" --maxzoom=14 --force ) > "$LOGS/planetiler.log" 2>&1 \
+      --bounds="$BBOX" --maxzoom=14 --force "${PT_TRIM[@]}" ) > "$LOGS/planetiler.log" 2>&1 \
     || { tail -20 "$LOGS/planetiler.log" >&2; die "Planetiler failed (see $LOGS/planetiler.log)"; }
+  if [ "$FORMAT" = 2 ]; then
+    "$TOOLS/trim_base.sh" "$WORK/tmp/base.pmtiles" "$WORK/tmp/base-trim.pmtiles" > "$LOGS/trim_base.log" 2>&1 \
+      || { tail -5 "$LOGS/trim_base.log" >&2; die "trim_base.sh failed"; }
+    mv -f "$WORK/tmp/base-trim.pmtiles" "$WORK/tmp/base.pmtiles"
+  fi
   mv -f "$WORK/tmp/base.pmtiles" "$DATA/base.pmtiles"
   rm -rf "$WORK/tmp/planetiler"
 fi
@@ -232,6 +258,24 @@ fi
 done_step "$(size "$DATA/terrain.pmtiles")"
 
 # ---------------------------------------------------- 5. overlays: routes, trails, trail names
+if [ "$FORMAT" = 2 ]; then
+step "overlays.pmtiles (paths, trails, ways, routes, trailnames as vector tiles$([ "$SMOOTH" = 1 ] && echo ", smoothed"))"
+if up_to_date "$DATA/overlays.pmtiles" "$OSM" "$TOOLS/extract_overlays.py" "$TOOLS/build_overlays.sh"; then
+  log "    up to date"
+else
+  rm -rf "$WORK/tmp/overlays"; mkdir -p "$WORK/tmp/overlays/tiles"
+  python3 "$TOOLS/extract_overlays.py" "$OSM" "$WORK/tmp/overlays" "${BBOX_ARGS[@]}" --no-geojson \
+    --tiles "$WORK/tmp/overlays/tiles" $([ "$SMOOTH" = 1 ] && echo --smooth) 2>&1 \
+    | tee "$LOGS/overlays.log" | sed 's/^/    /'
+  "$TOOLS/build_overlays.sh" "$WORK/tmp/overlays/tiles" "$WORK/tmp/overlays.pmtiles" >> "$LOGS/overlays.log" 2>&1 \
+    || { tail -5 "$LOGS/overlays.log" >&2; die "build_overlays.sh failed"; }
+  mv -f "$WORK/tmp/overlays.pmtiles" "$DATA/overlays.pmtiles"
+  rm -rf "$WORK/tmp/overlays"
+fi
+# a format-2 package carries no format-1 overlay files (the app would ignore them anyway)
+rm -f "$DATA"/{routes,trails,ways,lowways,paths,trailnames}.geojson
+done_step "$(size "$DATA/overlays.pmtiles")"
+else
 step "overlays (routes, trails, ways, lowways, trailnames, paths .geojson)"
 if up_to_date "$DATA/routes.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
    && up_to_date "$DATA/trails.geojson" "$OSM" "$TOOLS/extract_overlays.py" \
@@ -247,6 +291,8 @@ fi
 done_step "routes $(size "$DATA/routes.geojson"), trails $(size "$DATA/trails.geojson")$( \
   [ -s "$DATA/ways.geojson" ] && echo ", ways $(size "$DATA/ways.geojson")")$( \
   [ -s "$DATA/trailnames.geojson" ] && echo ", trailnames $(size "$DATA/trailnames.geojson")")"
+rm -f "$DATA/overlays.pmtiles"  # back to format 1: the app would otherwise pick format 2
+fi
 
 # ----------------------------------------------------------------------------------------- 6. POIs
 step "pois.geojson"
@@ -315,7 +361,9 @@ rm -rf "$SB"; mkdir -p "$SB/tools"
 cp "$TOOLS"/make_style.py "$TOOLS"/style_*.py "$SB/tools/"; cp -r "$TOOLS/themes" "$SB/tools/"
 python3 "$SB/tools/make_style.py" --all | sed "s#$SB/tools/../##; s/^/    /"
 rm -rf "$OUT/styles"; mkdir -p "$OUT/styles"
-cp "$SB"/app/src/main/assets/style/onpath*.json "$OUT/styles/"
+# the styles for this package's format (format 2: style/f2/, metadata onpath:format 2 – the app skips an override of the other format)
+STYLE_SUB=$([ "$FORMAT" = 2 ] && echo /f2 || true)
+cp "$SB"/app/src/main/assets/style$STYLE_SUB/onpath*.json "$OUT/styles/"
 rm -rf "$DATA/styles"
 if [ "$WITH_STYLES" = 1 ]; then
   cp -r "$OUT/styles" "$DATA/styles"
@@ -350,14 +398,15 @@ fi
 
 # ------------------------------------------------------------------------------- 10. zip + manifest
 step "package onpath-data-$REGION.zip + manifest.json"
-echo "$BBOX" > "$STAMP"
+echo "$STAMP_VAL" > "$STAMP"
 ZIP="$OUT/onpath-data-$REGION.zip"
 GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 python3 - "$OUT" "$DATA" "$ZIP" "$REGION" "$BBOX" "${OSM_URL:-}" "$OSM" "$OSM_DATE" "${PT_VER:-unknown}" \
-  "$GIT_REV" "$TERRAIN_MAXZOOM" <<'PY'
+  "$GIT_REV" "$TERRAIN_MAXZOOM" "$FORMAT" <<'PY'
 import hashlib, json, os, sys, time, zipfile
-out, data, zpath, region, bbox, osm_url, osm, osm_date, pt_ver, git_rev, tz = sys.argv[1:]
+out, data, zpath, region, bbox, osm_url, osm, osm_date, pt_ver, git_rev, tz, fmt = sys.argv[1:]
+fmt = int(fmt)
 def sha(p):
     h = hashlib.sha256()
     with open(p, "rb") as f:
@@ -375,7 +424,7 @@ files.sort(key=lambda r: (r.count("/"), r))
 # package.json goes onto the phone with the data: the app compares each file's size with it and says which files
 # come from another package (mixed imports leave gaps at the old package's edge)
 built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-pkg = {"format": 1, "region": region, "bbox": [float(v) for v in bbox.split(",")], "built": built,
+pkg = {"format": fmt, "region": region, "bbox": [float(v) for v in bbox.split(",")], "built": built,
        "osm_date": osm_date,
        "files": {r: os.path.getsize(os.path.join(data, r)) for r in files if not r.startswith("segments/")}}
 with open(os.path.join(data, "package.json"), "w") as f:
@@ -388,9 +437,9 @@ with zipfile.ZipFile(tmp, "w", allowZip64=True) as z:
         comp = zipfile.ZIP_STORED if rel.endswith((".pmtiles", ".rd5")) else zipfile.ZIP_DEFLATED
         z.write(os.path.join(data, rel), "onpath-data/" + rel, compress_type=comp, compresslevel=6)
 os.replace(tmp, zpath)
-req = {"base.pmtiles", "terrain.pmtiles", "routes.geojson", "trails.geojson"}
+req = {"base.pmtiles", "terrain.pmtiles"} | ({"overlays.pmtiles"} if fmt == 2 else {"routes.geojson", "trails.geojson"})
 manifest = {
-    "format": 1,
+    "format": fmt,
     "region": region,
     "bbox": [float(v) for v in bbox.split(",")],
     "built": built,
