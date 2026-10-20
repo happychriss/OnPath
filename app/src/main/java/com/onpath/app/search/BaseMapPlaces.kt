@@ -24,20 +24,48 @@ object BaseMapPlaces {
         "isolated_dwelling", "locality")
 
     fun read(file: File): List<Item> {
-        if (!file.isFile) return emptyList()
+        val out = ArrayList<Item>()
+        forEachMaxZoomTile(file) { tile, z, x, y ->
+            try { decodeTile(tile, z, x, y, out) } catch (ex: Exception) {
+                Problems.warn("search", "Base map tile not decodable; its places are missing from search", ex)
+            }
+        }
+        return dedupe(out)
+    }
+
+    /** One trail-name piece from overlays.pmtiles (layer "trailnames", t = "n"): name, a point on it, whole length. */
+    data class TrailName(val name: String, val lat: Double, val lon: Double, val len: Double)
+
+    /**
+     * Trail names from a format-2 overlays.pmtiles (map package without trailnames.geojson): every t = "n" line piece
+     * of the highest zoom, placed at its middle vertex (pieces whose middle lies in the tile buffer belong to the
+     * neighbour tile). The caller merges pieces of one name. Never throws for a broken tile (logged, skipped).
+     */
+    fun readTrailNames(file: File): List<TrailName> {
+        val out = ArrayList<TrailName>()
+        forEachMaxZoomTile(file) { tile, z, x, y ->
+            try { decodeTrailNames(tile, z, x, y, out) } catch (ex: Exception) {
+                Problems.warn("search", "Overlay tile not decodable; its trail names are missing from search", ex)
+            }
+        }
+        return out
+    }
+
+    /** Calls [onTile] with every tile of the file's highest zoom (decompressed MVT bytes, z, x, y). MVT files only. */
+    private fun forEachMaxZoomTile(file: File, onTile: (ByteArray, Int, Int, Int) -> Unit) {
+        if (!file.isFile) return
         RandomAccessFile(file, "r").use { raf ->
             val h = ByteArray(127)
             raf.readFully(h)
-            if (String(h, 0, 7, Charsets.US_ASCII) != "PMTiles" || h[7].toInt() != 3) return emptyList()
+            if (String(h, 0, 7, Charsets.US_ASCII) != "PMTiles" || h[7].toInt() != 3) return
             fun u64(o: Int): Long { var v = 0L; for (i in 7 downTo 0) v = (v shl 8) or (h[o + i].toLong() and 0xff); return v }
             val rootOff = u64(8); val rootLen = u64(16)
             val leafOff = u64(40); val dataOff = u64(56)
             val internalComp = h[97].toInt(); val tileComp = h[98].toInt(); val tileType = h[99].toInt()
             val maxZoom = h[101].toInt()
-            if (tileType != 1) return emptyList() // not MVT
+            if (tileType != 1) return // not MVT
             val z = maxZoom
             val zStart = zoomStart(z); val zEnd = zoomStart(z + 1)
-            val out = ArrayList<Item>()
             fun readBytes(off: Long, len: Long): ByteArray { val b = ByteArray(len.toInt()); raf.seek(off); raf.readFully(b); return b }
             fun walk(off: Long, len: Long, depth: Int) {
                 if (depth > 4) return
@@ -46,20 +74,85 @@ object BaseMapPlaces {
                     if (e.runLength == 0L) { walk(leafOff + e.offset, e.length, depth + 1); continue }
                     if (e.tileId + e.runLength <= zStart || e.tileId >= zEnd) continue
                     val tile = try { decompress(readBytes(dataOff + e.offset, e.length), tileComp) } catch (ex: Exception) {
-                        Problems.warn("search", "Base map tile unreadable; its places are missing from search", ex); continue
+                        Problems.warn("search", "Map tile (${file.name}) unreadable; its names are missing from search", ex); continue
                     }
                     for (id in e.tileId until e.tileId + e.runLength) {
                         if (id < zStart || id >= zEnd) continue
                         val (tz, tx, ty) = tileIdToZxy(id)
-                        try { decodeTile(tile, tz, tx, ty, out) } catch (ex: Exception) {
-                            Problems.warn("search", "Base map tile not decodable; its places are missing from search", ex)
-                        }
+                        onTile(tile, tz, tx, ty)
                     }
                 }
             }
             walk(rootOff, rootLen, 0)
-            return dedupe(out)
         }
+    }
+
+    /** Trail-name lines (layer "trailnames", t = "n") of one tile → [out]. */
+    fun decodeTrailNames(b: ByteArray, z: Int, x: Int, y: Int, out: MutableList<TrailName>) {
+        val r = Proto(b, 0, b.size)
+        while (r.more()) {
+            val (field, wire) = r.key()
+            if (field != 3 || wire != 2) { r.skip(wire); continue }
+            val (start, end) = r.slice()
+            var name: String? = null
+            val keys = ArrayList<String>(); val values = ArrayList<Any?>()
+            val feats = ArrayList<Long>()
+            var extent = 4096
+            val lr = Proto(b, start, end)
+            while (lr.more()) {
+                val (f, w) = lr.key()
+                when {
+                    f == 1 && w == 2 -> name = lr.string()
+                    f == 2 && w == 2 -> { val (s, e) = lr.slice(); feats += (s.toLong() shl 32) or e.toLong() }
+                    f == 3 && w == 2 -> keys += lr.string()
+                    f == 4 && w == 2 -> { val (s, e) = lr.slice(); values += decodeValue(b, s, e) }
+                    f == 5 && w == 0 -> extent = lr.varint().toInt()
+                    else -> lr.skip(w)
+                }
+            }
+            if (name != "trailnames") continue
+            for (fe in feats) {
+                val fr = Proto(b, (fe ushr 32).toInt(), (fe and 0xffffffffL).toInt())
+                var type = 0; var tags: IntArray? = null; var geom: IntArray? = null
+                while (fr.more()) {
+                    val (f, w) = fr.key()
+                    when {
+                        f == 2 && w == 2 -> tags = fr.packed()
+                        f == 3 && w == 0 -> type = fr.varint().toInt()
+                        f == 4 && w == 2 -> geom = fr.packed()
+                        else -> fr.skip(w)
+                    }
+                }
+                if (type != 2 || geom == null) continue
+                val props = HashMap<String, Any?>()
+                tags?.let { t -> var i = 0; while (i + 1 < t.size) { keys.getOrNull(t[i])?.let { k -> props[k] = values.getOrNull(t[i + 1]) }; i += 2 } }
+                if (props["t"] != "n") continue
+                val label = (props["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: continue
+                val pts = lineVertices(geom)
+                if (pts.isEmpty()) continue
+                val (px, py) = pts[pts.size / 2]
+                if (px < 0 || py < 0 || px >= extent || py >= extent) continue // middle in the buffer: neighbour's piece
+                val len = (props["len"] as? Number)?.toDouble() ?: 0.0
+                out += TrailName(label, latOf(y + py.toDouble() / extent, z), lonOf(x + px.toDouble() / extent, z), len)
+            }
+        }
+    }
+
+    /** Vertices (tile coordinates) of the first part of an MVT line geometry. */
+    fun lineVertices(geom: IntArray): List<Pair<Int, Int>> {
+        val pts = ArrayList<Pair<Int, Int>>()
+        var i = 0; var cx = 0; var cy = 0
+        while (i < geom.size) {
+            val cmd = geom[i] and 7; val count = geom[i] ushr 3; i++
+            if (cmd == 1 && pts.isNotEmpty()) break // second part: one is enough for a search point
+            if (cmd != 1 && cmd != 2) break
+            repeat(count) {
+                if (i + 1 >= geom.size) return pts // truncated geometry
+                cx += zigzag(geom[i]); cy += zigzag(geom[i + 1]); i += 2
+                pts += cx to cy
+            }
+        }
+        return pts
     }
 
     /** Same name within 300 m (tile buffers, bilingual duplicates): keep one. */

@@ -27,7 +27,8 @@ data class SearchHit(val place: Place, val score: Double, val tier: Int, val dis
 
 /**
  * In-memory offline search index over the region package: POIs (pois.geojson), peaks/passes and
- * place names (base.pmtiles, cached), trail names (trailnames.geojson, t = "n"). Missing files just
+ * place names (base.pmtiles, cached), trail names (trailnames.geojson, t = "n"; in a format-2 package without it:
+ * layer "trailnames" of overlays.pmtiles). Missing files just
  * mean fewer results. ~20 000 entries; a query scans them all in well under 100 ms.
  */
 class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
@@ -46,10 +47,11 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
         const val POIS = "pois.geojson"
         const val TRAILS = "trailnames.geojson"
         const val BASE = "base.pmtiles"
+        const val OVERLAYS = com.onpath.app.data.DataFiles.OVERLAYS
         private const val CACHE = "search-places-v1.tsv"
 
         /** Changes when any of the source files changes (size + modification time). */
-        fun signature(dataDir: File): String = listOf(POIS, TRAILS, BASE).joinToString(";") { n ->
+        fun signature(dataDir: File): String = listOf(POIS, TRAILS, BASE, OVERLAYS).joinToString(";") { n ->
             val f = File(dataDir, n); if (f.isFile) "$n:${f.length()}:${f.lastModified()}" else "$n:-"
         }
 
@@ -58,7 +60,10 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             val sig = signature(dataDir)
             val places = ArrayList<Place>()
             safe("pois") { places += readPois(File(dataDir, POIS)) }
-            safe("trails") { places += readTrails(File(dataDir, TRAILS)) }
+            safe("trails") {
+                val geojson = File(dataDir, TRAILS)
+                places += if (geojson.isFile) readTrails(geojson) else readTrailsFromTiles(File(dataDir, OVERLAYS))
+            }
             safe("base") { places += baseMapPlaces(File(dataDir, BASE), cacheDir).map { it.toPlace() } }
             return OfflineIndex(places.map { Entry(it) }, sig)
         }
@@ -121,11 +126,18 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             return out
         }
 
+        /** Trail names from a format-2 overlays.pmtiles (layer "trailnames"), merged like [readTrails]. */
+        fun readTrailsFromTiles(f: File): List<Place> {
+            if (!f.isFile) return emptyList()
+            return mergeTrailParts(BaseMapPlaces.readTrailNames(f).map { TrailPart(it.name, it.lat, it.lon, it.len) })
+        }
+
+        class TrailPart(val name: String, val lat: Double, val lon: Double, val len: Double)
+
         /** Trail names (t = "n"): one entry per name and area (parts within 2 km merge), placed mid-trail. */
         fun readTrails(f: File): List<Place> {
             if (!f.isFile) return emptyList()
-            class Part(val name: String, val lat: Double, val lon: Double, val len: Double)
-            val parts = ArrayList<Part>()
+            val parts = ArrayList<TrailPart>()
             readFeatures(f) { type, coords, props ->
                 if (type != "LineString" || props["t"] != "n") return@readFeatures
                 val name = (props["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: return@readFeatures
@@ -133,9 +145,14 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                     ?.filter { it.first != null && it.second != null } ?: return@readFeatures
                 if (pts.isEmpty()) return@readFeatures
                 val mid = pts[pts.size / 2]
-                parts += Part(name, mid.first!!, mid.second!!, (props["len"] as? Double) ?: 0.0)
+                parts += TrailPart(name, mid.first!!, mid.second!!, (props["len"] as? Double) ?: 0.0)
             }
-            val kept = HashMap<String, MutableList<Part>>()
+            return mergeTrailParts(parts)
+        }
+
+        /** Longest piece first; a piece within 2 km of a kept piece of the same name is dropped. Pure, unit-tested. */
+        fun mergeTrailParts(parts: List<TrailPart>): List<Place> {
+            val kept = HashMap<String, MutableList<TrailPart>>()
             val out = ArrayList<Place>()
             for (p in parts.sortedByDescending { it.len }) {
                 val list = kept.getOrPut(SearchText.normalize(p.name)) { ArrayList() }
