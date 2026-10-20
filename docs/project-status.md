@@ -4,6 +4,34 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-20 – HANDOFF to the laptop (end of the hike day, releases 0.7.2 → 0.7.26):**
+  - **Read first:** `docs/owner-list-2026-10-20.md` (every release of the day with what to field-test, owner rules,
+    open items, questions for the owner) and `docs/requirements-review-2026-10-20.md` (review of all owner
+    requirements of 19.–20.10. against the code).
+  - **Most important lesson (now in CLAUDE.md):** MapLibre 13.7.1 ends location tracking on *every* camera move made
+    by the app (moveCamera / easeCamera / animateCamera) and reports it like a user gesture. 0.7.15 turned the camera
+    itself every frame → "walking direction up" switched itself off, jerky turning, route points not holdable.
+    Reverted in 0.7.21. Rule: while MapLibre tracks, never move the camera from code; heading-up = TRACKING_COMPASS
+    fed by `HeadingEngine` (map direction); the "where I face" arrow (0.7.23) is a Compose overlay
+    (`ui/FacingArrow.kt`, `MapController.Facing`) at the camera target, not a camera or layer change.
+  - **Done today (all released):** route-up (route 40 m ahead, never upside down, kept while standing), bigger
+    Navigate buttons, smooth heading at display rate, view vs map direction (`HeadingEngine` two channels,
+    `mapToCompass`), free look (back after 25 m), one compass setting for Plan + Navigate, recording safety (no Stop in
+    the notification, running tour not deletable, update asks, `TourInterruptedReceiver`, "Allow all the time" offered
+    once), pause = slow GPS + `PauseWatch` reminder, off-route vibration as alarm + setting, pocket-aware keep-screen-on
+    (`ui/PocketScreen.kt`), no network provider in the service, Wi-Fi position indoors when GPS is silent (≤ 150 m),
+    bike profiles respect oneways (×100, `tools/routing/jvm-test/OnewayTest.kt`), green ways by activity
+    (`make_style.py green_ways`) + pedestrian zones back, Google Maps share (address split + address first, page
+    cross-check, fast path, "Finding…" pill), re-route = fresh route via the remaining stops (`Rerouter.fresh`),
+    polish quick wins (A1–A3, A6, A7, B1). Audits: `docs/design/battery-audit.md`, `docs/design/polish-audit.md`.
+  - **Not field-tested yet:** 0.7.23 arrow, 0.7.26 fresh re-route, pocket screen-off, restart-continue, pause reminder.
+  - **Open for the owner / laptop:** questions list in the owner list (Plan turning by itself with heading-up?, values
+    150 m / 25 m / 40 m, "End tour…" in the notification?, background location for Play, Samsung battery hint, path
+    smoothing examples); bike map on the map (oneway arrows, cycle lanes – pipeline); battery batch 2; polish audit
+    rest (A4, A5, A8–A18, B2–B6); map package on `downloads` out of date; routing JVM test "unreachable T1 Ifinger"
+    fails since the 0.6.8 profiles (check expectation); map loading (cells) not released until the laptop says so.
+  - The cloud did not touch the laptop's cells / map-loading work; map style changes today: only `green_ways` +
+    `pedestrian-line` (base map, no new package).
 - **cloud, 2026-10-20 (0.7.3–0.7.7, owner on a hike):** battery batch 1 (0.7.3, `docs/design/battery-audit.md`);
   off-route vibration as alarm usage + setting (0.7.4); pause keeps GPS at 10 s + `PauseWatch` reminder after 150 m
   (0.7.5); free look in Navigate, back after 25 m (0.7.6); **recording safety (0.7.7, owner: "ending a recording must

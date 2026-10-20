@@ -64,14 +64,10 @@ Also answered: off-route warning = vibration + notification with sound (since 0.
 
 ## Questions for tonight
 - **Plan turning by itself?** Since 0.7.19 one compass setting: with "walking direction up", the locate button in Plan makes the map turn with you. Wanted, or Plan always north/hand-turned (as decided 2026-10-19)? (review 2.1)
-- **Foot & bike network in towns (Komoot comparison, Meran):** Komoot's green lines are footways / pedestrian zones /
-  cycleways (Meran centre: footways 20 km, pedestrian 4.2 km, cycleways 5.2 km, sidewalks + crossings 4.1 km left out
-  on purpose). **Bug:** pedestrian zones (Passerpromenade …) are not drawn since 0.7.0 – `paths.geojson` has no
-  `highway=pedestrian` and the base map's path layer is fallback-only. Fix: style (base-map pedestrian always, no new
-  package) now, pipeline later. Styling of footways / cycleways in towns: green clashes with our route green –
-  proposals (pedestrian as light warm lane, stronger footways, cycleway blue distinct from water) + renders. Go?
-- **Bike map (Komoot comparison, Meran):** oneway arrows (+ "bikes both ways"), green cycleways, cycle lanes beside
-  streets – see backlog "Bike map". Which of the three, and lanes always or only for bike activities? Laptop or cloud?
+- **Foot & bike network in towns:** done in 0.7.17 (green ways by activity from the base map, pedestrian zones back).
+  Still open: cycle lanes beside streets (`cycleway:*`, needs the pipeline) and oneway arrows on the map.
+- **Bike map:** oneway **routing** done (0.7.16); on the **map** still open: oneway arrows (+ "bikes both ways") and
+  cycle lanes beside streets (only for bike activities?) – see backlog "Bike map". Laptop or cloud?
 - Pause reminder after **150 m**, free look back after **25 m**, route look-ahead **40 m** – right values after the test?
 - Notification without "Stop & save": OK, or an "End tour…" button that opens the app with the question?
 - Background location ("Allow all the time"): fine for sideloading; **Google Play** will need a declaration + video

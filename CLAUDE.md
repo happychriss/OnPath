@@ -96,6 +96,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - **Robustness rules** (requirements section 4): never crash on missing files – show a clear screen;
   write every recorded point to SQLite immediately; long work off the main thread; show plain-language
   errors (no stack traces) to the user.
+- **Map camera** (lesson of 2026-10-20): MapLibre ends location tracking on every camera move made by the app
+  (`moveCamera` / `easeCamera` / `animateCamera`) and reports it like a gesture. While tracking, never move the camera
+  from code – turn it via the `CompassEngine` (`HeadingEngine`, TRACKING_COMPASS) and draw extras (the "where I face"
+  arrow) as overlays. Before an intended camera fly (search result, fit a route) stop following first.
 - **Routing**: always via the `RoutingEngine` interface; blocking calls on a background thread;
   newer requests supersede older ones in the UI.
 - **Map style**: one style since 0.7.0 (`tools/themes/classic.json`; why each colour: `docs/design/map-colour-analysis.md`).
