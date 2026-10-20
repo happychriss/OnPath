@@ -285,7 +285,7 @@ class ShortLinkResolver(
     private val maxHops: Int = 5,
 ) {
     /** The coordinate (and name / q text found on the way) or null when nothing could be read. */
-    data class Result(val place: SharedPlace?, val reason: String?)
+    data class Result(val place: SharedPlace?, val reason: String?, val fromPage: Boolean = false)
 
     fun resolve(link: String): Result {
         var url = link
@@ -303,7 +303,7 @@ class ShortLinkResolver(
                 }
                 if (hop.code == 200) {
                     val c = hop.body?.let { SharedPlaceParser.coordsInHtml(it) }
-                    if (c != null) return Result((lastInfo ?: SharedPlace()).copy(lat = c.first, lon = c.second, link = null), null)
+                    if (c != null) return Result((lastInfo ?: SharedPlace()).copy(lat = c.first, lon = c.second, link = null), null, fromPage = true)
                 }
                 return Result(lastInfo, "no coordinate in the link (HTTP ${hop.code})")
             }
