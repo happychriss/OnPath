@@ -281,7 +281,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * e.g. turn the map to match a mountain range – and once you walk on ([FREE_LOOK_BACK_M]) the map comes back to
      * your position and the chosen orientation by itself. Compass / locate bring it back at once, as before.
      */
+    /** Last finger-down on the map (MapHost); a "gesture" without a recent touch is not one. */
+    var lastMapTouchMs = 0L
+
+    /**
+     * Finger down on the map. Plan with walking direction up: stop turning / following at once, so a route point stays
+     * exactly under the finger (field test 2026-10-20: points could no longer be held to delete them while the map
+     * kept turning).
+     */
+    fun onMapTouch() {
+        lastMapTouchMs = android.os.SystemClock.uptimeMillis()
+        if (mode == AppMode.PLAN && followMe && headingUp) followMe = false
+    }
+
     fun onMapGesture() {
+        // Field test 2026-10-20: "walking direction up" switched itself off a few seconds after the compass tap, with
+        // nobody touching the map. Only a stop within 1.5 s of a real touch counts; anything else is noted and ignored.
+        if (android.os.SystemClock.uptimeMillis() - lastMapTouchMs > 1_500) {
+            Problems.info("map", "Following stop without a touch on the map ignored")
+            if (followMe) recentreTick++
+            return
+        }
         followMe = false
         val loc = tracker.location.value
         freeLookAt = if (mode == AppMode.NAVIGATE && loc != null) GeoPoint(loc.latitude, loc.longitude) else null
