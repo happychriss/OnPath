@@ -217,7 +217,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 14,
+   "minzoom": 16,
    "filter": [
     "==",
     [
@@ -235,7 +235,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 14,
+   "minzoom": 16,
    "filter": [
     "all",
     [
@@ -264,7 +264,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 14,
+   "minzoom": 16,
    "filter": [
     "all",
     [
@@ -293,7 +293,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 14,
+   "minzoom": 16,
    "filter": [
     "==",
     [
@@ -311,7 +311,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 14,
+   "minzoom": 16,
    "filter": [
     "==",
     [
@@ -2791,8 +2791,8 @@
     ]
    ],
    "layout": {
-    "line-cap": "round",
-    "line-join": "round"
+    "line-cap": "butt",
+    "line-join": "miter"
    },
    "paint": {
     "line-color": "#6b4a2b",
@@ -2829,8 +2829,8 @@
      7
     ],
     "line-dasharray": [
-     0.1,
-     1.0
+     0.6,
+     0.5
     ]
    }
   },
@@ -2888,8 +2888,8 @@
     ]
    ],
    "layout": {
-    "line-cap": "round",
-    "line-join": "round"
+    "line-cap": "butt",
+    "line-join": "miter"
    },
    "paint": {
     "line-color": "#6b4a2b",
@@ -2926,8 +2926,8 @@
      7
     ],
     "line-dasharray": [
-     0.1,
-     1.7
+     0.8,
+     1.0
     ]
    }
   },
@@ -2970,8 +2970,8 @@
     ]
    ],
    "layout": {
-    "line-cap": "round",
-    "line-join": "round"
+    "line-cap": "butt",
+    "line-join": "miter"
    },
    "paint": {
     "line-color": "#6b4a2b",
@@ -3008,8 +3008,8 @@
      7
     ],
     "line-dasharray": [
-     0.1,
-     2.6
+     0.8,
+     1.9
     ]
    }
   },
@@ -3052,8 +3052,8 @@
     ]
    ],
    "layout": {
-    "line-cap": "round",
-    "line-join": "round"
+    "line-cap": "butt",
+    "line-join": "miter"
    },
    "paint": {
     "line-color": "#6b4a2b",
@@ -3090,8 +3090,8 @@
      7
     ],
     "line-dasharray": [
-     0.1,
-     4.0
+     0.8,
+     3.3
     ]
    }
   },
