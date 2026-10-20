@@ -13,7 +13,7 @@
 #   OSM_FILE=/path/x.osm.pbf         use this extract instead of downloading
 #   WORK=./work                      caches: OSM extract, planetiler jar + sources, AWS terrain tiles
 #   PLANETILER_JAR, PLANETILER_SOURCES, PLANETILER_VERSION=0.10.2, JAVA_XMX=8g
-#   BASE_MAXZOOM=8  TERRAIN_MAXZOOM=9  TERRAIN_ROUND=1   (see docs/map-pipeline.md for the measured sizes)
+#   BASE_MAXZOOM=8  TERRAIN_MAXZOOM=9  TERRAIN_ROUND=4   (see docs/map-pipeline.md for the measured sizes)
 set -euo pipefail
 
 TOOLS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -27,7 +27,7 @@ PLANETILER_SOURCES=${PLANETILER_SOURCES:-$WORK/planetiler-sources}
 JAVA_XMX=${JAVA_XMX:-8g}
 BASE_MAXZOOM=${BASE_MAXZOOM:-8}
 TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-9}
-TERRAIN_ROUND=${TERRAIN_ROUND:-1}
+TERRAIN_ROUND=${TERRAIN_ROUND:-4}
 IFS=, read -r MINLON MINLAT MAXLON MAXLAT <<<"$BBOX"
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 mkdir -p "$WORK/osm" "$WORK/tmp" "$PLANETILER_SOURCES"

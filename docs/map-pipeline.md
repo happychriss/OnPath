@@ -285,6 +285,40 @@ after a download compare `sha256sum onpath-data-<region>.zip` with `manifest.jso
 (headless render or a phone); publishing a new APK when sprite/style changes must be bundled; the
 importer does not verify checksums yet (the app could read `manifest.json` later).
 
+## 9b. Overview map (in the APK, optional)
+
+The app can ship a small **overview** for the Alps so a place without downloaded data is never blank at low zoom
+(map-cells.md §7). `tools/build_overview.sh [OUT_DIR]` builds `OUT_DIR/overview/base.pmtiles` (Planetiler,
+`--maxzoom=8 --exclude_layers=housenumber,poi,aeroway,aerodrome_label,building --languages=de`) and
+`OUT_DIR/overview/terrain.pmtiles` (`build_terrain.py --minzoom 5 --maxzoom 9 --webp --round 4`), bbox
+`5.0,43.5,17.0,48.5` (Nice/Genoa – Vienna/Ljubljana, Lyon/Geneva – Munich/Salzburg: the whole Alpine arc plus the
+cities people travel from), source `https://download.geofabrik.de/europe/alps-latest.osm.pbf` (2.3 GB).
+Measured 2026-10-20 on the laptop (16 threads): Planetiler 4 m 40 s, peak RAM 6.6 GB (`JAVA_XMX=8g`).
+
+| Variant | base | terrain | together | APK |
+| --- | --- | --- | --- | --- |
+| **base z0–8 + terrain z5–9, heights 4 m (default)** | 4.5 MB | 9.2 MB | **13.7 MB** | 33.4 → **47.6 MB** |
+| base z0–9 + terrain z5–9, 4 m | 16 MB | 9.2 MB | 25 MB | ≈ 59 MB |
+| terrain z5–9 with 1 m / 2 m / 8 m heights | | 13.9 / 11.8 / 7.2 MB | | |
+
+Heights 4 m vs 1 m at z7/z9: hill shade differs by 0.1–0.2 / 255 (invisible; a z9 pixel is ~200 m). Base z9 would
+add 11.5 MB for one zoom level that the over-zoomed z8 covers well enough (roads, places, water, borders).
+
+App side (`map/Overview.kt`, called by `StyleLoader`): the APK includes the files only when built with
+`-Ponpath.overviewAssets=OUT_DIR` (or env `ONPATH_OVERVIEW_ASSETS`) – map data is not committed; without it the
+style is unchanged. With it, every `base` / `terrain` layer that starts below z10 gets a copy `<id>~overview` on
+source `overview` / `overview-terrain` (`pmtiles://asset://overview/…`) drawn below z10, and the original starts
+at z10. MapLibre cannot draw a layer only where another source has no data, so the split is by zoom: no doubled
+hill shade, lines or labels, the same look, and cells (z ≥ 10 only) fit exactly. Consequences: below z10 the map
+always shows the overview, even where a region package has its own low zooms (same OpenMapTiles data, so this
+looks the same inside the Alps; outside the overview bbox low zooms are empty); above z10 where no data is on the
+phone the map is empty (background colour) – the planned "Overview only – set a point" hint covers that.
+PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource` reads byte ranges with
+`AAsset_seek64`, which would otherwise inflate from the start for every tile.
+
+To build the full overview on zo/Hetzner: `WORK=~/work tools/build_overview.sh ~/overview-assets` (needs Java 21,
+the Python venv, ~10 GB RAM, ~3 GB disk for the extract and Planetiler's sources).
+
 ## 10. Troubleshooting
 
 - *Step skipped although data changed*: run with `--force` (or delete the output file). Outputs are
