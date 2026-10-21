@@ -331,7 +331,9 @@ def route_bands():
     # extract_overlays.py merges route pieces into continuous lines (the transparent band would darken where pieces
     # meet); the original pieces of major routes come again as "majoronly" copies for the pink highlight and labels.
     # The app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
-    for kind, minz in (("hike", 10), ("bike", 9), ("mtb", 9)):
+    # No MTB band since 2026-10-21 (map vs router audit #7): mtb.brf ignores route=mtb relations and rewards cycle
+    # routes, so MTB / MTB e-bike show the cycle route band ("routes-bike").
+    for kind, minz in (("hike", 10), ("bike", 9)):
         vis = "visible" if kind == "hike" else "none"
         flt = ["==", ["get", "kind"], kind]
         band_w = Z("route.band.width", interp(9, 1.2, 12, 2.0, 13, 2.6, 14, 7, 15, 12, 18, 18, base=1))
@@ -493,10 +495,16 @@ def trails():
                   "text-offset": [0, 0.75]},
           paint={"text-color": T("trail.sac.label.color"), "text-halo-color": T("label.halo.color"),
                  "text-halo-width": 1.2})
-    # MTB scale ("S0" … "S5"), same look; only in MTB / MTB e-bike (MapController.setOverlay swaps T- and S-labels).
-    layer(id_="trails-mtb-label", type="symbol", source="trails", minzoom=14, filter=["has", "mtb"],
+    # MTB / MTB e-bike (MapController.setOverlay shows this instead of the T-label): MTB scale ("S0" … "S5") and the
+    # SAC grade in one label ("T3 S2") – mtb.brf uses both; two labels on the same anchors would hide each other.
+    # Every other activity sees the T-label (since 2026-10-21 also the bikes: trekking / touring forbid T3+).
+    t_text = ["concat", "T", ["to-string", sac]]
+    s_text = ["concat", "S", ["get", "mtb"]]
+    layer(id_="trails-mtb-label", type="symbol", source="trails", minzoom=14,
+          filter=["any", ["has", "mtb"], [">=", sac, 1]],
           layout={"symbol-placement": "line", "symbol-spacing": interp(14, 220, 17, 320),
-                  "text-field": ["concat", "S", ["get", "mtb"]], "text-font": T("font.regular"),
+                  "text-field": ["case", ["all", ["has", "mtb"], [">=", sac, 1]], ["concat", t_text, " ", s_text],
+                                 ["has", "mtb"], s_text, t_text], "text-font": T("font.regular"),
                   "text-size": Z("trail.sac.label.size"), "text-max-angle": 30, "text-padding": 2,
                   "text-offset": [0, 0.75], "visibility": "none"},
           paint={"text-color": T("trail.sac.label.color"), "text-halo-color": T("label.halo.color"),
@@ -510,11 +518,13 @@ def green_ways():
     line – no blue ways. Depends on the activity – the app switches them (MapController.setOverlay):
     - "-foot" (hiking, visible by default): footways, pedestrian zones and cycleways (shared use is common here),
       each unless foot=no, plus paths marked foot=designated;
-    - "-bike" (bike profiles, hidden by default): every cycleway, plus footways / pedestrian zones / paths with
-      bicycle=yes|designated (cycle lanes beside streets: bike_map()).
+    - "-bike" (Bike trekking / E-bike, hidden by default): every cycleway, plus footways / pedestrian zones / paths
+      with bicycle=yes|designated (cycle lanes beside streets: bike_map());
+    - "-touring" (Bike touring): the same, but footways / pedestrian zones / paths only with bicycle=designated;
+    - "-mtb" (MTB / MTB e-bike): like "-bike" with MTB's own difficulty limits;
+    - no bike layer is green on bicycle=dismount|use_sidepath or on trails the activity's router profile avoids.
     Pedestrian zones are also drawn as a plain path line (all activities) – they were missing since 0.7.0 because
     paths.geojson has no highway=pedestrian and the base map's path layer is only a fallback."""
-    ok = ["literal", ["yes", "designated"]]
     if FMT == 2:
         # same rules on the overlay's paths (sub = OSM highway; no sub + not a track = highway=path)
         src = own_paths()
@@ -541,11 +551,26 @@ def green_ways():
     foot = ["all", path, may_use("foot"), ["any",
             ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
             ["all", is_path, ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
-    bike = ["all", path, may_use("bicycle"), ["any",
-            ["==", sub, "cycleway"],
-            ["all", ["any", ["in", sub, ["literal", ["footway", "pedestrian"]]], is_path],
-             ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
-    for mode, flt, visible in (("foot", foot, True), ("bike", bike, False)):
+    # Bikes: one layer per BRouter profile family (map vs router audit 2026-10-21, MapController.setOverlay):
+    # "-bike" = Bike trekking / E-bike (trekking.brf), "-touring" = Bike touring (fastbike-verylowtraffic.brf: a path
+    # or footway costs 100 unless bicycle=designated, then 2), "-mtb" = MTB / MTB e-bike (mtb.brf).
+    # Never green on hard trails (format 2: overlay "sac", and "mtb" = mtb:scale from map packages built after
+    # 2026-10-21): trekking / touring forbid T3+ and add +30 on T2 and on mtb:scale 2–3, MTB forbids T4+, adds +15 on
+    # T3 and ~9000 from mtb:scale 4. Format 1 (base map) has no grades – no difficulty rule there.
+    bike_ok = ["all", ["!", ["in", ["coalesce", ["get", "bicycle"], ""], ["literal", ["dismount", "use_sidepath"]]]],
+               may_use("bicycle")]
+
+    def bike_way(values, max_sac, max_mtb):
+        flt = ["all", path, bike_ok, ["any",
+               ["==", sub, "cycleway"],
+               ["all", ["any", ["in", sub, ["literal", ["footway", "pedestrian"]]], is_path],
+                ["in", ["coalesce", ["get", "bicycle"], ""], ["literal", values]]]]]
+        if FMT == 2:
+            flt += [["<=", ["coalesce", ["get", "sac"], 0], max_sac], ["<=", ["coalesce", ["get", "mtb"], 0], max_mtb]]
+        return flt
+    for mode, flt, visible in (("foot", foot, True), ("bike", bike_way(["yes", "designated"], 1, 1), False),
+                               ("touring", bike_way(["designated"], 1, 1), False),
+                               ("mtb", bike_way(["yes", "designated"], 2, 3), False)):
         layer(id_=f"greenway-{mode}", type="line", **src, minzoom=13,
               filter=flt, layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if visible else "none"},
               paint={"line-color": T("greenway.color"), "line-width": Z("greenway.width")})
@@ -557,31 +582,39 @@ def access_restrictions():
     marked trails are "access=no + foot=yes" (closed to vehicles, open to walkers) – so the marking depends on
     the activity: the "-foot" layers (hiking, visible by default) skip ways with foot=yes, the "-bike" layers
     (bike profiles, hidden by default) skip ways with bicycle=yes. The app switches them with the activity
-    (MapController.setOverlay). Only paths, tracks and non-driveway service roads – private driveways would put
-    a sign at every house. Routing (BRouter) already respects these tags."""
+    (MapController.setOverlay). Only paths, tracks, minor streets and non-driveway service roads – private driveways
+    would put a sign at every house; for bikes also steps. Routing (BRouter) already respects these tags."""
     cls = ["get", "class"]
     allowed = ["literal", ["yes", "designated", "permissive"]]
+    # streets: service roads (not driveways / parking aisles – a sign at every house) and, since 2026-10-21 (map vs
+    # router audit #9), minor streets (residential / unclassified / living street): BRouter forbids them for everyone
+    street = ["any", ["==", cls, "minor"],
+              ["all", ["==", cls, "service"],
+               ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]
     base = ["all", ["==", ["get", "access"], "no"],
-            ["any", ["in", cls, ["literal", ["path", "track"]]],
-             ["all", ["==", cls, "service"],
-              ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]]]
+            ["any", ["in", cls, ["literal", ["path", "track"]]], street]]
     # format 2: paths and tracks come from the overlay (ac = access no/private); the service roads from the overlay
     # "streets" (OpenMapTiles attribute names) – own layers "access-no-*-<mode>-service" (switched with the others by
     # MapController.setOverlay)
     own = ["all", ["has", "ac"], ["any", ["==", ["get", "k"], "t"], OWN_PATH_CLASS]]
-    service = ["all", ["==", ["get", "access"], "no"], ["==", cls, "service"],
-               ["!", ["in", ["get", "service"], ["literal", ["driveway", "parking_aisle"]]]]]
+    service = ["all", ["==", ["get", "access"], "no"], street]
     bsrc = {"source": "base", "source-layer": "transportation"}
     parts = [("", own_paths(), own), ("-service", OWN_STREETS, service)] if FMT == 2 else [("", bsrc, base)]
+    # Bikes: steps look blocked too (audit 2026-10-21: MTB forbidden, touring 1000, trekking 40 = carry the bike),
+    # unless bicycle=yes|designated (a ramp) – like any other blocked way
+    steps = ["==", SUB, "steps"] if FMT == 2 else ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "steps"]]
+
+    def blocked_where(mode, where):
+        return ["any", where, steps] if mode == "bike" and where is not service else where
     for mode, tag, visible in (("foot", "foot", True), ("bike", "bicycle", False)):
         for suffix, src, where in parts:
-            blocked = ["all", where, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+            blocked = ["all", blocked_where(mode, where), ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
             vis = {"visibility": "visible" if visible else "none"}
             layer(id_=f"access-no-tint-{mode}{suffix}", type="line", **src, minzoom=14,
                   filter=blocked, layout={"line-join": "round", "line-cap": "round", **vis},
                   paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
         for suffix, src, where in parts:
-            blocked = ["all", where, ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+            blocked = ["all", blocked_where(mode, where), ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
             vis = {"visibility": "visible" if visible else "none"}
             layer(id_=f"access-no-sign-{mode}{suffix}", type="symbol", **src, minzoom=15,
                   filter=blocked,
@@ -647,6 +680,17 @@ def bike_map():
               layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "oneway-arrow",
                       "icon-rotate": ["case", ["==", ["get", "oneway"], -1], 180, 0], "icon-rotation-alignment": "map",
                       "icon-size": interp(15, 0.75, 18, 1.0, base=1), "icon-padding": 2, **hidden})
+    # one-way paths, footways, cycleways, tracks (overlay "ow" = oneway, "owb" = oneway:bicycle; audit #13 / #14):
+    # BRouter makes the reverse ×100 for bikes. oneway:bicycle wins (owb=0: the both-ways symbol below).
+    owb = ["coalesce", ["get", "owb"], 9]
+    way = ["any", ["==", ["get", "k"], "t"], OWN_PATH_CLASS]
+    # a little bigger than on streets: the grey arrow sits on a thin black line, not on a light lane
+    layer(id_="bike-oneway-paths", type="symbol", **own, minzoom=15,
+          filter=["all", way, ["any", ["all", ["has", "ow"], ["!", ["has", "owb"]]], ["in", owb, ["literal", [1, -1]]]]],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "oneway-arrow",
+                  "icon-rotate": ["case", ["has", "owb"], ["case", ["==", owb, -1], 180, 0],
+                                  ["==", ["get", "ow"], -1], 180, 0], "icon-rotation-alignment": "map",
+                  "icon-size": interp(15, 1.0, 18, 1.3, base=1), "icon-padding": 2, **hidden})
     layer(id_="bike-both-ways", type="symbol", **own, minzoom=15,
           filter=["all", ["has", "ow"], ["==", ["coalesce", ["get", "owb"], 1], 0]],
           layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "bike-both-ways",

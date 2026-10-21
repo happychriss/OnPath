@@ -113,7 +113,7 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - **Map style**: one style since 0.7.0 (`tools/themes/classic.json`; why each colour: `docs/design/map-colour-analysis.md`).
   Edit `tools/make_style.py`, regenerate JSON, keep to MapLibre Native features (no JS-only). Ground symbols are
   sprite images (`tools/make_sprite.py`). Layers with metadata `onpath:fallback-for` are drawn only when that source is missing.
-  Layer ids the app depends on: `routes-hike`, `routes-bike`, `routes-mtb`, `poi-*`; the app's own layers
+  Layer ids the app depends on: `routes-hike`, `routes-bike` (MTB shows the cycle band), `poi-*`; the app's own layers
   (`planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`) go on top.
 - **Map labels** in German (`name:de` → `name`); UI strings currently English, hard-coded (to move to
   `strings.xml` with EN + DE).
