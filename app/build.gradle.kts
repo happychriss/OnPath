@@ -36,7 +36,12 @@ android {
         versionName = appVersion
         buildConfigField("String", "UPDATE_REPO", "\"happychriss/OnPath\"")
         // Pixel 8 and all current phones are arm64; keeps the APK small (MapLibre native libs).
-        ndk { abiFilters += listOf("arm64-v8a") }
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+            // Emulator tests (CI, .github/workflows/e2e.yml): x86_64 too, never in a released APK.
+            if (project.findProperty("onpath.e2e") == "true") abiFilters += listOf("x86_64")
+        }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Fixed test signing key (in the repo on purpose): every test build can be installed as an update
@@ -123,4 +128,11 @@ dependencies {
     testImplementation("org.json:json:20240303")
     // SQLite on the JVM for the offline address search tests (Android's SQLite is not available there).
     testImplementation("org.xerial:sqlite-jdbc:3.46.1.3")
+
+    // End-to-end tests of the core features on an emulator (docs/core-features.md, app/src/androidTest)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
