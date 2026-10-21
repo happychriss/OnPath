@@ -8,6 +8,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
+  (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
+  `/v1` API documented as an open spec; two ways to host: (A) all-in-one Docker Compose (doorman + builder + local
+  storage, no cloud account, ~8 GB RAM – the zo variant tidied up), (B) the cloud setup (Cloudflare Worker + R2 +
+  Cloud Run) with gcp-setup.sh; same builder image published on ghcr.io. Pricing stays on the owner's server (free entry
+  + regions / year pass via Play Billing, payment code active only when the server asks for it; self-hosted = free).
+  Notes: name/icon not for forks (README, trademark later); F-Droid build without Play Billing; routing data source
+  configurable too. Effort: app setting + QR ½ day, compose package + image + docs 1–2 days. Not before Play launch.
 - **Next release after the map-loading release (owner 2026-10-21):** (4) tour backup – recorded tours copied automatically to a phone folder that survives uninstall + export all as GPX; (6) vibration cues at junctions during navigation; (7) lock-screen info (time to go, arrival, next junction). Also noted for later: sunset warning, emergency screen (position, 112, SMS), battery check at start, weather along the route, outdoor mode, way back on own track, hut info, tour suggestions, first-start intro.
 - **[laptop] HANDOVER 2026-10-21: `docs/handover-2026-10-21-cloud.md`** – (1) core bug C1 hold a point → new point
   (owner, 0.8.5): reproduce with the phone on USB (`adb logcat -s OnPath | grep Hold:`), test first, then fix;
