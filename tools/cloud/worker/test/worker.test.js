@@ -89,7 +89,7 @@ test("health needs no key; everything else does", async () => {
 });
 
 test("request → queued, deduped, build starts, cell ready, manifest and file with Range", async () => {
-  const env = testEnv();
+  const env = testEnv({ PARALLEL_BUILDS: "1" }); // one builder: both cells in one execution
   const g = fakeGoogle();
   const c = ctx();
   let r = await handle(req("/v1/cells/request", { method: "POST", body: { cells: [MERAN, BOZEN], reason: "point", formats: [2] } }), env, c, g);
@@ -185,7 +185,7 @@ test("permanent failure and retries are limited", async () => {
 });
 
 test("any cell is accepted (no static coverage); open sea is the builder's permanent answer", async () => {
-  const env = testEnv();
+  const env = testEnv({ PARALLEL_BUILDS: "1" });
   const cfg = config(env);
   const g = fakeGoogle();
   const SWISS = "10-536-358";
@@ -204,35 +204,129 @@ test("any cell is accepted (no static coverage); open sea is the builder's perma
   assert.equal((await requestCells(env, cfg, { cells: [SEA] })).cells[0].state, "failed"); // not queued again
 });
 
-test("ETA: + newAreaS where no cell was built yet; the builder's download estimate while it downloads", async () => {
-  const env = testEnv({ CELLS_PER_EXECUTION: "1" });
+const INNSBRUCK = "10-544-359"; // two rows north of Bozen: not a neighbour of Meran / Bozen
+
+test("ETA: queue simulation with measured build and download times", async () => {
+  const env = testEnv({ CELLS_PER_EXECUTION: "1", PARALLEL_BUILDS: "1", ETA_SMOOTH_S: "0" });
   const cfg = config(env);
   const g = fakeGoogle();
+  const now = Date.now();
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
       VALUES (?, 2, '2026-10-20-s2', '2026-10-20', 5, 3, 1)`).bind(MERAN).run();
-  const INNSBRUCK = "10-544-359"; // block 68-44: nothing built there
-  let j = await requestCells(env, cfg, { cells: [BOZEN, INNSBRUCK] });
-  const [bozen, innsbruck] = j.cells;
-  assert.equal(bozen.state, "queued");
-  // Bozen's block 68-45 has no cell either (Meran is 67-45) → both get the new-area time; position 2 more
-  assert.equal(innsbruck.eta_s - bozen.eta_s, cfg.startupS + cfg.avgCellS);
-  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
-      VALUES ('10-545-361', 2, '2026-10-20-s2', '2026-10-20', 5, 3, 1)`).run(); // block 68-45 now known
-  j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2);
-  assert.equal(j.cells[1].eta_s - j.cells[0].eta_s, cfg.startupS + cfg.avgCellS + cfg.newAreaS);
-  await pump(env, cfg, Date.now(), g); // starts Bozen
+  // no measured builds yet: configured guesses; Bozen is next to Meran (extract cached), Innsbruck needs a download
+  let j = await requestCells(env, cfg, { cells: [BOZEN, INNSBRUCK] }, now);
+  const one = cfg.startupS + cfg.avgCellS;
+  assert.deepEqual(j.cells.map((c) => [c.state, c.position, c.eta_s]),
+    [["queued", 1, one], ["queued", 2, 2 * one + cfg.pumpLagS + cfg.newAreaS]]);
+  // measured: cached builds 200 s, builds with a new extract 300 s, 100 MB in 20 s → download 100 / 5 + 15 = 35 s
+  for (const [b, ns, ds, mb] of [[200, 0, 0, 0], [200, 0, 0, 0], [300, 1, 20, 100], [200, 0, 0, 0]]) {
+    await env.DB.prepare(`INSERT INTO builds (id, format, finished_at, build_s, new_source, download_s, download_mb)
+        VALUES ('x', 2, ?, ?, ?, ?, ?)`).bind(now - 1000, b, ns, ds, mb).run();
+  }
+  j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2, now);
+  assert.deepEqual(j.cells.map((c) => c.eta_s), [cfg.startupS + 200, cfg.startupS + 200 + cfg.pumpLagS + cfg.startupS + 35 + 300]);
+  await pump(env, cfg, now, g); // starts Bozen
   const [ex] = [...g.executions.values()];
-  await env.DB.prepare("DELETE FROM cells WHERE id = '10-545-361'").run();
-  j = await statusFor(env, cfg, [BOZEN], 2); // before the builder's first status: guess (its own build doesn't count)
-  assert.equal(j.cells[0].eta_s, cfg.avgCellS + cfg.startupS + cfg.newAreaS);
-  await putStatus(env, BOZEN, { state: "building", step: "download", progress: 0, source_eta_s: 400,
-    execution: gcp.shortName(ex.name) });
-  j = await statusFor(env, cfg, [BOZEN], 2);
-  assert.equal(j.cells[0].eta_s, cfg.avgCellS + 400);
-  await putStatus(env, BOZEN, { state: "building", step: "base", progress: 0.5, source_eta_s: 400,
-    execution: gcp.shortName(ex.name) });
-  j = await statusFor(env, cfg, [BOZEN], 2);
-  assert.equal(j.cells[0].eta_s, Math.round(cfg.avgCellS / 2));
+  const short = gcp.shortName(ex.name);
+  j = await statusFor(env, cfg, [BOZEN], 2, now + 30_000); // before the builder's first status: startup left
+  assert.equal(j.cells[0].eta_s, cfg.startupS - 30 + 200);
+  await putStatus(env, BOZEN, { state: "building", step: "download", progress: 0, source_eta_s: 400, execution: short });
+  j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2, now);
+  assert.equal(j.cells[0].eta_s, 400 + 300); // builder's own download estimate + a new-extract build
+  assert.equal(j.cells[0].step, "download");
+  await putStatus(env, BOZEN, { state: "building", step: "base", progress: 0.5, execution: short });
+  j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2, now);
+  assert.equal(j.cells[0].eta_s, 100);
+  assert.equal(j.cells[1].eta_s, 100 + cfg.pumpLagS + cfg.startupS + 35 + 300); // after Bozen's slot frees
+});
+
+test("ETA is smoothed: a new estimate is reached over ETA_SMOOTH_S, not in one jump", async () => {
+  const env = testEnv({ PARALLEL_BUILDS: "1", ETA_SMOOTH_S: "60" });
+  const cfg = config(env);
+  const now = Date.now();
+  let j = await requestCells(env, cfg, { cells: [MERAN] }, now);
+  const first = j.cells[0].eta_s;
+  assert.equal(first, cfg.startupS + cfg.avgCellS + cfg.newAreaS);
+  // measurements arrive: the raw estimate drops by far
+  await env.DB.prepare(`INSERT INTO builds (id, format, finished_at, build_s, new_source, download_s, download_mb)
+      VALUES ('x', 2, ?, 100, 0, 0, 0)`).bind(now).run();
+  j = await statusFor(env, cfg, [MERAN], 2, now + 15_000);
+  const raw = cfg.startupS + 100 + cfg.newAreaS; // still queued, nothing running: starts "now" at every call
+  const was = first - 15;
+  assert.equal(j.cells[0].eta_s, Math.round(was + 0.25 * (raw - was))); // a quarter of the way after 15 s
+  j = await statusFor(env, cfg, [MERAN], 2, now + 15_000 + 61_000);
+  assert.equal(j.cells[0].eta_s, raw); // fully there after a minute
+});
+
+test("priority + parallel builds: waiting cells first and spread, background never takes the last slot", async () => {
+  const env = testEnv(); // PARALLEL_BUILDS 4, CELLS_PER_EXECUTION 4
+  const cfg = config(env);
+  const g = fakeGoogle();
+  const t0 = Date.now();
+  const ids = (k) => Array.from({ length: k }, (_, i) => `10-${600 + i}-${300 + k}`);
+  const [r1, r2] = ids(2); // background, asked first
+  const [p1, p2, p3] = ids(3);
+  await requestCells(env, cfg, { cells: [r1, r2], reason: "refresh" }, t0);
+  await requestCells(env, cfg, { cells: ["10-700-300"], reason: "test" }, t0);
+  await requestCells(env, cfg, { cells: [p1, p2, p3], reason: "point" }, t0 + 1000);
+  let r = await pump(env, cfg, t0 + 2000, g);
+  const runs = () => g.calls.filter((x) => x.url.endsWith(":run")).map((x) => JSON.parse(x.body).overrides.containerOverrides[0].env[0].value);
+  assert.deepEqual(runs(), [p1, p2, p3]); // one cell per execution, in parallel
+  assert.equal(r.running, 3);
+  const job = async (id) => (await env.DB.prepare("SELECT job FROM cells WHERE id = ?").bind(id).first()).job;
+  assert.equal(await job(r1), "queued"); // the 4th slot stays free for someone waiting
+  // someone else waits: takes the free slot at once
+  await requestCells(env, cfg, { cells: ["10-650-300"], reason: "near" }, t0 + 3000);
+  await pump(env, cfg, t0 + 4000, g);
+  assert.deepEqual(runs().slice(3), ["10-650-300"]);
+  // one build ends → 1 free slot: background still waits; two free → the background batch (refresh before test)
+  const done = async (k) => {
+    const ex = [...g.executions.values()][k];
+    await putStatus(env, runs()[k], { state: "ready", version: "2026-10-21-s2", execution: gcp.shortName(ex.name) });
+    ex.completionTime = "now";
+    ex.succeededCount = 1;
+  };
+  await done(0);
+  r = await pump(env, cfg, t0 + 5000, g);
+  assert.equal(runs().length, 4);
+  await done(1);
+  r = await pump(env, cfg, t0 + 6000, g);
+  assert.deepEqual(runs().slice(4), [`${r1} ${r2} 10-700-300`]);
+  // the status of a waiting cell queued behind running builds: eta from the earliest freeing slot
+  const s = await statusFor(env, cfg, [p3], 2, t0 + 6000);
+  assert.equal(s.cells[0].state, "building");
+});
+
+test("Google refuses a parallel start → one builder at a time for a while", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  const g = fakeGoogle();
+  g.failRunAfter = 1;
+  const now = Date.now();
+  await requestCells(env, cfg, { cells: [MERAN, INNSBRUCK], reason: "point" }, now);
+  await pump(env, cfg, now, g);
+  const blocked = await env.DB.prepare("SELECT until FROM meta WHERE key = 'parallel-blocked'").first();
+  assert.ok(blocked.until > now);
+  const before = g.calls.filter((x) => x.url.endsWith(":run")).length;
+  await pump(env, cfg, now + 60_000, g); // one is running: no further start tried
+  assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, before);
+  const j = await statusFor(env, cfg, [INNSBRUCK], 2, now + 60_000);
+  assert.equal(j.cells[0].state, "queued");
+});
+
+test("a ready cell's measured times go into the rolling averages", async () => {
+  const env = testEnv({ PARALLEL_BUILDS: "1" });
+  const cfg = config(env);
+  const g = fakeGoogle();
+  await requestCells(env, cfg, { cells: [MERAN] });
+  await pump(env, cfg, Date.now(), g);
+  const [ex] = [...g.executions.values()];
+  await publish(env, MERAN);
+  await putStatus(env, MERAN, { state: "ready", version: "2026-10-19-s2", osm_date: "2026-10-19", size: 1000,
+    execution: gcp.shortName(ex.name), build_s: 250.5, new_source: true, download_s: 31, download_mb: 420 });
+  await pump(env, cfg, Date.now(), g);
+  const b = await env.DB.prepare("SELECT build_s, new_source, download_s, download_mb FROM builds").first();
+  assert.deepEqual({ ...b }, { build_s: 250.5, new_source: 1, download_s: 31, download_mb: 420 });
 });
 
 test("cost guard: executions per hour", async () => {

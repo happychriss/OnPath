@@ -40,6 +40,8 @@ short 1× pulse as touch feedback and muted it with the system "Touch feedback" 
 
 C9 sheet sizes (owner 2026-10-21, "simple – only the slider and then the point editor"): small = summary; half =
 summary + profile; full = the point editor: handle + one line (time · distance) + the Points list with ⇅ Reverse /
-↺ Round trip (scrolls inside the sheet, ≤ 60 % of the screen) – no profile, no way types. The primary button stays at
+↺ Round trip (scrolls inside the sheet, ≤ 45 % of the screen), then the elevation profile with its gradient legend
+(owner 2026-10-21; tap → Route details) – no way types. Reorder: drag ≡ (at once, or after holding; no vibration);
+the sheet follows the finger and springs to the nearest size (field test 0.8.9). The primary button stays at
 the bottom in every size. Way types / surfaces / difficulty + the large profile: **Route details** screen
 (`RouteDetailsScreen`), opened by tapping the profile or the difficulty badge in the half sheet.
