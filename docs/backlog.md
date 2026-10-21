@@ -8,6 +8,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Next release after the map-loading release (owner 2026-10-21):** (4) tour backup – recorded tours copied automatically to a phone folder that survives uninstall + export all as GPX; (6) vibration cues at junctions during navigation; (7) lock-screen info (time to go, arrival, next junction). Also noted for later: sunset warning, emergency screen (position, 112, SMS), battery check at start, weather along the route, outdoor mode, way back on own track, hut info, tour suggestions, first-start intro.
 - **[laptop] HANDOVER 2026-10-21: `docs/handover-2026-10-21-cloud.md`** – (1) core bug C1 hold a point → new point
   (owner, 0.8.5): reproduce with the phone on USB (`adb logcat -s OnPath | grep Hold:`), test first, then fix;
   (2) done: 0.8.6 (Points… delete list, hold log, 6/6 emulator tests green); (3) fresh-install test procedure (owner);
