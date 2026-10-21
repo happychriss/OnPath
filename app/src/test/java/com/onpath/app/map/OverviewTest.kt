@@ -42,6 +42,35 @@ class OverviewTest {
         assertFalse(layer(out, "routes-hike").has("minzoom"))
     }
 
+    @Test fun worldCopiesGoBelowTheAlpsCopies() {
+        val out = Overview.merge(style, setOf("world.pmtiles", "base.pmtiles", "terrain.pmtiles"))
+        assertEquals(listOf("background", "hillshade-nw~overview", "hillshade-nw", "water~world", "water~overview", "water",
+            "rail~world", "rail~overview", "rail", "buildings", "lowonly~world", "lowonly~overview", "routes-hike"), ids(out))
+        val src = JSONObject(out).getJSONObject("sources")
+        assertEquals("pmtiles://asset://overview/world.pmtiles", src.getJSONObject("overview-world").getString("url"))
+        assertFalse(src.getJSONObject("overview-world").has("maxzoom"))
+        assertEquals("overview-world", layer(out, "water~world").getString("source"))
+        assertEquals(10.0, layer(out, "water~world").getDouble("maxzoom"), 0.0)
+        assertEquals(8.0, layer(out, "rail~world").getDouble("minzoom"), 0.0)
+    }
+
+    @Test fun worldHillShadeEndsAtZoom5() {
+        val out = Overview.merge(style, setOf("terrain-world.pmtiles", "terrain.pmtiles"))
+        assertEquals(listOf("background", "hillshade-nw~world", "hillshade-nw~overview", "hillshade-nw"), ids(out).take(4))
+        assertEquals(5.0, layer(out, "hillshade-nw~world").getDouble("maxzoom"), 0.0)
+        assertEquals("overview-terrain-world", layer(out, "hillshade-nw~world").getString("source"))
+        assertEquals("pmtiles://asset://overview/terrain-world.pmtiles",
+            JSONObject(out).getJSONObject("sources").getJSONObject("overview-terrain-world").getString("url"))
+        assertEquals(10.0, layer(out, "hillshade-nw~overview").getDouble("maxzoom"), 0.0)
+    }
+
+    @Test fun worldAloneIsEnough() {
+        val out = Overview.merge(style, setOf("world.pmtiles"))
+        assertTrue("water~world" in ids(out))
+        assertFalse("water~overview" in ids(out))
+        assertFalse(JSONObject(out).getJSONObject("sources").has("overview"))
+    }
+
     @Test fun onlyBundledFilesAreUsed() {
         val out = Overview.merge(style, setOf("terrain.pmtiles"))
         assertTrue("hillshade-nw~overview" in ids(out))
