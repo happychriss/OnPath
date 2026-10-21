@@ -135,8 +135,9 @@ fun MapHost(
                 }
                 if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
-                val marker = if (!edit) -1 else (c?.waypointAt(screen, vm.waypoints.toList()) ?: -1).takeIf { it >= 0 }
-                    ?: downMarker.takeIf { press == MapGestures.Press.HOLD && it in vm.waypoints.indices } ?: -1
+                val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(vm.waypoints.toList(),
+                    { p -> c.toScreen(p)?.let { it.x to it.y } }, screen.x, screen.y, press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
+                if (edit && marker < 0) c?.waypointAt(screen, vm.waypoints.toList()) // only for the diagnostics line (near miss)
                 // A marked search result (pin) counts as a POI: holding it opens the POI menu.
                 val mark = vm.searchMark?.takeIf { m ->
                     c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true
