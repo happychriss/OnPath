@@ -74,6 +74,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanPointRow
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import com.onpath.app.routing.RouteSummary
 
@@ -117,7 +118,8 @@ data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Bool
 
 /**
  * Plan sheet sizes (owner 2026-10-21): MINI = summary only, COMPACT = summary + elevation profile (default),
- * FULL = the point editor: one line (time · distance) + the Points list (scrolls inside the sheet). Way types /
+ * FULL = the point editor: one line (time · distance) + the Points list (scrolls inside the sheet), then the
+ * elevation profile with its gradient legend (owner 2026-10-21). Way types /
  * surfaces / difficulty are in the route details (tap the profile or the badge). The primary button stays at the
  * bottom in every size.
  */
@@ -191,8 +193,20 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini) }
-        if (full) PointEditor(ui, cb, Modifier.weight(1f, fill = false))
-        else if (!mini && route != null && !ui.routing) {
+        if (full) {
+            PointEditor(ui, cb, Modifier.weight(1f, fill = false))
+            // below the points (owner 2026-10-21): the profile at normal size with its gradient legend
+            if (route != null && !ui.routing) {
+                Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Box(Modifier.fillMaxWidth()) {
+                        ElevationProfile(route.points, height = 96.dp, gradient = true)
+                        Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show route details",
+                            onClick = cb.onDetails).semantics { contentDescription = "Route details" })
+                    }
+                    GradientLegend()
+                }
+            }
+        } else if (!mini && route != null && !ui.routing) {
             // Mini profile, always visible (Komoot-like) – tap for the route details.
             Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 ElevationProfile(route.points, height = 52.dp, gradient = true)
@@ -212,13 +226,16 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
 @Composable
 private fun PointEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
     // the map stays visible above the sheet
-    val maxH = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
-    Column(modifier.heightIn(max = maxH).verticalScroll(rememberScrollState())) {
+    val maxH = (LocalConfiguration.current.screenHeightDp * 0.45f).dp
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    Column(modifier.heightIn(max = maxH).onGloballyPositioned { viewport = it }.verticalScroll(scroll)) {
         PointsSection(
             ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
             onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
             onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
             modifier = Modifier.padding(top = 4.dp),
+            scroll = scroll, viewport = { viewport },
         )
     }
 }
