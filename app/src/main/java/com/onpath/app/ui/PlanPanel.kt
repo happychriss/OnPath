@@ -74,9 +74,6 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanPointRow
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalConfiguration
 import com.onpath.app.routing.RouteSummary
 
@@ -96,6 +93,8 @@ class PlanCallbacks(
     /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
     val onSave: () -> Unit = {},
     val onExport: () -> Unit = {},
+    /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
+    val onDetails: () -> Unit = {},
     /** Route ⋯ → Time details (how the time was calculated). */
     val onTimeDetails: () -> Unit = {},
     /** Points section (full sheet): row [from] dropped at row [to] (hold ≡ and drag). */
@@ -118,8 +117,9 @@ data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Bool
 
 /**
  * Plan sheet sizes (owner 2026-10-21): MINI = summary only, COMPACT = summary + elevation profile (default),
- * FULL = summary, profile, Points section, way types / surfaces (scrolls inside the sheet). The primary button stays
- * at the bottom in every size.
+ * FULL = the point editor: one line (time · distance) + the Points list (scrolls inside the sheet). Way types /
+ * surfaces / difficulty are in the route details (tap the profile or the badge). The primary button stays at the
+ * bottom in every size.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -153,8 +153,6 @@ data class PlanUi(
     val cellCard: CellCardUi? = null,
     /** Rows of the Points section (full sheet), see PlanPoints.rows. */
     val points: List<PlanPointRow> = emptyList(),
-    /** Changes when the sheet must scroll to the Points section (stop marker → "All points…"). */
-    val pointsScrollTick: Int = 0,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -162,7 +160,7 @@ data class PlanUi(
 
 /**
  * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
- * text and a badge), then by size (PlanSize) the elevation profile, the Points section and the way types / surfaces,
+ * text and a badge), then by size (PlanSize) the elevation profile (half) or the point editor (full),
  * and ONE filled primary button fixed at the bottom (only with a route, or "Continue navigation" while a tour runs).
  * Route edits (save, export, reverse, round trip, clear) are also in ⋯.
  */
@@ -186,19 +184,20 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
             Box(Modifier.weight(1f)) { Title(ui, route) }
             SheetOverflow(ui, cb, menuInitiallyOpen)
         }
-        if (!mini) SubLine(ui, route)
-        if (!mini && route != null) SavedLine(ui)
+        val full = ui.size == PlanSize.FULL
+        // full = the point editor: only the one summary line above, then the points
+        if (!mini && !full) SubLine(ui, route, cb.onDetails)
+        if (!mini && !full && route != null) SavedLine(ui)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini) }
-        if (ui.size == PlanSize.FULL) FullContent(ui, cb, Modifier.weight(1f, fill = false))
+        if (full) PointEditor(ui, cb, Modifier.weight(1f, fill = false))
         else if (!mini && route != null && !ui.routing) {
-            // Mini profile, always visible (Komoot-like) – tap for the full sheet.
+            // Mini profile, always visible (Komoot-like) – tap for the route details.
             Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 ElevationProfile(route.points, height = 52.dp, gradient = true)
-                Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show elevation profile") {
-                    cb.onResize(PlanSize.FULL)
-                })
+                Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show route details",
+                    onClick = cb.onDetails).semantics { contentDescription = "Route details" })
             }
         }
         // The one primary button – not during a tour (Continue is in the tour controls above).
@@ -209,28 +208,18 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
     }
 }
 
-/** Full sheet, scrolling between the summary and the primary button: profile → Points → way types / surfaces. */
+/** Full sheet = the point editor (owner 2026-10-21): the Points list, scrolling between the summary and the button. */
 @Composable
-private fun FullContent(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
-    val route = ui.route?.takeIf { !ui.routing }
-    val scroll = rememberScrollState()
-    var pointsY by remember { mutableStateOf(0) }
+private fun PointEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
     // the map stays visible above the sheet
     val maxH = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
-    LaunchedEffect(ui.pointsScrollTick) { if (ui.pointsScrollTick > 0) scroll.animateScrollTo(pointsY) }
-    Column(modifier.heightIn(max = maxH).verticalScroll(scroll)) {
-        if (route != null) {
-            Spacer(Modifier.height(6.dp))
-            ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
-            GradientLegend()
-        }
+    Column(modifier.heightIn(max = maxH).verticalScroll(rememberScrollState())) {
         PointsSection(
             ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
             onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
             onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
-            modifier = Modifier.padding(top = 8.dp).onGloballyPositioned { pointsY = it.positionInParent().y.toInt() },
+            modifier = Modifier.padding(top = 4.dp),
         )
-        if (route != null) RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
     }
 }
 
@@ -268,7 +257,7 @@ private fun Title(ui: PlanUi, route: PlannedRoute?) {
 
 /** Read-only status, second line: ascent / descent / highest point + difficulty badge, or what to do next. */
 @Composable
-private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
+private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}) {
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     if (route == null) {
         Text(
@@ -292,7 +281,8 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
         )
         if (!ui.routing) {
             Spacer(Modifier.width(8.dp))
-            DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM))
+            DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM),
+                Modifier.clickable(role = Role.Button, onClickLabel = "Show route details", onClick = onDetails))
         }
     }
 }

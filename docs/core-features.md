@@ -13,8 +13,8 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | C5 | Navigate: follow, off-route alarm, re-route, arrival | 0.7.26 (re-route kept the old route) | `NavigatorTest`, `NavReplayTest`, `OffRouteDetectorTest`, `RerouteTargetsTest`, `ArrivalGateTest` |
 | C6 | Map loads: missing data / cells / style never crash; old map stays until the new one is complete | 0.8.0 (profile crash), small streets missing | `CellStoreTest`, `CellDownloadTest`, `StyleLoaderTest`, `ProfileTinyTest` |
 | C7 | GPX import / export | – | `GpxParserTest` |
-| C9 | **Plan: Points list in the full plan sheet** – ✕ deletes at once (Undo on the map), hold ≡ and drag reorders (to the top = new start), tap a row → map shows the point, round trips (start = goal once, ↺), point menu → "All points…" | – (new 2026-10-21, replaces ⋯ → "Points… (delete)") | `PlanPointsTest`, `PlanHapticsTest`, screenshots `planPoints*`; emulator `CorePointsListE2ETest` |
 | C8 | App update from GitHub (Settings → Updates) – resumes after a broken connection | 2026-10-21 (4× "connection abort") | `UpdateDownloadTest`, `AppUpdaterTest` |
+| C9 | **Plan: point editor = the full plan sheet** (only via swipe up / handle tap) – ✕ deletes at once (Undo on the map), hold ≡ and drag reorders (to the top = new start), tap a row → map shows the point, round trips (start = goal once, ↺) | – (new 2026-10-21, replaces ⋯ → "Points… (delete)") | `PlanPointsTest`, `PlanHapticsTest`, screenshots `planPoints*`; emulator `CorePointsListE2ETest` |
 
 End to end on an emulator (since 2026-10-21): `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
 map, a finger held on the screen (UiAutomator): hold → Start here, hold → point added, hold a point → menu → Delete,
@@ -37,5 +37,8 @@ a point set (Start here, Go here, new stop, "New point here", added by a hold, a
 (point menu Delete, ✕ in the list) = 2×; reorder drop = 1×; undo / redo, reverse, round trip, start / end here,
 clear = nothing.
 
-C9 sheet sizes: small = summary; half = summary + profile; full = summary → profile → Points → way types / surfaces
-(scrolls inside the sheet, ≤ 60 % of the screen). The primary button stays at the bottom in every size.
+C9 sheet sizes (owner 2026-10-21, "simple – only the slider and then the point editor"): small = summary; half =
+summary + profile; full = the point editor: handle + one line (time · distance) + the Points list with ⇅ Reverse /
+↺ Round trip (scrolls inside the sheet, ≤ 60 % of the screen) – no profile, no way types. The primary button stays at
+the bottom in every size. Way types / surfaces / difficulty + the large profile: **Route details** screen
+(`RouteDetailsScreen`), opened by tapping the profile or the difficulty badge in the half sheet.
