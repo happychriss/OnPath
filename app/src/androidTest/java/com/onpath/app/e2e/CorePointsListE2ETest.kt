@@ -9,14 +9,16 @@ import com.onpath.app.ui.PlanSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * CORE FEATURE C9 (owner 2026-10-21): the Points section of the full plan sheet – open it, delete with ✕, reorder by
- * holding ≡ and dragging, tap a row → the map shows the point, Undo on the map brings the old plan back.
+ * CORE FEATURE C9 (owner 2026-10-21): the full plan sheet is the point editor – opened only by the sheet's handle /
+ * a swipe up; delete with ✕, reorder by holding ≡ and dragging, tap a row → the map shows the point, Undo on the map
+ * brings the old plan back. No profile / way types in it (those are in the route details).
  */
 @RunWith(AndroidJUnit4::class)
 class CorePointsListE2ETest : E2EBase() {
@@ -48,6 +50,7 @@ class CorePointsListE2ETest : E2EBase() {
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         assertNotNull("Points section shown – ${state()}", device.wait(Until.findObject(By.text("Points")), 5_000))
+        assertNull("no profile in the point editor", device.findObject(By.desc("Route details")))
     }
 
     private fun desc(text: String) = device.wait(Until.findObject(By.desc(text)), 5_000)
@@ -101,15 +104,5 @@ class CorePointsListE2ETest : E2EBase() {
         val (x, y) = waypointOnScreen(1)
         val (w, h) = mapSize()
         assertTrue("point 2 on screen at ($x, $y) of $w x $h", x in 0f..w && y in 0f..h * 0.6f)
-    }
-
-    /** Point menu → "All points…" opens the same view. */
-    @Test fun allPointsFromThePointMenu() {
-        startPlanWithTwoPoints()
-        settle()
-        holdOnWaypoint(1)
-        device.wait(Until.findObject(By.text("All points…")), 5_000)!!.click()
-        waitUntil("full sheet from the point menu") { size() == PlanSize.FULL }
-        assertNotNull(device.wait(Until.findObject(By.desc("Delete point 2")), 5_000))
     }
 }

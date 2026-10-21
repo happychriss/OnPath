@@ -142,6 +142,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    vm.route?.takeIf { vm.routeDetailsOpen }?.let { r ->
+                        BackHandler { vm.routeDetailsOpen = false }
+                        com.onpath.app.ui.RouteDetailsScreen(r, vm.activity, onBack = { vm.routeDetailsOpen = false })
+                    }
                     vm.timeDetails?.let { td ->
                         BackHandler { vm.timeDetails = null }
                         com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })

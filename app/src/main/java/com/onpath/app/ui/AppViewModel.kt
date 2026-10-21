@@ -1080,9 +1080,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Points section of the full plan sheet (PointsSection, routing/PlanPoints) ----------------
 
-    /** Bumped to scroll the full sheet to its Points section (point menu → "All points…"). */
-    var pointsScrollTick by mutableStateOf(0)
-        private set
     /** Nearest place / hut / peak for route points without a name of their own (offline index, RouteNamer.label). */
     private var nearbyNames by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
     private var namePlaces: List<com.onpath.app.search.Place>? = null
@@ -1110,12 +1107,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Point menu → "All points…" (or a stop marker): the full sheet, scrolled to its Points section. */
-    fun openAllPoints() {
-        closeMapOverlays("all points opened")
-        planSize = PlanSize.FULL
-        pointsScrollTick++
-    }
+    /** Route details (way types, surfaces, difficulty, full profile) – opened from the sheet's profile or badge. */
+    var routeDetailsOpen by mutableStateOf(false)
 
     /** Points list: row [from] dropped at row [to] (hold ≡ and drag); to the top = the new start. Undo reverts. */
     fun movePointInList(from: Int, to: Int) {
@@ -1293,7 +1286,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * coordinate (short link offline, address only) the address is searched offline, then online, with a note.
      */
     fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {
-        routesOpen = false; showSettings = false; timeDetails = null; searchOpen = false
+        routesOpen = false; showSettings = false; timeDetails = null; routeDetailsOpen = false; searchOpen = false
         closeMapOverlays()
         // A shown track hides the plan sheet and blocks map holds – the ring's menu must work.
         if (shown != null) closeShown()

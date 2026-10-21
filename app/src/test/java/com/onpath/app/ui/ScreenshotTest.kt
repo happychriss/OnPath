@@ -149,11 +149,6 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
-    /** "Elevation & surfaces" opened: profile, gradient legend, way type / surface bars. */
-    @Test fun planExpanded() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(size = PlanSize.FULL), PlanCallbacks()) }
-    }
-
     // ------------------------------------------------ Points section (owner 2026-10-21): three sheet sizes with points
     private val stops = listOf(routePts[0], routePts[40], routePts[80], routePts[120])
     private val stopNames = listOf("Algund", null, "Leiter Alm", "Hochmuth")
@@ -167,7 +162,7 @@ class ScreenshotTest {
 
     @Test fun planPointsHalf() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT), PlanCallbacks()) } }
 
-    /** Full: profile, then Points (≡ marker name +distance ✕), then way types – scrolls inside the sheet. */
+    /** Full = the point editor: one summary line, then Points (≡ marker name +distance ✕); no profile / way types. */
     @Test fun planPointsFull() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) } }
 
     /** Full while the route is calculated: the Points list right away, straight-line distances (~). */
@@ -186,6 +181,9 @@ class ScreenshotTest {
     @Test fun planPointsOne() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(stops.take(1), null), r = null), PlanCallbacks()) }
     }
+
+    /** Route details (tap the profile or the difficulty badge): summary, large profile, way types / surfaces. */
+    @Test fun routeDetails() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(route, Activity.HIKE, onBack = {}) } }
 
     /** Drop-down menus are popups (not drawn by Paparazzi): draw their items where the menu opens. */
     @Composable

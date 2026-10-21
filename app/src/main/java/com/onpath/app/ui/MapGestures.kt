@@ -55,7 +55,7 @@ object MapGestures {
     enum class Buzz { NONE, TICK }
 
     /** Entries of the point menu, in display order. */
-    enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE, ALL_POINTS }
+    enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE }
 
     /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
