@@ -103,6 +103,9 @@ fun SettingsScreen(
     onClearProblems: () -> Unit = {},
     /** Diagnostics → "Map cells (debug)"; null = hidden. */
     mapCells: MapCellsDebug? = null,
+    /** Settings → "Offline maps" (downloaded map areas); null = section hidden. */
+    offlineMaps: OfflineMapsUi? = null,
+    offlineMapsCb: OfflineMapsCallbacks = OfflineMapsCallbacks(),
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -263,6 +266,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                 item {
                     Section("Map data") {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

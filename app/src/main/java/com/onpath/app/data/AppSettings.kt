@@ -23,6 +23,8 @@ data class AppSettings(
     // --- time estimate (docs/plan-time-estimate.md): pace factor on time only, never on the route ---
     val hikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,
     val bikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,
+    /** Settings → Offline maps: map areas download only on Wi-Fi, not even the own area on mobile data (F-OFF-03). */
+    val mapsWifiOnly: Boolean = false,
 ) {
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
