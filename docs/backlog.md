@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Cell content schema (owner: laptop not used, cloud takes over): cells without the streets overlay are rebuilt – version "<osm_date>-s<schema>", worker rebuilds old-schema cells, app re-requests them – since 2026-10-21
 - [laptop] Map rework steps 8–9: app cell store + download client (`data/cells/`), then triggers T1/T3/T4/T5/T6, "Preparing map" card, overview hint, cells in Settings – since 2026-10-21
 - [laptop] **Map hosting (Cloudflare Worker + R2 EU + Cloud Run Jobs)** – test environment live (`maps-test.free-your-pictures.org`), first cloud cell build running; production not deployed yet. – since 2026-10-20
 - [laptop] **Map rework format 2** – steps 0–6 done (main); next: phone test of format 2, doorman/job on format 2, steps 8–9 (app cell store + downloads). Laptop owns map pipeline + `make_style.py`/themes + cells – cloud: please don't edit style/pipeline files. – since 2026-10-20
