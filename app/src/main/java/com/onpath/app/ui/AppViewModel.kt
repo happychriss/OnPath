@@ -19,6 +19,7 @@ import com.onpath.app.data.Geo
 import com.onpath.app.data.Prefs
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourDb
+import com.onpath.app.backup.Backups
 import com.onpath.app.data.TourKind
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxParser
@@ -1697,6 +1698,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val r = route
         val title = name.trim().ifBlank { defaultName("Route") }
         val act = activity; val level = sac
+        val stops = savedStops(pts); val pins = pinnedIndices()
         viewModelScope.launch {
             val id = withContext(Dispatchers.IO) {
                 runCatching {
@@ -1704,16 +1706,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         TourKind.PLANNED, title, act.name, level,
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                        stops, pinned = pins,
                     ).also { storePlanTimes(it, r, act) }
                 }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
             }
             if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
+            Backups.tourChanged(getApplication(), id)
             setSaved(title, id, pts)
             refreshTours()
             then?.invoke()
         }
     }
+
+    /** The plan's stops as saved: with their place names (backup / restore keeps them, owner 2026-10-21). */
+    private fun savedStops(pts: List<GeoPoint>) = pts.map { GpxWaypoint(it.lat, it.lon, stopName(it)) }
 
     /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
     fun requestSave() {
@@ -1738,6 +1744,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pts.size < 2 || name == null || id < 0) { saveDialog = true; return }
         val r = route
         val act = activity; val level = sac
+        val stops = savedStops(pts); val pins = pinnedIndices()
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
@@ -1745,12 +1752,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         id, act.name, level,
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                        stops, pins,
                     ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
                 }
             }
             ok.onSuccess { replaced ->
-                if (replaced) { setSaved(name, id, pts); refreshTours(); then?.invoke() }
+                if (replaced) { Backups.tourChanged(getApplication(), id); setSaved(name, id, pts); refreshTours(); then?.invoke() }
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
                 Problems.error("db", "Overwriting a saved route failed", it)
@@ -1775,6 +1782,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = "The route could not be renamed. Please try again."; return@launch }
+            Backups.tourChanged(getApplication(), t.id)
             if (savedId == t.id) setSaved(name, savedId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
             refreshTours()
@@ -1866,6 +1874,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching { db.rename(t.id, name) }.onFailure { Problems.warn("db", "Naming the recorded tour failed; it keeps its date name", it) }.isSuccess
             }
             if (!ok) return@launch
+            Backups.tourChanged(getApplication(), t.id) // the file follows the new name
             finishedTour?.let { if (it.id == t.id) finishedTour = it.copy(name = name) }
             refreshTours()
         }
@@ -2228,6 +2237,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+            Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
         }
     }
@@ -2258,6 +2268,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 change { clear(); addAll(pts) }
+                // stop names and POI pins saved with the plan (since the backup, 2026-10-21) come back too
+                t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
+                t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
@@ -2280,13 +2293,129 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
         if (recState.value?.tourId == t.id) { message = "This tour is being recorded – end it first."; return }
         viewModelScope.launch(Dispatchers.IO) {
-            db.deleteTour(t.id)
+            // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
+            val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
+                .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
+            if (ok) Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) {
+                if (!ok) { routesProblem = "“${t.name}” could not be deleted. Please try again."; return@withContext }
                 if (shown?.tourId == t.id) shown = null
                 if (savedId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
                 if (finishedTour?.id == t.id) finishedTour = null
                 refreshTours()
             }
+        }
+    }
+
+    // ---------------- recycle bin + backup (owner 2026-10-21, docs/core-features.md C10) ----------------
+
+    /** Recycle bin list (My routes → ⋮ → Recycle bin); null = closed. */
+    var recycleBin by mutableStateOf<List<Tour>?>(null)
+
+    fun openRecycleBin() {
+        viewModelScope.launch {
+            recycleBin = withContext(Dispatchers.IO) {
+                runCatching { db.listDeleted() }.onFailure { Problems.error("db", "Recycle bin could not be read", it) }.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/). */
+    fun restoreFromBin(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
+            }
+            if (ok) Backups.tourChanged(getApplication(), t.id)
+            else routesProblem = "“${t.name}” could not be restored. Please try again."
+            openRecycleBin(); refreshTours()
+        }
+    }
+
+    /** Recycle bin → Delete now (asked first): gone for good, its backup file too. */
+    fun deleteForever(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.deleteTour(t.id) }.onFailure { Problems.error("db", "Deleting a tour for good failed", it) }.isSuccess
+            }
+            if (ok) Backups.purge(getApplication(), listOf(t.uuid))
+            openRecycleBin()
+        }
+    }
+
+    /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
+    fun exportAll() {
+        message = "Preparing the export…"
+        viewModelScope.launch {
+            try {
+                val app = getApplication<Application>()
+                val uri = withContext(Dispatchers.IO) {
+                    val f = Backups.exportZip(app, File(app.cacheDir, "export"), SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date()))
+                    FileProvider.getUriForFile(app, app.packageName + ".files", f) to f.name
+                }
+                message = null
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri.first)
+                    putExtra(Intent.EXTRA_SUBJECT, uri.second)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                events += UiEvent.Share(Intent.createChooser(send, "Export all tours"))
+            } catch (e: com.onpath.app.backup.BackupException) {
+                Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
+            } catch (e: Exception) {
+                Problems.error("backup", "Export all failed", e)
+                message = "Export failed: ${e.message ?: e.javaClass.simpleName}"
+            }
+        }
+    }
+
+    /** First start with an empty database: "Earlier tours found? Restore from Documents/OnPath" (asked once). */
+    var restoreOffer by mutableStateOf(false)
+    /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
+    var restoreProgress by mutableStateOf<String?>(null)
+        private set
+
+    private fun checkRestoreOffer() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val offer = try { !Backups.restoreOffered(app) && db.countAll() == 0 } catch (e: Exception) {
+                Problems.warn("backup", "Restore offer not checked", e); false
+            }
+            if (offer) withContext(Dispatchers.Main) { restoreOffer = true }
+        }
+    }
+
+    init {
+        Backups.init(app)
+        Backups.purgeAndSync(app) // 30-day recycle bin, files for tours that have none yet
+        checkRestoreOffer()
+        // a failed backup is said until OK is tapped (no silent loss); then it counts as seen
+        viewModelScope.launch {
+            Backups.failure.collect { text ->
+                if (text == null) return@collect
+                while (message != null) delay(500) // after the current message
+                message = "$text. Your tours are still on this phone – see Settings → Backup."
+                Backups.failureSeen(getApplication())
+            }
+        }
+    }
+
+    fun restoreOfferAnswered() { restoreOffer = false; Backups.setRestoreOffered(getApplication()) }
+
+    /** The folder the user confirmed in the picker: import every OnPath backup in it (off the main thread). */
+    fun restoreFrom(tree: Uri) {
+        if (restoreProgress != null) return
+        restoreProgress = "Looking for backups…"
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val r = withContext(Dispatchers.IO) {
+                try { Backups.restore(app, tree) { line -> viewModelScope.launch(Dispatchers.Main) { if (restoreProgress != null) restoreProgress = line } } }
+                catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
+            }
+            restoreProgress = null
+            message = r?.let { com.onpath.app.backup.BackupRestore.summary(it) } ?: "The backup folder could not be read. Please try again."
+            refreshTours()
         }
     }
 
@@ -2360,6 +2489,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val id = withContext(Dispatchers.IO) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
+                Backups.tourChanged(app, id)
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
                 routesOpen = false // show the imported track on the map
                 refreshTours()
