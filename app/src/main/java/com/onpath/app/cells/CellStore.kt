@@ -328,6 +328,11 @@ class CellStore(
         }))
 
     companion object {
+        /** Generation number of a store folder ("…/cells/store/g000007" → 7), null for any other folder (data folder). */
+        fun generationOf(dir: File?): Int? =
+            dir?.takeIf { it.parentFile?.name == "store" }?.let { GEN.matchEntire(it.name) }?.takeIf { it.groupValues[2].isEmpty() }
+                ?.groupValues?.get(1)?.toIntOrNull()
+
         const val STORE_JSON = "store.json"
         const val MANIFEST = "manifest.json"
         const val POIS = "pois.geojson"

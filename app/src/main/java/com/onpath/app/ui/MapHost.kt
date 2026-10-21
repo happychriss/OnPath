@@ -74,7 +74,7 @@ fun MapHost(
                 Lifecycle.Event.ON_START -> { mapView.onStart(); started = true; vm.onReturnToApp() }
                 Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
                 Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
-                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false }
+                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false; vm.onLeaveApp() }
                 else -> {}
             }
         }
@@ -102,7 +102,9 @@ fun MapHost(
             }
             var fallbackUsed = false
             fun load(json: String) {
+                val loadedFrom = StyleLoader.lastMapDir
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
+                    vm.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)
                         ctrlRef[0] = c
@@ -182,11 +184,14 @@ fun MapHost(
             mapView.addOnDidFailLoadingMapListener { msg ->
                 // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style)
                 StyleLoader.noteFailure(msg ?: "?")
-                if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }
+                // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
+                if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
+                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
+                } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             loadedTheme[0] = vm.settings.mapTheme
-            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme)) }
-            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme))
+            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir())) }
+            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
         }
         onDispose { ctrlRef[0] = null; reloadRef[0] = null }
     }

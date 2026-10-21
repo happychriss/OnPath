@@ -49,6 +49,20 @@ sealed interface CellState {
     data class Failed(val message: String, val retryable: Boolean = true) : CellState
 }
 
+/** Short plain-language line for a state ("building – base 40 %", "downloading 60 %") – debug list, card rows. */
+fun CellState.label(): String = when (this) {
+    CellState.None -> "not on the phone"
+    CellState.Requested -> "requested"
+    is CellState.Queued -> "waiting" + (position?.let { " (#$it)" } ?: "") + (etaS?.let { " – about ${(it + 59) / 60} min" } ?: "")
+    is CellState.Building -> "building – $step ${(progress * 100).toInt()} %" + (etaS?.let { ", about ${(it + 59) / 60} min" } ?: "")
+    is CellState.WaitingForWifi -> "ready – waits for Wi-Fi" + (bytes?.let { " (${it / 1_048_576} MB)" } ?: "")
+    is CellState.Downloading -> if (totalBytes <= 0) "ready – downloading" else "downloading $percent %"
+    CellState.Installing -> "adding to the map"
+    is CellState.Ready -> "ready ($version)"
+    is CellState.Offline -> message
+    is CellState.Failed -> message
+}
+
 /** Network as the download rules see it (Android: [AndroidNetworkStatus]). */
 interface NetworkStatus {
     fun connected(): Boolean

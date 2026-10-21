@@ -178,6 +178,19 @@ class CellStoreTest {
         assertFalse(store.rollback(g1.number)) // nothing older to go back to
     }
 
+    /** The map style, POI tap and search read the generation folder; its number is known from the path. */
+    @Test fun generationFolderIsTheMapFolder() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g = store.apply(add = listOf(download(store, a, "v1")))
+        assertEquals(g.number, CellStore.generationOf(g.dir))
+        assertNull(CellStore.generationOf(data))
+        assertNull(CellStore.generationOf(File(store.storeDir, "g000009.tmp")))
+        assertEquals(2, com.onpath.app.data.DataFiles.formatOf { File(g.dir, it).isFile })
+        val index = com.onpath.app.search.OfflineIndex.load(g.dir, tmp.newFolder("cache"))
+        assertEquals(3, index.entries.count { it.place.name?.startsWith("$a@v1") == true })
+    }
+
     @Test fun pendingDownloadsAreFound() {
         val data = tmp.newFolder("data")
         val store = CellStore(data)
