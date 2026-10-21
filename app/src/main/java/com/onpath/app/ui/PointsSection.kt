@@ -1,8 +1,18 @@
 package com.onpath.app.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,19 +38,23 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -53,14 +67,18 @@ import com.onpath.app.data.Format
 import com.onpath.app.routing.PlanPointRow
 import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.PointRole
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /** Height of one point row: the drag maths (PlanPoints.dropIndex) counts in rows of this height. */
 private val ROW_HEIGHT = 56.dp
+/** Width of the ≡ handle at the start of a row: a drag starting here moves that row. */
+private val HANDLE_WIDTH = 48.dp
 
 /**
  * Points section of the full plan sheet (owner 2026-10-21): header with ⇅ Reverse and ↺ Round trip, then one row per
- * route point – ≡ (hold and drag to reorder), marker, name, distance from the previous point, ✕ (delete at once,
- * Undo brings it back). Tapping a row shows the point on the map.
+ * route point – ≡ (drag it to reorder; holding first works too), marker, name, distance from the previous point, ✕
+ * (delete at once, Undo brings it back). Tapping a row shows the point on the map. No vibration in the list (owner).
  */
 @Composable
 fun PointsSection(
@@ -73,6 +91,10 @@ fun PointsSection(
     onDelete: (row: Int) -> Unit,
     onShow: (row: Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** The scrolling container around the list (auto-scroll while a row is dragged near its edges). */
+    scroll: ScrollState? = null,
+    /** That container's visible part (for the auto-scroll edges). */
+    viewport: () -> LayoutCoordinates? = { null },
 ) {
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -90,70 +112,148 @@ fun PointsSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
             return@Column
         }
-        val rowPx = with(LocalDensity.current) { ROW_HEIGHT.toPx() }
-        val haptic = LocalHapticFeedback.current
-        var dragFrom by remember { mutableStateOf<Int?>(null) }
-        var dragOffset by remember { mutableFloatStateOf(0f) }
-        val move by rememberUpdatedState(onMove)
-        val count = rows.size
-        val target = dragFrom?.let { PlanPoints.dropIndex(it, dragOffset, rowPx, count) }
-        rows.forEachIndexed { i, r ->
-            val dragged = dragFrom == i
-            val shiftRows = if (dragFrom != null && target != null && !dragged) PlanPoints.shift(i, dragFrom!!, target) else 0
-            Surface(
-                color = if (dragged) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
-                shadowElevation = if (dragged) 6.dp else 0.dp,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.zIndex(if (dragged) 1f else 0f)
-                    .graphicsLayer { translationY = if (dragged) dragOffset else shiftRows * rowPx },
-            ) {
-                Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                    // ≡: hold, then drag (a plain swipe scrolls the sheet)
-                    Box(
-                        Modifier.size(44.dp, ROW_HEIGHT)
-                            .semantics { contentDescription = "Move point ${i + 1} (hold and drag)" }
-                            .pointerInput(i, count) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) /* light pick-up tick; the drop vibrates 1× (PlanHaptics) */; dragFrom = i; dragOffset = 0f },
-                                    onDrag = { change, d -> change.consume(); dragOffset += d.y },
-                                    onDragEnd = {
-                                        val from = dragFrom
-                                        val to = from?.let { PlanPoints.dropIndex(it, dragOffset, rowPx, count) }
-                                        dragFrom = null; dragOffset = 0f
-                                        if (from != null && to != null && to != from) move(from, to)
-                                    },
-                                    onDragCancel = { dragFrom = null; dragOffset = 0f },
-                                )
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Filled.DragHandle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Row(
-                        Modifier.weight(1f).fillMaxHeight()
-                            .clickable(role = Role.Button, onClickLabel = "Show on the map") { onShow(i) }
-                            .semantics { contentDescription = "Show point ${i + 1} on the map: ${r.name}" },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        PointMarker(r, count)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(r.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            roleText(r)?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1)
+        PointRows(rows, onMove, onDelete, onShow, scroll, viewport)
+    }
+}
+
+@Composable
+private fun PointRows(
+    rows: List<PlanPointRow>,
+    onMove: (from: Int, to: Int) -> Unit,
+    onDelete: (row: Int) -> Unit,
+    onShow: (row: Int) -> Unit,
+    scroll: ScrollState?,
+    viewport: () -> LayoutCoordinates?,
+) {
+    val density = LocalDensity.current
+    val rowPx = with(density) { ROW_HEIGHT.toPx() }
+    val handlePx = with(density) { HANDLE_WIDTH.toPx() }
+    val edgePx = with(density) { 56.dp.toPx() }
+    val stepPx = with(density) { 10.dp.toPx() }
+    val scope = rememberCoroutineScope()
+    val move by rememberUpdatedState(onMove)
+    val scrollNow by rememberUpdatedState(scroll)
+    val viewportNow by rememberUpdatedState(viewport)
+    // the drop shows at once; the plan's own rows replace it as soon as they arrive
+    var pending by remember(rows) { mutableStateOf<Pair<Int, Int>?>(null) }
+    val shown = pending?.let { (f, t) -> PlanPoints.moved(rows, f, t) } ?: rows
+    val count = shown.size
+    var dragFrom by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    // the dropped row glides from under the finger into its slot
+    val settle = remember { Animatable(0f) }
+    var settleRow by remember { mutableIntStateOf(-1) }
+    var listCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val target = dragFrom?.let { PlanPoints.dropIndex(it, dragOffset, rowPx, count) }
+    Column(
+        Modifier.fillMaxWidth()
+            .onGloballyPositioned { listCoords = it }
+            // One detector for the whole list – it does not move while a row does (owner field test 0.8.9: "moving
+            // the points doesn't work"). A drag that starts on ≡ moves that row at once (holding first is fine too);
+            // it consumes the movement before the list's scroll and the sheet see it, so neither moves meanwhile.
+            .pointerInput(count, rowPx, handlePx) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    if (down.position.x > handlePx) return@awaitEachGesture
+                    val row = PlanPoints.rowAt(down.position.y, rowPx, count) ?: return@awaitEachGesture
+                    val picked = awaitVerticalTouchSlopOrCancellation(down.id) { c, _ -> c.consume() }
+                        ?: return@awaitEachGesture
+                    val startY = down.position.y
+                    var fingerY = picked.position.y
+                    dragFrom = row; dragOffset = fingerY - startY
+                    // near the top / bottom edge of the visible list: scroll it, the row stays under the finger
+                    val auto = scope.launch {
+                        while (isActive) {
+                            withFrameNanos { }
+                            val sc = scrollNow ?: break
+                            val vp = viewportNow() ?: continue
+                            val lc = listCoords ?: continue
+                            if (!vp.isAttached || !lc.isAttached) continue
+                            val inView = vp.localPositionOf(lc, Offset(0f, fingerY)).y
+                            val step = PlanPoints.autoScroll(inView, vp.size.height.toFloat(), edgePx, stepPx)
+                            if (step != 0f) {
+                                val used = sc.scrollBy(step)
+                                fingerY += used; dragOffset = fingerY - startY
                             }
                         }
-                        legText(r)?.let {
-                            Spacer(Modifier.width(8.dp))
-                            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1)
+                    }
+                    val ended = try {
+                        drag(picked.id) { c -> c.consume(); fingerY = c.position.y; dragOffset = fingerY - startY }
+                    } finally { auto.cancel() }
+                    val to = if (ended) PlanPoints.dropIndex(row, dragOffset, rowPx, count) else row
+                    val residual = dragOffset - (to - row) * rowPx
+                    if (to != row) pending = row to to
+                    settleRow = to
+                    dragFrom = null; dragOffset = 0f
+                    scope.launch {
+                        settle.snapTo(residual)
+                        settle.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow))
+                        settleRow = -1
+                    }
+                    if (to != row) move(row, to)
+                }
+            },
+    ) {
+        shown.forEachIndexed { i, r ->
+            val dragged = dragFrom == i
+            val lifted = dragged || settleRow == i
+            val from = dragFrom
+            val shiftRows = if (from != null && target != null && !dragged) PlanPoints.shift(i, from, target) else 0
+            // the other rows make room smoothly; after the drop the list is in its new order at once (no glide back)
+            val shiftPx by animateFloatAsState(shiftRows * rowPx, label = "row shift",
+                animationSpec = if (from != null) spring(stiffness = Spring.StiffnessMediumLow) else snap())
+            Surface(
+                color = if (lifted) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                shadowElevation = if (lifted) 6.dp else 0.dp,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.zIndex(if (lifted) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = when {
+                            dragged -> dragOffset
+                            settleRow == i -> settle.value
+                            else -> shiftPx
                         }
-                    }
-                    IconButton(onClick = { onDelete(i) }, modifier = Modifier.size(48.dp)
-                        .semantics { contentDescription = "Delete point ${i + 1}" }) {
-                        Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    },
+            ) {
+                PointRow(i, r, count, onDelete, onShow)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PointRow(i: Int, r: PlanPointRow, count: Int, onDelete: (row: Int) -> Unit, onShow: (row: Int) -> Unit) {
+    Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
+        // ≡: drag it (the list's detector does the work)
+        Box(
+            Modifier.size(HANDLE_WIDTH, ROW_HEIGHT)
+                .semantics { contentDescription = "Move point ${i + 1} (hold and drag)" },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.DragHandle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Row(
+            Modifier.weight(1f).fillMaxHeight()
+                .clickable(role = Role.Button, onClickLabel = "Show on the map") { onShow(i) }
+                .semantics { contentDescription = "Show point ${i + 1} on the map: ${r.name}" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PointMarker(r, count)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(r.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                roleText(r)?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1)
                 }
             }
+            legText(r)?.let {
+                Spacer(Modifier.width(8.dp))
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1)
+            }
+        }
+        IconButton(onClick = { onDelete(i) }, modifier = Modifier.size(48.dp)
+            .semantics { contentDescription = "Delete point ${i + 1}" }) {
+            Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

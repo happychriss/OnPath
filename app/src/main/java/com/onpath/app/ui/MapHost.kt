@@ -13,7 +13,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import android.view.MotionEvent
-import android.view.View
 import kotlin.math.hypot
 import android.graphics.PointF
 import android.util.Log
@@ -229,17 +228,12 @@ fun MapHost(
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        HoldRing(holdAt.value, onArmed = { buzz(mapView, holdBuzz.value, vm.settings.planVibrate) })
+        HoldRing(holdAt.value, onArmed = { Haptics.play(mapView.context, holdBuzz.value, vm.settings.planVibrate) })
     }
 }
 
 /** How long a press must last in plan mode before it does anything. */
 const val HOLD_MS = 300L
-
-/** Hold armed (ring full): a very light tick, through the one plan haptics helper (Haptics). Never throws. */
-private fun buzz(view: View, b: MapGestures.Buzz, planVibrate: Boolean) {
-    if (b == MapGestures.Buzz.TICK) Haptics.play(view.context, PlanHaptics.feel(PlanEdit.MENU_OPENED), planVibrate)
-}
 
 /** Follows one finger on the map: how long it was held without moving (for the plan-mode hold). */
 private class HoldTracker {
@@ -259,7 +253,7 @@ private class HoldTracker {
     }
 }
 
-/** Ring that fills under the finger during the hold; [onArmed] fires (vibration) when it is full. */
+/** Ring that fills under the finger during the hold; [onArmed] fires (the hold's vibration, PlanHaptics) when it is full. */
 @Composable
 private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
     val progress = remember { Animatable(0f) }

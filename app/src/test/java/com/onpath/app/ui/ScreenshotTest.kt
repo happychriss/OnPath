@@ -368,6 +368,14 @@ class ScreenshotTest {
         }
     }
 
+    /** Fresh install (field test 2026-10-21): routing data still loading – a plain notice, never a file path. */
+    @Test fun planRoutingDataLoading() = paparazzi.snapshot {
+        Frame {
+            PlanPanel(planUi(2, route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList()),
+                error = com.onpath.app.data.RoutingDataNotice.LOADING), PlanCallbacks())
+        }
+    }
+
     /** Swiped down twice: one line with the key numbers. */
     @Test fun planMini() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
@@ -514,6 +522,37 @@ class ScreenshotTest {
     /** Delete asks first and stays until answered. */
     @Test fun routesDeleteConfirm() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
+    }
+
+    /** Recycle bin (C11): deleted entries with days left, Restore / Delete now. */
+    @Test fun recycleBin() = paparazzi.snapshot {
+        val now = 1_761_000_000_000
+        OnPathTheme {
+            RecycleBinScreen(listOf(tourList[1].copy(deletedMs = now - 2 * 86_400_000L), tourList[0].copy(deletedMs = now - 29 * 86_400_000L - 1)),
+                {}, {}, {}, nowMs = now)
+        }
+    }
+
+    /** Recycle bin → Delete now asks first. */
+    @Test fun recycleBinDeleteAsk() = paparazzi.snapshot {
+        OnPathTheme { RecycleBinScreen(listOf(tourList[1].copy(deletedMs = 1_760_900_000_000)), {}, {}, {}, nowMs = 1_761_000_000_000,
+            initialConfirm = tourList[1]) }
+    }
+
+    /** Settings → Backup: folder, last backup, count, last failure; another folder chosen. */
+    @Test fun settingsBackup() = paparazzi.snapshot {
+        OnPathTheme {
+            androidx.compose.material3.Surface(Modifier.fillMaxSize(), color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
+              androidx.compose.foundation.layout.Box(Modifier.padding(12.dp)) {
+                BackupSection(BackupUi("Nextcloud/OnPath", 1_761_000_000_000, 28, "storage full", custom = true), BackupCallbacks())
+              }
+            }
+        }
+    }
+
+    /** First start on an empty phone: restore offer. */
+    @Test fun restoreOffer() = paparazzi.snapshot {
+        OnPathTheme { Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }; RestoreOfferDialog({}, {}) }
     }
 
     /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */

@@ -17,8 +17,8 @@ MapLibre Native Android 13.7.1. Scratch scripts were not committed; the method f
 | **Total per cell (unzipped)** | **38 MB** | **≈ 10 MB** | −74 % | | |
 | Download per cell (zip) | 28 MB | ≈ 10 MB | tiles are already compressed, zip gains little | | |
 | **3 × 3 cells (holiday area ~80 × 80 km)** | **≈ 340 MB** | **≈ 90 MB** | | | |
-| Routing (`.rd5`) | 199 MB per 5° × 5° | **5–13 MB per 1° × 1°** (median 8 MB) | phone fetches only the 1° parts it needs (HTTP range) | app | medium |
-| Routing for the 3 × 3 area around Meran | 199 MB | **31 MB** (4 parts) | | | |
+| Routing (`.rd5`) | 199 MB per 5° × 5° | **1–19 MB per 1° × 1°** (median 8 MB) | phone fetches only the 1° parts it needs (HTTP range) – **done 2026-10-21**, §6 | app | medium |
+| Routing for Meran / Hilden | 199 / 182 MB | **9.7 / 14.5 MB** (1 part each) | | | |
 
 "Today per cell" = the real z10 cell x543 y361 (Meran, 10.90–11.25 E, 46.56–46.80 N) built on the owner's server
 "zo" with today's pipeline. "Proposed" = that number × the saving measured on the whole test region.
@@ -177,22 +177,88 @@ Same bbox, Planetiler run three times:
 | `trails` / `ways` vs `paths` | same geometry, different properties | could become properties of `paths` (one line instead of three) – not measured, needs style work |
 | `routes` merged + `majoronly` pieces | major routes stored twice | small; leave |
 
-## 6. Routing (`.rd5`)
+## 6. Routing (`.rd5`) – implemented 2026-10-21 (laptop): the phone loads 1° parts
 
 BRouter's `.rd5` (one per 5° × 5°) is 25 separate 1° × 1° parts (checked in `brouter-mapaccess` 1.7.11
-`PhysicalFile` / `OsmFile`):
-- the first 200 bytes are 25 offsets (index = lon offset × 5 + lat offset); each part is one contiguous byte range;
-  offsets inside a part are relative, so a part can be moved;
-- a part with length 0 means "no data" (`OsmFile` returns early) – BRouter does not fail;
-- an optional tail (113 bytes in `E10_N45.rd5`) holds the creation time, a checksum of the 200-byte index and one checksum per part;
-  without the tail BRouter skips the checks.
+`PhysicalFile` / `OsmFile`, decompiled from `app/libs`):
+- the first 200 bytes are 25 big-endian longs; the low 48 bits are the **end** offset of part i (i = lon offset × 5 +
+  lat offset; part 0 starts at 200, part i at the end of part i−1), the high 16 bits a version (only entry 0 is
+  checked against `lookups.dat`; kept as read);
+- each part is one contiguous byte range; offsets inside a part are relative, so a part can be moved;
+- a part of length 0 means "no data" (`OsmFile` returns early) – BRouter does not fail, it just finds no way there;
+- the tail after part 24 (113 bytes: creation time, index checksum, 25 part checksums, elevation type) is
+  **required**: its index checksum is stored as `crc ^ 2`, and that is how BRouter recognises the current 1/32° grid.
+  Without the tail BRouter assumes the old 1/80° grid and crashes (`ArrayIndexOutOfBoundsException` in
+  `OsmFile.createMicroCache`, measured). The checksum is BRouter's `Crc32` = CRC-32 without the final inversion
+  (`~java.util.zip.CRC32`); the part checksums stay valid because the parts are copied unchanged.
 
-So the phone can fetch the 200-byte index plus only the needed parts with HTTP range requests from brouter.de and
-write its own `E10_N45.rd5` with empty parts elsewhere (recompute the index checksum with BRouter's own `Crc32`,
-which is already in the APK). Sizes of the 1° parts of `E10_N45.rd5`: 4.8–12.8 MB, median 8.3 MB.
-A z10 cell touches 1–2 parts (rarely 4); the 3 × 3 area around Meran touches 4 = 31 MB instead of 199 MB.
-Not verified: that brouter.de answers range requests (the downloader already resumes, so very likely); that the
-divisor/elevation fields need the tail (keep the tail to be safe). Adding a part later = rewrite the local file.
+**Experiment (JVM, `tools/routing/jvm-test/PartialTest.kt`,
+`KTTEST=tools/routing/jvm-test/PartialTest.kt tools/routing/jvm-test/run.sh <dir>`), E10_N45 of 17 Oct 2026, hiking T3:**
+
+| rd5 in the folder | Bozen → Meran (part 11°E 46°N) | Ultental (10°E 46°N) | Lana → Zoggler Stausee (crosses 11°E) |
+| --- | --- | --- | --- |
+| whole file (199 MB) | 32.82 km | 9.55 km | 24.99 km |
+| only 11°E 46°N (9.7 MB) | 32.82 km (identical) | "more than 1000 m from any path" | same message |
+| 10°E + 11°E 46°N (14.9 MB) | 32.82 km | 9.55 km | 24.99 km |
+| only 11°E 46°N, **no tail** | crash (wrong grid) | | |
+
+So an empty part looks to BRouter like "no way nearby" – misleading. `BRouterEngine.checkSegments` therefore reads the
+local index first and reports a point in an empty part as "No routing data for this area" (like a missing file), so
+the plan shows the plain "map is still loading" notice and the part loads.
+
+**brouter.de** (nginx) answers HTTP range requests (`206`, `Content-Range: bytes 0-199/199033312`), sends `ETag`
+(`"6ad80f45-bdd01e0"`) and `Last-Modified` (weekly, all tiles the same date). Part sizes from the index (E10_N45: file of 17 Oct 2026; E5_N50: brouter.de 21 Oct 2026):
+
+| E10_N45 (South Tyrol) | 10°E | 11°E | 12°E | 13°E | 14°E |
+| --- | --- | --- | --- | --- | --- |
+| 49°N | 7.9 | 9.9 | 6.5 | 5.0 | 4.8 |
+| 48°N | 10.3 | 12.8 | 8.2 | 8.4 | 9.9 |
+| 47°N | 7.5 | 8.9 | 8.7 | 8.5 | 7.5 |
+| 46°N | 5.2 | **9.7** (Bozen, Meran) | 6.3 | 7.9 | 9.9 |
+| 45°N | 9.2 | 9.5 | 5.6 | 5.5 | 5.6 |
+
+| E5_N50 (Rhineland) | 5°E | 6°E | 7°E | 8°E | 9°E |
+| --- | --- | --- | --- | --- | --- |
+| 54°N | 0 (sea) | 0 | 0 | 0.9 | 3.9 |
+| 53°N | 1.9 | 3.2 | 3.2 | 5.0 | 6.4 |
+| 52°N | 9.8 | 9.2 | 5.6 | 7.1 | 7.1 |
+| 51°N | 12.0 | **14.5** (Hilden) | 18.7 | 9.9 | 8.7 |
+| 50°N | 9.1 | 10.8 | 13.1 | 13.7 | 8.4 |
+
+MB. Whole files: E10_N45 199 MB, E5_N50 182 MB. Meran needs 9.7 MB, Hilden 14.5 MB (+18.7 MB when the plan reaches
+east of 7°E).
+
+### 6a. Implementation
+
+- `routing/Rd5Parts.kt` (pure, JVM-tested in `Rd5PartsTest`): `Part(lon, lat)` with `tile` / `index` / `key`
+  (`"E10_N45.rd5:E11_N46"`); which parts a point (`forPoint`, 2 km margin), a box (`forBox`, map regions) or a line
+  (`forCorridor`, 10 km around the route or the straight legs) needs; index / tail parsing, checksum, `write` (temp
+  file, sync, size check, rename – never a broken file in place; BRouter keeps reading the old inode); `hasData` for
+  the engine.
+- `data/Rd5PartStore.kt` (JVM-tested in `Rd5PartStoreTest` with a fake server: ranges, broken connection, version
+  change, removal): one local rd5 per tile holding the parts we have, `<tile>.parts.json` next to it (parts fetched
+  incl. ones empty on the server, ETag, Last-Modified, the remote index + tail – so sizes of missing parts are known
+  offline – fetch time, local file length; a list that does not match the file length is ignored and the file's own
+  index decides). Parts download to `segments/.rd5parts/<tile>-<version>-<i>.part` and resume (Range + `If-Range`);
+  a server change during a download (200 instead of 206, other ETag) starts over once with the new version.
+  **Versions are never mixed:** the local file and the server's are the same version when their tails match (creation
+  time + part checksums, not the index checksum); otherwise the parts already here are fetched again together with the
+  new ones. A whole rd5 without a parts list (old download, adb push) counts as complete.
+  `refreshIfNewer(tile)` (35-day rule, `checkRoutingData`) fetches only the parts the phone has. `remove(parts)`
+  rewrites the file without them (deleted when none is left). The rd5's modification time is the fetch time of its
+  version, so the 35-day rule keeps working.
+- `RoutingDataLoader` queues part keys instead of 5° names; sizes for the modal come from the index (one 200-byte +
+  one 113-byte request per tile) before the download starts.
+
+Live check (laptop, 21 Oct 2026): `Rd5PartStoreTest.livePartDownload` (`ONPATH_LIVE_DIR=<dir>`) fetched part
+11°E 46°N from brouter.de (9.7 MB instead of 199 MB; 2 small requests for index + tail), BRouter's
+`checkFileIntegrity` passed and `PartialTest` routed Bozen → Meran on it (32.82 km); `liveBrouterDeIndex`
+(`ONPATH_LIVE=1`) checks ranges / ETag / tail format only.
+
+User-facing (owner 2026-10-22): routing data is never named – it comes with the map (map-cells.md §19.8).
+
+Open: one part at a time rewrites the local file (copies the parts already there, ~10–40 MB, < 1 s); a corridor across
+many parts (long bike tour) loads them one after the other.
 
 ## 7. Joining cells on the phone
 
@@ -221,7 +287,7 @@ Details: map-cells.md §19.
 - Overlays to tiles touches the style and three app classes; ship it in one release with the pipeline change, and keep
   `OptionalSources` able to strip the new source when missing.
 - 0.25 m / z12 terrain: if the owner sees a difference in the 3-D relief, z13 with WebP exact (−31 %) is the fallback.
-- Range requests depend on brouter.de's server; fallback stays the whole 5° file.
+- Range requests depend on brouter.de's server (verified: nginx, 206 + ETag); without them the part download fails with a plain message.
 
 ## Who does what
 
@@ -229,6 +295,6 @@ Details: map-cells.md §19.
 | --- | --- | --- |
 | 1 Terrain | `build_terrain.py`: max zoom 12, B rounded to 0.25 m, WebP, fix `tile_range` edge; `build_contours.py` from z13 | test WebP hill shade on the phone; none else |
 | 2 Overlays | tippecanoe step, `overlays.pmtiles`, style sources → `source-layer` (`make_style.py`), search name list | `DataFiles`, `OptionalSources`, `StyleLoader`, `OfflineIndex` |
-| 3 Routing | – | `SegmentDownloader`: index + needed 1° parts, local rd5 writer |
+| 3 Routing | – | done: `Rd5Parts` + `Rd5PartStore` (§6a) |
 | 4 Base | two Planetiler flags + path/track filter | none (style already falls back to `paths`) |
 | 5 Join store | cells = z10–14 tiles only | spike MBTiles, then cell store + overview map |

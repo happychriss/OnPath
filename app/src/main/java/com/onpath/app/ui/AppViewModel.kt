@@ -19,7 +19,9 @@ import com.onpath.app.data.Geo
 import com.onpath.app.data.Prefs
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourDb
+import com.onpath.app.backup.Backups
 import com.onpath.app.data.TourKind
+import com.onpath.app.data.RoutingDataNotice
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.GpxWaypoint
@@ -280,6 +282,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
+        routingForCells(j.cells, wait = j.own != null || viewWithoutDetail) // routing data comes with the map
         if (!cells.downloadsAvailable) {
             if (notAvailableShown) return
             notAvailableShown = true; cellJob = j; return
@@ -317,16 +320,92 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * waits for are not there yet. Null = no modal (and it is over when everything is there).
      */
     fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? {
+        if (mode != AppMode.PLAN) return null
         val focus = loadModalFor
-        if (focus.isEmpty() || !cells.downloadsAvailable || mode != AppMode.PLAN) return null
-        val ui = MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
-        if (ui == null) { loadModalFor = emptySet(); return null } // the map is there: the situation is over
-        loadHeld = ui.percent
+        val map = if (focus.isEmpty() || !cells.downloadsAvailable) null else
+            MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
+                .also { if (it == null) loadModalFor = emptySet() else loadHeld = it.percent } // null: the map is there
+        // routing data in the same modal (field test 2026-10-21): one % over both, closes when both are there
+        val r = if (routingModal) routingData.status.also { if (it == null) routingModal = false } else null
+        val ui = RoutingLoads.combine(map, r, combinedHeld)
+        combinedHeld = ui?.percent ?: 0
         return ui
     }
 
     /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
-    fun hideLoadModal() { loadModalFor = emptySet() }
+    fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false }
+
+    // ---------------- routing data on a fresh install (field test 2026-10-21: it never came by itself) ----------------
+
+    private val netStatus by lazy { com.onpath.app.cells.AndroidNetworkStatus(getApplication()) }
+    /** Loads missing routing data tiles from brouter.de (mobile data too unless "Maps only on Wi-Fi"). */
+    private val routingData: com.onpath.app.data.RoutingDataLoader by lazy {
+        com.onpath.app.data.RoutingDataLoader(dataFiles.segmentsDir, netStatus, { settings.mapsWifiOnly },
+            launch = { block -> viewModelScope.launch(Dispatchers.IO) { block() } },
+            onInstalled = { names -> viewModelScope.launch(Dispatchers.Main) { routingDataArrived(names) } },
+            onChange = { viewModelScope.launch(Dispatchers.Main) { routingDataChanged() } },
+        ).also { loader -> netStatus.listen { loader.retry() } }
+    }
+    /** The loading modal waits for routing data too (point set, first start, search). */
+    private var routingModal by mutableStateOf(false)
+    /** Last % of the combined modal (never backwards). */
+    private var combinedHeld = 0
+    /** Settings → "Download routing data" tapped: its progress shows in the data line. */
+    private var manualRouting: String? = null
+
+    /** Routing data for [points] (a point, a position, a route): missing tiles load; [wait] = in the modal. */
+    private fun routingFor(points: List<GeoPoint>, wait: Boolean) = safeRouting("trigger") {
+        val miss = routingData.ensure(com.onpath.app.data.RoutingTiles.forPoints(points))
+        if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
+    }
+
+    /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
+    private fun routingForLine(line: List<GeoPoint>) = safeRouting("route") {
+        routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line))
+    }
+
+    /** Routing data under these map regions (a region load is a trigger too). */
+    private fun routingForCells(c: Collection<com.onpath.app.cells.CellId>, wait: Boolean) = safeRouting("regions") {
+        val miss = routingData.ensure(com.onpath.app.data.RoutingTiles.forCells(c))
+        if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
+    }
+
+    /** Routing data triggers never break planning. */
+    private inline fun safeRouting(what: String, block: () -> Unit) {
+        try { block() } catch (e: Exception) { Problems.error("routing", "Routing data download ($what) failed; planning goes on", e) }
+    }
+
+    /** Main thread: progress / phase changed – the plan's notice follows (loading ↔ not yet). */
+    private fun routingDataChanged() {
+        val s = routingData.status
+        if (RoutingDataNotice.isNotice(routeError)) routeError = RoutingDataNotice.text(s?.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING)
+        val name = manualRouting ?: return
+        when {
+            s == null || name !in s.names -> {
+                manualRouting = null; dataBusy = null
+                message = if (routingData.exists(name)) "Routing data for this area is ready." else "Routing data download stopped. Tap again to resume."
+            }
+            s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING ->
+                dataBusy = "Downloading routing data: ${s.percent} % of ${mb(s.totalBytes)} MB"
+            else -> {
+                manualRouting = null; dataBusy = null
+                message = if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE)
+                    "No internet connection – the routing data loads as soon as you're online."
+                else "Routing data download stopped. Tap again to resume."
+            }
+        }
+    }
+
+    /**
+     * Main thread: routing data arrived – the plan is computed again at once (no question: this is planning, not
+     * re-routing a tour), so the straight line becomes a route with elevation.
+     */
+    private fun routingDataArrived(names: List<String>) {
+        Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
+        recheckData()
+        engine = null // a new engine reads the new tile
+        if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) recalc()
+    }
 
     /**
      * Modal → Cancel (owner 2026-10-21: "Cancel = stop", [MapLoadCancel]): the waited-for regions stop loading, no card
@@ -340,6 +419,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (o.stop.isNotEmpty()) safeCells("cancel") { cells.cancel(o.stop) }
         o.stop.forEach { loadProgress.remove(it) }
         loadModalFor = emptySet(); loadBySearch = false
+        // routing data waited for in the same modal: one Cancel stops it too (the partial download stays for resuming)
+        if (routingModal) { routingModal = false; safeRouting("cancel") { routingData.cancel() } }
         if (o.closeCard) { cellJob = null; mobileDeclined = false; jobWaited = false; firstStartHidden = true }
         if (o.clearSearchMark) { searchMark = null; searchPlace = null }
     }
@@ -369,6 +450,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
+        if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
         for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
     }
@@ -385,6 +467,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Card → "Retry": ask again for the cells that failed. */
     fun cellCardRetry() {
+        safeRouting("retry") { routingData.retry(force = true) }
         val job = cellJob ?: return
         val failed = job.cells.filter { cells.state(it) is com.onpath.app.cells.CellState.Failed }
         val own = failed.filter { it == job.own }
@@ -416,6 +499,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val all = cells.installed.value.map { it.id }
         cells.cancel(cells.states.value.keys.toList())
         if (all.isNotEmpty()) cells.delete(all)
+        if (all.isNotEmpty()) removeRoutingParts(all, emptyList())
         closeCellCard(); t3Pending = true; t5LastAt = null
         message = "Map areas deleted (${all.size}). The map for your position loads again as on a new install."
         Problems.info("cells", "Maps reset like a fresh install (${all.size} area(s) deleted)")
@@ -441,6 +525,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
             safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc)) }
+            routingFor(listOf(p), wait = true)
         }
         if (onTour) {
             val last = t5LastAt
@@ -499,10 +584,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                       installed: List<com.onpath.app.cells.CellStore.InstalledCell>): OfflineMapsUi {
         val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
         val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
-        val areas = installed.sortedBy { areaNames[it.id] ?: it.id.id }.map { c ->
+        val sorted = installed.sortedBy { areaNames[it.id] ?: it.id.id }
+        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once
+        val routingBytes = try {
+            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { key ->
+                com.onpath.app.routing.Rd5Parts.Part.parse(key)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
+            }
+        } catch (e: Exception) {
+            Problems.warn("routing", "Routing data sizes for Offline maps not readable; map sizes only", e); emptyMap()
+        }
+        val areas = sorted.map { c ->
             val built = c.built?.take(10)?.let { b -> runCatching { iso.parse(b) }.getOrNull() }
             val st = states[c.id]
-            OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes,
+            OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes + (routingBytes[c.id] ?: 0L),
                 fmt.format(built ?: Date(c.installedAt)),
                 st?.takeIf { it !is com.onpath.app.cells.CellState.Ready && it != com.onpath.app.cells.CellState.None }?.label())
         }
@@ -527,7 +621,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteMapArea(id: String) {
         val c = com.onpath.app.cells.CellId.parse(id) ?: return
+        val kept = cells.installed.value.map { it.id }.filter { it != c }
         safeCells("delete") { cells.delete(listOf(c)) }
+        removeRoutingParts(listOf(c), kept)
+    }
+
+    /**
+     * Routing parts under deleted regions that no remaining region needs go too (owner 2026-10-22: routing data is part
+     * of a region's map). Parts loaded for a point or a route outside every region stay. Background, never during a tour.
+     */
+    private fun removeRoutingParts(deleted: List<com.onpath.app.cells.CellId>, kept: List<com.onpath.app.cells.CellId>) {
+        if (recState.value != null) return // the tour's router may need them; they go with the next delete
+        viewModelScope.launch(Dispatchers.IO) {
+            safeRouting("delete") {
+                val parts = com.onpath.app.data.RoutingTiles.unneeded(deleted, kept).mapNotNull { com.onpath.app.routing.Rd5Parts.Part.parse(it) }
+                val freed = routingData.store.remove(parts)
+                if (freed > 0) {
+                    Problems.info("routing", "Routing data of deleted map areas removed (${freed / 1_048_576} MB, ${parts.joinToString()})")
+                    withContext(Dispatchers.Main) { engine = null }
+                }
+            }
+        }
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
@@ -930,26 +1044,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Downloads the routing data tile for the map area from brouter.de (needs internet once). */
+    /**
+     * Settings → Diagnostics → "Download routing data": the 1° parts at the map centre from brouter.de (normally they
+     * come by themselves with the map – owner 2026-10-22: no separate "routing data" for the user).
+     */
     fun downloadRoutingData() {
         if (dataBusy != null) return
         val (lat, lon, _) = initialCamera()
-        val name = com.onpath.app.data.SegmentDownloader.tileName(lat, lon)
-        dataBusy = "Downloading routing data $name…"
-        viewModelScope.launch(Dispatchers.IO) {
-            val msg = try {
-                com.onpath.app.data.SegmentDownloader.download(name, dataFiles.segmentsDir) { done, total ->
-                    dataBusy = if (total > 0) "Downloading routing data: ${done * 100 / total} % of ${total / 1_048_576} MB"
-                    else "Downloading routing data: ${done / 1_048_576} MB"
-                }
-                withContext(Dispatchers.Main) { recheckData() }
-                "Routing data $name ready."
-            } catch (e: Exception) {
-                Problems.warn("data", "Routing data download stopped", e)
-                "Routing data download stopped: ${e.message ?: e.javaClass.simpleName} Tap again to resume."
-            }
-            withContext(Dispatchers.Main) { dataBusy = null; message = msg }
+        val keys = com.onpath.app.data.RoutingTiles.forPoints(listOf(GeoPoint(lat, lon)))
+        val miss = try { routingData.missing(keys) } catch (e: Exception) {
+            Problems.warn("routing", "Routing data check failed", e); keys
         }
+        if (miss.isEmpty()) { message = "Routing data for this area is already on the phone."; return }
+        // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
+        manualRouting = miss.first()
+        dataBusy = "Downloading routing data…"
+        safeRouting("manual") { routingData.ensure(miss, ignoreWifiOnly = true) }
     }
 
     private fun displayName(uri: Uri): String? = try {
@@ -984,10 +1094,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * One undoable change of the planned points; [edit] = what it was, for the vibration (PlanHaptics: 1× a point set,
-     * 2× deleted, 1× reordered, nothing else) – played here so map, menus and the Points list all feel the same.
+     * One undoable change of the planned points. No vibration here: the plan vibrates only at the moment of a map hold
+     * (PlanHaptics, owner 2026-10-21), never after an edit.
      */
-    private fun change(edit: PlanEdit = PlanEdit.OTHER, block: MutableList<GeoPoint>.() -> Unit) {
+    private fun change(block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         history.record(waypoints)
@@ -998,7 +1108,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
-        Haptics.play(getApplication(), PlanHaptics.feel(edit), settings.planVibrate)
         recalc()
     }
 
@@ -1009,10 +1118,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pinned.retainAll(alive)) prefs.planPinned = pinned
     }
 
-    private fun set(list: List<GeoPoint>, edit: PlanEdit = PlanEdit.OTHER) = change(edit) { clear(); addAll(list) }
+    private fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
 
     /**
-     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the vibration and
+     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the hold's vibration and
      * the new line confirm it; a wrong guess is fixed in the point menu ("End route here") or with Undo.
      * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
      */
@@ -1021,10 +1130,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val before = waypoints.toList()
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
-        change(PlanEdit.POINT_SET) { add(d.index.coerceIn(0, size), p) }
+        change { add(d.index.coerceIn(0, size), p) }
     }
 
-    fun removePoint(index: Int) { if (index in waypoints.indices) change(PlanEdit.POINT_DELETED) { removeAt(index) } }
+    fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
@@ -1103,7 +1212,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun routeFromMyLocation(p: GeoPoint) {
         firstPointMenu = null
         val loc = tracker.location.value ?: return // the menu only offers this with a position
-        if (waypoints.isEmpty()) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
+        if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays("POI menu opened"); poiMenu = poi }
 
@@ -1116,7 +1225,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         clearSearchMarkAt(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
-        change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
     }
     /**
      * Opens the menu of route point [index]; [distDp] = finger distance from the marker, [via] = what opened it
@@ -1205,7 +1314,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val after = com.onpath.app.routing.PlanPoints.move(waypoints, from, to)
         if (after == waypoints.toList()) return
         Problems.trace("plan", "Points list: point ${from + 1} moved to ${to + 1} (plan ${waypoints.size} points)")
-        set(after, PlanEdit.REORDERED)
+        set(after)
     }
 
     /** Points list → ✕: deleted at once (Undo brings it back); a round trip stays closed at its start. */
@@ -1213,7 +1322,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val after = com.onpath.app.routing.PlanPoints.delete(waypoints, index)
         if (after.size == waypoints.size) return
         Problems.trace("plan", "Points list: point ${index + 1} deleted (plan ${waypoints.size} → ${after.size})")
-        set(after, PlanEdit.POINT_DELETED)
+        set(after)
     }
 
     /**
@@ -1297,6 +1406,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
         if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
     /** Search result marked on the map (pin); see [pickSearchResult]. */
@@ -1341,11 +1451,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when (role) {
             // No timed notices (owner rule): the named marker and the new line show what happened.
             PlaceRole.SMART -> addPoint(p, onPoi = true)
-            PlaceRole.START -> change(PlanEdit.POINT_SET) { add(0, p) }
+            PlaceRole.START -> change { add(0, p) }
             PlaceRole.DESTINATION -> {
                 val loc = tracker.location.value
-                if (waypoints.isEmpty() && loc != null) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
-                else change(PlanEdit.POINT_SET) { add(p) }
+                if (waypoints.isEmpty() && loc != null) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+                else change { add(p) }
             }
         }
     }
@@ -1464,6 +1574,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
         if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
     private fun holdCameraForSharedPlace() {
@@ -1546,7 +1657,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var baseline = false
             result.onSuccess {
                 baseline = adoptPlanBaseline
-                route = it; routeError = it.error; snapToRoute(pts, pins, it)
+                route = it; snapToRoute(pts, pins, it)
+                // routing data missing in the route's corridor (~10 km): it loads now; the notice (plain words, no path)
+                // only when a part under a planned point is missing – those make the straight line
+                routingForLine(if (it.points.size >= 2) it.points else pts)
+                val tilesMissing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts, 0.0)).isNotEmpty() } catch (e: Exception) {
+                    Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
+                }
+                routeError = RoutingDataNotice.forRoute(it.error, tilesMissing, routingData.loading)
                 safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points)) } // T4: the corridor
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points)
                 if (viaData) routingDataRouteChanged(it)
@@ -1716,6 +1834,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val r = route
         val title = name.trim().ifBlank { defaultName("Route") }
         val act = activity; val level = sac
+        val stops = savedStops(pts); val pins = pinnedIndices()
         viewModelScope.launch {
             val id = withContext(Dispatchers.IO) {
                 runCatching {
@@ -1723,16 +1842,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         TourKind.PLANNED, title, act.name, level,
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                        stops, pinned = pins,
                     ).also { storePlanTimes(it, r, act) }
                 }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
             }
             if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
+            Backups.tourChanged(getApplication(), id)
             setSaved(title, id, pts)
             refreshTours()
             then?.invoke()
         }
     }
+
+    /** The plan's stops as saved: with their place names (backup / restore keeps them, owner 2026-10-21). */
+    private fun savedStops(pts: List<GeoPoint>) = pts.map { GpxWaypoint(it.lat, it.lon, stopName(it)) }
 
     /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
     fun requestSave() {
@@ -1757,6 +1880,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pts.size < 2 || name == null || id < 0) { saveDialog = true; return }
         val r = route
         val act = activity; val level = sac
+        val stops = savedStops(pts); val pins = pinnedIndices()
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
@@ -1764,12 +1888,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         id, act.name, level,
                         r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                         listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        pts.map { GpxWaypoint(it.lat, it.lon, null) },
+                        stops, pins,
                     ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
                 }
             }
             ok.onSuccess { replaced ->
-                if (replaced) { setSaved(name, id, pts); refreshTours(); then?.invoke() }
+                if (replaced) { Backups.tourChanged(getApplication(), id); setSaved(name, id, pts); refreshTours(); then?.invoke() }
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
                 Problems.error("db", "Overwriting a saved route failed", it)
@@ -1794,6 +1918,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = "The route could not be renamed. Please try again."; return@launch }
+            Backups.tourChanged(getApplication(), t.id)
             if (savedId == t.id) setSaved(name, savedId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
             refreshTours()
@@ -1885,6 +2010,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching { db.rename(t.id, name) }.onFailure { Problems.warn("db", "Naming the recorded tour failed; it keeps its date name", it) }.isSuccess
             }
             if (!ok) return@launch
+            Backups.tourChanged(getApplication(), t.id) // the file follows the new name
             finishedTour?.let { if (it.id == t.id) finishedTour = it.copy(name = name) }
             refreshTours()
         }
@@ -2247,6 +2373,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+            Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
         }
     }
@@ -2277,6 +2404,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 change { clear(); addAll(pts) }
+                // stop names and POI pins saved with the plan (since the backup, 2026-10-21) come back too
+                t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
+                t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
@@ -2299,13 +2429,129 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
         if (recState.value?.tourId == t.id) { message = "This tour is being recorded – end it first."; return }
         viewModelScope.launch(Dispatchers.IO) {
-            db.deleteTour(t.id)
+            // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
+            val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
+                .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
+            if (ok) Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) {
+                if (!ok) { routesProblem = "“${t.name}” could not be deleted. Please try again."; return@withContext }
                 if (shown?.tourId == t.id) shown = null
                 if (savedId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
                 if (finishedTour?.id == t.id) finishedTour = null
                 refreshTours()
             }
+        }
+    }
+
+    // ---------------- recycle bin + backup (owner 2026-10-21, docs/core-features.md C11) ----------------
+
+    /** Recycle bin list (My routes → ⋮ → Recycle bin); null = closed. */
+    var recycleBin by mutableStateOf<List<Tour>?>(null)
+
+    fun openRecycleBin() {
+        viewModelScope.launch {
+            recycleBin = withContext(Dispatchers.IO) {
+                runCatching { db.listDeleted() }.onFailure { Problems.error("db", "Recycle bin could not be read", it) }.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/). */
+    fun restoreFromBin(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
+            }
+            if (ok) Backups.tourChanged(getApplication(), t.id)
+            else routesProblem = "“${t.name}” could not be restored. Please try again."
+            openRecycleBin(); refreshTours()
+        }
+    }
+
+    /** Recycle bin → Delete now (asked first): gone for good, its backup file too. */
+    fun deleteForever(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.deleteTour(t.id) }.onFailure { Problems.error("db", "Deleting a tour for good failed", it) }.isSuccess
+            }
+            if (ok) Backups.purge(getApplication(), listOf(t.uuid))
+            openRecycleBin()
+        }
+    }
+
+    /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
+    fun exportAll() {
+        message = "Preparing the export…"
+        viewModelScope.launch {
+            try {
+                val app = getApplication<Application>()
+                val uri = withContext(Dispatchers.IO) {
+                    val f = Backups.exportZip(app, File(app.cacheDir, "export"), SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date()))
+                    FileProvider.getUriForFile(app, app.packageName + ".files", f) to f.name
+                }
+                message = null
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri.first)
+                    putExtra(Intent.EXTRA_SUBJECT, uri.second)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                events += UiEvent.Share(Intent.createChooser(send, "Export all tours"))
+            } catch (e: com.onpath.app.backup.BackupException) {
+                Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
+            } catch (e: Exception) {
+                Problems.error("backup", "Export all failed", e)
+                message = "Export failed: ${e.message ?: e.javaClass.simpleName}"
+            }
+        }
+    }
+
+    /** First start with an empty database: "Earlier tours found? Restore from Documents/OnPath" (asked once). */
+    var restoreOffer by mutableStateOf(false)
+    /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
+    var restoreProgress by mutableStateOf<String?>(null)
+        private set
+
+    private fun checkRestoreOffer() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val offer = try { !Backups.restoreOffered(app) && db.countAll() == 0 } catch (e: Exception) {
+                Problems.warn("backup", "Restore offer not checked", e); false
+            }
+            if (offer) withContext(Dispatchers.Main) { restoreOffer = true }
+        }
+    }
+
+    init {
+        Backups.init(app)
+        Backups.purgeAndSync(app) // 30-day recycle bin, files for tours that have none yet
+        checkRestoreOffer()
+        // a failed backup is said until OK is tapped (no silent loss); then it counts as seen
+        viewModelScope.launch {
+            Backups.failure.collect { text ->
+                if (text == null) return@collect
+                while (message != null) delay(500) // after the current message
+                message = "$text. Your tours are still on this phone – see Settings → Backup."
+                Backups.failureSeen(getApplication())
+            }
+        }
+    }
+
+    fun restoreOfferAnswered() { restoreOffer = false; Backups.setRestoreOffered(getApplication()) }
+
+    /** The folder the user confirmed in the picker: import every OnPath backup in it (off the main thread). */
+    fun restoreFrom(tree: Uri) {
+        if (restoreProgress != null) return
+        restoreProgress = "Looking for backups…"
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val r = withContext(Dispatchers.IO) {
+                try { Backups.restore(app, tree) { line -> viewModelScope.launch(Dispatchers.Main) { if (restoreProgress != null) restoreProgress = line } } }
+                catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
+            }
+            restoreProgress = null
+            message = r?.let { com.onpath.app.backup.BackupRestore.summary(it) } ?: "The backup folder could not be read. Please try again."
+            refreshTours()
         }
     }
 
@@ -2379,6 +2625,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val id = withContext(Dispatchers.IO) {
                     db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
                 }
+                Backups.tourChanged(app, id)
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
                 routesOpen = false // show the imported track on the map
                 refreshTours()
@@ -2415,7 +2662,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (routingDataBusy || recState.value != null) return
         val t = System.currentTimeMillis()
         if (t - prefs.routingDataCheckedAt < ROUTING_CHECK_MS) return
-        val names = listOf(line.first(), line.last()).map { com.onpath.app.data.SegmentDownloader.tileName(it.lat, it.lon) }.distinct()
+        val names = listOf(line.first(), line.last()).map { com.onpath.app.routing.Rd5Parts.tileName(it.lat, it.lon) }.distinct()
         val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
             .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
         prefs.routingDataCheckedAt = t
@@ -2425,7 +2672,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var got = 0
             for (f in due) {
                 try {
-                    if (com.onpath.app.data.SegmentDownloader.refreshIfNewer(f.name, dataFiles.segmentsDir)) got++
+                    if (routingData.store.refreshIfNewer(f.name)) got++ // only the 1° parts on the phone
                 } catch (e: Exception) {
                     Problems.info("routing", "Routing data ${f.name} not refreshed now (${e.message}); tried again later", e)
                 }

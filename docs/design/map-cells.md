@@ -607,3 +607,20 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
   (`REFRESH` for all installed areas). Debug block stays in Diagnostics.
 - **No app key** (release builds today): `MapCells.downloadsAvailable = false` → nothing is requested; the card says
   "Map downloads not available in this build" once per app run; Settings says so too.
+
+### 19.8 Routing data comes with the map (2026-10-22, owner: "it's all the map for my area")
+
+The user never sees "routing data" as a separate thing. BRouter's data loads as **1° × 1° parts** of the 5° rd5 files
+(~5–19 MB each instead of ~200 MB; `Rd5PartStore`, map-data-size.md §6) by `RoutingDataLoader`, triggered with the map:
+- every region job (`showCellJob` → `RoutingTiles.forCells`: the parts under the regions), a point set / the position /
+  a search (`forPoints`, 2 km), a computed route (`forLine`, 10 km corridor, never in the modal);
+- **one modal**: "Loading the map for your area · 4 regions · about 40 MB" with one % by bytes over regions + parts,
+  one Cancel for both; only parts missing: "Loading the map for your area · about 10 MB" (sizes from the server's
+  index before loading). No "routing data", no "+ routing data", no routing-only title;
+- plan notice while a part under a planned point is missing: "The map for this area is still loading – the route is
+  shown as a straight line until then."; offline: "The map for this area loads when you're online – the route is shown
+  as a straight line until then.";
+- **Settings → Offline maps**: a region's size includes its routing parts (a part under several regions counts once, for
+  the first in the list – approximate); **Delete** removes the parts no other installed region needs (parts loaded for a
+  point or a route outside every region stay; not during a tour). "Reset maps" removes the parts under all regions;
+- "Download routing data" is only in Settings → Diagnostics (parts at the map centre).

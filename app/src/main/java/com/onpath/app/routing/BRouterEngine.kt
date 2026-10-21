@@ -333,9 +333,15 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
             val name = segmentName(p)
             if (!File(segmentsDir, name).isFile) {
-                throw RoutingException(
-                    "No routing data for this area (missing $name in ${segmentsDir.absolutePath})."
-                )
+                // file name and folder only for diagnostics – the user sees a plain notice (RoutingDataNotice)
+                Problems.info("routing", "Routing data missing: $name in ${segmentsDir.absolutePath}")
+                throw RoutingException(NO_DATA)
+            }
+            // the phone loads 1° parts (Rd5Parts): an empty part would make BRouter say "no way within 1000 m" –
+            // misleading; it is missing data (the loader fetches it)
+            if (Rd5Parts.hasData(segmentsDir, p.lat, p.lon) == false) {
+                Problems.info("routing", "Routing data part missing: ${Rd5Parts.partOf(p.lat, p.lon).key} in ${segmentsDir.absolutePath}")
+                throw RoutingException(NO_DATA)
             }
         }
     }
@@ -354,8 +360,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         val m = msg ?: ""
         return when {
             m.contains("datafile") && m.contains("not found") -> {
-                val file = Regex("datafile (\\S+) not found").find(m)?.groupValues?.get(1) ?: ""
-                "No routing data for this area${if (file.isNotEmpty()) " (missing $file)" else ""}."
+                Problems.info("routing", "BRouter: $m")
+                NO_DATA
             }
             m.contains("position not mapped") -> {
                 val who = m.substringBefore("-position")
@@ -398,6 +404,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         /** One BRouter search at a time in this process (planning in the app, re-routing in the service). */
         private val LOCK = ReentrantLock()
         const val CANCELLED = "Routing was cancelled."
+        /** Plain text (no file name, no path); the plan shows RoutingDataNotice instead. */
+        const val NO_DATA = "No routing data for this area."
         const val BUSY = "The router is busy - try again in a moment."
         private const val MIN_BUDGET_MS = 500L
         private const val TIMEOUT_MS = 30_000L

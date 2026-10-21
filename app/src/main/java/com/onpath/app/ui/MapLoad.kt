@@ -50,6 +50,11 @@ data class MapLoadUi(
     /** How many regions (map cells – never called that on screen) the modal waits for, and their size. */
     val regions: Int = 1,
     val bytes: Long? = null,
+    /**
+     * Routing data loads too (its size is in [bytes]); [regions] 0 = only routing data ([RoutingLoads]). Never named on
+     * screen (owner 2026-10-22: it is all "the map for your area").
+     */
+    val routing: Boolean = false,
 ) {
     enum class Kind { PREPARING, LOADING, OFFLINE, WIFI, FAILED }
 
@@ -69,9 +74,9 @@ data class MapLoadUi(
 
     val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI
 
-    /** "3 regions · about 27 MB" */
-    val totals: String get() = "$regions ${if (regions == 1) "region" else "regions"}" +
-        (bytes?.let { " · about ${mb(it)} MB" } ?: "")
+    /** "3 regions · about 27 MB" (routing data included, not named); only routing data missing: "about 10 MB". */
+    val totals: String get() = if (regions == 0) bytes?.let { "about ${mb(it)} MB" } ?: ""
+        else "$regions ${if (regions == 1) "region" else "regions"}" + (bytes?.let { " · about ${mb(it)} MB" } ?: "")
 
     companion object {
         const val OFFLINE_TEXT = "No internet connection – the map will load as soon as you're online."

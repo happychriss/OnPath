@@ -50,7 +50,10 @@ class CorePointsListE2ETest : E2EBase() {
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         assertNotNull("Points section shown – ${state()}", device.wait(Until.findObject(By.text("Points")), 5_000))
-        assertNull("no profile in the point editor", device.findObject(By.desc("Route details")))
+        // owner 2026-10-21: the profile sits below the points (tap → route details)
+        val profile = desc("Route details").visibleBounds
+        val lastRow = desc("Move point 3 (hold and drag)").visibleBounds
+        assertTrue("profile below the points: $profile vs $lastRow", profile.top >= lastRow.bottom - 2)
     }
 
     private fun desc(text: String) = device.wait(Until.findObject(By.desc(text)), 5_000)
@@ -68,15 +71,24 @@ class CorePointsListE2ETest : E2EBase() {
         assertEquals(before, points())
     }
 
+    /**
+     * A slow, realistic finger: rests on ≡ of point 3 with a little wobble (like a real thumb), then moves up in small
+     * steps to above point 1 and lets go. Field test 0.8.9: "moving the points doesn't work" – the wobble let the sheet
+     * / list steal the gesture. The sheet must not move meanwhile.
+     */
     @Test fun reorderByHoldingAndDraggingTheHandle() {
         threePointsAndFullSheet()
         val before = points()
         val from = desc("Move point 3 (hold and drag)").visibleCenter
         val to = desc("Move point 1 (hold and drag)").visibleCenter
-        // a finger resting ~0.6 s on ≡ (long press), then dragged up two rows and released
-        device.swipe(arrayOf(Point(from.x, from.y), Point(from.x, from.y), Point(from.x, from.y + 1),
-            Point(to.x, to.y - 10)), 120)
+        val path = ArrayList<Point>()
+        repeat(12) { path += Point(from.x + (it % 3) - 1, from.y + (it % 2)) }  // ~0.4 s resting, wobbling 1–2 px
+        val steps = 30
+        for (k in 1..steps) path += Point(from.x, from.y + (to.y - 12 - from.y) * k / steps)
+        repeat(6) { path += Point(from.x, to.y - 12) }  // a moment over the new place before letting go
+        device.swipe(path.toTypedArray(), 6)  // 6 steps ≈ 30 ms per point
         waitUntil("reordered", 5_000) { points() != before }
+        assertEquals("the sheet did not move while a row was dragged", PlanSize.FULL, size())
         settle()
         assertEquals("no point lost or added", 3, points().size)
         assertTrue("the dragged point is the new start: ${points()} vs $before",
@@ -84,6 +96,30 @@ class CorePointsListE2ETest : E2EBase() {
         desc("Undo").click()
         waitUntil("undo restored the order") { points().size == 3 &&
             com.onpath.app.data.Geo.distance(points()[0], before[0]) < 1_000 }
+    }
+
+    /** Field test 0.8.9 ("the swipe is jumping"): the sheet follows a slow drag of its handle, half → full → half. */
+    @Test fun swipeTheSheetHalfFullHalf() {
+        startPlanWithTwoPoints()
+        settle()
+        waitUntil("half sheet") { size() == PlanSize.COMPACT }
+        val (_, h) = mapSize()
+        fun dragHandle(dy: Int) {
+            val c = desc("Resize panel").visibleCenter
+            val path = ArrayList<Point>()
+            val steps = 25
+            for (k in 0..steps) path += Point(c.x, c.y + dy * k / steps)
+            repeat(4) { path += Point(c.x, c.y + dy) }  // stop before letting go: no fling, the distance decides
+            device.swipe(path.toTypedArray(), 6)
+        }
+        dragHandle(-(h * 0.35f).toInt())
+        waitUntil("full sheet after a swipe up") { size() == PlanSize.FULL }
+        assertNotNull("points shown", device.wait(Until.findObject(By.text("Points")), 5_000))
+        Thread.sleep(600)
+        dragHandle((h * 0.2f).toInt())
+        waitUntil("half sheet after a swipe down") { size() == PlanSize.COMPACT }
+        Thread.sleep(600)
+        assertNull("no points list in the half sheet", device.findObject(By.text("Points")))
     }
 
     @Test fun tapARowShowsThePointOnTheMap() {
