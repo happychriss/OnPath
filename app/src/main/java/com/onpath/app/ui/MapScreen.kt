@@ -259,8 +259,12 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
         onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
         onAllowLocation = acted(onRequestLocation))
-    // building / downloading map areas: a clear modal overlay with Cancel (owner 2026-10-21)
-    if (cellCard?.wantsOverlay() == true) MapLoadOverlay(cellCard, cellCb)
+    // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
+    // time left and Cancel (owner 2026-10-21); ticks every second so the bar moves smoothly
+    val loadUi by produceState<MapLoadUi?>(null, cellStates, vm.cellJob, vm.mode) {
+        while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
+    }
+    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::hideLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
