@@ -943,6 +943,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
         closePointMenu(why)
         if (nearChoice != null) { Problems.trace("plan", "Near-point menu closed: $why"); nearChoice = null }
+        if (firstPointMenu != null) Problems.trace("plan", "First-point menu closed: $why")
+        if (poiMenu != null) Problems.trace("plan", "POI menu closed: $why")
         poiMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
     }
 
@@ -980,7 +982,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "Near-point menu: new point here (plan ${waypoints.size} → ${waypoints.size + 1})")
         addPoint(c.at, c.lineSnapM)
     }
-    fun openFirstPointMenu(p: GeoPoint) { closeMapOverlays("first-point menu opened"); if (waypoints.isEmpty()) firstPointMenu = p }
+    fun openFirstPointMenu(p: GeoPoint) {
+        closeMapOverlays("first-point menu opened")
+        if (waypoints.isEmpty()) { firstPointMenu = p; Problems.trace("plan", "First-point menu opened") }
+    }
 
     /** First-point menu → "Start here": the held spot is the start; later holds add points as usual. */
     fun startHere(p: GeoPoint) { firstPointMenu = null; addPoint(p) }
