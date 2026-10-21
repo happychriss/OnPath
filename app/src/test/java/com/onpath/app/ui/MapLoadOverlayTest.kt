@@ -33,6 +33,18 @@ class MapLoadOverlayTest {
     @Test fun loading() = shot(preparing, loading)
     @Test fun offlineAndFailed() = shot(offline, failed)
 
+    /** Fresh install (field test 2026-10-21): map + routing data in one modal; only routing data missing. */
+    @Test fun withRoutingData() {
+        val mb = 1_048_576L
+        val status = com.onpath.app.data.RoutingDataLoader.Status(listOf("E10_N45.rd5"),
+            com.onpath.app.data.RoutingDataLoader.Phase.LOADING, 60 * mb, 200 * mb, 2.5 * mb)
+        val both = RoutingLoads.combine(MapLoadUi(MapLoadUi.Kind.LOADING, 40, 30, regions = 4, bytes = 30 * mb), status)!!
+        val only = RoutingLoads.combine(null, status)!!
+        assertTrue(both.totals == "4 regions + routing data · about 230 MB")
+        assertTrue(only.title == "Loading routing data for this area" && only.totals == "about 200 MB")
+        shot(both, only)
+    }
+
     private fun shot(vararg uis: MapLoadUi) = paparazzi.snapshot {
         OnPathTheme {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

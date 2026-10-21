@@ -20,6 +20,7 @@ import com.onpath.app.data.Prefs
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
+import com.onpath.app.data.RoutingDataNotice
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.GpxWaypoint
@@ -280,6 +281,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
+        routingForCells(j.cells, wait = j.own != null || viewWithoutDetail) // routing data comes with the map
         if (!cells.downloadsAvailable) {
             if (notAvailableShown) return
             notAvailableShown = true; cellJob = j; return
@@ -317,16 +319,87 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * waits for are not there yet. Null = no modal (and it is over when everything is there).
      */
     fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? {
+        if (mode != AppMode.PLAN) return null
         val focus = loadModalFor
-        if (focus.isEmpty() || !cells.downloadsAvailable || mode != AppMode.PLAN) return null
-        val ui = MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
-        if (ui == null) { loadModalFor = emptySet(); return null } // the map is there: the situation is over
-        loadHeld = ui.percent
+        val map = if (focus.isEmpty() || !cells.downloadsAvailable) null else
+            MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
+                .also { if (it == null) loadModalFor = emptySet() else loadHeld = it.percent } // null: the map is there
+        // routing data in the same modal (field test 2026-10-21): one % over both, closes when both are there
+        val r = if (routingModal) routingData.status.also { if (it == null) routingModal = false } else null
+        val ui = RoutingLoads.combine(map, r, combinedHeld)
+        combinedHeld = ui?.percent ?: 0
         return ui
     }
 
     /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
-    fun hideLoadModal() { loadModalFor = emptySet() }
+    fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false }
+
+    // ---------------- routing data on a fresh install (field test 2026-10-21: it never came by itself) ----------------
+
+    private val netStatus by lazy { com.onpath.app.cells.AndroidNetworkStatus(getApplication()) }
+    /** Loads missing routing data tiles from brouter.de (mobile data too unless "Maps only on Wi-Fi"). */
+    private val routingData: com.onpath.app.data.RoutingDataLoader by lazy {
+        com.onpath.app.data.RoutingDataLoader(dataFiles.segmentsDir, netStatus, { settings.mapsWifiOnly },
+            launch = { block -> viewModelScope.launch(Dispatchers.IO) { block() } },
+            onInstalled = { names -> viewModelScope.launch(Dispatchers.Main) { routingDataArrived(names) } },
+            onChange = { viewModelScope.launch(Dispatchers.Main) { routingDataChanged() } },
+        ).also { loader -> netStatus.listen { loader.retry() } }
+    }
+    /** The loading modal waits for routing data too (point set, first start, search). */
+    private var routingModal by mutableStateOf(false)
+    /** Last % of the combined modal (never backwards). */
+    private var combinedHeld = 0
+    /** Settings → "Download routing data" tapped: its progress shows in the data line. */
+    private var manualRouting: String? = null
+
+    /** Routing data for [points] (a point, a position, a route): missing tiles load; [wait] = in the modal. */
+    private fun routingFor(points: List<GeoPoint>, wait: Boolean) = safeRouting("trigger") {
+        val miss = routingData.ensure(com.onpath.app.data.RoutingTiles.forPoints(points))
+        if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
+    }
+
+    /** Routing data under these map regions (a region load is a trigger too). */
+    private fun routingForCells(c: Collection<com.onpath.app.cells.CellId>, wait: Boolean) = safeRouting("regions") {
+        val miss = routingData.ensure(com.onpath.app.data.RoutingTiles.forCells(c))
+        if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
+    }
+
+    /** Routing data triggers never break planning. */
+    private inline fun safeRouting(what: String, block: () -> Unit) {
+        try { block() } catch (e: Exception) { Problems.error("routing", "Routing data download ($what) failed; planning goes on", e) }
+    }
+
+    /** Main thread: progress / phase changed – the plan's notice follows (loading ↔ not yet). */
+    private fun routingDataChanged() {
+        val s = routingData.status
+        if (RoutingDataNotice.isNotice(routeError)) routeError = RoutingDataNotice.text(s?.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING)
+        val name = manualRouting ?: return
+        when {
+            s == null || name !in s.names -> {
+                manualRouting = null; dataBusy = null
+                message = if (routingData.exists(name)) "Routing data for this area is ready." else "Routing data download stopped. Tap again to resume."
+            }
+            s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING ->
+                dataBusy = "Downloading routing data: ${s.percent} % of ${mb(s.totalBytes)} MB"
+            else -> {
+                manualRouting = null; dataBusy = null
+                message = if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE)
+                    "No internet connection – the routing data loads as soon as you're online."
+                else "Routing data download stopped. Tap again to resume."
+            }
+        }
+    }
+
+    /**
+     * Main thread: routing data arrived – the plan is computed again at once (no question: this is planning, not
+     * re-routing a tour), so the straight line becomes a route with elevation.
+     */
+    private fun routingDataArrived(names: List<String>) {
+        Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
+        recheckData()
+        engine = null // a new engine reads the new tile
+        if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) recalc()
+    }
 
     /**
      * Modal → Cancel (owner 2026-10-21: "Cancel = stop", [MapLoadCancel]): the waited-for regions stop loading, no card
@@ -340,6 +413,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (o.stop.isNotEmpty()) safeCells("cancel") { cells.cancel(o.stop) }
         o.stop.forEach { loadProgress.remove(it) }
         loadModalFor = emptySet(); loadBySearch = false
+        // routing data waited for in the same modal: one Cancel stops it too (the partial download stays for resuming)
+        if (routingModal) { routingModal = false; safeRouting("cancel") { routingData.cancel() } }
         if (o.closeCard) { cellJob = null; mobileDeclined = false; jobWaited = false; firstStartHidden = true }
         if (o.clearSearchMark) { searchMark = null; searchPlace = null }
     }
@@ -369,6 +444,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
+        if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
         for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
     }
@@ -385,6 +461,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Card → "Retry": ask again for the cells that failed. */
     fun cellCardRetry() {
+        safeRouting("retry") { routingData.retry(force = true) }
         val job = cellJob ?: return
         val failed = job.cells.filter { cells.state(it) is com.onpath.app.cells.CellState.Failed }
         val own = failed.filter { it == job.own }
@@ -441,6 +518,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
             safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc)) }
+            routingFor(listOf(p), wait = true)
         }
         if (onTour) {
             val last = t5LastAt
@@ -935,21 +1013,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (dataBusy != null) return
         val (lat, lon, _) = initialCamera()
         val name = com.onpath.app.data.SegmentDownloader.tileName(lat, lon)
-        dataBusy = "Downloading routing data $name…"
-        viewModelScope.launch(Dispatchers.IO) {
-            val msg = try {
-                com.onpath.app.data.SegmentDownloader.download(name, dataFiles.segmentsDir) { done, total ->
-                    dataBusy = if (total > 0) "Downloading routing data: ${done * 100 / total} % of ${total / 1_048_576} MB"
-                    else "Downloading routing data: ${done / 1_048_576} MB"
-                }
-                withContext(Dispatchers.Main) { recheckData() }
-                "Routing data $name ready."
-            } catch (e: Exception) {
-                Problems.warn("data", "Routing data download stopped", e)
-                "Routing data download stopped: ${e.message ?: e.javaClass.simpleName} Tap again to resume."
-            }
-            withContext(Dispatchers.Main) { dataBusy = null; message = msg }
-        }
+        if (routingData.exists(name)) { message = "Routing data for this area is already on the phone."; return }
+        // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
+        manualRouting = name
+        dataBusy = "Downloading routing data…"
+        safeRouting("manual") { routingData.ensure(listOf(name), ignoreWifiOnly = true) }
     }
 
     private fun displayName(uri: Uri): String? = try {
@@ -1297,6 +1365,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
         if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
     /** Search result marked on the map (pin); see [pickSearchResult]. */
@@ -1464,6 +1533,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
         if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
     private fun holdCameraForSharedPlace() {
@@ -1546,7 +1616,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var baseline = false
             result.onSuccess {
                 baseline = adoptPlanBaseline
-                route = it; routeError = it.error; snapToRoute(pts, pins, it)
+                route = it; snapToRoute(pts, pins, it)
+                // routing data missing under the route: it loads now, the notice says so in plain words (no path)
+                routingFor(pts, wait = false)
+                val tilesMissing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts)).isNotEmpty() } catch (e: Exception) {
+                    Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
+                }
+                routeError = RoutingDataNotice.forRoute(it.error, tilesMissing, routingData.loading)
                 safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points)) } // T4: the corridor
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points)
                 if (viaData) routingDataRouteChanged(it)
