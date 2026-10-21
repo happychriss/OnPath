@@ -538,12 +538,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // MTB e-bike only, loose-surface edges for every bike activity.
         for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
                 "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
-                // format 2 only (map package with overlays.pmtiles): service roads from the base map, bike map
+                // format 2 only (map package with overlays.pmtiles): service roads from overlays "streets", bike map
                 "access-no-tint-foot-service" to walking, "access-no-sign-foot-service" to walking,
                 "access-no-tint-bike-service" to !walking, "access-no-sign-bike-service" to !walking,
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
                 "bike-lane-right" to !walking, "bike-lane-right-shared" to !walking,
-                "bike-oneway" to !walking, "bike-both-ways" to !walking,
+                "bike-oneway" to !walking, "bike-oneway-streets" to !walking, "bike-both-ways" to !walking,
                 "trails-sac-label" to walking, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
