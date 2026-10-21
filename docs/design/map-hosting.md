@@ -303,10 +303,23 @@ Field test: a point outside South Tyrol gave "source data not available". Now ev
 - **Cost guards:** `max_downloads_per_day` (10): a *new* area beyond it fails with `defer` (the doorman counts no
   attempt; asking again queues it), an old extract is used a little longer; `max_extract_mb` (2500) refuses huge
   extracts for good. The doorman's execution limits stay.
-- **Doorman:** no coverage check any more (no `sources.json` in the Worker). ETA: `+NEW_AREA_S` (180) for a cell
+- **Doorman:** no coverage check any more (no `sources.json` in the Worker). ETA: `+NEW_AREA_S` (90) for a cell
   whose z7 block (8 × 8 cells) has no built/building cell yet; while the builder downloads, its own estimate
   (`source_eta_s` in the status file, step `download`) replaces the guess.
 - Planetiler's sources (water polygons, Natural Earth, lake centerlines) are global – nothing per area.
+
+First builds on test (2026-10-21, pipeline 473898d, all format 2, manifests + sizes checked via the API):
+
+| Cell | Extracts | Request → ready | Build (`build.json`) | Cut (peak) | Size |
+| --- | --- | --- | --- | --- | --- |
+| 10/544/359 Innsbruck | nord-est + austria, **both new** (download ~80 s for both) | 19:29:16 → ~19:40 (~11 min incl. start) | 366 s | 36 s + 48 s (3.1 / 3.9 GB), merge 4 s, renumber 2 s | 11.9 MB |
+| 10/547/358 Kitzbühel (same execution) | austria (cached) | → 19:45 | 301 s | 47 s (3.9 GB) | 10.4 MB |
+| 10/534/361 Grindelwald (next execution) | switzerland, new | 19:30:23 queued → 19:49 | 242 s | 30 s (3.9 GB) | 10.1 MB |
+| 10/553/364 Ljubljana | slovenia, new (download 19:53:45–19:54:05, **~20 s**) | 19:53:00 → 19:59:03 (**6 min**) | 291 s | 20 s (3.9 GB) | 13.6 MB |
+
+Downloads from Geofabrik into the bucket are fast (tens of seconds); the raw cut adds 20–85 s per cell compared to
+the old renumbered cut. No OOM at 8 GiB with the 3.9 GB cut + 1.4 GB Planetiler sources in memory. Step progress
+(`job_build.py STEP_PROGRESS`) and `AVG_CELL_S` (330) follow these timings.
 
 ## 8. Open points
 

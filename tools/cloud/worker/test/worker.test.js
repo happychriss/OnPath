@@ -222,6 +222,9 @@ test("ETA: + newAreaS where no cell was built yet; the builder's download estima
   assert.equal(j.cells[1].eta_s - j.cells[0].eta_s, cfg.startupS + cfg.avgCellS + cfg.newAreaS);
   await pump(env, cfg, Date.now(), g); // starts Bozen
   const [ex] = [...g.executions.values()];
+  await env.DB.prepare("DELETE FROM cells WHERE id = '10-545-361'").run();
+  j = await statusFor(env, cfg, [BOZEN], 2); // before the builder's first status: guess (its own build doesn't count)
+  assert.equal(j.cells[0].eta_s, cfg.avgCellS + cfg.startupS + cfg.newAreaS);
   await putStatus(env, BOZEN, { state: "building", step: "download", progress: 0, source_eta_s: 400,
     execution: gcp.shortName(ex.name) });
   j = await statusFor(env, cfg, [BOZEN], 2);
