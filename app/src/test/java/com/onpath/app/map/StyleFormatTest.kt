@@ -41,16 +41,18 @@ class StyleFormatTest {
     }
 
     @Test fun layerIdsTheAppSwitchesExistInBoth() {
-        val used = listOf("routes-hike", "routes-bike", "routes-mtb", "routes-hike-major", "routes-bike-major-label",
+        val used = listOf("routes-hike", "routes-bike", "routes-hike-major", "routes-bike-major-label",
             "access-no-tint-foot", "access-no-sign-foot", "access-no-tint-bike", "access-no-sign-bike",
             "trails-sac-label", "trails-mtb-label", "surface-loose-track", "surface-loose-path",
-            "greenway-foot", "greenway-bike", "poi-station", "poi-tier1")
+            "greenway-foot", "greenway-bike", "greenway-touring", "greenway-mtb", "poi-station", "poi-tier1")
         for (s in listOf(f1, f2)) { val have = ids(s).toSet(); used.forEach { assertTrue(it, it in have) } }
+        // no MTB route band: mtb.brf ignores route=mtb, MTB shows the cycle band (map vs router audit #7)
+        for (s in listOf(f1, f2)) assertTrue(ids(s).none { it.startsWith("routes-mtb") })
         // every format-1 layer has a format-2 twin, except the base-map fallbacks
         assertEquals(setOf("track-base", "path-base"), ids(f1).toSet() - ids(f2).toSet())
         // format 2 only (MapController.setOverlay)
         val f2only = listOf("access-no-tint-foot-service", "access-no-sign-bike-service", "bike-lane-left",
-            "bike-lane-right-shared", "bike-oneway", "bike-oneway-streets", "bike-both-ways")
+            "bike-lane-right-shared", "bike-oneway", "bike-oneway-streets", "bike-oneway-paths", "bike-both-ways")
         f2only.forEach { assertTrue(it, it in ids(f2).toSet()) }
     }
 

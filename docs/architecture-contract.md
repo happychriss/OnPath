@@ -31,7 +31,7 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 - Asset `app/src/main/assets/style/onpath.json`. The app reads it, replaces every `{DATA_DIR}` with the absolute data directory path, and loads it with `Style.Builder().fromJson(...)`.
 - Sources: `base` (vector, `pmtiles://file://{DATA_DIR}/base.pmtiles`), `terrain` (raster-dem, terrarium, `pmtiles://file://{DATA_DIR}/terrain.pmtiles`), `routes` and `trails` (geojson, `file://{DATA_DIR}/routes.geojson`).
 - Glyphs: `asset://fonts/{fontstack}/{range}.pbf`. No sprite; no icons needed.
-- Overlay layer ids the app toggles: `routes-hike`, `routes-bike`, `routes-mtb` (visible by default per activity: hike → hike, bikes → bike, MTB → mtb).
+- Overlay layer ids the app toggles: `routes-hike`, `routes-bike` (hike → hike, every bike activity incl. MTB → bike; `routes-mtb` removed 2026-10-21: mtb.brf ignores route=mtb).
 - The app adds its own sources/layers on top: `planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`.
 
 ## Routing

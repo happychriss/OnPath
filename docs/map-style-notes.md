@@ -65,8 +65,8 @@ Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`)
 | track grade4–5 (soft / grass) | sparse dotted edges (`track.soft.dash`) | always |
 | track without tracktype | as before: solid if OpenMapTiles says paved, else fine dots | always |
 | trail with `trail_visibility` bad / horrible / no | same rhythm, sparser and lighter dots (`trail.faint.*`); T1/untagged faint paths get the T2 dot rhythm | always |
-| SAC label "T1"…"T6" | small black text along the way (`trails-sac-label`) | **hiking only** |
-| MTB label "S0"…"S5" | same look (`trails-mtb-label`) | **MTB / MTB e-bike only** |
+| SAC label "T1"…"T6" | small black text along the way (`trails-sac-label`) | every activity but MTB (bikes since 2026-10-21) |
+| MTB label "S0"…"S5", with the T-grade "T3 S2" | same look (`trails-mtb-label`) | **MTB / MTB e-bike only** |
 | loose surface (gravel, stony, dirt, ground, grass, sand, …) or smoothness bad or worse | thin warm-brown edge on both sides (`surface.loose.*`, `line-gap-width`) | **bike activities only** |
 Compacted and fine gravel do not count as loose (fine on any bike). The app switches the activity-dependent layers
 in `MapController.setOverlay`. Tracktype edges come from `ways.geojson`, drawn over the base map's track with a
@@ -193,3 +193,34 @@ Rule: **green = good for the current activity, everything else the normal black 
   `bicycle=yes|designated`. Footways without bike access stay black.
 - Cycle lanes beside streets (`bike-lane-*`) are thin green offset lines; the both-ways arrow sprite is green.
 - Theme tokens `cycleway.color`, `cycleway.width.*` and `bike.lane.color` are gone (`cycleway.dash` stays).
+
+## Map vs router quick fixes (2026-10-21, owner: "start the quick fixes")
+From the map-vs-BRouter audit (each activity's BRouter profile evaluated per tag set). Style / app only – no new map
+package needed, except the `mtb` attribute below. Activity → profile: Hike = hiking-mountain, Bike touring =
+fastbike-verylowtraffic, Bike trekking + E-bike = trekking, MTB + MTB e-bike = mtb.
+- **Green respects access** (was already on main): `greenway-*` skip foot / bicycle = no|private and `ac` ways
+  without foot / bicycle = yes|designated|permissive. Bikes now also skip bicycle = dismount|use_sidepath.
+- **Green per profile family** – three bike layers, switched by `MapController.setOverlay`:
+  `greenway-bike` (trekking, E-bike): cycleways + footways / pedestrian / paths with bicycle=yes|designated;
+  `greenway-touring` (touring): cycleways + those ways only with **bicycle=designated** (fastbike: path + yes costs
+  100, designated 2); `greenway-mtb` (MTB, E-MTB): like trekking.
+- **No green on hard trails** (format 2): trekking / touring / E-bike only up to T1 and mtb:scale 1 (the router
+  forbids T3+ and adds +30 on T2 / mtb:scale 2–3); MTB up to T2 and mtb:scale 3 (T3 +15, T4+ forbidden, mtb:scale 4+
+  ≈ 9000). `sac` is in every package; **`mtb` on overlay `paths` is new** (`extract_overlays.py tile_attrs`) – older
+  packages show no mtb:scale rule until rebuilt.
+- **Private minor streets**: residential / unclassified / living street / road with access=no|private get the blocked
+  tint + sign like service roads (same layers `access-no-*-service`, filter widened; format 1 via the base map).
+- **T-labels in bike modes**: `trails-sac-label` for every activity but MTB; MTB gets one label "T3 S2"
+  (`trails-mtb-label`) – two labels on the same anchors would hide each other.
+- **One-way paths** (`bike-oneway-paths`, bike modes, z15+): the street arrow sprite (a bit bigger) on paths,
+  footways, cycleways, tracks with `ow`; `owb` (oneway:bicycle) wins, `owb=0` keeps the both-ways symbol
+  (`bike-both-ways`), `owb` ±1 on a two-way path draws the arrow.
+- **No MTB route band**: mtb.brf ignores route=mtb and rewards cycle routes, so MTB / MTB e-bike now show the cycle
+  band (`routes-bike`); the `routes-mtb*` layers are gone from the style (route data kind "mtb" stays unused).
+- **Steps in bike modes**: blocked tint + no-entry sign (`access-no-*-bike`), unless bicycle=yes|designated (ramp).
+  Router: MTB forbidden, touring 1000, trekking 40 (carry the bike). Hiking unchanged.
+Renders (before / after per activity): Pfelders bicycle=yes path, Töll T2 path, St.-Georgen-Straße, Laubengasse,
+Stuanbruch-Trail, steps at the Etsch / Meran, Weißlahn, Kassianspitz.
+Still open (audit): #4 trails over the user's SAC limit, #5 trail_visibility=no, #6 paved cycleways for MTB (still
+green), #11 / #16 bicycle=no / vehicle=no without `ac` (no tint), #12 foot=no (no tint for hiking), #17 barrier nodes;
+the full fix is the per-profile class from BRouter's own expression engine (audit "Router decides, map shows it").
