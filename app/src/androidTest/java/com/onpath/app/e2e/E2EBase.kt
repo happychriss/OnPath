@@ -47,7 +47,9 @@ abstract class E2EBase {
     /** Clean app state + the tiny map package; [beforeLaunch] runs before the app starts (e.g. a GPS fix). */
     protected fun launch(beforeLaunch: () -> Unit = {}) {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        ctx.getSharedPreferences("onpath", 0).edit().clear().commit() // empty plan, default camera (Meran)
+        // empty plan, default camera (Meran); the one-time "Allow all the time" question already answered (it would
+        // cover the map on the first tour)
+        ctx.getSharedPreferences("onpath", 0).edit().clear().putBoolean("backgroundAsked", true).commit()
         val dir = dataDir
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)
