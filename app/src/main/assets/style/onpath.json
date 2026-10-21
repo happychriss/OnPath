@@ -4082,6 +4082,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4146,6 +4149,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4214,6 +4220,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 14,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [

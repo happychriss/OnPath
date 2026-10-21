@@ -254,6 +254,9 @@ def track_edges():
     # the whole join arc (outer side of every bend) and the half ring at each way end took one dash value – nearly
     # always "on" with dots that close together – and drew solid brown (owner 2026-10-20). Butt caps end the edges
     # flat under the lane's round cap; miter joins add no fan (sharp hairpins fall back to a small bevel).
+    # Kept on purpose when every other way got round joins (2026-10-21): smoothed tracks (extract_overlays --smooth)
+    # turn by at most ~15° per vertex, where miter and round look the same; a round join would bring the solid arcs
+    # back at the corners that stay sharp (junction nodes).
     for sid, f in (("compact", ["==", tt, 1]), ("medium", ["any", ["==", tt, 2], ["==", tt, 0]]),
                    ("loose", ["==", tt, 3]), ("soft", [">=", tt, 4])):
         layer(id_=f"track-own-{sid}", type="line", source="paths", minzoom=TRACK_DOTS_ZOOM, filter=["all", track, f],
@@ -392,11 +395,14 @@ def paths():
         own = own_paths()
         cw = Z("cycleway.width")
         cyc = ["all", ["==", SUB, "cycleway"], NOT_TUNNEL_OWN]
-        layer(id_="cycleway", type="line", **own, minzoom=13, filter=["all", cyc, ["!", ["has", "uv"]]],
+        layer(id_="cycleway", type="line", **own, minzoom=13, layout={"line-join": "round"},
+              filter=["all", cyc, ["!", ["has", "uv"]]],
               paint={"line-color": T("cycleway.color"), "line-width": cw})
-        layer(id_="cycleway-unpaved", type="line", **own, minzoom=13, filter=["all", cyc, ["has", "uv"]],
+        layer(id_="cycleway-unpaved", type="line", **own, minzoom=13, layout={"line-join": "round"},
+              filter=["all", cyc, ["has", "uv"]],
               paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
-        layer(id_="path-steps", type="line", **own, minzoom=14, filter=["all", ["==", SUB, "steps"], NOT_TUNNEL_OWN],
+        layer(id_="path-steps", type="line", **own, minzoom=14, layout={"line-join": "round"},
+              filter=["all", ["==", SUB, "steps"], NOT_TUNNEL_OWN],
               paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
     else:
         paths_base_lines(tl, foot, steps)
@@ -422,11 +428,14 @@ def paths_base_lines(tl, foot, steps):
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
     cw = Z("cycleway.width")
-    layer(id_="cycleway", type="line", **tl, minzoom=13, filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
+    layer(id_="cycleway", type="line", **tl, minzoom=13, layout={"line-join": "round"},
+          filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
           paint={"line-color": T("cycleway.color"), "line-width": cw})
-    layer(id_="cycleway-unpaved", type="line", **tl, minzoom=13, filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
+    layer(id_="cycleway-unpaved", type="line", **tl, minzoom=13, layout={"line-join": "round"},
+          filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
           paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
-    layer(id_="path-steps", type="line", **tl, minzoom=14, filter=["all", foot, steps],
+    layer(id_="path-steps", type="line", **tl, minzoom=14, layout={"line-join": "round"},
+          filter=["all", foot, steps],
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
 
 

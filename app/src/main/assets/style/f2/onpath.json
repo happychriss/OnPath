@@ -4219,6 +4219,9 @@
    "source": "overlays",
    "source-layer": "paths",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4277,6 +4280,9 @@
    "source": "overlays",
    "source-layer": "paths",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4336,6 +4342,9 @@
    "source": "overlays",
    "source-layer": "paths",
    "minzoom": 14,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
