@@ -29,6 +29,10 @@ enum class CellWhy {
     HERE,
     /** Installed areas built for an older map style are loaded again (content schema). */
     UPDATE,
+    /** A search result where there is no detailed map (owner 2026-10-21: a search IS a trigger). */
+    SEARCHED,
+    /** A short tap on the world map, after the user said "Load" to the question. */
+    TAPPED,
 }
 
 /** Cells one trigger asked for: [own] (the point's / position's cell, null for a corridor) first in [cells]. */
@@ -73,6 +77,16 @@ class CellTriggers(
         val near = want.filter { it != own }
         if (near.isNotEmpty()) added += cells.request(near, CellReason.NEAR, ownPoint = false)
         return if (added.isEmpty()) null else CellJob(added.sortedBy { if (it == own) 0 else 1 }, own.takeIf { it in added }, why)
+    }
+
+    /**
+     * What a tap at [p] would load (the question "Load the map for this area?" first – never a silent download from a
+     * tap): nothing where the detailed map is or everything is asked for already; else the point's cell and its close
+     * neighbours without detailed map. Asks the server nothing.
+     */
+    fun preview(p: GeoPoint): List<CellId> {
+        if (cells.hasDetailedMap(p)) return emptyList()
+        return needed(cells.cellsAround(p, NEAR_M))
     }
 
     /**

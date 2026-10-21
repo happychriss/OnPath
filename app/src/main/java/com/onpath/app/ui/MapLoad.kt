@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellState
 import kotlin.math.max
 import kotlin.math.min
@@ -46,6 +47,9 @@ data class MapLoadUi(
     /** Failure: plain reason. */
     val reason: String? = null,
     val retryable: Boolean = false,
+    /** How many regions (map cells – never called that on screen) the modal waits for, and their size. */
+    val regions: Int = 1,
+    val bytes: Long? = null,
 ) {
     enum class Kind { PREPARING, LOADING, OFFLINE, WIFI, FAILED }
 
@@ -64,6 +68,10 @@ data class MapLoadUi(
     }
 
     val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI
+
+    /** "3 regions · about 27 MB" */
+    val totals: String get() = "$regions ${if (regions == 1) "region" else "regions"}" +
+        (bytes?.let { " · about ${mb(it)} MB" } ?: "")
 
     companion object {
         const val OFFLINE_TEXT = "No internet connection – the map will load as soon as you're online."
@@ -141,6 +149,57 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
     }
 }
 
+/**
+ * The modal for several regions at once (owner 2026-10-21: "N regions · about X MB"): one bar over all of them. Pure,
+ * unit-tested.
+ */
+object MapLoads {
+    /** "2 regions · ≈ 18 MB" (the tap question). */
+    fun askText(regions: Int, bytes: Long): String = "$regions ${if (regions == 1) "region" else "regions"} · ≈ ${mb(bytes)} MB"
+
+    /** Size of a region when the server has not said it yet. */
+    const val ESTIMATED_REGION_BYTES = 9L * 1_048_576
+
+    /** Known size of a region (installed, downloading, waiting for Wi-Fi), else null. */
+    fun knownBytes(s: CellState?, installed: Long?): Long? = installed
+        ?: (s as? CellState.Downloading)?.totalBytes?.takeIf { it > 0 }
+        ?: (s as? CellState.WaitingForWifi)?.bytes
+
+    /** Total size: known sizes, [ESTIMATED_REGION_BYTES] for the rest. */
+    fun estimate(cells: Collection<CellId>, states: Map<CellId, CellState>, sizes: Map<CellId, Long>): Long =
+        cells.sumOf { knownBytes(states[it], sizes[it]) ?: ESTIMATED_REGION_BYTES }
+
+    /**
+     * One [MapLoadUi] for the regions [focus]: [progress] holds one [MapLoadProgress] per region (kept by the caller),
+     * [sizes] the installed regions' sizes. The % is the mean over the regions (ready = 100), never below [held] (the
+     * last value shown) and below 100 until all are there. Null when every region is there.
+     */
+    fun aggregate(
+        focus: Collection<CellId>, states: Map<CellId, CellState>, sizes: Map<CellId, Long>,
+        progress: MutableMap<CellId, MapLoadProgress>, held: Int, now: Long,
+    ): MapLoadUi? {
+        if (focus.isEmpty()) return null
+        fun ready(c: CellId) = states[c] is CellState.Ready || (states[c] == null && c in sizes)
+        val open = focus.filter { !ready(it) }
+        if (open.isEmpty()) return null
+        val per = open.map { c -> progress.getOrPut(c) { MapLoadProgress() }.update(states[c] ?: CellState.Requested, now) }
+        val total = focus.size
+        val mean = (per.sumOf { it.percent } + 100 * (total - open.size)) / total
+        val pct = maxOf(held, mean).coerceAtMost(99)
+        val bytes = estimate(focus, states, sizes)
+        val kinds = per.map { it.kind }
+        val left = per.mapNotNull { it.secondsLeft }.maxOrNull()
+        return when {
+            kinds.all { it == MapLoadUi.Kind.FAILED } ->
+                per.first().copy(percent = pct, regions = total, bytes = bytes, retryable = per.any { it.retryable })
+            MapLoadUi.Kind.OFFLINE in kinds -> MapLoadUi(MapLoadUi.Kind.OFFLINE, pct, null, regions = total, bytes = bytes)
+            MapLoadUi.Kind.LOADING in kinds -> MapLoadUi(MapLoadUi.Kind.LOADING, pct, left, regions = total, bytes = bytes)
+            MapLoadUi.Kind.PREPARING in kinds -> MapLoadUi(MapLoadUi.Kind.PREPARING, pct, left, regions = total, bytes = bytes)
+            else -> MapLoadUi(MapLoadUi.Kind.WIFI, pct, null, regions = total, bytes = bytes)
+        }
+    }
+}
+
 class MapLoadCallbacks(val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {})
 
 /**
@@ -175,6 +234,7 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
             }
             Icon(icon, null, tint = tint, modifier = Modifier.size(32.dp))
             Text(ui.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(ui.totals, style = MaterialTheme.typography.bodyMedium, color = variant)
             if (ui.kind != MapLoadUi.Kind.FAILED) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LinearProgressIndicator(progress = { ui.percent / 100f },
@@ -195,4 +255,16 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
             }
         }
     }
+}
+
+/** A tap on the world map where there is no detailed map (owner 2026-10-21): never a silent download from a tap. */
+@Composable
+fun LoadAskDialog(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onNotNow,
+        title = { Text("Load the map for this area?") },
+        text = { Text(MapLoads.askText(regions, bytes)) },
+        confirmButton = { TextButton(onClick = onLoad, modifier = Modifier.heightIn(min = 48.dp)) { Text("Load") } },
+        dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },
+    )
 }

@@ -83,6 +83,9 @@ class OverviewTest {
         assertEquals("raster", layer(out, "hillshade~overview").getString("type"))
         assertEquals(10.0, layer(out, "hillshade~overview").getDouble("maxzoom"), 0.0)
         assertEquals("overview-hillshade", layer(out, "hillshade~under").getString("source"))
+        // calmer with depth outside the downloaded areas; the low-zoom copy is fully opaque
+        assertEquals("interpolate", layer(out, "hillshade~under").getJSONObject("paint").getJSONArray("raster-opacity").getString(0))
+        assertEquals(1.0, layer(out, "hillshade~overview").getJSONObject("paint").getDouble("raster-opacity"), 0.0)
         assertEquals("terrain", layer(out, "hillshade-nw").getString("source"))
         assertEquals(10.0, layer(out, "hillshade-nw").getDouble("minzoom"), 0.0)
     }

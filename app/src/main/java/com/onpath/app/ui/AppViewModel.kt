@@ -267,7 +267,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                    installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? =
         builtCard(states, installed)
             // the user waited in the modal for their area: when all is there it simply goes – no "done" message
-            ?.takeIf { !(it is CellCardUi.Done && cellJob?.own != null) }
+            ?.takeIf { !(it is CellCardUi.Done && jobWaited) }
             ?: CellCards.firstStart(cellJob, cells.downloadsAvailable,
                 noDetailedMap = installed.isEmpty() && missing.any { !it.name.startsWith("segments") },
                 waitingForPosition = t3Pending && mode == AppMode.PLAN, hidden = firstStartHidden,
@@ -287,34 +287,65 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val done = builtCard(cells.states.value, cells.installed.value) is CellCardUi.Done
         val open = cellJob
         cellJob = com.onpath.app.cells.CellTriggers.merge(open, j, done)
-        if (open == null || done) mobileDeclined = false
-        // the user waits for the map at their point / position (T1 / T3): the modal shows (again)
-        if (j.own != null) loadModalHidden = false
+        if (open == null || done) { mobileDeclined = false; jobWaited = false }
+        // the user waits for this map (a point / position / search / tap without detailed map, or a route while the
+        // visible map has none): the modal shows (again), over all regions asked for so far
+        if (j.own != null || viewWithoutDetail) {
+            jobWaited = true
+            if (loadModalFor.isEmpty()) { loadProgress.clear(); loadHeld = 0 }
+            loadModalFor = loadModalFor + j.cells
+        }
     }
 
     // ---------------- the modal while the user waits for the map of their area (owner 2026-10-21) ----------------
 
-    /** The modal was closed with Cancel / Close (the download goes on; the plan sheet's card shows it). */
-    private var loadModalHidden by mutableStateOf(false)
+    /** Regions the modal waits for; empty = no modal (closed with Cancel / Close, or all there). */
+    private var loadModalFor by mutableStateOf<Set<com.onpath.app.cells.CellId>>(emptySet())
+    /** The open card's job was waited for in the modal: when it is all there it simply goes – no "Map ready" card. */
+    private var jobWaited by mutableStateOf(false)
     private val loadProgress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+    /** Last % shown (never backwards). */
+    private var loadHeld = 0
+    /** A large part of the visible map has no detailed map (MapScreen, any zoom) – a route computed now is waited for. */
+    var viewWithoutDetail = false
 
     /**
-     * What the modal shows now ([now]: uptime ms; called about every second): only for a job the user waits for (own
-     * point / position without detailed map), in Plan, until the map of that point is there. Null = no modal.
+     * What the modal shows now ([now]: uptime ms; called about every second): in Plan, while some of the regions the user
+     * waits for are not there yet. Null = no modal (and it is over when everything is there).
      */
     fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? {
-        val job = cellJob ?: return null
-        val own = job.own ?: return null
-        if (loadModalHidden || !cells.downloadsAvailable || mode != AppMode.PLAN) return null
-        if (cells.installed.value.any { it.id == own } && states[own] !is com.onpath.app.cells.CellState.Downloading &&
-            states[own] != com.onpath.app.cells.CellState.Installing) return null
-        val s = states[own] ?: com.onpath.app.cells.CellState.Requested
-        if (s is com.onpath.app.cells.CellState.Ready) return null
-        return loadProgress.getOrPut(own) { MapLoadProgress() }.update(s, now)
+        val focus = loadModalFor
+        if (focus.isEmpty() || !cells.downloadsAvailable || mode != AppMode.PLAN) return null
+        val ui = MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
+        if (ui == null) { loadModalFor = emptySet(); return null } // the map is there: the situation is over
+        loadHeld = ui.percent
+        return ui
     }
 
-    /** Modal → Cancel / Close: the modal goes, the map keeps loading in the background. */
-    fun hideLoadModal() { loadModalHidden = true }
+    /** Modal → Cancel / Close: the modal goes, the map keeps loading in the background (the plan sheet's card shows it). */
+    fun hideLoadModal() { loadModalFor = emptySet() }
+
+    /** A tap on the world map where there is no detailed map: "Load the map for this area? N regions · ≈ X MB". */
+    data class LoadAsk(val at: GeoPoint, val regions: Int, val bytes: Long)
+    var loadAsk by mutableStateOf<LoadAsk?>(null)
+        private set
+
+    /** Short tap on the map (nothing else under the finger): asks before loading – never a silent download from a tap. */
+    fun mapTapped(p: GeoPoint) {
+        if (mode != AppMode.PLAN || !cells.downloadsAvailable) return
+        safeCells("tap") {
+            val want = cellTriggers.preview(p)
+            if (want.isNotEmpty()) loadAsk = LoadAsk(p, want.size,
+                MapLoads.estimate(want, cells.states.value, cells.installed.value.associate { it.id to it.totalBytes }))
+        }
+    }
+
+    /** The tap question answered: Load → the regions load (modal), Not now → nothing. */
+    fun answerLoadAsk(load: Boolean) {
+        val a = loadAsk ?: return
+        loadAsk = null
+        if (load) safeCells("tap") { showCellJob(cellTriggers.pointSet(a.at, com.onpath.app.cells.CellWhy.TAPPED)) }
+    }
 
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
@@ -338,7 +369,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val job = cellJob ?: return
         val failed = job.cells.filter { cells.state(it) is com.onpath.app.cells.CellState.Failed }
         val own = failed.filter { it == job.own }
-        own.forEach { loadProgress.remove(it) } // the modal's bar starts again
+        failed.forEach { loadProgress.remove(it) } // the modal's bar for them starts again
+        if (jobWaited) loadModalFor = loadModalFor + failed
         safeCells("retry") {
             if (own.isNotEmpty()) cells.request(own, com.onpath.app.cells.CellReason.POINT)
             val rest = failed - own.toSet()
@@ -374,7 +406,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Areas with the detailed map (installed cells, region package) for the style's overview cover. */
     fun detailedAreas(): List<DoubleArray> = cells.detailedAreas()
 
-    /** True when a large part of the visible box (z ≥ 10) has no detailed map ([OverviewHintRule]). */
+    /** True when a large part of the visible box has no detailed map ([OverviewHintRule], any zoom). */
     fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = try {
         OverviewHintRule.show(OverviewHintRule.MIN_ZOOM,
             OverviewHintRule.samples(south, west, north, east).map { (lat, lon) -> cells.hasDetailedMap(GeoPoint(lat, lon)) })
@@ -1188,6 +1220,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Zoom to fit what it is: a city needs the overview, a single restaurant the close-up.
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
+        // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
+        if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
     }
 
     /** Search result marked on the map (pin); see [pickSearchResult]. */
@@ -1353,6 +1387,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear.
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
+        // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
+        if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
     }
 
     private fun holdCameraForSharedPlace() {

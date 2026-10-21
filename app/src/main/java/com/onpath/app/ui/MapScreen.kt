@@ -56,7 +56,7 @@ fun MapScreen(
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
-    /** Visible map box (south, west, north, east; rounded ≈ 100 m) at z ≥ 10, else null – for the "Overview only" hint. */
+    /** Visible map box (south, west, north, east; rounded ≈ 100 m) + 1 at z ≥ 10 / 0 below – "Overview only" hint, modal rule. */
     var hintKey by remember { mutableStateOf<List<Double>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -103,9 +103,10 @@ fun MapScreen(
             onReady = { controller = it },
             onCamera = { map ->
                 scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
-                hintKey = if (map.cameraPosition.zoom < OverviewHintRule.MIN_ZOOM) null else try {
+                hintKey = try {
                     val b = map.projection.visibleRegion.latLngBounds
-                    listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 }
+                    listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 } +
+                        (if (map.cameraPosition.zoom >= OverviewHintRule.MIN_ZOOM) 1.0 else 0.0)
                 } catch (e: Exception) {
                     Problems.warn("map", "Visible map area unknown; overview hint hidden", e); null
                 }
@@ -153,9 +154,12 @@ fun MapScreen(
         val generation by vm.cells.generation.collectAsState()
         val overviewView by produceState(false, hintKey, generation) {
             val k = hintKey
-            value = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 vm.overviewOnly(k[0], k[1], k[2], k[3])
             }
+            // a route computed while the view has no detailed map is waited for (modal, owner 2026-10-21)
+            vm.viewWithoutDetail = without
+            value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
         if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
@@ -265,6 +269,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
     }
     MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::hideLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
+    vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),

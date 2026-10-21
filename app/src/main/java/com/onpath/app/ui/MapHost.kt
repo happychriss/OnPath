@@ -174,7 +174,11 @@ fun MapHost(
                     }
                     MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
-                    MapGestures.Action.None -> edit
+                    MapGestures.Action.None -> {
+                        // a short tap on the world map where there is no detailed map: ask to load it (owner 2026-10-21)
+                        if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
+                        edit
+                    }
                 }
             }
             map.addOnMapClickListener { ll ->
