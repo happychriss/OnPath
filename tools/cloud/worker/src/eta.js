@@ -101,7 +101,11 @@ export async function plan(env, cfg, now, readStatus) {
     ids.forEach((id, i) => {
       const r = row.get(`${ex.format}:${id}`);
       const s = st[i];
-      if (!r || r.job !== "building" || s?.state === "ready" || s?.state === "failed") return;
+      if (!r || r.job !== "building" || s?.state === "failed") return;
+      if (s?.state === "ready") { // published; the next pump (cron, ≤ 1 min) records it
+        out.set(`${ex.format}:${id}`, { finishAt: now + cfg.pumpLagS * 1000, step: "upload", progress: 1 });
+        return;
+      }
       let step = "starting";
       let progress = 0;
       if (s?.state === "building") {
