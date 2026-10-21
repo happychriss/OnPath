@@ -92,6 +92,27 @@ class DataFiles(context: Context) {
         fun formatOf(exists: (String) -> Boolean): Int = if (exists(OVERLAYS)) 2 else 1
 
         /**
+         * Map format the style is chosen for: [formatOf], except an empty map folder (no base map, no overlays of
+         * either format) is format 2 – what downloaded map cells bring (map-cells.md Q11), and the style then shows the
+         * overview from the APK until the first cell arrives. Pure, unit-tested.
+         */
+        fun styleFormatOf(exists: (String) -> Boolean): Int = when {
+            exists(OVERLAYS) -> 2
+            exists("base.pmtiles") || exists("routes.geojson") || exists("trails.geojson") -> 1
+            else -> 2
+        }
+
+        /**
+         * Of the [missing] files: those that keep the app on the "Offline map data is missing" screen. None when the APK
+         * ships the overview map ([overview]) and this build can download map cells ([downloads]): the app then opens on
+         * the overview and the map comes where the user is or plans (map-cells.md §9 T1/T3); missing routing data only
+         * means straight lines until it is downloaded (Settings → Map data). Otherwise all of them, as before cells.
+         * Pure, unit-tested.
+         */
+        fun blocking(missing: List<Check>, overview: Boolean, downloads: Boolean): List<Check> =
+            if (overview && downloads) emptyList() else missing
+
+        /**
          * Required overlay data: either the format-2 [OVERLAYS] file or the format-1 pair routes.geojson + trails.geojson.
          * With neither, a format-1 pair partly present lists that pair (what is missing); an empty folder asks for
          * [OVERLAYS] (what new packages contain). Pure, unit-tested.

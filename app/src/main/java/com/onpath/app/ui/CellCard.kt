@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -73,6 +74,19 @@ sealed interface CellCardUi {
 
     data class Failed(override val title: String, val why: String?, val retryable: Boolean) : CellCardUi
 
+    /**
+     * Fresh install, no detailed map anywhere yet, no position to fetch it for (no permission / no fix): what brings the
+     * map. Stays until a position or a point starts the download (T3 / T1) or the user hides it.
+     */
+    data class NeedPosition(val permission: Boolean) : CellCardUi {
+        override val title get() = if (permission) WAITING else ALLOW
+        companion object {
+            const val ALLOW = "Allow location to get the detailed map for your area – or set a point on the map"
+            const val WAITING = "Waiting for your position to get the detailed map for your area – or set a point on the map"
+            const val BODY = "Hold the map where you want to go. Until then the overview map is shown."
+        }
+    }
+
     data class Done(val areas: Int, val bytes: Long) : CellCardUi {
         override val title get() = "Map ready offline ✓ ($areas ${if (areas == 1) "area" else "areas"}, ${mb(bytes)} MB)"
     }
@@ -92,6 +106,17 @@ internal fun mb(bytes: Long): Long = if (bytes <= 0) 0 else maxOf(1, (bytes + 52
 object CellCards {
     const val MAX_ROWS = 3
     const val OFFLINE_TITLE = "No detailed map here yet – it downloads when you're online"
+
+    /**
+     * The first-start card ([CellCardUi.NeedPosition]) when there is no other card ([job] null): downloads [available],
+     * no detailed map anywhere ([noDetailedMap]: no installed cell, no region package), T3 still waiting for a
+     * position ([waitingForPosition]) and not hidden by the user. Pure, unit-tested.
+     */
+    fun firstStart(
+        job: CellJob?, available: Boolean, noDetailedMap: Boolean, waitingForPosition: Boolean, hidden: Boolean,
+        permission: Boolean,
+    ): CellCardUi.NeedPosition? =
+        if (job == null && available && noDetailedMap && waitingForPosition && !hidden) CellCardUi.NeedPosition(permission) else null
 
     fun why(w: CellWhy): String = when (w) {
         CellWhy.PLANNED -> "Getting the detailed map because you planned here."
@@ -184,6 +209,8 @@ class CellCardCallbacks(
     val onRetry: () -> Unit = {},
     /** OK on "Map ready", Not now on a failure, OK on "not available", × while loading (downloads go on). */
     val onClose: () -> Unit = {},
+    /** "Allow location" on the first-start card (system permission dialog). */
+    val onAllowLocation: () -> Unit = {},
 )
 
 /** The card; [compact] (plan sheet MINI): one line. */
@@ -195,6 +222,7 @@ fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, mo
         is CellCardUi.Offline -> Icons.Outlined.CloudOff to MaterialTheme.colorScheme.onSurfaceVariant
         CellCardUi.NotAvailable -> Icons.Outlined.Map to MaterialTheme.colorScheme.onSurfaceVariant
         is CellCardUi.Working -> Icons.Outlined.CloudDownload to OnPathColors.Green
+        is CellCardUi.NeedPosition -> Icons.Outlined.LocationOn to OnPathColors.Green
     }
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -205,7 +233,7 @@ fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, mo
                 Spacer(Modifier.width(8.dp))
                 Text(ui.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                     maxLines = if (compact) 1 else 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
-                if (ui is CellCardUi.Working || ui is CellCardUi.Offline) {
+                if (ui is CellCardUi.Working || ui is CellCardUi.Offline || ui is CellCardUi.NeedPosition) {
                     IconButton(onClick = cb.onClose, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Filled.Close, "Hide (the map keeps loading)", tint = variant, modifier = Modifier.size(18.dp))
                     }
@@ -221,6 +249,7 @@ fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, mo
                 why?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
                 when (ui) {
                     CellCardUi.NotAvailable -> Text(CellCardUi.NotAvailable.BODY, style = MaterialTheme.typography.bodySmall, color = variant)
+                    is CellCardUi.NeedPosition -> Text(CellCardUi.NeedPosition.BODY, style = MaterialTheme.typography.bodySmall, color = variant)
                     is CellCardUi.Working -> {
                         ui.progress?.let {
                             LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
@@ -247,6 +276,9 @@ fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, mo
                 is CellCardUi.Failed -> Row(Modifier.fillMaxWidth().padding(start = 20.dp), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") }
                     if (ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Retry") }
+                }
+                is CellCardUi.NeedPosition -> if (!ui.permission) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = cb.onAllowLocation, modifier = Modifier.heightIn(min = 48.dp)) { Text("Allow location") }
                 }
                 is CellCardUi.Done, CellCardUi.NotAvailable -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("OK") }
