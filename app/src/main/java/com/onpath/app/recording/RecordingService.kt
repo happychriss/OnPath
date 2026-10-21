@@ -613,6 +613,8 @@ class RecordingService : Service() {
     private fun finish() {
         if (tourId >= 0) {
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
+            // GPX copy in Documents/OnPath (backup/Backups): on its own thread, never holds up the end of the tour
+            com.onpath.app.backup.Backups.tourChanged(this, tourId)
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())

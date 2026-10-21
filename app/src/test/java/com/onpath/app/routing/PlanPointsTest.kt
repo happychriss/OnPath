@@ -99,6 +99,31 @@ class PlanPointsTest {
         assertEquals(listOf(0, 0, 0), (0..2).map { PlanPoints.shift(it, 1, 1) })
     }
 
+    /** Field test 0.8.9: a drag that starts on ≡ picks the row under the finger (one detector for the whole list). */
+    @Test fun rowUnderTheFinger() {
+        assertEquals(0, PlanPoints.rowAt(10f, 100f, 3))
+        assertEquals(2, PlanPoints.rowAt(299f, 100f, 3))
+        assertNull(PlanPoints.rowAt(300f, 100f, 3))
+        assertNull(PlanPoints.rowAt(-1f, 100f, 3))
+        assertNull(PlanPoints.rowAt(10f, 0f, 3))
+    }
+
+    /** Dragging a row near the list's edges scrolls it – faster nearer the edge, nothing in the middle. */
+    @Test fun autoScrollNearTheEdges() {
+        assertEquals(0f, PlanPoints.autoScroll(300f, 600f, 50f, 10f), 0f)
+        assertEquals(-10f, PlanPoints.autoScroll(0f, 600f, 50f, 10f), 1e-3f)
+        assertEquals(-5f, PlanPoints.autoScroll(25f, 600f, 50f, 10f), 1e-3f)
+        assertEquals(5f, PlanPoints.autoScroll(575f, 600f, 50f, 10f), 1e-3f)
+        assertEquals(10f, PlanPoints.autoScroll(700f, 600f, 50f, 10f), 1e-3f)  // finger below the list: full speed
+    }
+
+    /** The list shows the drop at once (before the plan's rows arrive). */
+    @Test fun movedPreview() {
+        assertEquals(listOf("c", "a", "b"), PlanPoints.moved(listOf("a", "b", "c"), 2, 0))
+        assertEquals(listOf("b", "c", "a"), PlanPoints.moved(listOf("a", "b", "c"), 0, 2))
+        assertEquals(listOf("a", "b"), PlanPoints.moved(listOf("a", "b"), 0, 5))
+    }
+
     // ---------------------------------------------------------------- delete
 
     @Test fun deleteAMiddlePoint() = assertEquals(listOf(a, c), PlanPoints.delete(listOf(a, b, c), 1))

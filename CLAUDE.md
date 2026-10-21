@@ -25,6 +25,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `  data/` | `TourDb` (SQLite WAL), `Prefs`, `DataFiles` (required data check), `Geo` helpers, `AppSettings` (Settings page model), `FollowProgress` (remaining distance while following) |
 | `  poi/` | POIs: model, kinds (+ `defaultHidden`), `PoiFilter` (layer filter JSON), tap lookup, details sheet, Google Maps link-out |
 | `  cells/` | Map cells on the phone: `MapCells` (API for the UI), `CellStore` (one PMTiles per layer, rewritten as generations), `CellApi` (download client), `AppCells` (app-wide instance) – see `docs/design/map-cells.md` §19 |
+| `  backup/` | Backups: auto GPX copy to Documents/OnPath, restore, recycle bin – see `docs/core-features.md` C11 |
 | `app/libs/` | BRouter 1.7.11-beta jars (MIT), built by `tools/routing/build_brouter_jars.sh` |
 | `app/src/main/assets/brouter/` | BRouter profiles + `lookups.dat` |
 | `app/src/main/assets/style/onpath.json` | Map style – **generated**, edit `tools/make_style.py` instead |

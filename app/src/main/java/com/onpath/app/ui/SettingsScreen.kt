@@ -86,6 +86,7 @@ fun SettingsScreen(
     onImportData: () -> Unit = {},
     /** Opens Android's app settings (battery usage). */
     onAppSettings: () -> Unit = {},
+    /** Diagnostics → "Download routing data" (normally it comes with the map by itself – owner 2026-10-22). */
     onDownloadRouting: () -> Unit = {},
     dataBusy: String? = null,
     /** null = updates handled elsewhere (installed from Google Play) – section hidden. */
@@ -111,6 +112,9 @@ fun SettingsScreen(
     /** Settings → "Offline maps" (downloaded map areas); null = section hidden. */
     offlineMaps: OfflineMapsUi? = null,
     offlineMapsCb: OfflineMapsCallbacks = OfflineMapsCallbacks(),
+    /** Settings → "Backup" (tours and routes as GPX in Documents/OnPath); null = section hidden. */
+    backup: BackupUi? = null,
+    backupCb: BackupCallbacks = BackupCallbacks(),
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -228,7 +232,7 @@ fun SettingsScreen(
                             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
                             onChange(settings.copy(offRouteVibrate = it))
                         }
-                        SwitchRow("Vibrate when planning", "1× a point set, 2× a point deleted",
+                        SwitchRow("Vibrate when planning", "When you hold the map: 1× (map, line, place), 2× on a route point",
                             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically) {
@@ -273,16 +277,15 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (backup != null) item { BackupSection(backup, backupCb) }
                 if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                 item {
                     Section("Map data") {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
                                 fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            DataActions(
-                                routingMissing = checks.any { it.name.startsWith("segments") && !it.present },
-                                busy = dataBusy, onImport = onImportData, onDownloadRouting = onDownloadRouting,
-                            )
+                            // routing data is part of the map (owner 2026-10-22): no own button here, see Diagnostics
+                            DataActions(routingMissing = false, busy = dataBusy, onImport = onImportData, onDownloadRouting = {})
                         }
                     }
                 }
@@ -305,6 +308,10 @@ fun SettingsScreen(
                             Text("Map server: ${com.onpath.app.data.MapServer.describe()}", fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             mapCells?.let { MapCellsDebugList(it) }
+                            // by hand: the 1° routing parts at the map centre (they normally load with the map)
+                            androidx.compose.material3.OutlinedButton(onClick = onDownloadRouting, enabled = dataBusy == null,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
+                            if (dataBusy != null) Text(dataBusy, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             onResetMaps?.let { reset ->
                                 var ask by remember { mutableStateOf(false) }
                                 androidx.compose.material3.OutlinedButton(onClick = { ask = true },

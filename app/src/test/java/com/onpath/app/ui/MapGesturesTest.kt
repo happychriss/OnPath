@@ -38,7 +38,7 @@ class MapGesturesTest {
         assertEquals(Action.PointMenu(1), MapGestures.decide(true, Press.HOLD, false, 1, false, false, near = 3))
         assertEquals(Action.PoiMenu, MapGestures.decide(true, Press.HOLD, false, -1, true, false, near = 3))
         assertEquals(Action.None, MapGestures.decide(true, Press.TAP, false, -1, false, false, near = 3))
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, false))
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false)) // near zone: 1× like the map
     }
 
     // --- empty plan: the first hold asks how to start ---
@@ -64,13 +64,16 @@ class MapGesturesTest {
         assertEquals(Action.PoiMenu, plan(Press.HOLD, poi = true, menu = true))
     }
 
-    // --- vibration when the hold is armed ---
-    @Test fun holdOnlyTicksEverywhere() {
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, false))
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, true))
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, 0, true))
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, true, 3, false))
-        assertEquals(Buzz.TICK, MapGestures.buzz(true, true, -1, true))
+    // --- vibration at the moment the hold is recognised (owner 2026-10-21: on the press, never after the action) ---
+    @Test fun holdVibratesOnceOnMapLineOrPoi() {
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false)) // empty map / line → add point, first-point menu
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, true))  // POI menu
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, true, -1, true))   // POI with another menu open
+    }
+    @Test fun holdOnRoutePointVibratesTwice() {
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 0, false))
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 0, true))   // a POI that is a stop acts like its marker
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, true, 3, false))   // switching from another menu
     }
     @Test fun noRingWhereTheHoldDoesNothing() {
         assertEquals(Buzz.NONE, MapGestures.buzz(true, true, -1, false)) // only closes the menu
