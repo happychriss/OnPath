@@ -54,8 +54,10 @@ abstract class E2EBase {
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)
         beforeLaunch()
+        dismissSystemDialogs()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitForMap()
+        dismissSystemDialogs()
     }
 
     /** True when the real BRouter data is on the emulator (routes follow ways, points are snapped). */
@@ -106,12 +108,28 @@ abstract class E2EBase {
 
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */
     protected fun hold(x: Float, y: Float, ms: Int = 900) {
+        dismissSystemDialogs()
         device.swipe(x.toInt(), y.toInt(), x.toInt(), y.toInt(), ms / 5) // one step ≈ 5 ms
         Thread.sleep(400)
     }
 
+    /**
+     * CI emulators under load show "… isn't responding" / system dialogs over the app; they swallow every touch.
+     * Close them (Wait), so a test fails only for the app's own reasons.
+     */
+    protected fun dismissSystemDialogs() {
+        device.executeShellCommand("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
+        for (label in listOf("Wait", "Close app", "OK")) {
+            val anr = device.findObject(By.textContains("isn't responding")) ?: break
+            device.findObject(By.text(label))?.click(); Thread.sleep(500)
+            if (anr.let { device.findObject(By.textContains("isn't responding")) } == null) break
+        }
+    }
+
     protected fun clickText(text: String) {
-        val o = device.wait(Until.findObject(By.text(text)), 5_000) ?: fail("\"$text\" not shown").let { return }
+        var o = device.wait(Until.findObject(By.text(text)), 5_000)
+        if (o == null) { dismissSystemDialogs(); o = device.wait(Until.findObject(By.text(text)), 2_000) }
+        if (o == null) { shot("missing-${text.filter { it.isLetter() }}"); fail("\"$text\" not shown – ${state()}"); return }
         o.click()
         Thread.sleep(300)
     }
