@@ -8,6 +8,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **[laptop] HANDOVER 2026-10-21: `docs/handover-2026-10-21-cloud.md`** – (1) core bug C1 hold a point → new point
+  (owner, 0.8.5): reproduce with the phone on USB (`adb logcat -s OnPath | grep Hold:`), test first, then fix;
+  (2) merge branch `e2e` + release 0.8.6 (Points… delete list, hold log); (3) fresh-install test procedure (owner);
+  (4) **world overview map, no Alps special case (owner)** – R2 + release.yml fetch, not in git.
 - **Map / routing freshness (owner 2026-10-21) – done in 0.8.3:** check after routing, veil / hint, mobile data by
   default, no switch during a tour, routing data refresh + reroute (`docs/design/map-updates-ux.md`). Open: field test;
   "Update maps now" in Settings could go (owner); route band style change of 0.8.2 to be checked on the phone.
