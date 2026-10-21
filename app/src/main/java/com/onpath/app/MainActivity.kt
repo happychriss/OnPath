@@ -100,7 +100,8 @@ class MainActivity : ComponentActivity() {
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
-                val needData = vm.missing.isNotEmpty() && !vm.dataScreenDismissed
+                // cells world: with the overview in the APK and map downloads, a fresh install opens on the map (DataFiles.blocking)
+                val needData = vm.blockingMissing.isNotEmpty() && !vm.dataScreenDismissed
 
                 Box(Modifier.fillMaxSize()) {
                     if (needData) {

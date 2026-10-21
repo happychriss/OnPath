@@ -627,6 +627,21 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithCard(cellCard(emptyMap(), available = false)), PlanCallbacks()) }
     }
 
+    /** Fresh install, no map yet, location not allowed: the card says what brings the detailed map (no timeout). */
+    @Test fun cellCardFirstStart() = paparazzi.snapshot {
+        Frame(gps = GpsStatus.NO_PERMISSION) {
+            PlanPanel(planWithCard(CellCards.firstStart(null, available = true, noDetailedMap = true,
+                waitingForPosition = true, hidden = false, permission = false), n = 0), PlanCallbacks())
+        }
+    }
+
+    /** Fresh install, location allowed, waiting for the first fix. */
+    @Test fun cellCardFirstStartWaiting() = paparazzi.snapshot {
+        Frame(gps = GpsStatus.SEARCHING) {
+            PlanPanel(planWithCard(CellCardUi.NeedPosition(permission = true), n = 0), PlanCallbacks())
+        }
+    }
+
     /** Zoomed in (z ≥ 10) where only the overview map exists: a small hint below the search bar. */
     @Test fun overviewHint() = paparazzi.snapshot {
         Box {

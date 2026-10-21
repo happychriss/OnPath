@@ -110,6 +110,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     var dataScreenDismissed by mutableStateOf(false)
 
+    /** The APK ships the overview map's base map (map/Overview.kt) – a fresh install can open on the map. */
+    private val overviewBundled: Boolean by lazy { "base.pmtiles" in com.onpath.app.map.Overview.bundled(getApplication()) }
+
+    /**
+     * Missing files that keep the app on the missing-data screen: none when the overview is in the APK and map cells can
+     * be downloaded (the map comes where the user is or plans); otherwise [missing], as before cells (DataFiles.blocking).
+     */
+    val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
+
     // --- screens and mode ---
     /** My routes list (☰ → My routes) is open. */
     var routesOpen by mutableStateOf(false)
@@ -245,7 +254,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The card's mobile-data question was answered "Only on Wi-Fi" (for this card). */
     private var mobileDeclined by mutableStateOf(false)
     /** T3 waits for a usable fix after app start / return in Plan. */
-    private var t3Pending = true
+    private var t3Pending by mutableStateOf(true)
+    /** The first-start card ("Allow location to get the detailed map …") was hidden with × (this app run). */
+    private var firstStartHidden by mutableStateOf(false)
     /** "Map downloads not available in this build" was shown in this app run (once is enough). */
     private var notAvailableShown = false
     /** T5: position of the last check, so the check runs every [T5_STEP_M], not on every fix. */
@@ -256,6 +267,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                    installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? =
         CellCards.build(cellJob, states, installed.associate { it.id to it.totalBytes }, cells.downloadsAvailable,
             settings.mapsWifiOnly, mobileDeclined)
+            ?: CellCards.firstStart(cellJob, cells.downloadsAvailable,
+                noDetailedMap = installed.isEmpty() && missing.any { !it.name.startsWith("segments") },
+                waitingForPosition = t3Pending && mode == AppMode.PLAN, hidden = firstStartHidden,
+                permission = tracker.hasPermission())
 
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
@@ -299,7 +314,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Card → OK / Not now / ×: the card goes; cells still loading go on (Settings → Offline maps shows them). */
-    fun closeCellCard() { cellJob = null; mobileDeclined = false }
+    fun closeCellCard() { if (cellJob == null) firstStartHidden = true; cellJob = null; mobileDeclined = false }
 
     /** Overlay → Cancel: stop loading the areas of this job (installed ones stay; setting a point there asks again). */
     fun cancelCellLoading() {

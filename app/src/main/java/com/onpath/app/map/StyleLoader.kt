@@ -88,7 +88,7 @@ object StyleLoader {
         val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
         val dir = mapDir.absolutePath
         lastMapDir = mapDir
-        val format = DataFiles.formatOf { File(mapDir, it).isFile }
+        val format = DataFiles.styleFormatOf { File(mapDir, it).isFile }
         val assets = assetDir(format)
         val tag = if (format == 1) "" else " (format $format)"
         val attempts = buildList<Pair<String, () -> String>> {
@@ -109,7 +109,7 @@ object StyleLoader {
                 if (!json.trimStart().startsWith("{")) error("not JSON")
                 Log.i("OnPath", "Map style: $what")
                 lastLoaded = what
-                return OptionalSources.strip(Overview.merge(json.replace("{DATA_DIR}", dir), Overview.bundled(context)))
+                return withOverview(json.replace("{DATA_DIR}", dir), Overview.bundled(context))
             } catch (e: Exception) {
                 Problems.warn("map", "Map style $what not usable, trying the next one", e)
             }
@@ -118,6 +118,16 @@ object StyleLoader {
         lastLoaded = "fallback"
         return fallback(mapDir)
     }
+
+    /**
+     * [styleJson] (with {DATA_DIR} replaced) plus the overview map ([overviewFiles] = files bundled in the APK), with
+     * every source whose local file is missing dropped – the base map and relief too (fresh install, no map cell yet,
+     * no region package: the overview draws the low zooms, MapLibre never tries to open a file that is not there –
+     * phone test 2026-10-21: "Failed to load source terrain … path not found" was announced as a problem).
+     * Pure apart from file checks ([exists]); unit-tested.
+     */
+    fun withOverview(styleJson: String, overviewFiles: Set<String>, exists: (String) -> Boolean = { File(it).isFile }): String =
+        OptionalSources.strip(Overview.merge(styleJson, overviewFiles), standIn = { true }, exists = exists)
 
     /** Small but usable style: base map basics + route overlays, if the data files exist. */
     fun fallback(dataDir: File): String {
