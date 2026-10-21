@@ -4444,26 +4444,11 @@
      ]
     ],
     [
-     "any",
+     "all",
      [
-      "all",
+      "!",
       [
        "in",
-       [
-        "get",
-        "subclass"
-       ],
-       [
-        "literal",
-        [
-         "footway",
-         "pedestrian",
-         "cycleway"
-        ]
-       ]
-      ],
-      [
-       "!=",
        [
         "coalesce",
         [
@@ -4472,7 +4457,64 @@
         ],
         ""
        ],
-       "no"
+       [
+        "literal",
+        [
+         "no",
+         "private"
+        ]
+       ]
+      ]
+     ],
+     [
+      "any",
+      [
+       "!",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "foot"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "yes",
+         "designated",
+         "permissive"
+        ]
+       ]
+      ]
+     ]
+    ],
+    [
+     "any",
+     [
+      "in",
+      [
+       "get",
+       "subclass"
+      ],
+      [
+       "literal",
+       [
+        "footway",
+        "pedestrian",
+        "cycleway"
+       ]
       ]
      ],
      [
@@ -4550,6 +4592,63 @@
        "brunnel"
       ],
       "tunnel"
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "no",
+         "private"
+        ]
+       ]
+      ]
+     ],
+     [
+      "any",
+      [
+       "!",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "yes",
+         "designated",
+         "permissive"
+        ]
+       ]
+      ]
      ]
     ],
     [
