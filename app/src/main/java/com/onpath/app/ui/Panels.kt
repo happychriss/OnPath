@@ -46,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,7 +67,7 @@ fun BottomPanel(
     onSwipe: ((down: Boolean) -> Unit)? = null,
     /** Tap on the grab handle. */
     onHandleTap: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     val threshold = with(LocalDensity.current) { 40.dp.toPx() }
     var drag by remember { mutableFloatStateOf(0f) }
@@ -94,7 +96,8 @@ fun BottomPanel(
             // Material drag handle (32 × 4 dp) in a full-width 48 dp tall touch area when it does something.
             val handle = Modifier.fillMaxWidth().height(if (onHandleTap != null) 48.dp else 24.dp)
             Box(
-                if (onHandleTap != null) handle.clickable(onClickLabel = "Resize panel", onClick = onHandleTap) else handle,
+                if (onHandleTap != null) handle.clickable(onClickLabel = "Resize panel", onClick = onHandleTap)
+                    .semantics { contentDescription = "Resize panel" } else handle,
                 contentAlignment = Alignment.Center,
             ) {
                 Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)

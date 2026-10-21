@@ -38,7 +38,7 @@ class MapGesturesTest {
         assertEquals(Action.PointMenu(1), MapGestures.decide(true, Press.HOLD, false, 1, false, false, near = 3))
         assertEquals(Action.PoiMenu, MapGestures.decide(true, Press.HOLD, false, -1, true, false, near = 3))
         assertEquals(Action.None, MapGestures.decide(true, Press.TAP, false, -1, false, false, near = 3))
-        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false))
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, false))
     }
 
     // --- empty plan: the first hold asks how to start ---
@@ -65,22 +65,16 @@ class MapGesturesTest {
     }
 
     // --- vibration when the hold is armed ---
-    @Test fun buzzOnceOnMapAndPoiTwiceOnRoutePoint() {
-        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false))
-        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, true))
-        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 0, true))
-        assertEquals(Buzz.TWO, MapGestures.buzz(true, true, 3, false))
-        assertEquals(Buzz.ONE, MapGestures.buzz(true, true, -1, true))
+    @Test fun holdOnlyTicksEverywhere() {
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, false))
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, -1, true))
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, false, 0, true))
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, true, 3, false))
+        assertEquals(Buzz.TICK, MapGestures.buzz(true, true, -1, true))
     }
     @Test fun noRingWhereTheHoldDoesNothing() {
         assertEquals(Buzz.NONE, MapGestures.buzz(true, true, -1, false)) // only closes the menu
         assertEquals(Buzz.NONE, MapGestures.buzz(false, false, 1, true)) // Navigate
-    }
-    @Test fun buzzPatterns() {
-        assertEquals(2, MapGestures.pattern(Buzz.ONE).size)
-        assertEquals(4, MapGestures.pattern(Buzz.TWO).size)
-        assertTrue(MapGestures.pattern(Buzz.TWO).sum() < 300) // short
-        assertEquals(0, MapGestures.pattern(Buzz.NONE).size)
     }
 
     // --- point menu: only sensible options ---

@@ -10,11 +10,14 @@ import kotlin.math.min
  *
  * | hold ≥ 0.3 s on…                         | vibration | result |
  * | --- | --- | --- |
- * | empty map, plan still empty              | 1×        | first-point menu: Start here · Go here (from my location) |
- * | empty map / route line                   | 1×        | add point (smart insertion), no message |
- * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
- * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
- * | near a route point (48–80 dp)            | 1×        | ask: "Point N: options" · "New point here" |
+ * | empty map, plan still empty              | tick      | first-point menu: Start here · Go here (from my location) |
+ * | empty map / route line                   | tick + 1× | add point (smart insertion), no message |
+ * | POI that is not a route point            | tick      | POI menu: Add to route · Open in Google Maps |
+ * | route point (incl. a POI that is a stop) | tick      | point menu ([pointMenu]) |
+ * | near a route point (48–80 dp)            | tick      | ask: "Point N: options" · "New point here" |
+ *
+ * The hold itself only ticks (very light); the edit that follows vibrates in the ViewModel (PlanHaptics:
+ * 1× a point set, 2× a point deleted) – the same for map, menus and the Points list (owner 2026-10-21).
  *
  * The marker wins (within [MARKER_RADIUS_DP], nearest marker first), then a POI, then a point within
  * [NEAR_RADIUS_DP] (ask), then the line / map.
@@ -48,11 +51,11 @@ object MapGestures {
         data object None : Action
     }
 
-    /** Vibration when a hold is armed (ring full): one short click, or a double pulse on a route point. */
-    enum class Buzz { NONE, ONE, TWO }
+    /** Vibration when a hold is armed (ring full): a very light tick (PlanHaptics), or nothing. */
+    enum class Buzz { NONE, TICK }
 
     /** Entries of the point menu, in display order. */
-    enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE }
+    enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE, ALL_POINTS }
 
     /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
@@ -87,10 +90,10 @@ object MapGestures {
     /** How the armed hold feels (decided at finger-down, same targets as [decide]); [Buzz.NONE] = no ring either. */
     fun buzz(editable: Boolean, menuOpen: Boolean, marker: Int, poi: Boolean): Buzz = when {
         !editable -> Buzz.NONE
-        marker >= 0 -> Buzz.TWO
-        poi -> Buzz.ONE
+        marker >= 0 -> Buzz.TICK
+        poi -> Buzz.TICK
         menuOpen -> Buzz.NONE
-        else -> Buzz.ONE
+        else -> Buzz.TICK
     }
 
     /**
@@ -105,13 +108,6 @@ object MapGestures {
         else if (middle) { add(PointAction.MAKE_START); add(PointAction.END_HERE) }
         if (isPlace) add(PointAction.GOOGLE)
         add(PointAction.DELETE)
-    }
-
-    /** Vibration pattern for [Vibrator] waveforms (off/on ms): one short pulse, or two clearly separated ones. */
-    fun pattern(b: Buzz): LongArray = when (b) {
-        Buzz.NONE -> LongArray(0)
-        Buzz.ONE -> longArrayOf(0, 30)
-        Buzz.TWO -> longArrayOf(0, 30, 90, 30)
     }
 
     /**
