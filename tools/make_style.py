@@ -109,7 +109,10 @@ def landcover():
     layer(id_="landuse-green", type="fill", source="base", **{"source-layer": "landuse"}, minzoom=11,
           filter=["in", ["get", "class"], ["literal", ["cemetery", "pitch", "stadium", "playground"]]],
           paint={"fill-color": T("leisure.color")})
+    # The OpenMapTiles park layer also carries name points (format 1; trim_base.sh drops them in format 2) –
+    # a point in a line layer makes MapLibre Native log "Invalid geometry in line layer".
     layer(id_="park-protected", type="line", source="base", **{"source-layer": "park"}, minzoom=9,
+          filter=["!=", ["geometry-type"], "Point"],
           paint={"line-color": T("park.outline.color"), "line-width": Z("park.outline.width"),
                  "line-dasharray": [6, 3]})
 

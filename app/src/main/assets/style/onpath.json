@@ -446,6 +446,13 @@
    "source": "base",
    "source-layer": "park",
    "minzoom": 9,
+   "filter": [
+    "!=",
+    [
+     "geometry-type"
+    ],
+    "Point"
+   ],
    "paint": {
     "line-color": "rgba(80,140,70,0.35)",
     "line-width": [
