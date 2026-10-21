@@ -58,6 +58,7 @@ class Prefs(context: Context) {
             defaultSac = sp.getInt("defaultSac", 3).coerceIn(1, 5),
             hikePace = com.onpath.app.time.Pace.of(sp.getString("hikePace", null)),
             bikePace = com.onpath.app.time.Pace.of(sp.getString("bikePace", null)),
+            mapsWifiOnly = sp.getBoolean("mapsWifiOnly", false),
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
@@ -74,6 +75,7 @@ class Prefs(context: Context) {
             .putInt("defaultSac", v.defaultSac)
             .putString("hikePace", v.hikePace.name)
             .putString("bikePace", v.bikePace.name)
+            .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
             .apply()
 
     var planWaypoints: List<GeoPoint>

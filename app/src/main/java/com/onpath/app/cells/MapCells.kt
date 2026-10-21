@@ -93,7 +93,7 @@ class MapCells(
     /** Seconds the server asks to wait → milliseconds to wait (tests shorten it). */
     private val pollDelayMs: (Int) -> Long = { it * 1000L },
     private val now: () -> Long = System::currentTimeMillis,
-) {
+) : CellSource {
     // ------------------------------------------------------------------------------------------- public state
 
     private val _states = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
@@ -114,6 +114,9 @@ class MapCells(
 
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
+    /** False when this build has no map server key: the UI says "Map downloads not available in this build". */
+    override val downloadsAvailable: Boolean get() = api != null
+
     /** Folder the map, POI tap and search read from (the store), or null = the data folder as before cells. */
     fun mapDir(): File? = store.mapDir()
 
@@ -122,20 +125,20 @@ class MapCells(
     /** Cell of a point (half-open owner rule). */
     fun cellFor(p: GeoPoint): CellId? = CellId.at(p)
     /** Own cell + close neighbours within [radiusM] (T1/T3, Q1). Own cell first. */
-    fun cellsAround(p: GeoPoint, radiusM: Double = 5000.0): List<CellId> = CellId.near(p, radiusM)
+    override fun cellsAround(p: GeoPoint, radiusM: Double): List<CellId> = CellId.near(p, radiusM)
     fun cellsFor(south: Double, west: Double, north: Double, east: Double): List<CellId> = CellId.inBbox(south, west, north, east)
     /** Corridor cells of a route (T4, F-OFF-02). */
-    fun cellsAlong(line: List<GeoPoint>, corridorM: Double = 10_000.0): List<CellId> = CellId.alongLine(line, corridorM)
+    override fun cellsAlong(line: List<GeoPoint>, corridorM: Double): List<CellId> = CellId.alongLine(line, corridorM)
 
     /** True when the detailed map covers [p]: an installed cell, or the region package in the data folder. */
-    fun hasDetailedMap(p: GeoPoint): Boolean {
+    override fun hasDetailedMap(p: GeoPoint): Boolean {
         val c = CellId.at(p) ?: return false
         if (_installed.value.any { it.id == c }) return true
         return regionBounds()?.let { b -> p.lon >= b[0] && p.lat >= b[1] && p.lon <= b[2] && p.lat <= b[3] } ?: false
     }
 
     /** Of [cells]: those neither installed nor already asked for (what a trigger should request). */
-    fun missing(cells: List<CellId>): List<CellId> {
+    override fun missing(cells: List<CellId>): List<CellId> {
         val inst = _installed.value.map { it.id }.toSet()
         return cells.filter { it !in inst && it !in queue }
     }
@@ -146,7 +149,7 @@ class MapCells(
      * Asks for [cells]. Already installed (except for [CellReason.REFRESH]) or already queued cells are skipped.
      * [ownPoint]: the mobile-data rule's "own cell" (loads on mobile data without asking). Returns the cells added.
      */
-    fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean = reason == CellReason.POINT): List<CellId> {
+    override fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean): List<CellId> {
         val inst = _installed.value.map { it.id }.toSet()
         val added = ArrayList<CellId>()
         synchronized(queue) {
@@ -210,7 +213,7 @@ class MapCells(
     fun rollback(number: Int): Boolean = store.rollback(number).also { if (it) refreshInstalled() }
 
     /** Remembers that the user planned / navigated in these cells (T6: refresh only cells used in 6 months). */
-    fun markUsed(cells: Collection<CellId>) {
+    override fun markUsed(cells: Collection<CellId>) {
         val inst = _installed.value.map { it.id }.toSet()
         val used = cells.filter { it in inst }
         if (used.isEmpty()) return
@@ -221,7 +224,7 @@ class MapCells(
      * Installed cells due for a refresh (T6): used in the last 6 months and installed more than [ageDays] days ago.
      * The caller requests them with [CellReason.REFRESH] (they download only on Wi-Fi and only when newer).
      */
-    fun refreshDue(ageDays: Int = 30): List<CellId> {
+    override fun refreshDue(ageDays: Int): List<CellId> {
         val t = now()
         return _installed.value.filter { c ->
             val used = synchronized(usage) { usage[c.id] } ?: c.installedAt

@@ -171,6 +171,17 @@ class MainActivity : ComponentActivity() {
                                     onDelete = { id -> com.onpath.app.cells.CellId.parse(id)?.let { vm.cells.delete(listOf(it)) } },
                                 )
                             },
+                            offlineMaps = run {
+                                val installed by vm.cells.installed.collectAsState()
+                                val states by vm.cells.states.collectAsState()
+                                LaunchedEffect(installed) { vm.loadAreaNames() }
+                                vm.offlineMapsUi(states, installed)
+                            },
+                            offlineMapsCb = com.onpath.app.ui.OfflineMapsCallbacks(
+                                onDelete = vm::deleteMapArea,
+                                onWifiOnly = { on -> vm.updateSettings(vm.settings.copy(mapsWifiOnly = on)) },
+                                onUpdateNow = vm::updateMapsNow,
+                            ),
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },

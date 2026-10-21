@@ -93,6 +93,8 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
+    /** The map card (CellCard): mobile data answer, retry, close. */
+    val cellCard: CellCardCallbacks = CellCardCallbacks(),
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -130,6 +132,8 @@ data class PlanUi(
     val roundTrip: Boolean = false,
     /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
     val tour: TourState? = null,
+    /** Detailed map being fetched for this area (CellCard, map-cells.md §9); null = nothing to say. */
+    val cellCard: CellCardUi? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -166,6 +170,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (!mini && route != null) SavedLine(ui)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
+        ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini) }
         if (!mini && route != null && !ui.routing) {
             if (ui.size == PlanSize.FULL) {
                 Spacer(Modifier.height(6.dp))
