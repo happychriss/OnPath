@@ -265,12 +265,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The card for the current cell states (MapScreen collects [com.onpath.app.cells.MapCells.states] / installed). */
     fun cellCardUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
                    installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? =
-        CellCards.build(cellJob, states, installed.associate { it.id to it.totalBytes }, cells.downloadsAvailable,
-            settings.mapsWifiOnly, mobileDeclined)
+        builtCard(states, installed)
+            // the user waited in the modal for their area: when all is there it simply goes – no "done" message
+            ?.takeIf { !(it is CellCardUi.Done && cellJob?.own != null) }
             ?: CellCards.firstStart(cellJob, cells.downloadsAvailable,
                 noDetailedMap = installed.isEmpty() && missing.any { !it.name.startsWith("segments") },
                 waitingForPosition = t3Pending && mode == AppMode.PLAN, hidden = firstStartHidden,
                 permission = tracker.hasPermission())
+
+    private fun builtCard(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
+                          installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? =
+        CellCards.build(cellJob, states, installed.associate { it.id to it.totalBytes }, cells.downloadsAvailable,
+            settings.mapsWifiOnly, mobileDeclined)
 
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
@@ -278,11 +284,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (notAvailableShown) return
             notAvailableShown = true; cellJob = j; return
         }
-        val done = cellCardUi(cells.states.value, cells.installed.value) is CellCardUi.Done
+        val done = builtCard(cells.states.value, cells.installed.value) is CellCardUi.Done
         val open = cellJob
         cellJob = com.onpath.app.cells.CellTriggers.merge(open, j, done)
         if (open == null || done) mobileDeclined = false
+        // the user waits for the map at their point / position (T1 / T3): the modal shows (again)
+        if (j.own != null) loadModalHidden = false
     }
+
+    // ---------------- the modal while the user waits for the map of their area (owner 2026-10-21) ----------------
+
+    /** The modal was closed with Cancel / Close (the download goes on; the plan sheet's card shows it). */
+    private var loadModalHidden by mutableStateOf(false)
+    private val loadProgress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+
+    /**
+     * What the modal shows now ([now]: uptime ms; called about every second): only for a job the user waits for (own
+     * point / position without detailed map), in Plan, until the map of that point is there. Null = no modal.
+     */
+    fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? {
+        val job = cellJob ?: return null
+        val own = job.own ?: return null
+        if (loadModalHidden || !cells.downloadsAvailable || mode != AppMode.PLAN) return null
+        if (cells.installed.value.any { it.id == own } && states[own] !is com.onpath.app.cells.CellState.Downloading &&
+            states[own] != com.onpath.app.cells.CellState.Installing) return null
+        val s = states[own] ?: com.onpath.app.cells.CellState.Requested
+        if (s is com.onpath.app.cells.CellState.Ready) return null
+        return loadProgress.getOrPut(own) { MapLoadProgress() }.update(s, now)
+    }
+
+    /** Modal → Cancel / Close: the modal goes, the map keeps loading in the background. */
+    fun hideLoadModal() { loadModalHidden = true }
 
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
@@ -306,6 +338,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val job = cellJob ?: return
         val failed = job.cells.filter { cells.state(it) is com.onpath.app.cells.CellState.Failed }
         val own = failed.filter { it == job.own }
+        own.forEach { loadProgress.remove(it) } // the modal's bar starts again
         safeCells("retry") {
             if (own.isNotEmpty()) cells.request(own, com.onpath.app.cells.CellReason.POINT)
             val rest = failed - own.toSet()
