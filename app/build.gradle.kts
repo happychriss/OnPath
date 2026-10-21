@@ -87,9 +87,9 @@ android {
     }
     // PMTiles in assets are read by byte range (MapLibre's asset source seeks): keep them stored, not deflated.
     androidResources { noCompress += "pmtiles" }
-    // Optional overview map (base z0-8 + hill shade z5-9, ~docs/design/map-cells.md §7), built by
+    // Optional world overview map (base z0-5 + hill shade z0-6, docs/map-pipeline.md §9b), built by
     // tools/build_overview.sh – map data, so not in git. Included when "-Ponpath.overviewAssets=DIR" (or env
-    // ONPATH_OVERVIEW_ASSETS) points at a folder holding overview/base.pmtiles + overview/terrain.pmtiles
+    // ONPATH_OVERVIEW_ASSETS) points at a folder holding overview/*.pmtiles
     // (e.g. in ~/.gradle/gradle.properties). Without it the app works as before (map/Overview.kt).
     val overviewAssets = ((project.findProperty("onpath.overviewAssets") as String?)
         ?: System.getenv("ONPATH_OVERVIEW_ASSETS"))?.takeIf { it.isNotBlank() }?.let { file(it) }

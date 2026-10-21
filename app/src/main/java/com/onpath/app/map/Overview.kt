@@ -6,8 +6,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * The overview map shipped in the APK (docs/design/map-cells.md §7): base map z0–8 and hill shade z5–9 of the Alps,
- * so a place without downloaded data is never a blank screen at low zoom.
+ * The overview map shipped in the APK (docs/design/map-cells.md §7, docs/map-pipeline.md §9b): one world overview –
+ * base map (OpenMapTiles schema from Natural Earth: coast, water, borders, country and city names) and hill shade –
+ * so a place without downloaded data is never a blank screen at low zoom. MapLibre over-zooms its last zoom level
+ * (from the files' headers) up to [SPLIT_ZOOM].
  *
  * MapLibre cannot draw a layer "only where another source has no data", so the split is by zoom:
  * - below [SPLIT_ZOOM] every base-map / hill-shade layer is drawn from the overview (a copy of the layer, same look,
