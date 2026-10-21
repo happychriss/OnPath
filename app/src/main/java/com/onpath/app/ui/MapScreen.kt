@@ -116,7 +116,7 @@ fun MapScreen(
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
         when (vm.mode) {
-            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation,
+            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onRequestLocation,
                 onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
@@ -174,7 +174,7 @@ fun MapScreen(
 @Composable
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
-    onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
+    onRequestLocation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
@@ -209,7 +209,7 @@ private fun PlanMode(
                 }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
-                else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour)
+                else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour, onRequestLocation)
             }
         }
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
@@ -217,7 +217,8 @@ private fun PlanMode(
 }
 
 @Composable
-private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit) {
+private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
+                       onRequestLocation: () -> Unit = {}) {
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
@@ -247,7 +248,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
-                onRetry = vm::cellCardRetry, onClose = vm::closeCellCard),
+                onRetry = vm::cellCardRetry, onClose = vm::closeCellCard, onAllowLocation = onRequestLocation),
         ),
     )
 }

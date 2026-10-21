@@ -91,4 +91,22 @@ class CellCardsTest {
         assertEquals("3 more areas · waiting", c.more)
         assertEquals("Preparing map for this area", c.title)
     }
+
+    // first start (phone test 2026-10-21): no detailed map anywhere, no position yet
+    @Test fun firstStartAsksForLocation() {
+        val c = CellCards.firstStart(null, available = true, noDetailedMap = true, waitingForPosition = true, hidden = false, permission = false)
+        assertEquals(CellCardUi.NeedPosition.ALLOW, c?.title)
+        val w = CellCards.firstStart(null, available = true, noDetailedMap = true, waitingForPosition = true, hidden = false, permission = true)
+        assertEquals(CellCardUi.NeedPosition.WAITING, w?.title)
+    }
+
+    @Test fun firstStartOnlyWhenNothingElseBringsTheMap() {
+        fun f(job: CellJob? = null, available: Boolean = true, none: Boolean = true, waiting: Boolean = true, hidden: Boolean = false) =
+            CellCards.firstStart(job, available, none, waiting, hidden, permission = false)
+        assertNull(f(job = job))          // a trigger's card is shown instead
+        assertNull(f(available = false))  // no downloads in this build: "not available" / missing-data screen
+        assertNull(f(none = false))       // a cell or region package is there
+        assertNull(f(waiting = false))    // T3 has run (or Navigate)
+        assertNull(f(hidden = true))      // the user closed it
+    }
 }
