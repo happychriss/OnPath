@@ -72,6 +72,12 @@ import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
+import com.onpath.app.routing.PlanPointRow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalConfiguration
 import com.onpath.app.routing.RouteSummary
 
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
@@ -92,8 +98,12 @@ class PlanCallbacks(
     val onExport: () -> Unit = {},
     /** Route ⋯ → Time details (how the time was calculated). */
     val onTimeDetails: () -> Unit = {},
-    /** Route ⋯ → Points…: the list of route points with Delete (a way that does not depend on map gestures). */
-    val onPoints: () -> Unit = {},
+    /** Points section (full sheet): row [from] dropped at row [to] (hold ≡ and drag). */
+    val onMovePoint: (from: Int, to: Int) -> Unit = { _, _ -> },
+    /** Points section: ✕ of a row – deleted at once, Undo brings it back. */
+    val onDeletePoint: (row: Int) -> Unit = {},
+    /** Points section: row tapped – the map shows that point. */
+    val onShowPoint: (row: Int) -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
@@ -107,8 +117,9 @@ class PlanCallbacks(
 data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
 
 /**
- * Plan sheet sizes: MINI = one line + primary button, COMPACT = stats + "Elevation & surfaces" row (default),
- * FULL = also the elevation profile and way types / surfaces ("Elevation & surfaces" row or swipe up).
+ * Plan sheet sizes (owner 2026-10-21): MINI = summary only, COMPACT = summary + elevation profile (default),
+ * FULL = summary, profile, Points section, way types / surfaces (scrolls inside the sheet). The primary button stays
+ * at the bottom in every size.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -140,6 +151,10 @@ data class PlanUi(
     val tour: TourState? = null,
     /** Detailed map being fetched for this area (CellCard, map-cells.md §9); null = nothing to say. */
     val cellCard: CellCardUi? = null,
+    /** Rows of the Points section (full sheet), see PlanPoints.rows. */
+    val points: List<PlanPointRow> = emptyList(),
+    /** Changes when the sheet must scroll to the Points section (stop marker → "All points…"). */
+    val pointsScrollTick: Int = 0,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -147,10 +162,9 @@ data class PlanUi(
 
 /**
  * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
- * text and a badge) with undo/redo, the profile behind "Elevation & surfaces", and ONE
- * filled primary button (only with a route, or "Continue navigation" while a tour runs). Points are managed on the
- * map only (hold a marker → point menu). Route edits (reverse, round trip, clear) are in ⋯; save / load / export
- * are in the top ⋮ menu and Manage routes.
+ * text and a badge), then by size (PlanSize) the elevation profile, the Points section and the way types / surfaces,
+ * and ONE filled primary button fixed at the bottom (only with a route, or "Continue navigation" while a tour runs).
+ * Route edits (save, export, reverse, round trip, clear) are also in ⋯.
  */
 @Composable
 fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false) {
@@ -177,20 +191,14 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini) }
-        if (!mini && route != null && !ui.routing) {
-            if (ui.size == PlanSize.FULL) {
-                Spacer(Modifier.height(6.dp))
-                ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
-                GradientLegend()
-                RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
-            } else {
-                // Mini profile, always visible (Komoot-like) – tap for the full profile and way types.
-                Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    ElevationProfile(route.points, height = 52.dp, gradient = true)
-                    Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show elevation profile") {
-                        cb.onResize(PlanSize.FULL)
-                    })
-                }
+        if (ui.size == PlanSize.FULL) FullContent(ui, cb, Modifier.weight(1f, fill = false))
+        else if (!mini && route != null && !ui.routing) {
+            // Mini profile, always visible (Komoot-like) – tap for the full sheet.
+            Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                ElevationProfile(route.points, height = 52.dp, gradient = true)
+                Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show elevation profile") {
+                    cb.onResize(PlanSize.FULL)
+                })
             }
         }
         // The one primary button – not during a tour (Continue is in the tour controls above).
@@ -198,6 +206,31 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
             Spacer(Modifier.height(12.dp))
             PrimaryAction(ui, cb)
         } else Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Full sheet, scrolling between the summary and the primary button: profile → Points → way types / surfaces. */
+@Composable
+private fun FullContent(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
+    val route = ui.route?.takeIf { !ui.routing }
+    val scroll = rememberScrollState()
+    var pointsY by remember { mutableStateOf(0) }
+    // the map stays visible above the sheet
+    val maxH = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+    LaunchedEffect(ui.pointsScrollTick) { if (ui.pointsScrollTick > 0) scroll.animateScrollTo(pointsY) }
+    Column(modifier.heightIn(max = maxH).verticalScroll(scroll)) {
+        if (route != null) {
+            Spacer(Modifier.height(6.dp))
+            ElevationProfile(route.points, height = 84.dp, gradient = true, onHighlight = cb.onHighlight)
+            GradientLegend()
+        }
+        PointsSection(
+            ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
+            onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
+            onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
+            modifier = Modifier.padding(top = 8.dp).onGloballyPositioned { pointsY = it.positionInParent().y.toInt() },
+        )
+        if (route != null) RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
     }
 }
 
@@ -314,8 +347,6 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     // Everything about this route in one place (owner): save / export, edits, clear.
     MenuItem(Icons.AutoMirrored.Filled.Redo, "Redo", enabled = ui.canRedo, onClick = run(cb.onRedo))
     HorizontalDivider()
-    MenuItem(Icons.Outlined.Place, "Points… (delete)", enabled = ui.pointCount >= 1, onClick = run(cb.onPoints))
-    HorizontalDivider()
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
@@ -351,46 +382,4 @@ private fun ActivityButton(activity: Activity, onClick: () -> Unit) {
             Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
-}
-
-/** One row of the point list: "Start", "Stop 2", "Destination" + the place name when known. */
-data class PointRow(val index: Int, val role: String, val name: String?)
-
-object PointRows {
-    fun of(count: Int, name: (Int) -> String?): List<PointRow> = (0 until count).map { i ->
-        PointRow(i, when { i == 0 -> "Start"; i == count - 1 -> "Destination"; else -> "Stop ${i + 1}" }, name(i))
-    }
-}
-
-/**
- * Route ⋯ → Points…: every route point with a Delete button (owner 2026-10-21 – deleting must always work, also when
- * holding a marker on the map fails). Undo brings a deleted point back.
- */
-@Composable
-fun PointListDialog(rows: List<PointRow>, onDelete: (Int) -> Unit, onClose: () -> Unit) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onClose,
-        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Done") } },
-        title = { Text("Route points") },
-        text = {
-            Column {
-                if (rows.isEmpty()) Text("No points.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                for (r in rows) Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(26.dp).clip(CircleShape).background(stopColor(r.index, rows.size)), contentAlignment = Alignment.Center) {
-                        Text("${r.index + 1}", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(r.role, style = MaterialTheme.typography.bodyLarge)
-                        r.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-                    IconButton(onClick = { onDelete(r.index) }, modifier = Modifier.size(48.dp)
-                        .semantics { contentDescription = "Delete ${r.role}" }) {
-                        Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-        },
-    )
 }

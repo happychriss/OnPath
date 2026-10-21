@@ -13,6 +13,7 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | C5 | Navigate: follow, off-route alarm, re-route, arrival | 0.7.26 (re-route kept the old route) | `NavigatorTest`, `NavReplayTest`, `OffRouteDetectorTest`, `RerouteTargetsTest`, `ArrivalGateTest` |
 | C6 | Map loads: missing data / cells / style never crash; old map stays until the new one is complete | 0.8.0 (profile crash), small streets missing | `CellStoreTest`, `CellDownloadTest`, `StyleLoaderTest`, `ProfileTinyTest` |
 | C7 | GPX import / export | – | `GpxParserTest` |
+| C9 | **Plan: Points list in the full plan sheet** – ✕ deletes at once (Undo on the map), hold ≡ and drag reorders (to the top = new start), tap a row → map shows the point, round trips (start = goal once, ↺), point menu → "All points…" | – (new 2026-10-21, replaces ⋯ → "Points… (delete)") | `PlanPointsTest`, `PlanHapticsTest`, screenshots `planPoints*`; emulator `CorePointsListE2ETest` |
 | C8 | App update from GitHub (Settings → Updates) – resumes after a broken connection | 2026-10-21 (4× "connection abort") | `UpdateDownloadTest`, `AppUpdaterTest` |
 
 End to end on an emulator (since 2026-10-21): `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
@@ -29,3 +30,12 @@ point (`MapGestures.MARKER_RADIUS_DP` / `NEAR_RADIUS_DP`). The point menu acts o
 by position (`PointMenuTarget`), not on an index that the plan can change under it. Every hold, press, menu open /
 action / close and route result is one line in the gesture log (`Problems.trace`, last 50, never merged; logcat tag
 OnPath and `problems.json` "events" in the diagnostics export).
+
+Plan haptics (owner 2026-10-21, `ui/PlanHaptics` + `ui/Haptics`, played in `AppViewModel.change` so map, menus and the
+Points list feel the same; off with the system "touch vibration" setting): a hold that opens a menu = very light tick;
+a point set (Start here, Go here, new stop, "New point here", added by a hold, a place added) = 1×; a point deleted
+(point menu Delete, ✕ in the list) = 2×; reorder drop = 1×; undo / redo, reverse, round trip, start / end here,
+clear = nothing.
+
+C9 sheet sizes: small = summary; half = summary + profile; full = summary → profile → Points → way types / surfaces
+(scrolls inside the sheet, ≤ 60 % of the screen). The primary button stays at the bottom in every size.
