@@ -15,6 +15,11 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | C7 | GPX import / export | – | `GpxParserTest` |
 | C8 | App update from GitHub (Settings → Updates) – resumes after a broken connection | 2026-10-21 (4× "connection abort") | `UpdateDownloadTest`, `AppUpdaterTest` |
 
-Gaps (to do): an end-to-end test on an emulator that really holds a marker on the MapLibre map (C1/C2) – the JVM
-tests cover the decision functions MapHost uses (`MapGestures.markerUnderFinger`, `decide`), not the Android touch
-path itself. Candidate: GitHub Actions emulator job (android-emulator-runner) with one UiAutomator test.
+End to end on an emulator (since 2026-10-21): `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
+map, a finger held on the screen (UiAutomator): hold → Start here, hold → point added, hold a point → menu → Delete,
+the same after a map style reload and on a turned map. Runs in `.github/workflows/e2e.yml` on every app push to main
+and **before every release** (release.yml `needs: e2e` – no release when it fails). On failure the run keeps
+screenshots, the app state and logcat as the artifact "e2e-report".
+
+To add next: Navigate → Plan with a followed plan (markers back), recording survives Plan mode, map update with a
+real cell generation.
