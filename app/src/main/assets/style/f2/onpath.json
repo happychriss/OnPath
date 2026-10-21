@@ -4531,30 +4531,11 @@
      ]
     ],
     [
-     "any",
+     "all",
      [
-      "all",
+      "!",
       [
        "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "footway",
-         "pedestrian",
-         "cycleway"
-        ]
-       ]
-      ],
-      [
-       "!=",
        [
         "coalesce",
         [
@@ -4563,7 +4544,64 @@
         ],
         ""
        ],
-       "no"
+       [
+        "literal",
+        [
+         "no",
+         "private"
+        ]
+       ]
+      ]
+     ],
+     [
+      "any",
+      [
+       "!",
+       [
+        "has",
+        "ac"
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "foot"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "yes",
+         "designated",
+         "permissive"
+        ]
+       ]
+      ]
+     ]
+    ],
+    [
+     "any",
+     [
+      "in",
+      [
+       "coalesce",
+       [
+        "get",
+        "sub"
+       ],
+       ""
+      ],
+      [
+       "literal",
+       [
+        "footway",
+        "pedestrian",
+        "cycleway"
+       ]
       ]
      ],
      [
@@ -4639,6 +4677,59 @@
      [
       "has",
       "tn"
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "no",
+         "private"
+        ]
+       ]
+      ]
+     ],
+     [
+      "any",
+      [
+       "!",
+       [
+        "has",
+        "ac"
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "yes",
+         "designated",
+         "permissive"
+        ]
+       ]
+      ]
      ]
     ],
     [
