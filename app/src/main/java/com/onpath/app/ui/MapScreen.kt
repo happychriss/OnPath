@@ -110,6 +110,12 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        // A newer version of an area the user has (checked after each route, owner 2026-10-21): the map is veiled for
+        // the few seconds it loads and switches; panels stay usable on top.
+        val updStates by vm.cells.states.collectAsState()
+        val updInstalled by vm.cells.installed.collectAsState()
+        val mapUpdate = if (vm.mode == AppMode.PLAN) MapUpdates.of(updStates, updInstalled.map { it.id }.toSet()) else null
+        MapUpdateLayer(mapUpdate, Modifier.fillMaxSize())
         MapSync(vm, controller, rec, location, panelHeightPx)
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
         // Quiet update check (once a day, only when online; F-OFF-06).
@@ -147,6 +153,10 @@ fun MapScreen(
         }
         if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !vm.sharedLookup) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
+        }
+        // A newer version of an area the user has: small hint while the server builds it (the veil is under the panels).
+        if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !vm.sharedLookup) {
+            MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,

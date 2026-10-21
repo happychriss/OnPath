@@ -111,6 +111,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("backgroundAsked", false)
         set(v) = sp.edit().putBoolean("backgroundAsked", v).apply()
 
+    /** Last check for newer routing data after a route (ms since epoch; AppViewModel.checkRoutingData). */
+    var routingDataCheckedAt: Long
+        get() = sp.getLong("routingDataCheckedAt", 0L)
+        set(v) = sp.edit().putLong("routingDataCheckedAt", v).apply()
+
     /** The followed line is a shown/imported track, not the plan ("Continue navigation" then does not re-plan). */
     var followIsTrack: Boolean
         get() = sp.getBoolean("followIsTrack", false)

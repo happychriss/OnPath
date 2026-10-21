@@ -8,6 +8,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Map / routing freshness (owner 2026-10-21) – done in 0.8.3:** check after routing, veil / hint, mobile data by
+  default, no switch during a tour, routing data refresh + reroute (`docs/design/map-updates-ux.md`). Open: field test;
+  "Update maps now" in Settings could go (owner); route band style change of 0.8.2 to be checked on the phone.
 - **Cells / map hosting now owned by the cloud (owner 2026-10-21: "Laptop wird nicht benutzt, kannst du übernehmen?").**
   0.8.1 (cloud): release APKs carry the test map key (from GitHub environment `test`), modal loading overlay with
   Cancel + Wi-Fi/mobile question, outdated (schema 1) areas update by themselves, Settings → Diagnostics → Reset maps
