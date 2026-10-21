@@ -25,7 +25,9 @@ data class CellManifest(
         fun parse(json: String): CellManifest {
             val o = JSONObject(json)
             val cell = CellId.parse(o.optString("cell")) ?: throw IllegalArgumentException("manifest without a valid cell id")
-            val version = o.optString("osm_date").ifBlank { throw IllegalArgumentException("manifest without osm_date") }
+            // version folder: "version" since content schema 2 ("2026-10-20-s2"), before that the OSM date
+            val version = o.optString("version").ifBlank { o.optString("osm_date") }
+                .ifBlank { throw IllegalArgumentException("manifest without version / osm_date") }
             if (!Regex("""^[0-9A-Za-z._-]+$""").matches(version)) throw IllegalArgumentException("bad version $version")
             val arr = o.optJSONArray("files") ?: JSONArray()
             val files = (0 until arr.length()).map { i ->

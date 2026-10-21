@@ -5,12 +5,32 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Map rework steps 8–9: app cell store + download client (`data/cells/`), then triggers T1/T3/T4/T5/T6, "Preparing map" card, overview hint, cells in Settings – since 2026-10-21
-- [laptop] **Map hosting (Cloudflare Worker + R2 EU + Cloud Run Jobs)** – test environment live (`maps-test.free-your-pictures.org`), first cloud cell build running; production not deployed yet. – since 2026-10-20
-- [laptop] **Map rework format 2** – steps 0–6 done (main); next: phone test of format 2, doorman/job on format 2, steps 8–9 (app cell store + downloads). Laptop owns map pipeline + `make_style.py`/themes + cells – cloud: please don't edit style/pipeline files. – since 2026-10-20
 
 
 ## Next
+- **[laptop] HANDOVER 2026-10-21: `docs/handover-2026-10-21-cloud.md`** – (1) core bug C1 hold a point → new point
+  (owner, 0.8.5): reproduce with the phone on USB (`adb logcat -s OnPath | grep Hold:`), test first, then fix;
+  (2) merge branch `e2e` + release 0.8.6 (Points… delete list, hold log); (3) fresh-install test procedure (owner);
+  (4) **world overview map, no Alps special case (owner)** – R2 + release.yml fetch, not in git.
+- **Map / routing freshness (owner 2026-10-21) – done in 0.8.3:** check after routing, veil / hint, mobile data by
+  default, no switch during a tour, routing data refresh + reroute (`docs/design/map-updates-ux.md`). Open: field test;
+  "Update maps now" in Settings could go (owner); route band style change of 0.8.2 to be checked on the phone.
+- **Cells / map hosting now owned by the cloud (owner 2026-10-21: "Laptop wird nicht benutzt, kannst du übernehmen?").**
+  0.8.1 (cloud): release APKs carry the test map key (from GitHub environment `test`), modal loading overlay with
+  Cancel + Wi-Fi/mobile question, outdated (schema 1) areas update by themselves, Settings → Diagnostics → Reset maps
+  (like a fresh install). Details: `docs/design/map-hosting.md` §7c–7d. Owner to test on the phone: update, Reset
+  maps, set a point → overlay. Production environment still not deployed.
+- **Small streets missing at z13+ (owner field report 2026-10-21) – fixed by the cloud:** content schema for cells
+  (`docs/design/map-hosting.md` §7c): builder versions `<osm_date>-s2`, doorman rebuilds older-schema cells when
+  asked, app re-requests outdated cells at start. Owner with the current phone app: delete the 2 areas in
+  Settings → Offline maps once the deploy is through; they are rebuilt (~5–8 min) and loaded again.
+- **Field diagnostics 2026-10-21 (owner, phone 0.8.0 debug from the laptop) – cloud looked at it:**
+  (1) **Crash fixed on main (not released – main carries the cells work):** `ElevationProfile` crashed while the sheet
+  animates (profile only a few px high → `coerceIn(0, negative)`); guard + `ProfileTinyTest` (fails without the fix).
+  (2) **For the laptop (cells):** at one start MapLibre could not open `onpath/base.pmtiles` and `onpath/terrain.pmtiles`
+  ("path not found") – the style pointed at the old flat package paths while the map now lives in
+  `cells/store/g000003`; later the style loaded fine. Check the first-start / migration order (style built before
+  the cell store dir is known?).
 - **Owner map decisions 2026-10-20 (laptop, part of the map rework):** path smoothing in the pipeline (bends ≥ 20°,
   ≤ ~1.5 m off, junctions exact, route bands smoothed the same way; owner sends 2–3 example spots); planned (blue)
   route NOT smoothed; bike map (oneway arrows, "bikes both ways", cycle lanes beside streets – bike activities only)

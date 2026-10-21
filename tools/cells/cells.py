@@ -28,6 +28,11 @@ import sys
 import time
 
 FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-cells.md §18)
+# Content schema of a cell: bump whenever the style needs data that older cells lack (2 = overlays layer "streets",
+# 2026-10-21). The version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the
+# doorman rebuilds cells of an older schema when asked (wrangler.toml CELL_SCHEMA), the app re-requests its own
+# (cells/CellApi.CELL_SCHEMA). Keep the three in step.
+CELL_SCHEMA = 2
 MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 
@@ -212,14 +217,19 @@ def list_files(d):
     return sorted(out, key=lambda r: (r.count("/"), r))
 
 
-def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT):
+def version_name(osm_date, schema=CELL_SCHEMA):
+    """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone)."""
+    return f"{osm_date}-s{schema}"
+
+
+def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None):
     files = []
     for name in list_files(d):
         p = os.path.join(d, name)
         files.append({"name": name, "size": os.path.getsize(p), "sha256": sha256(p),
                       "url": f"{url_prefix.rstrip('/')}/{name}"})
     m = {"cell": cell_id(z, x, y), "format": fmt, "bbox": [round(v, 6) for v in cell_bbox(z, x, y)],
-         "osm_date": osm_date, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+         "osm_date": osm_date, "version": version or osm_date, "schema": CELL_SCHEMA, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "pipeline": f"git:{git_rev}", "min_app": MIN_APP, "files": files,
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
     with open(os.path.join(d, "manifest.json.tmp"), "w") as f:
@@ -248,6 +258,9 @@ def main(argv):
     if cmd == "selftest":
         selftest()
         return 0
+    if cmd == "version-name":   # cells.py version-name OSM_DATE → "2026-10-20-s2"
+        print(version_name(rest[0]))
+        return 0
     if cmd == "remap-ids":
         print(f"    {os.path.basename(rest[1])}: {remap_ids(rest[0], rest[1])} ids mapped back to OSM ids")
         return 0
@@ -273,7 +286,8 @@ def main(argv):
         clip_dir(z, x, y, a[0], a[1])
     elif cmd == "manifest":
         fmt = int(a[a.index("--format") + 1]) if "--format" in a else FORMAT
-        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt)
+        ver = a[a.index("--version") + 1] if "--version" in a else None
+        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver)
         print(f"    manifest: {len(m['files'])} files, {m['total_size'] / 1e6:.1f} MB")
     else:
         print(__doc__)

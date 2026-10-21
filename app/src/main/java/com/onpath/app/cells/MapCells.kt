@@ -23,8 +23,13 @@ enum class CellReason(val api: String) {
     NEAR("near"),
     /** T4: cells along a computed route. */
     CORRIDOR("corridor"),
-    /** T6: newer version of an installed cell (Wi-Fi only). */
+    /** Newer version of an installed cell – checked after a route was computed there (owner 2026-10-21). */
     REFRESH("refresh"),
+    /**
+     * An installed cell built for an older style (content schema below [CellApi.CELL_SCHEMA], e.g. without small
+     * streets): rebuilt and loaded at once, also on mobile data – the map is incomplete until then.
+     */
+    UPDATE("point"),
 }
 
 /** What the phone knows about one cell – the card and the Settings list show this. */
@@ -76,8 +81,9 @@ interface NetworkStatus {
  * [CellStore] and tells the map to reload ([generation]). Requests are kept in `cells/requests.json` and continue on
  * the next app start (no background polling, map-cells.md §8).
  *
- * Mobile data rule (§9, Q2): a cell asked for with `ownPoint` loads at once on mobile data (unless [wifiOnly]); other
- * cells wait as [CellState.WaitingForWifi] until Wi-Fi or [approveMobile]; refreshes only on Wi-Fi.
+ * Mobile data rule (owner 2026-10-21): everything loads on mobile data by default; Settings → "Maps only on Wi-Fi"
+ * ([wifiOnly]) makes cells wait as [CellState.WaitingForWifi] (or until [approveMobile]). Newer versions of installed
+ * cells are not downloaded while [holdUpdates] (a tour runs: no map switch under the user's feet).
  *
  * Thread model: one worker coroutine in [scope] does all network and disk work; public calls only change the queue
  * and wake it. Never throws to the caller; every failure becomes a plain [CellState] and a Problems entry.
@@ -112,6 +118,10 @@ class MapCells(
     @Volatile var wifiOnly: Boolean = false
         set(v) { field = v; wake() }
 
+    /** True while a tour runs (Navigate): newer versions of installed cells wait – the map never switches mid-tour. */
+    @Volatile var holdUpdates: Boolean = false
+        set(v) { val was = field; field = v; if (was && !v) wake() }
+
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
     /** False when this build has no map server key: the UI says "Map downloads not available in this build". */
@@ -137,6 +147,12 @@ class MapCells(
         return regionBounds()?.let { b -> p.lon >= b[0] && p.lat >= b[1] && p.lon <= b[2] && p.lat <= b[3] } ?: false
     }
 
+    /** Of [cells]: those installed on the phone (after-routing check for newer versions). */
+    override fun installedAmong(cells: List<CellId>): List<CellId> {
+        val inst = _installed.value.map { it.id }.toSet()
+        return cells.filter { it in inst }
+    }
+
     /** Of [cells]: those neither installed nor already asked for (what a trigger should request). */
     override fun missing(cells: List<CellId>): List<CellId> {
         val inst = _installed.value.map { it.id }.toSet()
@@ -155,14 +171,15 @@ class MapCells(
         synchronized(queue) {
             for (c in cells.distinct()) {
                 if (c in queue) { if (ownPoint) queue[c] = queue[c]!!.copy(ownPoint = true); continue }
-                if (c in inst && reason != CellReason.REFRESH) continue
+                if (c in inst && reason != CellReason.REFRESH && reason != CellReason.UPDATE) continue
                 queue[c] = Pending(c, reason, ownPoint, now(), approvedMobile = false)
                 added += c
             }
             saveQueue()
         }
         if (added.isNotEmpty()) {
-            update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
+            // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
+            update { m -> added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }
@@ -220,9 +237,13 @@ class MapCells(
         synchronized(usage) { used.forEach { usage[it] = now() }; saveUsage() }
     }
 
+    /** Installed cells of an older content schema than this app's style needs ([CellApi.CELL_SCHEMA]). */
+    override fun outdated(): List<CellId> =
+        _installed.value.filter { CellApi.schemaOf(it.version) < CellApi.CELL_SCHEMA }.map { it.id }
+
     /**
      * Installed cells due for a refresh (T6): used in the last 6 months and installed more than [ageDays] days ago.
-     * The caller requests them with [CellReason.REFRESH] (they download only on Wi-Fi and only when newer).
+     * The caller requests them with [CellReason.REFRESH] (they download only when newer).
      */
     override fun refreshDue(ageDays: Int): List<CellId> {
         val t = now()
@@ -341,7 +362,8 @@ class MapCells(
         try {
             // 1. ready cells we may download: own point first
             val ready = pending.filter { state(it.id).let { s -> s is CellState.WaitingForWifi || s is CellState.Downloading || s == READY_ON_SERVER } }
-            val next = ready.filter { allowed(it) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
+            val inst = _installed.value.map { it.id }.toSet()
+            val next = ready.filter { allowed(it) && !(holdUpdates && it.id in inst) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
             if (next != null) { downloadAndInstall(next); backoff = 0; return 0 }
             if (!foreground) return IDLE_MS
             // 2. send requests not sent in this run (grouped by reason), else poll status
@@ -380,7 +402,10 @@ class MapCells(
             when (s.state) {
                 "ready" -> {
                     val have = inst[c]?.version
-                    if (have != null && (s.version == null || s.version == have)) {
+                    if (have != null && (s.version == null || s.version == have) && s.updating) {
+                        // a newer version is being built: keep asking (state stays "ready" on the phone)
+                        set(c, CellState.Ready(have))
+                    } else if (have != null && (s.version == null || s.version == have)) {
                         // nothing newer (refresh) – done
                         dequeue(c); set(c, CellState.Ready(have))
                     } else if (allowed(p)) set(c, READY_ON_SERVER)
@@ -401,13 +426,8 @@ class MapCells(
         synchronized(queue) { saveQueue() }
     }
 
-    /** Mobile data rule. */
-    private fun allowed(p: Pending): Boolean = when {
-        network.unmetered() -> true
-        p.reason == CellReason.REFRESH -> false
-        wifiOnly -> false
-        else -> p.ownPoint || p.approvedMobile
-    }
+    /** Mobile data rule (owner 2026-10-21): mobile data by default; "Maps only on Wi-Fi" waits unless the user said yes. */
+    private fun allowed(p: Pending): Boolean = network.unmetered() || !wifiOnly || p.approvedMobile
 
     private fun failed(e: CellApi.ApiException, pending: List<Pending>): Long {
         val delays = longArrayOf(60_000, 120_000, 300_000, 600_000)

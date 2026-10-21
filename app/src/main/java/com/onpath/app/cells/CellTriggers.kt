@@ -12,6 +12,10 @@ interface CellSource {
     fun hasDetailedMap(p: GeoPoint): Boolean
     fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean = reason == CellReason.POINT): List<CellId>
     fun refreshDue(ageDays: Int = 30): List<CellId>
+    /** Of [cells]: those installed on the phone – default none (test fakes). */
+    fun installedAmong(cells: List<CellId>): List<CellId> = emptyList()
+    /** Installed cells built for an older style (content schema) – default none (test fakes). */
+    fun outdated(): List<CellId> = emptyList()
     fun markUsed(cells: Collection<CellId>)
     /** False when the build has no map server key. */
     val downloadsAvailable: Boolean
@@ -23,6 +27,8 @@ enum class CellWhy {
     PLANNED,
     /** T3 / T5: the own position. */
     HERE,
+    /** Installed areas built for an older map style are loaded again (content schema). */
+    UPDATE,
 }
 
 /** Cells one trigger asked for: [own] (the point's / position's cell, null for a corridor) first in [cells]. */
@@ -43,6 +49,8 @@ class CellTriggers(
     /** T5: last request per cell, so a cell the server failed to build is not asked for on every fix. */
     private val lastAhead = HashMap<CellId, Long>()
     private var lastRefreshCheck = 0L
+    /** Last after-routing check per installed cell ([freshenAlong]). */
+    private val lastFresh = HashMap<CellId, Long>()
 
     /** Close neighbours (Q1). */
     private fun needed(candidates: List<CellId>): List<CellId> =
@@ -104,6 +112,34 @@ class CellTriggers(
         return cells.request(want, CellReason.NEAR, ownPoint = true)
     }
 
+    /**
+     * Installed cells of an older content schema (e.g. no small streets): request them again at once (field report
+     * 2026-10-21 – the style moved small streets into the overlays, older cells had none). Not rate-limited: the
+     * queue skips cells already asked for.
+     */
+    fun updateOutdated(): List<CellId> {
+        if (!cells.downloadsAvailable) return emptyList()
+        val old = cells.outdated()
+        return if (old.isEmpty()) emptyList() else cells.request(old, CellReason.UPDATE, ownPoint = true)
+    }
+
+    /**
+     * After a route was computed (owner 2026-10-21: "at the moment I plan, I want a recent map"): ask the server for a
+     * newer version of every installed cell of the corridor – a newer map style (content schema) or newer OSM data
+     * (the server rebuilds areas older than its refresh age). Already built → quick download, the map switches (blurred
+     * while it loads); to be built → the old map stays until the new one is ready. Each cell at most every
+     * [FRESH_CHECK_MS]. Quiet: no card. Returns the cells asked for.
+     */
+    fun freshenAlong(line: List<GeoPoint>): List<CellId> {
+        if (!cells.downloadsAvailable || line.size < 2) return emptyList()
+        val t = now()
+        val inst = cells.installedAmong(cells.cellsAlong(line, CORRIDOR_M))
+            .filter { c -> lastFresh[c]?.let { t - it >= FRESH_CHECK_MS } ?: true }
+        if (inst.isEmpty()) return emptyList()
+        inst.forEach { lastFresh[it] = t }
+        return cells.request(inst, CellReason.REFRESH, ownPoint = false)
+    }
+
     /** T6: at most once a day, request a newer version of used cells (downloads only on Wi-Fi, MapCells). Quiet. */
     fun refreshIfDue(): List<CellId> {
         if (!cells.downloadsAvailable) return emptyList()
@@ -135,5 +171,6 @@ class CellTriggers(
         const val T3_MAX_ACCURACY_M = 500f
         const val AHEAD_RETRY_MS = 30 * 60_000L
         const val DAY_MS = 24 * 3600_000L
+        const val FRESH_CHECK_MS = 3600_000L
     }
 }

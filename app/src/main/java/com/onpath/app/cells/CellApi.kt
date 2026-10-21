@@ -31,6 +31,8 @@ class CellApi(
         val id: String, val state: String,
         val step: String? = null, val progress: Double? = null, val etaS: Int? = null, val position: Int? = null,
         val version: String? = null, val osmDate: String? = null, val size: Long? = null, val reason: String? = null,
+        /** "ready" while a newer version is being built (the app keeps asking instead of stopping). */
+        val updating: Boolean = false,
     )
 
     data class StatusAnswer(val cells: List<CellStatus>, val pollS: Int)
@@ -165,6 +167,15 @@ class CellApi(
         /** Map package format this app understands for cells (map-cells.md Q11: format 2 only). */
         const val FORMAT = 2
 
+        /**
+         * Content schema this app's style needs (tools/cells/cells.py CELL_SCHEMA): 2 = overlays layer "streets"
+         * (small streets at z13+). Installed cells of an older schema are requested again (MapCells.outdated).
+         */
+        const val CELL_SCHEMA = 2
+
+        /** "2026-10-20-s2" → 2; versions named by the OSM date alone are schema 1. */
+        fun schemaOf(version: String?): Int = Regex("""-s(\d+)$""").find(version.orEmpty())?.groupValues?.get(1)?.toIntOrNull() ?: 1
+
         fun parseStatus(json: String): StatusAnswer = try {
             val o = JSONObject(json)
             val a = o.optJSONArray("cells") ?: JSONArray()
@@ -174,7 +185,8 @@ class CellApi(
                 CellStatus(c.getString("id"), c.optString("state", "none"), s("step"),
                     if (c.has("progress")) c.optDouble("progress") else null,
                     if (c.has("eta_s")) c.optInt("eta_s") else null, if (c.has("position")) c.optInt("position") else null,
-                    s("version"), s("osm_date"), if (c.has("size")) c.optLong("size") else null, s("reason"))
+                    s("version"), s("osm_date"), if (c.has("size")) c.optLong("size") else null, s("reason"),
+                    c.optBoolean("updating", false))
             }, o.optInt("poll_s", 30).coerceIn(5, 600))
         } catch (e: Exception) {
             throw ApiException(Failure.BAD_ANSWER, "The map server sent an unusable answer.", cause = e)

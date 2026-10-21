@@ -32,6 +32,7 @@ class CellTriggersTest {
             return added
         }
         override fun refreshDue(ageDays: Int) = due
+        override fun installedAmong(cells: List<CellId>) = cells.filter { it in installed }
         override fun markUsed(cells: Collection<CellId>) { used += cells.filter { it in installed } }
     }
 
@@ -155,5 +156,22 @@ class CellTriggersTest {
         assertEquals(listOf(p3), CellTriggers.newPoints(listOf(p1, p2), listOf(p1, p3, p2)))
         // reverse / round trip add no new values
         assertTrue(CellTriggers.newPoints(listOf(p1, p2), listOf(p2, p1, p2)).isEmpty())
+    }
+
+    /** Owner 2026-10-21: after routing, the installed areas along the route are checked for a newer version (quiet). */
+    @Test fun afterRoutingInstalledCorridorCellsAreCheckedOncePerHour() {
+        var t = 1_000_000L
+        val f = FakeCells(installed = mutableSetOf(meran))
+        val tr = CellTriggers(f) { t }
+        val line = listOf(GeoPoint(46.67, 11.15), GeoPoint(46.68, 11.17))
+        assertEquals(listOf(meran), tr.freshenAlong(line))
+        assertEquals(Triple(listOf(meran), CellReason.REFRESH, false), f.requests.last())
+        f.queued.clear()
+        assertEquals(emptyList<CellId>(), tr.freshenAlong(line)) // within the hour: no second check
+        t += CellTriggers.FRESH_CHECK_MS
+        assertEquals(listOf(meran), tr.freshenAlong(line))
+        // nothing installed along the route / no key: nothing
+        assertEquals(emptyList<CellId>(), CellTriggers(FakeCells()).freshenAlong(line))
+        assertEquals(emptyList<CellId>(), CellTriggers(FakeCells(installed = mutableSetOf(meran), downloadsAvailable = false)).freshenAlong(line))
     }
 }
