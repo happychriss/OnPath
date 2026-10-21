@@ -11,21 +11,25 @@ import com.onpath.app.debug.Problems
 
 /**
  * Plays a [PlanHaptics.Feel] – the one place the plan vibrates (map holds, point menu, Points list all end here).
- * Off when the system "touch vibration" setting is off. Never throws.
+ * Gated by OnPath's own setting "Vibrate when planning" ([planVibrate], owner 2026-10-21), not by the system "Touch
+ * feedback" flag – that one only silences the light menu tick ([PlanHaptics.shouldPlay]). Never throws.
  */
 object Haptics {
-    fun play(ctx: Context, f: PlanHaptics.Feel) {
-        if (f == PlanHaptics.Feel.NONE) return
+    fun play(ctx: Context, f: PlanHaptics.Feel, planVibrate: Boolean) {
         try {
-            if (!touchVibrationOn(ctx)) return
+            val tick = f == PlanHaptics.Feel.TICK
+            if (!PlanHaptics.shouldPlay(f, planVibrate, systemTouch = !tick || touchVibrationOn(ctx))) return
             val v = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(VibratorManager::class.java)?.defaultVibrator
             else @Suppress("DEPRECATION") ctx.getSystemService(Vibrator::class.java)
             if (v == null || !v.hasVibrator()) return
-            val effect = if (f == PlanHaptics.Feel.TICK && Build.VERSION.SDK_INT >= 29)
-                VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-            else VibrationEffect.createWaveform(PlanHaptics.pattern(f), -1)
-            // as touch feedback: Android 13+ also applies the user's touch vibration strength
-            if (Build.VERSION.SDK_INT >= 33) v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH))
+            val effect = when {
+                tick && Build.VERSION.SDK_INT >= 29 -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+                v.hasAmplitudeControl() -> VibrationEffect.createWaveform(PlanHaptics.pattern(f), PlanHaptics.amplitudes(f), -1)
+                else -> VibrationEffect.createWaveform(PlanHaptics.pattern(f), -1)
+            }
+            // The tick is touch feedback (Android 13+: the user's touch strength). The pulses are not: as touch usage
+            // they would be muted with "Touch feedback" off – exactly what the owner does not want.
+            if (tick && Build.VERSION.SDK_INT >= 33) v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH))
             else v.vibrate(effect)
         } catch (e: Exception) {
             Problems.info("ui", "Vibration failed (no vibration for this plan edit)", e)
