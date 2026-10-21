@@ -4,8 +4,9 @@ import com.onpath.app.data.RoutingDataLoader
 
 /**
  * One loading modal for map + routing data (field test 2026-10-21, fresh phone): "Loading the map for your area ·
- * 4 regions + routing data · about 230 MB" with one % over both by bytes (routing data weighted by its size), or
- * "Loading routing data for this area · about 200 MB" when only routing data is missing. Pure, unit-tested.
+ * 4 regions · about 60 MB" with one % over both by bytes (routing data weighted by its size, included in the MB), or
+ * "Loading the map for your area · about 10 MB" when only routing data is missing – routing data is never named
+ * (owner 2026-10-22: it is all "the map for your area"). Pure, unit-tested.
  */
 object RoutingLoads {
 

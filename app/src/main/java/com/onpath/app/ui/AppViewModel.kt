@@ -358,6 +358,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
     }
 
+    /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
+    private fun routingForLine(line: List<GeoPoint>) = safeRouting("route") {
+        routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line))
+    }
+
     /** Routing data under these map regions (a region load is a trigger too). */
     private fun routingForCells(c: Collection<com.onpath.app.cells.CellId>, wait: Boolean) = safeRouting("regions") {
         val miss = routingData.ensure(com.onpath.app.data.RoutingTiles.forCells(c))
@@ -493,6 +498,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val all = cells.installed.value.map { it.id }
         cells.cancel(cells.states.value.keys.toList())
         if (all.isNotEmpty()) cells.delete(all)
+        if (all.isNotEmpty()) removeRoutingParts(all, emptyList())
         closeCellCard(); t3Pending = true; t5LastAt = null
         message = "Map areas deleted (${all.size}). The map for your position loads again as on a new install."
         Problems.info("cells", "Maps reset like a fresh install (${all.size} area(s) deleted)")
@@ -577,10 +583,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                       installed: List<com.onpath.app.cells.CellStore.InstalledCell>): OfflineMapsUi {
         val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
         val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
-        val areas = installed.sortedBy { areaNames[it.id] ?: it.id.id }.map { c ->
+        val sorted = installed.sortedBy { areaNames[it.id] ?: it.id.id }
+        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once
+        val routingBytes = try {
+            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { key ->
+                com.onpath.app.routing.Rd5Parts.Part.parse(key)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
+            }
+        } catch (e: Exception) {
+            Problems.warn("routing", "Routing data sizes for Offline maps not readable; map sizes only", e); emptyMap()
+        }
+        val areas = sorted.map { c ->
             val built = c.built?.take(10)?.let { b -> runCatching { iso.parse(b) }.getOrNull() }
             val st = states[c.id]
-            OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes,
+            OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes + (routingBytes[c.id] ?: 0L),
                 fmt.format(built ?: Date(c.installedAt)),
                 st?.takeIf { it !is com.onpath.app.cells.CellState.Ready && it != com.onpath.app.cells.CellState.None }?.label())
         }
@@ -605,7 +620,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteMapArea(id: String) {
         val c = com.onpath.app.cells.CellId.parse(id) ?: return
+        val kept = cells.installed.value.map { it.id }.filter { it != c }
         safeCells("delete") { cells.delete(listOf(c)) }
+        removeRoutingParts(listOf(c), kept)
+    }
+
+    /**
+     * Routing parts under deleted regions that no remaining region needs go too (owner 2026-10-22: routing data is part
+     * of a region's map). Parts loaded for a point or a route outside every region stay. Background, never during a tour.
+     */
+    private fun removeRoutingParts(deleted: List<com.onpath.app.cells.CellId>, kept: List<com.onpath.app.cells.CellId>) {
+        if (recState.value != null) return // the tour's router may need them; they go with the next delete
+        viewModelScope.launch(Dispatchers.IO) {
+            safeRouting("delete") {
+                val parts = com.onpath.app.data.RoutingTiles.unneeded(deleted, kept).mapNotNull { com.onpath.app.routing.Rd5Parts.Part.parse(it) }
+                val freed = routingData.store.remove(parts)
+                if (freed > 0) {
+                    Problems.info("routing", "Routing data of deleted map areas removed (${freed / 1_048_576} MB, ${parts.joinToString()})")
+                    withContext(Dispatchers.Main) { engine = null }
+                }
+            }
+        }
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
@@ -1008,16 +1043,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Downloads the routing data tile for the map area from brouter.de (needs internet once). */
+    /**
+     * Settings → Diagnostics → "Download routing data": the 1° parts at the map centre from brouter.de (normally they
+     * come by themselves with the map – owner 2026-10-22: no separate "routing data" for the user).
+     */
     fun downloadRoutingData() {
         if (dataBusy != null) return
         val (lat, lon, _) = initialCamera()
-        val name = com.onpath.app.data.SegmentDownloader.tileName(lat, lon)
-        if (routingData.exists(name)) { message = "Routing data for this area is already on the phone."; return }
+        val keys = com.onpath.app.data.RoutingTiles.forPoints(listOf(GeoPoint(lat, lon)))
+        val miss = try { routingData.missing(keys) } catch (e: Exception) {
+            Problems.warn("routing", "Routing data check failed", e); keys
+        }
+        if (miss.isEmpty()) { message = "Routing data for this area is already on the phone."; return }
         // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
-        manualRouting = name
+        manualRouting = miss.first()
         dataBusy = "Downloading routing data…"
-        safeRouting("manual") { routingData.ensure(listOf(name), ignoreWifiOnly = true) }
+        safeRouting("manual") { routingData.ensure(miss, ignoreWifiOnly = true) }
     }
 
     private fun displayName(uri: Uri): String? = try {
@@ -1617,9 +1658,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess {
                 baseline = adoptPlanBaseline
                 route = it; snapToRoute(pts, pins, it)
-                // routing data missing under the route: it loads now, the notice says so in plain words (no path)
-                routingFor(pts, wait = false)
-                val tilesMissing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts)).isNotEmpty() } catch (e: Exception) {
+                // routing data missing in the route's corridor (~10 km): it loads now; the notice (plain words, no path)
+                // only when a part under a planned point is missing – those make the straight line
+                routingForLine(if (it.points.size >= 2) it.points else pts)
+                val tilesMissing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts, 0.0)).isNotEmpty() } catch (e: Exception) {
                     Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
                 }
                 routeError = RoutingDataNotice.forRoute(it.error, tilesMissing, routingData.loading)
@@ -2491,7 +2533,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (routingDataBusy || recState.value != null) return
         val t = System.currentTimeMillis()
         if (t - prefs.routingDataCheckedAt < ROUTING_CHECK_MS) return
-        val names = listOf(line.first(), line.last()).map { com.onpath.app.data.SegmentDownloader.tileName(it.lat, it.lon) }.distinct()
+        val names = listOf(line.first(), line.last()).map { com.onpath.app.routing.Rd5Parts.tileName(it.lat, it.lon) }.distinct()
         val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
             .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
         prefs.routingDataCheckedAt = t
@@ -2501,7 +2543,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var got = 0
             for (f in due) {
                 try {
-                    if (com.onpath.app.data.SegmentDownloader.refreshIfNewer(f.name, dataFiles.segmentsDir)) got++
+                    if (routingData.store.refreshIfNewer(f.name)) got++ // only the 1° parts on the phone
                 } catch (e: Exception) {
                     Problems.info("routing", "Routing data ${f.name} not refreshed now (${e.message}); tried again later", e)
                 }
