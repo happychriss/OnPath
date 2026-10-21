@@ -40,6 +40,8 @@ object Overview {
     /** Paint of the pre-rendered hill shade (its look is baked into the images). */
     internal var hillshadePaint = """{"raster-opacity":1,"raster-resampling":"linear","raster-fade-duration":0}"""
     private const val DEFAULT_BACKGROUND = "#f6f4ec"
+    /** Opacity of the pre-rendered relief from [SPLIT_ZOOM] on, outside the downloaded areas. */
+    private const val UNDER_RELIEF_OPACITY = """["interpolate",["linear"],["zoom"],10,0.85,12,0.55,14,0.4]"""
 
     /** Detailed source → overview source and its URL. */
     val SOURCES = mapOf(
@@ -124,6 +126,8 @@ object Overview {
                         u.put("id", copy.getString("id").removeSuffix(SUFFIX) + UNDER)
                         u.put("minzoom", SPLIT_ZOOM)
                         if (max >= 24.0) u.remove("maxzoom") else u.put("maxzoom", max)
+                        // the magnified world relief gets calmer the deeper one zooms (it is only a stand-in there)
+                        if (u.optString("type") == "raster") u.getJSONObject("paint").put("raster-opacity", JSONArray(UNDER_RELIEF_OPACITY))
                         under.put(u)
                     }
                 }

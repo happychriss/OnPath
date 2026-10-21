@@ -90,6 +90,51 @@ class MapLoadProgressTest {
         assertTrue(!f.line!!.contains("tippecanoe"))
     }
 
+    // ------------------------------------------------------------------- several regions (owner: "N regions · about X MB")
+
+    private val a = com.onpath.app.cells.CellId(543, 361)
+    private val b = com.onpath.app.cells.CellId(544, 361)
+
+    @Test fun regionsAndSizeOverAll() {
+        val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+        val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Downloading(0, 12 * mb), b to CellState.Building("base", 0.0, 60)),
+            emptyMap(), progress, 0, 0)!!
+        assertEquals(2, ui.regions)
+        assertEquals(12 * mb + MapLoads.ESTIMATED_REGION_BYTES, ui.bytes)
+        assertEquals("2 regions · about 21 MB", ui.totals)
+        assertEquals(MapLoadUi.Kind.LOADING, ui.kind)       // something is downloading
+        assertEquals(40, ui.percent)                         // (80 + 0) / 2
+        assertEquals("1 region · ≈ 9 MB", MapLoads.askText(1, MapLoads.ESTIMATED_REGION_BYTES))
+    }
+
+    @Test fun oneRegionThereCountsAsHundredAndAllThereEndsIt() {
+        val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+        val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Ready("v"), b to CellState.Downloading(0, 0)),
+            mapOf(a to 10 * mb), progress, 0, 0)!!
+        assertEquals(90, ui.percent)
+        assertEquals(10 * mb + MapLoads.ESTIMATED_REGION_BYTES, ui.bytes)
+        assertNull(MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Ready("v"), b to CellState.Ready("v")), emptyMap(), progress, 90, 1))
+    }
+
+    @Test fun neverBackwardsWhenARegionJoins() {
+        val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+        val one = MapLoads.aggregate(listOf(a), mapOf(a to CellState.Downloading(5 * mb, 10 * mb)), emptyMap(), progress, 0, 0)!!
+        val two = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Downloading(5 * mb, 10 * mb)), emptyMap(), progress, one.percent, 1000)!!
+        assertEquals(one.percent, two.percent)
+        assertTrue(two.percent < 100)
+    }
+
+    @Test fun failedOnlyWhenNothingElseIsGoingOn() {
+        val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+        val going = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Failed("x"), b to CellState.Queued(1, 60)), emptyMap(), progress, 0, 0)!!
+        assertEquals(MapLoadUi.Kind.PREPARING, going.kind)
+        val failed = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Failed("x"), b to CellState.Ready("v")), emptyMap(), progress, 0, 0)!!
+        assertEquals(MapLoadUi.Kind.FAILED, failed.kind)
+        assertTrue(failed.retryable)
+        val offline = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Offline("x"), b to CellState.Queued(1, 60)), emptyMap(), progress, 0, 0)!!
+        assertEquals(MapLoadUi.Kind.OFFLINE, offline.kind)
+    }
+
     @Test fun timeLeftWords() {
         assertEquals("Less than a minute left", MapLoadUi.timeLeft(40))
         assertEquals("About 1 minute left", MapLoadUi.timeLeft(70))

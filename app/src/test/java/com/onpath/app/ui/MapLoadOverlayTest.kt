@@ -18,9 +18,9 @@ import org.junit.Test
 class MapLoadOverlayTest {
     @get:Rule val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)
 
-    private val preparing = MapLoadUi(MapLoadUi.Kind.PREPARING, 34, 260)
-    private val loading = MapLoadUi(MapLoadUi.Kind.LOADING, 91, 25)
-    private val offline = MapLoadUi(MapLoadUi.Kind.OFFLINE, 47, null)
+    private val preparing = MapLoadUi(MapLoadUi.Kind.PREPARING, 34, 260, regions = 3, bytes = 27L * 1_048_576)
+    private val loading = MapLoadUi(MapLoadUi.Kind.LOADING, 91, 25, regions = 1, bytes = 9L * 1_048_576)
+    private val offline = MapLoadUi(MapLoadUi.Kind.OFFLINE, 47, null, regions = 2, bytes = 18L * 1_048_576)
     private val failed = MapLoadUi(MapLoadUi.Kind.FAILED, 12, null, "Something went wrong while preparing it. Please try again.", retryable = true)
 
     @Test fun texts() {

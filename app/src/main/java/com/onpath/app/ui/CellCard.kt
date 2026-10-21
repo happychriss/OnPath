@@ -122,6 +122,8 @@ object CellCards {
         CellWhy.PLANNED -> "Getting the detailed map because you planned here."
         CellWhy.HERE -> "Getting the detailed map because you are here."
         CellWhy.UPDATE -> "Updating the map for the new map style (small streets)."
+        CellWhy.SEARCHED -> "Getting the detailed map because you searched here."
+        CellWhy.TAPPED -> "Getting the detailed map you asked for."
     }
 
     /**
