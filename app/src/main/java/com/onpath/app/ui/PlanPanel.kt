@@ -1,5 +1,9 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.outlined.Delete
+
+import androidx.compose.material.icons.outlined.Place
+
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Share
@@ -88,6 +92,8 @@ class PlanCallbacks(
     val onExport: () -> Unit = {},
     /** Route ⋯ → Time details (how the time was calculated). */
     val onTimeDetails: () -> Unit = {},
+    /** Route ⋯ → Points…: the list of route points with Delete (a way that does not depend on map gestures). */
+    val onPoints: () -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
@@ -308,6 +314,8 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     // Everything about this route in one place (owner): save / export, edits, clear.
     MenuItem(Icons.AutoMirrored.Filled.Redo, "Redo", enabled = ui.canRedo, onClick = run(cb.onRedo))
     HorizontalDivider()
+    MenuItem(Icons.Outlined.Place, "Points… (delete)", enabled = ui.pointCount >= 1, onClick = run(cb.onPoints))
+    HorizontalDivider()
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
@@ -343,4 +351,46 @@ private fun ActivityButton(activity: Activity, onClick: () -> Unit) {
             Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
+}
+
+/** One row of the point list: "Start", "Stop 2", "Destination" + the place name when known. */
+data class PointRow(val index: Int, val role: String, val name: String?)
+
+object PointRows {
+    fun of(count: Int, name: (Int) -> String?): List<PointRow> = (0 until count).map { i ->
+        PointRow(i, when { i == 0 -> "Start"; i == count - 1 -> "Destination"; else -> "Stop ${i + 1}" }, name(i))
+    }
+}
+
+/**
+ * Route ⋯ → Points…: every route point with a Delete button (owner 2026-10-21 – deleting must always work, also when
+ * holding a marker on the map fails). Undo brings a deleted point back.
+ */
+@Composable
+fun PointListDialog(rows: List<PointRow>, onDelete: (Int) -> Unit, onClose: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose,
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Done") } },
+        title = { Text("Route points") },
+        text = {
+            Column {
+                if (rows.isEmpty()) Text("No points.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                for (r in rows) Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(26.dp).clip(CircleShape).background(stopColor(r.index, rows.size)), contentAlignment = Alignment.Center) {
+                        Text("${r.index + 1}", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(r.role, style = MaterialTheme.typography.bodyLarge)
+                        r.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                    IconButton(onClick = { onDelete(r.index) }, modifier = Modifier.size(48.dp)
+                        .semantics { contentDescription = "Delete ${r.role}" }) {
+                        Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        },
+    )
 }

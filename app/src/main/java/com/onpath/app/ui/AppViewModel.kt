@@ -984,6 +984,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Point menu → "End route here" (middle points only): that point becomes the destination. */
     fun endRouteAt(index: Int) { pointMenu = null; if (index in waypoints.indices) set(PlanEdits.endAt(waypoints, index)) }
 
+    /** Route ⋯ → Points…: the point list dialog is open. */
+    var pointListOpen by mutableStateOf(false)
+
+    /** Rows of the point list (role + place name). */
+    fun pointRows(): List<PointRow> = PointRows.of(waypoints.size) { i -> waypoints.getOrNull(i)?.let { stopName(it) } }
+
+    /** Point list → Delete (Undo brings it back). */
+    fun deletePointFromList(index: Int) { removePoint(index); if (waypoints.isEmpty()) pointListOpen = false }
+
     /** Point menu → "Delete" (Undo brings it back). */
     fun deletePointFromMenu(index: Int) { pointMenu = null; removePoint(index) }
     // ---------------- end map hold menus ----------------
