@@ -570,3 +570,25 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
 4. Speed of a generation write with ~9 cells (+ package) on the Pixel; mobile data vs Wi-Fi detection; resume after
    switching off Wi-Fi mid-download; app killed mid-join → joined at next start.
 
+
+### 19.7 Step 9: triggers, card, hint, Settings (2026-10-21, laptop)
+
+- **Triggers** (`cells/CellTriggers.kt`, pure, on the `CellSource` interface that `MapCells` implements; called by
+  `AppViewModel`): T1 every new point value in a plan edit (hold → Start here / Go here, stops, moved points; more than 3
+  new points at once = a loaded route → T4 only) → own cell `POINT` + neighbours within 5 km `NEAR`; T3 first fix ≤ 500 m
+  after start / return in Plan; T4 every computed route → corridor 10 km `CORRIDOR` (+ `markUsed`); T5 on tour every
+  300 m → cells within 5 km of the position without detailed map, `NEAR` + own-point rule, each cell at most every
+  30 min, no card; T6 once a day (start / return) `refreshDue()` → `REFRESH`, no card. A cell counts as covered when an
+  installed cell or the region package covers its centre (no cells inside the region package are fetched).
+- **Card** (`ui/CellCard.kt`, `CellCards.build` pure): in the plan sheet under the route note; one line in the MINI
+  sheet (an open mobile-data question stays visible). Closed only by the user: OK (ready / not available), Not now
+  (failed), × while loading (downloads go on). Several triggers join one open card; a finished card is replaced.
+  Cells still loading from the last run show on the card at start.
+- **Mobile data:** `AppSettings.mapsWifiOnly` (persisted) → `MapCells.wifiOnly`. "Yes" → `approveMobile` for the card's
+  waiting cells; "Only on Wi-Fi" → the question goes, the card says how many areas wait for Wi-Fi.
+- **Overview hint** (Plan, z ≥ 10, map centre without detailed map; checked off the main thread per ~1 km / generation).
+- **Settings → Offline maps** (`ui/OfflineMapsSection.kt`): areas named by `RouteNamer.label` on the offline index
+  (else coordinates), size, map date, Delete with in-page confirmation, total, Wi-Fi only switch, "Update maps now"
+  (`REFRESH` for all installed areas). Debug block stays in Diagnostics.
+- **No app key** (release builds today): `MapCells.downloadsAvailable = false` → nothing is requested; the card says
+  "Map downloads not available in this build" once per app run; Settings says so too.
