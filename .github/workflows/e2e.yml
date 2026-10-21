@@ -6,7 +6,7 @@ name: E2E
 
 on:
   push:
-    branches: [main, e2e]
+    branches: [main]
     paths:
       - "app/**"
       - ".github/workflows/e2e.yml"

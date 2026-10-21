@@ -41,6 +41,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 - `./gradlew :app:recordPaparazziDebug` / `verifyPaparazziDebug` – JVM screenshot tests of the UI
   (map replaced by a placeholder). Images in `app/src/test/snapshots/images/`. Use these to check layouts
   when no device/emulator is available.
+- **Emulator (core features end to end):** `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (needs an x86_64
+  emulator; CI: `.github/workflows/e2e.yml`, also a gate before every release). `-Ponpath.e2e=true` adds x86_64 libs –
+  never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>`.
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
