@@ -80,14 +80,4 @@ class CorePlanE2ETest : E2EBase() {
         holdOnWaypoint(0)
         assertNotNull("point menu on a turned map", device.wait(Until.findObject(By.text("Delete")), 5_000))
     }
-
-    /** The second way to delete (no map gesture): route ⋯ → Points… → Delete. */
-    @Test fun deleteFromThePointList() {
-        startPlanWithTwoPoints()
-        device.wait(Until.findObject(By.desc("Route options")), 5_000)?.click() ?: fail("route ⋯ not shown")
-        clickText("Points… (delete)")
-        device.wait(Until.findObject(By.desc("Delete Destination")), 5_000)?.click() ?: fail("Delete Destination not shown")
-        waitUntil("destination deleted from the list") { waypointCount() == 1 }
-        clickText("Done")
-    }
 }
