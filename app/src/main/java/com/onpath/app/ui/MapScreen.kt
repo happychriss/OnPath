@@ -56,6 +56,8 @@ fun MapScreen(
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
+    /** Map centre + zoom, rounded (≈ 1 km, whole zoom steps below / above 10) – for the "Overview only" hint. */
+    var hintKey by remember { mutableStateOf<Triple<Double, Double, Boolean>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
 
@@ -99,7 +101,13 @@ fun MapScreen(
             vm = vm,
             topInsetPx = topInsetPx,
             onReady = { controller = it },
-            onCamera = { map -> scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat() },
+            onCamera = { map ->
+                scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
+                map.cameraPosition.target?.let { t ->
+                    hintKey = Triple(kotlin.math.round(t.latitude * 100) / 100, kotlin.math.round(t.longitude * 100) / 100,
+                        map.cameraPosition.zoom >= 10.0)
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
         MapSync(vm, controller, rec, location, panelHeightPx)
@@ -128,6 +136,17 @@ fun MapScreen(
                     androidx.compose.material3.Text("Finding the shared place…")
                 }
             }
+        }
+        // "Overview only – set a point and the detailed map follows" (Plan, z ≥ 10, no detailed map at the centre)
+        val generation by vm.cells.generation.collectAsState()
+        val overviewOnly by produceState(false, hintKey, generation) {
+            val k = hintKey
+            value = k != null && k.third && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                vm.overviewOnly(k.first, k.second, 10.0)
+            }
+        }
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !vm.sharedLookup) {
+            OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
@@ -212,10 +231,13 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         )
         return
     }
+    val cellStates by vm.cells.states.collectAsState()
+    val cellsInstalled by vm.cells.installed.collectAsState()
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
-            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) }),
+            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
+            cellCard = vm.cellCardUi(cellStates, cellsInstalled)),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -224,6 +246,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
+            cellCard = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
+                onRetry = vm::cellCardRetry, onClose = vm::closeCellCard),
         ),
     )
 }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.onpath.app.cells.label
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
 import com.onpath.app.data.Geo
@@ -204,6 +205,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun onReturnToApp() {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
         cells.setForeground(true)
+        if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
+        cellsRefreshIfDue()
     }
 
     /** The app left the screen: map cell status is not polled in the background (map-cells.md §8). */
@@ -232,6 +235,162 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val c = com.onpath.app.cells.CellId.at(lat, lon) ?: return
         val added = cells.request(listOf(c), com.onpath.app.cells.CellReason.POINT)
         message = if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see Settings → Diagnostics."
+    }
+
+    // ---------------- map cell triggers + card (map-cells.md §9: the map comes where you plan or where you are) ----
+
+    private val cellTriggers by lazy { com.onpath.app.cells.CellTriggers(cells) }
+    /** Cells the open map card is about (T1/T3/T4); null = no card. Closed only by the user (OK / Not now / ×). */
+    var cellJob by mutableStateOf<com.onpath.app.cells.CellJob?>(null)
+        private set
+    /** The card's mobile-data question was answered "Only on Wi-Fi" (for this card). */
+    private var mobileDeclined by mutableStateOf(false)
+    /** T3 waits for a usable fix after app start / return in Plan. */
+    private var t3Pending = true
+    /** "Map downloads not available in this build" was shown in this app run (once is enough). */
+    private var notAvailableShown = false
+    /** T5: position of the last check, so the check runs every [T5_STEP_M], not on every fix. */
+    private var t5LastAt: GeoPoint? = null
+
+    /** The card for the current cell states (MapScreen collects [com.onpath.app.cells.MapCells.states] / installed). */
+    fun cellCardUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
+                   installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? =
+        CellCards.build(cellJob, states, installed.associate { it.id to it.totalBytes }, cells.downloadsAvailable,
+            settings.mapsWifiOnly, mobileDeclined)
+
+    private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
+        j ?: return
+        if (!cells.downloadsAvailable) {
+            if (notAvailableShown) return
+            notAvailableShown = true; cellJob = j; return
+        }
+        val done = cellCardUi(cells.states.value, cells.installed.value) is CellCardUi.Done
+        val open = cellJob
+        cellJob = com.onpath.app.cells.CellTriggers.merge(open, j, done)
+        if (open == null || done) mobileDeclined = false
+    }
+
+    /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
+    private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
+        val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
+        if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
+        for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
+    }
+
+    /** Card → "Yes" to mobile data: the waiting cells of this card load now. */
+    fun cellCardMobileYes() {
+        val job = cellJob ?: return
+        val waiting = cells.waitingForMobileApproval().map { it.first }.filter { it in job.cells }
+        cells.approveMobile(waiting)
+    }
+
+    /** Card → "Only on Wi-Fi": the question goes, the card says the areas wait for Wi-Fi. */
+    fun cellCardWifiOnly() { mobileDeclined = true }
+
+    /** Card → "Retry": ask again for the cells that failed. */
+    fun cellCardRetry() {
+        val job = cellJob ?: return
+        val failed = job.cells.filter { cells.state(it) is com.onpath.app.cells.CellState.Failed }
+        val own = failed.filter { it == job.own }
+        safeCells("retry") {
+            if (own.isNotEmpty()) cells.request(own, com.onpath.app.cells.CellReason.POINT)
+            val rest = failed - own.toSet()
+            if (rest.isNotEmpty()) cells.request(rest, com.onpath.app.cells.CellReason.NEAR, ownPoint = false)
+        }
+    }
+
+    /** Card → OK / Not now / ×: the card goes; cells still loading go on (Settings → Offline maps shows them). */
+    fun closeCellCard() { cellJob = null; mobileDeclined = false }
+
+    /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
+    fun overviewOnly(lat: Double, lon: Double, zoom: Double): Boolean =
+        zoom >= 10.0 && try { !cells.hasDetailedMap(GeoPoint(lat, lon)) } catch (e: Exception) {
+            Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); false
+        }
+
+    /** Every fix: T3 (first usable fix after start / return in Plan) and T5 (on tour, near the edge of the map). */
+    private fun cellsForFix(loc: android.location.Location) {
+        val p = GeoPoint(loc.latitude, loc.longitude)
+        val acc = if (loc.hasAccuracy()) loc.accuracy else null
+        val onTour = recState.value != null || mode == AppMode.NAVIGATE
+        if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
+            t3Pending = false
+            safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc)) }
+        }
+        if (onTour) {
+            val last = t5LastAt
+            if (last == null || Geo.distance(last, p) >= T5_STEP_M) {
+                t5LastAt = p
+                safeCells("tour") {
+                    val asked = cellTriggers.onTour(p)
+                    if (asked.isNotEmpty()) Problems.info("cells", "On tour near the edge of the map: asked for ${asked.joinToString()}")
+                }
+            }
+        }
+    }
+
+    /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
+    private fun cellsRefreshIfDue() = safeCells("refresh") { cellTriggers.refreshIfDue() }
+
+    /** Map cell triggers never break planning: a failure is logged, planning goes on. */
+    private inline fun safeCells(what: String, block: () -> Unit) {
+        try { block() } catch (e: Exception) { Problems.error("cells", "Map download trigger ($what) failed; planning goes on", e) }
+    }
+
+    // ---------------- Settings → Offline maps ----------------
+
+    /** Place names of installed cells ("Meran", "near Lana") from the offline index; filled by [loadAreaNames]. */
+    var areaNames by mutableStateOf<Map<com.onpath.app.cells.CellId, String>>(emptyMap())
+        private set
+
+    /** Settings opened: name the installed areas (offline index, built once; coordinates until then / without). */
+    fun loadAreaNames() {
+        val todo = cells.installed.value.map { it.id }.filter { it !in areaNames }
+        if (todo.isEmpty()) return
+        viewModelScope.launch {
+            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) { Problems.info("cells", "No place index for map area names; coordinates shown", e); return@launch }
+            val names = withContext(Dispatchers.Default) {
+                todo.associateWith { c -> com.onpath.app.search.RouteNamer.label(c.center, places) }.filterValues { it != null }
+                    .mapValues { it.value!! }
+            }
+            areaNames = areaNames + names
+        }
+    }
+
+    fun offlineMapsUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
+                      installed: List<com.onpath.app.cells.CellStore.InstalledCell>): OfflineMapsUi {
+        val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
+        val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
+        val areas = installed.sortedBy { areaNames[it.id] ?: it.id.id }.map { c ->
+            val built = c.built?.take(10)?.let { b -> runCatching { iso.parse(b) }.getOrNull() }
+            val st = states[c.id]
+            OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes,
+                fmt.format(built ?: Date(c.installedAt)),
+                st?.takeIf { it !is com.onpath.app.cells.CellState.Ready && it != com.onpath.app.cells.CellState.None }?.label())
+        }
+        val ids = installed.map { it.id }.toSet()
+        val loading = states.count { (c, s) -> c !in ids && s !is com.onpath.app.cells.CellState.Failed && s != com.onpath.app.cells.CellState.None }
+        return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading)
+    }
+
+    private fun coordName(c: com.onpath.app.cells.CellId): String = c.center.let {
+        "%.2f° %s, %.2f° %s".format(Locale.ROOT, kotlin.math.abs(it.lat), if (it.lat >= 0) "N" else "S",
+            kotlin.math.abs(it.lon), if (it.lon >= 0) "E" else "W")
+    }
+
+    /** Settings → "Update maps now": ask for newer versions of every installed area (download on Wi-Fi). */
+    fun updateMapsNow() = safeCells("update") {
+        val all = cells.installed.value.map { it.id }
+        val asked = cells.request(all, com.onpath.app.cells.CellReason.REFRESH, ownPoint = false)
+        message = if (asked.isEmpty()) "The map areas are already being checked."
+            else "Checking ${asked.size} map ${if (asked.size == 1) "area" else "areas"} for a newer version – it downloads on Wi-Fi."
+    }
+
+    fun deleteMapArea(id: String) {
+        val c = com.onpath.app.cells.CellId.parse(id) ?: return
+        safeCells("delete") { cells.delete(listOf(c)) }
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
@@ -673,6 +832,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val sacChanged = s.defaultSac != sac
         val paceChanged = s.hikePace != settings.hikePace || s.bikePace != settings.bikePace
         settings = s; prefs.settings = s
+        cells.wifiOnly = s.mapsWifiOnly
         if (paceChanged) retime()
         // The SAC level is set in Settings only (owner) – it applies right away to the current hiking route.
         if (sacChanged) { sac = s.defaultSac.coerceIn(1, 5); prefs.sac = sac; if (activity == Activity.HIKE) recalc() }
@@ -684,7 +844,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         history.record(waypoints)
+        val before = waypoints.toList()
         waypoints.block()
+        cellsForNewPoints(before, waypoints)
         canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
@@ -1079,6 +1241,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess {
                 baseline = adoptPlanBaseline
                 route = it; routeError = it.error; snapToRoute(pts, pins, it)
+                safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points)) } // T4: the corridor
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
@@ -1934,6 +2097,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 else if (dataFiles.mapDir() != onMap) { recheckData(); styleVersion++ }
             }
         }
+        // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 / T5 on fixes
+        cells.wifiOnly = settings.mapsWifiOnly
+        safeCells("start") {
+            val inst = cells.installed.value.map { it.id }.toSet()
+            val loading = cells.states.value.filter { (c, s) -> c !in inst && s != com.onpath.app.cells.CellState.None &&
+                s !is com.onpath.app.cells.CellState.Ready && s !is com.onpath.app.cells.CellState.Failed }.keys.sorted()
+            if (loading.isNotEmpty() && cells.downloadsAvailable) cellJob = com.onpath.app.cells.CellJob(loading, null, com.onpath.app.cells.CellWhy.PLANNED)
+        }
+        cellsRefreshIfDue()
+        viewModelScope.launch { tracker.location.filterNotNull().collect { cellsForFix(it) } }
     }
 
     override fun onCleared() {
@@ -1949,5 +2122,7 @@ private const val FAR_SNAP_M = 150.0
 private const val SCRUB_HOLD_MS = 4000L
 /** A shared place's point from the Google page may be this far from its address before the address wins. */
 private const val SHARED_PAGE_MAX_OFF_M = 3_000.0
+/** T5 (on tour, edge of the detailed map) is checked again after moving this far. */
+private const val T5_STEP_M = 300.0
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
 private const val FREE_LOOK_BACK_M = 25.0
