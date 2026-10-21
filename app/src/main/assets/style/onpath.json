@@ -5742,7 +5742,6 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 14,
    "filter": [
     "all",
     [
@@ -5772,6 +5771,10 @@
      ]
     ]
    ],
+   "minzoom": 14,
+   "layout": {
+    "line-join": "round"
+   },
    "paint": {
     "line-color": "#8f877c",
     "line-gap-width": [

@@ -48,5 +48,25 @@ class StyleFormatTest {
         for (s in listOf(f1, f2)) { val have = ids(s).toSet(); used.forEach { assertTrue(it, it in have) } }
         // every format-1 layer has a format-2 twin, except the base-map fallbacks
         assertEquals(setOf("track-base", "path-base"), ids(f1).toSet() - ids(f2).toSet())
+        // format 2 only (MapController.setOverlay)
+        val f2only = listOf("access-no-tint-foot-service", "access-no-sign-bike-service", "bike-lane-left",
+            "bike-lane-right-shared", "bike-oneway", "bike-oneway-streets", "bike-both-ways")
+        f2only.forEach { assertTrue(it, it in ids(f2).toSet()) }
+    }
+
+    /** Format 2: small streets come from overlays "streets" from z13 – the trimmed base map has none there. */
+    @Test fun format2StreetsFromOverlayFromZ13() {
+        val layers = f2.getJSONArray("layers")
+        val own = (0 until layers.length()).map { layers.getJSONObject(it) }
+            .filter { it.optString("source-layer") == "streets" }.map { it.getString("id") }.toSet()
+        for (id in listOf("road-minor-casing", "road-minor-lane", "road-service-casing", "road-service-lane",
+                "road-minor-tunnel", "bridge-casing-streets", "bike-oneway-streets", "access-no-tint-foot-service"))
+            assertTrue(id, id in own)
+        for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            val f = l.optJSONArray("filter")?.toString() ?: continue
+            if (l.optString("source-layer") == "transportation" && ("\"minor\"" in f || "\"service\"" in f))
+                assertTrue(l.getString("id"), l.optDouble("maxzoom", 24.0) <= 13.0)
+        }
     }
 }
