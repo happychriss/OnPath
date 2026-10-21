@@ -179,9 +179,8 @@ it are still in use.
 
 ## 7. Overview map (shipped in the app)
 
-Never a blank screen (R-01): the APK carries a small overview – the world z0–5 (Natural Earth: coast, water,
-borders, country and city names; over-zoomed up to z9 outside the Alps) and the Alps base z5–8 (roads, places, water,
-borders) with hillshade z5–9 (map-pipeline.md §9b). At zoom 9 the overview is over-zoomed; cells start at zoom 10.
+Never a blank screen (R-01): the APK carries one small world overview – base z0–5 (Natural Earth: coast, water,
+borders, country and city names) and hillshade z0–6, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
 Size and exact zoom range: see map-data-size.md. Where no cell is on the phone, the map shows a light hint:
 **"Overview only – set a point and the detailed map follows."**
 
