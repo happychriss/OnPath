@@ -6,7 +6,7 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 
 | # | Core feature | Field bugs so far | Regression tests |
 | --- | --- | --- | --- |
-| C1 | **Plan: hold a route point → its menu → Delete / Start here / End here** | 0.7.19 (map turned under the finger), 0.8.3 (new point added instead of the menu) | `CoreHoldPointTest`, `MapGesturesTest` |
+| C1 | **Plan: hold a route point → its menu → Delete / Start here / End here** | 0.7.19 (map turned under the finger), 0.8.3 (new point added instead of the menu), 0.8.5 (holds 68 dp from the point added a point next to it; "Delete did nothing") | `CoreHoldPointTest`, `CoreDeletePointTest`, `MapGesturesTest`; emulator `CoreDeleteE2ETest` |
 | C2 | Plan: hold the map / route line → add a point (smart insertion) | – | `MapGesturesTest`, `WaypointInsertionTest`, `PlanEditsTest` |
 | C3 | Routing: route for every activity, offline, fallback to straight lines | – | `PlannerTest`, `ReferenceRoutesTest`, `RouteRulesTest` |
 | C4 | Recording never loses a track; ends only deliberately (Plan never stops it) | 0.7.7 | `TrackReplayTest`, `PointFilterTest`, `PauseWatchTest`, `AppModeTest` |
@@ -23,3 +23,9 @@ screenshots, the app state and logcat as the artifact "e2e-report".
 
 To add next: Navigate → Plan with a followed plan (markers back), recording survives Plan mode, map update with a
 real cell generation.
+
+C1 since 0.8.7: catch zone 48 dp (point menu), 48–80 dp a small "Point N: options / New point here" menu, beyond a new
+point (`MapGestures.MARKER_RADIUS_DP` / `NEAR_RADIUS_DP`). The point menu acts on the point it was opened for, found
+by position (`PointMenuTarget`), not on an index that the plan can change under it. Every hold, press, menu open /
+action / close and route result is one line in the gesture log (`Problems.trace`, last 50, never merged; logcat tag
+OnPath and `problems.json` "events" in the diagnostics export).

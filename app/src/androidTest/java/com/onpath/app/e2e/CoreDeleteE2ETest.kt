@@ -111,14 +111,18 @@ class CoreDeleteE2ETest : E2EBase() {
         settle()
         holdOnWaypoint(1)
         val held = points()[1]
+        var wasRouting = false
         scenario.onActivity { a ->
             val vm = vm(a)
             vm.selectActivity(if (vm.activity == com.onpath.app.routing.Activity.HIKE) com.onpath.app.routing.Activity.MTB
                 else com.onpath.app.routing.Activity.HIKE)
+            // in the same main-thread step, so the route for 3 points is certainly still running: what the Delete
+            // button does (MapOverlays → deletePointFromMenu); the button itself is tapped in the other tests
+            wasRouting = vm.routing
+            vm.deletePointFromMenu()
         }
-        val wasRouting = routing()
-        clickText("Delete")
-        waitUntil("deleted while routing ($wasRouting)") { waypointCount() == 2 }
+        assertTrue("a route was being calculated at the delete", wasRouting)
+        waitUntil("deleted while routing") { waypointCount() == 2 }
         settle()
         Thread.sleep(1_500)
         assertEquals("still 2 points after every route result – ${state()}", 2, waypointCount())
