@@ -210,6 +210,10 @@ The server must build each cell from data reaching past the cell edge (Planetile
 
 Recommendation: a one-day spike for A on the phone; if it fails, B. The download format per cell can stay three
 small PMTiles (or MBTiles) in a zip either way.
+**Decided 2026-10-21: B** – one PMTiles per layer, rewritten as a new store generation (new paths, atomic rename);
+the full copy costs ~1 s for 2 cells + region on the laptop. Why not A: MapLibre's bundled SQLite reading while
+Android's SQLite writes the same file in one process is a known corruption risk, and a style reload is needed anyway.
+Details: map-cells.md §19.
 
 ## Risks
 
