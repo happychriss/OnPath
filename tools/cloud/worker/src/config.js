@@ -23,10 +23,10 @@ export function config(env) {
     rateLimitPerMin: num(env.RATE_LIMIT_PER_MIN, 30),
     refreshDays: num(env.REFRESH_DAYS, 35),
     jobTimeoutS: num(env.JOB_TIMEOUT_S, 3600),
-    avgCellS: num(env.AVG_CELL_S, 240),
+    avgCellS: num(env.AVG_CELL_S, 330), // raw cuts since 2026-10-21: 300–370 s per cell (map-hosting.md §7e)
     startupS: num(env.STARTUP_S, 90),
     // first cell in an area without a cached source extract: download (+ lock wait) – measured, map-hosting.md
-    newAreaS: num(env.NEW_AREA_S, 180),
+    newAreaS: num(env.NEW_AREA_S, 90), // measured 2026-10-21: slovenia 20 s, nord-est + austria ~80 s
     buildRev: env.BUILD_REV || "",
     // content schema the current pipeline builds (tools/cells/cells.py CELL_SCHEMA); older published cells are
     // rebuilt when someone asks for them

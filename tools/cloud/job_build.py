@@ -55,14 +55,14 @@ UNAVAILABLE = "Source data could not be downloaded"
 INDEX_MAX_AGE_S = 7 * 86400
 LOCK_STALE_S = 45 * 60
 MIN_SOURCE_BYTES = 100_000
-# step names of build_cell.sh (format 1 and 2) -> rough progress for the app's card (from the phase-1 timings,
-# map-cells.md §17); unknown steps keep the last value. "download" = a new extract is being fetched (its time is
-# reported separately as source_eta_s, the doorman adds it to the ETA).
-STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.02, "merge": 0.07, "renumber": 0.08, "base": 0.10,
-                 "base-own": 0.45, "base-trim": 0.47,
-                 "overlays": 0.50, "overlays-tiles": 0.58, "overlays-own": 0.61,
-                 "pois": 0.62, "pois-ids": 0.70, "clip": 0.71, "addresses": 0.72, "terrain": 0.76, "contours": 0.80,
-                 "terrain-own": 0.93, "contours-own": 0.95, "manifest": 0.97, "upload": 0.98}
+# step names of build_cell.sh (format 2) -> rough progress for the app's card: share of the time before each step in
+# the first cloud build with raw cuts (Innsbruck 10/544/359, two extracts, 366 s; map-hosting.md §7e); unknown steps
+# keep the last value. "download" = a new extract is being fetched (its time is reported separately as
+# source_eta_s, the doorman adds it to the ETA).
+STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.23, "renumber": 0.24, "base": 0.245,
+                 "base-own": 0.47, "base-trim": 0.47, "overlays": 0.48, "overlays-tiles": 0.58, "overlays-own": 0.63,
+                 "pois": 0.63, "pois-ids": 0.70, "clip": 0.70, "addresses": 0.70, "terrain": 0.76, "contours": 0.94,
+                 "terrain-own": 0.94, "contours-own": 0.97, "manifest": 0.97, "upload": 0.98}
 IMMUTABLE = "public, max-age=31536000, immutable"
 
 

@@ -113,9 +113,17 @@ const rebuilding = (r) => r.job === "queued" || r.job === "building";
  *  in the builder's bucket. A cell elsewhere probably needs a new extract first (minutes of download, map-hosting.md
  *  §Source data) – its ETA gets cfg.newAreaS more. Any land cell is accepted; the builder answers open sea itself. */
 async function knownBlocks(db, format) {
-  const { results } = await db.prepare(`SELECT DISTINCT id FROM cells WHERE format = ?
+  const { results } = await db.prepare(`SELECT id, version IS NOT NULL AS built FROM cells WHERE format = ?
       AND (version IS NOT NULL OR job = 'building')`).bind(format).all();
-  return new Set(results.map((r) => parseCellId(r.id)).filter(Boolean).map(blockOf));
+  const known = new Map(); // block → ids (built ones as "*": they count for every cell)
+  for (const r of results) {
+    const c = parseCellId(r.id);
+    if (!c) continue;
+    const k = blockOf(c);
+    if (!known.has(k)) known.set(k, new Set());
+    known.get(k).add(r.built ? "*" : r.id);
+  }
+  return known;
 }
 
 /** GET /v1/cells/status and the answer of request: one entry per cell (map-cells.md §8). */
@@ -134,7 +142,9 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
   const extra = async (id) => {
     known ??= await knownBlocks(db, format);
     const c = parseCellId(id);
-    return c && !known.has(blockOf(c)) ? cfg.newAreaS : 0;
+    const k = c && known.get(blockOf(c));
+    // a cell being built does not make its own extract cached
+    return c && !(k && (k.has("*") || [...k].some((o) => o !== id))) ? cfg.newAreaS : 0;
   };
   for (const id of ids) {
     const r = rows.get(id);
