@@ -250,6 +250,7 @@
  "label.halo.color": "rgba(255,255,255,0.92)",
  "label.halo.width": 1.5,
  "label.halo.blur": 0.3,
+ "label.country.color": "#6f5f78",
  "label.city.color": "#1f1c19",
  "label.town.color": "#25221f",
  "label.village.color": "#2e2a26",
