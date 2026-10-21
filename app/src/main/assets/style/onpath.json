@@ -3367,285 +3367,6 @@
    }
   },
   {
-   "id": "routes-mtb",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 9,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "mtb"
-    ],
-    [
-     "!",
-     [
-      "has",
-      "majoronly"
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     "#168403",
-     14,
-     "#168403"
-    ],
-    "line-opacity": 0.4,
-    "line-width": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.6,
-     11,
-     2.8,
-     12,
-     3.8,
-     13,
-     4.6,
-     14,
-     7,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
-    ]
-   }
-  },
-  {
-   "id": "routes-mtb-major-low",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 9,
-   "maxzoom": 13.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "mtb"
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "#c43a7d",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.2,
-     12,
-     2.0,
-     13,
-     2.6
-    ]
-   }
-  },
-  {
-   "id": "routes-mtb-major",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 13.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "mtb"
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "#e8a5d8",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.5,
-     11,
-     2.5,
-     13,
-     6,
-     15,
-     12,
-     18,
-     18
-    ],
-    "line-opacity": 0.85,
-    "line-dasharray": [
-     1.2,
-     1.0
-    ]
-   }
-  },
-  {
-   "id": "routes-mtb-major-label",
-   "type": "symbol",
-   "source": "routes",
-   "minzoom": 12,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "kind"
-      ],
-      "mtb"
-     ],
-     [
-      ">=",
-      [
-       "coalesce",
-       [
-        "get",
-        "net"
-       ],
-       0
-      ],
-      2
-     ]
-    ],
-    [
-     "!=",
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ],
-     ""
-    ]
-   ],
-   "layout": {
-    "symbol-placement": "line",
-    "symbol-spacing": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     300,
-     16,
-     500
-    ],
-    "text-field": [
-     "get",
-     "name"
-    ],
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     10,
-     16,
-     12
-    ],
-    "text-max-angle": 30,
-    "text-padding": 4,
-    "text-offset": [
-     0,
-     1.0
-    ],
-    "visibility": "none"
-   },
-   "paint": {
-    "text-color": "#a61e4d",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
-   }
-  },
-  {
    "id": "rail-casing",
    "type": "line",
    "source": "base",
@@ -4611,23 +4332,105 @@
        [
         "literal",
         [
-         "no",
-         "private"
+         "dismount",
+         "use_sidepath"
         ]
        ]
       ]
      ],
      [
-      "any",
+      "all",
       [
        "!",
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "no",
+          "private"
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "!",
+        [
+         "==",
+         [
+          "get",
+          "access"
+         ],
+         "no"
+        ]
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "yes",
+          "designated",
+          "permissive"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ],
+    [
+     "any",
+     [
+      "==",
+      [
+       "get",
+       "subclass"
+      ],
+      "cycleway"
+     ],
+     [
+      "all",
+      [
+       "any",
+       [
+        "in",
+        [
+         "get",
+         "subclass"
+        ],
+        [
+         "literal",
+         [
+          "footway",
+          "pedestrian"
+         ]
+        ]
+       ],
        [
         "==",
         [
          "get",
-         "access"
+         "subclass"
         ],
-        "no"
+        "path"
        ]
       ],
       [
@@ -4644,8 +4447,331 @@
         "literal",
         [
          "yes",
-         "designated",
-         "permissive"
+         "designated"
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#2e9e3a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.9,
+     16,
+     2.2,
+     18,
+     3.8
+    ]
+   }
+  },
+  {
+   "id": "greenway-touring",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "dismount",
+         "use_sidepath"
+        ]
+       ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "no",
+          "private"
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "!",
+        [
+         "==",
+         [
+          "get",
+          "access"
+         ],
+         "no"
+        ]
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "yes",
+          "designated",
+          "permissive"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ],
+    [
+     "any",
+     [
+      "==",
+      [
+       "get",
+       "subclass"
+      ],
+      "cycleway"
+     ],
+     [
+      "all",
+      [
+       "any",
+       [
+        "in",
+        [
+         "get",
+         "subclass"
+        ],
+        [
+         "literal",
+         [
+          "footway",
+          "pedestrian"
+         ]
+        ]
+       ],
+       [
+        "==",
+        [
+         "get",
+         "subclass"
+        ],
+        "path"
+       ]
+      ],
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "designated"
+        ]
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#2e9e3a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     0.9,
+     16,
+     2.2,
+     18,
+     3.8
+    ]
+   }
+  },
+  {
+   "id": "greenway-mtb",
+   "type": "line",
+   "source": "base",
+   "source-layer": "transportation",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "class"
+      ],
+      "path"
+     ],
+     [
+      "!=",
+      [
+       "get",
+       "brunnel"
+      ],
+      "tunnel"
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "in",
+       [
+        "coalesce",
+        [
+         "get",
+         "bicycle"
+        ],
+        ""
+       ],
+       [
+        "literal",
+        [
+         "dismount",
+         "use_sidepath"
+        ]
+       ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "no",
+          "private"
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "!",
+        [
+         "==",
+         [
+          "get",
+          "access"
+         ],
+         "no"
+        ]
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "bicycle"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "yes",
+          "designated",
+          "permissive"
+         ]
         ]
        ]
       ]
@@ -5126,8 +5252,19 @@
    "source": "trails",
    "minzoom": 14,
    "filter": [
-    "has",
-    "mtb"
+    "any",
+    [
+     "has",
+     "mtb"
+    ],
+    [
+     ">=",
+     [
+      "get",
+      "sac"
+     ],
+     1
+    ]
    ],
    "layout": {
     "symbol-placement": "line",
@@ -5146,11 +5283,67 @@
      320
     ],
     "text-field": [
-     "concat",
-     "S",
+     "case",
      [
-      "get",
+      "all",
+      [
+       "has",
+       "mtb"
+      ],
+      [
+       ">=",
+       [
+        "get",
+        "sac"
+       ],
+       1
+      ]
+     ],
+     [
+      "concat",
+      [
+       "concat",
+       "T",
+       [
+        "to-string",
+        [
+         "get",
+         "sac"
+        ]
+       ]
+      ],
+      " ",
+      [
+       "concat",
+       "S",
+       [
+        "get",
+        "mtb"
+       ]
+      ]
+     ],
+     [
+      "has",
       "mtb"
+     ],
+     [
+      "concat",
+      "S",
+      [
+       "get",
+       "mtb"
+      ]
+     ],
+     [
+      "concat",
+      "T",
+      [
+       "to-string",
+       [
+        "get",
+        "sac"
+       ]
+      ]
      ]
     ],
     "text-font": [
@@ -5387,28 +5580,39 @@
        ]
       ],
       [
-       "all",
+       "any",
        [
         "==",
         [
          "get",
          "class"
         ],
-        "service"
+        "minor"
        ],
        [
-        "!",
+        "all",
         [
-         "in",
+         "==",
          [
           "get",
-          "service"
+          "class"
          ],
+         "service"
+        ],
+        [
+         "!",
          [
-          "literal",
+          "in",
           [
-           "driveway",
-           "parking_aisle"
+           "get",
+           "service"
+          ],
+          [
+           "literal",
+           [
+            "driveway",
+            "parking_aisle"
+           ]
           ]
          ]
         ]
@@ -5499,28 +5703,39 @@
        ]
       ],
       [
-       "all",
+       "any",
        [
         "==",
         [
          "get",
          "class"
         ],
-        "service"
+        "minor"
        ],
        [
-        "!",
+        "all",
         [
-         "in",
+         "==",
          [
           "get",
-          "service"
+          "class"
          ],
+         "service"
+        ],
+        [
+         "!",
          [
-          "literal",
+          "in",
           [
-           "driveway",
-           "parking_aisle"
+           "get",
+           "service"
+          ],
+          [
+           "literal",
+           [
+            "driveway",
+            "parking_aisle"
+           ]
           ]
          ]
         ]
@@ -5597,58 +5812,91 @@
    "filter": [
     "all",
     [
-     "all",
+     "any",
      [
-      "==",
+      "all",
       [
-       "get",
-       "access"
-      ],
-      "no"
-     ],
-     [
-      "any",
-      [
-       "in",
+       "==",
        [
         "get",
-        "class"
+        "access"
        ],
-       [
-        "literal",
-        [
-         "path",
-         "track"
-        ]
-       ]
+       "no"
       ],
       [
-       "all",
+       "any",
        [
-        "==",
+        "in",
         [
          "get",
          "class"
         ],
-        "service"
+        [
+         "literal",
+         [
+          "path",
+          "track"
+         ]
+        ]
        ],
        [
-        "!",
+        "any",
         [
-         "in",
+         "==",
          [
           "get",
+          "class"
+         ],
+         "minor"
+        ],
+        [
+         "all",
+         [
+          "==",
+          [
+           "get",
+           "class"
+          ],
           "service"
          ],
          [
-          "literal",
+          "!",
           [
-           "driveway",
-           "parking_aisle"
+           "in",
+           [
+            "get",
+            "service"
+           ],
+           [
+            "literal",
+            [
+             "driveway",
+             "parking_aisle"
+            ]
+           ]
           ]
          ]
         ]
        ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "class"
+       ],
+       "path"
+      ],
+      [
+       "==",
+       [
+        "get",
+        "subclass"
+       ],
+       "steps"
       ]
      ]
     ],
@@ -5709,58 +5957,91 @@
    "filter": [
     "all",
     [
-     "all",
+     "any",
      [
-      "==",
+      "all",
       [
-       "get",
-       "access"
-      ],
-      "no"
-     ],
-     [
-      "any",
-      [
-       "in",
+       "==",
        [
         "get",
-        "class"
+        "access"
        ],
-       [
-        "literal",
-        [
-         "path",
-         "track"
-        ]
-       ]
+       "no"
       ],
       [
-       "all",
+       "any",
        [
-        "==",
+        "in",
         [
          "get",
          "class"
         ],
-        "service"
+        [
+         "literal",
+         [
+          "path",
+          "track"
+         ]
+        ]
        ],
        [
-        "!",
+        "any",
         [
-         "in",
+         "==",
          [
           "get",
+          "class"
+         ],
+         "minor"
+        ],
+        [
+         "all",
+         [
+          "==",
+          [
+           "get",
+           "class"
+          ],
           "service"
          ],
          [
-          "literal",
+          "!",
           [
-           "driveway",
-           "parking_aisle"
+           "in",
+           [
+            "get",
+            "service"
+           ],
+           [
+            "literal",
+            [
+             "driveway",
+             "parking_aisle"
+            ]
+           ]
           ]
          ]
         ]
        ]
+      ]
+     ],
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "class"
+       ],
+       "path"
+      ],
+      [
+       "==",
+       [
+        "get",
+        "subclass"
+       ],
+       "steps"
       ]
      ]
     ],

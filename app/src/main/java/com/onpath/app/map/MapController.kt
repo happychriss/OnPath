@@ -525,17 +525,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     fun setOverlay(activity: Activity, enabled: Boolean) {
-        val want = when (activity) {
-            Activity.HIKE -> "routes-hike"
-            Activity.MTB, Activity.EMTB -> "routes-mtb"
-            else -> "routes-bike"
-        }
+        // MTB / MTB e-bike show the cycle route band: mtb.brf ignores route=mtb and rewards cycle routes
+        // (map vs router audit 2026-10-21, docs/map-style-notes.md)
+        val want = if (activity == Activity.HIKE) "routes-hike" else "routes-bike"
         // Blocked-way marking follows the activity: walkers may use "access=no + foot=yes" ways, bikers
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
-        // Way quality (tools/make_style.py): T-labels (SAC) for hiking only, S-labels (mtb:scale) for MTB /
-        // MTB e-bike only, loose-surface edges for every bike activity.
+        val touring = activity == Activity.BIKE_TOURING
+        // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
+        // label (mtb:scale too), loose-surface edges for every bike activity. Green ways per BRouter profile family:
+        // trekking.brf (Bike trekking, E-bike), fastbike (Bike touring), mtb.brf (MTB, MTB e-bike).
         for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
                 "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
                 // format 2 only (map package with overlays.pmtiles): service roads from overlays "streets", bike map
@@ -543,15 +543,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 "access-no-tint-bike-service" to !walking, "access-no-sign-bike-service" to !walking,
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
                 "bike-lane-right" to !walking, "bike-lane-right-shared" to !walking,
-                "bike-oneway" to !walking, "bike-oneway-streets" to !walking, "bike-both-ways" to !walking,
-                "trails-sac-label" to walking, "trails-mtb-label" to mtb,
+                "bike-oneway" to !walking, "bike-oneway-streets" to !walking, "bike-oneway-paths" to !walking,
+                "bike-both-ways" to !walking,
+                "trails-sac-label" to !mtb, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
-                "greenway-foot" to walking, "greenway-bike" to !walking)) {
+                "greenway-foot" to walking, "greenway-bike" to (!walking && !mtb && !touring),
+                "greenway-touring" to touring, "greenway-mtb" to mtb)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
                 .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
         }
-        for (id in listOf("routes-hike", "routes-bike", "routes-mtb")) {
+        for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
             // the band plus its major-route highlight (pink edges + name)
             for (suffix in listOf("", "-major-low", "-major", "-major-label")) {
