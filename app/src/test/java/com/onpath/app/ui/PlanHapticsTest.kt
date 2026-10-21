@@ -11,7 +11,7 @@ class PlanHapticsTest {
     @Test fun mapping() {
         assertEquals(Feel.ONE, PlanHaptics.feel(PlanEdit.POINT_SET))
         assertEquals(Feel.TWO, PlanHaptics.feel(PlanEdit.POINT_DELETED))
-        assertEquals(Feel.ONE, PlanHaptics.feel(PlanEdit.REORDERED))
+        assertEquals(Feel.NONE, PlanHaptics.feel(PlanEdit.REORDERED))
         assertEquals(Feel.TICK, PlanHaptics.feel(PlanEdit.MENU_OPENED))
         assertEquals(Feel.NONE, PlanHaptics.feel(PlanEdit.UNDO))
         assertEquals(Feel.NONE, PlanHaptics.feel(PlanEdit.OTHER))

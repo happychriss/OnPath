@@ -39,7 +39,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Velocity
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,35 +79,23 @@ import com.onpath.app.routing.GeoPoint
 @Composable
 fun BottomPanel(
     modifier: Modifier = Modifier,
-    /** Resizable panels: called with true for a swipe down (smaller), false for a swipe up (bigger). */
+    /**
+     * Resizable panels: called with true for a swipe down (smaller), false for a swipe up (bigger). The sheet follows
+     * the finger and settles with a spring (SheetDrag); a scrolling list inside hands its over-scroll to the sheet.
+     */
     onSwipe: ((down: Boolean) -> Unit)? = null,
     /** Tap on the grab handle. */
     onHandleTap: (() -> Unit)? = null,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    val threshold = with(LocalDensity.current) { 40.dp.toPx() }
-    var drag by remember { mutableFloatStateOf(0f) }
-    val swipe = if (onSwipe == null) Modifier else Modifier
-        .graphicsLayer { translationY = drag.coerceAtLeast(0f) * 0.5f }  // follow the finger a little
-        .draggable(
-            state = rememberDraggableState { drag += it },
-            orientation = Orientation.Vertical,
-            onDragStarted = { drag = 0f },
-            onDragStopped = {
-                when {
-                    drag > threshold -> onSwipe(true)
-                    drag < -threshold -> onSwipe(false)
-                }
-                drag = 0f
-            },
-        )
+    val sheet = if (onSwipe == null) null else rememberSheetDrag(onSwipe)
     Surface(
-        modifier = modifier.fillMaxWidth().then(swipe),
+        modifier = modifier.fillMaxWidth().then(sheet?.modifier ?: Modifier),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp,
     ) {
-        Column(Modifier.navigationBarsPadding().animateContentSize()
+        Column(Modifier.then(sheet?.heightModifier ?: Modifier.animateContentSize()).navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Material drag handle (32 × 4 dp) in a full-width 48 dp tall touch area when it does something.
             val handle = Modifier.fillMaxWidth().height(if (onHandleTap != null) 48.dp else 24.dp)
@@ -106,6 +110,120 @@ fun BottomPanel(
             content()
         }
     }
+}
+
+/** The pieces of a draggable sheet: [modifier] goes on the sheet (gestures), [heightModifier] on its content. */
+private class SheetDragModifiers(val modifier: Modifier, val heightModifier: Modifier)
+
+/**
+ * A real draggable sheet (owner field test 0.8.9, polish-audit B4): while the finger is down the sheet height follows
+ * it 1:1 (content clipped or the surface stretched); on release [SheetDrag.settle] picks smaller / same / bigger from
+ * distance and fling speed, and the height springs from where the finger left it to the new size – no jump. Size
+ * changes without a drag (handle tap, content changes) spring the same way. A scrolling list inside first scrolls;
+ * its leftover drag (at its top, pulling down) moves the sheet (nested scroll).
+ */
+@Composable
+private fun rememberSheetDrag(onSwipe: (down: Boolean) -> Unit): SheetDragModifiers {
+    val density = LocalDensity.current
+    val distancePx = with(density) { 56.dp.toPx() }
+    val flingPxS = with(density) { 700.dp.toPx() }
+    val minPx = with(density) { 72.dp.toPx() }
+    val swipe by rememberUpdatedState(onSwipe)
+    val scope = rememberCoroutineScope()
+    val state = remember { SheetDragState() }
+    // the natural height changed (size switched, content grew): spring there from what is shown now
+    LaunchedEffect(state) {
+        snapshotFlow { state.natural }.collectLatest { n ->
+            if (n < 0f) return@collectLatest
+            if (!state.shownSet) { state.anim.snapTo(n); state.shownSet = true } else
+                state.anim.animateTo(n, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow))
+        }
+    }
+    fun start() {
+        if (state.dragging) return
+        state.raw = if (state.shownSet) state.anim.value else state.natural
+        state.dragging = true
+        state.height = state.raw
+        scope.launch { state.anim.stop() }
+    }
+    fun drag(dy: Float) {  // dy > 0 = finger down = smaller
+        if (!state.dragging) start()
+        state.raw -= dy
+        state.height = SheetDrag.follow(state.raw, minPx, state.max)
+    }
+    suspend fun release(velocityPxS: Float) {
+        if (!state.dragging) return
+        val shown = state.height
+        val decision = SheetDrag.settle(shown, state.natural, velocityPxS, distancePx, flingPxS)
+        state.anim.snapTo(shown)
+        state.dragging = false
+        when (decision) {
+            SheetDrag.Settle.SMALLER -> swipe(true)
+            SheetDrag.Settle.BIGGER -> swipe(false)
+            SheetDrag.Settle.SAME -> {}
+        }
+        // spring to the (new) natural height; when the size switch changes it, the collector above takes over
+        scope.launch {
+            state.anim.animateTo(state.natural, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow),
+                initialVelocity = -velocityPxS)
+        }
+    }
+    val nested = remember(state) {
+        object : NestedScrollConnection {
+            // the sheet was pulled down by the list's over-scroll: pushing up gives it back before the list scrolls
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!state.dragging || source != NestedScrollSource.UserInput || available.y >= 0f) return Offset.Zero
+                val room = state.natural - state.height
+                if (room <= 0f) return Offset.Zero
+                val take = maxOf(available.y, -room)
+                drag(take)
+                return Offset(0f, take)
+            }
+            // the list is at its top and the finger keeps pulling down: the sheet follows
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                drag(available.y)
+                return Offset(0f, available.y)
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (!state.dragging) return Velocity.Zero
+                release(available.y)
+                return available
+            }
+        }
+    }
+    val gestures = Modifier
+        .nestedScroll(nested)
+        .draggable(
+            state = rememberDraggableState { drag(it) },
+            orientation = Orientation.Vertical,
+            onDragStarted = { start() },
+            onDragStopped = { v -> release(v) },
+        )
+    val height = Modifier.layout { measurable, constraints ->
+        val p = measurable.measure(constraints.copy(minHeight = 0))
+        val maxH = if (constraints.hasBoundedHeight) constraints.maxHeight.toFloat() else Float.MAX_VALUE
+        state.max = maxH
+        if (state.natural != p.height.toFloat()) state.natural = p.height.toFloat()
+        val shown = when {
+            state.dragging -> state.height
+            state.shownSet -> state.anim.value
+            else -> p.height.toFloat()
+        }
+        val h = shown.roundToInt().coerceIn(constraints.minHeight, constraints.maxHeight)
+        layout(p.width, h) { p.place(0, 0) }
+    }
+    return SheetDragModifiers(gestures, height)
+}
+
+private class SheetDragState {
+    val anim = Animatable(0f)
+    var shownSet = false
+    var natural by mutableFloatStateOf(-1f)
+    var dragging by mutableStateOf(false)
+    var height by mutableFloatStateOf(0f)
+    var raw = 0f
+    var max = Float.MAX_VALUE
 }
 
 @Composable
