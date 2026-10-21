@@ -63,6 +63,11 @@ class SearchSession(
     private val online: SearchProvider?,
     /** Opens an offline address file (addresses.sqlite); replaced in tests. */
     private val openAddresses: (File) -> AddressDb = { AndroidAddressDb(it) },
+    /**
+     * Folder of the map files the index reads (base, overlays, POIs): the data folder or the current generation of
+     * downloaded map cells (DataFiles.mapDir). Asked on every open, so a new generation rebuilds the index.
+     */
+    private val mapDir: () -> File = { dataDir },
     private val context: () -> SearchContext,
 ) {
     @Volatile private var addresses: AddressIndex? = null
@@ -113,12 +118,14 @@ class SearchSession(
 
     private suspend fun ensureIndex(): OfflineIndex = indexLock.withLock {
         val cur = index ?: cached
-        val sig = withContext(Dispatchers.IO) { OfflineIndex.signature(dataDir) }
+        val dir = withContext(Dispatchers.IO) { mapDir() }
+        // the folder is part of the signature: a new store generation (new paths) always rebuilds
+        val sig = withContext(Dispatchers.IO) { dir.path + "|" + OfflineIndex.signature(dir) }
         if (cur != null && cur.signature == sig) { index = cur; return cur }
         ui = ui.copy(indexing = true)
         val built = withContext(Dispatchers.IO) {
             val t0 = System.currentTimeMillis()
-            OfflineIndex.load(dataDir, cacheDir).also { Log.i("OnPath", "search index: ${it.entries.size} entries in ${System.currentTimeMillis() - t0} ms") }
+            OfflineIndex.load(dir, cacheDir, sig).also { Log.i("OnPath", "search index: ${it.entries.size} entries in ${System.currentTimeMillis() - t0} ms") }
         }
         index = built; cached = built
         ui = ui.copy(indexing = false)

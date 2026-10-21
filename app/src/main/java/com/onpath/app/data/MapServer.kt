@@ -6,7 +6,7 @@ import com.onpath.app.BuildConfig
  * Where the map cells come from (docs/design/map-hosting.md, API: docs/design/map-cells.md §8).
  * Fixed per build type: debug → test doorman, release → production. The app key comes from a Gradle property at
  * build time (never committed); without it the server answers 401 – shown in Settings → Diagnostics.
- * No download logic yet (map-cells.md phase 2).
+ * Downloads: cells/CellApi + cells/MapCells (map-cells.md §19), created in cells/AppCells.
  */
 object MapServer {
     val environment: String get() = BuildConfig.MAP_SERVER_ENV

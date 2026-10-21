@@ -101,6 +101,8 @@ fun SettingsScreen(
     /** Problem log (debug/Problems), most recent first. */
     problems: List<com.onpath.app.debug.Problems.Entry> = emptyList(),
     onClearProblems: () -> Unit = {},
+    /** Diagnostics → "Map cells (debug)"; null = hidden. */
+    mapCells: MapCellsDebug? = null,
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -291,6 +293,7 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
                             Text("Map server: ${com.onpath.app.data.MapServer.describe()}", fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            mapCells?.let { MapCellsDebugList(it) }
                             ProblemList(problems, onClearProblems)
                         }
                     }
@@ -298,6 +301,38 @@ fun SettingsScreen(
                 item { AboutSection(checks, mapPackage, dataDir, version) }
             }
         }
+    }
+}
+
+/** Data of the "Map cells (debug)" block: installed cells, cells in progress, two actions (end-to-end test only). */
+data class MapCellsDebug(
+    /** id, version, bytes */
+    val installed: List<Triple<String, String, Long>>,
+    /** id → state line (CellState.label) for cells not simply installed */
+    val active: List<Pair<String, String>>,
+    /** "store g000007" or "no cells – data folder" */
+    val store: String,
+    val onRequestAtCentre: () -> Unit,
+    val onDelete: (String) -> Unit,
+)
+
+@Composable
+private fun MapCellsDebugList(d: MapCellsDebug) {
+    Text("Map cells (debug)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    Text("Map files: ${d.store}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (d.installed.isEmpty()) Text("No cells installed.", fontSize = 12.sp)
+    d.installed.forEach { (id, version, bytes) ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+            androidx.compose.material3.TextButton(onClick = { d.onDelete(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete") }
+        }
+    }
+    if (d.installed.isNotEmpty()) Text("Total ${"%.1f".format(java.util.Locale.ROOT, d.installed.sumOf { it.third } / 1_048_576.0)} MB",
+        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    d.active.forEach { (id, s) -> Text("$id: $s", fontSize = 12.sp, fontFamily = FontFamily.Monospace) }
+    androidx.compose.material3.OutlinedButton(onClick = d.onRequestAtCentre, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text("Request cell at map centre")
     }
 }
 

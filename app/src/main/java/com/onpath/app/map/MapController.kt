@@ -412,7 +412,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     mainHandler.postDelayed(r, 800L)
                     heading.reemit()
                 }
-                pad(top)
+                // no pad(top) here: the transition has just started, MapLibre would ignore the call and log
+                // "paddingWhileTracking … ignored because the camera mode is transitioning". The listener above
+                // pads when it ends – MapLibre calls it also when there is nothing to animate (same mode, no fix).
             } else {
                 heading.mapToCompass = false
                 facing.visible = false

@@ -74,12 +74,21 @@ object StyleLoader {
     fun label(theme: String): String =
         theme.replace('-', ' ').replace('_', ' ').replaceFirstChar { it.uppercase() }
 
-    fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME): String {
+    /** Folder the last [load] took the map files from (the data folder or a cell store generation). */
+    @Volatile var lastMapDir: File? = null
+        private set
+
+    /**
+     * Style JSON for [theme]. Style overrides come from [dataDir]/styles; the map files ({DATA_DIR}) from [mapDir] –
+     * the data folder, or the current generation of downloaded map cells (DataFiles.mapDir, map-cells.md §19).
+     */
+    fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME, mapDir: File = dataDir): String {
         // a theme that no longer exists (e.g. "high-contrast", removed in 0.7.0) is simply the default – no error
         @Suppress("NAME_SHADOWING")
         val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
-        val dir = dataDir.absolutePath
-        val format = DataFiles.formatOf { File(dataDir, it).isFile }
+        val dir = mapDir.absolutePath
+        lastMapDir = mapDir
+        val format = DataFiles.formatOf { File(mapDir, it).isFile }
         val assets = assetDir(format)
         val tag = if (format == 1) "" else " (format $format)"
         val attempts = buildList<Pair<String, () -> String>> {
@@ -107,7 +116,7 @@ object StyleLoader {
         }
         Problems.error("map", "No map style file usable – minimal fallback style used, map mostly empty")
         lastLoaded = "fallback"
-        return fallback(dataDir)
+        return fallback(mapDir)
     }
 
     /** Small but usable style: base map basics + route overlays, if the data files exist. */
