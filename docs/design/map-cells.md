@@ -180,8 +180,13 @@ it are still in use.
 ## 7. Overview map (shipped in the app)
 
 Never a blank screen (R-01): the APK carries one small world overview – base z0–5 (Natural Earth: coast, water,
-borders, country and city names) and hillshade z0–6, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
-Size and exact zoom range: see map-data-size.md. Where no cell is on the phone, the map shows a light hint:
+borders, country and city names) and a pre-rendered hill shade z0–7, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
+From zoom 10 the overview goes on **underneath** the detailed layers (fills, lines, relief – no labels, no Natural Earth
+urban areas), so the map is never empty beige outside the downloaded cells; an opaque cover in the background colour
+over the installed cells / region package hides it there (no offset lakes, no doubled relief) – `map/Overview.kt`
+(owner field test 0.8.7).
+Size and exact zoom range: see map-data-size.md. Where a large part of the visible map (≥ 30 % of a 5 × 5 sample
+grid, not just the centre) has no cell, the map shows a light persistent hint (z ≥ 10, Plan):
 **"Overview only – set a point and the detailed map follows."**
 
 ## 8. API between app and doorman
@@ -227,27 +232,36 @@ asks again (requests are idempotent). Stop polling when all cells are `ready` or
 
 ## 9. On the phone
 
-### Trigger – when the map is fetched (owner, updated 2026-10-20)
-Rule: **the map comes where you plan or where you are** – a point you set, the route, or your own position.
-Searching, scrolling and zooming ("just looking") never download (owner 2026-10-20: "alles außer T2").
+### Trigger – when the map is fetched (owner, updated 2026-10-21)
+Rule: **the map comes where you plan, look something up, ask for it or are** – a point you set, a search result, a
+tap you confirm, the route, or your own position. Scrolling and zooming alone never download.
 
 | # | Situation | What is requested | Since |
 |---|---|---|---|
 | T1 | **Setting a point** (hold on map / hold on ring → Start here / Go here, POI → Go here) where no cell is on the phone | that cell (`point`) + close neighbours (`near`, Q1) | 2026-10-19 |
-| ~~T2~~ | Search result – the orange ring is placed (search, or a place shared from Google Maps / geo: link) | **nothing** – rejected by the owner 2026-10-20; the ring only shows the place, the map comes when a point is set there (T1) | rejected |
+| T2 | **Search result** (search, or a place shared from Google Maps / geo: link) where there is no detailed map: the map flies there | that cell + close neighbours, at once (`CellWhy.SEARCHED`) | **2026-10-21 (owner, reverses the 2026-10-20 "no T2")** |
+| T2b | **Short tap on the world map** where there is no detailed map | first a question "Load the map for this area? N regions · ≈ X MB" – **Load** / **Not now**; on Load that cell + close neighbours (`CellWhy.TAPPED`). Never a silent download from a tap; a tap where detail exists does nothing (as before) | **2026-10-21 (owner)** |
 | T3 | **App opened in Plan mode at a new place** – own GPS position has no cell on the phone (first start, holiday, travel) | own cell (`point`) + close neighbours | **2026-10-20 (owner)** |
-| T4 | **Route computed** | corridor cells (within ~10 km of the route, F-OFF-02) | 2026-10-19 |
+| T4 | **Route computed** | every missing corridor cell (within ~10 km of the route, F-OFF-02) | 2026-10-19 |
 | T5 | **Navigate / recording** and the own position moves towards the edge of the cells on the phone (e.g. a tour leaves the planned corridor) | the next cell ahead (`near`) | **2026-10-20 (owner)** |
 | T6 | **Refresh** – a cell used in the last 6 months is older than the monthly build | new version (`refresh`, Wi-Fi only, Q5) | 2026-10-19 |
-| – | Searching (T2), scrolling / zooming the map, looking at a POI, opening a saved tour that is fully covered | nothing | – |
+| – | Scrolling / zooming the map, looking at a POI, opening a saved tour that is fully covered | nothing | – |
+
+**How it is shown (owner 2026-10-21, `ui/MapLoad.kt`, docs/design/map-updates-ux.md):** when the user waits for the
+map – T1, T2, T2b, T3, and T4 while the visible map has no detailed map (≥ 30 % of a 5 × 5 sample grid) – ONE modal
+over the world map: "Preparing / Loading the map for your area", "N regions · about X MB" (sizes from the server when
+known, else ≈ 9 MB per region), a bar with %, "About N minutes left", **Cancel** (hides it; the download goes on and
+the plan sheet's card shows it). It closes by itself when every region it waits for is there – no "done" message.
+On screen the cells are called **regions**, never "cells". T4 with detail in view, T5 and T6 stay quiet / in the
+small card.
 
 Notes:
 - T3/T5 are "own point" requests, so the same data rule applies as for T1 (own cell automatic, more asks with size on
   mobile data, Q2). A cell already on the phone or queued is never requested again.
 - T3 runs once per app start / return to the app, only with a usable fix (accuracy ≤ ~500 m; a network fix is enough
   to pick the cell). No fix → nothing, and the overview map stays.
-- The card says *why*: "Because you planned here" (T1/T4), "Because you are here" (T3/T5).
-- Not built yet (phase 2, laptop side: "App: trigger on Start/Go here" in §14) – T3 and T5 must be added to that work.
+- The card says *why*: "Because you planned here" (T1/T4), "Because you are here" (T3/T5), "Because you searched
+  here" (T2), "you asked for" (T2b).
 
 ### The card (persistent, in the plan sheet – no self-dismissing messages)
 

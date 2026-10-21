@@ -365,7 +365,7 @@ The app ships one small **world overview** so a place without downloaded data is
 | File | What | Built by |
 | --- | --- | --- |
 | `base.pmtiles` | World z0–5, OpenMapTiles schema (like the cells, one style): coast, oceans, big lakes and rivers, ice, urban areas, borders, country and city names (Natural Earth 1:10 m) | Planetiler OpenMapTiles on an **empty** OSM file (`--bounds=world --maxzoom=5 --languages=de`: only Natural Earth + water polygons from its sources), then `tools/overview_merge.py` |
-| `terrain.pmtiles` | Hill shade of the world z0–6 | `build_terrain.py -180 -85 180 85 --minzoom 0 --maxzoom 6 --webp --round 32 --floor 0` (sea floor flat: the water covers it, and flat tiles are tiny and de-duplicated) |
+| `hillshade.pmtiles` | Pre-rendered hill shade of the world z0–7 (raster, WebP lossy q60, opaque: shade composited onto the style background; sea / flat tiles left out) | `tools/build_hillshade.py OUT --maxzoom 7 --quality 60 --cache $WORK/terrarium` (`--workers 4`, niced; BLAS threads 1) |
 
 `tools/overview_merge.py` fills what the empty-OSM run leaves out: the `place` layer (Natural Earth countries and
 populated places with OpenMapTiles' attributes `class` country / city, `rank` = NE scalerank + 1 resp. labelrank,
@@ -374,28 +374,35 @@ carry what the over-zoomed views up to z9 need) and, because OpenMapTiles takes 
 rivers / land use from z6, copies the last Natural Earth level of those layers into the deeper tiles (z5 borders from
 z4; with `BASE_MAXZOOM=6` also z6 water, rivers, land use from z5).
 
-Measured 2026-10-21 on the laptop: Planetiler 1 m 10 s (1.6 GB RAM), `overview_merge.py` ~10 s, terrain ~8 min
-(5461 AWS tiles, 303 MB download, cached in `WORK/terrarium`).
+Measured 2026-10-21 on the laptop: Planetiler 1 m 10 s (1.6 GB RAM), `overview_merge.py` ~10 s, hill shade ~4 min
+(14 373 AWS tiles, cached in `WORK/terrarium`; 4 workers under `nice -n 19 ionice -c3`).
 
-| Variant | base | terrain | together |
+| Variant | base | relief | together |
 | --- | --- | --- | --- |
-| **base z0–5 + terrain z0–6, 32 m (default)** | 2.8 MB | 17.4 MB | **20.1 MB** |
-| base z0–6 + terrain z0–5, 16 m | 7.0 MB | 7.6 MB | 14.7 MB |
-| base z0–7 | 13.1 MB | | |
-| terrain z5 alone 16 / 32 m; z6 alone 16 / 32 m | | 4.9 / 3.7; 16.0 / 11.7 MB | |
-| terrain z0–4 16 m, without / with `--floor 0` | | 8.6 / 2.8 MB | |
+| **base z0–5 + pre-rendered hill shade z0–7, WebP q60 (default since 0.8.8)** | 2.8 MB | 11.5 MB | **14.3 MB** |
+| base z0–5 + pre-rendered hill shade z0–7, q80 | 2.8 MB | 17.2 MB | 20.0 MB |
+| base z0–5 + raster-dem terrain z0–6, 32 m (0.8.7) | 2.8 MB | 17.4 MB | 20.1 MB |
+| base z0–6 + raster-dem terrain z0–5, 16 m | 7.0 MB | 7.6 MB | 14.7 MB |
 
-APK (debug, 2026-10-21): 53.5 MB without, 70.8 MB with the overview (assets are stored uncompressed).
-Why this split: from Natural Earth, base z6 / z7 only add a finer coast (OpenMapTiles has nothing else there without
-OSM), while hill shade z6 makes the mountains readable at z6–9 (render check: z5 relief over-zoomed to z7 is mush).
-Hill shade z7 would be ~4 × z6 (≈ 50 MB) – out of budget. Real detail at z6–9 (roads, OSM lakes, towns) would need
-an OpenMapTiles **planet** run (≈ 80 GB OSM file, 64+ GB RAM or a long disk-backed run, hours) and its output for
-z0–8 is hundreds of MB – not APK-sized; the cells (z10+) bring that detail where the user plans.
+**Why pre-rendered (owner field test 0.8.7):** MapLibre draws an over-zoomed raster-dem with a straight seam at every
+tile edge (the DEM border is only back-filled from loaded neighbours of the same zoom), magnifies the coarse, rounded
+DEM into blurry "worms", and parent / child tiles shade with different strength (tone blocks). `build_hillshade.py`
+shades with MapLibre's own hillshade formula and the style's two hillshade layers, from a DEM block with a border from
+the 8 neighbours, blurred 1.5 px, one exaggeration for all zooms and a per-level gain (parent / child within 1 grey
+level), and edge-aligned texels (first / last texel = shade exactly on the tile edge, as in the neighbour – MapLibre
+clamps raster textures at tile edges). Owner budget: ≤ ~15 MB in the APK → q60. Known: WebP lossy moves the edge
+texels by ~3–4 grey levels (q60; q85 ≈ 2.5 at +70 % size), so a very faint line can remain at tile edges when
+magnified 4× and more. The app draws it as one `raster` layer right above the background at every zoom
+(map/Overview.kt), calmer from z10 outside downloaded areas; Natural Earth land cover above it is 60 % opaque, urban
+areas are not drawn.
+Base z6 / z7 would only add a finer coast (OpenMapTiles has nothing else there without OSM). Real detail at z6–9
+(roads, OSM lakes, towns) would need an OpenMapTiles **planet** run (≈ 80 GB OSM file) and its output for z0–8 is
+hundreds of MB – not APK-sized; the cells (z10+) bring that detail where the user plans.
 
 What the user sees: z0–5 a normal small-scale map (countries, capitals and big cities from z4, coast, lakes, relief);
-z6–9 the same data over-zoomed (generalised coast and borders, city names, no roads), relief from z6; from z10 the
-downloaded cells. Known look: MapLibre draws over-zoomed hill shade with faint tile seams (straight lines at tile
-edges, z7+).
+z6–9 the same data over-zoomed (generalised coast and borders, city names, no roads), relief up to z7 then magnified;
+from z10 the downloaded cells, and outside them the overview goes on underneath (relief, water, borders – no labels),
+covered where cells are (map-cells.md §7).
 
 Place labels zoomed out (style, `tools/make_style.py`): countries z2–6 (not micro-states), capitals and big cities
 z4–5 (`rank` ≤ 3, or capital with `rank` ≤ 6), every city from z6, towns from z8; `symbol-sort-key` = rank, so the
@@ -407,8 +414,11 @@ style is unchanged. With it, every `base` / `terrain` layer that starts below z1
 source `overview` / `overview-terrain` (`pmtiles://asset://overview/…`, zoom range from the file headers, so MapLibre
 over-zooms the last level) drawn below z10, and the original starts at z10. MapLibre cannot draw a layer only where
 another source has no data, so the split is by zoom: no doubled hill shade, lines or labels, and cells (z ≥ 10 only)
-fit exactly. Above z10 where no data is on the phone the map is empty (background colour) – the "Overview only – set
-a point" hint covers that. PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource`
+fit exactly. From z10 the overview's fills, lines and relief go on underneath (`<id>~under`, no labels), and an opaque
+fill in the background colour (`detail-cover`, GeoJSON of the installed cells' / region package's boxes) hides them
+where the detailed map is – so outside the downloaded areas the map is never empty beige (owner field test 0.8.7).
+`hillshade.pmtiles` (when bundled) replaces the DEM copies by one `raster` layer `hillshade~overview` right above the
+background. PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource`
 reads byte ranges with `AAsset_seek64`, which would otherwise inflate from the start for every tile.
 
 **Release builds** (`.github/workflows/release.yml`, step "Overview map"): the files live in a versioned folder in R2

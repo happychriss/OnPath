@@ -169,7 +169,11 @@ fun MapHost(
                     }
                     MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
-                    MapGestures.Action.None -> edit
+                    MapGestures.Action.None -> {
+                        // a short tap on the world map where there is no detailed map: ask to load it (owner 2026-10-21)
+                        if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
+                        edit
+                    }
                 }
             }
             map.addOnMapClickListener { ll ->
@@ -204,12 +208,12 @@ fun MapHost(
                 StyleLoader.noteFailure(msg ?: "?")
                 // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
                 if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
-                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
+                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             loadedTheme[0] = vm.settings.mapTheme
-            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir())) }
-            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
+            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
+            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
         }
         onDispose { ctrlRef[0] = null; reloadRef[0] = null }
     }

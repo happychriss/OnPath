@@ -122,6 +122,8 @@ object CellCards {
         CellWhy.PLANNED -> "Getting the detailed map because you planned here."
         CellWhy.HERE -> "Getting the detailed map because you are here."
         CellWhy.UPDATE -> "Updating the map for the new map style (small streets)."
+        CellWhy.SEARCHED -> "Getting the detailed map because you searched here."
+        CellWhy.TAPPED -> "Getting the detailed map you asked for."
     }
 
     /**
@@ -182,6 +184,24 @@ object CellCards {
         val question = if (waiting.isNotEmpty() && !wifiOnly && !mobileDeclined) MobileQuestion(waiting.size, waitBytes) else null
         return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null)
     }
+
+    /**
+     * What counts as "another message" for the no-flash gate ([NoFlash]): the kind of card, for a working card its step
+     * (preparing / downloading / ready to download) and whether a question or Wi-Fi note is in it; progress, MB counts
+     * and rows are updates of the same step.
+     */
+    fun stepKey(ui: CellCardUi): Any = when (ui) {
+        is CellCardUi.Working -> listOf("working", ui.title.substringBefore(' '), ui.question != null, ui.wifiNote != null)
+        is CellCardUi.NeedPosition -> listOf("need", ui.permission)
+        is CellCardUi.Offline -> "offline"
+        is CellCardUi.Failed -> listOf("failed", ui.title)
+        is CellCardUi.Done -> "done"
+        CellCardUi.NotAvailable -> "na"
+    }
+
+    /** Cards that wait for the user show at once (a question, a failure, "Map ready", "not available"). */
+    fun waitsForUser(ui: CellCardUi): Boolean = ui is CellCardUi.Failed || ui is CellCardUi.Done ||
+        ui == CellCardUi.NotAvailable || (ui is CellCardUi.Working && ui.question != null)
 
     private fun rowState(s: CellState): String = when (s) {
         is CellState.Ready -> "ready ✓"
@@ -316,68 +336,25 @@ fun OverviewHint(modifier: Modifier = Modifier) {
 const val OVERVIEW_HINT = "Overview only – set a point and the detailed map follows"
 
 /**
- * While map areas are built or downloaded: a clear modal overlay (owner 2026-10-21) – what happens, why, progress, the
- * mobile-data question ("Wait for Wi-Fi" / "Use mobile data") and one way out: Cancel. It is shown for
- * [CellCardUi.Working] (until the mobile-data question was answered "Wait for Wi-Fi"), [CellCardUi.Offline] and
- * [CellCardUi.Failed]; "Map ready" and the rest stay in the plan sheet's card.
+ * When the "Overview only" hint shows (Plan, z ≥ [MIN_ZOOM]): when a large part of the visible map has no detailed
+ * map – not just the centre (field test 0.8.7: centre inside a downloaded area, half the screen overview only, no
+ * hint). The view is sampled on a [GRID] × [GRID] grid. Pure, unit-tested.
  */
-fun CellCardUi.wantsOverlay(): Boolean = this is CellCardUi.Working && (question != null || wifiNote == null) ||
-    this is CellCardUi.Offline || this is CellCardUi.Failed
+object OverviewHintRule {
+    const val MIN_ZOOM = 10.0
+    const val GRID = 5
+    /** Share of the sampled points without detailed map from which the hint shows. */
+    const val MIN_SHARE = 0.3
 
-@Composable
-fun MapLoadOverlay(ui: CellCardUi, cb: CellCardCallbacks) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = {},
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
-        MapLoadPanel(ui, cb)
-    }
-}
+    /** Sample points (lat, lon) over the box, cell centres of a [GRID] × [GRID] grid. */
+    fun samples(south: Double, west: Double, north: Double, east: Double): List<Pair<Double, Double>> =
+        (0 until GRID).flatMap { i -> (0 until GRID).map { j ->
+            (south + (north - south) * (i + 0.5) / GRID) to (west + (east - west) * (j + 0.5) / GRID)
+        } }
 
-/** The overlay's content (also used by the screenshot tests, which cannot show a Dialog window). */
-@Composable
-fun MapLoadPanel(ui: CellCardUi, cb: CellCardCallbacks) {
-    val variant = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val (icon, tint) = when (ui) {
-                is CellCardUi.Failed -> Icons.Outlined.Warning to Color(0xFFB26A00)
-                is CellCardUi.Offline -> Icons.Outlined.CloudOff to variant
-                else -> Icons.Outlined.CloudDownload to OnPathColors.Green
-            }
-            Icon(icon, null, tint = tint, modifier = Modifier.size(32.dp))
-            Text(ui.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            val why = when (ui) { is CellCardUi.Working -> ui.why; is CellCardUi.Offline -> ui.why; is CellCardUi.Failed -> ui.why; else -> null }
-            why?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = variant) }
-            if (ui is CellCardUi.Working) {
-                if (ui.progress != null) LinearProgressIndicator(progress = { ui.progress }, modifier = Modifier.fillMaxWidth().clip(CircleShape))
-                else if (ui.question == null) LinearProgressIndicator(modifier = Modifier.fillMaxWidth().clip(CircleShape))
-                ui.rows.forEach { r ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (r.own) "●" else "○", color = if (r.own) OnPathColors.Green else variant, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.width(8.dp))
-                        Text(r.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                        Text(r.state, style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                            modifier = Modifier.weight(1f).padding(start = 8.dp))
-                    }
-                }
-                ui.more?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
-                ui.question?.let { q ->
-                    Text(q.text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = cb.onWifiOnly, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Wait for Wi-Fi") }
-                        Button(onClick = cb.onMobileYes, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Use mobile data") }
-                    }
-                }
-                Text("Planning goes on with the overview map and straight lines until the map is here.",
-                    style = MaterialTheme.typography.bodySmall, color = variant)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (ui is CellCardUi.Failed && ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Retry") }
-                TextButton(onClick = cb.onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
-            }
-        }
-    }
+    /** [detailed]: per sample point whether the detailed map covers it. */
+    fun show(zoom: Double, detailed: List<Boolean>): Boolean =
+        zoom >= MIN_ZOOM && detailed.isNotEmpty() && detailed.count { !it } >= MIN_SHARE * detailed.size
 }
 
 /**
