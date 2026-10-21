@@ -235,23 +235,6 @@ test("ETA: + newAreaS where no cell was built yet; the builder's download estima
   assert.equal(j.cells[0].eta_s, Math.round(cfg.avgCellS / 2));
 });
 
-test("deferred by the builder's daily download limit: no attempt counted, asking again queues it", async () => {
-  const env = testEnv({ MAX_ATTEMPTS: "1" });
-  const cfg = config(env);
-  const g = fakeGoogle();
-  await requestCells(env, cfg, { cells: [BOZEN] });
-  await pump(env, cfg, Date.now(), g);
-  const [ex] = [...g.executions.values()];
-  await putStatus(env, BOZEN, { state: "failed", reason: "later", defer: true, execution: gcp.shortName(ex.name) });
-  ex.completionTime = "now";
-  ex.succeededCount = 1;
-  await pump(env, cfg, Date.now(), g);
-  const row = await env.DB.prepare("SELECT job, attempts FROM cells WHERE id = ?").bind(BOZEN).first();
-  assert.deepEqual({ ...row }, { job: "failed", attempts: 0 });
-  assert.equal((await statusFor(env, cfg, [BOZEN], 2)).cells[0].reason, "later");
-  assert.equal((await requestCells(env, cfg, { cells: [BOZEN] })).cells[0].state, "queued");
-});
-
 test("cost guard: executions per hour", async () => {
   const env = testEnv({ MAX_EXEC_PER_HOUR: "1", CELLS_PER_EXECUTION: "1" });
   const cfg = config(env);

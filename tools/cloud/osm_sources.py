@@ -3,8 +3,8 @@
 (the CI tests run with a plain python3; the polygons are small enough for pure-Python geometry).
 
 Rule for the bbox B = cell + buffer (5 km):
-  1. pinned sources (sources.json "sources": hand-made cover rectangles, e.g. the Trentino extract the first cells
-     were built from) win when one of their rectangles contains B – no download, no change for South Tyrol.
+  1. pinned sources (sources.json "sources": hand-made cover rectangles) win when one of their rectangles contains
+     the cell – none today (the Trentino pin was removed 2026-10-21; South Tyrol uses the rules below too).
   2. "country leaves" = Geofabrik regions with a .pbf, without sub-regions, that belong to a country (the region or
      a parent has an ISO 3166 code). They do not overlap much, and they are the smallest downloads (italy/nord-est,
      austria, switzerland, germany/bayern/oberbayern, france/rhone-alpes …). Special overlapping extracts (alps,

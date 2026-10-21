@@ -196,13 +196,6 @@ async function finishCell(env, cfg, ex, id, s, now) {
   }
   const reason = s && s.state === "failed" ? s.reason || "Build failed" : "Build stopped unexpectedly";
   const permanent = s && s.state === "failed" && s.permanent ? 1 : 0;
-  if (s && s.state === "failed" && s.defer) {
-    // the builder's daily download limit: not the cell's fault – no attempt counted, asking again later queues it
-    await db.prepare(`UPDATE cells SET error = ?3, execution = NULL, job = 'failed', updated_at = ?4
-        WHERE id = ?1 AND format = ?2 AND job = 'building'`).bind(id, ex.format, reason, now).run();
-    log({ ev: "cell-deferred", id, format: ex.format, reason });
-    return;
-  }
   await db.prepare(`UPDATE cells SET attempts = attempts + 1, error = ?3, permanent = ?4, rev = ?5, execution = NULL,
         job = CASE WHEN ?4 = 0 AND attempts + 1 < ?6 THEN 'queued' ELSE 'failed' END, updated_at = ?7
       WHERE id = ?1 AND format = ?2 AND job = 'building'`)

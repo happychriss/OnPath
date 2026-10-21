@@ -10,11 +10,10 @@ The doorman (Cloudflare Worker) polls the Cloud Run execution and reads these fi
 secret, nothing to reach inside the job.
 
 Source data (map-hosting.md §Source data): the OSM extracts a cell is cut from are chosen automatically from the
-Geofabrik index (osm_sources.py; pinned extracts in sources.json first) and kept in the source bucket:
-    osm/<pinned id>.osm.pbf                        pinned (sources.json)
+Geofabrik index (osm_sources.py; pinned extracts in sources.json first – none today) and kept in the source bucket:
+    osm/<pinned id>.osm.pbf                        pinned (sources.json, if any)
     osm/geofabrik/<path>.osm.pbf + .meta.json      e.g. osm/geofabrik/europe/austria.osm.pbf (download date, size)
     osm/geofabrik/index-v1.json                    the index, refreshed weekly
-    osm/downloads.json                             downloads of the last 24 h (cost guard)
 An extract older than max_age_days is downloaded again – straight into the bucket mount (no copy in memory, a
 <path>.lock file keeps two jobs from fetching the same one) – and build_cell.sh reads it from there.
 
@@ -22,7 +21,7 @@ Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execu
   CELLS="10-543-361 10-544-361"   cell ids (also 10/543/361), space or comma separated
   FORMAT=2                        cell format (build_cell.sh writes cells/f<FORMAT>/…)
   SRC_DIR=/src                    source bucket (Cloud Storage volume mount): osm/…, planetiler-sources/
-  SOURCES_JSON=<this dir>/sources.json   pinned extracts + limits (max_age_days, max_downloads_per_day, …)
+  SOURCES_JSON=<this dir>/sources.json   pinned extracts + limits (max_age_days, max_extract_mb, …)
   WORK=/tmp/onpath/work  DATA_ROOT=/tmp/onpath/store   local (in-memory on Cloud Run) work + output folders
   R2_ACCOUNT_ID (+ R2_JURISDICTION, default eu) or R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY   upload target
   R2_LOCAL_DIR=/data/store        instead of R2: write into this folder (zo, tests)
@@ -50,7 +49,6 @@ from cells import buffered_bbox, cell_bbox  # noqa: E402
 
 NO_SOURCE = "No map data exists for this area (open sea)"
 TOO_LARGE = "The source data for this area is too large for the map server yet"
-DEFERRED = "Many new areas were prepared today – this one follows later, please try again tomorrow"
 UNAVAILABLE = "Source data could not be downloaded"
 INDEX_MAX_AGE_S = 7 * 86400
 LOCK_STALE_S = 45 * 60
@@ -71,10 +69,6 @@ class SourceUnavailable(Exception):
 
 
 class SourceTooLarge(Exception):
-    pass
-
-
-class SourceDeferred(Exception):
     pass
 
 
@@ -118,7 +112,6 @@ class Builder:
         with open(env.get("SOURCES_JSON", os.path.join(HERE, "sources.json"))) as f:
             self.sources = json.load(f)
         self.max_age_s = float(self.sources.get("max_age_days", 30)) * 86400
-        self.max_downloads_per_day = int(self.sources.get("max_downloads_per_day", 10))
         self.max_extract_mb = int(self.sources.get("max_extract_mb", 2500))
         self.index_url = self.sources.get("index_url", osm_sources.INDEX_URL)
         self.execution = env.get("CLOUD_RUN_EXECUTION") or f"local-{int(time.time())}"
@@ -229,24 +222,6 @@ class Builder:
             t = None  # expected: pinned extracts saved before meta files existed → file time
         return time.time() - (t or os.path.getmtime(path)) < self.max_age_s
 
-    def _downloads_today(self):
-        try:
-            with open(os.path.join(self.src_dir, "osm", "downloads.json")) as f:
-                times = json.load(f).get("downloads", [])
-        except (OSError, ValueError):
-            times = []  # expected: no download yet
-        return [d for d in times if time.time() - d.get("t", 0) < 86400]
-
-    def _count_download(self, url):
-        p = os.path.join(self.src_dir, "osm", "downloads.json")
-        recent = self._downloads_today() + [{"t": int(time.time()), "url": url, "execution": self.execution}]
-        try:
-            with open(p + ".tmp", "w") as f:
-                json.dump({"downloads": recent}, f)
-            os.replace(p + ".tmp", p)
-        except OSError as e:
-            log(f"WARN: download log not written: {e}")
-
     def _lock(self, path, cid):
         """<path>.lock (O_EXCL): one downloader per extract. Waits while another job holds it; takes over a lock
         older than LOCK_STALE_S. True = we hold it; False = it went away (the other job is done – check again)."""
@@ -282,17 +257,12 @@ class Builder:
 
     def ensure_source(self, src, cid):
         """Path of a fresh copy of the extract in the source bucket (downloaded into it when missing or older than
-        max_age_days). Raises SourceUnavailable / SourceTooLarge / SourceDeferred."""
+        max_age_days). Raises SourceUnavailable / SourceTooLarge."""
         path = src["path"]
         if path in self.checked:
             return path
         os.makedirs(os.path.dirname(path), exist_ok=True)
         while not self._fresh(path):
-            if len(self._downloads_today()) >= self.max_downloads_per_day:
-                if os.path.exists(path) and os.path.getsize(path) >= MIN_SOURCE_BYTES:
-                    log(f"source {src['id']}: old, but {self.max_downloads_per_day} downloads today – using it")
-                    break
-                raise SourceDeferred(f"daily download limit ({self.max_downloads_per_day}) reached")
             if not self._lock(path, cid):
                 continue
             try:
@@ -305,7 +275,6 @@ class Builder:
                     eta = int((total - done) / rate) + 30 if total and rate > 0 else 300
                     self.status(cid, "building", step="download", progress=0.0, source_eta_s=eta,
                                 source={"id": src["id"], "mb": round(done / 1e6), "total_mb": round(total / 1e6)})
-                self._count_download(src["url"])
                 self.status(cid, "building", step="download", progress=0.0, source_eta_s=300, source={"id": src["id"]})
                 if self.download == self._download:
                     self.download(src["url"], path + ".part", progress=progress)
@@ -416,10 +385,6 @@ class Builder:
         except SourceTooLarge as e:
             log(f"cell {cid}: {e}")
             self.status(cid, "failed", reason=TOO_LARGE, permanent=True, detail=str(e)[:500])
-            return False
-        except SourceDeferred as e:
-            log(f"cell {cid}: {e}")
-            self.status(cid, "failed", reason=DEFERRED, defer=True, detail=str(e)[:500])
             return False
         except Exception as e:  # noqa: BLE001 – reported as a plain status, details in the log
             log(f"cell {cid}: source failed: {e}")
