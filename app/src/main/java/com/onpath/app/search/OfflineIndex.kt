@@ -56,8 +56,7 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
         }
 
         /** Builds the index; never throws (a broken file is skipped and logged). Call off the main thread. */
-        fun load(dataDir: File, cacheDir: File): OfflineIndex {
-            val sig = signature(dataDir)
+        fun load(dataDir: File, cacheDir: File, sig: String = signature(dataDir)): OfflineIndex {
             val places = ArrayList<Place>()
             safe("pois") { places += readPois(File(dataDir, POIS)) }
             safe("trails") {
