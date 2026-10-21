@@ -14,21 +14,31 @@ import kotlin.math.min
  * | empty map / route line                   | 1×        | add point (smart insertion), no message |
  * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
  * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
+ * | near a route point (48–80 dp)            | 1×        | ask: "Point N: options" · "New point here" |
  *
- * The marker wins (within [MARKER_RADIUS_DP], nearest marker first), then a POI, then the line / map.
+ * The marker wins (within [MARKER_RADIUS_DP], nearest marker first), then a POI, then a point within
+ * [NEAR_RADIUS_DP] (ask), then the line / map.
  * With a menu open a tap anywhere closes it; a hold on another marker / POI opens that one's menu, a hold on
  * the empty map only closes the menu (no point is added while dismissing). A long press counts as a hold.
  * Navigate (or a shown track): nothing is added or moved, a POI tap opens read-only details.
  */
 object MapGestures {
-    /** Screen radius around a marker that counts as "on the marker", at any zoom. */
-    const val MARKER_RADIUS_DP = 26f
+    /**
+     * Screen radius around a marker that counts as "on the marker", at any zoom. Field 2026-10-21 (Pixel 8): with
+     * 26 dp, 4 of 21 holds the owner felt "on the point" were 68 dp away and added a new point – a finger is ~1 cm.
+     */
+    const val MARKER_RADIUS_DP = 48f
+
+    /** Up to here (beyond [MARKER_RADIUS_DP]) a hold asks: that point's options or a new point here. */
+    const val NEAR_RADIUS_DP = 80f
 
     /** MapLibre's long click is reported as [HOLD] too. */
     enum class Press { TAP, HOLD }
 
     sealed interface Action {
         data class PointMenu(val index: Int) : Action
+        /** Hold 48–80 dp from route point [index]: "Point N: options" · "New point here". */
+        data class NearPointChoice(val index: Int) : Action
         data object PoiMenu : Action
         data object AddPoint : Action
         /** First hold on an empty plan: "Start here" · "Go here". */
@@ -47,8 +57,10 @@ object MapGestures {
     /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
      * @param poi a POI is under the finger
+     * @param near index of the route point within [NEAR_RADIUS_DP] (but not [MARKER_RADIUS_DP]) or -1
      */
-    fun decide(editable: Boolean, press: Press, menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): Action {
+    fun decide(editable: Boolean, press: Press, menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean,
+               near: Int = -1): Action {
         if (!editable) return if (poi && press == Press.TAP) Action.PoiDetails else Action.None
         if (press == Press.TAP) return if (menuOpen) Action.CloseMenu else Action.None
         return when {
@@ -56,6 +68,7 @@ object MapGestures {
             poi -> Action.PoiMenu
             menuOpen -> Action.CloseMenu
             planEmpty -> Action.FirstPointMenu
+            near >= 0 -> Action.NearPointChoice(near)
             else -> Action.AddPoint
         }
     }

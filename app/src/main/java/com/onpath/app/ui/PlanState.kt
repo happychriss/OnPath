@@ -62,3 +62,25 @@ object PlanClear {
     /** Ask "Clear this route?" only when there is a route worth keeping (two or more points). */
     fun needsConfirm(pointCount: Int): Boolean = pointCount >= 2
 }
+
+/**
+ * The route point a point menu is open for: its index when opened AND its position (core feature C1). The menu acts
+ * on the point the user held, not on whatever sits at that index later – the plan can change underneath an open menu
+ * (route ⋯ → Points… delete, a tour opened, a snapped point moving). Pure, unit tested (CoreDeletePointTest).
+ */
+data class PointMenuTarget(val index: Int, val point: GeoPoint) {
+    /** The point's index in [plan] now: the same index while it still holds the point, else the nearest equal point. */
+    fun indexIn(plan: List<GeoPoint>): Int? {
+        if (plan.getOrNull(index) == point) return index
+        return plan.indices.filter { plan[it] == point }.minByOrNull { kotlin.math.abs(it - index) }
+    }
+
+    /** After the router snapped points ([moves] old → new position): follow this point to its snapped position. */
+    fun afterSnap(moves: Map<GeoPoint, GeoPoint>): PointMenuTarget = moves[point]?.let { copy(point = it) } ?: this
+}
+
+/**
+ * Hold 48–80 dp from route point [index] (MapGestures.NearPointChoice): the small menu "Point N: options" ·
+ * "New point here". [at] = the held spot, [lineSnapM] = "on the line" distance at the zoom of the hold.
+ */
+data class NearPointChoice(val target: PointMenuTarget, val at: GeoPoint, val lineSnapM: Double)

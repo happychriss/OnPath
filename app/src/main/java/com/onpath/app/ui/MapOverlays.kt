@@ -93,23 +93,56 @@ fun MapOverlayHost(
                 })
         }
     }
-    vm.pointMenu?.let { i ->
-        val p = vm.waypoints.getOrNull(i)
-        if (p == null) { LaunchedEffect(i) { vm.pointMenu = null }; return@let }
+    vm.pointMenuTarget?.let { t ->
+        // the point the menu was opened for, wherever it is in the plan now (PointMenuTarget)
+        val i = vm.pointMenu
+        val p = i?.let { vm.waypoints.getOrNull(it) }
+        if (i == null || p == null) { LaunchedEffect(t) { vm.closePointMenu("its point is no longer in the plan") }; return@let }
         val name = vm.stopName(p)
-        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.pointMenu = null }) {
+        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.closePointMenu("point left the visible map (onGone)") }) {
             PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip()) { a ->
                 when (a) {
-                    PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu(i)
-                    PointAction.END_HERE -> vm.endRouteAt(i)
-                    PointAction.GOOGLE -> {
-                        vm.pointMenu = null
-                        com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, p.lat, p.lon))
+                    PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu()
+                    PointAction.END_HERE -> vm.endRouteAt()
+                    PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
+                        com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, g.lat, g.lon))
                     }
-                    PointAction.DELETE -> vm.deletePointFromMenu(i)
+                    PointAction.DELETE -> vm.deletePointFromMenu()
                 }
             }
         }
+    }
+    vm.nearChoice?.let { n ->
+        val i = n.target.indexIn(vm.waypoints)
+        if (i == null) { LaunchedEffect(n) { vm.closeMapOverlays("its point is no longer in the plan") }; return@let }
+        Anchored(c, n.at, cameraTick, topPx, bottomPx, onGone = { vm.closeMapOverlays("held spot left the visible map (onGone)") }) {
+            NearPointMenu(i, vm.waypoints.size, vm.stopName(vm.waypoints[i]),
+                onOptions = vm::nearChoiceOptions, onNewPoint = vm::nearChoiceNewPoint)
+        }
+    }
+}
+
+/**
+ * Hold 48–80 dp from a route point (MapGestures.NearPointChoice): was the point meant, or a new point here?
+ * Field 2026-10-21: holds the owner felt "on the point" were 68 dp away and silently added a new point.
+ */
+@Composable
+fun NearPointMenu(index: Int, count: Int, name: String?, onOptions: () -> Unit, onNewPoint: () -> Unit,
+                  modifier: Modifier = Modifier) {
+    MenuSurface(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
+            Box(Modifier.size(24.dp).clip(CircleShape).background(stopColor(index, count)), contentAlignment = Alignment.Center) {
+                Text("${index + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(10.dp))
+            Text("Near ${stopLabel(index, count, name)}", style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HoldMenuItem(Icons.Outlined.TripOrigin, "Point ${index + 1}: options", supporting = "Delete and more",
+            onClick = onOptions)
+        HoldMenuItem(Icons.Outlined.AddLocationAlt, "New point here", onClick = onNewPoint)
     }
 }
 
