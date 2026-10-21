@@ -542,7 +542,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The start mode (Plan / Navigate) is decided (database checked for an unfinished tour). */
     var startModeKnown by mutableStateOf(false)
         private set
-    /** The user moved the map by a gesture since the app started (StartCamera never jumps after that). */
+    /** The user moved or held the map since the app started (StartCamera never jumps after that). */
     var userMovedMap = false
     /** StartCamera ran (centred or gave up) – reset each time the app comes to the front ([onAppStart]). */
     var startCameraDone = false

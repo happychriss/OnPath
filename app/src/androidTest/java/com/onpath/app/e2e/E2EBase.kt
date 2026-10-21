@@ -54,16 +54,48 @@ abstract class E2EBase {
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)
         beforeLaunch()
+        wakeScreen()
         dismissSystemDialogs()
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        showOverLockScreen()
         waitForMap()
         dismissSystemDialogs()
+    }
+
+    /**
+     * A real phone (owner's Pixel, 2026-10-21) dozes and keeps a PIN/fingerprint lock: every injected touch then went
+     * to a black, locked screen ("Start here" never shown, no hold event at all). Wake it and keep it awake for the run.
+     * A secure lock cannot be dismissed from adb, so the activity is shown over it instead (see [showOverLockScreen]).
+     */
+    protected fun wakeScreen() {
+        if (!device.isScreenOn) device.wakeUp()
+        device.executeShellCommand("svc power stayon true")
+        // Swipe-only lock: dismiss it. Never with a PIN/fingerprint lock: there "dismiss" opens the fingerprint bouncer,
+        // which lies over our (shown-when-locked) window and swallows every touch – the 2026-10-21 phone failure.
+        val km = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.app.KeyguardManager::class.java)
+        if (km?.isDeviceSecure == false) device.executeShellCommand("wm dismiss-keyguard")
+        Thread.sleep(300)
+    }
+
+    /** The app's window over the (secure) lock screen, screen kept on – test only, the app itself does not do this. */
+    protected fun showOverLockScreen() {
+        scenario.onActivity { a ->
+            if (Build.VERSION.SDK_INT >= 27) { a.setShowWhenLocked(true); a.setTurnScreenOn(true) }
+            else @Suppress("DEPRECATION") a.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+            a.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        if (!device.isScreenOn) device.wakeUp()
+        device.waitForIdle(2_000)
     }
 
     /** True when the real BRouter data is on the emulator (routes follow ways, points are snapped). */
     protected var realRouting = false
 
-    @After fun closeApp() { if (::scenario.isInitialized) scenario.close() }
+    @After fun closeApp() {
+        if (::scenario.isInitialized) scenario.close()
+        device.executeShellCommand("svc power stayon false") // the phone's normal screen timeout again
+    }
 
     // ------------------------------------------------------------------------------------------------ steps
 

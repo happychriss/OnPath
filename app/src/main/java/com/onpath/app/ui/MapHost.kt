@@ -135,6 +135,9 @@ fun MapHost(
                     com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
                 }
                 if (vm.routePeek) return true // peeking at the map: no edits
+                // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
+                // closed the menu just opened ("held spot left the visible map"; real phone 2026-10-21, fix after ~5 s).
+                if (press == MapGestures.Press.HOLD) vm.userMovedMap = true
                 val edit = vm.canEditMap
                 val pts = vm.waypoints.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
