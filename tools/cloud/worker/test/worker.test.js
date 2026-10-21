@@ -125,7 +125,7 @@ test("request → queued, deduped, build starts, cell ready, manifest and file w
   await putStatus(env, MERAN, { state: "ready", version: "2026-10-19", osm_date: "2026-10-19", size: 1000, execution: short });
   const cfg = config(env);
   await pump(env, cfg, Date.now(), g);
-  j = (await statusFor(env, cfg, [MERAN, BOZEN], 1));
+  j = (await statusFor(env, cfg, [MERAN, BOZEN], 2));
   assert.deepEqual(j.cells.map((x) => x.state), ["ready", "building"]);
 
   // execution ends without a status for Bozen → failed attempt, queued again, next execution starts
@@ -174,7 +174,7 @@ test("permanent failure and retries are limited", async () => {
     ex.succeededCount = 1;
     await pump(env, cfg, Date.now(), g);
   }
-  let j = await statusFor(env, cfg, [MERAN], 1);
+  let j = await statusFor(env, cfg, [MERAN], 2);
   assert.deepEqual(j.cells[0], { id: MERAN, state: "failed", reason: "Build step 'base' failed" });
   // asking again does not queue it (same pipeline revision) ...
   j = await requestCells(env, cfg, { cells: [MERAN] });
@@ -218,7 +218,7 @@ test("a refused start is counted and the cells stay queued", async () => {
   assert.ok((await pump(env, cfg, Date.now(), g)).error);
   assert.ok((await pump(env, cfg, Date.now(), g)).error);
   assert.equal((await pump(env, cfg, Date.now(), g)).guard, true);
-  assert.equal((await statusFor(env, cfg, [MERAN], 1)).cells[0].state, "queued");
+  assert.equal((await statusFor(env, cfg, [MERAN], 2)).cells[0].state, "queued");
 });
 
 test("validation and limits", async () => {
