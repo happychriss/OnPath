@@ -1,0 +1,188 @@
+package com.onpath.app.cells
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+
+class CellStoreTest {
+    @get:Rule val tmp = TemporaryFolder()
+
+    private val a = CellId(543, 361)
+    private val b = CellId(544, 361)
+
+    private fun download(store: CellStore, c: CellId, version: String, tag: String = "$c@$version"): CellStore.Download {
+        val dir = File(File(store.downloadDir, c.id), version)
+        return CellStore.Download(CellFixtures.cell(dir, c, version, tag), dir)
+    }
+
+    private fun tileOf(dir: File, layer: String, z: Int, x: Int, y: Int): String? =
+        PmTiles.Reader(File(dir, layer)).use { r -> r.tile(z, x, y)?.let { String(it) } }
+
+    private fun poiNames(dir: File): List<String> {
+        val out = ArrayList<String>()
+        GeoJsonMerge.forEachFeature(File(dir, "pois.geojson")) { out += it.asJsonObject["properties"].asJsonObject["name"].asString }
+        return out.sorted()
+    }
+
+    @Test fun addReplaceDelete() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        assertNull(store.mapDir())
+
+        val g1 = store.apply(add = listOf(download(store, a, "2026-10-19")))
+        assertEquals(1, g1.number)
+        assertEquals(g1.dir, store.mapDir())
+        assertEquals(listOf(a), store.installed().map { it.id })
+        assertEquals("$a@2026-10-19:base.pmtiles:12/${a.x * 4 + 3}/${a.y * 4}", tileOf(g1.dir, "base.pmtiles", 12, a.x * 4 + 3, a.y * 4))
+        PmTiles.Reader(File(g1.dir, "terrain.pmtiles")).use { assertEquals(4, it.header.tileType); assertEquals(1, it.header.tileCompression) }
+        assertEquals(3, poiNames(g1.dir).size)
+        assertTrue(File(data, "addresses/${a.id}.sqlite").isFile)
+        assertTrue(store.installed().single().bytes.getValue("base.pmtiles") > 0)
+
+        // neighbour: both cells in one generation, the previous one kept until the map confirms
+        val g2 = store.apply(add = listOf(download(store, b, "2026-10-19")))
+        assertEquals(setOf(a, b), g2.cellIds)
+        assertEquals(21L * 2, PmTiles.verify(File(g2.dir, "base.pmtiles")))
+        assertNotNull(tileOf(g2.dir, "overlays.pmtiles", 10, a.x, a.y)); assertNotNull(tileOf(g2.dir, "overlays.pmtiles", 10, b.x, b.y))
+        assertEquals(6, poiNames(g2.dir).size)
+        assertTrue(g1.dir.isDirectory)
+        store.confirmLoaded(g2.number)
+        assertFalse(g1.dir.exists())
+
+        // replace a with a new version: a's tiles new, b's untouched
+        val g3 = store.apply(add = listOf(download(store, a, "2026-11-19")))
+        assertEquals("2026-11-19", g3.cell(a)!!.version)
+        assertEquals("$a@2026-11-19:base.pmtiles:10/${a.x}/${a.y}", tileOf(g3.dir, "base.pmtiles", 10, a.x, a.y))
+        assertEquals("$b@2026-10-19:base.pmtiles:10/${b.x}/${b.y}", tileOf(g3.dir, "base.pmtiles", 10, b.x, b.y))
+        assertEquals(6, poiNames(g3.dir).size)
+        assertEquals(3, poiNames(g3.dir).count { it.startsWith("$a@2026-11-19") })
+        assertEquals("2026-10-19", g3.cell(b)!!.version)
+        assertTrue(g3.cell(b)!!.bytes.getValue("base.pmtiles") > 0) // sizes carried over
+
+        // delete a
+        val g4 = store.remove(setOf(a))
+        assertEquals(setOf(b), g4.cellIds)
+        assertNull(tileOf(g4.dir, "base.pmtiles", 10, a.x, a.y))
+        assertFalse(File(data, "addresses/${a.id}.sqlite").exists())
+        assertTrue(File(data, "addresses/${b.id}.sqlite").isFile)
+
+        // delete the last cell: no store any more → the data folder is used as before
+        store.remove(setOf(b))
+        assertNull(store.mapDir())
+        assertTrue(store.installed().isEmpty())
+    }
+
+    @Test fun brokenInputKeepsThePreviousGeneration() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        val d = download(store, b, "v1")
+        val base = File(d.dir, "base.pmtiles")
+        base.writeBytes(base.readBytes().copyOf(200)) // damaged after verification (disk error)
+        try { store.apply(add = listOf(d)); fail("expected StoreException") } catch (e: CellStore.StoreException) {
+            assertTrue(e.message!!, e.message!!.contains("previous map is kept"))
+        }
+        assertEquals(g1.number, store.current()!!.number)
+        assertEquals(setOf(a), store.current()!!.cellIds)
+        assertTrue(store.storeDir.listFiles()!!.none { it.name.endsWith(".tmp") })
+    }
+
+    /** A crash while writing leaves a .tmp generation: it is never used and cleaned up. */
+    @Test fun crashLeftoversAreIgnored() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        val half = File(store.storeDir, "g000002.tmp").apply { mkdirs() }
+        File(half, "base.pmtiles").writeText("half written")
+        assertEquals(g1.number, store.current()!!.number) // tmp is not a generation
+        // a renamed generation without (or with broken) store.json is skipped too
+        File(store.storeDir, "g000003").mkdirs()
+        assertEquals(g1.number, store.current()!!.number)
+        store.cleanTemp()
+        assertFalse(half.exists())
+        // the next change gets a fresh number and works
+        val g = store.apply(add = listOf(download(store, b, "v1")))
+        assertEquals(setOf(a, b), g.cellIds)
+    }
+
+    @Test fun lowStorageChangesNothing() {
+        val data = tmp.newFolder("data")
+        var free = Long.MAX_VALUE
+        val store = CellStore(data) { free }
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        free = 10L * 1024 * 1024
+        try { store.apply(add = listOf(download(store, b, "v1"))); fail() } catch (e: CellStore.StoreException) {
+            assertTrue(e.message!!, e.message!!.startsWith("Not enough space"))
+        }
+        assertEquals(g1.number, store.current()!!.number)
+        assertTrue(store.storeDir.listFiles()!!.none { it.name.endsWith(".tmp") })
+    }
+
+    /** Cells override a format-2 region package where both exist; the package fills the rest and z < 10. */
+    @Test fun regionPackageAndCellsJoin() {
+        val data = tmp.newFolder("data")
+        CellFixtures.region(data)
+        val store = CellStore(data)
+        val g = store.apply(add = listOf(download(store, a, "v1")))
+        val c = CellId(543, 362) // region-only cell
+        assertEquals("$a@v1:base.pmtiles:11/${a.x * 2}/${a.y * 2}", tileOf(g.dir, "base.pmtiles", 11, a.x * 2, a.y * 2))
+        assertEquals("region:base.pmtiles:11/${c.x * 2}/${c.y * 2}", tileOf(g.dir, "base.pmtiles", 11, c.x * 2, c.y * 2))
+        assertEquals("region:base.pmtiles:9/${a.x / 2}/${a.y / 2}", tileOf(g.dir, "base.pmtiles", 9, a.x / 2, a.y / 2))
+        // the cell's z12 tiles exist, region has none there
+        assertNotNull(tileOf(g.dir, "base.pmtiles", 12, a.x * 4, a.y * 4))
+        // POIs: the region's POI inside cell a is replaced by the cell's three
+        val names = poiNames(g.dir)
+        assertEquals(3 + 3, names.size)
+        assertEquals(3, names.count { it.startsWith("region") })
+        // vector_layers of region and cell united
+        PmTiles.Reader(File(g.dir, "base.pmtiles")).use { r ->
+            val ids = org.json.JSONObject(r.metadata()).getJSONArray("vector_layers").let { arr -> (0 until arr.length()).map { arr.getJSONObject(it).getString("id") } }
+            assertEquals(setOf("r-base", "base"), ids.toSet())
+        }
+        assertFalse(store.regionChanged())
+        // a new region package import → regionChanged → re-joined
+        Thread.sleep(1100)
+        CellFixtures.region(data, tag = "region2")
+        assertTrue(store.regionChanged())
+        val g2 = store.apply()
+        assertEquals("region2:base.pmtiles:11/${c.x * 2}/${c.y * 2}", tileOf(g2.dir, "base.pmtiles", 11, c.x * 2, c.y * 2))
+        assertEquals("$a@v1:base.pmtiles:11/${a.x * 2}/${a.y * 2}", tileOf(g2.dir, "base.pmtiles", 11, a.x * 2, a.y * 2))
+    }
+
+    /** A format-1 package (no overlays.pmtiles) is not joined: once cells exist, the map shows cells only. */
+    @Test fun formatOnePackageIsNotJoined() {
+        val data = tmp.newFolder("data")
+        CellFixtures.region(data)
+        File(data, "overlays.pmtiles").delete()
+        File(data, "routes.geojson").writeText("{}")
+        val store = CellStore(data)
+        val g = store.apply(add = listOf(download(store, a, "v1")))
+        assertTrue(g.region.isEmpty())
+        assertNull(tileOf(g.dir, "base.pmtiles", 9, a.x / 2, a.y / 2))
+    }
+
+    @Test fun rollbackGoesToThePreviousGeneration() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        val g2 = store.apply(add = listOf(download(store, b, "v1")))
+        assertTrue(store.rollback(g2.number))
+        assertEquals(g1.number, store.current()!!.number)
+        assertFalse(store.rollback(g1.number)) // nothing older to go back to
+    }
+
+    @Test fun pendingDownloadsAreFound() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        download(store, a, "v1")
+        File(File(store.downloadDir, b.id), "v1.part").mkdirs() // unfinished: not a pending download
+        assertEquals(listOf(a), store.pendingDownloads().map { it.manifest.cell })
+    }
+}
