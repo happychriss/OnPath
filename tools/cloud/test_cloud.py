@@ -79,7 +79,7 @@ printf 'tiles' > "$V/base.pmtiles"; printf '{}' > "$V/build.json"
 mkdir -p "$V/addresses"; printf "db" > "$V/addresses/$1-$2-$3.sqlite"
 cat > "$V/manifest.json" <<EOF
 {"cell": "$1-$2-$3", "osm_date": "2026-10-19", "total_size": 5,
- "files": [{"name": "base.pmtiles", "size": 5, "sha256": "x", "url": "cells/f1/$1/$2/$3/2026-10-19/base.pmtiles"}]}
+ "files": [{"name": "base.pmtiles", "size": 5, "sha256": "x", "url": "cells/f2/$1/$2/$3/2026-10-19/base.pmtiles"}]}
 EOF
 echo '{"version": "2026-10-19"}' > "$D/current.json"
 echo "[00:00:02] ==> manifest"
@@ -100,7 +100,7 @@ class BuilderFlow(unittest.TestCase):
         self.env = {"PATH": os.environ["PATH"], "SRC_DIR": os.path.join(t, "src"), "WORK": os.path.join(t, "work"),
                     "DATA_ROOT": os.path.join(t, "store"), "R2_LOCAL_DIR": os.path.join(t, "r2"),
                     "SOURCES_JSON": os.path.join(t, "sources.json"), "BUILD_CELL": self.fake,
-                    "CLOUD_RUN_EXECUTION": "onpath-cell-test-abc12", "FORMAT": "1"}
+                    "CLOUD_RUN_EXECUTION": "onpath-cell-test-abc12", "FORMAT": "2"}
         self.downloads = []
 
     def tearDown(self):
@@ -115,13 +115,13 @@ class BuilderFlow(unittest.TestCase):
         return job_build.Builder(self.env, download=self.download)
 
     def status(self, cid):
-        with open(os.path.join(self.tmp.name, "r2", "status", "f1", f"{cid}.json")) as f:
+        with open(os.path.join(self.tmp.name, "r2", "status", "f2", f"{cid}.json")) as f:
             return json.load(f)
 
     def test_builds_uploads_and_reports(self):
         b = self.builder()
         self.assertEqual(b.main([(10, 543, 361), (10, 544, 361)]), 0)
-        r = os.path.join(self.tmp.name, "r2", "cells", "f1", "10", "543", "361")
+        r = os.path.join(self.tmp.name, "r2", "cells", "f2", "10", "543", "361")
         self.assertEqual(json.load(open(os.path.join(r, "current.json"))), {"version": "2026-10-19"})
         self.assertTrue(os.path.exists(os.path.join(r, "2026-10-19", "base.pmtiles")))
         self.assertTrue(os.path.exists(os.path.join(r, "2026-10-19", "manifest.json")))
@@ -133,7 +133,7 @@ class BuilderFlow(unittest.TestCase):
         self.assertEqual(len(self.downloads), 1)
         self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "src", "osm", "test.osm.pbf")))
         # local output removed after upload (Cloud Run disk = memory)
-        self.assertFalse(os.path.exists(os.path.join(self.env["DATA_ROOT"], "cells", "f1", "10", "543", "361",
+        self.assertFalse(os.path.exists(os.path.join(self.env["DATA_ROOT"], "cells", "f2", "10", "543", "361",
                                                      "2026-10-19")))
 
     def test_fresh_source_from_bucket_is_not_downloaded(self):
