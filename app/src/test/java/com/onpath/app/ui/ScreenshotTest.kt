@@ -154,6 +154,39 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.FULL), PlanCallbacks()) }
     }
 
+    // ------------------------------------------------ Points section (owner 2026-10-21): three sheet sizes with points
+    private val stops = listOf(routePts[0], routePts[40], routePts[80], routePts[120])
+    private val stopNames = listOf("Algund", null, "Leiter Alm", "Hochmuth")
+    private fun pointRows(plan: List<GeoPoint> = stops, line: List<GeoPoint>? = routePts) =
+        com.onpath.app.routing.PlanPoints.rows(plan, line) { stopNames.getOrNull(it) }
+    private fun planWithPoints(size: PlanSize, rows: List<com.onpath.app.routing.PlanPointRow> = pointRows(),
+                               r: PlannedRoute? = route, routing: Boolean = false, roundTrip: Boolean = false) =
+        planUi(n = rows.size, r = r, routing = routing, size = size).copy(points = rows, roundTrip = roundTrip)
+
+    @Test fun planPointsSmall() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.MINI), PlanCallbacks()) } }
+
+    @Test fun planPointsHalf() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT), PlanCallbacks()) } }
+
+    /** Full: profile, then Points (≡ marker name +distance ✕), then way types – scrolls inside the sheet. */
+    @Test fun planPointsFull() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) } }
+
+    /** Full while the route is calculated: the Points list right away, straight-line distances (~). */
+    @Test fun planPointsFullRouting() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
+    }
+
+    /** Round trip: start = goal shown once with ↺ and the way back; Round trip greyed out. */
+    @Test fun planPointsRoundTrip() = paparazzi.snapshot {
+        val loop = stops.take(3) + stops[0]
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(loop, null), r = null, roundTrip = true)
+            .copy(pointCount = 4), PlanCallbacks()) }
+    }
+
+    /** One point only: Start, Reverse / Round trip disabled. */
+    @Test fun planPointsOne() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(stops.take(1), null), r = null), PlanCallbacks()) }
+    }
+
     /** Drop-down menus are popups (not drawn by Paparazzi): draw their items where the menu opens. */
     @Composable
     private fun MenuCard(modifier: Modifier, items: @Composable () -> Unit) {

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Flag
@@ -108,6 +109,7 @@ fun MapOverlayHost(
                         com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, g.lat, g.lon))
                     }
                     PointAction.DELETE -> vm.deletePointFromMenu()
+                    PointAction.ALL_POINTS -> vm.openAllPoints()
                 }
             }
         }
@@ -251,7 +253,12 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
             PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start & finish here",
                 supporting = "Same loop, starts here") { onAction(a) }
             PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
-            PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
+            PointAction.DELETE -> {
+                // every point menu: the plan sheet's Points list (reorder, delete, names); Delete stays last
+                HoldMenuItem(Icons.AutoMirrored.Outlined.List, "All points…") { onAction(PointAction.ALL_POINTS) }
+                HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
+            }
+            PointAction.ALL_POINTS -> Unit
         }
     }
 }
