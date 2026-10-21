@@ -644,19 +644,20 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * Index of the marker nearest to a screen point within ~26 dp (screen space, so the same at every
      * zoom; overlapping markers → the nearest one), or -1. Never throws.
      */
-    fun waypointAt(screen: PointF, points: List<GeoPoint>? = null): Int = try {
+    fun waypointAt(screen: PointF, points: List<GeoPoint>? = null,
+                   radiusDp: Float = com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP, log: Boolean = true): Int = try {
         // the plan's own list when given (field report 0.8.3: a hold on a point added a new one – the list kept with
         // the drawing can lag behind the plan, e.g. an update skipped while the style reloads)
         val pts = points ?: shownWaypoints
         val xs = FloatArray(pts.size); val ys = FloatArray(pts.size)
         pts.forEachIndexed { i, p -> map.projection.toScreenLocation(LatLng(p.lat, p.lon)).let { xs[i] = it.x; ys[i] = it.y } }
-        val hit = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP * density)
-        if (hit < 0) {
-            // diagnostics: a press just outside a marker (why a hold added a point instead of opening the menu)
-            val near = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, 80f * density)
-            if (near >= 0) Problems.info("map", "Press %.0f dp from point ${near + 1} – outside the %.0f dp marker radius (drawn %d, plan %d)"
+        val hit = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, radiusDp * density)
+        if (hit < 0 && log) {
+            // diagnostics: a press just outside a marker (each press its own line in the gesture log)
+            val near = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, 2 * com.onpath.app.ui.MapGestures.NEAR_RADIUS_DP * density)
+            if (near >= 0) Problems.trace("map", "Press %.0f dp from point ${near + 1} – outside the %.0f dp marker radius (near zone %.0f dp; drawn %d, plan %d)"
                 .format(java.util.Locale.ROOT, kotlin.math.hypot(xs[near] - screen.x, ys[near] - screen.y) / density,
-                    com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP, shownWaypoints.size, pts.size))
+                    radiusDp, com.onpath.app.ui.MapGestures.NEAR_RADIUS_DP, shownWaypoints.size, pts.size))
         }
         hit
     } catch (e: Exception) { Problems.warn("map", "Marker tap test failed, tap treated as no marker", e); -1 }

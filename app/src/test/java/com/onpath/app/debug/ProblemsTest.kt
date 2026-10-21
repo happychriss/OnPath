@@ -53,4 +53,32 @@ class ProblemsTest {
         assertNotNull(c)
         assertTrue(c!!.detail!!.contains("IllegalStateException"))
     }
+
+    /** Field 2026-10-21: 21 different "Hold: …" lines were merged into one entry (first text, × 21) – details lost. */
+    @Test fun traceLinesAreNeverMerged() {
+        repeat(21) { Problems.trace("map", "Hold: nearest point 2 at ${10 + it} dp") }
+        val ev = Problems.events()
+        assertEquals(21, ev.size)
+        assertEquals("Hold: nearest point 2 at 30 dp", ev.first().message) // newest first
+        assertEquals("Hold: nearest point 2 at 10 dp", ev.last().message)
+        assertTrue("traces are not problems", Problems.snapshot().isEmpty())
+    }
+
+    @Test fun traceKeepsTheLast50WithTheirOwnTime() {
+        repeat(70) { Problems.trace("map", "event $it") }
+        val ev = Problems.events()
+        assertEquals(Problems.MAX_EVENTS, ev.size)
+        assertEquals("event 69", ev.first().message)
+        assertEquals("event 20", ev.last().message)
+        assertTrue(ev.all { it.time > 0 })
+    }
+
+    @Test fun traceIsExportedAndSurvivesARestart() {
+        Problems.trace("plan", "Point menu: Delete tapped, plan 8 → 7")
+        val json = Problems.toJson()
+        assertEquals("Point menu: Delete tapped, plan 8 → 7", json.getJSONArray("events").getJSONObject(0).getString("message"))
+        Problems.flushForTest()
+        Problems.init(dir)
+        assertEquals("Point menu: Delete tapped, plan 8 → 7", Problems.events().first().message)
+    }
 }

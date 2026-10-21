@@ -36,12 +36,22 @@ object Problems {
         val key: String get() = keyOf(area, message)
     }
 
+    /**
+     * One gesture / menu event (hold, press, point menu opened / action / closed): kept with its own text and time,
+     * never merged (field 2026-10-21: 21 different "Hold:" lines were stored as one entry with × 21).
+     */
+    data class Event(val time: Long, val area: String, val message: String)
+
+    /** How many [trace] events are kept (the most recent). */
+    const val MAX_EVENTS = 50
+
     private const val FILE = "problems.json"
     private const val MAX_ENTRIES = 300
     private const val TAG = "OnPath"
 
     private val lock = Any()
     private val entries = LinkedHashMap<String, Entry>()
+    private val events = ArrayDeque<Event>()
     private var file: File? = null
     private val writer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "problems-writer").apply { isDaemon = true } }
     @Volatile private var writePending = false
@@ -70,6 +80,13 @@ object Problems {
                             o.optLong("first"), o.optLong("last"), o.optInt("count", 1))
                         entries[e.key] = e
                     }
+                    val ev = JSONObject(f.readText()).optJSONArray("events") ?: JSONArray()
+                    events.clear()
+                    for (i in ev.length() - 1 downTo 0) { // stored newest first
+                        val o = ev.getJSONObject(i)
+                        events.addLast(Event(o.optLong("time"), o.optString("area"), o.optString("message")))
+                    }
+                    while (events.size > MAX_EVENTS) events.removeFirst()
                 }
             } catch (e: Exception) {
                 log(Level.WARN, "problems.json unreadable, starting empty: $e", null)
@@ -112,13 +129,38 @@ object Problems {
         }
     }
 
+    /**
+     * Records one event of a sequence that matters step by step (map holds, point menu opened / Delete / closed):
+     * every call is its own line with its own time – never merged like [report] – the last [MAX_EVENTS] are kept,
+     * written to logcat (tag OnPath) and into the diagnostics export (problems.json "events"). Never throws.
+     */
+    fun trace(area: String, message: String) {
+        try {
+            val e = Event(System.currentTimeMillis(), area, message.take(500))
+            synchronized(lock) {
+                events.addLast(e)
+                while (events.size > MAX_EVENTS) events.removeFirst()
+            }
+            log(Level.INFO, "[$area] $message", null)
+            scheduleWrite()
+        } catch (_: Throwable) {
+            // the event log itself must never break the app
+        }
+    }
+
+    /** Recent [trace] events, most recent first. */
+    fun events(): List<Event> = synchronized(lock) { events.reversed() }
+
+    /** Tests: write the file now. */
+    internal fun flushForTest() = writeNow()
+
     fun announcedSerious() { _newSerious.value = null }
 
     /** Most recent first. */
     fun snapshot(): List<Entry> = synchronized(lock) { entries.values.reversed() }
 
     fun clear() {
-        synchronized(lock) { entries.clear(); announced.clear(); _count.value = 0; _newSerious.value = null }
+        synchronized(lock) { entries.clear(); events.clear(); announced.clear(); _count.value = 0; _newSerious.value = null }
         scheduleWrite()
     }
 
@@ -130,7 +172,15 @@ object Problems {
             put(JSONObject().put("level", e.level.name).put("area", e.area).put("message", e.message)
                 .put("detail", e.detail ?: JSONObject.NULL).put("first", e.first).put("last", e.last).put("count", e.count))
         }
+    }).put("events", JSONArray().apply {
+        events().forEach { e ->
+            put(JSONObject().put("time", e.time).put("at", stamp(e.time)).put("area", e.area).put("message", e.message))
+        }
     })
+
+    private fun stamp(t: Long): String = try {
+        java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.ROOT).format(java.util.Date(t))
+    } catch (_: Throwable) { "" } // expected: never fails; the time in ms is there anyway
 
     /** Same problem = same area + message with numbers ignored (tile ids, coordinates, sizes change). */
     fun keyOf(area: String, message: String): String =

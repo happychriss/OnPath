@@ -33,6 +33,14 @@ class MapGesturesTest {
         // a POI already on the route has its marker on top of it: never added twice
         assertEquals(Action.PointMenu(2), plan(Press.HOLD, marker = 2, poi = true))
 
+    @Test fun holdNearAPointAsks() {
+        assertEquals(Action.NearPointChoice(3), MapGestures.decide(true, Press.HOLD, false, -1, false, false, near = 3))
+        assertEquals(Action.PointMenu(1), MapGestures.decide(true, Press.HOLD, false, 1, false, false, near = 3))
+        assertEquals(Action.PoiMenu, MapGestures.decide(true, Press.HOLD, false, -1, true, false, near = 3))
+        assertEquals(Action.None, MapGestures.decide(true, Press.TAP, false, -1, false, false, near = 3))
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false))
+    }
+
     // --- empty plan: the first hold asks how to start ---
     @Test fun firstHoldOnEmptyPlanOpensFirstPointMenu() {
         assertEquals(Action.FirstPointMenu, plan(Press.HOLD, empty = true))

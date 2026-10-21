@@ -420,6 +420,15 @@ class ScreenshotTest {
         }
     }
 
+    /** Hold 48–80 dp from point 2: was the point meant, or a new point here? */
+    @Test fun nearPointMenu() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(200.dp, 470.dp)) {
+                NearPointMenu(1, 4, null, onOptions = {}, onNewPoint = {})
+            }
+        }
+    }
+
     @Test fun confirmClear() = paparazzi.snapshot {
         OnPathTheme { Frame { PlanPanel(planUi(), PlanCallbacks()) }; ConfirmClearDialog(3, {}, {}) }
     }
