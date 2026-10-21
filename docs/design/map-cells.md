@@ -180,7 +180,7 @@ it are still in use.
 ## 7. Overview map (shipped in the app)
 
 Never a blank screen (R-01): the APK carries one small world overview – base z0–5 (Natural Earth: coast, water,
-borders, country and city names) and hillshade z0–6, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
+borders, country and city names) and a pre-rendered hill shade z0–7, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
 From zoom 10 the overview goes on **underneath** the detailed layers (fills, lines, relief – no labels, no Natural Earth
 urban areas), so the map is never empty beige outside the downloaded cells; an opaque cover in the background colour
 over the installed cells / region package hides it there (no offset lakes, no doubled relief) – `map/Overview.kt`

@@ -87,7 +87,7 @@ android {
     }
     // PMTiles in assets are read by byte range (MapLibre's asset source seeks): keep them stored, not deflated.
     androidResources { noCompress += "pmtiles" }
-    // Optional world overview map (base z0-5 + hill shade z0-6, docs/map-pipeline.md §9b), built by
+    // Optional world overview map (base z0-5 + pre-rendered hill shade z0-7, docs/map-pipeline.md §9b), built by
     // tools/build_overview.sh – map data, so not in git. Included when "-Ponpath.overviewAssets=DIR" (or env
     // ONPATH_OVERVIEW_ASSETS) points at a folder holding overview/*.pmtiles
     // (e.g. in ~/.gradle/gradle.properties). Without it the app works as before (map/Overview.kt).
