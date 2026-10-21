@@ -14,6 +14,8 @@ Options:
   --webp           store tiles as WebP lossless (MapLibre Native Android decodes them with BitmapFactory)
   --round M        round heights to M metres (e.g. 0.25) – the Terrarium blue channel then compresses well
   --cell Z/X/Y     tiles of one map cell (docs/design/map-cells.md §2): every tile z >= max(10, minzoom) inside it
+  --floor M        heights below M metres become M (e.g. 0: flat sea floor – the water fill covers it anyway, and
+                   flat tiles compress far better; the world overview z0-4 uses it)
   --cache DIR      keep the downloaded AWS PNGs in DIR/z/x/y.png (build_contours.py --cache reads the same folder)
 
 Tile ranges treat the bbox edges as exclusive: a bbox whose east/south edge lies exactly on a tile edge does not
@@ -113,15 +115,19 @@ def decode(data):
     return a[..., 0] * 256 + a[..., 1] + a[..., 2] / 256 - 32768
 
 
-def reencode(item, webp, step):
-    """Round heights to `step` m (0 = keep) and store as WebP lossless or PNG."""
+def reencode(item, webp, step, floor=None):
+    """Round heights to `step` m (0 = keep), raise heights below `floor` m to it (None = keep) and store as WebP
+    lossless or PNG."""
     import numpy as np
     from PIL import Image
     t, data = item
-    if not webp and not step:
+    if not webp and not step and floor is None:
         return t, data
-    if step:
-        e = np.round(decode(data) / step) * step + 32768
+    if step or floor is not None:
+        h = decode(data)
+        if floor is not None:
+            h = np.maximum(h, floor)
+        e = (np.round(h / step) * step if step else h) + 32768
         e = np.clip(e, 0, 65536 - 1 / 256)
         r = np.floor(e / 256)
         g = np.floor(e - r * 256)
@@ -148,6 +154,7 @@ def parse_args(argv=None):
     ap.add_argument("--maxzoom", type=int)
     ap.add_argument("--webp", action="store_true")
     ap.add_argument("--round", type=float, default=0.0)
+    ap.add_argument("--floor", type=float)
     ap.add_argument("--cell")
     ap.add_argument("--cache")
     a = ap.parse_args(argv)
@@ -192,10 +199,10 @@ def main(argv=None):
           f"round {a.round} m" if a.round else "exact", flush=True)
     data = fetch_all(tiles, a.cache)
     src_bytes = sum(len(v) for v in data.values())
-    if a.webp or a.round:
+    if a.webp or a.round or a.floor is not None:
         from functools import partial
         with Pool() as pool:
-            data = dict(pool.map(partial(reencode, webp=a.webp, step=a.round), list(data.items()), chunksize=4))
+            data = dict(pool.map(partial(reencode, webp=a.webp, step=a.round, floor=a.floor), list(data.items()), chunksize=4))
     tmp = a.out + ".tmp"
     with open(tmp, "wb") as f:
         w = Writer(f)

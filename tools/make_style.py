@@ -33,6 +33,8 @@ DEFAULT_THEME = "classic"
 
 T, Z = token, zoom
 NAME = ["coalesce", ["get", "name:de"], ["get", "name_de"], ["get", "name"]]
+# country labels left out when zoomed out (their names would cover their neighbours): ISO 3166 codes
+MICRO_STATES = ["AD", "LI", "MC", "SM", "VA", "MT", "JE", "GG", "IM", "FO", "AX", "GI"]
 
 L = []
 FMT = 1  # map package format the style is built for (build())
@@ -725,8 +727,17 @@ def labels():
                   "text-padding": 8,
                   "symbol-sort-key": ["-", 0, ["coalesce", ["get", "ele"], 0]]},
           paint={"text-color": T("label.peak.color"), **h})
-    # places
+    # places. Zoomed out (overview, docs/map-pipeline.md §9b): countries z2-6, capitals and big cities (OpenMapTiles
+    # rank <= 3: Munich, Milan, Vienna …) z4-5, every city from z6, towns from z8. rank = 1 is the biggest; the
+    # sort key places big ones first where labels collide. Lowest layer = lowest placement priority.
     place = ["get", "class"]
+    by_rank = ["coalesce", ["get", "rank"], 99]
+    layer(id_="place-country", type="symbol", source="base", **{"source-layer": "place"}, minzoom=2, maxzoom=7,
+          filter=["all", ["==", place, "country"], ["!", ["in", ["coalesce", ["get", "iso_a2"], ""], ["literal", MICRO_STATES]]]],
+          layout={"text-field": NAME, "text-font": MED, "text-size": interp(2, 10, 6, 13),
+                  "text-transform": "uppercase", "text-letter-spacing": 0.12, "text-max-width": 6,
+                  "text-padding": 6, "symbol-sort-key": by_rank},
+          paint={"text-color": T("label.country.color"), **h})
     layer(id_="place-hamlet", type="symbol", source="base", **{"source-layer": "place"}, minzoom=12,
           filter=["in", place, ["literal", ["hamlet", "isolated_dwelling", "neighbourhood", "quarter", "locality"]]],
           layout={"text-field": NAME, "text-font": MINOR, "text-size": interp(12, 10.5, 16, 13),
@@ -742,15 +753,20 @@ def labels():
           layout={"text-field": NAME, "text-font": MED, "text-size": interp(10, 11, 14, 14, 16, 16),
                   "text-max-width": 7},
           paint={"text-color": T("label.village.color"), **h})
-    layer(id_="place-town", type="symbol", source="base", **{"source-layer": "place"}, minzoom=7,
+    layer(id_="place-town", type="symbol", source="base", **{"source-layer": "place"}, minzoom=8,
           filter=["==", place, "town"],
-          layout={"text-field": NAME, "text-font": MED, "text-size": interp(7, 11, 12, 15, 15, 18),
-                  "text-max-width": 7},
+          layout={"text-field": NAME, "text-font": MED, "text-size": interp(8, 11.5, 12, 15, 15, 18),
+                  "text-max-width": 7, "symbol-sort-key": by_rank},
           paint={"text-color": T("label.town.color"), **h})
-    layer(id_="place-city", type="symbol", source="base", **{"source-layer": "place"}, minzoom=5, maxzoom=15,
+    layer(id_="place-city", type="symbol", source="base", **{"source-layer": "place"}, minzoom=6, maxzoom=15,
           filter=["==", place, "city"],
-          layout={"text-field": NAME, "text-font": MED, "text-size": interp(5, 12, 10, 16, 14, 21),
-                  "text-max-width": 7},
+          layout={"text-field": NAME, "text-font": MED, "text-size": interp(6, 12.5, 10, 16, 14, 21),
+                  "text-max-width": 7, "symbol-sort-key": by_rank},
+          paint={"text-color": T("label.city.color"), **h})
+    layer(id_="place-city-major", type="symbol", source="base", **{"source-layer": "place"}, minzoom=4, maxzoom=6,
+          filter=["all", ["==", place, "city"], ["any", ["<=", by_rank, 3], ["all", ["==", ["get", "capital"], 2], ["<=", by_rank, 6]]]],
+          layout={"text-field": NAME, "text-font": MED, "text-size": interp(4, 11, 6, 12.5),
+                  "text-max-width": 7, "symbol-sort-key": by_rank},
           paint={"text-color": T("label.city.color"), **h})
 
 

@@ -9462,6 +9462,108 @@
    }
   },
   {
+   "id": "place-country",
+   "type": "symbol",
+   "source": "base",
+   "source-layer": "place",
+   "minzoom": 2,
+   "maxzoom": 7,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "country"
+    ],
+    [
+     "!",
+     [
+      "in",
+      [
+       "coalesce",
+       [
+        "get",
+        "iso_a2"
+       ],
+       ""
+      ],
+      [
+       "literal",
+       [
+        "AD",
+        "LI",
+        "MC",
+        "SM",
+        "VA",
+        "MT",
+        "JE",
+        "GG",
+        "IM",
+        "FO",
+        "AX",
+        "GI"
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "coalesce",
+     [
+      "get",
+      "name:de"
+     ],
+     [
+      "get",
+      "name_de"
+     ],
+     [
+      "get",
+      "name"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     2,
+     10,
+     6,
+     13
+    ],
+    "text-transform": "uppercase",
+    "text-letter-spacing": 0.12,
+    "text-max-width": 6,
+    "text-padding": 6,
+    "symbol-sort-key": [
+     "coalesce",
+     [
+      "get",
+      "rank"
+     ],
+     99
+    ]
+   },
+   "paint": {
+    "text-color": "#6f5f78",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5,
+    "text-halo-blur": 0.3
+   }
+  },
+  {
    "id": "place-hamlet",
    "type": "symbol",
    "source": "base",
@@ -9649,7 +9751,7 @@
    "type": "symbol",
    "source": "base",
    "source-layer": "place",
-   "minzoom": 7,
+   "minzoom": 8,
    "filter": [
     "==",
     [
@@ -9686,14 +9788,22 @@
      [
       "zoom"
      ],
-     7,
-     11,
+     8,
+     11.5,
      12,
      15,
      15,
      18
     ],
-    "text-max-width": 7
+    "text-max-width": 7,
+    "symbol-sort-key": [
+     "coalesce",
+     [
+      "get",
+      "rank"
+     ],
+     99
+    ]
    },
    "paint": {
     "text-color": "#25221f",
@@ -9707,7 +9817,7 @@
    "type": "symbol",
    "source": "base",
    "source-layer": "place",
-   "minzoom": 5,
+   "minzoom": 6,
    "maxzoom": 15,
    "filter": [
     "==",
@@ -9745,14 +9855,128 @@
      [
       "zoom"
      ],
-     5,
-     12,
+     6,
+     12.5,
      10,
      16,
      14,
      21
     ],
-    "text-max-width": 7
+    "text-max-width": 7,
+    "symbol-sort-key": [
+     "coalesce",
+     [
+      "get",
+      "rank"
+     ],
+     99
+    ]
+   },
+   "paint": {
+    "text-color": "#1f1c19",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5,
+    "text-halo-blur": 0.3
+   }
+  },
+  {
+   "id": "place-city-major",
+   "type": "symbol",
+   "source": "base",
+   "source-layer": "place",
+   "minzoom": 4,
+   "maxzoom": 6,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "class"
+     ],
+     "city"
+    ],
+    [
+     "any",
+     [
+      "<=",
+      [
+       "coalesce",
+       [
+        "get",
+        "rank"
+       ],
+       99
+      ],
+      3
+     ],
+     [
+      "all",
+      [
+       "==",
+       [
+        "get",
+        "capital"
+       ],
+       2
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "rank"
+        ],
+        99
+       ],
+       6
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "coalesce",
+     [
+      "get",
+      "name:de"
+     ],
+     [
+      "get",
+      "name_de"
+     ],
+     [
+      "get",
+      "name"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     4,
+     11,
+     6,
+     12.5
+    ],
+    "text-max-width": 7,
+    "symbol-sort-key": [
+     "coalesce",
+     [
+      "get",
+      "rank"
+     ],
+     99
+    ]
    },
    "paint": {
     "text-color": "#1f1c19",
