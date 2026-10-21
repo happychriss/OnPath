@@ -201,7 +201,7 @@ done
    builds the image (~5 min), creates D1, deploys the Worker with the custom domain, creates the invoker key.
 2. `curl https://maps-test.free-your-pictures.org/v1/health` → `{"ok":true,"env":"test",…}`
 3. Full smoke test, **starts a real build of the Meran cell** (~5 min, first run longer: Planetiler sources and the
-   Trentino extract are downloaded once into the bucket):
+   Geofabrik extracts nord-est + austria are downloaded once into the bucket):
    ```bash
    ONPATH_APP_KEY=$(grep '^onpath.mapKey.test=' ~/.gradle/gradle.properties | cut -d= -f2) \
      tools/cloud/worker/smoke.sh https://maps-test.free-your-pictures.org
@@ -218,7 +218,7 @@ done
 | `tools/cloud/Dockerfile.job` (+ `.dockerignore`), `git-shim.sh` | Job image = zo image + `tools/` + entry point |
 | `tools/cloud/job.yaml` | Cloud Run Job definition (filled by the workflow, `gcloud run jobs replace`) |
 | `tools/cloud/job_build.py`, `r2.py` | Entry point: sources, `build_cell.sh`, upload, status files; stdlib S3 client. Also usable on zo with `R2_LOCAL_DIR` |
-| `tools/cloud/osm_sources.py`, `sources.json` | Extract choice from the Geofabrik index (§7e); pinned extracts + source limits |
+| `tools/cloud/osm_sources.py`, `sources.json` | Extract choice from the Geofabrik index (§7e); pinned extracts (none today) + source limits |
 | `tools/cloud/test_cloud.py` (+ `testdata/`) | Builder tests (SigV4 vectors, extract choice on a Geofabrik index subset, downloads/locks/limits, build/upload/status flow with a fake build) |
 | `tools/cloud/worker/` | Worker (`src/`), D1 migrations, `wrangler.toml` (test/production), tests (`node --test`), `smoke.sh` |
 | `.github/workflows/maps-deploy.yml` | Tests, then deploy test / production |
@@ -283,8 +283,12 @@ same OSM date would have had the same (immutable, cached) name. Now:
 
 Field test: a point outside South Tyrol gave "source data not available". Now every cell is built:
 - **Choice** (`tools/cloud/osm_sources.py`, standard library only): bbox B = cell + 5 km. (1) A *pinned* extract
-  (`sources.json`, today Trentino-Alto Adige with its conservative rectangles) wins when it contains the cell – South
-  Tyrol is built as before. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
+  (`sources.json` "sources", cover rectangles) wins when it contains the cell – **none today**: the Trentino-Alto
+  Adige pin was removed (owner 2026-10-21), South Tyrol uses the automatic choice like everywhere else (Meran →
+  nord-est + austria, the buffer crosses the main ridge; Bozen → nord-est). Cells already built from the Trentino
+  extract stay as they are until their normal refresh (osm_date older than `REFRESH_DAYS` 35, asked for again) – no
+  schema bump, the content is the same kind. `osm/trentino_alto_adige.osm.pbf` in the source bucket is unused and
+  can be deleted by hand. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
   region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
   dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
   states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–4 leaves touching B,
@@ -297,12 +301,13 @@ Field test: a point outside South Tyrol gave "source data not available". Now ev
   renumbered (~2 s, ~150 MB). Whole-extract renumbering would need ~1 GB RAM per 1 GB extract (alps: 2.5 GB, 221 s,
   4.3 GB of files) and cannot merge two extracts. zo keeps `CUT=renumbered` (`run.sh`, 3 GB limit).
 - **Cache** in the source bucket: `osm/geofabrik/<path>.osm.pbf` + `.meta.json` (download time, size, seconds),
-  `osm/geofabrik/index-v1.json` (weekly), `osm/downloads.json`. Downloads stream straight into the bucket mount
+  `osm/geofabrik/index-v1.json` (weekly). Downloads stream straight into the bucket mount
   (no RAM copy) and the cut reads the extract from there. `<extract>.lock` (O_EXCL) – a second job waits for the
   first one's download (stale after 45 min). Older than `max_age_days` (30) → downloaded again.
-- **Cost guards:** `max_downloads_per_day` (10): a *new* area beyond it fails with `defer` (the doorman counts no
-  attempt; asking again queues it), an old extract is used a little longer; `max_extract_mb` (2500) refuses huge
-  extracts for good. The doorman's execution limits stay.
+- **Cost guards:** `max_extract_mb` (2500) refuses huge extracts for good; the per-extract lock keeps two jobs
+  from downloading the same file; the doorman's execution limits stay. The daily download limit (10 new extracts
+  per day, with a "deferred" failure the doorman counted no attempt for) was **removed** (owner 2026-10-21) – for
+  now; `osm/downloads.json` is no longer written.
 - **Doorman:** no coverage check any more (no `sources.json` in the Worker). ETA: `+NEW_AREA_S` (90) for a cell
   whose z7 block (8 × 8 cells) has no built/building cell yet; while the builder downloads, its own estimate
   (`source_eta_s` in the status file, step `download`) replaces the guess.

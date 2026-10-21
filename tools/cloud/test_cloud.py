@@ -71,10 +71,15 @@ class Cells(unittest.TestCase):
                 job_build.parse_cells(bad)
 
     def test_pinned_source(self):
+        # the mechanism stays; sources.json pins nothing (owner 2026-10-21: South Tyrol uses the automatic choice)
         with open(os.path.join(HERE, "sources.json")) as f:
-            src = json.load(f)
-        self.assertEqual(osm_sources.pick_pinned(src, cell_bbox(10, 543, 361))["id"], "trentino_alto_adige")  # Meran
-        self.assertIsNone(osm_sources.pick_pinned(src, cell_bbox(10, 536, 360)))                              # Swiss side
+            real = json.load(f)
+        self.assertEqual(real["sources"], [])
+        self.assertNotIn("max_downloads_per_day", real)
+        self.assertIsNone(osm_sources.pick_pinned(real, cell_bbox(10, 543, 361)))
+        src = {"sources": [{"id": "pin", "url": "u", "cover": [[10.55, 46.20, 11.95, 46.85]]}]}
+        self.assertEqual(osm_sources.pick_pinned(src, cell_bbox(10, 543, 361))["id"], "pin")  # Meran
+        self.assertIsNone(osm_sources.pick_pinned(src, cell_bbox(10, 536, 360)))             # Swiss side
 
 
 class SourceSelection(unittest.TestCase):
@@ -233,8 +238,9 @@ class BuilderFlow(unittest.TestCase):
     def test_choose_sources(self):
         self.real_sources()
         b = self.builder()
-        self.assertEqual([s["id"] for s in b.choose_sources(10, 543, 361)], ["trentino_alto_adige"])  # pinned
-        self.assertEqual(b.choose_sources(10, 543, 361)[0]["path"], self.src("trentino_alto_adige.osm.pbf"))
+        # Meran: no pin any more – nord-est, plus austria where the 5 km buffer crosses the main ridge
+        self.assertEqual([s["id"] for s in b.choose_sources(10, 543, 361)], ["nord-est", "austria"])
+        self.assertEqual([s["id"] for s in b.choose_sources(10, 545, 362)], ["nord-est"])  # Bozen south
         got = b.choose_sources(10, 544, 359)  # Innsbruck
         self.assertEqual([s["url"] for s in got], ["https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf",
                                                    "https://download.geofabrik.de/europe/austria-latest.osm.pbf"])
@@ -258,7 +264,7 @@ class BuilderFlow(unittest.TestCase):
         meta = json.load(open(self.src("geofabrik", "europe", "austria.meta.json")))
         self.assertEqual((meta["id"], meta["size"]), ("austria", 1_100_000))
         self.assertFalse(os.path.exists(self.src("geofabrik", "europe", "austria.osm.pbf.lock")))
-        self.assertEqual(len(json.load(open(self.src("downloads.json")))["downloads"]), 2)
+        self.assertFalse(os.path.exists(self.src("downloads.json")))  # no daily download limit any more
 
     def test_old_extract_is_downloaded_again(self):
         self.real_sources()
@@ -276,23 +282,16 @@ class BuilderFlow(unittest.TestCase):
         self.builder().main([(10, 547, 358)])
         self.assertEqual(self.downloads, [])
 
-    def test_daily_download_limit(self):
+    def test_no_daily_download_limit(self):
+        # removed 2026-10-21 (owner): many downloads in the last day no longer hold back a new area
         self.real_sources()
         with open(self.src("downloads.json"), "w") as f:
-            json.dump({"downloads": [{"t": int(time.time()), "url": "x"}] * 10}, f)
+            json.dump({"downloads": [{"t": int(time.time()), "url": "x"}] * 50}, f)
         self.builder().main([(10, 547, 358)])
         s = self.status("10-547-358")
-        self.assertEqual((s["state"], s["reason"], s.get("defer")), ("failed", job_build.DEFERRED, True))
-        self.assertEqual(self.downloads, [])
-        # an old extract that exists is used a little longer instead
-        p = self.src("geofabrik", "europe", "austria.osm.pbf")
-        os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p, "wb") as f:
-            f.write(b"\0" * 1_100_000)
-        os.utime(p, (1, 1))
-        self.builder().main([(10, 547, 358)])
-        self.assertEqual(self.status("10-547-358")["state"], "ready")
-        self.assertEqual(self.downloads, [])
+        self.assertEqual(s["state"], "ready")
+        self.assertNotIn("defer", s)
+        self.assertEqual(self.downloads, ["https://download.geofabrik.de/europe/austria-latest.osm.pbf"])
 
     def test_waits_for_another_jobs_download(self):
         self.real_sources()
