@@ -783,6 +783,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var styleVersion by mutableStateOf(0)
         private set
 
+    /** Reload the map style as after a map update (emulator test of the core features, CorePlanE2ETest). */
+    @androidx.annotation.VisibleForTesting
+    fun reloadMapStyleForTest() { styleVersion++ }
+
     /** Imports the onpath-data zip or a single data/style file picked by the user. */
     fun importData(uri: Uri) {
         if (dataBusy != null) return
