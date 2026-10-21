@@ -37,11 +37,13 @@ object Overview {
     const val COVER = "detail-cover"
     const val HILLSHADE_FILE = "hillshade.pmtiles"
     const val HILLSHADE_SOURCE = "overview-hillshade"
-    /** Paint of the pre-rendered hill shade (its look is baked into the images). */
-    internal var hillshadePaint = """{"raster-opacity":1,"raster-resampling":"linear","raster-fade-duration":0}"""
+    /** Paint of the pre-rendered hill shade (its look is baked into the images; tools/build_hillshade.py). */
+    private const val HILLSHADE_PAINT = """{"raster-resampling":"linear","raster-fade-duration":0}"""
+    /** Full up to the split, then calmer: outside the downloaded areas it is only a magnified stand-in. */
+    private const val RELIEF_OPACITY = """["interpolate",["linear"],["zoom"],10,1,12,0.6,14,0.45]"""
+    /** Overview land cover (Natural Earth ice …) over the opaque relief tiles. */
+    private const val LANDCOVER_OPACITY = 0.6
     private const val DEFAULT_BACKGROUND = "#f6f4ec"
-    /** Opacity of the pre-rendered relief from [SPLIT_ZOOM] on, outside the downloaded areas. */
-    private const val UNDER_RELIEF_OPACITY = """["interpolate",["linear"],["zoom"],10,0.85,12,0.55,14,0.4]"""
 
     /** Detailed source → overview source and its URL. */
     val SOURCES = mapOf(
@@ -91,6 +93,8 @@ object Overview {
             val layers = root.optJSONArray("layers") ?: return styleJson
             val out = JSONArray()
             val under = JSONArray()
+            /** The pre-rendered relief: opaque tiles (shade composited onto the background), so right above it. */
+            var relief: JSONObject? = null
             var background = DEFAULT_BACKGROUND
             var underAt = 0
             var rasterDone = false
@@ -108,13 +112,22 @@ object Overview {
                 if ((ov == null && !isRelief) || min >= SPLIT_ZOOM) { out.put(l); continue }
                 val copy: JSONObject? = when {
                     l.optString("source-layer") in SKIPPED_SOURCE_LAYERS -> null
-                    isRelief -> if (rasterDone) null else {
-                        rasterDone = true
-                        JSONObject().put("id", "hillshade$SUFFIX").put("type", "raster").put("source", HILLSHADE_SOURCE)
-                            .put("paint", JSONObject(hillshadePaint))
+                    isRelief -> {
+                        // one layer for every zoom: full below the split, calmer the deeper one zooms outside the
+                        // downloaded areas (there it is only a stand-in, magnified); the cover hides it inside them
+                        if (!rasterDone) relief = JSONObject().put("id", "hillshade$SUFFIX").put("type", "raster")
+                            .put("source", HILLSHADE_SOURCE).put("paint", JSONObject(HILLSHADE_PAINT).put("raster-opacity", JSONArray(RELIEF_OPACITY)))
                             .also { c -> l.optJSONObject("layout")?.let { c.put("layout", JSONObject(it.toString())) } }
+                        rasterDone = true
+                        null
                     }
-                    else -> JSONObject(l.toString()).put("id", l.getString("id") + SUFFIX).put("source", ov!!.first)
+                    else -> JSONObject(l.toString()).put("id", l.getString("id") + SUFFIX).put("source", ov!!.first).also { c ->
+                        // the relief lies under the fills: Natural Earth ice / land cover lets it through
+                        if (raster && c.optString("type") == "fill" && c.optString("source-layer") == "landcover") {
+                            val paint = c.optJSONObject("paint") ?: JSONObject().also { c.put("paint", it) }
+                            if (!paint.has("fill-opacity")) paint.put("fill-opacity", LANDCOVER_OPACITY)
+                        }
+                    }
                 }
                 if (copy != null) {
                     if (min > 0) copy.put("minzoom", min)
@@ -126,21 +139,20 @@ object Overview {
                         u.put("id", copy.getString("id").removeSuffix(SUFFIX) + UNDER)
                         u.put("minzoom", SPLIT_ZOOM)
                         if (max >= 24.0) u.remove("maxzoom") else u.put("maxzoom", max)
-                        // the magnified world relief gets calmer the deeper one zooms (it is only a stand-in there)
-                        if (u.optString("type") == "raster") u.getJSONObject("paint").put("raster-opacity", JSONArray(UNDER_RELIEF_OPACITY))
                         under.put(u)
                     }
                 }
                 // a detailed layer that ends below the split is drawn only by its copy
                 if (max > SPLIT_ZOOM) { l.put("minzoom", SPLIT_ZOOM); out.put(l) }
             }
-            val coverLayer = if (under.length() > 0 && cover.isNotEmpty()) {
+            val coverLayer = if ((under.length() > 0 || relief != null) && cover.isNotEmpty()) {
                 sources.put(COVER, JSONObject().put("type", "geojson").put("data", coverGeoJson(cover)))
                 JSONObject().put("id", COVER).put("type", "fill").put("source", COVER).put("minzoom", SPLIT_ZOOM)
                     .put("paint", JSONObject().put("fill-color", background).put("fill-antialias", false))
             } else null
             val all = JSONArray()
             fun putUnder() {
+                relief?.let { all.put(it) }
                 for (j in 0 until under.length()) all.put(under.get(j))
                 coverLayer?.let { all.put(it) }
             }
