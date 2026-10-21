@@ -325,7 +325,7 @@ def railways():
 
 def route_bands():
     # One transparent green band without edges for every activity (owner 2026-10-19, colour from the analysis in
-    # docs/design/map-colour-analysis.md), drawn under roads, paths and trails, so the ways stay readable on it.
+    # docs/design/map-colour-analysis.md), drawn over street / road lanes (they show green-tinted) and under paths and trails, so the ways stay readable.
     # extract_overlays.py merges route pieces into continuous lines (the transparent band would darken where pieces
     # meet); the original pieces of major routes come again as "majoronly" copies for the pink highlight and labels.
     # The app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
@@ -840,8 +840,10 @@ def build(theme=DEFAULT_THEME, fmt=1):
     FMT = fmt
     style_theme.use(theme)
     L.clear()
-    # Order matters: route bands sit below roads/paths/trails so they never wash out the trail lines.
-    bg(); landcover(); hillshade(); contours(); water(); buildings(); route_bands(); roads(); track_edges(); lanes(); railways(); paths()
+    # Order matters: route bands sit above the street / road lanes (owner 2026-10-21: under the streets only two thin
+    # pale edges showed, routes on small streets looked missing – Komoot tints the street) and below paths / trails /
+    # labels, so the path line inside the band stays sharp.
+    bg(); landcover(); hillshade(); contours(); water(); buildings(); roads(); track_edges(); lanes(); route_bands(); railways(); paths()
     green_ways()
     trails(); surface_loose(); access_restrictions()
     if FMT == 2:
