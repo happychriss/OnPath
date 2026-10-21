@@ -236,6 +236,9 @@ def tile_attrs(tags, hw):
         a["cwl"] = left
     if right:
         a["cwr"] = right
+    mtb = tags.get("mtb:scale", "")[:1]
+    if mtb.isdigit() and mtb != "0":
+        a["mtb"] = int(mtb)  # MTB difficulty: bike green ways skip hard trails (make_style.py green_ways)
     if hw == "via_ferrata" or "via_ferrata_scale" in tags:
         vf = tags.get("via_ferrata_scale", "")[:1]
         a["vf"] = int(vf) if vf.isdigit() else 0
