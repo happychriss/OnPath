@@ -452,6 +452,6 @@ Test region package in format 2 (`tools/build_region.sh --format 2`, bbox 10.70,
 base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 → **53 MB, zip 50 MB** (format 1, older build in
 `onpath-build/out/`: ~125 MB without addresses). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
 
-Open: the builder image on zo / in the cloud must be rebuilt (tippecanoe); `job.yaml` still says `FORMAT=1` (the
-doorman decides per execution); the app does not download cells yet (phase 2) and has to join cell tiles into one
+The cloud builds and serves format 2 only since 2026-10-21 (first cloud builds of both cells: identical sizes and
+seam check, map-hosting.md §7b). Open: the builder image on zo must be rebuilt (tippecanoe); the app does not download cells yet (phase 2) and has to join cell tiles into one
 store (§9 "Joining cells").

@@ -227,6 +227,26 @@ done
 Local checks: `cd tools/cloud && python3 -m unittest test_cloud`; `cd tools/cloud/worker && node --test`
 (Node ≥ 22.13, no npm install); `tools/cloud/worker/smoke.sh` (local `wrangler dev`, needs npm access).
 
+## 7b. First cloud builds (2026-10-21, test)
+
+Cells ship **only in format 2** (map-cells.md Q11): `FORMATS = "2"` in `wrangler.toml` (test and production, also
+the code default), `FORMAT=2` in `job.yaml` / `job_build.py`; `/v1/health` → `"formats":[2]`, `?format=1` → 404.
+The format-1 code paths stay (cost nothing); no app uses f1 cells.
+
+- 2026-10-20 (overnight, format 1): 10/543/361, 28 MB – the first ever cloud build, sources copied into the bucket.
+- 2026-10-21, format 2, one request (reason `point`) for 10/543/361 + 10/544/361 → one execution (2 vCPU, 8 GiB,
+  europe-west1), sources already in the bucket: requested 07:02:34 UTC, first cell `ready` 07:07 (~4¾ min incl.
+  start + source copy), second 07:10 (**~8 min for both**). Build times (`build.json`): 174 s (incl. renumber
+  11 s) and 158 s; slowest steps base 54–56 s (peak 0.82 GB), terrain 32–34 s (AWS downloads), overlays 18–19 s
+  + tippecanoe 9 s, contours 14–16 s. ~25 % slower than the laptop (129 / 137 s, map-cells.md §18).
+- Manifests `format: 2`, `pipeline: git:2a1a1c6`, sha256 of every downloaded file OK. Sizes **9.31 MB** and
+  **7.08 MB** – file by file the same as the local format-2 build (base 3.56 / 2.63, overlays 2.77 / 2.25, terrain
+  1.02 / 1.01, contours 0.69 / 0.63, pois 0.63 / 0.26, addresses 0.63 / 0.30 MB).
+- `seam_check.py` on the downloaded cells (border 11.25): 0 shared tiles in all four pmtiles, 0 POIs / house
+  numbers in both; overlays paths 79/79, trails 28/28, ways 49/49, routes 64/64, base transportation 24/24,
+  waterway 15/15 joined with equal attributes; contours 323 of 412 within 3 units (the same per-tile tracing offset
+  as locally) – identical to the local check.
+
 ## 8. Open points
 
 - **Release APK → which server:** `release.yml` builds the *debug* variant (fixed test signing key), so
@@ -239,9 +259,8 @@ Local checks: `cd tools/cloud && python3 -m unittest test_cloud`; `cd tools/clou
   **not cleaned up yet** – storage is cheap; add to the Worker cron later.
 - `sources.json` covers South Tyrol only (hand-made conservative rectangles). Next: Geofabrik leaf extracts chosen
   automatically and merged (reuse `sources.py`).
-- Format 2: `job_build.py` passes `FORMAT` to `build_cell.sh` and publishes `cells/f<FORMAT>/…`; the format-2
-  pipeline should honour that variable (or `FORMAT` handling is adjusted in one place). The Worker serves the
-  formats listed in `FORMATS`.
+- Format 1 cells built before the switch (test: 10/543/361 under `cells/f1/…`, D1 rows with format 1) are no
+  longer served; they can be deleted from the bucket by hand.
 - Not verified against the real services (no accounts used while writing): `gcloud run jobs replace` of `job.yaml`
   (gcsfuse volume syntax), the custom-role permission names, the Cloudflare token permission list, the first
   custom-domain deploy. The first owner run of steps 2–5 is the real test; fixes are small and local.
