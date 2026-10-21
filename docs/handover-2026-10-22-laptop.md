@@ -55,10 +55,10 @@ wipe and 0.9.0 installed fresh for the owner's test. If its report is missing, t
    overlay paths + streets (+ barrier nodes), schema bump `-s3`, style colours only by the class (fallback to tag rules for
    old cells); route-band sections above the user's T level dashed/greyed (runtime filter). Automatic consistency test:
    real routes never cross "forbidden", forbidden ways never routed. Owner reviews renders before main.
-7. **World map in release APKs:** release.yml downloads `base.pmtiles`, `hillshade.pmtiles`, `SHA256SUMS` from repo variable
-   `ONPATH_OVERVIEW_URL` (a folder URL ending in `/`). Files were built on the laptop (`onpath-build/t2/ov-v3`, gone with
-   the laptop off) – rebuild with `tools/build_overview.sh` (Natural Earth only, ~9 min; hill shade q60 z0–7) in a Cloud
-   Run one-off or CI job, upload to R2 `overview/<date>/` (or a GitHub release asset – ask the owner), set the variable.
+7. **World map in release APKs – DONE (laptop, 2026-10-22):** files (ov-v3: base z0–5 2.8 MB, hill shade z0–7 11.5 MB,
+   SHA256SUMS) are assets of the GitHub **pre-release `overview-2026-10-22`** (not an app release; the in-app updater only
+   reads releases/latest); repo variable `ONPATH_OVERVIEW_URL` points to it. The next release build includes the overview.
+   To rebuild: `tools/build_overview.sh` + a new pre-release, update the variable.
 8. **Release 0.9.0** once the owner's phone test is OK (version bump + release notes; e2e gate in CI).
 
 ## 4. Owner rules learned (keep)
