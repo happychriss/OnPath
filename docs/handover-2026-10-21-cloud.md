@@ -7,12 +7,12 @@ and `docs/core-features.md`. All work is on GitHub; nothing is only in the cloud
 
 | Where | What |
 | --- | --- |
-| `main` (released **0.8.5**) | everything below up to "E2E gate"; release.yml runs the emulator tests first (`needs: e2e`) |
-| branch **`e2e`** (not merged, not released) | hold diagnostics, **route ⋯ → "Points… (delete)"**, field-condition emulator tests, real routing data in CI, ANR handling – see §3 |
+| `main` (released **0.8.6**) | everything in this handover; release.yml runs the emulator tests first (`needs: e2e`) |
+| branch `e2e` | merged into main (can be deleted by the owner) |
 | GitHub Actions | `E2E` (emulator, every app push to main + gate in Release), `Release`, `Maps deploy` |
 
-Merge `e2e` into main when its emulator run is green (`gh api repos/happychriss/OnPath/actions/runs?branch=e2e`),
-then bump to 0.8.6 + `docs/release-notes/v0.8.6.md` (point list + hold diagnostics). The owner wants 0.8.6.
+The last emulator run on `e2e` was **green: 6 of 6** (incl. Navigate → Plan and "Go here" with moving GPS + real
+routing) → merged and released as **0.8.6** (point list + hold diagnostics).
 
 ## 2. Releases today (all from the cloud)
 
@@ -37,15 +37,15 @@ Owner, on 0.8.3 and **still on 0.8.5**: hold a point → no menu, a new point is
 What is known:
 - JVM tests (`CoreHoldPointTest`) and emulator tests pass for: plain map, turned map (137°), after a style reload,
   "Go here" from my location with a moving GPS fix and the map following, real BRouter routing (snapped points).
-- The **Navigate → Plan** emulator test (`CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`) was blocked by the
-  one-time "Keep recording after a restart?" dialog (fixed on `e2e`); its result is the first thing to check.
-- The last `e2e` run before the ANR fix failed everywhere at the very first hold with no "Hold:" log at all – most
-  likely a system dialog of the loaded CI emulator (now closed by `dismissSystemDialogs()`); check the newest run.
+- **Navigate → Plan** (`CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`) passes too (it was first blocked by
+  the one-time "Keep recording after a restart?" dialog – the test now answers it beforehand). One run failed
+  everywhere at the first hold with no "Hold:" log – a system dialog of the loaded CI emulator; the tests now close
+  such dialogs (`dismissSystemDialogs()`). **So the emulator does not reproduce the phone bug yet** – the phone log decides.
 - **Every hold in Plan now logs one line** (branch `e2e`, MapHost): `Hold: marker M, finger-down D, nearest point N
   at X dp, P points (Q drawn), follow F, bearing B°, menu open O`. It goes to logcat (tag `OnPath`) and to the
   diagnostics export.
 
-**Next (laptop, phone on USB):** build the `e2e` branch (`./gradlew assembleDebug`, `adb install -r`), then
+**Next (laptop, phone on USB):** phone on 0.8.6 (Settings → Updates), then
 `adb logcat -s OnPath | grep Hold:` while the owner holds a point. The line decides:
 - X large (> 26 dp) while the finger is on the drawn marker → touch coordinates and map projection disagree
   (suspect: MapView inside Compose after a mode / layout change, camera padding from Navigate);
@@ -57,7 +57,7 @@ Write the reproducing emulator / JVM test first, then the fix (owner rule).
 **Do not run the emulator tests on the owner's phone as they are:** `E2EBase.launch()` deletes the app's data folder
 and prefs (map areas, plan, settings). Make a phone-safe variant first, or use a second device.
 
-Workaround for the owner until fixed (branch `e2e`, ships with 0.8.6): route ⋯ → **Points… (delete)** – list of all
+Workaround for the owner until fixed (in 0.8.6): route ⋯ → **Points… (delete)** – list of all
 points with a Delete button, no map gesture (`PointListDialog`, tests: `PointListTest`, `deleteFromThePointList`).
 
 ## 4. Owner decisions today (keep)
@@ -73,7 +73,7 @@ points with a Delete button, no map gesture (`PointListDialog`, tests: `PointLis
 ## 5. Next tasks for the laptop (in order)
 
 1. **C1 hold bug** – §3.
-2. **Merge `e2e`, release 0.8.6** (point list + hold log) once the emulator run is green.
+2. (done) `e2e` merged, 0.8.6 released.
 3. **Fresh-install test procedure** (owner): before a test, export tours (My tours → export) if needed, then
    `adb uninstall com.onpath.app` (or `adb shell pm clear com.onpath.app` + delete
    `/sdcard/Android/data/com.onpath.app/files/onpath`), install the GitHub release APK, start: permissions, overview,

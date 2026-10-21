@@ -7,8 +7,8 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 - **cloud, 2026-10-21 evening – HANDOVER to the laptop: read `docs/handover-2026-10-21-cloud.md`.** Releases 0.8.1–0.8.5
   (map-loading UX, route bands over streets, check after routing, mobile data default, routing data refresh, update
   download resume), core-feature tests + emulator gate before every release. **Open core bug C1** (hold a point →
-  new point instead of menu, owner on 0.8.5) – not reproduced on the emulator yet; branch `e2e` has the hold log,
-  the Points… delete list and field-condition tests (merge + 0.8.6 when green). Owner: one world overview map (no
+  new point instead of menu, owner on 0.8.5) – not reproduced on the emulator yet; 0.8.6 has the hold log, the
+  Points… delete list and field-condition emulator tests (6/6 green). Owner: one world overview map (no
   Alps special case); testing starts as a fresh install.
 - **cloud, 2026-10-21 – cloud takes over cells / map hosting (owner: laptop not used):**
   - Crash fix (elevation profile drawn tiny), content schema for cells (`-s2` versions; old cells rebuilt + reloaded
