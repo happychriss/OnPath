@@ -158,11 +158,10 @@ internal class LegacyBackupStore(private val context: Context) : BackupStore {
 }
 
 /** A folder the user picked (Settings → Backup → Choose folder, e.g. a synced Drive / Nextcloud folder). */
-internal class TreeBackupStore(context: Context, private val tree: Uri) : BackupStore {
+internal class TreeBackupStore(context: Context, private val tree: Uri, override val label: String) : BackupStore {
     private val resolver = context.contentResolver
     private val ops = FileOps(resolver)
     override val key = Backups.treeKey(tree)
-    override val label by lazy { BackupFolder.label(context, tree) }
 
     private fun parent(deleted: Boolean): Uri {
         val root = try { BackupFolder.rootDoc(tree) } catch (e: Exception) { throw BackupException("the chosen folder is not available", e) }

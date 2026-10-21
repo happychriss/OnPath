@@ -111,6 +111,9 @@ fun SettingsScreen(
     /** Settings → "Offline maps" (downloaded map areas); null = section hidden. */
     offlineMaps: OfflineMapsUi? = null,
     offlineMapsCb: OfflineMapsCallbacks = OfflineMapsCallbacks(),
+    /** Settings → "Backup" (tours and routes as GPX in Documents/OnPath); null = section hidden. */
+    backup: BackupUi? = null,
+    backupCb: BackupCallbacks = BackupCallbacks(),
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -271,6 +274,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (backup != null) item { BackupSection(backup, backupCb) }
                 if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                 item {
                     Section("Map data") {

@@ -57,7 +57,8 @@ object Backups {
     internal fun store(c: Context): BackupStore {
         val tree = prefs(c).getString("tree", null)?.let(Uri::parse)
         return when {
-            tree != null -> TreeBackupStore(c, tree)
+            // the folder's name was read once when it was chosen (a cloud provider may answer slowly)
+            tree != null -> TreeBackupStore(c, tree, prefs(c).getString("treeLabel", null) ?: "chosen folder")
             Build.VERSION.SDK_INT >= 29 -> MediaStoreBackupStore(c)
             else -> LegacyBackupStore(c)
         }
@@ -99,12 +100,15 @@ object Backups {
             a.contentResolver.takePersistableUriPermission(tree,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         } catch (e: Exception) { Problems.warn("backup", "Folder access could not be kept – it may stop after a restart", e) }
-        prefs(a).edit().putString("tree", tree?.toString()).apply()
         if (old != null && old != tree?.toString()) try {
             a.contentResolver.releasePersistableUriPermission(Uri.parse(old),
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         } catch (e: Exception) { Problems.info("backup", "Old folder access not released", e) }
-        refreshStatus(a)
+        executor.execute {
+            val label = tree?.let { BackupFolder.label(a, it) }
+            prefs(a).edit().putString("tree", tree?.toString()).putString("treeLabel", label).remove("lastError").commit()
+            refreshStatus(a)
+        }
         queue?.syncAll(missingOnly = true)
     }
 
@@ -184,6 +188,19 @@ object Backups {
         val r = BackupRestore.Result(tours, plans, skipped.coerceAtLeast(0), failed)
         Problems.info("backup", "Restore: ${BackupRestore.summary(r)}")
         return r
+    }
+
+    /**
+     * Forgets which file belongs to which tour and the folder settings – what a reinstall does (emulator test of the
+     * restore flow, CoreBackupE2ETest). The files stay in the folder.
+     */
+    fun forgetLikeReinstall(context: Context) {
+        val a = ctx(context)
+        File(a.filesDir, INDEX_FILE).delete()
+        prefs(a).edit().clear().putBoolean("restoreOffered", true).apply()
+        index = BackupIndex(File(a.filesDir, INDEX_FILE))
+        failure.value = null
+        refreshStatus(a)
     }
 
     /** Restore was offered once on an empty database (first start after a reinstall / on a new phone). */

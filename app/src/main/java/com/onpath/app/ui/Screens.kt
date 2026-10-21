@@ -240,6 +240,10 @@ fun RoutesScreen(
     onRename: (Tour, String) -> Unit = { _, _ -> },
     initialConfirmDelete: Tour? = null,
     initialRename: Tour? = null,
+    /** ⋮ → Export all (one ZIP of GPX files). */
+    onExportAll: () -> Unit = {},
+    /** ⋮ → Recycle bin. */
+    onRecycleBin: () -> Unit = {},
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -251,6 +255,7 @@ fun RoutesScreen(
                 TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
                     Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
                 }
+                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty())
             }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -287,7 +292,8 @@ fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Delete, null) },
         title = { Text("Delete “${t.name}”?") },
-        text = { Text("This ${t.kind.label.lowercase()} is removed from this phone. This cannot be undone.") },
+        text = { Text("This ${t.kind.label.lowercase()} goes to the recycle bin (My routes → ⋮ → Recycle bin). " +
+            "You can restore it there for ${com.onpath.app.backup.RecycleBin.DAYS} days.") },
         confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete", color = OnPathColors.Bad) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
     )
@@ -331,6 +337,21 @@ private fun TourCard(
                 else if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete)
+        }
+    }
+}
+
+/** ⋮ in the My routes title bar: Export all (ZIP), Recycle bin. */
+@Composable
+private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExport: Boolean) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, Modifier.size(48.dp)) { Icon(Icons.Filled.MoreVert, "More") }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text("Export all (ZIP)") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, enabled = canExport,
+                onClick = { open = false; onExportAll() }, modifier = Modifier.heightIn(min = 48.dp))
+            DropdownMenuItem(text = { Text("Recycle bin") }, leadingIcon = { Icon(Icons.Outlined.DeleteSweep, null) },
+                onClick = { open = false; onRecycleBin() }, modifier = Modifier.heightIn(min = 48.dp))
         }
     }
 }
