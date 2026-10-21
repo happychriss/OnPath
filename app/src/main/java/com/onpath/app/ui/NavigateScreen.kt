@@ -355,16 +355,20 @@ private object NoIntrinsicWidth : androidx.compose.ui.layout.LayoutModifier {
         measurable: androidx.compose.ui.layout.IntrinsicMeasurable, height: Int) = 0
 }
 
-/** Own position for an emergency call; tap copies "lat, lon" (paste into a message or any map app). */
+/**
+ * Own position for an emergency call; tap copies "lat, lon" (paste into a message or any map app). The confirmation
+ * "copied ✓" stays in the line (owner rule: no self-dismissing toast) while the screen is shown.
+ */
 @Composable
 private fun PositionLine(text: String, copy: String?) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var copied by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
         .clickable(enabled = copy != null, onClickLabel = "Copy position") {
             try {
                 val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 cm.setPrimaryClip(android.content.ClipData.newPlainText("Position", copy))
-                android.widget.Toast.makeText(context, "Position copied", android.widget.Toast.LENGTH_SHORT).show()
+                copied = true
             } catch (e: Exception) {
                 com.onpath.app.debug.Problems.warn("ui", "Position could not be copied", e)
             }
@@ -373,7 +377,8 @@ private fun PositionLine(text: String, copy: String?) {
         verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Filled.MyLocation, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(if (copied) "$text · copied ✓" else text, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

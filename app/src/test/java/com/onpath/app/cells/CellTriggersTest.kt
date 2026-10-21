@@ -52,6 +52,20 @@ class CellTriggersTest {
         assertEquals(Triple(listOf(east), CellReason.NEAR, false), f.requests[1])
     }
 
+    /** A tap asks first (owner 2026-10-21): the preview requests nothing; where the detailed map is, nothing to ask. */
+    @Test fun tapPreviewAsksTheServerNothing() {
+        val f = FakeCells()
+        val want = CellTriggers(f).preview(nearEdge)
+        assertEquals(listOf(meran, east), want.take(2))
+        assertTrue(f.requests.isEmpty())
+        assertTrue(CellTriggers(FakeCells(installed = mutableSetOf(meran))).preview(middle).isEmpty())
+        // after "Load": the same regions are asked for, the job is about the tapped point
+        val job = CellTriggers(f).pointSet(nearEdge, CellWhy.TAPPED)!!
+        assertEquals(want.toSet(), job.cells.toSet())
+        assertEquals(CellWhy.TAPPED, job.why)
+        assertTrue(CellTriggers(f).preview(nearEdge).isEmpty()) // all asked for already
+    }
+
     @Test fun t1PointWithDetailedMapAsksNothing() {
         val f = FakeCells(installed = mutableSetOf(meran))
         assertNull(CellTriggers(f).pointSet(middle))

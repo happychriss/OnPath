@@ -27,7 +27,8 @@ class OverviewTest {
 
     @Test fun lowZoomLayersComeFromOverview() {
         val out = Overview.merge(style, setOf("base.pmtiles", "terrain.pmtiles"))
-        assertEquals(listOf("background", "hillshade-nw~overview", "hillshade-nw", "water~overview", "water",
+        assertEquals(listOf("background", "hillshade-nw~under", "water~under", "rail~under",
+            "hillshade-nw~overview", "hillshade-nw", "water~overview", "water",
             "rail~overview", "rail", "buildings", "lowonly~overview", "routes-hike"), ids(out))
         val src = JSONObject(out).getJSONObject("sources")
         assertEquals("pmtiles://asset://overview/base.pmtiles", src.getJSONObject("overview").getString("url"))
@@ -40,6 +41,55 @@ class OverviewTest {
         assertEquals(6.0, layer(out, "lowonly~overview").getDouble("maxzoom"), 0.0)
         assertFalse(layer(out, "buildings").has("maxzoom"))
         assertFalse(layer(out, "routes-hike").has("minzoom"))
+    }
+
+    /** Field test 0.8.7: from z10 the overview goes on under the detailed layers; the cover hides it where cells are. */
+    @Test fun overviewGoesOnUnderTheDetailedMapAndIsCoveredWhereCellsAre() {
+        val cell = doubleArrayOf(10.8984375, 46.5588603, 11.25, 46.8000594)
+        val out = Overview.merge(style, setOf("base.pmtiles", "terrain.pmtiles"), listOf(cell))
+        assertEquals(listOf("background", "hillshade-nw~under", "water~under", "rail~under", "detail-cover"), ids(out).take(5))
+        val u = layer(out, "water~under")
+        assertEquals("overview", u.getString("source"))
+        assertEquals(10.0, u.getDouble("minzoom"), 0.0)
+        assertFalse(u.has("maxzoom"))
+        assertEquals(17.0, layer(out, "hillshade-nw~under").getDouble("maxzoom"), 0.0)
+        val cover = layer(out, "detail-cover")
+        assertEquals(10.0, cover.getDouble("minzoom"), 0.0)
+        assertEquals("#f6f4ec", cover.getJSONObject("paint").getString("fill-color"))
+        val ring = JSONObject(out).getJSONObject("sources").getJSONObject("detail-cover").getJSONObject("data")
+            .getJSONArray("features").getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates").getJSONArray(0)
+        assertEquals(5, ring.length())
+        assertEquals(10.8984375, ring.getJSONArray(0).getDouble(0), 1e-9)
+        assertEquals(46.8000594, ring.getJSONArray(2).getDouble(1), 1e-9)
+    }
+
+    @Test fun overviewLabelsAndUrbanAreasStopAtTheSplit() {
+        val s = """{"version":8,"sources":{"base":{"type":"vector","url":"pmtiles://file:///d/base.pmtiles"}},
+          "layers":[{"id":"background","type":"background","paint":{"background-color":"#ffeedd"}},
+            {"id":"landuse-residential","type":"fill","source":"base","source-layer":"landuse"},
+            {"id":"place-city","type":"symbol","source":"base","source-layer":"place","minzoom":6,"maxzoom":15}]}"""
+        val out = Overview.merge(s, setOf("base.pmtiles"), listOf(doubleArrayOf(0.0, 0.0, 1.0, 1.0)))
+        assertEquals(listOf("background", "landuse-residential", "place-city~overview", "place-city"), ids(out))
+        assertEquals(10.0, layer(out, "landuse-residential").getDouble("minzoom"), 0.0)
+        assertFalse(JSONObject(out).getJSONObject("sources").has("detail-cover"))
+    }
+
+    @Test fun preRenderedHillShadeReplacesTheDemCopies() {
+        val out = Overview.merge(style, setOf("base.pmtiles", "terrain.pmtiles", "hillshade.pmtiles"), listOf(doubleArrayOf(0.0, 0.0, 1.0, 1.0)))
+        val src = JSONObject(out).getJSONObject("sources")
+        assertFalse(src.has("overview-terrain"))
+        assertEquals("raster", src.getJSONObject("overview-hillshade").getString("type"))
+        assertEquals("pmtiles://asset://overview/hillshade.pmtiles", src.getJSONObject("overview-hillshade").getString("url"))
+        // opaque tiles: one raster layer right above the background, every zoom, calmer from z10, under the cover
+        val r = layer(out, "hillshade~overview")
+        assertEquals("raster", r.getString("type"))
+        assertEquals("overview-hillshade", r.getString("source"))
+        assertFalse(r.has("maxzoom"))
+        assertEquals("interpolate", r.getJSONObject("paint").getJSONArray("raster-opacity").getString(0))
+        assertEquals(listOf("background", "hillshade~overview", "water~under", "rail~under", "detail-cover"), ids(out).take(5))
+        assertFalse("hillshade~under" in ids(out))
+        assertEquals("terrain", layer(out, "hillshade-nw").getString("source"))
+        assertEquals(10.0, layer(out, "hillshade-nw").getDouble("minzoom"), 0.0)
     }
 
     @Test fun onlyBundledFilesAreUsed() {

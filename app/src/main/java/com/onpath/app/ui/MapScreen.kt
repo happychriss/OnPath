@@ -56,8 +56,8 @@ fun MapScreen(
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
-    /** Map centre + zoom, rounded (≈ 1 km, whole zoom steps below / above 10) – for the "Overview only" hint. */
-    var hintKey by remember { mutableStateOf<Triple<Double, Double, Boolean>?>(null) }
+    /** Visible map box (south, west, north, east; rounded ≈ 100 m) + 1 at z ≥ 10 / 0 below – "Overview only" hint, modal rule. */
+    var hintKey by remember { mutableStateOf<List<Double>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
 
@@ -103,9 +103,12 @@ fun MapScreen(
             onReady = { controller = it },
             onCamera = { map ->
                 scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
-                map.cameraPosition.target?.let { t ->
-                    hintKey = Triple(kotlin.math.round(t.latitude * 100) / 100, kotlin.math.round(t.longitude * 100) / 100,
-                        map.cameraPosition.zoom >= 10.0)
+                hintKey = try {
+                    val b = map.projection.visibleRegion.latLngBounds
+                    listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 } +
+                        (if (map.cameraPosition.zoom >= OverviewHintRule.MIN_ZOOM) 1.0 else 0.0)
+                } catch (e: Exception) {
+                    Problems.warn("map", "Visible map area unknown; overview hint hidden", e); null
                 }
             },
             modifier = Modifier.fillMaxSize(),
@@ -114,7 +117,9 @@ fun MapScreen(
         // the few seconds it loads and switches; panels stay usable on top.
         val updStates by vm.cells.states.collectAsState()
         val updInstalled by vm.cells.installed.collectAsState()
-        val mapUpdate = if (vm.mode == AppMode.PLAN) MapUpdates.of(updStates, updInstalled.map { it.id }.toSet()) else null
+        // no flash (owner rule): a load of a second never shows, whatever shows stays readable (NoFlash)
+        val mapUpdate = rememberNoFlash(if (vm.mode == AppMode.PLAN) MapUpdates.of(updStates, updInstalled.map { it.id }.toSet()) else null,
+            remember { NoFlash<MapUpdateUi>(stepKey = { it::class }) })
         MapUpdateLayer(mapUpdate, Modifier.fillMaxSize())
         MapSync(vm, controller, rec, location, panelHeightPx)
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
@@ -130,7 +135,8 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // A shared place is being looked up (link + address search take a moment): say so at once.
-        androidx.compose.animation.AnimatedVisibility(vm.sharedLookup,
+        val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
+        androidx.compose.animation.AnimatedVisibility(sharedLookup,
             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
             androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
@@ -143,19 +149,24 @@ fun MapScreen(
                 }
             }
         }
-        // "Overview only – set a point and the detailed map follows" (Plan, z ≥ 10, no detailed map at the centre)
+        // "Overview only – set a point and the detailed map follows" (Plan, z ≥ 10, a large part of the view without
+        // detailed map – OverviewHintRule); persistent while true, no flash while panning (NoFlash)
         val generation by vm.cells.generation.collectAsState()
-        val overviewOnly by produceState(false, hintKey, generation) {
+        val overviewView by produceState(false, hintKey, generation) {
             val k = hintKey
-            value = k != null && k.third && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                vm.overviewOnly(k.first, k.second, 10.0)
+            val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                vm.overviewOnly(k[0], k[1], k[2], k[3])
             }
+            // a route computed while the view has no detailed map is waited for (modal, owner 2026-10-21)
+            vm.viewWithoutDetail = without
+            value = without && k!![4] > 0
         }
-        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !vm.sharedLookup) {
+        val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
         }
         // A newer version of an area the user has: small hint while the server builds it (the veil is under the panels).
-        if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !vm.sharedLookup) {
+        if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !sharedLookup) {
             MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
@@ -244,12 +255,21 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     val cellStates by vm.cells.states.collectAsState()
     val cellsInstalled by vm.cells.installed.collectAsState()
-    val cellCard = vm.cellCardUi(cellStates, cellsInstalled)
-    val cellCb = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
-        onRetry = vm::cellCardRetry, onClose = vm::closeCellCard, onCancel = vm::cancelCellLoading,
-        onAllowLocation = onRequestLocation)
-    // building / downloading map areas: a clear modal overlay with Cancel (owner 2026-10-21)
-    if (cellCard?.wantsOverlay() == true) MapLoadOverlay(cellCard, cellCb)
+    // no flash (owner rule, field test 0.8.7): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
+    // whatever shows stays readable; a tap answers at once
+    val cellGate = remember { NoFlash<CellCardUi>(stepKey = CellCards::stepKey, urgent = CellCards::waitsForUser) }
+    val cellCard = rememberNoFlash(vm.cellCardUi(cellStates, cellsInstalled), cellGate)
+    fun acted(f: () -> Unit): () -> Unit = { cellGate.userActed(android.os.SystemClock.uptimeMillis()); f() }
+    val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
+        onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
+        onAllowLocation = acted(onRequestLocation))
+    // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
+    // time left and Cancel (owner 2026-10-21); ticks every second so the bar moves smoothly
+    val loadUi by produceState<MapLoadUi?>(null, cellStates, vm.cellJob, vm.mode) {
+        while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
+    }
+    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::hideLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
+    vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),

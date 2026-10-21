@@ -14,36 +14,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** The modal "maps are being built / loaded" panel (owner 2026-10-21): clear, Cancel only, Wi-Fi / mobile question. */
+/** The one modal while the user waits for the map of their area (owner 2026-10-21): plain words, %, time left, Cancel. */
 class MapLoadOverlayTest {
     @get:Rule val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)
 
-    private val rows = listOf(CellRow("Your point", "building map…", true), CellRow("Area to the east", "waiting", false))
-    private val building = CellCardUi.Working("Preparing map for this area – about 6 min",
-        "Getting the detailed map because you planned here.", rows, null, null, null, null)
-    private val downloading = CellCardUi.Working("Downloading 1 of 2 · 14 MB", "Updating the map for the new map style (small streets).",
-        listOf(CellRow("Your point", "ready ✓", true), CellRow("Area to the east", "38 %", false)), null, 0.4f, null, null)
-    private val question = CellCardUi.Working("Detailed map ready to download", "Getting the detailed map because you planned here.",
-        rows, null, null, MobileQuestion(2, 25L * 1_048_576), null)
-    private val offline = CellCardUi.Offline("No internet – the detailed map loads when you are online", null)
-    private val failed = CellCardUi.Failed("Could not prepare the map", "The map server did not answer.", retryable = true)
+    private val preparing = MapLoadUi(MapLoadUi.Kind.PREPARING, 34, 260, regions = 3, bytes = 27L * 1_048_576)
+    private val loading = MapLoadUi(MapLoadUi.Kind.LOADING, 91, 25, regions = 1, bytes = 9L * 1_048_576)
+    private val offline = MapLoadUi(MapLoadUi.Kind.OFFLINE, 47, null, regions = 2, bytes = 18L * 1_048_576)
+    private val failed = MapLoadUi(MapLoadUi.Kind.FAILED, 12, null, "Something went wrong while preparing it. Please try again.", retryable = true)
 
-    @Test fun whenTheOverlayShows() {
-        assertTrue(building.wantsOverlay())
-        assertTrue(question.wantsOverlay())
-        assertTrue(offline.wantsOverlay())
-        assertTrue(failed.wantsOverlay())
-        assertFalse(building.copy(wifiNote = "2 areas wait for Wi-Fi").wantsOverlay())
-        assertFalse(CellCardUi.Done(2, 20L * 1_048_576).wantsOverlay())
+    @Test fun texts() {
+        assertTrue(preparing.title == "Preparing the map for your area" && preparing.line == "About 4 minutes left")
+        assertTrue(loading.title == "Loading the map for your area" && loading.line == "Less than a minute left")
+        assertTrue(offline.paused)
+        assertFalse(loading.paused)
     }
 
-    @Test fun loading() = shot(building, downloading, question)
+    @Test fun loading() = shot(preparing, loading)
     @Test fun offlineAndFailed() = shot(offline, failed)
 
-    private fun shot(vararg uis: CellCardUi) = paparazzi.snapshot {
+    private fun shot(vararg uis: MapLoadUi) = paparazzi.snapshot {
         OnPathTheme {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                for (ui in uis) MapLoadPanel(ui, CellCardCallbacks())
+                for (ui in uis) MapLoadPanel(ui, MapLoadCallbacks())
             }
         }
     }
