@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Tour & plan backup: auto GPX to Documents/OnPath, restore after reinstall, recycle bin, Android backup, export all (owner) – since 2026-10-21
 
 
 ## Next
