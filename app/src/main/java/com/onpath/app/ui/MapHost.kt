@@ -12,11 +12,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.hypot
@@ -237,21 +232,9 @@ fun MapHost(
 /** How long a press must last in plan mode before it does anything. */
 const val HOLD_MS = 300L
 
-/**
- * Vibration when a hold is armed: [MapGestures.Buzz.ONE] one short pulse, [MapGestures.Buzz.TWO] a double pulse
- * (route point). Falls back to the view's haptic feedback when there is no vibrator. Never throws.
- */
+/** Hold armed (ring full): a very light tick, through the one plan haptics helper (Haptics). Never throws. */
 private fun buzz(view: View, b: MapGestures.Buzz) {
-    if (b == MapGestures.Buzz.NONE) return
-    val done = runCatching {
-        val ctx = view.context
-        val v = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(VibratorManager::class.java)?.defaultVibrator
-        else @Suppress("DEPRECATION") ctx.getSystemService(Vibrator::class.java)
-        if (v == null || !v.hasVibrator()) false
-        else { v.vibrate(VibrationEffect.createWaveform(MapGestures.pattern(b), -1)); true }
-    }.onFailure { com.onpath.app.debug.Problems.info("ui", "Vibration failed, haptic feedback used instead", it) }.getOrDefault(false)
-    if (!done) view.performHapticFeedback(
-        if (b == MapGestures.Buzz.TWO) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.CONTEXT_CLICK)
+    if (b == MapGestures.Buzz.TICK) Haptics.play(view.context, PlanHaptics.feel(PlanEdit.MENU_OPENED))
 }
 
 /** Follows one finger on the map: how long it was held without moving (for the plan-mode hold). */
