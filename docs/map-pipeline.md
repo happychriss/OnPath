@@ -46,7 +46,7 @@ region (name, bbox, OSM URL)
 **Format 2** (`--format 2`, design: `docs/design/map-data-size.md`): the six overlay GeoJSON files become ONE vector
 tile file `overlays.pmtiles` (`extract_overlays.py --tiles --smooth` → `tools/build_overlays.sh`, tippecanoe), and
 the base map is trimmed (`--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de`, then
-`tools/trim_base.sh` drops path / track lines at z13–14). Details: section 5b. Format 1 stays the default until map
+`tools/trim_base.sh` drops path / track and small-street lines at z13–14). Details: section 5b. Format 1 stays the default until map
 cells are live (owner Q9); the app reads both.
 
 "Required" = the app's missing-data screen (`data/DataFiles.kt`) asks for it. Optional files may be
@@ -180,7 +180,8 @@ draws differently; it does not list every surface.
 python3 tools/extract_overlays.py region.osm.pbf OUT bbox… --no-geojson --tiles TILES --smooth   # *.ndjson per layer
 tools/build_overlays.sh TILES overlays.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra contours.pmtiles]
 java -jar planetiler.jar … --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de
-tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track at z>=13, no park name points
+tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track/minor/service lines at z>=13
+                                                      # (names stay), no park name points
 ```
 
 `build_overlays.sh` runs tippecanoe once per layer (`-r1 --no-feature-limit --no-tile-size-limit
@@ -195,18 +196,22 @@ once the style reads them from `overlays`.
 | --- | --- | --- |
 | `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" |
 | `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` 1 tunnel, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded) |
+| `streets` | 13–14 | small streets (owner 2026-10-21), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
 | `trails` | 13–14 | as `trails.geojson` |
 | `ways` | 13–14 | as `ways.geojson` |
 | `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped) |
 | `trailnames` | 13–14 | as `trailnames.geojson` (the app's search reads them from here when the GeoJSON is missing) |
 | (`contour`) | 12–13 | later: the layer of `contours.pmtiles` |
 
-**Smoothing (`--smooth`, default for format 2, owner 2026-10-20):** every bend ≥ 20° of a path / track / cycleway /
-steps / pedestrian way (or any way with `sac_scale`) becomes a short quadratic curve that stays within 1.5 m of the OSM
-line (cut ≤ 45 % of each leg, ≤ 20 m). Way ends and junction nodes (shared with any other highway) stay exact, so the
-network stays connected; a way is smoothed whole before any clipping, so neighbouring cells compute the same line.
-Streets are not smoothed (the base map draws them). Route bands use the same 0.5 m / smoothed geometry as the path
-below them – the former 3 m simplification put the band ~3 m beside the path at z16+. Smoothed lines keep 6 decimals.
+**Smoothing (`--smooth`, default for format 2, owner 2026-10-20, stronger 2026-10-21):** every bend ≥ 15°
+(`--smooth-angle`, was 20°) of a path / track / cycleway / steps / pedestrian way (or any way with `sac_scale`) and, in
+format 2, of every small street (layer `streets`) becomes a short quadratic curve that stays within 3 m
+(`--smooth-dev`, was 1.5 m) of the OSM line (cut ≤ 45 % of each leg, ≤ 20 m). Way ends and junction nodes (shared with
+any other highway – also where a small street meets a base-map road) stay exact, so the network stays connected and
+small streets still meet the unsmoothed tertiary+ roads; a way is smoothed whole before any clipping, so neighbouring
+cells compute the same line. Tertiary and bigger roads are not smoothed (the base map draws them). Route bands use the
+same 0.5 m / smoothed geometry as the way below them – the former 3 m simplification put the band ~3 m beside the path
+at z16+. Smoothed lines keep 6 decimals.
 
 **Sizes** (test region 10.70–11.60 E / 46.30–46.85 N, OSM of 17 Oct 2026; cell = z10 10/543/361 Meran, own z ≥ 10 tiles):
 
@@ -219,6 +224,10 @@ below them – the former 3 m simplification put the band ~3 m beside the path a
 | Build time (region) | overlays 45 s | overlays ~100 s (smoothing) + tippecanoe 10 s; base trim 5 s | |
 
 Smoothing costs ~3 MB (region) because curves have more vertices and route bands now follow the exact path.
+
+Small streets + stronger smoothing (2026-10-21, package `out-f2c`): `overlays.pmtiles` 14.2 → **16.5 MB** (layer
+`streets` ~2.0 MB, 15° / 3 m smoothing +0.3 MB), base map 21.0 → **19.9 MB** (no minor / service lines at z13–14);
+net +1.3 MB for the region. Overlay build ~80 s.
 
 Token reference and the "why" of the look: `docs/map-style-notes.md`. POI kinds and counts:
 `docs/poi-categories.md`, `docs/poi-integration.md`.

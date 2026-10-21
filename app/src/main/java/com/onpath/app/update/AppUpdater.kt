@@ -86,12 +86,38 @@ object AppUpdater {
         }
     }
 
-    /** Downloads the release APK into the app cache; returns the file. [onProgress] gets 0..100. */
-    fun download(context: Context, release: Release, onProgress: (Int) -> Unit = {}): File {
-        val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-        dir.listFiles()?.forEach { it.delete() } // keep only one update around
+    /**
+     * Downloads the release APK into the app cache; returns the file. [onProgress] gets 0..100.
+     * A broken connection (field 2026-10-21: "Software caused connection abort" 4× on mobile data) resumes where it
+     * stopped (HTTP Range) – up to [ATTEMPTS] tries with a short pause, and the part file is kept for the next tap.
+     */
+    fun download(context: Context, release: Release, onProgress: (Int) -> Unit = {}): File =
+        downloadTo(File(context.cacheDir, "updates"), release, onProgress)
+
+    /** [download] into [dir] (unit-tested with a local server; [pauseMs] shortened there). */
+    internal fun downloadTo(dir: File, release: Release, onProgress: (Int) -> Unit = {}, pauseMs: Long = 2_000L): File {
+        dir.mkdirs()
         val dest = File(dir, "onpath-${release.version}.apk")
         val tmp = File(dir, ".${dest.name}.part")
+        // keep only this update (and its part file) around
+        dir.listFiles()?.forEach { if (it != tmp) it.delete() }
+        var lastError: Exception? = null
+        for (attempt in 1..ATTEMPTS) {
+            try {
+                return downloadOnce(release, tmp, dest, onProgress)
+            } catch (e: java.io.IOException) {
+                lastError = e
+                com.onpath.app.debug.Problems.info("update", "Update download interrupted (try $attempt of $ATTEMPTS, " +
+                    "${tmp.length() / 1_048_576} MB so far); resuming", e)
+                if (attempt < ATTEMPTS) Thread.sleep(pauseMs * attempt)
+            }
+        }
+        throw java.io.IOException("Download stopped – connection lost. Tap again to continue where it stopped.", lastError)
+    }
+
+    private fun downloadOnce(release: Release, tmp: File, dest: File, onProgress: (Int) -> Unit): File {
+        var have = if (tmp.isFile) tmp.length() else 0L
+        if (release.apkSize > 0 && have > release.apkSize) { tmp.delete(); have = 0 }
         var url = URL(release.apkUrl)
         var conn: HttpURLConnection
         // GitHub redirects to its file CDN; follow a few redirects manually (also across hosts).
@@ -101,34 +127,38 @@ object AppUpdater {
                 instanceFollowRedirects = false
                 connectTimeout = 15_000; readTimeout = 30_000
                 setRequestProperty("User-Agent", "OnPath-Android")
+                if (have > 0) setRequestProperty("Range", "bytes=$have-")
             }
             val code = conn.responseCode
             if (code in 300..399 && hops++ < 5) {
                 val loc = conn.getHeaderField("Location") ?: error("Redirect without location")
                 conn.disconnect(); url = URL(url, loc); continue
             }
-            if (code != 200) { conn.disconnect(); error("Download failed ($code)") }
+            if (code == 416 && release.apkSize > 0 && have == release.apkSize) { conn.disconnect(); break } // already complete
+            if (code != 200 && code != 206) { conn.disconnect(); error("Download failed ($code)") }
+            if (code == 200) have = 0 // the server ignored the range: start over
             break
         }
         try {
-            val total = conn.contentLengthLong.takeIf { it > 0 } ?: release.apkSize
-            conn.inputStream.use { inp ->
-                tmp.outputStream().use { out ->
-                    val buf = ByteArray(128 * 1024)
-                    var done = 0L; var last = -1
-                    while (true) {
-                        val n = inp.read(buf); if (n < 0) break
-                        out.write(buf, 0, n); done += n
-                        if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } }
+            if (!(release.apkSize > 0 && have == release.apkSize)) {
+                val total = release.apkSize.takeIf { it > 0 } ?: (conn.contentLengthLong.takeIf { it > 0 }?.plus(have) ?: -1)
+                conn.inputStream.use { inp ->
+                    java.io.FileOutputStream(tmp, have > 0).use { out ->
+                        val buf = ByteArray(128 * 1024)
+                        var done = have; var last = -1
+                        while (true) {
+                            val n = inp.read(buf); if (n < 0) break
+                            out.write(buf, 0, n); done += n
+                            if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } }
+                        }
                     }
                 }
             }
-            if (release.apkSize > 0 && tmp.length() != release.apkSize) error("Download incomplete – please try again.")
+            if (release.apkSize > 0 && tmp.length() != release.apkSize) throw java.io.IOException("Download incomplete")
             if (!tmp.renameTo(dest)) error("Could not save the update.")
             return dest
         } finally {
             conn.disconnect()
-            if (tmp.exists()) tmp.delete()
         }
     }
 
@@ -162,3 +192,6 @@ object AppUpdater {
         false
     }
 }
+
+/** Tries per update download (each resumes where the last stopped). */
+private const val ATTEMPTS = 4

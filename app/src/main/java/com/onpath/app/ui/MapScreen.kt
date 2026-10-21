@@ -56,6 +56,8 @@ fun MapScreen(
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
+    /** Map centre + zoom, rounded (≈ 1 km, whole zoom steps below / above 10) – for the "Overview only" hint. */
+    var hintKey by remember { mutableStateOf<Triple<Double, Double, Boolean>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
 
@@ -99,9 +101,21 @@ fun MapScreen(
             vm = vm,
             topInsetPx = topInsetPx,
             onReady = { controller = it },
-            onCamera = { map -> scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat() },
+            onCamera = { map ->
+                scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
+                map.cameraPosition.target?.let { t ->
+                    hintKey = Triple(kotlin.math.round(t.latitude * 100) / 100, kotlin.math.round(t.longitude * 100) / 100,
+                        map.cameraPosition.zoom >= 10.0)
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
+        // A newer version of an area the user has (checked after each route, owner 2026-10-21): the map is veiled for
+        // the few seconds it loads and switches; panels stay usable on top.
+        val updStates by vm.cells.states.collectAsState()
+        val updInstalled by vm.cells.installed.collectAsState()
+        val mapUpdate = if (vm.mode == AppMode.PLAN) MapUpdates.of(updStates, updInstalled.map { it.id }.toSet()) else null
+        MapUpdateLayer(mapUpdate, Modifier.fillMaxSize())
         MapSync(vm, controller, rec, location, panelHeightPx)
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
         // Quiet update check (once a day, only when online; F-OFF-06).
@@ -128,6 +142,21 @@ fun MapScreen(
                     androidx.compose.material3.Text("Finding the shared place…")
                 }
             }
+        }
+        // "Overview only – set a point and the detailed map follows" (Plan, z ≥ 10, no detailed map at the centre)
+        val generation by vm.cells.generation.collectAsState()
+        val overviewOnly by produceState(false, hintKey, generation) {
+            val k = hintKey
+            value = k != null && k.third && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                vm.overviewOnly(k.first, k.second, 10.0)
+            }
+        }
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !vm.sharedLookup) {
+            OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
+        }
+        // A newer version of an area the user has: small hint while the server builds it (the veil is under the panels).
+        if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !vm.sharedLookup) {
+            MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
@@ -212,10 +241,18 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         )
         return
     }
+    val cellStates by vm.cells.states.collectAsState()
+    val cellsInstalled by vm.cells.installed.collectAsState()
+    val cellCard = vm.cellCardUi(cellStates, cellsInstalled)
+    val cellCb = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
+        onRetry = vm::cellCardRetry, onClose = vm::closeCellCard, onCancel = vm::cancelCellLoading)
+    // building / downloading map areas: a clear modal overlay with Cancel (owner 2026-10-21)
+    if (cellCard?.wantsOverlay() == true) MapLoadOverlay(cellCard, cellCb)
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
-            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) }),
+            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
+            cellCard = cellCard),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -224,6 +261,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
+            cellCard = cellCb,
         ),
     )
 }
@@ -246,11 +284,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
     // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
     LaunchedEffect(c) {
-        snapshotFlow { Triple(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.waypoints.toList()) }
-            .collect { (r, showLine, w) ->
-                c.setPlanned(if (showLine) r else null)
-                val show = vm.canEditMap
-                c.setWaypoints(if (show) w else emptyList(), vm.pinnedIndices())
+        // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
+        snapshotFlow { PlanDrawing(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.canEditMap, vm.waypoints.toList()) }
+            .collect { d ->
+                c.setPlanned(if (d.showLine) d.route else null)
+                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices())
             }
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
@@ -347,3 +385,11 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Fl
 
 /** Farther from the followed line than this, heading-up uses the compass / GPS bearing instead of the route. */
 private const val ROUTE_UP_MAX_OFF_M = 30.0
+
+/** What the plan drawing on the map depends on (MapSync). */
+private data class PlanDrawing(
+    val route: com.onpath.app.routing.PlannedRoute?,
+    val showLine: Boolean,
+    val showMarkers: Boolean,
+    val points: List<com.onpath.app.routing.GeoPoint>,
+)

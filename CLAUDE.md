@@ -24,6 +24,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `  gpx/` | Tolerant `GpxParser`, `GpxWriter` (GPX 1.1), model |
 | `  data/` | `TourDb` (SQLite WAL), `Prefs`, `DataFiles` (required data check), `Geo` helpers, `AppSettings` (Settings page model), `FollowProgress` (remaining distance while following) |
 | `  poi/` | POIs: model, kinds (+ `defaultHidden`), `PoiFilter` (layer filter JSON), tap lookup, details sheet, Google Maps link-out |
+| `  cells/` | Map cells on the phone: `MapCells` (API for the UI), `CellStore` (one PMTiles per layer, rewritten as generations), `CellApi` (download client), `AppCells` (app-wide instance) – see `docs/design/map-cells.md` §19 |
 | `app/libs/` | BRouter 1.7.11-beta jars (MIT), built by `tools/routing/build_brouter_jars.sh` |
 | `app/src/main/assets/brouter/` | BRouter profiles + `lookups.dat` |
 | `app/src/main/assets/style/onpath.json` | Map style – **generated**, edit `tools/make_style.py` instead |
@@ -40,6 +41,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 - `./gradlew :app:recordPaparazziDebug` / `verifyPaparazziDebug` – JVM screenshot tests of the UI
   (map replaced by a placeholder). Images in `app/src/test/snapshots/images/`. Use these to check layouts
   when no device/emulator is available.
+- **Emulator (core features end to end):** `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (needs an x86_64
+  emulator; CI: `.github/workflows/e2e.yml`, also a gate before every release). `-Ponpath.e2e=true` adds x86_64 libs –
+  never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>`.
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
@@ -62,7 +66,7 @@ Built per region by the pipeline, copied to the phone into
 | `lowways.geojson` | `tools/extract_overlays.py` (all paths/tracks, coarse, drawn below z13) | optional |
 | `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
 | `paths.geojson` | `tools/extract_overlays.py` (every path/track, exact; drawn from z13 instead of the base map, tracktype → dots) | optional (without it the base map's lines are drawn) |
-| `overlays.pmtiles` | **format 2** (`build_region.sh --format 2`): `extract_overlays.py --tiles --smooth` + `tools/build_overlays.sh` (tippecanoe) – routes, trails, ways, paths (+ former lowways), trailnames as source-layers of one vector file; base map then trimmed by `tools/trim_base.sh` | yes in format 2, replaces the overlay `.geojson` files (app: `DataFiles.formatOf`, style `assets/style/f2/`; schema `docs/map-pipeline.md` 5b) |
+| `overlays.pmtiles` | **format 2** (`build_region.sh --format 2`): `extract_overlays.py --tiles --smooth` + `tools/build_overlays.sh` (tippecanoe) – routes, trails, ways, paths (+ former lowways), streets (small streets, smoothed), trailnames as source-layers of one vector file; base map then trimmed by `tools/trim_base.sh` (no path / track / small-street lines at z13–14) | yes in format 2, replaces the overlay `.geojson` files (app: `DataFiles.formatOf`, style `assets/style/f2/`; schema `docs/map-pipeline.md` 5b) |
 | `segments/E10_N45.rd5` | download from https://brouter.de/brouter/segments4/ | yes |
 
 Current test region: Bozen / Meran / Algund / Ultental (Zoggler Stausee), bbox `10.70,46.30,11.60,46.85`. OSM source:
@@ -91,6 +95,8 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
 - **No Google Play Services** (LocationManager directly); keep dependencies few.
+- **Core features** (`docs/core-features.md`, e.g. hold a route point → menu → Delete): each has regression tests;
+  a field bug in one first gets a test that reproduces it, then the fix (owner 2026-10-21, after the second regression).
 - **No silent errors:** every `catch` / `runCatching` that recovers reports to `debug/Problems`
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
   without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs

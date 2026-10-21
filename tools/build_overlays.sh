@@ -4,7 +4,8 @@
 #
 #   tools/build_overlays.sh IN_DIR OUT.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra LAYER_FILE.pmtiles ...]
 #
-#   IN_DIR   folder with paths/trails/ways/routes/trailnames .ndjson (extract_overlays.py ... --tiles IN_DIR)
+#   IN_DIR   folder with paths/streets/trails/ways/routes/trailnames .ndjson (extract_overlays.py ... --tiles IN_DIR;
+#            streets.ndjson may be empty or missing, e.g. a cell without streets)
 #   --clip   cut every feature at this bbox (tippecanoe --clip-bounding-box); a cell build passes its buffered bbox
 #            and keeps only its own tiles afterwards (tools/cells/cells.py tiles)
 #   --extra  more vector tile files joined in as they are (e.g. contours.pmtiles with layer "contour" later)
@@ -14,6 +15,7 @@
 # Layers and zooms (schema: docs/map-pipeline.md "Overlays as vector tiles"):
 #   paths       z11-14  z11-12 = coarse copy of every path / track (former lowways.geojson), z13-14 = exact ways
 #                       (per-feature zoom range from extract_overlays.py)
+#   streets     z13-14  small streets (OpenMapTiles minor / service), the base map has none there (trim_base.sh)
 #   trails      z13-14  ways       z13-14  trailnames z13-14  routes z9-14
 # Coordinates: extent 4096 (z14 grid ~0.4 m here), no simplification at z14 (--simplify-only-low-zooms), no feature
 # dropping (-r1, no feature / tile size limit), small buffer (8 px of 256) for line joins and labels at tile edges.
@@ -45,12 +47,14 @@ layer() {  # NAME MINZOOM MAXZOOM
   "$TIPPECANOE" "${COMMON[@]}" -l "$1" -Z "$2" -z "$3" -o "$TMP/$1.pmtiles" "$f"
 }
 layer paths 11 14
+STREETS=()
+if [ -s "$IN/streets.ndjson" ]; then layer streets 13 14; STREETS=("$TMP"/streets.pmtiles); fi
 layer trails 13 14
 layer ways 13 14
 layer trailnames 13 14
 layer routes 9 14
 rm -f "$OUT.tmp.pmtiles"
 "$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" \
-  -o "$OUT.tmp.pmtiles" "$TMP"/paths.pmtiles "$TMP"/trails.pmtiles "$TMP"/ways.pmtiles "$TMP"/trailnames.pmtiles \
+  -o "$OUT.tmp.pmtiles" "$TMP"/paths.pmtiles "${STREETS[@]}" "$TMP"/trails.pmtiles "$TMP"/ways.pmtiles "$TMP"/trailnames.pmtiles \
   "$TMP"/routes.pmtiles "${EXTRA[@]}"
 mv -f "$OUT.tmp.pmtiles" "$OUT"

@@ -74,7 +74,7 @@ fun MapHost(
                 Lifecycle.Event.ON_START -> { mapView.onStart(); started = true; vm.onReturnToApp() }
                 Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
                 Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
-                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false }
+                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false; vm.onLeaveApp() }
                 else -> {}
             }
         }
@@ -102,7 +102,9 @@ fun MapHost(
             }
             var fallbackUsed = false
             fun load(json: String) {
+                val loadedFrom = StyleLoader.lastMapDir
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
+                    vm.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)
                         ctrlRef[0] = c
@@ -133,8 +135,9 @@ fun MapHost(
                 }
                 if (vm.routePeek) return true // peeking at the map: no edits
                 val edit = vm.canEditMap
-                val marker = if (!edit) -1 else (c?.waypointAt(screen) ?: -1).takeIf { it >= 0 }
-                    ?: downMarker.takeIf { press == MapGestures.Press.HOLD && it in vm.waypoints.indices } ?: -1
+                val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(vm.waypoints.toList(),
+                    { p -> c.toScreen(p)?.let { it.x to it.y } }, screen.x, screen.y, press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
+                if (edit && marker < 0) c?.waypointAt(screen, vm.waypoints.toList()) // only for the diagnostics line (near miss)
                 // A marked search result (pin) counts as a POI: holding it opens the POI menu.
                 val mark = vm.searchMark?.takeIf { m ->
                     c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true
@@ -171,7 +174,7 @@ fun MapHost(
                     // Decide once per press what an armed hold feels like: 2× on a route point, 1× elsewhere.
                     val at = PointF(hold.downX, hold.downY)
                     val edit = vm.canEditMap && !vm.routePeek
-                    val marker = if (edit) ctrlRef[0]?.waypointAt(at) ?: -1 else -1
+                    val marker = if (edit) ctrlRef[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
                     val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
@@ -182,11 +185,14 @@ fun MapHost(
             mapView.addOnDidFailLoadingMapListener { msg ->
                 // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style)
                 StyleLoader.noteFailure(msg ?: "?")
-                if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.dir)) }
+                // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
+                if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
+                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
+                } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             loadedTheme[0] = vm.settings.mapTheme
-            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme)) }
-            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme))
+            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir())) }
+            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir()))
         }
         onDispose { ctrlRef[0] = null; reloadRef[0] = null }
     }

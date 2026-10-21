@@ -33,6 +33,12 @@ async function rowsFor(db, ids, format) {
   return new Map(results.map((r) => [r.id, r]));
 }
 
+/** Content schema of a published version: "2026-10-20-s2" → 2; plain OSM-date versions are schema 1. */
+export function schemaOf(version) {
+  const m = /-s(\d+)$/.exec(String(version || ""));
+  return m ? Number(m[1]) : 1;
+}
+
 function isStale(osmDate, cfg, now) {
   const t = Date.parse(osmDate || "");
   return !Number.isFinite(t) || now - t > cfg.refreshDays * DAY;
@@ -76,6 +82,10 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
     else if (r.job === "failed") {
       const retry = !r.permanent && (r.attempts < cfg.maxAttempts || r.rev !== cfg.buildRev);
       writes.push(retry ? queue(r.version ? Math.max(prio, PRIORITY.refresh) : prio) : touch(prio));
+    } else if (r.version && schemaOf(r.version) < cfg.cellSchema) {
+      // built for an older style (e.g. without the "streets" layer – the map misses streets): rebuild with the asked
+      // priority; the old version is served until the new one is ready
+      writes.push(queue(prio));
     } else if (r.version && isStale(r.osm_date, cfg, now)) writes.push(queue(PRIORITY.refresh)); // old: refresh, low
     else if (r.version) writes.push(touch(PRIORITY.refresh));
     else writes.push(queue(prio));
@@ -99,6 +109,8 @@ async function readStatus(env, format, id) {
   }
 }
 
+const rebuilding = (r) => r.job === "queued" || r.job === "building";
+
 /** GET /v1/cells/status and the answer of request: one entry per cell (map-cells.md §8). */
 export async function statusFor(env, cfg, ids, format, now = Date.now()) {
   const db = env.DB;
@@ -116,8 +128,11 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
     const r = rows.get(id);
     if (!r) {
       out.push(c && !sourceFor(c) ? { id, state: "failed", reason: NO_SOURCE } : { id, state: "none" });
-    } else if (r.version) {
-      out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version });
+    } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < cfg.cellSchema)) {
+      // a published version is served at once; "updating" = a newer one is being built (the app keeps asking).
+      // Not while a cell of an older content schema is rebuilt: that map lacks data the style needs (streets).
+      out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version,
+        ...(rebuilding(r) ? { updating: true } : {}) });
     } else if (r.job === "building") {
       building = true;
       const s = await readStatus(env, format, id);

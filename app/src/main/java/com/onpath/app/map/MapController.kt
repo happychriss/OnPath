@@ -412,7 +412,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     mainHandler.postDelayed(r, 800L)
                     heading.reemit()
                 }
-                pad(top)
+                // no pad(top) here: the transition has just started, MapLibre would ignore the call and log
+                // "paddingWhileTracking … ignored because the camera mode is transitioning". The listener above
+                // pads when it ends – MapLibre calls it also when there is nothing to animate (same mode, no fix).
             } else {
                 heading.mapToCompass = false
                 facing.visible = false
@@ -536,12 +538,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // MTB e-bike only, loose-surface edges for every bike activity.
         for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
                 "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
-                // format 2 only (map package with overlays.pmtiles): service roads from the base map, bike map
+                // format 2 only (map package with overlays.pmtiles): service roads from overlays "streets", bike map
                 "access-no-tint-foot-service" to walking, "access-no-sign-foot-service" to walking,
                 "access-no-tint-bike-service" to !walking, "access-no-sign-bike-service" to !walking,
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
                 "bike-lane-right" to !walking, "bike-lane-right-shared" to !walking,
-                "bike-oneway" to !walking, "bike-both-ways" to !walking,
+                "bike-oneway" to !walking, "bike-oneway-streets" to !walking, "bike-both-ways" to !walking,
                 "trails-sac-label" to walking, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
@@ -578,7 +580,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) = guarded("waypoints") {
-        shownWaypoints = points.toList()
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
@@ -590,6 +591,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             }
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
+        shownWaypoints = points.toList() // what is drawn now
     }
 
     /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */
@@ -639,11 +641,21 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * Index of the marker nearest to a screen point within ~26 dp (screen space, so the same at every
      * zoom; overlapping markers → the nearest one), or -1. Never throws.
      */
-    fun waypointAt(screen: PointF): Int = try {
-        val pts = shownWaypoints
+    fun waypointAt(screen: PointF, points: List<GeoPoint>? = null): Int = try {
+        // the plan's own list when given (field report 0.8.3: a hold on a point added a new one – the list kept with
+        // the drawing can lag behind the plan, e.g. an update skipped while the style reloads)
+        val pts = points ?: shownWaypoints
         val xs = FloatArray(pts.size); val ys = FloatArray(pts.size)
         pts.forEachIndexed { i, p -> map.projection.toScreenLocation(LatLng(p.lat, p.lon)).let { xs[i] = it.x; ys[i] = it.y } }
-        com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP * density)
+        val hit = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP * density)
+        if (hit < 0) {
+            // diagnostics: a press just outside a marker (why a hold added a point instead of opening the menu)
+            val near = com.onpath.app.ui.MapGestures.nearestMarker(xs, ys, screen.x, screen.y, 80f * density)
+            if (near >= 0) Problems.info("map", "Press %.0f dp from point ${near + 1} – outside the %.0f dp marker radius (drawn %d, plan %d)"
+                .format(java.util.Locale.ROOT, kotlin.math.hypot(xs[near] - screen.x, ys[near] - screen.y) / density,
+                    com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP, shownWaypoints.size, pts.size))
+        }
+        hit
     } catch (e: Exception) { Problems.warn("map", "Marker tap test failed, tap treated as no marker", e); -1 }
 
     /** Screen position of [p] in pixels of the map view, or null (projection not ready). */

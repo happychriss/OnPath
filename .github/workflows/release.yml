@@ -9,6 +9,9 @@
 # Release notes: docs/release-notes/vX.Y.Z.md if present.
 # Signing: the fixed test key in keystore/ (updates install in place). A secret Play release key
 # will come later via repository secrets.
+# Map key: the APK talks to the TEST map server (Cloudflare doorman + Cloud Run builder). Its app key is the
+# newest entry of the GitHub environment "test" secret ONPATH_APP_KEYS ("old,new" during rotation) – the same
+# secret maps-deploy.yml gives the doorman. Masked in logs; never written to the repository.
 name: Release
 
 on:
@@ -28,9 +31,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Core features on an emulator first (docs/core-features.md): no release when holding / deleting points breaks.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   build:
+    needs: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    environment: test
     steps:
       - uses: actions/checkout@v4
 
@@ -71,7 +80,13 @@ jobs:
 
       - name: Build APK
         if: steps.ver.outputs.skip != 'true'
-        run: ./gradlew --no-daemon assembleDebug -PappVersion="$VERSION"
+        env:
+          APP_KEYS: ${{ secrets.ONPATH_APP_KEYS }}
+        run: |
+          KEY="${APP_KEYS##*,}"
+          KEY="$(echo "$KEY" | tr -d '[:space:]')"
+          if [ -n "$KEY" ]; then echo "::add-mask::$KEY"; else echo "::warning::ONPATH_APP_KEYS (environment test) is empty – this APK cannot download maps"; fi
+          ONPATH_MAP_KEY_TEST="$KEY" ./gradlew --no-daemon assembleDebug -PappVersion="$VERSION"
 
       - name: Prepare release files
         if: steps.ver.outputs.skip != 'true'

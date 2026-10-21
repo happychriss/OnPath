@@ -188,7 +188,7 @@ def build(pr):
     images["access-no"] = no_entry(pr)
     # bike map (format 2, make_style.py bike_map): one-way streets, and one-way streets open to bikes both ways
     images["oneway-arrow"] = way_arrow(pr, "#5a5a5a")
-    images["bike-both-ways"] = way_arrow(pr, "#2f74a8", both=True)
+    images["bike-both-ways"] = way_arrow(pr, "#2e9e3a", both=True)  # greenway.color: good for bikes, no blue ways
     # simple shelf packing
     cols = 8
     cell = 24 * pr
