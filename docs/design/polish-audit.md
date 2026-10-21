@@ -260,6 +260,8 @@ jerkiness comes from four other things:
 - **Fix:** `AnchoredDraggable` sheet with velocity, rubber band and three anchors, plus `AnimatedContent` (fade and
   size) when the sheet content changes. This replaces A9.
 - **Effort:** M · **Risk:** low–medium (Paparazzi snapshots will change).
+- **Done (sheet part, after field test 0.8.9):** the plan sheet follows the finger, settles with a spring by distance
+  and fling (`SheetDrag`), nested scroll with the Points list. `AnimatedContent` between panels still open.
 
 ### B5 · MEDIUM – Main-thread work exactly when Navigate starts or a re-route arrives
 - **Where:** `ui/NavigateScreen.kt:464-469` (`FollowProgress`, `TurnDetector.turns`, `Geo.length`,

@@ -5,7 +5,8 @@
 # Resources: a cell peaks at ~2.3 GB RAM (map-cells.md §3). Cloud Run's disk is memory, and it also holds the
 # Planetiler sources (~1.4 GB, copied in from the bucket), the OSM extract and the work folder → 8 GiB.
 # 8 GiB needs at least 2 vCPU. Task timeout 60 min (up to CELLS_PER_EXECUTION cells of ~3–5 min each + setup);
-# one retry (a crash/OOM; a failed *cell* is not a failed task). Parallelism 1: never more than one builder.
+# one retry (a crash/OOM; a failed *cell* is not a failed task). One task per execution; the doorman runs up to
+# PARALLEL_BUILDS executions at the same time (map-hosting.md §7f) – extract locks via the GCS API (SRC_BUCKET).
 apiVersion: run.googleapis.com/v1
 kind: Job
 metadata:
@@ -42,6 +43,9 @@ spec:
                   value: "2" # cells ship only in format 2 (map-cells.md Q11); the doorman sends FORMAT per execution too
                 - name: SRC_DIR
                   value: /src
+                # same bucket as the /src mount: extract locks + freshness through the GCS JSON API (src_objects.py)
+                - name: SRC_BUCKET
+                  value: ${SRC_BUCKET}
                 - name: R2_ACCOUNT_ID
                   value: ${R2_ACCOUNT_ID}
                 # buckets were created with EU jurisdiction → https://<account>.eu.r2.cloudflarestorage.com
