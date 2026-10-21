@@ -349,37 +349,68 @@ importer does not verify checksums yet (the app could read `manifest.json` later
 
 ## 9b. Overview map (in the APK, optional)
 
-The app can ship a small **overview** for the Alps so a place without downloaded data is never blank at low zoom
-(map-cells.md §7). `tools/build_overview.sh [OUT_DIR]` builds `OUT_DIR/overview/base.pmtiles` (Planetiler,
-`--maxzoom=8 --exclude_layers=housenumber,poi,aeroway,aerodrome_label,building --languages=de`) and
-`OUT_DIR/overview/terrain.pmtiles` (`build_terrain.py --minzoom 5 --maxzoom 9 --webp --round 4`), bbox
-`5.0,43.5,17.0,48.5` (Nice/Genoa – Vienna/Ljubljana, Lyon/Geneva – Munich/Salzburg: the whole Alpine arc plus the
-cities people travel from), source `https://download.geofabrik.de/europe/alps-latest.osm.pbf` (2.3 GB).
-Measured 2026-10-20 on the laptop (16 threads): Planetiler 4 m 40 s, peak RAM 6.6 GB (`JAVA_XMX=8g`).
+The app can ship a small **overview** so a place without downloaded data is never blank at low zoom
+(map-cells.md §7): the whole world at z0–5 and the Alps in detail at z5–9. `tools/build_overview.sh [OUT_DIR]`
+builds four files into `OUT_DIR/overview/`:
 
-| Variant | base | terrain | together | APK |
-| --- | --- | --- | --- | --- |
-| **base z0–8 + terrain z5–9, heights 4 m (default)** | 4.5 MB | 9.2 MB | **13.7 MB** | 33.4 → **47.6 MB** |
-| base z0–9 + terrain z5–9, 4 m | 16 MB | 9.2 MB | 25 MB | ≈ 59 MB |
-| terrain z5–9 with 1 m / 2 m / 8 m heights | | 13.9 / 11.8 / 7.2 MB | | |
+| File | What | Built by |
+| --- | --- | --- |
+| `world.pmtiles` | World z0–5: coast, oceans, big lakes and rivers, land cover (ice), borders, country and city names (Natural Earth) | Planetiler OpenMapTiles on an **empty** OSM file (`--bounds=world --maxzoom=5`: only Natural Earth + water polygons from its sources), then `overview_merge.py world` |
+| `base.pmtiles` | Alps z5–8: roads, places, water, borders, land cover (OSM) | Planetiler `--maxzoom=8 --exclude_layers=housenumber,poi,aeroway,aerodrome_label,building --languages=de`, bbox `5.0,43.5,17.0,48.5`, `https://download.geofabrik.de/europe/alps-latest.osm.pbf` (2.3 GB), then `overview_merge.py clip` |
+| `terrain-world.pmtiles` | Hill shade of the world z0–4 | `build_terrain.py -180 -85 180 85 --minzoom 0 --maxzoom 4 --webp --round 16 --floor 0` |
+| `terrain.pmtiles` | Hill shade of the bbox z5–9 | `build_terrain.py --minzoom 5 --maxzoom 9 --webp --round 4` |
 
-Heights 4 m vs 1 m at z7/z9: hill shade differs by 0.1–0.2 / 255 (invisible; a z9 pixel is ~200 m). Base z9 would
-add 11.5 MB for one zoom level that the over-zoomed z8 covers well enough (roads, places, water, borders).
+`tools/overview_merge.py` does what Planetiler alone cannot:
+- **world**: the empty-OSM run has no `place` layer and (OpenMapTiles takes borders from OSM from z5) no z5 borders.
+  It adds Natural Earth countries and populated places in OpenMapTiles' place schema (`class` country / city,
+  `rank` = NE scalerank + 1, `capital` 2 / 4, `name`, `name:de`, `iso_a2`; a place goes into tiles from NE
+  `min_zoom` − 2, so the z5 tiles carry what z6–9 need), copies the z4 borders into z5, and cuts a **hole** into the
+  z5 tiles where `base.pmtiles` has data.
+- **clip**: cuts the Alps file to exactly that hole and drops its z0–4.
+- The hole / clip **area** is the bbox ∩ the extract's polygon (`alps.poly` from Geofabrik, `POLY_URL` / `POLY_FILE`):
+  Geofabrik's Alps extract is the Alpine area only – Munich, Zurich, Milan, Linz, most of the Po plain are not in
+  it, so inside the bbox but outside the polygon the Alps run has no OSM data (no cities, roads, lakes). There the
+  world file shows instead.
+
+Measured 2026-10-21 on the laptop (16 threads): Alps Planetiler 4 m 40 s (peak RAM 6.6 GB, `JAVA_XMX=8g`), world
+Planetiler 1 m 50 s (1.6 GB), `overview_merge.py` ~10 s each.
+
+| File | Size |
+| --- | --- |
+| `world.pmtiles` | 2.8 MB |
+| `base.pmtiles` (z5–8, cut) | 4.3 MB |
+| `terrain-world.pmtiles` | 2.8 MB (heights 4 m: 4.7 MB; without `--floor 0`: 8.6 MB at 16 m, 13.2 MB at 4 m) |
+| `terrain.pmtiles` | 9.6 MB |
+| **together** | **19.4 MB** (before: Alps only, 14.3 MB) |
 
 App side (`map/Overview.kt`, called by `StyleLoader`): the APK includes the files only when built with
 `-Ponpath.overviewAssets=OUT_DIR` (or env `ONPATH_OVERVIEW_ASSETS`) – map data is not committed; without it the
-style is unchanged. With it, every `base` / `terrain` layer that starts below z10 gets a copy `<id>~overview` on
-source `overview` / `overview-terrain` (`pmtiles://asset://overview/…`) drawn below z10, and the original starts
-at z10. MapLibre cannot draw a layer only where another source has no data, so the split is by zoom: no doubled
-hill shade, lines or labels, the same look, and cells (z ≥ 10 only) fit exactly. Consequences: below z10 the map
-always shows the overview, even where a region package has its own low zooms (same OpenMapTiles data, so this
-looks the same inside the Alps; outside the overview bbox low zooms are empty); above z10 where no data is on the
-phone the map is empty (background colour) – the planned "Overview only – set a point" hint covers that.
+style is unchanged. With it, every `base` / `terrain` layer that starts below z10 gets copies drawn below z10:
+`<id>~world` (source `overview-world` / `overview-terrain-world`) and above it `<id>~overview` (source `overview` /
+`overview-terrain`), all `pmtiles://asset://overview/…`; the original layer starts at z10. MapLibre cannot draw a
+layer only where another source has no data, so:
+- **by zoom** between overview and detailed data: no doubled hill shade, lines or labels at the z10 switch, and cells
+  (z ≥ 10 only) fit exactly. Below z10 the map always shows the overview, even where a region package has its own
+  low zooms (same OpenMapTiles data, so this looks the same inside the Alps).
+- **by area** between world and Alps (the hole): the world source ends at z5 (header maxzoom), so MapLibre
+  over-zooms its z5 tiles up to z9 outside the Alps area – coast, water, borders and city names everywhere,
+  generalised (Natural Earth 1:10 m), no roads. Inside the area the Alps file draws. The seam is the extract polygon:
+  at z7–9 the Alps side has roads and OSM lakes, the world side does not.
+- **by zoom** for hill shade (a raster cannot get a hole, and two hill shades would double the shading): the world
+  hill shade is drawn below z5 only, the Alps one from z5 – outside the bbox there is no relief from z5 on.
+- Above z10 where no data is on the phone the map is empty (background colour) – the planned "Overview only – set a
+  point" hint covers that.
+
+Place labels when zoomed out (style, `tools/make_style.py`): countries z2–6 (not micro-states), capitals and big
+cities z4–5 (`rank` ≤ 3, or capital with `rank` ≤ 6), every city from z6, towns from z8; `symbol-sort-key` = rank,
+so the bigger place wins a collision.
+
 PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource` reads byte ranges with
 `AAsset_seek64`, which would otherwise inflate from the start for every tile.
 
 To build the full overview on zo/Hetzner: `WORK=~/work tools/build_overview.sh ~/overview-assets` (needs Java 21,
-the Python venv, ~10 GB RAM, ~3 GB disk for the extract and Planetiler's sources).
+the Python venv with mapbox-vector-tile / shapely / pmtiles / osmium, ~10 GB RAM, ~3 GB disk for the extract and
+Planetiler's sources).
 
 ## 10. Troubleshooting
 
