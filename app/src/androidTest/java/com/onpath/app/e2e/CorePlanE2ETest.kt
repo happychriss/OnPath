@@ -86,7 +86,13 @@ class CorePlanE2ETest {
     /** C1 on a turned map (compass, hand rotation – the 0.7.19 bug class). */
     @Test fun holdOnAPointWorksOnATurnedMap() {
         startPlanWithTwoPoints()
-        onMap { map -> map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.bearingTo(137.0)) }
+        // turn around the middle of the route, so both points stay above the plan sheet
+        var mid: LatLng? = null
+        scenario.onActivity { a -> vm(a).waypoints.let { w -> mid = LatLng((w[0].lat + w[1].lat) / 2, (w[0].lon + w[1].lon) / 2) } }
+        onMap { map ->
+            map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                org.maplibre.android.camera.CameraPosition.Builder().target(mid).bearing(137.0).build()))
+        }
         Thread.sleep(500)
         holdOnWaypoint(0)
         assertNotNull("point menu on a turned map", device.wait(Until.findObject(By.text("Delete")), 5_000))
