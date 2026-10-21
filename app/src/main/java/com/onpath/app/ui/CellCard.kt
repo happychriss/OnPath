@@ -183,6 +183,24 @@ object CellCards {
         return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null)
     }
 
+    /**
+     * What counts as "another message" for the no-flash gate ([NoFlash]): the kind of card, for a working card its step
+     * (preparing / downloading / ready to download) and whether a question or Wi-Fi note is in it; progress, MB counts
+     * and rows are updates of the same step.
+     */
+    fun stepKey(ui: CellCardUi): Any = when (ui) {
+        is CellCardUi.Working -> listOf("working", ui.title.substringBefore(' '), ui.question != null, ui.wifiNote != null)
+        is CellCardUi.NeedPosition -> listOf("need", ui.permission)
+        is CellCardUi.Offline -> "offline"
+        is CellCardUi.Failed -> listOf("failed", ui.title)
+        is CellCardUi.Done -> "done"
+        CellCardUi.NotAvailable -> "na"
+    }
+
+    /** Cards that wait for the user show at once (a question, a failure, "Map ready", "not available"). */
+    fun waitsForUser(ui: CellCardUi): Boolean = ui is CellCardUi.Failed || ui is CellCardUi.Done ||
+        ui == CellCardUi.NotAvailable || (ui is CellCardUi.Working && ui.question != null)
+
     private fun rowState(s: CellState): String = when (s) {
         is CellState.Ready -> "ready ✓"
         CellState.None -> "waiting"
@@ -314,6 +332,28 @@ fun OverviewHint(modifier: Modifier = Modifier) {
 }
 
 const val OVERVIEW_HINT = "Overview only – set a point and the detailed map follows"
+
+/**
+ * When the "Overview only" hint shows (Plan, z ≥ [MIN_ZOOM]): when a large part of the visible map has no detailed
+ * map – not just the centre (field test 0.8.7: centre inside a downloaded area, half the screen overview only, no
+ * hint). The view is sampled on a [GRID] × [GRID] grid. Pure, unit-tested.
+ */
+object OverviewHintRule {
+    const val MIN_ZOOM = 10.0
+    const val GRID = 5
+    /** Share of the sampled points without detailed map from which the hint shows. */
+    const val MIN_SHARE = 0.3
+
+    /** Sample points (lat, lon) over the box, cell centres of a [GRID] × [GRID] grid. */
+    fun samples(south: Double, west: Double, north: Double, east: Double): List<Pair<Double, Double>> =
+        (0 until GRID).flatMap { i -> (0 until GRID).map { j ->
+            (south + (north - south) * (i + 0.5) / GRID) to (west + (east - west) * (j + 0.5) / GRID)
+        } }
+
+    /** [detailed]: per sample point whether the detailed map covers it. */
+    fun show(zoom: Double, detailed: List<Boolean>): Boolean =
+        zoom >= MIN_ZOOM && detailed.isNotEmpty() && detailed.count { !it } >= MIN_SHARE * detailed.size
+}
 
 /**
  * While map areas are built or downloaded: a clear modal overlay (owner 2026-10-21) – what happens, why, progress, the

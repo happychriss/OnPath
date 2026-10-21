@@ -147,6 +147,16 @@ class MapCells(
         return regionBounds()?.let { b -> p.lon >= b[0] && p.lat >= b[1] && p.lon <= b[2] && p.lat <= b[3] } ?: false
     }
 
+    /**
+     * Areas with the detailed map as [west, south, east, north] boxes: every installed cell and the region package
+     * (the style hides the overview there from zoom 10, map/Overview.kt). Never throws.
+     */
+    fun detailedAreas(): List<DoubleArray> = try {
+        _installed.value.map { it.id.bbox } + listOfNotNull(regionBounds())
+    } catch (e: Exception) {
+        Problems.warn("cells", "Detailed map areas unknown; the overview may show through at the edges", e); emptyList()
+    }
+
     /** Of [cells]: those installed on the phone (after-routing check for newer versions). */
     override fun installedAmong(cells: List<CellId>): List<CellId> {
         val inst = _installed.value.map { it.id }.toSet()
