@@ -4255,7 +4255,7 @@
     ]
    ],
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#33251a",
     "line-width": [
      "interpolate",
      [
@@ -4265,12 +4265,14 @@
      [
       "zoom"
      ],
-     13,
-     1.1,
+     12,
+     0.8,
+     14,
+     1.35,
      16,
-     2.3,
+     2.2,
      18,
-     3.6
+     3.3
     ]
    }
   },
@@ -4313,7 +4315,7 @@
     ]
    ],
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#33251a",
     "line-width": [
      "interpolate",
      [
@@ -4323,12 +4325,14 @@
      [
       "zoom"
      ],
-     13,
-     1.1,
+     12,
+     0.8,
+     14,
+     1.35,
      16,
-     2.3,
+     2.2,
      18,
-     3.6
+     3.3
     ],
     "line-dasharray": [
      3,
@@ -4544,7 +4548,8 @@
         "literal",
         [
          "footway",
-         "pedestrian"
+         "pedestrian",
+         "cycleway"
         ]
        ]
       ],
@@ -4564,36 +4569,21 @@
      [
       "all",
       [
-       "any",
+       "all",
        [
-        "==",
+        "!",
         [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        "cycleway"
+         "has",
+         "sub"
+        ]
        ],
        [
-        "all",
+        "!=",
         [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
+         "get",
+         "k"
         ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
+        "t"
        ]
       ],
       [
@@ -4654,31 +4644,16 @@
     [
      "any",
      [
-      "all",
+      "==",
       [
-       "==",
+       "coalesce",
        [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
+        "get",
+        "sub"
        ],
-       "cycleway"
+       ""
       ],
-      [
-       "!=",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       "no"
-      ]
+      "cycleway"
      ],
      [
       "all",
@@ -6391,7 +6366,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#2e9e3a",
     "line-width": [
      "interpolate",
      [
@@ -6589,7 +6564,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#2e9e3a",
     "line-width": [
      "interpolate",
      [
@@ -6792,7 +6767,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#2e9e3a",
     "line-width": [
      "interpolate",
      [
@@ -6990,7 +6965,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#2e9e3a",
     "line-width": [
      "interpolate",
      [
