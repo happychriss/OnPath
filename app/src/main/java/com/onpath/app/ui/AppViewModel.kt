@@ -893,8 +893,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
     }
 
-    /** One undoable change of the planned points. */
-    private fun change(block: MutableList<GeoPoint>.() -> Unit) {
+    /**
+     * One undoable change of the planned points; [edit] = what it was, for the vibration (PlanHaptics: 1× a point set,
+     * 2× deleted, 1× reordered, nothing else) – played here so map, menus and the Points list all feel the same.
+     */
+    private fun change(edit: PlanEdit = PlanEdit.OTHER, block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         history.record(waypoints)
@@ -905,6 +908,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
+        Haptics.play(getApplication(), PlanHaptics.feel(edit))
         recalc()
     }
 
@@ -915,7 +919,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pinned.retainAll(alive)) prefs.planPinned = pinned
     }
 
-    private fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
+    private fun set(list: List<GeoPoint>, edit: PlanEdit = PlanEdit.OTHER) = change(edit) { clear(); addAll(list) }
 
     /**
      * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the vibration and
@@ -927,10 +931,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val before = waypoints.toList()
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
-        change { add(d.index.coerceIn(0, size), p) }
+        change(PlanEdit.POINT_SET) { add(d.index.coerceIn(0, size), p) }
     }
 
-    fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
+    fun removePoint(index: Int) { if (index in waypoints.indices) change(PlanEdit.POINT_DELETED) { removeAt(index) } }
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
@@ -1009,7 +1013,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun routeFromMyLocation(p: GeoPoint) {
         firstPointMenu = null
         val loc = tracker.location.value ?: return // the menu only offers this with a position
-        if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
+        if (waypoints.isEmpty()) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays("POI menu opened"); poiMenu = poi }
 
@@ -1022,7 +1026,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         clearSearchMarkAt(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
-        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+        change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
     }
     /**
      * Opens the menu of route point [index]; [distDp] = finger distance from the marker, [via] = what opened it
@@ -1074,14 +1078,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return i
     }
 
-    /** Route ⋯ → Points…: the point list dialog is open. */
-    var pointListOpen by mutableStateOf(false)
+    // ---------------- Points section of the full plan sheet (PointsSection, routing/PlanPoints) ----------------
 
-    /** Rows of the point list (role + place name). */
-    fun pointRows(): List<PointRow> = PointRows.of(waypoints.size) { i -> waypoints.getOrNull(i)?.let { stopName(it) } }
+    /** Bumped to scroll the full sheet to its Points section (point menu → "All points…"). */
+    var pointsScrollTick by mutableStateOf(0)
+        private set
+    /** Nearest place / hut / peak for route points without a name of their own (offline index, RouteNamer.label). */
+    private var nearbyNames by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
+    private var namePlaces: List<com.onpath.app.search.Place>? = null
+    private var namesJob: Job? = null
 
-    /** Point list → Delete (Undo brings it back). */
-    fun deletePointFromList(index: Int) { removePoint(index); if (waypoints.isEmpty()) pointListOpen = false }
+    /** Rows of the Points section: names (pinned POI / search first, then the nearest place), leg distances. */
+    fun planPointRows(): List<com.onpath.app.routing.PlanPointRow> {
+        val pts = waypoints.toList()
+        val line = route?.takeIf { !routing }?.points
+        return com.onpath.app.routing.PlanPoints.rows(pts, line) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
+    }
+
+    /** Names the route points from the offline place index (once per point, off the main thread). */
+    fun refreshPointNames() {
+        val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
+        if (todo.isEmpty() || namesJob?.isActive == true) return
+        namesJob = viewModelScope.launch {
+            val places = namePlaces ?: try { search.offlineIndex().entries.map { it.place }.also { namePlaces = it } }
+                catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launch }
+            val names = withContext(Dispatchers.Default) {
+                todo.mapNotNull { p -> com.onpath.app.search.RouteNamer.label(p, places)?.let { p to it } }.toMap()
+            }
+            nearbyNames = nearbyNames + names
+        }
+    }
+
+    /** Point menu → "All points…" (or a stop marker): the full sheet, scrolled to its Points section. */
+    fun openAllPoints() {
+        closeMapOverlays("all points opened")
+        planSize = PlanSize.FULL
+        pointsScrollTick++
+    }
+
+    /** Points list: row [from] dropped at row [to] (hold ≡ and drag); to the top = the new start. Undo reverts. */
+    fun movePointInList(from: Int, to: Int) {
+        val after = com.onpath.app.routing.PlanPoints.move(waypoints, from, to)
+        if (after == waypoints.toList()) return
+        Problems.trace("plan", "Points list: point ${from + 1} moved to ${to + 1} (plan ${waypoints.size} points)")
+        set(after, PlanEdit.REORDERED)
+    }
+
+    /** Points list → ✕: deleted at once (Undo brings it back); a round trip stays closed at its start. */
+    fun deletePointFromList(index: Int) {
+        val after = com.onpath.app.routing.PlanPoints.delete(waypoints, index)
+        if (after.size == waypoints.size) return
+        Problems.trace("plan", "Points list: point ${index + 1} deleted (plan ${waypoints.size} → ${after.size})")
+        set(after, PlanEdit.POINT_DELETED)
+    }
+
+    /**
+     * Points list → row tapped: the map shows that point (following stopped first – CLAUDE.md map camera rule) with a
+     * short highlight; the sheet goes to half size so list and map are both visible.
+     */
+    fun showPointFromList(index: Int) {
+        val p = waypoints.getOrNull(index) ?: return
+        followMe = false
+        planSize = PlanSize.COMPACT
+        highlight = p
+        events += UiEvent.PanTo(p)
+        viewModelScope.launch { delay(3_000); if (highlight == p) highlight = null }
+    }
 
     /** Point menu → "Delete" (Undo brings it back). */
     fun deletePointFromMenu() {
@@ -1193,11 +1256,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when (role) {
             // No timed notices (owner rule): the named marker and the new line show what happened.
             PlaceRole.SMART -> addPoint(p, onPoi = true)
-            PlaceRole.START -> change { add(0, p) }
+            PlaceRole.START -> change(PlanEdit.POINT_SET) { add(0, p) }
             PlaceRole.DESTINATION -> {
                 val loc = tracker.location.value
-                if (waypoints.isEmpty() && loc != null) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
-                else change { add(p) }
+                if (waypoints.isEmpty() && loc != null) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+                else change(PlanEdit.POINT_SET) { add(p) }
             }
         }
     }

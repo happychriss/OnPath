@@ -254,7 +254,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
-            cellCard = cellCard),
+            cellCard = cellCard,
+            points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList(),
+            pointsScrollTick = vm.pointsScrollTick),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -264,10 +266,11 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,
-            onPoints = { vm.pointListOpen = true },
+            onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )
-    if (vm.pointListOpen) PointListDialog(vm.pointRows(), onDelete = vm::deletePointFromList, onClose = { vm.pointListOpen = false })
+    // names for the Points section (offline place index), when it is shown and the points change
+    if (vm.planSize == PlanSize.FULL) LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
 }
 
 /** Keeps the map layers in step with the app state. */
