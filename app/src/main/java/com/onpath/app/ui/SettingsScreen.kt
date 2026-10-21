@@ -232,7 +232,7 @@ fun SettingsScreen(
                             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
                             onChange(settings.copy(offRouteVibrate = it))
                         }
-                        SwitchRow("Vibrate when planning", "1× a point set, 2× a point deleted",
+                        SwitchRow("Vibrate when planning", "When you hold the map: 1× (map, line, place), 2× on a route point",
                             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically) {
