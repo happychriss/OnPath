@@ -176,6 +176,36 @@ class Rd5PartStoreTest {
         assertFalse(local.exists()); assertFalse(File(seg, "E10_N45.parts.json").exists())
     }
 
+    /** Against brouter.de itself (only with ONPATH_LIVE=1; reads ~300 bytes): ranges, ETag, index + tail of E10_N45. */
+    @Test fun liveBrouterDeIndex() {
+        org.junit.Assume.assumeTrue(System.getenv("ONPATH_LIVE") == "1")
+        val store = Rd5PartStore(tmp.newFolder("live"))
+        val r = store.remote("E10_N45.rd5")
+        assertTrue(r.head.length > 100_000_000)
+        assertTrue(r.head.etag != null && r.head.lastModified > 0)
+        assertEquals(113, r.tail.size)
+        r.index.check(r.head.length)
+        val meranBytes = store.remoteSize(meran)
+        assertTrue("$meranBytes", meranBytes in 3_000_000L..25_000_000L)
+        // the tail's index checksum matches the index in the current format (^2) – what Rd5Parts.write relies on
+        val newIndex = Rd5Parts.buildIndex(r.index, setOf(6))
+        Rd5Parts.buildTail(r.index, r.tail, newIndex)
+        println("live E10_N45: ${r.head.length} bytes, ETag ${r.head.etag}, part 11°E 46°N $meranBytes bytes")
+    }
+
+    /**
+     * Downloads the real part 11°E 46°N (~10 MB) into ONPATH_LIVE_DIR – then route on it on the JVM:
+     * `KTTEST=tools/routing/jvm-test/PartialTest.kt tools/routing/jvm-test/run.sh $ONPATH_LIVE_DIR`.
+     */
+    @Test fun livePartDownload() {
+        val dir = System.getenv("ONPATH_LIVE_DIR")
+        org.junit.Assume.assumeTrue(dir != null)
+        val store = Rd5PartStore(File(dir!!))
+        store.download(listOf(meran))
+        assertTrue(store.has(meran)); assertFalse(store.has(ulten))
+        assertEquals(null, btools.mapaccess.PhysicalFile.checkFileIntegrity(File(dir, "E10_N45.rd5")))
+    }
+
     @Test fun staleListIsNotTrusted() {
         val (seg, _, store) = setup()
         store.download(listOf(meran))

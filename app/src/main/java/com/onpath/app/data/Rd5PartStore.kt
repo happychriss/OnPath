@@ -92,7 +92,9 @@ class HttpRd5Remote(private val baseUrl: String = SegmentDownloader.BASE_URL) : 
  * (temp + rename) when parts are added; parts of different remote versions are never mixed – when the server's file
  * changed, the parts already here are fetched again together with the new ones; a file without a parts list (a whole
  * rd5 downloaded or pushed earlier) counts as complete. The rd5's modification time is the fetch time of its version
- * (the 35-day refresh rule reads it). Not thread-safe: one caller at a time (RoutingDataLoader runs one queue).
+ * (the 35-day refresh rule reads it). Writers ([download], [refreshIfNewer], [remove]) and network reads are
+ * synchronized – one writer per file; [has] / [missing] read without waiting (the rd5 is renamed into place before its
+ * parts list, and a list that does not match the file is not trusted).
  */
 class Rd5PartStore(
     private val dir: File,
@@ -153,8 +155,20 @@ class Rd5PartStore(
     /** Size of [part] when known without the network (from a tile's stored remote index). */
     fun knownSize(part: Part): Long? = state(part.tile)?.index?.size(part.index)
 
+    /** Size of [part] on the phone (0 = not here or empty). */
+    fun sizeOnPhone(part: Part): Long =
+        if (has(part)) Rd5Parts.readIndex(rd5(part.tile))?.size(part.index)?.coerceAtLeast(0L) ?: 0L else 0L
+
+    /** Bytes of [part] already downloaded by a broken download (any version; resumed when it is the current one). */
+    fun stagedBytes(part: Part): Long =
+        staging().listFiles { f -> f.name.startsWith(part.tile.removeSuffix(".rd5") + "-") && f.name.endsWith("-${part.index}.part") }
+            ?.sumOf { it.length() } ?: 0L
+
+    /** Size of [part] on the server (network once per tile, then cached). */
+    @Synchronized fun remoteSize(part: Part): Long = knownSize(part) ?: remote(part.tile).index.size(part.index)
+
     /** Remote head + tail of [tile] (cached a few minutes: sizing and downloading right after each other). */
-    fun remote(tile: String, fresh: Boolean = false): RemoteTile {
+    @Synchronized fun remote(tile: String, fresh: Boolean = false): RemoteTile {
         val t = now()
         if (!fresh) remoteCache[tile]?.let { (at, r) -> if (t - at < REMOTE_CACHE_MS) return r }
         val head = remote.head(tile)
@@ -177,7 +191,7 @@ class Rd5PartStore(
     data class Plan(val tile: String, val fetch: Set<Int>, val keep: Set<Int>, val record: Set<Int>, val bytes: Long, val remote: RemoteTile)
 
     /** Network: asks the server for the index of each tile. Already complete tiles are left out. */
-    fun plan(parts: Collection<Part>, fresh: Boolean = false): List<Plan> =
+    @Synchronized fun plan(parts: Collection<Part>, fresh: Boolean = false): List<Plan> =
         parts.groupBy { it.tile }.mapNotNull { (tile, ps) ->
             val st = state(tile)
             val wanted = ps.map { it.index }.toSet()
@@ -209,7 +223,7 @@ class Rd5PartStore(
      * Gets [parts] onto the phone (see the class rules). [onProgress] (bytesDone, bytesTotal) over all parts to load.
      * Returns the parts that were missing and are here now. Throws with a plain message; staged parts stay.
      */
-    fun download(parts: Collection<Part>, onProgress: (Long, Long) -> Unit = { _, _ -> }, cancelled: () -> Boolean = { false }): List<Part> {
+    @Synchronized fun download(parts: Collection<Part>, onProgress: (Long, Long) -> Unit = { _, _ -> }, cancelled: () -> Boolean = { false }): List<Part> {
         val miss = missing(parts)
         var plans = plan(parts)
         if (plans.isEmpty()) return emptyList()
@@ -233,7 +247,7 @@ class Rd5PartStore(
      * Newer routing data for [tile]: when the server's file is another version than the local one, fetches the local
      * parts again (only those – a parts file stays small). Returns true when a new version was installed.
      */
-    fun refreshIfNewer(tile: String, onProgress: (Long, Long) -> Unit = { _, _ -> }, cancelled: () -> Boolean = { false }): Boolean {
+    @Synchronized fun refreshIfNewer(tile: String, onProgress: (Long, Long) -> Unit = { _, _ -> }, cancelled: () -> Boolean = { false }): Boolean {
         val st = state(tile) ?: return false
         val r = remote(tile, fresh = true)
         if (sameVersion(st, r, tile)) return false
@@ -290,13 +304,14 @@ class Rd5PartStore(
         dest.setLastModified(fetchedAt)
         writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
         for (i in p.fetch) staged(p.tile, r, i).delete()
+        File(dir, ".${p.tile}.part").delete() // a half whole-file download from before parts (up to ~200 MB)
     }
 
     /**
      * Removes [parts] from the phone (a map region deleted and no other region needs them): the rd5 is rewritten
      * without them (atomic), or deleted with its parts list when nothing is left. Works offline. Returns bytes freed.
      */
-    fun remove(parts: Collection<Part>): Long {
+    @Synchronized fun remove(parts: Collection<Part>): Long {
         var freed = 0L
         for ((tile, ps) in parts.groupBy { it.tile }) {
             val st = state(tile) ?: continue
@@ -304,6 +319,9 @@ class Rd5PartStore(
             if (st.parts.intersect(drop).isEmpty()) continue
             val f = rd5(tile)
             val local = Rd5Parts.readIndex(f) ?: continue
+            try { local.check(f.length()) } catch (e: IOException) {
+                com.onpath.app.debug.Problems.warn("routing", "$tile is not a valid rd5; its parts are not removed", e); continue
+            }
             val before = f.length()
             val left = st.parts - drop
             if (left.none { local.size(it) > 0 }) {

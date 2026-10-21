@@ -337,6 +337,12 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 Problems.info("routing", "Routing data missing: $name in ${segmentsDir.absolutePath}")
                 throw RoutingException(NO_DATA)
             }
+            // the phone loads 1° parts (Rd5Parts): an empty part would make BRouter say "no way within 1000 m" –
+            // misleading; it is missing data (the loader fetches it)
+            if (Rd5Parts.hasData(segmentsDir, p.lat, p.lon) == false) {
+                Problems.info("routing", "Routing data part missing: ${Rd5Parts.partOf(p.lat, p.lon).key} in ${segmentsDir.absolutePath}")
+                throw RoutingException(NO_DATA)
+            }
         }
     }
 

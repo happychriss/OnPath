@@ -20,36 +20,56 @@ import java.nio.file.Files
  */
 class RoutingDataAutoTest {
 
-    // ---------------------------------------------------------------- which tiles
+    // ---------------------------------------------------------------- which 1° parts (owner decision "D")
 
-    @Test fun pointInBozenNeedsE10N45() {
-        assertEquals(listOf("E10_N45.rd5"), RoutingTiles.forPoints(listOf(GeoPoint(46.5, 11.35))))
+    @Test fun pointInMeranNeedsOnePart() {
+        assertEquals(listOf("E10_N45.rd5:E11_N46"), RoutingTiles.forPoints(listOf(GeoPoint(46.67, 11.16))))
     }
 
-    @Test fun routeAcrossATileEdgeNeedsBoth() {
+    @Test fun routeAcrossATileEdgeNeedsPartsOfBoth() {
         // Bozen → Lake Constance area across lon 10 (straight leg, no points in between)
-        val t = RoutingTiles.forPoints(listOf(GeoPoint(46.5, 11.35), GeoPoint(47.6, 9.5)))
-        assertEquals(listOf("E10_N45.rd5", "E5_N45.rd5"), t)
+        val t = RoutingTiles.forLine(listOf(GeoPoint(46.5, 11.35), GeoPoint(47.6, 9.5)), 1_000.0)
+        assertTrue(t.containsAll(listOf("E10_N45.rd5:E11_N46", "E10_N45.rd5:E10_N47", "E5_N45.rd5:E9_N47")))
+        assertTrue(t.none { it.endsWith("E12_N46") || it.endsWith("E9_N45") }) // only along the line
     }
 
-    @Test fun westAndSouthTiles() {
-        assertEquals(listOf("W5_S35.rd5"), RoutingTiles.forPoints(listOf(GeoPoint(-33.9, -1.2))))
+    @Test fun westAndSouthParts() {
+        assertEquals(listOf("W5_S35.rd5:W2_S34"), RoutingTiles.forPoints(listOf(GeoPoint(-33.9, -1.2))))
     }
 
     @Test fun invalidPointsAreSkipped() {
         assertTrue(RoutingTiles.forPoints(listOf(GeoPoint(Double.NaN, 11.0))).isEmpty())
+        assertTrue(RoutingTiles.forLine(listOf(GeoPoint(Double.NaN, 11.0))).isEmpty())
     }
 
-    @Test fun cellsNeedTheTilesUnderThem() {
-        val meran = CellId.at(46.67, 11.16)!!
-        assertEquals(listOf("E10_N45.rd5"), RoutingTiles.forCells(listOf(meran)))
-        // a region on the lon-10 edge needs both tiles
+    @Test fun cellsNeedThePartsUnderThem() {
+        val bozen = CellId.at(46.50, 11.35)!! // 11.25–11.60 E
+        assertEquals(listOf("E10_N45.rd5:E11_N46"), RoutingTiles.forCells(listOf(bozen)))
+        val meran = CellId.at(46.67, 11.16)!! // 10.90–11.25 E: on the 11°E line
+        assertEquals(setOf("E10_N45.rd5:E10_N46", "E10_N45.rd5:E11_N46"), RoutingTiles.forCells(listOf(meran)).toSet())
+        // a region on the lon-10 edge needs a part of each file
         val edge = CellId.at(46.5, 10.0)!!
-        assertEquals(setOf("E5_N45.rd5", "E10_N45.rd5"), RoutingTiles.forCells(listOf(edge)).toSet())
+        assertEquals(setOf("E5_N45.rd5:E9_N46", "E10_N45.rd5:E10_N46"), RoutingTiles.forCells(listOf(edge)).toSet())
     }
 
-    @Test fun missingTiles() {
-        assertEquals(listOf("E5_N45.rd5"), RoutingTiles.missing(listOf("E10_N45.rd5", "E5_N45.rd5")) { it == "E10_N45.rd5" })
+    @Test fun missingParts() {
+        assertEquals(listOf("b"), RoutingTiles.missing(listOf("a", "b")) { it == "a" })
+    }
+
+    @Test fun deletingARegionFreesOnlyPartsNoOtherRegionNeeds() {
+        val meran = CellId.at(46.67, 11.16)!! // parts 10°E + 11°E 46°N
+        val bozen = CellId.at(46.50, 11.35)!! // part 11°E 46°N
+        val ulten = CellId.at(46.55, 10.95)!! // parts 10°E + 11°E 46°N
+        assertEquals(listOf("E10_N45.rd5:E10_N46"), RoutingTiles.unneeded(listOf(meran), listOf(bozen)))
+        assertTrue(RoutingTiles.unneeded(listOf(ulten), listOf(meran)).isEmpty())
+        assertEquals(setOf("E10_N45.rd5:E10_N46", "E10_N45.rd5:E11_N46"), RoutingTiles.unneeded(listOf(meran, bozen), emptyList()).toSet())
+    }
+
+    @Test fun sharedPartsCountOnceInOfflineMaps() {
+        val meran = CellId.at(46.67, 11.16)!!
+        val bozen = CellId.at(46.50, 11.35)!!
+        val sizes = RoutingTiles.bytesPerCell(listOf(meran, bozen)) { if (it.endsWith("E11_N46")) 9L else 5L }
+        assertEquals(mapOf(meran to 14L, bozen to 0L), sizes)
     }
 
     // ---------------------------------------------------------------- the notice (never a path)
@@ -58,8 +78,10 @@ class RoutingDataAutoTest {
         for (s in listOf(RoutingDataNotice.LOADING, RoutingDataNotice.NOT_YET)) {
             assertFalse(s, s.contains(".rd5") || s.contains("/") || s.contains("segments"))
         }
-        assertTrue(RoutingDataNotice.text(true).startsWith("Routing data for this area is still loading"))
-        assertTrue(RoutingDataNotice.text(false).startsWith("No routing data for this area yet"))
+        // owner 2026-10-22: never "routing data" – it is all "the map for this area"
+        assertEquals("The map for this area is still loading – the route is shown as a straight line until then.", RoutingDataNotice.text(true))
+        assertEquals("The map for this area loads when you're online – the route is shown as a straight line until then.", RoutingDataNotice.text(false))
+        for (s in listOf(RoutingDataNotice.LOADING, RoutingDataNotice.NOT_YET)) assertFalse(s, s.contains("routing", ignoreCase = true))
     }
 
     @Test fun routerMessageWithAPathBecomesThePlainNotice() {
@@ -84,47 +106,54 @@ class RoutingDataAutoTest {
     }
 
     private val dir: File = Files.createTempDirectory("seg").toFile()
+    private val server = Rd5PartStoreTest.FakeRemote(
+        com.onpath.app.routing.Rd5PartsTest.fakeRemoteFile(Files.createTempDirectory("srv").toFile(),
+            com.onpath.app.routing.Rd5PartsTest.sizes()).first, "\"v1\"")
+    private val store = Rd5PartStore(dir, server)
+    private val meran = "E10_N45.rd5:E11_N46"
 
     private fun loader(net: Net, wifiOnly: Boolean = false, installed: MutableList<String> = mutableListOf(),
                        fail: Boolean = false, calls: MutableList<String> = mutableListOf()) =
-        RoutingDataLoader(dir, net, { wifiOnly }, launch = { it() }, onInstalled = { installed += it },
-            download = { name, d, progress, _ ->
+        RoutingDataLoader(dir, net, { wifiOnly }, launch = { it() }, onInstalled = { installed += it }, store = store,
+            download = { name, d, progress, cancelled ->
                 calls += name
-                if (fail) { File(d, ".$name.part").writeBytes(ByteArray(10)); throw IllegalStateException("Server answered 503") }
-                progress(5, 10); File(d, name).writeBytes(ByteArray(10)); progress(10, 10)
+                if (fail) { server.breakAfter = 10; store.bytesToLoad(listOf(com.onpath.app.routing.Rd5Parts.Part.parse(name)!!)) }
+                RoutingDataLoader.fetch(store, name, d, progress, cancelled)
             })
 
     @Test fun missingTileLoadsByItselfAndTheAppIsTold() {
         val got = mutableListOf<String>()
         val l = loader(Net(), installed = got)
         val miss = l.ensure(RoutingTiles.forPoints(listOf(GeoPoint(46.5, 11.35))))
-        assertEquals(listOf("E10_N45.rd5"), miss)
+        assertEquals(listOf(meran), miss)
         assertTrue(File(dir, "E10_N45.rd5").isFile)
-        assertEquals(listOf("E10_N45.rd5"), got) // → the plan is computed again
+        assertEquals(listOf(meran), got) // → the plan is computed again
         assertNull(l.status)
-        assertTrue(l.missing(listOf("E10_N45.rd5")).isEmpty())
+        assertTrue(l.missing(listOf(meran)).isEmpty())
+        assertFalse(l.exists("E10_N45.rd5:E10_N46")) // only the part that was needed
+        assertTrue(l.exists("E10_N45.rd5")) // a whole-file name: the file is there
     }
 
     @Test fun presentTileIsNotLoadedAgain() {
-        File(dir, "E10_N45.rd5").writeBytes(ByteArray(3))
+        server.file.copyTo(File(dir, "E10_N45.rd5")) // a whole file (old download): every part is there
         val calls = mutableListOf<String>()
-        assertTrue(loader(Net(), calls = calls).ensure(listOf("E10_N45.rd5")).isEmpty())
+        assertTrue(loader(Net(), calls = calls).ensure(listOf(meran, "E10_N45.rd5:E10_N46")).isEmpty())
         assertTrue(calls.isEmpty())
     }
 
     @Test fun mobileDataLoadsUnlessWifiOnly() {
         val calls = mutableListOf<String>()
-        loader(Net(wifi = false), calls = calls).ensure(listOf("E10_N45.rd5"))
+        loader(Net(wifi = false), calls = calls).ensure(listOf(meran))
         assertEquals(1, calls.size) // owner: routing data on mobile data too
 
-        File(dir, "E10_N45.rd5").delete()
+        store.remove(listOf(com.onpath.app.routing.Rd5Parts.Part.parse(meran)!!))
         val c2 = mutableListOf<String>()
         val l = loader(Net(wifi = false), wifiOnly = true, calls = c2)
-        l.ensure(listOf("E10_N45.rd5"))
+        l.ensure(listOf(meran))
         assertTrue(c2.isEmpty())
         assertEquals(RoutingDataLoader.Phase.WIFI, l.status?.phase)
-        // the explicit Settings tap loads anyway
-        l.ensure(listOf("E10_N45.rd5"), ignoreWifiOnly = true)
+        // the explicit Diagnostics tap loads anyway
+        l.ensure(listOf(meran), ignoreWifiOnly = true)
         assertEquals(1, c2.size)
     }
 
@@ -132,21 +161,21 @@ class RoutingDataAutoTest {
         val net = Net(online = false)
         val got = mutableListOf<String>()
         val l = loader(net, installed = got)
-        l.ensure(listOf("E10_N45.rd5"))
+        l.ensure(listOf(meran))
         assertEquals(RoutingDataLoader.Phase.OFFLINE, l.status?.phase)
         assertFalse(l.loading)
         net.online = true
         l.retry()
-        assertEquals(listOf("E10_N45.rd5"), got)
+        assertEquals(listOf(meran), got)
     }
 
     @Test fun failureKeepsThePartialFileAndIsNotHammered() {
         val calls = mutableListOf<String>()
         val l = loader(Net(), fail = true, calls = calls)
-        l.ensure(listOf("E10_N45.rd5"))
+        l.ensure(listOf(meran))
         assertEquals(RoutingDataLoader.Phase.FAILED, l.status?.phase)
-        assertTrue(File(dir, ".E10_N45.rd5.part").isFile)
-        assertEquals(10L, l.status?.doneBytes) // the partial file counts (resume)
+        assertFalse(File(dir, "E10_N45.rd5").exists()) // never a half file in place
+        assertEquals(10L, l.status?.doneBytes) // the partial part counts (resume)
         l.retry() // a network change right after: not again
         assertEquals(1, calls.size)
         l.retry(force = true) // "Try again"
@@ -157,14 +186,25 @@ class RoutingDataAutoTest {
 
     @Test fun cancelStopsAndForgets() {
         val l = loader(Net(online = false))
-        l.ensure(listOf("E10_N45.rd5"))
+        l.ensure(listOf(meran))
         l.cancel()
         assertNull(l.status)
     }
 
     @Test fun sizeEstimatedUntilKnown() {
         val l = loader(Net(online = false))
-        l.ensure(listOf("E10_N45.rd5"))
+        l.ensure(listOf(meran))
         assertEquals(RoutingTiles.ESTIMATED_BYTES, l.status?.totalBytes)
+    }
+
+    @Test fun realSizesBeforeLoading() {
+        // the modal's "about X MB": read from the server's index before the first byte of a part loads
+        val sizes = mutableListOf<Long>()
+        lateinit var l: RoutingDataLoader
+        l = RoutingDataLoader(dir, Net(), { false }, launch = { it() }, store = store,
+            download = { _, _, _, _ -> sizes += l.status!!.totalBytes; throw IllegalStateException("stop here") })
+        l.ensure(listOf(meran, "E10_N45.rd5:E10_N46"))
+        val idx = com.onpath.app.routing.Rd5Parts.readIndex(server.file)!!
+        assertEquals(listOf(idx.size(6) + idx.size(1)), sizes)
     }
 }

@@ -12,7 +12,7 @@ import java.io.File
 
 /**
  * CORE FEATURE "routing data on a fresh install" (field test 2026-10-21): no routing data on the phone → set points →
- * the routing data loads by itself (brouter.de, ~200 MB) → the plan is computed again and is no longer a straight line;
+ * the 1° routing parts load by themselves (brouter.de, ~10 MB each) → the plan is computed again and is no longer a straight line;
  * the notice never shows a file name or path. Downloads for real, so it runs only when asked:
  * `-Pandroid.testInstrumentationRunnerArguments.routingDownload=true` (phone with internet; not in CI by default).
  */
@@ -20,7 +20,7 @@ import java.io.File
 class RoutingDataFreshInstallE2ETest : E2EBase() {
 
     @Test fun freshInstallWithoutRoutingDataLoadsItAndRoutes() {
-        assumeTrue("set routingDownload=true to run (downloads ~200 MB)",
+        assumeTrue("set routingDownload=true to run (downloads ~10–30 MB)",
             InstrumentationRegistry.getArguments().getString("routingDownload") == "true")
         launch(beforeLaunch = { File(dataDir, "segments").listFiles()?.forEach { it.delete() } })
         startPlanWithTwoPoints()

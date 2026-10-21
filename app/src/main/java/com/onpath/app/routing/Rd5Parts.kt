@@ -279,8 +279,9 @@ object Rd5Parts {
      */
     fun hasData(segmentsDir: File, lat: Double, lon: Double): Boolean? = try {
         val part = partOf(lat, lon)
-        readIndex(File(segmentsDir, part.tile))?.let { it.size(part.index) > 0 }
+        val f = File(segmentsDir, part.tile)
+        readIndex(f)?.let { it.check(f.length()); it.size(part.index) > 0 }
     } catch (e: java.io.IOException) {
-        null // expected: unreadable file – BRouter's own error says more
+        null // expected: unreadable or broken file (e.g. a test dummy) – BRouter's own error says more
     }
 }

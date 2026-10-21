@@ -160,7 +160,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
                 modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Download routing data (≈ 200 MB, Wi-Fi)")
+                Text("Download routing data for this area (≈ 10 MB)")
             }
         }
         if (busy != null) {
