@@ -984,10 +984,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * One undoable change of the planned points; [edit] = what it was, for the vibration (PlanHaptics: 1× a point set,
-     * 2× deleted, 1× reordered, nothing else) – played here so map, menus and the Points list all feel the same.
+     * One undoable change of the planned points. No vibration here: the plan vibrates only at the moment of a map hold
+     * (PlanHaptics, owner 2026-10-21), never after an edit.
      */
-    private fun change(edit: PlanEdit = PlanEdit.OTHER, block: MutableList<GeoPoint>.() -> Unit) {
+    private fun change(block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         history.record(waypoints)
@@ -998,7 +998,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
-        Haptics.play(getApplication(), PlanHaptics.feel(edit), settings.planVibrate)
         recalc()
     }
 
@@ -1009,10 +1008,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pinned.retainAll(alive)) prefs.planPinned = pinned
     }
 
-    private fun set(list: List<GeoPoint>, edit: PlanEdit = PlanEdit.OTHER) = change(edit) { clear(); addAll(list) }
+    private fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
 
     /**
-     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the vibration and
+     * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the hold's vibration and
      * the new line confirm it; a wrong guess is fixed in the point menu ("End route here") or with Undo.
      * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
      */
@@ -1021,10 +1020,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val before = waypoints.toList()
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
-        change(PlanEdit.POINT_SET) { add(d.index.coerceIn(0, size), p) }
+        change { add(d.index.coerceIn(0, size), p) }
     }
 
-    fun removePoint(index: Int) { if (index in waypoints.indices) change(PlanEdit.POINT_DELETED) { removeAt(index) } }
+    fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
@@ -1103,7 +1102,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun routeFromMyLocation(p: GeoPoint) {
         firstPointMenu = null
         val loc = tracker.location.value ?: return // the menu only offers this with a position
-        if (waypoints.isEmpty()) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
+        if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays("POI menu opened"); poiMenu = poi }
 
@@ -1116,7 +1115,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         clearSearchMarkAt(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
-        change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+        change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
     }
     /**
      * Opens the menu of route point [index]; [distDp] = finger distance from the marker, [via] = what opened it
@@ -1205,7 +1204,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val after = com.onpath.app.routing.PlanPoints.move(waypoints, from, to)
         if (after == waypoints.toList()) return
         Problems.trace("plan", "Points list: point ${from + 1} moved to ${to + 1} (plan ${waypoints.size} points)")
-        set(after, PlanEdit.REORDERED)
+        set(after)
     }
 
     /** Points list → ✕: deleted at once (Undo brings it back); a round trip stays closed at its start. */
@@ -1213,7 +1212,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val after = com.onpath.app.routing.PlanPoints.delete(waypoints, index)
         if (after.size == waypoints.size) return
         Problems.trace("plan", "Points list: point ${index + 1} deleted (plan ${waypoints.size} → ${after.size})")
-        set(after, PlanEdit.POINT_DELETED)
+        set(after)
     }
 
     /**
@@ -1341,11 +1340,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when (role) {
             // No timed notices (owner rule): the named marker and the new line show what happened.
             PlaceRole.SMART -> addPoint(p, onPoi = true)
-            PlaceRole.START -> change(PlanEdit.POINT_SET) { add(0, p) }
+            PlaceRole.START -> change { add(0, p) }
             PlaceRole.DESTINATION -> {
                 val loc = tracker.location.value
-                if (waypoints.isEmpty() && loc != null) change(PlanEdit.POINT_SET) { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
-                else change(PlanEdit.POINT_SET) { add(p) }
+                if (waypoints.isEmpty() && loc != null) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+                else change { add(p) }
             }
         }
     }

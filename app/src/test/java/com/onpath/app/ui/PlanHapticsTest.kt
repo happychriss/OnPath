@@ -1,61 +1,64 @@
 package com.onpath.app.ui
 
-import com.onpath.app.ui.PlanHaptics.Feel
+import com.onpath.app.ui.MapGestures.Buzz
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Owner 2026-10-21: 1× point set, 2× point deleted, light tick for a menu, reorder 1×, undo none. */
+/**
+ * Owner 2026-10-21 (feedback on 0.8.9): vibrate at the moment of the press, never after the action, only on the map –
+ * hold on the map / line / POI 1×, hold on a route point 2×; nothing after an edit, nothing in the Points list.
+ */
 class PlanHapticsTest {
-    @Test fun mapping() {
-        assertEquals(Feel.ONE, PlanHaptics.feel(PlanEdit.POINT_SET))
-        assertEquals(Feel.TWO, PlanHaptics.feel(PlanEdit.POINT_DELETED))
-        assertEquals(Feel.ONE, PlanHaptics.feel(PlanEdit.REORDERED))
-        assertEquals(Feel.TICK, PlanHaptics.feel(PlanEdit.MENU_OPENED))
-        assertEquals(Feel.NONE, PlanHaptics.feel(PlanEdit.UNDO))
-        assertEquals(Feel.NONE, PlanHaptics.feel(PlanEdit.OTHER))
+    @Test fun patterns() {
+        assertEquals(0, PlanHaptics.pattern(Buzz.NONE).size)
+        assertEquals(longArrayOf(0, 40).toList(), PlanHaptics.pattern(Buzz.ONE).toList())
+        assertEquals(longArrayOf(0, 40, 100, 40).toList(), PlanHaptics.pattern(Buzz.TWO).toList()) // two separate pulses
     }
 
-    @Test fun patterns() {
-        assertEquals(0, PlanHaptics.pattern(Feel.NONE).size)
-        assertEquals(2, PlanHaptics.pattern(Feel.ONE).size)
-        assertEquals(4, PlanHaptics.pattern(Feel.TWO).size) // two separate pulses
-        // the tick is lighter than one pulse – a menu must never feel like a delete (it was 2× before)
-        assertTrue(PlanHaptics.pattern(Feel.TICK)[1] < PlanHaptics.pattern(Feel.ONE)[1])
-        assertTrue(PlanHaptics.pattern(Feel.TWO).sum() < 300)
+    /** Clearly felt where the vibrator supports strength (~230). */
+    @Test fun amplitudesMatchPatterns() {
+        for (b in Buzz.values()) assertEquals(PlanHaptics.pattern(b).size, PlanHaptics.amplitudes(b).size)
+        assertEquals(230, PlanHaptics.amplitudes(Buzz.ONE)[1])
+        assertTrue(PlanHaptics.amplitudes(Buzz.TWO).filter { it > 0 }.all { it == 230 })
+    }
+
+    /** Only OnPath's "Vibrate when planning" counts (on by default) – there is no system-flag parameter any more. */
+    @Test fun gatedByOwnSettingOnly() {
+        for (b in listOf(Buzz.ONE, Buzz.TWO)) {
+            assertTrue(PlanHaptics.shouldPlay(b, planVibrate = true))
+            assertFalse(PlanHaptics.shouldPlay(b, planVibrate = false))
+        }
+        assertFalse(PlanHaptics.shouldPlay(Buzz.NONE, planVibrate = true))
+        assertTrue(com.onpath.app.data.AppSettings().planVibrate)
     }
 
     /**
-     * Owner 2026-10-21: his phone has the system "Touch feedback" off and he wants the plan vibrations – point set /
-     * deleted / reorder follow only OnPath's "Vibrate when planning"; the system flag may only silence the menu tick.
+     * Field bug 0.8.9: "set" never vibrated. The 1× pulse is short enough for Android to re-label an unlabelled
+     * vibration as touch feedback (muted with "Touch feedback" off) – which is why Haptics always sends an explicit
+     * non-touch usage. This pins the reason: the 1× waveform is such a candidate, the 2× one was not.
      */
-    @Test fun gatedByOwnSettingNotSystemTouchFeedback() {
-        for (f in listOf(Feel.ONE, Feel.TWO)) {
-            assertTrue(PlanHaptics.shouldPlay(f, planVibrate = true, systemTouch = false))
-            assertTrue(PlanHaptics.shouldPlay(f, planVibrate = true, systemTouch = true))
-            assertFalse(PlanHaptics.shouldPlay(f, planVibrate = false, systemTouch = true))
+    @Test fun onePulseWouldBeTreatedAsTouchWithoutExplicitUsage() {
+        assertTrue(PlanHaptics.pattern(Buzz.ONE).size <= PlanHaptics.MAX_UNLABELLED_TOUCH_SEGMENTS)
+        assertTrue(PlanHaptics.pattern(Buzz.TWO).size > PlanHaptics.MAX_UNLABELLED_TOUCH_SEGMENTS)
+    }
+
+    /** The hold itself vibrates: 2× on a route point (its menu with Delete), 1× on the map, the line or a POI. */
+    @Test fun holdVibratesAtThePress() {
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 0, false))  // route point → its menu
+        assertEquals(Buzz.TWO, MapGestures.buzz(true, false, 2, true))   // a POI that is a stop = its point
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, true))  // POI menu
+        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false)) // map / line: add point or first-point menu
+        assertEquals(Buzz.NONE, MapGestures.buzz(true, true, -1, false)) // only closes the menu
+    }
+
+    /** No vibration after an edit: the ViewModel and the Points list have no haptics (source check). */
+    @Test fun editsAndPointsListDoNotVibrate() {
+        val ui = java.io.File("src/main/java/com/onpath/app/ui")
+        for (f in listOf("AppViewModel.kt", "PointsSection.kt")) {
+            val src = java.io.File(ui, f).readText()
+            assertFalse("$f must not vibrate", Regex("Haptics\\.play|performHapticFeedback|LocalHapticFeedback").containsMatchIn(src))
         }
-        assertTrue(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = true, systemTouch = true))
-        assertFalse(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = true, systemTouch = false))
-        assertFalse(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = false, systemTouch = true))
-        assertFalse(PlanHaptics.shouldPlay(Feel.NONE, planVibrate = true, systemTouch = true))
-        assertTrue(com.onpath.app.data.AppSettings().planVibrate) // on by default
-    }
-
-    /** Pulses are clearly felt where the vibrator supports strength; the tick stays lighter. */
-    @Test fun amplitudesMatchPatterns() {
-        for (f in Feel.values()) assertEquals(PlanHaptics.pattern(f).size, PlanHaptics.amplitudes(f).size)
-        assertTrue(PlanHaptics.amplitudes(Feel.ONE)[1] >= 200)
-        assertTrue(PlanHaptics.amplitudes(Feel.TWO).filter { it > 0 }.all { it >= 200 })
-        assertTrue(PlanHaptics.amplitudes(Feel.TICK)[1] < PlanHaptics.amplitudes(Feel.ONE)[1])
-    }
-
-    /** A hold that opens a menu (point, POI, empty plan) only ticks; the edit itself vibrates afterwards. */
-    @Test fun holdsOnlyTick() {
-        assertEquals(MapGestures.Buzz.TICK, MapGestures.buzz(true, false, 0, false))  // on a point → its menu
-        assertEquals(MapGestures.Buzz.TICK, MapGestures.buzz(true, false, -1, true))  // POI menu
-        assertEquals(MapGestures.Buzz.TICK, MapGestures.buzz(true, false, -1, false)) // map
-        assertEquals(MapGestures.Buzz.NONE, MapGestures.buzz(true, true, -1, false))  // only closes the menu
     }
 }

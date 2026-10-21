@@ -37,10 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -91,7 +89,6 @@ fun PointsSection(
             return@Column
         }
         val rowPx = with(LocalDensity.current) { ROW_HEIGHT.toPx() }
-        val haptic = LocalHapticFeedback.current
         var dragFrom by remember { mutableStateOf<Int?>(null) }
         var dragOffset by remember { mutableFloatStateOf(0f) }
         val move by rememberUpdatedState(onMove)
@@ -114,7 +111,7 @@ fun PointsSection(
                             .semantics { contentDescription = "Move point ${i + 1} (hold and drag)" }
                             .pointerInput(i, count) {
                                 detectDragGesturesAfterLongPress(
-                                    onDragStart = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) /* light pick-up tick; the drop vibrates 1× (PlanHaptics) */; dragFrom = i; dragOffset = 0f },
+                                    onDragStart = { /* no vibration in the Points list (owner 2026-10-21, PlanHaptics) */ dragFrom = i; dragOffset = 0f },
                                     onDrag = { change, d -> change.consume(); dragOffset += d.y },
                                     onDragEnd = {
                                         val from = dragFrom
