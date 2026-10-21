@@ -31,11 +31,12 @@ by position (`PointMenuTarget`), not on an index that the plan can change under 
 action / close and route result is one line in the gesture log (`Problems.trace`, last 50, never merged; logcat tag
 OnPath and `problems.json` "events" in the diagnostics export).
 
-Plan haptics (owner 2026-10-21, `ui/PlanHaptics` + `ui/Haptics`, played in `AppViewModel.change` so map, menus and the
-Points list feel the same; off with the system "touch vibration" setting): a hold that opens a menu = very light tick;
-a point set (Start here, Go here, new stop, "New point here", added by a hold, a place added) = 1×; a point deleted
-(point menu Delete, ✕ in the list) = 2×; reorder drop = 1×; undo / redo, reverse, round trip, start / end here,
-clear = nothing.
+Plan haptics (owner 2026-10-21 after 0.8.9, `ui/PlanHaptics` + `ui/Haptics`, played by `MapHost` when the hold ring
+is full): **vibrate at the moment of the press, never after the action, only on the map.** Hold on the empty map /
+route line / a POI = 1× (40 ms); hold on a route point (menu with Delete) = 2× (40/100/40 ms); amplitude ~230. Nothing
+after an edit (menu buttons, set, delete, undo) and nothing in the Points list (✕, drag). Only OnPath's setting
+"Vibrate when planning" (default on) counts; the pulses carry an explicit media usage – unlabelled, Android treated the
+short 1× pulse as touch feedback and muted it with the system "Touch feedback" off (why "set" never vibrated in 0.8.9).
 
 C9 sheet sizes (owner 2026-10-21, "simple – only the slider and then the point editor"): small = summary; half =
 summary + profile; full = the point editor: handle + one line (time · distance) + the Points list with ⇅ Reverse /
