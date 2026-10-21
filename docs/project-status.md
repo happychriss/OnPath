@@ -4,6 +4,7 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-21/22:** see `docs/handover-2026-10-22-laptop.md` (map loading modal, world overview, routing data in 1° parts, points editor, haptics, tour backup, cloud any-area + priority; 0.9.0 on the owner's phone for testing, not released).
 - **cloud, 2026-10-21 evening – HANDOVER to the laptop: read `docs/handover-2026-10-21-cloud.md`.** Releases 0.8.1–0.8.5
   (map-loading UX, route bands over streets, check after routing, mobile data default, routing data refresh, update
   download resume), core-feature tests + emulator gate before every release. **Open core bug C1** (hold a point →
