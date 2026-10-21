@@ -11,6 +11,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **URGENT for the laptop (owner field report 2026-10-21, Plars/Mitterplars):** small streets are missing at z13+ –
+  with the eye pressed there is nothing under the blue route. Cause: the phone's 2 cells were built at 09:11
+  (`4451b5b`, first format-2 cloud builds) **before** `c7b33df`/`e9e4224` (10:15–10:17) moved minor / service streets
+  at z13+ into overlays layer `streets` (base map has none there). Old cells have no `streets` layer → no small
+  streets. Fix: rebuild the cells on the server with the new overlays, owner deletes + re-downloads them (Settings →
+  Offline maps). Prevent: the app should notice a cell built for an older style (format / overlay version in the cell
+  manifest vs. the style) and request a rebuild by itself instead of drawing a map without streets.
 - **Field diagnostics 2026-10-21 (owner, phone 0.8.0 debug from the laptop) – cloud looked at it:**
   (1) **Crash fixed on main (not released – main carries the cells work):** `ElevationProfile` crashed while the sheet
   animates (profile only a few px high → `coerceIn(0, negative)`); guard + `ProfileTinyTest` (fails without the fix).
