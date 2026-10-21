@@ -268,7 +268,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     val loadUi by produceState<MapLoadUi?>(null, cellStates, vm.cellJob, vm.mode) {
         while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
     }
-    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::hideLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
+    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
