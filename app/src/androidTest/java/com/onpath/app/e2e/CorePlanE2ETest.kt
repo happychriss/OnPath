@@ -106,10 +106,32 @@ class CorePlanE2ETest {
 
     private fun holdOnWaypoint(index: Int) {
         val p = waypointOnScreen(index)
+        shot("before-hold-${index + 1}")
         hold(p.first, p.second)
         if (device.wait(Until.findObject(By.text("Delete")), 5_000) == null) {
-            fail("hold on point ${index + 1} did not open its menu (points: ${waypointCount()})")
+            shot("after-hold-${index + 1}")
+            fail("hold on point ${index + 1} at (${p.first.toInt()}, ${p.second.toInt()}) did not open its menu – ${state()}")
         }
+    }
+
+    /** Screenshot into /sdcard/e2e (pulled by the workflow as an artifact). */
+    private fun shot(name: String) {
+        val test = Thread.currentThread().stackTrace.firstOrNull { it.className == javaClass.name && it.methodName.startsWith("hold") && it.methodName != "hold" && it.methodName != "holdOnWaypoint" }?.methodName ?: "test"
+        device.executeShellCommand("mkdir -p /sdcard/e2e")
+        device.executeShellCommand("screencap -p /sdcard/e2e/$test-$name.png")
+    }
+
+    /** What the app thinks right now (failure messages). */
+    private fun state(): String {
+        var s = ""
+        scenario.onActivity { a ->
+            val vm = vm(a)
+            val mv = mapView(a)
+            s = "points ${vm.waypoints.size}, mode ${vm.mode}, menu ${vm.pointMenu}, overlayOpen ${vm.mapOverlayOpen}, " +
+                "canEdit ${vm.canEditMap}, peek ${vm.routePeek}, map ${mv?.width}x${mv?.height}"
+        }
+        val problems = com.onpath.app.debug.Problems.snapshot().take(8).joinToString(" | ") { "${it.level} ${it.area}: ${it.message}" }
+        return "$s; problems: $problems"
     }
 
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */

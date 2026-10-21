@@ -53,7 +53,9 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true
+          script: |
+            adb logcat -c || true
+            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true || (mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d > e2e-out/logcat.txt || true; exit 1)
 
       - name: Test report
         if: always()
@@ -63,4 +65,5 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+            e2e-out/
           if-no-files-found: ignore
