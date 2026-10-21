@@ -137,7 +137,15 @@ fun MapHost(
                 val edit = vm.canEditMap
                 val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(vm.waypoints.toList(),
                     { p -> c.toScreen(p)?.let { it.x to it.y } }, screen.x, screen.y, press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
-                if (edit && marker < 0) c?.waypointAt(screen, vm.waypoints.toList()) // only for the diagnostics line (near miss)
+                if (press == MapGestures.Press.HOLD && edit && c != null) {
+                    // every hold in Plan goes into Diagnostics (core feature C1 – field reports 0.8.3 / 0.8.5)
+                    val pts = vm.waypoints.toList()
+                    val near = pts.withIndex().minByOrNull { (_, p) -> c.toScreen(p)?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
+                    val nearDp = near?.let { (_, p) -> c.toScreen(p)?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) / c.dpToPx(1f) } }
+                    com.onpath.app.debug.Problems.info("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
+                        "${near?.index?.plus(1)} at ${nearDp?.toInt()} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
+                        "follow ${vm.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.mapOverlayOpen}")
+                }
                 // A marked search result (pin) counts as a POI: holding it opens the POI menu.
                 val mark = vm.searchMark?.takeIf { m ->
                     c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true

@@ -637,6 +637,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Markers currently drawn (last [setWaypoints]); used for zoom-independent hit-testing. */
     private var shownWaypoints: List<GeoPoint> = emptyList()
 
+    /** How many route point markers are drawn now (diagnostics). */
+    fun drawnWaypointCount(): Int = shownWaypoints.size
+
     /**
      * Index of the marker nearest to a screen point within ~26 dp (screen space, so the same at every
      * zoom; overlapping markers → the nearest one), or -1. Never throws.

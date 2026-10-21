@@ -38,6 +38,21 @@ jobs:
       - name: Build app + test APKs (x86_64 for the emulator)
         run: ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest -Ponpath.e2e=true
 
+      - name: Week (routing data cache key)
+        id: week
+        run: echo "week=$(date +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Routing data cache
+        id: rd5cache
+        uses: actions/cache@v4
+        with:
+          path: rd5
+          key: brouter-E10_N45-${{ steps.week.outputs.week }}
+
+      - name: Real routing data for the field tests (brouter.de, once a week)
+        if: steps.rd5cache.outputs.cache-hit != 'true'
+        run: mkdir -p rd5 && curl -fsSL --retry 3 -o rd5/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5 && ls -la rd5
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -55,6 +70,7 @@ jobs:
           disable-animations: true
           script: |
             adb logcat -c || true
+            adb push rd5/E10_N45.rd5 /data/local/tmp/E10_N45.rd5 && adb shell chmod 644 /data/local/tmp/E10_N45.rd5 || true
             ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true || (mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d > e2e-out/logcat.txt || true; exit 1)
 
       - name: Test report
