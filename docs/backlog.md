@@ -11,6 +11,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next
+- **Field diagnostics 2026-10-21 (owner, phone 0.8.0 debug from the laptop) – cloud looked at it:**
+  (1) **Crash fixed on main (not released – main carries the cells work):** `ElevationProfile` crashed while the sheet
+  animates (profile only a few px high → `coerceIn(0, negative)`); guard + `ProfileTinyTest` (fails without the fix).
+  (2) **For the laptop (cells):** at one start MapLibre could not open `onpath/base.pmtiles` and `onpath/terrain.pmtiles`
+  ("path not found") – the style pointed at the old flat package paths while the map now lives in
+  `cells/store/g000003`; later the style loaded fine. Check the first-start / migration order (style built before
+  the cell store dir is known?).
 - **Owner map decisions 2026-10-20 (laptop, part of the map rework):** path smoothing in the pipeline (bends ≥ 20°,
   ≤ ~1.5 m off, junctions exact, route bands smoothed the same way; owner sends 2–3 example spots); planned (blue)
   route NOT smoothed; bike map (oneway arrows, "bikes both ways", cycle lanes beside streets – bike activities only)

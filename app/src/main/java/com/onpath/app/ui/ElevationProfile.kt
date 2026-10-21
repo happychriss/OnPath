@@ -105,6 +105,9 @@ fun ElevationProfile(
         val left = 40.dp.toPx()
         val bottom = size.height - 16.dp.toPx()
         val top = 6.dp.toPx()
+        // While the sheet opens / closes the profile is briefly only a few pixels high or narrow: draw nothing then
+        // (field crash 2026-10-21: label range "0 .. negative" → IllegalArgumentException in coerceIn).
+        if (bottom - top < 12.dp.toPx() || size.width - left < 24.dp.toPx()) return@Canvas
         val w = size.width - left
         val range = (data.max - data.min).coerceAtLeast(20.0)
         val minE = data.min - range * 0.08
@@ -116,7 +119,7 @@ fun ElevationProfile(
         for (e in listOf(data.min, data.max)) {
             drawLine(gridColor, Offset(left, y(e)), Offset(size.width, y(e)), 1f)
             val t = measurer.measure("${e.toInt()} m", labelStyle)
-            drawText(t, topLeft = Offset(0f, (y(e) - t.size.height / 2).coerceIn(0f, bottom - t.size.height)))
+            drawText(t, topLeft = Offset(0f, (y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
         }
         val endLabel = measurer.measure(Format.distance(data.total), labelStyle)
         drawText(endLabel, topLeft = Offset(size.width - endLabel.size.width, bottom + 1.dp.toPx()))
@@ -148,7 +151,7 @@ fun ElevationProfile(
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
             val t = measurer.measure("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle)
-            val tx = (cx - t.size.width / 2).coerceIn(left, size.width - t.size.width)
+            val tx = (cx - t.size.width / 2).coerceIn(left, (size.width - t.size.width).coerceAtLeast(left))
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
         }
