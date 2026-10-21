@@ -1,11 +1,10 @@
 // Queue, dedupe and the build pump (docs/design/map-cells.md §5, docs/design/map-hosting.md §Doorman).
 // State lives in D1; the builder reports per cell through status/f<format>/<cell>.json in the R2 bucket.
-import { parseCellId, sourceFor } from "./cells.js";
+import { blockOf, parseCellId } from "./cells.js";
 import * as gcp from "./gcp.js";
 import { globalFetch } from "./gcp.js";
 
 export const PRIORITY = { point: 0, near: 1, corridor: 2, refresh: 3 };
-export const NO_SOURCE = "Source data not available for this area yet";
 const DAY = 86_400_000;
 
 export class HttpError extends Error {
@@ -65,7 +64,6 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
   const writes = [];
   let added = 0;
   for (const c of cells) {
-    if (!sourceFor(c)) continue; // answered as failed below, nothing stored
     const r = rows.get(c.id);
     const queue = (p) => {
       added++;
@@ -111,6 +109,15 @@ async function readStatus(env, format, id) {
 
 const rebuilding = (r) => r.job === "queued" || r.job === "building";
 
+/** z7 blocks (cells.js blockOf) that already have a built or building cell: there the source extract is most likely
+ *  in the builder's bucket. A cell elsewhere probably needs a new extract first (minutes of download, map-hosting.md
+ *  §Source data) – its ETA gets cfg.newAreaS more. Any land cell is accepted; the builder answers open sea itself. */
+async function knownBlocks(db, format) {
+  const { results } = await db.prepare(`SELECT DISTINCT id FROM cells WHERE format = ?
+      AND (version IS NOT NULL OR job = 'building')`).bind(format).all();
+  return new Set(results.map((r) => parseCellId(r.id)).filter(Boolean).map(blockOf));
+}
+
 /** GET /v1/cells/status and the answer of request: one entry per cell (map-cells.md §8). */
 export async function statusFor(env, cfg, ids, format, now = Date.now()) {
   const db = env.DB;
@@ -123,11 +130,16 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
   const out = [];
   let building = false;
   let waiting = false;
-  for (const id of ids) {
+  let known = null;
+  const extra = async (id) => {
+    known ??= await knownBlocks(db, format);
     const c = parseCellId(id);
+    return c && !known.has(blockOf(c)) ? cfg.newAreaS : 0;
+  };
+  for (const id of ids) {
     const r = rows.get(id);
     if (!r) {
-      out.push(c && !sourceFor(c) ? { id, state: "failed", reason: NO_SOURCE } : { id, state: "none" });
+      out.push({ id, state: "none" });
     } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < cfg.cellSchema)) {
       // a published version is served at once; "updating" = a newer one is being built (the app keeps asking).
       // Not while a cell of an older content schema is rebuilt: that map lacks data the style needs (streets).
@@ -138,13 +150,17 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
       const s = await readStatus(env, format, id);
       const mine = s && r.execution && s.execution === gcp.shortName(r.execution);
       const progress = mine && typeof s.progress === "number" ? s.progress : 0;
+      // a new extract being downloaded: the builder's own estimate; before its first status: the guess by area
+      const source = mine ? (typeof s.source_eta_s === "number" && s.step === "download" ? s.source_eta_s : 0)
+        : cfg.startupS + (await extra(id));
       out.push({ id, state: "building", step: mine ? s.step || "starting" : "starting", progress,
-        eta_s: Math.round(Math.max(20, (1 - progress) * cfg.avgCellS + (mine ? 0 : cfg.startupS))) });
+        eta_s: Math.round(Math.max(20, (1 - progress) * cfg.avgCellS + source)) });
     } else if (r.job === "queued") {
       waiting = true;
       const pos = order.get(id) || queued.length + 1;
       out.push({ id, state: "queued", position: pos,
-        eta_s: Math.round(runLeft + Math.ceil(pos / cfg.cellsPerExecution) * cfg.startupS + pos * cfg.avgCellS) });
+        eta_s: Math.round(runLeft + Math.ceil(pos / cfg.cellsPerExecution) * cfg.startupS + pos * cfg.avgCellS
+          + (await extra(id))) });
     } else {
       out.push({ id, state: "failed", reason: r.error || "This area could not be prepared" });
     }
@@ -170,6 +186,13 @@ async function finishCell(env, cfg, ex, id, s, now) {
   }
   const reason = s && s.state === "failed" ? s.reason || "Build failed" : "Build stopped unexpectedly";
   const permanent = s && s.state === "failed" && s.permanent ? 1 : 0;
+  if (s && s.state === "failed" && s.defer) {
+    // the builder's daily download limit: not the cell's fault – no attempt counted, asking again later queues it
+    await db.prepare(`UPDATE cells SET error = ?3, execution = NULL, job = 'failed', updated_at = ?4
+        WHERE id = ?1 AND format = ?2 AND job = 'building'`).bind(id, ex.format, reason, now).run();
+    log({ ev: "cell-deferred", id, format: ex.format, reason });
+    return;
+  }
   await db.prepare(`UPDATE cells SET attempts = attempts + 1, error = ?3, permanent = ?4, rev = ?5, execution = NULL,
         job = CASE WHEN ?4 = 0 AND attempts + 1 < ?6 THEN 'queued' ELSE 'failed' END, updated_at = ?7
       WHERE id = ?1 AND format = ?2 AND job = 'building'`)

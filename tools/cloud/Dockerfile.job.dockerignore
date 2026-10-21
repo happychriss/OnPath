@@ -8,3 +8,4 @@ themes-proposals
 **/__pycache__
 **/*.pyc
 **/node_modules
+cloud/testdata

@@ -49,8 +49,9 @@ check "no key → 401"  401 "$BASE/v1/cells/status?ids=$CELL"
 check request         200 "${H[@]}" -H 'content-type: application/json' -X POST \
   --data "{\"cells\":[\"$CELL\"],\"reason\":\"point\",\"formats\":[2]}" "$BASE/v1/cells/request"
 check status          200 "${H[@]}" "$BASE/v1/cells/status?ids=$CELL"
-check "outside sources → failed" 200 "${H[@]}" "$BASE/v1/cells/status?ids=10-536-360"
-grep -q "Source data not available" /tmp/onpath-smoke-body || { echo "FAIL  no-source reason missing"; fail=1; }
+# any cell is accepted now (the builder chooses the sources); an unasked cell is just "none"
+check "unasked cell → none" 200 "${H[@]}" "$BASE/v1/cells/status?ids=10-398-405"
+grep -q '"state":"none"' /tmp/onpath-smoke-body || { echo "FAIL  unasked cell not 'none'"; fail=1; }
 IFS=- read -r Z X Y <<<"$CELL"
 code=$(curl -sS -o /dev/null -w '%{http_code}' "${H[@]}" "$BASE/v1/cells/$Z/$X/$Y/manifest" || true)
 echo "info  manifest: HTTP $code (404 until the cell is built, then 200)"

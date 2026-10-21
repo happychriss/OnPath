@@ -3,14 +3,21 @@ import datetime
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import job_build  # noqa: E402
+import osm_sources  # noqa: E402
 import r2  # noqa: E402
+from cells import buffered_bbox, cell_bbox  # noqa: E402
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+INDEX = os.path.join(HERE, "testdata", "geofabrik-index-subset.json")
 
 
 class SigV4(unittest.TestCase):
@@ -41,7 +48,8 @@ class SigV4(unittest.TestCase):
         self.assertEqual(s._url("a/b.json"), "https://abc123.eu.r2.cloudflarestorage.com/onpath-maps-test/a/b.json")
 
     def test_wrangler_toml_buckets_are_eu(self):
-        toml = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "worker", "wrangler.toml")).read()
+        with open(os.path.join(HERE, "worker", "wrangler.toml")) as f:
+            toml = f.read()
         for b in ("onpath-maps-test", "onpath-maps-production"):
             self.assertIn(f'bucket_name = "{b}"\njurisdiction = "eu"', toml)
 
@@ -62,11 +70,69 @@ class Cells(unittest.TestCase):
             with self.assertRaises(ValueError):
                 job_build.parse_cells(bad)
 
-    def test_pick_source(self):
-        with open(os.path.join(os.path.dirname(__file__), "sources.json")) as f:
+    def test_pinned_source(self):
+        with open(os.path.join(HERE, "sources.json")) as f:
             src = json.load(f)
-        self.assertEqual(job_build.pick_source(src, 10, 543, 361)["id"], "trentino_alto_adige")  # Meran
-        self.assertIsNone(job_build.pick_source(src, 10, 536, 360))                            # Swiss side
+        self.assertEqual(osm_sources.pick_pinned(src, cell_bbox(10, 543, 361))["id"], "trentino_alto_adige")  # Meran
+        self.assertIsNone(osm_sources.pick_pinned(src, cell_bbox(10, 536, 360)))                              # Swiss side
+
+
+class SourceSelection(unittest.TestCase):
+    """Extract choice for cell + 5 km on a subset of the real Geofabrik index (testdata/, 2026-10-21)."""
+    regions = osm_sources.load_index(INDEX)
+
+    def ids(self, x, y):
+        return [r.id for r in osm_sources.select(self.regions, buffered_bbox(cell_bbox(10, x, y), 5))]
+
+    def test_index_flags(self):
+        by = {r.id: r for r in self.regions}
+        self.assertTrue(by["austria"].leaf and by["austria"].country)
+        self.assertTrue(by["nord-est"].leaf and by["nord-est"].country)      # italy has the ISO code
+        self.assertFalse(by["italy"].leaf)
+        self.assertFalse(by["alps"].country)                                  # special extract, never a leaf choice
+        self.assertTrue(by["us"].leaf)                                        # states' parent is north-america ...
+
+    def test_inside_one_country_leaf(self):
+        self.assertEqual(self.ids(544, 361), ["nord-est"])      # Bozen
+        self.assertEqual(self.ids(545, 362), ["nord-est"])      # Dolomites
+        self.assertEqual(self.ids(547, 358), ["austria"])       # Kitzbühel
+        self.assertEqual(self.ids(558, 355), ["austria"])       # Vienna
+        self.assertEqual(self.ids(536, 358), ["switzerland"])   # Zürich
+        self.assertEqual(self.ids(534, 361), ["switzerland"])   # Grindelwald
+        self.assertEqual(self.ids(539, 361), ["switzerland"])   # Davos
+        self.assertEqual(self.ids(302, 377), ["us/new-york"])   # Albany: the state, not the whole "us"
+
+    def test_border_cells_take_the_leaves_smallest_first(self):
+        # documented choice: the country leaves the buffered cell touches, cut one by one and merged (no alps/dach)
+        self.assertEqual(self.ids(543, 361), ["nord-est", "austria"])     # Meran: 5 km reach the Ötztal ridge
+        self.assertEqual(self.ids(544, 359), ["nord-est", "austria"])     # Innsbruck: buffer reaches the Brenner
+        self.assertEqual(self.ids(543, 360), ["nord-est", "austria"])     # Ötztal (Obergurgl)
+        self.assertEqual(self.ids(539, 362), ["switzerland", "nord-ovest"])  # Engadin (St. Moritz)
+        self.assertEqual(self.ids(544, 358), ["oberbayern", "austria"])   # north of Innsbruck
+        self.assertEqual(self.ids(539, 359), ["liechtenstein", "switzerland", "austria"])
+        self.assertEqual(self.ids(541, 361), ["switzerland", "nord-ovest", "nord-est", "austria"])  # Scuol: 4
+        self.assertEqual(self.ids(301, 385), ["us/new-jersey", "us/new-york"])  # NYC: "us" is a container
+
+    def test_sea(self):
+        self.assertEqual(self.ids(398, 405), [])   # mid Atlantic
+        self.assertEqual(self.ids(529, 393), [])   # Mediterranean between Corsica and the Balearics
+        self.assertEqual(self.ids(0, 0), [])
+
+    def test_too_many_leaves_falls_back_to_a_containing_leaf(self):
+        box = buffered_bbox(cell_bbox(10, 541, 361), 5)
+        self.assertEqual([r.id for r in osm_sources.select(self.regions, box, max_extracts=2)], ["alps"])
+
+    def test_geometry(self):
+        sq = {"properties": {"id": "sq", "urls": {"pbf": "u"}}, "geometry": {"type": "Polygon", "coordinates": [
+            [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]]}}
+        r = osm_sources.Region(sq)
+        self.assertTrue(r.contains_box((1, 1, 3, 3)))
+        self.assertFalse(r.contains_box((3, 3, 5, 5)))       # overlaps the hole
+        self.assertFalse(r.contains_box((5.5, 5.5, 5.8, 5.8)))  # inside the hole
+        self.assertFalse(r.contains_box((9, 9, 11, 11)))
+        self.assertTrue(r.intersects_box((9, 9, 11, 11)))
+        self.assertTrue(r.intersects_box((-5, -5, 15, 15)))  # region inside the box
+        self.assertFalse(r.intersects_box((11, 11, 12, 12)))
 
 
 FAKE_BUILD = r"""#!/usr/bin/env bash
@@ -93,7 +159,8 @@ class BuilderFlow(unittest.TestCase):
         self.fake = os.path.join(t, "build_cell.sh")
         with open(self.fake, "w") as f:
             f.write(FAKE_BUILD)
-        os.makedirs(os.path.join(t, "src"))
+        os.makedirs(os.path.join(t, "src", "osm", "geofabrik"))
+        shutil.copyfile(INDEX, os.path.join(t, "src", "osm", "geofabrik", "index-v1.json"))
         with open(os.path.join(t, "sources.json"), "w") as f:
             json.dump({"max_age_days": 30, "sources": [
                 {"id": "test", "url": "https://example.invalid/test.osm.pbf", "cover": [[-180, -86, 180, 86]]}]}, f)
@@ -102,6 +169,7 @@ class BuilderFlow(unittest.TestCase):
                     "SOURCES_JSON": os.path.join(t, "sources.json"), "BUILD_CELL": self.fake,
                     "CLOUD_RUN_EXECUTION": "onpath-cell-test-abc12", "FORMAT": "2"}
         self.downloads = []
+        self.slept = []
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -111,8 +179,14 @@ class BuilderFlow(unittest.TestCase):
         with open(dest, "wb") as f:
             f.write(b"\0" * 1_100_000)
 
-    def builder(self):
-        return job_build.Builder(self.env, download=self.download)
+    def builder(self, **kw):
+        return job_build.Builder(self.env, download=self.download, sleep=self.slept.append, **kw)
+
+    def real_sources(self):
+        self.env["SOURCES_JSON"] = os.path.join(HERE, "sources.json")
+
+    def src(self, *p):
+        return os.path.join(self.env["SRC_DIR"], "osm", *p)
 
     def status(self, cid):
         with open(os.path.join(self.tmp.name, "r2", "status", "f2", f"{cid}.json")) as f:
@@ -137,7 +211,7 @@ class BuilderFlow(unittest.TestCase):
                                                      "2026-10-19")))
 
     def test_fresh_source_from_bucket_is_not_downloaded(self):
-        os.makedirs(os.path.join(self.env["SRC_DIR"], "osm"))
+        os.makedirs(os.path.join(self.env["SRC_DIR"], "osm"), exist_ok=True)
         with open(os.path.join(self.env["SRC_DIR"], "osm", "test.osm.pbf"), "wb") as f:
             f.write(b"\0" * 1_100_000)
         self.builder().main([(10, 543, 361)])
@@ -150,10 +224,122 @@ class BuilderFlow(unittest.TestCase):
         self.assertEqual((s["state"], s["reason"]), ("failed", "Build step 'base' failed"))
 
     def test_no_source(self):
-        self.env["SOURCES_JSON"] = os.path.join(os.path.dirname(__file__), "sources.json")
+        self.real_sources()
         self.builder().main([(10, 0, 0)])
         s = self.status("10-0-0")
         self.assertEqual((s["state"], s["reason"], s["permanent"]), ("failed", job_build.NO_SOURCE, True))
+        self.assertEqual(self.downloads, [])
+
+    def test_choose_sources(self):
+        self.real_sources()
+        b = self.builder()
+        self.assertEqual([s["id"] for s in b.choose_sources(10, 543, 361)], ["trentino_alto_adige"])  # pinned
+        self.assertEqual(b.choose_sources(10, 543, 361)[0]["path"], self.src("trentino_alto_adige.osm.pbf"))
+        got = b.choose_sources(10, 544, 359)  # Innsbruck
+        self.assertEqual([s["url"] for s in got], ["https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf",
+                                                   "https://download.geofabrik.de/europe/austria-latest.osm.pbf"])
+        self.assertEqual([s["path"] for s in got], [self.src("geofabrik", "europe", "italy", "nord-est.osm.pbf"),
+                                                    self.src("geofabrik", "europe", "austria.osm.pbf")])
+
+    def test_border_cell_downloads_both_and_passes_both(self):
+        self.real_sources()
+        envs = []
+
+        def popen(*a, **kw):
+            envs.append(kw["env"])
+            return subprocess.Popen(*a, **kw)
+        self.builder(run=popen).main([(10, 544, 359), (10, 547, 358)])  # Innsbruck (AT + IT), Kitzbühel (AT)
+        self.assertEqual(self.status("10-544-359")["state"], "ready")
+        self.assertEqual(self.status("10-544-359")["sources"], ["nord-est", "austria"])
+        self.assertEqual(len(self.downloads), 2)  # austria once for both cells
+        self.assertEqual(envs[0]["SRC_PBF"], self.src("geofabrik", "europe", "italy", "nord-est.osm.pbf") + " "
+                         + self.src("geofabrik", "europe", "austria.osm.pbf"))
+        self.assertEqual(envs[1]["SRC_PBF"], self.src("geofabrik", "europe", "austria.osm.pbf"))
+        meta = json.load(open(self.src("geofabrik", "europe", "austria.meta.json")))
+        self.assertEqual((meta["id"], meta["size"]), ("austria", 1_100_000))
+        self.assertFalse(os.path.exists(self.src("geofabrik", "europe", "austria.osm.pbf.lock")))
+        self.assertEqual(len(json.load(open(self.src("downloads.json")))["downloads"]), 2)
+
+    def test_old_extract_is_downloaded_again(self):
+        self.real_sources()
+        p = self.src("geofabrik", "europe", "austria.osm.pbf")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(b"\0" * 1_100_000)
+        with open(self.src("geofabrik", "europe", "austria.meta.json"), "w") as f:
+            json.dump({"downloaded": 1}, f)
+        self.builder().main([(10, 547, 358)])
+        self.assertEqual(self.downloads, ["https://download.geofabrik.de/europe/austria-latest.osm.pbf"])
+        with open(self.src("geofabrik", "europe", "austria.meta.json"), "w") as f:
+            json.dump({"downloaded": int(time.time())}, f)
+        self.downloads.clear()
+        self.builder().main([(10, 547, 358)])
+        self.assertEqual(self.downloads, [])
+
+    def test_daily_download_limit(self):
+        self.real_sources()
+        with open(self.src("downloads.json"), "w") as f:
+            json.dump({"downloads": [{"t": int(time.time()), "url": "x"}] * 10}, f)
+        self.builder().main([(10, 547, 358)])
+        s = self.status("10-547-358")
+        self.assertEqual((s["state"], s["reason"], s.get("defer")), ("failed", job_build.DEFERRED, True))
+        self.assertEqual(self.downloads, [])
+        # an old extract that exists is used a little longer instead
+        p = self.src("geofabrik", "europe", "austria.osm.pbf")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(b"\0" * 1_100_000)
+        os.utime(p, (1, 1))
+        self.builder().main([(10, 547, 358)])
+        self.assertEqual(self.status("10-547-358")["state"], "ready")
+        self.assertEqual(self.downloads, [])
+
+    def test_waits_for_another_jobs_download(self):
+        self.real_sources()
+        p = self.src("geofabrik", "europe", "austria.osm.pbf")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p + ".lock", "w") as f:
+            json.dump({"execution": "other", "t": int(time.time())}, f)
+
+        def sleep(s):  # the other job finishes while we wait
+            self.slept.append(s)
+            with open(p, "wb") as f:
+                f.write(b"\0" * 1_100_000)
+            os.remove(p + ".lock")
+        job_build.Builder(self.env, download=self.download, sleep=sleep).main([(10, 547, 358)])
+        self.assertEqual(self.slept, [20])
+        self.assertEqual(self.downloads, [])
+        self.assertEqual(self.status("10-547-358")["state"], "ready")
+
+    def test_stale_lock_is_taken_over(self):
+        self.real_sources()
+        p = self.src("geofabrik", "europe", "austria.osm.pbf")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p + ".lock", "w") as f:
+            json.dump({"execution": "crashed", "t": 1}, f)
+        self.builder().main([(10, 547, 358)])
+        self.assertEqual(len(self.downloads), 1)
+        self.assertFalse(os.path.exists(p + ".lock"))
+
+    def test_too_large_extract_is_refused_for_good(self):
+        self.real_sources()
+
+        def download(url, dest):
+            raise job_build.SourceTooLarge("9000 MB")
+        job_build.Builder(self.env, download=download, sleep=self.slept.append).main([(10, 547, 358)])
+        s = self.status("10-547-358")
+        self.assertEqual((s["state"], s["reason"], s["permanent"]), ("failed", job_build.TOO_LARGE, True))
+
+    def test_download_error_is_retryable(self):
+        self.real_sources()
+
+        def download(url, dest):
+            raise OSError("connection reset")
+        job_build.Builder(self.env, download=download, sleep=self.slept.append).main([(10, 547, 358)])
+        s = self.status("10-547-358")
+        self.assertEqual((s["state"], s["reason"]), ("failed", job_build.UNAVAILABLE))
+        self.assertNotIn("permanent", s)
+        self.assertFalse(os.path.exists(self.src("geofabrik", "europe", "austria.osm.pbf.lock")))
 
     def test_retry_skips_cells_already_published(self):
         self.builder().main([(10, 543, 361)])

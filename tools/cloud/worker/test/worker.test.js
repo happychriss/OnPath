@@ -3,11 +3,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { verify } from "node:crypto";
 
-import { cellBbox, parseCellId, sourceFor } from "../src/cells.js";
+import { blockOf, cellBbox, parseCellId } from "../src/cells.js";
 import { config } from "../src/config.js";
 import * as gcp from "../src/gcp.js";
 import { handle } from "../src/api.js";
-import { NO_SOURCE, pump, requestCells, schemaOf, statusFor } from "../src/queue.js";
+import { pump, requestCells, schemaOf, statusFor } from "../src/queue.js";
 import worker from "../src/index.js";
 import { fakeGoogle, serviceAccountKey, testEnv } from "./fakes.js";
 
@@ -50,9 +50,9 @@ test("cell ids", () => {
   for (const bad of ["11-1-1", "10-1024-0", "x", "", null, "10-1-1-1"]) assert.equal(parseCellId(bad), null, String(bad));
 });
 
-test("source cover (same sources.json as the builder)", () => {
-  assert.equal(sourceFor(parseCellId(MERAN)).id, "trentino_alto_adige");
-  assert.equal(sourceFor(parseCellId("10-536-360")), null); // Switzerland
+test("z7 block of a cell", () => {
+  assert.equal(blockOf(parseCellId(MERAN)), "67-45");
+  assert.equal(blockOf(parseCellId(BOZEN)), "68-45");
 });
 
 // ------------------------------------------------------------------------------------------ google auth
@@ -184,15 +184,69 @@ test("permanent failure and retries are limited", async () => {
   assert.equal(j.cells[0].state, "queued");
 });
 
-test("no source: failed at once, nothing stored, no build", async () => {
+test("any cell is accepted (no static coverage); open sea is the builder's permanent answer", async () => {
   const env = testEnv();
+  const cfg = config(env);
   const g = fakeGoogle();
-  const c = ctx();
-  const r = await handle(req("/v1/cells/request", { method: "POST", body: { cells: ["10-536-360"] } }), env, c, g);
-  assert.deepEqual((await r.json()).cells[0], { id: "10-536-360", state: "failed", reason: NO_SOURCE });
-  await c.done();
-  assert.equal(g.calls.length, 0);
-  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM cells").first()).n, 0);
+  const SWISS = "10-536-358";
+  const SEA = "10-398-405";
+  const j = await requestCells(env, cfg, { cells: [SWISS, SEA] });
+  assert.deepEqual(j.cells.map((x) => x.state), ["queued", "queued"]);
+  await pump(env, cfg, Date.now(), g);
+  const [ex] = [...g.executions.values()];
+  await putStatus(env, SEA, { state: "failed", reason: "No map data exists for this area (open sea)", permanent: true,
+    execution: gcp.shortName(ex.name) });
+  ex.completionTime = "now";
+  ex.succeededCount = 1;
+  await pump(env, cfg, Date.now(), g);
+  const s = (await statusFor(env, cfg, [SEA], 2)).cells[0];
+  assert.deepEqual(s, { id: SEA, state: "failed", reason: "No map data exists for this area (open sea)" });
+  assert.equal((await requestCells(env, cfg, { cells: [SEA] })).cells[0].state, "failed"); // not queued again
+});
+
+test("ETA: + newAreaS where no cell was built yet; the builder's download estimate while it downloads", async () => {
+  const env = testEnv({ CELLS_PER_EXECUTION: "1" });
+  const cfg = config(env);
+  const g = fakeGoogle();
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES (?, 2, '2026-10-20-s2', '2026-10-20', 5, 3, 1)`).bind(MERAN).run();
+  const INNSBRUCK = "10-544-359"; // block 68-44: nothing built there
+  let j = await requestCells(env, cfg, { cells: [BOZEN, INNSBRUCK] });
+  const [bozen, innsbruck] = j.cells;
+  assert.equal(bozen.state, "queued");
+  // Bozen's block 68-45 has no cell either (Meran is 67-45) → both get the new-area time; position 2 more
+  assert.equal(innsbruck.eta_s - bozen.eta_s, cfg.startupS + cfg.avgCellS);
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES ('10-545-361', 2, '2026-10-20-s2', '2026-10-20', 5, 3, 1)`).run(); // block 68-45 now known
+  j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2);
+  assert.equal(j.cells[1].eta_s - j.cells[0].eta_s, cfg.startupS + cfg.avgCellS + cfg.newAreaS);
+  await pump(env, cfg, Date.now(), g); // starts Bozen
+  const [ex] = [...g.executions.values()];
+  await putStatus(env, BOZEN, { state: "building", step: "download", progress: 0, source_eta_s: 400,
+    execution: gcp.shortName(ex.name) });
+  j = await statusFor(env, cfg, [BOZEN], 2);
+  assert.equal(j.cells[0].eta_s, cfg.avgCellS + 400);
+  await putStatus(env, BOZEN, { state: "building", step: "base", progress: 0.5, source_eta_s: 400,
+    execution: gcp.shortName(ex.name) });
+  j = await statusFor(env, cfg, [BOZEN], 2);
+  assert.equal(j.cells[0].eta_s, Math.round(cfg.avgCellS / 2));
+});
+
+test("deferred by the builder's daily download limit: no attempt counted, asking again queues it", async () => {
+  const env = testEnv({ MAX_ATTEMPTS: "1" });
+  const cfg = config(env);
+  const g = fakeGoogle();
+  await requestCells(env, cfg, { cells: [BOZEN] });
+  await pump(env, cfg, Date.now(), g);
+  const [ex] = [...g.executions.values()];
+  await putStatus(env, BOZEN, { state: "failed", reason: "later", defer: true, execution: gcp.shortName(ex.name) });
+  ex.completionTime = "now";
+  ex.succeededCount = 1;
+  await pump(env, cfg, Date.now(), g);
+  const row = await env.DB.prepare("SELECT job, attempts FROM cells WHERE id = ?").bind(BOZEN).first();
+  assert.deepEqual({ ...row }, { job: "failed", attempts: 0 });
+  assert.equal((await statusFor(env, cfg, [BOZEN], 2)).cells[0].reason, "later");
+  assert.equal((await requestCells(env, cfg, { cells: [BOZEN] })).cells[0].state, "queued");
 });
 
 test("cost guard: executions per hour", async () => {

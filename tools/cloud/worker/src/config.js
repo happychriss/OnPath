@@ -25,6 +25,8 @@ export function config(env) {
     jobTimeoutS: num(env.JOB_TIMEOUT_S, 3600),
     avgCellS: num(env.AVG_CELL_S, 240),
     startupS: num(env.STARTUP_S, 90),
+    // first cell in an area without a cached source extract: download (+ lock wait) – measured, map-hosting.md
+    newAreaS: num(env.NEW_AREA_S, 180),
     buildRev: env.BUILD_REV || "",
     // content schema the current pipeline builds (tools/cells/cells.py CELL_SCHEMA); older published cells are
     // rebuilt when someone asks for them
