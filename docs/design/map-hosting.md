@@ -247,12 +247,40 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
   waterway 15/15 joined with equal attributes; contours 323 of 412 within 3 units (the same per-tile tracing offset
   as locally) – identical to the local check.
 
+## 7c. Content schema – rebuilding cells for a newer style (2026-10-21)
+
+Field report: the 09:11 format-2 cells had no overlays layer `streets` (added 10:15), the style draws small streets
+at z13+ only from it → no small streets on the phone. Versions were named by the OSM date alone, so a rebuild on the
+same OSM date would have had the same (immutable, cached) name. Now:
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, now 2); the manifest has
+  `version` and `schema`.
+- **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
+  rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
+  A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
+- **App:** `CellApi.CELL_SCHEMA`; installed cells of an older schema are requested again at every start
+  (`CellTriggers.updateOutdated`, reason `UPDATE`, sent as `point`, allowed on mobile data); the manifest's `version`
+  is the installed version (older manifests: `osm_date`).
+- **Bump all three** whenever the style needs data older cells lack. Old apps (before this) still work: delete the
+  area in Settings → Offline maps and it is loaded again (the doorman rebuilds it first). The app shows the
+  rebuild as `CellWhy.UPDATE` ("Updating the map for the new map style").
+
+## 7d. Released APKs, loading overlay, fresh-install reset (2026-10-21, cloud)
+
+- **Release APK → test server with key:** `release.yml` builds the debug variant (fixed test signing key) in GitHub
+  environment `test`; the app key is the newest entry of secret `ONPATH_APP_KEYS` (`${KEYS##*,}`, masked) passed as
+  `ONPATH_MAP_KEY_TEST`. Rotation: put "old,new" in the secret → deploy doorman (accepts both) → release → later drop old.
+  Production (`assembleRelease` + production key) comes with Play.
+- **Overlay (owner):** while areas are built, downloaded, wait for the mobile-data answer, are offline or failed, a
+  modal window (`ui/CellCard.kt MapLoadOverlay`, not dismissable by back/outside) shows title, why, progress, rows,
+  *Wait for Wi-Fi / Use mobile data* and only **Cancel** (+ Retry on a retryable failure). Cancel stops the job's
+  cells; installed ones stay. Once the question is answered "wait for Wi-Fi", the overlay closes and the plan-sheet
+  card shows the Wi-Fi note. Screenshots: `MapLoadOverlayTest`.
+- **Fresh install simulation:** Settings → Diagnostics → "Reset maps (like a fresh install)" (`AppViewModel.resetMapsLikeFreshInstall`):
+  cancels all, deletes installed cells, resets the T3/T5 memory; the next start / point loads as on a new phone.
+  JVM test: `CellDownloadTest.freshInstallAndResetLoadTheMapAgain`.
+
 ## 8. Open points
 
-- **Release APK → which server:** `release.yml` builds the *debug* variant (fixed test signing key), so
-  GitHub-released APKs point at **test** and carry no app key today. Decide: keep (owner's phone = test; then pass
-  `-Ponpath.mapKey.test=${{ secrets.… }}` in `release.yml`), or build `assembleRelease` for production with
-  `-Ponpath.mapKey.production=…`.
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other
   workflows, so "deploy production on release" would need a PAT or `workflow_run`; for now production is by hand.
 - Old version folders (map-cells.md §6: delete 7 days after `current.json` moved) and cells unused for 12 months are

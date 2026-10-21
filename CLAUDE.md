@@ -41,6 +41,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 - `./gradlew :app:recordPaparazziDebug` / `verifyPaparazziDebug` – JVM screenshot tests of the UI
   (map replaced by a placeholder). Images in `app/src/test/snapshots/images/`. Use these to check layouts
   when no device/emulator is available.
+- **Emulator (core features end to end):** `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (needs an x86_64
+  emulator; CI: `.github/workflows/e2e.yml`, also a gate before every release). `-Ponpath.e2e=true` adds x86_64 libs –
+  never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>`.
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
@@ -92,6 +95,8 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
 - **No Google Play Services** (LocationManager directly); keep dependencies few.
+- **Core features** (`docs/core-features.md`, e.g. hold a route point → menu → Delete): each has regression tests;
+  a field bug in one first gets a test that reproduces it, then the fix (owner 2026-10-21, after the second regression).
 - **No silent errors:** every `catch` / `runCatching` that recovers reports to `debug/Problems`
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
   without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs

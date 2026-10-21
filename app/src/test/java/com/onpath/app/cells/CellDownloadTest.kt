@@ -121,18 +121,47 @@ class CellDownloadTest {
         assertEquals(emptyList<CellId>(), mc.request(listOf(a), CellReason.NEAR)) // installed
     }
 
+    /** Owner 2026-10-21: mobile data by default – own point, neighbours and refreshes; no question. */
     @Test fun mobileDataRule() {
         server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
         val net = Net(unmetered = false)
         val mc = cells(net)
         mc.request(listOf(a), CellReason.POINT)
-        mc.request(listOf(b), CellReason.NEAR)
+        mc.request(listOf(b), CellReason.NEAR, ownPoint = false)
         waitFor("own cell on mobile data") { mc.state(a) is CellState.Ready }
+        waitFor("neighbour on mobile data") { mc.state(b) is CellState.Ready }
+        assertEquals(emptyList<CellId>(), mc.waitingForMobileApproval().map { it.first })
+        server.publish(a, "v2")
+        mc.request(listOf(a), CellReason.REFRESH, ownPoint = false)
+        waitFor("refresh on mobile data") { mc.state(a) == CellState.Ready("v2") }
+    }
+
+    /** "Maps only on Wi-Fi": neighbours wait, the user's yes loads them. */
+    @Test fun wifiOnlyWaitsUnlessApproved() {
+        server.publish(b, "v1"); server.buildPolls = 0
+        val mc = cells(Net(unmetered = false))
+        mc.wifiOnly = true
+        mc.request(listOf(b), CellReason.NEAR, ownPoint = false)
         waitFor("neighbour waits") { mc.state(b) is CellState.WaitingForWifi }
-        assertEquals(listOf(b), mc.waitingForMobileApproval().map { it.first })
         mc.approveMobile(listOf(b))
         waitFor("neighbour after yes") { mc.state(b) is CellState.Ready }
-        assertEquals(setOf(a, b), mc.installed.value.map { it.id }.toSet())
+    }
+
+    /** A tour runs: the newer version of an installed area waits; back in Plan it loads (no switch mid-tour). */
+    @Test fun updatesHeldDuringTour() {
+        server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
+        val mc = cells(Net())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("installed") { mc.state(a) == CellState.Ready("v1") }
+        mc.holdUpdates = true
+        server.publish(a, "v2")
+        mc.request(listOf(a), CellReason.REFRESH, ownPoint = false)
+        mc.request(listOf(b), CellReason.NEAR) // a NEW area still loads on tour (T5)
+        waitFor("new area on tour") { mc.state(b) == CellState.Ready("v1") }
+        Thread.sleep(300)
+        assertEquals("v1", mc.installed.value.first { it.id == a }.version)
+        mc.holdUpdates = false
+        waitFor("update after the tour") { mc.state(a) == CellState.Ready("v2") }
     }
 
     @Test fun wifiOnlyWaitsUntilWifi() {
@@ -177,6 +206,43 @@ class CellDownloadTest {
         mc.request(listOf(a), CellReason.REFRESH)
         waitFor("v2") { mc.state(a) == CellState.Ready("v2") }
         assertEquals("v2", mc.installed.value.single().version)
+    }
+
+    /**
+     * Field report 2026-10-21: cells built before the "streets" overlay (content schema 1, version = OSM date) are found
+     * as outdated and loaded again as soon as the server has the schema-2 build – also on mobile data.
+     */
+    @Test fun outdatedSchemaIsLoadedAgain() {
+        assertEquals(1, CellApi.schemaOf("2026-10-20")); assertEquals(2, CellApi.schemaOf("2026-10-20-s2"))
+        server.publish(a, "2026-10-20"); server.buildPolls = 0
+        val mc = cells(Net(unmetered = false))
+        mc.request(listOf(a), CellReason.POINT)   // own point: allowed on mobile data
+        waitFor("old") { mc.state(a) == CellState.Ready("2026-10-20") }
+        assertEquals(listOf(a), mc.outdated())
+        server.publish(a, "2026-10-20-s2")
+        mc.request(mc.outdated(), CellReason.UPDATE, ownPoint = true)
+        waitFor("schema 2") { mc.state(a) == CellState.Ready("2026-10-20-s2") }
+        assertEquals(emptyList<CellId>(), mc.outdated())
+    }
+
+    /**
+     * Fresh-install simulation (owner 2026-10-21): empty phone → own point → the server builds → download over mobile
+     * data (own point) → map installed; "Reset maps" deletes everything → asked again → installed again, same version.
+     */
+    @Test fun freshInstallAndResetLoadTheMapAgain() {
+        server.publish(a, "2026-10-21-s2"); server.buildPolls = 2
+        val mc = cells(Net(unmetered = false))
+        assertEquals(null, mc.mapDir())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s2") }
+        assertTrue(File(mc.mapDir()!!, "base.pmtiles").isFile)
+        assertEquals(emptyList<CellId>(), mc.outdated())
+        // Settings → Diagnostics → Reset maps
+        mc.cancel(mc.states.value.keys.toList()); mc.delete(listOf(a))
+        waitFor("deleted") { mc.installed.value.isEmpty() }
+        assertEquals(listOf(a), mc.missing(listOf(a)))
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("loaded again") { mc.state(a) == CellState.Ready("2026-10-21-s2") && mc.installed.value.size == 1 }
     }
 
     /** Requests survive a restart; a complete download not yet joined is joined at start. */

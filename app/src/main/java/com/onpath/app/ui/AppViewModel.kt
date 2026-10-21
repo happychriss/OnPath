@@ -215,7 +215,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
         cells.setForeground(true)
         if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
-        cellsRefreshIfDue()
     }
 
     /** The app left the screen: map cell status is not polled in the background (map-cells.md §8). */
@@ -317,6 +316,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Card → OK / Not now / ×: the card goes; cells still loading go on (Settings → Offline maps shows them). */
     fun closeCellCard() { if (cellJob == null) firstStartHidden = true; cellJob = null; mobileDeclined = false }
 
+    /** Overlay → Cancel: stop loading the areas of this job (installed ones stay; setting a point there asks again). */
+    fun cancelCellLoading() {
+        val job = cellJob ?: return
+        val inst = cells.installed.value.map { it.id }.toSet()
+        safeCells("cancel") { cells.cancel(job.cells.filter { it !in inst || job.why == com.onpath.app.cells.CellWhy.UPDATE }) }
+        closeCellCard()
+    }
+
+    /**
+     * Settings → Diagnostics → "Reset maps": deletes every downloaded map area and the queue – the app is like freshly
+     * installed for maps; the own position (T3) and the next point set fetch them again (owner: test a fresh install).
+     */
+    fun resetMapsLikeFreshInstall() = safeCells("reset") {
+        val all = cells.installed.value.map { it.id }
+        cells.cancel(cells.states.value.keys.toList())
+        if (all.isNotEmpty()) cells.delete(all)
+        closeCellCard(); t3Pending = true; t5LastAt = null
+        message = "Map areas deleted (${all.size}). The map for your position loads again as on a new install."
+        Problems.info("cells", "Maps reset like a fresh install (${all.size} area(s) deleted)")
+    }
+
     /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
     fun overviewOnly(lat: Double, lon: Double, zoom: Double): Boolean =
         zoom >= 10.0 && try { !cells.hasDetailedMap(GeoPoint(lat, lon)) } catch (e: Exception) {
@@ -345,7 +365,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
-    private fun cellsRefreshIfDue() = safeCells("refresh") { cellTriggers.refreshIfDue() }
+    /**
+     * After a route was computed in Plan (owner 2026-10-21: "at the moment I plan, I want a recent map"; nothing is
+     * updated while the app is idle): newer versions of the installed map areas along it (quiet; the map is veiled for
+     * the seconds a ready one loads) and newer routing data (then the plan is computed again).
+     */
+    private fun freshenAfterRoute(line: List<GeoPoint>) {
+        safeCells("fresh") {
+            val asked = cellTriggers.freshenAlong(line)
+            if (asked.isNotEmpty()) Problems.info("cells", "Checking ${asked.size} map area(s) along the route for a newer version")
+        }
+        checkRoutingData(line)
+    }
 
     /** Map cell triggers never break planning: a failure is logged, planning goes on. */
     private inline fun safeCells(what: String, block: () -> Unit) {
@@ -395,12 +426,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             kotlin.math.abs(it.lon), if (it.lon >= 0) "E" else "W")
     }
 
-    /** Settings → "Update maps now": ask for newer versions of every installed area (download on Wi-Fi). */
+    /** Settings → "Update maps now": ask for newer versions of every installed area. */
     fun updateMapsNow() = safeCells("update") {
         val all = cells.installed.value.map { it.id }
         val asked = cells.request(all, com.onpath.app.cells.CellReason.REFRESH, ownPoint = false)
         message = if (asked.isEmpty()) "The map areas are already being checked."
-            else "Checking ${asked.size} map ${if (asked.size == 1) "area" else "areas"} for a newer version – it downloads on Wi-Fi."
+            else "Checking ${asked.size} map ${if (asked.size == 1) "area" else "areas"} for a newer version." +
+                if (settings.mapsWifiOnly) " Settings: maps only on Wi-Fi." else ""
     }
 
     fun deleteMapArea(id: String) {
@@ -765,6 +797,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Bumped when map style files changed, so the map reloads its style. */
     var styleVersion by mutableStateOf(0)
         private set
+
+    /** Reload the map style as after a map update (emulator test of the core features, CorePlanE2ETest). */
+    @androidx.annotation.VisibleForTesting
+    fun reloadMapStyleForTest() { styleVersion++ }
 
     /** Imports the onpath-data zip or a single data/style file picked by the user. */
     fun importData(uri: Uri) {
@@ -1234,6 +1270,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun recalc() {
         routeJob?.cancel(); routeJob = null
+        val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
         highlight = null
         val pts = waypoints.toList()
         val pins = pinnedIndices()
@@ -1257,6 +1294,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 baseline = adoptPlanBaseline
                 route = it; routeError = it.error; snapToRoute(pts, pins, it)
                 safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points)) } // T4: the corridor
+                if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points)
+                if (viaData) routingDataRouteChanged(it)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
@@ -2101,6 +2140,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------- routing data freshness (owner 2026-10-21: routing matters most – a changed way must reroute) ----
+
+    /** The plan is being computed again because newer routing data arrived. */
+    private var routingDataReroute = false
+    /** Route before that recalculation (to tell the user only when the way changed). */
+    private var routingDataBefore: List<GeoPoint>? = null
+    @Volatile private var routingDataBusy = false
+
+    /**
+     * Newer routing data (BRouter tiles from brouter.de, weekly) for the route's tiles: at most every
+     * [ROUTING_CHECK_MS]; a tile older than [ROUTING_MAX_AGE_DAYS] days is downloaded again when the server has a
+     * newer one – on mobile data too (owner), unless Settings says maps only on Wi-Fi. Never during a tour.
+     */
+    private fun checkRoutingData(line: List<GeoPoint>) {
+        if (routingDataBusy || recState.value != null) return
+        val t = System.currentTimeMillis()
+        if (t - prefs.routingDataCheckedAt < ROUTING_CHECK_MS) return
+        val names = listOf(line.first(), line.last()).map { com.onpath.app.data.SegmentDownloader.tileName(it.lat, it.lon) }.distinct()
+        val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
+            .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
+        prefs.routingDataCheckedAt = t
+        if (due.isEmpty() || (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered())) return
+        routingDataBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            var got = 0
+            for (f in due) {
+                try {
+                    if (com.onpath.app.data.SegmentDownloader.refreshIfNewer(f.name, dataFiles.segmentsDir)) got++
+                } catch (e: Exception) {
+                    Problems.info("routing", "Routing data ${f.name} not refreshed now (${e.message}); tried again later", e)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                routingDataBusy = false
+                if (got > 0) {
+                    Problems.info("routing", "Newer routing data installed ($got file(s)); plan computed again")
+                    engine = null // new engine: no cached routes from the old data
+                    if (mode == AppMode.PLAN && recState.value == null && waypoints.size >= 2) {
+                        routingDataBefore = route?.points; routingDataReroute = true; recalc()
+                    }
+                }
+            }
+        }
+    }
+
+    /** The plan computed again on newer routing data: say so only when the way changed. */
+    private fun routingDataRouteChanged(r: com.onpath.app.routing.PlannedRoute) {
+        val before = routingDataBefore ?: return
+        routingDataBefore = null
+        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = "Route updated – newer way data."
+    }
+
     // Last in the class: every property it touches is initialised by now.
     init {
         // a new cell store generation (cell added / replaced / deleted, region re-joined) → reload the map style
@@ -2120,8 +2211,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 s !is com.onpath.app.cells.CellState.Ready && s !is com.onpath.app.cells.CellState.Failed }.keys.sorted()
             if (loading.isNotEmpty() && cells.downloadsAvailable) cellJob = com.onpath.app.cells.CellJob(loading, null, com.onpath.app.cells.CellWhy.PLANNED)
         }
-        cellsRefreshIfDue()
         viewModelScope.launch { tracker.location.filterNotNull().collect { cellsForFix(it) } }
+        // a tour runs (Navigate): newer map versions wait – the map never switches under the user's feet
+        viewModelScope.launch { androidx.compose.runtime.snapshotFlow { mode }.collect { cells.holdUpdates = it == AppMode.NAVIGATE } }
     }
 
     override fun onCleared() {
@@ -2137,6 +2229,9 @@ private const val FAR_SNAP_M = 150.0
 private const val SCRUB_HOLD_MS = 4000L
 /** A shared place's point from the Google page may be this far from its address before the address wins. */
 private const val SHARED_PAGE_MAX_OFF_M = 3_000.0
+/** Routing data: checked at most this often after a route (ms), and refreshed when older than this (days). */
+private const val ROUTING_CHECK_MS = 12 * 3600_000L
+private const val ROUTING_MAX_AGE_DAYS = 35
 /** T5 (on tour, edge of the detailed map) is checked again after moving this far. */
 private const val T5_STEP_M = 300.0
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
