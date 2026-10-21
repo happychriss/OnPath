@@ -63,7 +63,7 @@ Built per region by the pipeline, copied to the phone into
 | `lowways.geojson` | `tools/extract_overlays.py` (all paths/tracks, coarse, drawn below z13) | optional |
 | `trailnames.geojson` | `tools/extract_overlays.py` (trail names t="n", AVS numbers t="r") | optional |
 | `paths.geojson` | `tools/extract_overlays.py` (every path/track, exact; drawn from z13 instead of the base map, tracktype → dots) | optional (without it the base map's lines are drawn) |
-| `overlays.pmtiles` | **format 2** (`build_region.sh --format 2`): `extract_overlays.py --tiles --smooth` + `tools/build_overlays.sh` (tippecanoe) – routes, trails, ways, paths (+ former lowways), trailnames as source-layers of one vector file; base map then trimmed by `tools/trim_base.sh` | yes in format 2, replaces the overlay `.geojson` files (app: `DataFiles.formatOf`, style `assets/style/f2/`; schema `docs/map-pipeline.md` 5b) |
+| `overlays.pmtiles` | **format 2** (`build_region.sh --format 2`): `extract_overlays.py --tiles --smooth` + `tools/build_overlays.sh` (tippecanoe) – routes, trails, ways, paths (+ former lowways), streets (small streets, smoothed), trailnames as source-layers of one vector file; base map then trimmed by `tools/trim_base.sh` (no path / track / small-street lines at z13–14) | yes in format 2, replaces the overlay `.geojson` files (app: `DataFiles.formatOf`, style `assets/style/f2/`; schema `docs/map-pipeline.md` 5b) |
 | `segments/E10_N45.rd5` | download from https://brouter.de/brouter/segments4/ | yes |
 
 Current test region: Bozen / Meran / Algund / Ultental (Zoggler Stausee), bbox `10.70,46.30,11.60,46.85`. OSM source:

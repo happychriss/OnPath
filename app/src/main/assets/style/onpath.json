@@ -4082,6 +4082,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4121,7 +4124,7 @@
     ]
    ],
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#33251a",
     "line-width": [
      "interpolate",
      [
@@ -4131,12 +4134,14 @@
      [
       "zoom"
      ],
-     13,
-     1.1,
+     12,
+     0.8,
+     14,
+     1.35,
      16,
-     2.3,
+     2.2,
      18,
-     3.6
+     3.3
     ]
    }
   },
@@ -4146,6 +4151,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 13,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4185,7 +4193,7 @@
     ]
    ],
    "paint": {
-    "line-color": "#2f74a8",
+    "line-color": "#33251a",
     "line-width": [
      "interpolate",
      [
@@ -4195,12 +4203,14 @@
      [
       "zoom"
      ],
-     13,
-     1.1,
+     12,
+     0.8,
+     14,
+     1.35,
      16,
-     2.3,
+     2.2,
      18,
-     3.6
+     3.3
     ],
     "line-dasharray": [
      3,
@@ -4214,6 +4224,9 @@
    "source": "base",
    "source-layer": "transportation",
    "minzoom": 14,
+   "layout": {
+    "line-join": "round"
+   },
    "filter": [
     "all",
     [
@@ -4444,7 +4457,8 @@
         "literal",
         [
          "footway",
-         "pedestrian"
+         "pedestrian",
+         "cycleway"
         ]
        ]
       ],
@@ -4464,23 +4478,12 @@
      [
       "all",
       [
-       "any",
+       "==",
        [
-        "==",
-        [
-         "get",
-         "subclass"
-        ],
-        "cycleway"
+        "get",
+        "subclass"
        ],
-       [
-        "==",
-        [
-         "get",
-         "subclass"
-        ],
-        "path"
-       ]
+       "path"
       ],
       [
        "==",
@@ -4552,27 +4555,12 @@
     [
      "any",
      [
-      "all",
+      "==",
       [
-       "==",
-       [
-        "get",
-        "subclass"
-       ],
-       "cycleway"
+       "get",
+       "subclass"
       ],
-      [
-       "!=",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       "no"
-      ]
+      "cycleway"
      ],
      [
       "all",
@@ -5742,7 +5730,6 @@
    "type": "line",
    "source": "base",
    "source-layer": "transportation",
-   "minzoom": 14,
    "filter": [
     "all",
     [
@@ -5772,6 +5759,10 @@
      ]
     ]
    ],
+   "minzoom": 14,
+   "layout": {
+    "line-join": "round"
+   },
    "paint": {
     "line-color": "#8f877c",
     "line-gap-width": [

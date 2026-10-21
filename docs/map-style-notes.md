@@ -154,11 +154,42 @@ skipped. Pipeline and schema: `docs/map-pipeline.md` section 5b.
   base map's line a little beside the own path at z17) – `docs/design/img/format2-vs-1-meran-z16.jpg`.
 - **Smoothed paths** (pipeline `--smooth`): bends rounded within 1.5 m; route bands on the same line –
   `docs/design/img/format2-smoothing-*.jpg` (format 1 · format 2 unsmoothed · format 2 smoothed).
+  Since 2026-10-21 (owner, phone at z18 near Plars: streets had sharp corners, paths only "a bit smoother"): bends from
+  15° within 3 m, and small streets are smoothed too – see "Rounder ways" below.
 - **Via ferrata** (`via-ferrata`, `via-ferrata-ticks`, all activities): dark red (`viaferrata.color` #9e1b1b) dashed
   line with short cross ticks (a wide line with a very short dash = ticks across the way), like the "Klettersteig"
   signature of Alpine maps; red so it never reads as an ordinary trail. Drawn above the trail dots.
   `docs/design/img/format2-via-ferrata-z17.jpg`.
 - **Bike map (first draft, bike activities only, switched by `MapController.setOverlay`):** `bike-lane-left/right`
   (cycle lane / track beside the street, solid; `-shared` dashed for shared / bus lanes; `line-offset` by road class),
-  `bike-oneway` (grey arrows on one-way streets from the base map's `oneway`, z15+), `bike-both-ways` (blue double
+  `bike-oneway` (grey arrows on one-way streets from the base map's `oneway`, z15+), `bike-both-ways` (green double
   arrow where `oneway:bicycle=no`). Sprite images `oneway-arrow`, `bike-both-ways`. Needs an owner look on the phone.
+
+## Rounder ways (2026-10-21, owner after a look at z18 near Plars / Algund)
+- **Round joins** on every street, path, track and route-band line (casings, lanes, fills, cycleways, steps, bridge
+  casings). Exception kept on purpose: the dotted track edges `track-own-compact/medium/loose/soft` stay `line-cap:
+  butt` + `line-join: miter` ("Solid track edges at way ends and in bends" above) – with smoothed geometry a track
+  turns by at most ~15° per vertex, where a miter looks round, and a round join would bring back the solid arcs at
+  the corners that stay sharp (junction nodes).
+- **Stronger smoothing** (pipeline, format 2): bends ≥ 15° within 3 m (`extract_overlays.py --smooth-angle 15
+  --smooth-dev 3`); junction nodes and ends exact; route bands on the same line.
+- **Small streets from the overlay** (format 2): residential / living street / unclassified / road / service ways are
+  in `overlays.pmtiles` layer `streets` (smoothed, OpenMapTiles attribute names) and the base map has no minor /
+  service lines at z13–14 (`trim_base.sh`). `street_layer()` in `make_style.py` draws `road-{minor,service}-{casing,
+  lane,tunnel}` from the base map below z13 (ids `…-low`) and from `streets` above – same ids, filters, widths and the
+  same casing-then-fill order, so bigger roads' fills still win at junctions and tracks stay under yellow roads.
+  `access-no-*-service` read `streets`; new `bridge-casing-streets` and `bike-oneway-streets` (switched with
+  `bike-oneway` by `MapController.setOverlay`). Tertiary and bigger roads stay in the base map, unsmoothed; a small
+  street's shared node with them is exact, so they meet without gaps. Street names still come from the base map's
+  `transportation_name` (unsmoothed, ≤ 3 m off the drawn line – reads fine). Format 1 unchanged (streets from base).
+  Renders: before / after at Plars, Meran and St.-Peter-Straße (Algund) at z16–18.
+
+## No blue ways (2026-10-21, owner)
+Rule: **green = good for the current activity, everything else the normal black line.** Water stays blue.
+- `cycleway` / `cycleway-unpaved`: black path line (`path.color` / `path.width`, unpaved dashed) instead of blue.
+- `greenway-foot` (hiking): footways, pedestrian zones and cycleways – each unless `foot=no` (shared foot + cycle use is
+  common in Italy / Austria, so a missing foot tag counts as allowed) – plus paths with `foot=designated`.
+- `greenway-bike` (bike activities): every cycleway, plus footways / pedestrian zones / paths with
+  `bicycle=yes|designated`. Footways without bike access stay black.
+- Cycle lanes beside streets (`bike-lane-*`) are thin green offset lines; the both-ways arrow sprite is green.
+- Theme tokens `cycleway.color`, `cycleway.width.*` and `bike.lane.color` are gone (`cycleway.dash` stays).
