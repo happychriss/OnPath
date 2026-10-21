@@ -393,14 +393,14 @@ def paths():
         paths_base_fallback(tl, base_track, foot, steps, pw, fb)
     if FMT == 2:
         own = own_paths()
-        cw = Z("cycleway.width")
+        cw = Z("path.width")  # a plain path line (owner 2026-10-21: no blue ways)
         cyc = ["all", ["==", SUB, "cycleway"], NOT_TUNNEL_OWN]
         layer(id_="cycleway", type="line", **own, minzoom=13, layout={"line-join": "round"},
               filter=["all", cyc, ["!", ["has", "uv"]]],
-              paint={"line-color": T("cycleway.color"), "line-width": cw})
+              paint={"line-color": T("path.color"), "line-width": cw})
         layer(id_="cycleway-unpaved", type="line", **own, minzoom=13, layout={"line-join": "round"},
               filter=["all", cyc, ["has", "uv"]],
-              paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+              paint={"line-color": T("path.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
         layer(id_="path-steps", type="line", **own, minzoom=14, layout={"line-join": "round"},
               filter=["all", ["==", SUB, "steps"], NOT_TUNNEL_OWN],
               paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
@@ -423,17 +423,18 @@ def paths_base_fallback(tl, base_track, foot, steps, pw, fb):
 
 
 def paths_base_lines(tl, foot, steps):
-    """Format 1: cycleways (solid; unpaved dashed) and steps from the base map."""
+    """Format 1: cycleways (black path line, unpaved dashed – green on top where good for the activity, green_ways())
+    and steps from the base map."""
     cls = ["get", "class"]
     not_tunnel = ["!=", ["get", "brunnel"], "tunnel"]
     cyc = ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "cycleway"], not_tunnel]
-    cw = Z("cycleway.width")
+    cw = Z("path.width")  # a plain path line (owner 2026-10-21: no blue ways)
     layer(id_="cycleway", type="line", **tl, minzoom=13, layout={"line-join": "round"},
           filter=["all", cyc, ["!=", ["get", "surface"], "unpaved"]],
-          paint={"line-color": T("cycleway.color"), "line-width": cw})
+          paint={"line-color": T("path.color"), "line-width": cw})
     layer(id_="cycleway-unpaved", type="line", **tl, minzoom=13, layout={"line-join": "round"},
           filter=["all", cyc, ["==", ["get", "surface"], "unpaved"]],
-          paint={"line-color": T("cycleway.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+          paint={"line-color": T("path.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
     layer(id_="path-steps", type="line", **tl, minzoom=14, layout={"line-join": "round"},
           filter=["all", foot, steps],
           paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
@@ -503,11 +504,12 @@ def trails():
 def green_ways():
     """Ways made for walking or cycling, like Komoot's thin green line (owner 2026-10-20: "there I know I can walk /
     ride well"). From the base map's transportation layer (class path + subclass + foot / bicycle tags), so no new map
-    package is needed. Depends on the activity – the app switches them (MapController.setOverlay):
-    - "-foot" (hiking, visible by default): footways and pedestrian zones (unless foot=no), plus cycleways / paths
-      marked foot=designated (shared foot-and-cycle paths);
-    - "-bike" (bike profiles, hidden by default): cycleways (unless bicycle=no), plus footways / pedestrian zones /
-      paths with bicycle=yes|designated.
+    package is needed. Rule (owner 2026-10-21): green = good for the current activity, everything else the normal black
+    line – no blue ways. Depends on the activity – the app switches them (MapController.setOverlay):
+    - "-foot" (hiking, visible by default): footways, pedestrian zones and cycleways (shared use is common here),
+      each unless foot=no, plus paths marked foot=designated;
+    - "-bike" (bike profiles, hidden by default): every cycleway, plus footways / pedestrian zones / paths with
+      bicycle=yes|designated (cycle lanes beside streets: bike_map()).
     Pedestrian zones are also drawn as a plain path line (all activities) – they were missing since 0.7.0 because
     paths.geojson has no highway=pedestrian and the base map's path layer is only a fallback."""
     ok = ["literal", ["yes", "designated"]]
@@ -526,10 +528,11 @@ def green_ways():
           filter=["all", path, ["==", sub, "pedestrian"]], layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("path.color"), "line-width": Z("greenway.width")})
     foot = ["all", path, ["any",
-            ["all", ["in", sub, ["literal", ["footway", "pedestrian"]]], ["!=", ["coalesce", ["get", "foot"], ""], "no"]],
-            ["all", ["any", ["==", sub, "cycleway"], is_path], ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
+            ["all", ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
+             ["!=", ["coalesce", ["get", "foot"], ""], "no"]],
+            ["all", is_path, ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
     bike = ["all", path, ["any",
-            ["all", ["==", sub, "cycleway"], ["!=", ["coalesce", ["get", "bicycle"], ""], "no"]],
+            ["==", sub, "cycleway"],
             ["all", ["any", ["in", sub, ["literal", ["footway", "pedestrian"]]], is_path],
              ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
     for mode, flt, visible in (("foot", foot, True), ("bike", bike, False)):
@@ -601,7 +604,8 @@ BIKE_LANE_BIG = ["literal", ["motorway", "trunk", "primary", "secondary", "motor
 
 def bike_map():
     """Format 2, bike activities only (hidden by default, MapController.setOverlay): cycle lanes beside streets
-    (overlay paths k="x" with cwl / cwr: lane / track solid, shared lane / bus lane dashed), one-way arrows on streets
+    (overlay paths k="x" with cwl / cwr: thin green offset lines like the green ways – lane / track solid, shared
+    lane / bus lane dashed), one-way arrows on streets
     (base map "oneway") and a blue double arrow where a one-way street is open to bikes both ways (oneway:bicycle=no)."""
     own = own_paths()
     sub = SUB
@@ -616,7 +620,7 @@ def bike_map():
         side_offset = offset(sign)
         for suffix, flt, dash in (("", ["in", val, ["literal", ["l", "t", "o"]]], None),
                                   ("-shared", ["in", val, ["literal", ["s", "b"]]], T("bike.lane.shared.dash"))):
-            paint = {"line-color": T("bike.lane.color"), "line-width": Z("bike.lane.width"), "line-offset": side_offset}
+            paint = {"line-color": T("greenway.color"), "line-width": Z("bike.lane.width"), "line-offset": side_offset}
             if dash:
                 paint["line-dasharray"] = dash
             layer(id_=f"bike-lane-{side}{suffix}", type="line", **own, minzoom=14,
