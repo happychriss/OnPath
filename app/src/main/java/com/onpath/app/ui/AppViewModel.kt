@@ -330,7 +330,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
-    private fun cellsRefreshIfDue() = safeCells("refresh") { cellTriggers.refreshIfDue() }
+    private fun cellsRefreshIfDue() = safeCells("refresh") {
+        val old = cellTriggers.updateOutdated()
+        if (old.isNotEmpty()) Problems.info("cells", "${old.size} map area(s) built for an older map style – requested again")
+        cellTriggers.refreshIfDue()
+    }
 
     /** Map cell triggers never break planning: a failure is logged, planning goes on. */
     private inline fun safeCells(what: String, block: () -> Unit) {

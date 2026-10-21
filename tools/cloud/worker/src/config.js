@@ -26,5 +26,8 @@ export function config(env) {
     avgCellS: num(env.AVG_CELL_S, 240),
     startupS: num(env.STARTUP_S, 90),
     buildRev: env.BUILD_REV || "",
+    // content schema the current pipeline builds (tools/cells/cells.py CELL_SCHEMA); older published cells are
+    // rebuilt when someone asks for them
+    cellSchema: num(env.CELL_SCHEMA, 2),
   };
 }

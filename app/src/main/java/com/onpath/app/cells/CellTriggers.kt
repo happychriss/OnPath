@@ -12,6 +12,8 @@ interface CellSource {
     fun hasDetailedMap(p: GeoPoint): Boolean
     fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean = reason == CellReason.POINT): List<CellId>
     fun refreshDue(ageDays: Int = 30): List<CellId>
+    /** Installed cells built for an older style (content schema) – default none (test fakes). */
+    fun outdated(): List<CellId> = emptyList()
     fun markUsed(cells: Collection<CellId>)
     /** False when the build has no map server key. */
     val downloadsAvailable: Boolean
@@ -102,6 +104,17 @@ class CellTriggers(
         if (want.isEmpty()) return emptyList()
         want.forEach { lastAhead[it] = t }
         return cells.request(want, CellReason.NEAR, ownPoint = true)
+    }
+
+    /**
+     * Installed cells of an older content schema (e.g. no small streets): request them again at once (field report
+     * 2026-10-21 – the style moved small streets into the overlays, older cells had none). Not rate-limited: the
+     * queue skips cells already asked for.
+     */
+    fun updateOutdated(): List<CellId> {
+        if (!cells.downloadsAvailable) return emptyList()
+        val old = cells.outdated()
+        return if (old.isEmpty()) emptyList() else cells.request(old, CellReason.UPDATE, ownPoint = true)
     }
 
     /** T6: at most once a day, request a newer version of used cells (downloads only on Wi-Fi, MapCells). Quiet. */
