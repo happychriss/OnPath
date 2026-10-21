@@ -31,15 +31,16 @@ zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
   (step, progress, ready/failed + plain reason); the Worker's cron (every minute) asks the Cloud Run API whether the
   execution ended and reads these files. No inbound URL into the job, no shared callback secret. A cell that is ready
   is published at once, even while the execution still builds the others.
-- **One builder at a time** per environment: a D1 lease makes sure only one pump runs; a new execution starts only
-  when none is running (plus the hourly/daily caps below).
+- **Up to `PARALLEL_BUILDS` (4) builders at a time** per environment (§7f): a D1 lease makes sure only one pump
+  runs (a cell is never put into two executions); cells someone waits for go first, one slot stays free for them
+  (plus the hourly/daily caps below).
 
 ### Choices and why
 
 | Question | Choice | Why |
 | --- | --- | --- |
 | Region | **europe-west1** (Belgium) | Cloud Run Jobs + Cloud Storage volumes available; Tier-1 prices (europe-west3 Frankfurt is Tier 2, ~20–40 % dearer CPU/RAM); low CO2. Latency is irrelevant for batch builds; bucket and job in the same region = free traffic |
-| Job size | **2 vCPU, 8 GiB, 60 min timeout, 1 retry, parallelism 1** | A cell peaks at ~2.3 GB RAM, but Cloud Run's disk is memory: Planetiler sources (~1.4 GB) + OSM extract + work folder live in RAM too. 8 GiB needs ≥ 2 vCPU. Settable via repository variables `JOB_CPU`, `JOB_MEMORY`, `JOB_TIMEOUT_S` |
+| Job size | **2 vCPU, 8 GiB, 60 min timeout, 1 retry, 1 task per execution; up to 4 executions at once (§7f)** | A cell peaks at ~2.3 GB RAM, but Cloud Run's disk is memory: Planetiler sources (~1.4 GB) + OSM extract + work folder live in RAM too. 8 GiB needs ≥ 2 vCPU. Settable via repository variables `JOB_CPU`, `JOB_MEMORY`, `JOB_TIMEOUT_S` |
 | Planetiler sources (water polygons, Natural Earth, ~1.4 GB) | **in the source bucket, copied in at start** (~15–30 s in-region) | Baking them in would make every image push ~2 GB and pin them to the image; downloading from the internet every run is slow and unfriendly to the hosts. First run: Planetiler downloads them, the builder saves them to the bucket |
 | OSM extracts | **chosen per cell from the Geofabrik index, kept in the source bucket, refreshed by the builder itself** when older than 30 days (§7e) | Any area works; the first cell in a new country waits for one download (minutes). No extra job or schedule. Open sea: answered "No map data exists for this area" by the builder |
 | Bucket access in the job | Cloud Storage **volume mount** at `/src` (gcsfuse) | No gcloud/gsutil in the image (keeps it small); plain file copies |
@@ -217,7 +218,7 @@ done
 | `tools/cloud/gcp-setup.sh` | One-time Google setup (Cloud Shell), idempotent |
 | `tools/cloud/Dockerfile.job` (+ `.dockerignore`), `git-shim.sh` | Job image = zo image + `tools/` + entry point |
 | `tools/cloud/job.yaml` | Cloud Run Job definition (filled by the workflow, `gcloud run jobs replace`) |
-| `tools/cloud/job_build.py`, `r2.py` | Entry point: sources, `build_cell.sh`, upload, status files; stdlib S3 client. Also usable on zo with `R2_LOCAL_DIR` |
+| `tools/cloud/job_build.py`, `r2.py`, `src_objects.py` | Entry point: sources, `build_cell.sh`, upload, status files; stdlib S3 client; extract locks via the GCS API (§7f). Also usable on zo with `R2_LOCAL_DIR` |
 | `tools/cloud/osm_sources.py`, `sources.json` | Extract choice from the Geofabrik index (§7e); pinned extracts (none today) + source limits |
 | `tools/cloud/test_cloud.py` (+ `testdata/`) | Builder tests (SigV4 vectors, extract choice on a Geofabrik index subset, downloads/locks/limits, build/upload/status flow with a fake build) |
 | `tools/cloud/worker/` | Worker (`src/`), D1 migrations, `wrangler.toml` (test/production), tests (`node --test`), `smoke.sh` |
@@ -325,6 +326,47 @@ First builds on test (2026-10-21, pipeline 473898d, all format 2, manifests + si
 Downloads from Geofabrik into the bucket are fast (tens of seconds); the raw cut adds 20–85 s per cell compared to
 the old renumbered cut. No OOM at 8 GiB with the 3.9 GB cut + 1.4 GB Planetiler sources in memory. Step progress
 (`job_build.py STEP_PROGRESS`) and `AVG_CELL_S` (330) follow these timings.
+
+## 7f. Priority, parallel builds, live ETA (2026-10-21)
+
+Field test: Hilden (first German cell) showed "about 30 min" – one builder, busy with a background build, two more
+queued. Owner decision: up to 4 builds at once, waiting users first, an honest ETA.
+
+- **Priority** (`queue.js PRIORITY`, lower = sooner, FIFO within one): someone **waits** = `point` 0 (point,
+  search result, app start T3, confirmed tap, schema update) and `near` 1 (their close neighbours); **background** =
+  `corridor` 2, `ahead` 2 (T5, the next cell on tour – the app still sends `near` for it until it is changed after
+  the production deploy), `refresh` 3, `test` 4 (smoke tests). A cell asked for again keeps the better priority.
+- **Parallel** (`PARALLEL_BUILDS`, default 4; "1" = old behaviour): the cron pump (and every request) starts
+  executions until all slots are busy. Waiting cells are spread over the free slots (`ceil(waiting / free)` cells
+  per execution, at most `CELLS_PER_EXECUTION`) – 3 points → 3 executions of 1 cell, built at the same time.
+  Background cells are batched (4 per execution) and **never take the last free slot** (they start only while ≥ 2
+  slots are free) and only within `MAX_EXEC_PER_HOUR/DAY` minus a reserve of `min(slots, hour/2)` starts – a waiting
+  request never waits behind a refresh. Separate Cloud Run executions of the one job: no IAM change needed (the
+  doorman's role already has `run.jobs.runWithOverrides`). If Google refuses a start while others run (quota),
+  the pump drops to **one builder for 30 min** (`meta` row `parallel-blocked`, `/v1/health` → `slots`).
+- **Cost guards raised** with the parallelism: test 16 executions/hour, 60/day; production 16/80 (was 4/20, 6/40).
+  Worst case 4 × 2 vCPU × 8 GiB for an hour ≈ 0.8 USD.
+- **Extract lock across executions:** parallel executions run on different machines, each with its own gcsfuse
+  mount – O_EXCL there is not atomic across machines (a new file stays local until closed) and the stat cache can
+  hide another execution's fresh download for up to a minute. On Cloud Run (`SRC_BUCKET` set) the builder therefore
+  locks and checks freshness through the **GCS JSON API** (`tools/cloud/src_objects.py`): the lock object is
+  created with `ifGenerationMatch=0` (exactly one wins), existence/size/meta come from the API. The downloader writes
+  its ETA into the lock; waiting executions report it (`source_eta_s`). Same service account permission as before
+  (`roles/storage.objectUser` on the bucket). Locally / zo: O_EXCL files as before.
+- **Live ETA** (`worker/src/eta.js`), recomputed on every status call: a simulation of the pump –
+  (1) every running execution: its cells one after the other, remaining = the builder's step progress × build
+  estimate (+ its own download ETA while it downloads; startup left before its first status);
+  (2) the queue in pump order on the slots as they free (+ `PUMP_LAG_S` 30 for the minute cron, hourly cost guard
+  respected): start + `STARTUP_S` + per cell the extract wait + build estimate. **Extract wait**: none when a cell
+  in the 3 × 3 cells around it is built or building (cached); else the measured download estimate (= typical
+  extract MB ÷ measured MB/s + 15 s; Geofabrik's index has no sizes, so the size is the mean of real downloads) –
+  only once per area, later cells there wait for the same download. **Build estimate**: rolling mean of the last
+  `ETA_SAMPLES` (10) real builds per cache state (new extract / cached), from table `builds` – the builder reports
+  `build_s` (build + upload, without download), `new_source`, `download_s`, `download_mb` in the ready status;
+  fallbacks `AVG_CELL_S` / `NEW_AREA_S` until there are measurements.
+- **Smooth:** the reported finish time per cell (`cells.eta_at`) moves towards a new estimate by at least a quarter
+  per answer and fully after `ETA_SMOOTH_S` (60 s) – no jumps, but no stale numbers either; a finish time already
+  passed is replaced at once; never below 20 s.
 
 ## 8. Open points
 

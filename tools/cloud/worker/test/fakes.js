@@ -130,7 +130,7 @@ export function fakeGoogle() {
     }
     let m = /\/jobs\/([^/:]+):run$/.exec(url);
     if (m) {
-      if (fetchImpl.failRun) return new Response("permission denied", { status: 403 });
+      if (fetchImpl.failRun || (fetchImpl.failRunAfter !== undefined && n >= fetchImpl.failRunAfter)) return new Response("permission denied", { status: 403 });
       const name = `projects/proj/locations/europe-west1/jobs/${m[1]}/executions/${m[1]}-x${++n}`;
       executions.set(name, { name, taskCount: 1 });
       return Response.json({ name: "projects/proj/locations/europe-west1/operations/op1", metadata: { name } });

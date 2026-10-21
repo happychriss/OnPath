@@ -18,7 +18,7 @@ enum class PlanEdit {
 
 /**
  * Plan haptics in one place (owner 2026-10-21): 1 pulse = a point set, 2 pulses = a point deleted, a very light short
- * tick = a menu opens / a hold is armed, reorder drop = 1, undo = none. Pure, unit tested (PlanHapticsTest); played by
+ * tick = a menu opens / a hold is armed, reorder drop and undo = none. Pure, unit tested (PlanHapticsTest); played by
  * [Haptics]: only OnPath's own setting "Vibrate when planning" counts (owner 2026-10-21) – the system "Touch feedback"
  * flag may only silence the light menu tick ([shouldPlay]).
  */
@@ -26,10 +26,11 @@ object PlanHaptics {
     enum class Feel { NONE, TICK, ONE, TWO }
 
     fun feel(e: PlanEdit): Feel = when (e) {
-        PlanEdit.POINT_SET, PlanEdit.REORDERED -> Feel.ONE
+        PlanEdit.POINT_SET -> Feel.ONE
         PlanEdit.POINT_DELETED -> Feel.TWO
         PlanEdit.MENU_OPENED -> Feel.TICK
-        PlanEdit.UNDO, PlanEdit.OTHER -> Feel.NONE
+        // no vibration while reordering in the Points list (owner, field test 0.8.9)
+        PlanEdit.REORDERED, PlanEdit.UNDO, PlanEdit.OTHER -> Feel.NONE
     }
 
     /** Vibrator waveform (off/on ms): a tick is shorter than one pulse; two pulses are clearly separated. */
