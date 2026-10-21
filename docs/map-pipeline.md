@@ -180,7 +180,7 @@ draws differently; it does not list every surface.
 python3 tools/extract_overlays.py region.osm.pbf OUT bbox… --no-geojson --tiles TILES --smooth   # *.ndjson per layer
 tools/build_overlays.sh TILES overlays.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra contours.pmtiles]
 java -jar planetiler.jar … --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de
-tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track at z>=13
+tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track at z>=13, no park name points
 ```
 
 `build_overlays.sh` runs tippecanoe once per layer (`-r1 --no-feature-limit --no-tile-size-limit

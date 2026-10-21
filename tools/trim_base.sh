@@ -13,8 +13,11 @@ set -euo pipefail
 TILE_JOIN=${TILE_JOIN:-tile-join}
 command -v "$TILE_JOIN" >/dev/null || { echo "tile-join missing (comes with tippecanoe)" >&2; exit 1; }
 DROP='["all",[">=","$zoom",13],["in","class","path","track"]]'
+# The "park" layer's name points go too (all zooms): no style layer draws park names, and the only park layer is the
+# dashed outline – a point reaching a line layer makes MapLibre Native log "Invalid geometry in line layer".
+PARK_POINTS='["==","$type","Point"]'
 rm -f "$2.tmp.pmtiles"
 "$TILE_JOIN" --force --quiet --no-tile-size-limit \
-  -j "{\"transportation\":[\"none\",$DROP],\"transportation_name\":[\"none\",$DROP]}" \
+  -j "{\"transportation\":[\"none\",$DROP],\"transportation_name\":[\"none\",$DROP],\"park\":[\"none\",$PARK_POINTS]}" \
   -o "$2.tmp.pmtiles" "$1"
 mv -f "$2.tmp.pmtiles" "$2"
