@@ -42,6 +42,9 @@ import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,6 +104,13 @@ fun SettingsScreen(
     /** Problem log (debug/Problems), most recent first. */
     problems: List<com.onpath.app.debug.Problems.Entry> = emptyList(),
     onClearProblems: () -> Unit = {},
+    /** Diagnostics → "Map cells (debug)"; null = hidden. */
+    mapCells: MapCellsDebug? = null,
+    /** Diagnostics → "Reset maps (like a fresh install)"; null = hidden (no map downloads in this build). */
+    onResetMaps: (() -> Unit)? = null,
+    /** Settings → "Offline maps" (downloaded map areas); null = section hidden. */
+    offlineMaps: OfflineMapsUi? = null,
+    offlineMapsCb: OfflineMapsCallbacks = OfflineMapsCallbacks(),
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -261,6 +271,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                 item {
                     Section("Map data") {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -291,6 +302,18 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
                             Text("Map server: ${com.onpath.app.data.MapServer.describe()}", fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            mapCells?.let { MapCellsDebugList(it) }
+                            onResetMaps?.let { reset ->
+                                var ask by remember { mutableStateOf(false) }
+                                androidx.compose.material3.OutlinedButton(onClick = { ask = true },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reset maps (like a fresh install)") }
+                                if (ask) androidx.compose.material3.AlertDialog(onDismissRequest = { ask = false },
+                                    title = { Text("Reset maps?") },
+                                    text = { Text("All downloaded map areas are deleted. The map for your position and for the points you " +
+                                        "set loads again, as on a new install. Tours and routes are kept.") },
+                                    confirmButton = { TextButton(onClick = { ask = false; reset() }) { Text("Reset") } },
+                                    dismissButton = { TextButton(onClick = { ask = false }) { Text("Cancel") } })
+                            }
                             ProblemList(problems, onClearProblems)
                         }
                     }
@@ -298,6 +321,38 @@ fun SettingsScreen(
                 item { AboutSection(checks, mapPackage, dataDir, version) }
             }
         }
+    }
+}
+
+/** Data of the "Map cells (debug)" block: installed cells, cells in progress, two actions (end-to-end test only). */
+data class MapCellsDebug(
+    /** id, version, bytes */
+    val installed: List<Triple<String, String, Long>>,
+    /** id → state line (CellState.label) for cells not simply installed */
+    val active: List<Pair<String, String>>,
+    /** "store g000007" or "no cells – data folder" */
+    val store: String,
+    val onRequestAtCentre: () -> Unit,
+    val onDelete: (String) -> Unit,
+)
+
+@Composable
+private fun MapCellsDebugList(d: MapCellsDebug) {
+    Text("Map cells (debug)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    Text("Map files: ${d.store}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (d.installed.isEmpty()) Text("No cells installed.", fontSize = 12.sp)
+    d.installed.forEach { (id, version, bytes) ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+            androidx.compose.material3.TextButton(onClick = { d.onDelete(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete") }
+        }
+    }
+    if (d.installed.isNotEmpty()) Text("Total ${"%.1f".format(java.util.Locale.ROOT, d.installed.sumOf { it.third } / 1_048_576.0)} MB",
+        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    d.active.forEach { (id, s) -> Text("$id: $s", fontSize = 12.sp, fontFamily = FontFamily.Monospace) }
+    androidx.compose.material3.OutlinedButton(onClick = d.onRequestAtCentre, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text("Request cell at map centre")
     }
 }
 

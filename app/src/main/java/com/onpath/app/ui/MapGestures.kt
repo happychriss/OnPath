@@ -106,6 +106,22 @@ object MapGestures {
      * the touch target stays the same size at every zoom; when markers overlap (zoomed out) the nearest wins,
      * on a tie the later one (drawn on top).
      */
+    /**
+     * The route point a press is aimed at (core feature: hold a point → its menu → Delete; broke twice in field tests).
+     * [points] is the PLAN's own list (never a copy kept with the drawing – it can lag behind, field report 0.8.3),
+     * [toScreen] its current screen position (null = projection not ready), [finger] where the press ended.
+     * A hold falls back to [downMarker], the point under the finger at finger-down: the map may move or turn while
+     * the finger rests (following the position, compass – field report 0.7.19). Returns the index or -1.
+     */
+    fun <P> markerUnderFinger(points: List<P>, toScreen: (P) -> Pair<Float, Float>?, fingerX: Float, fingerY: Float,
+                              press: Press, downMarker: Int, radiusPx: Float): Int {
+        val xs = FloatArray(points.size); val ys = FloatArray(points.size)
+        points.forEachIndexed { i, p -> val s = toScreen(p); xs[i] = s?.first ?: Float.NaN; ys[i] = s?.second ?: Float.NaN }
+        val hit = nearestMarker(xs, ys, fingerX, fingerY, radiusPx)
+        if (hit >= 0) return hit
+        return if (press == Press.HOLD && downMarker in points.indices) downMarker else -1
+    }
+
     fun nearestMarker(markersX: FloatArray, markersY: FloatArray, x: Float, y: Float, radiusPx: Float): Int {
         var best = -1
         var bestD = radiusPx * radiusPx

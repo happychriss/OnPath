@@ -21,12 +21,14 @@ Output (in OUT_DIR):
       by the map from z13 instead of the base map's lines. Props: k "t"/"p", sac 0-6, vis (if tagged), st 1 (steps),
       tt 1-5 (tracktype), pv 1 (paved track)
 Format 2 (docs/design/map-data-size.md §2): with --tiles DIR the same data is also written as line-delimited GeoJSON
-per vector-tile layer (paths, trails, ways, routes, trailnames .ndjson, with per-feature "tippecanoe" zoom ranges) for
+per vector-tile layer (paths, streets, trails, ways, routes, trailnames .ndjson, with per-feature "tippecanoe" zoom
+ranges; streets = the small streets the base map no longer has at z13-14, see STREETS) for
 tools/build_overlays.sh, which turns them into ONE overlays.pmtiles. The tile "paths" layer replaces lowways (coarse
 copy at z11-12) and carries what the style needs to drop the base map's path / track lines (schema: see
 docs/map-pipeline.md "Overlays as vector tiles"). --no-geojson skips the format-1 files.
 
 Usage: python3 extract_overlays.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat [--tiles DIR] [--no-geojson]
+       [--smooth [--smooth-angle 15] [--smooth-dev 3]]
 """
 import argparse
 import json
@@ -45,7 +47,12 @@ _ap.add_argument("bbox", nargs=4, type=float, metavar="MINLON MINLAT MAXLON MAXL
 _ap.add_argument("--tiles", metavar="DIR", help="also write format-2 tile inputs (*.ndjson) for build_overlays.sh")
 _ap.add_argument("--no-geojson", action="store_true", help="do not write the format-1 *.geojson files")
 _ap.add_argument("--smooth", action="store_true",
-                 help="round the bends of paths / tracks / trails (and route bands on them); default for format 2")
+                 help="round the bends of paths / tracks / trails / small streets (and route bands on them); "
+                      "default for format 2")
+_ap.add_argument("--smooth-angle", type=float, default=15.0, metavar="DEG",
+                 help="--smooth: round bends that turn by at least this much (default 15)")
+_ap.add_argument("--smooth-dev", type=float, default=3.0, metavar="M",
+                 help="--smooth: the curve stays within this many metres of the OSM line (default 3)")
 ARGS = _ap.parse_args()
 pbf, out_dir = ARGS.pbf, ARGS.out_dir
 minlon, minlat, maxlon, maxlat = ARGS.bbox
@@ -91,16 +98,29 @@ UNPAVED = {"unpaved", "compacted", "dirt", "earth", "fine_gravel", "grass", "gra
 ONEWAY = {"yes": 1, "1": 1, "true": 1, "-1": -1, "reverse": -1}
 LOW_ZOOMS, HIGH_ZOOMS = (11, 12), (13, 14)  # tile "paths": coarse copy (former lowways) / exact ways
 
-# --- smoothing (--smooth, owner 2026-10-20): OSM paths are polylines with hard corners; rounded bends read like a
-# real trail. Every bend of >= SMOOTH_ANGLE becomes a short curve that stays within SMOOTH_MAX_DEV of the OSM line.
+# --- smoothing (--smooth, owner 2026-10-20 / 21): OSM paths are polylines with hard corners; rounded bends read like
+# a real trail. Every bend of >= SMOOTH_ANGLE becomes a short curve that stays within SMOOTH_MAX_DEV of the OSM line.
 # Way ends and junction nodes (shared with any other highway) are kept exact, so the network stays connected and a
-# way smooths the same in every cell (it is smoothed whole, before any clipping). Streets are left alone (the base
-# map draws them unsmoothed); route bands use the same geometry as the path below them.
+# way smooths the same in every cell (it is smoothed whole, before any clipping). Small streets (STREETS) are smoothed
+# too, but only in format 2 (--tiles), where the map draws them from the overlay "streets" layer; tertiary and bigger
+# roads stay in the base map, unsmoothed - their shared nodes with a small street are junctions, so both still meet.
+# Route bands use the same geometry as the way below them.
 SMOOTH_WAYS = LOW_WAYS | {"cycleway", "steps", "via_ferrata", "pedestrian"}
-SMOOTH_ANGLE = 20.0    # degrees of turn
-SMOOTH_MAX_DEV = 1.5   # metres from the OSM line (at the bend's corner)
+SMOOTH_ANGLE = ARGS.smooth_angle   # degrees of turn (default 15; was 20 until 2026-10-21)
+SMOOTH_MAX_DEV = ARGS.smooth_dev   # metres from the OSM line at the bend's corner (default 3; was 1.5)
 SMOOTH_MAX_CUT = 20.0  # metres along each leg at most
 JUNCTIONS = set()      # node ids used by more than one highway way (filled by RelationPass with --smooth)
+
+# --- format 2: small streets (tile layer "streets", owner 2026-10-21) ----------------------------------------------
+# OpenMapTiles classes "minor" (residential, living_street, unclassified, road) and "service" come from the overlay at
+# z13-14 (smoothed with --smooth); tools/trim_base.sh drops them from the base map's "transportation" layer there (the
+# street names in "transportation_name" stay in the base map). Attributes use the OpenMapTiles names, so the street
+# layers of the style keep their filters: class, brunnel, service, access ("no" = access no / private), oneway, foot,
+# bicycle. Driveways / parking aisles only at z14 (busy and tiny at z13).
+STREETS = {"residential": "minor", "living_street": "minor", "unclassified": "minor", "road": "minor",
+           "service": "service"}
+MINOR_SERVICE = {"driveway", "parking_aisle", "drive-through"}
+SMOOTH_STREETS = DO_SMOOTH and TILES is not None
 
 
 def round_corners(coords):
@@ -150,6 +170,26 @@ def smooth_line(coords, node_ids):
         piece = round_corners(piece)
         out.extend(piece if not out else piece[1:])
     return LineString(out)
+
+
+def street_attrs(tags, hw):
+    """OpenMapTiles-like attributes of a "streets" tile feature (only what the style reads)."""
+    a = {"class": STREETS[hw]}
+    if tags.get("bridge", "no") != "no":
+        a["brunnel"] = "bridge"
+    elif tags.get("tunnel", "no") != "no":
+        a["brunnel"] = "tunnel"
+    if tags.get("service"):
+        a["service"] = tags.get("service")
+    if tags.get("access") in ("no", "private"):
+        a["access"] = "no"
+    ow = ONEWAY.get(tags.get("oneway", ""))
+    if ow:
+        a["oneway"] = ow
+    for key in ("foot", "bicycle"):
+        if tags.get(key):
+            a[key] = tags.get(key)
+    return a
 
 
 def cycle_sides(tags):
@@ -312,6 +352,7 @@ class WayPass(osmium.SimpleHandler):
         self.low = []
         self.paths = []
         self.tile_paths = []  # format 2: "paths" tile features z13-14 (format-1 props + tile_attrs, plus extra ways)
+        self.streets = []     # format 2: "streets" tile features z13-14 (small streets, street_attrs)
         self.by_name = {}  # label -> list of raw coordinate lists
         self.by_ref = {}   # "24 · 25" -> list of raw coordinate lists
 
@@ -380,8 +421,8 @@ class WayPass(osmium.SimpleHandler):
 
     def fine_geom(self, w, hw):
         """Near-exact geometry (~0.5 m) for paths, trails, ways and (with --smooth) route bands; with --smooth,
-        path-like ways (not streets) get rounded bends (round_corners)."""
-        if not DO_SMOOTH or not (hw in SMOOTH_WAYS or "sac_scale" in w.tags):
+        path-like ways (and small streets in format 2) get rounded bends (round_corners)."""
+        if not DO_SMOOTH or not (hw in SMOOTH_WAYS or "sac_scale" in w.tags or (SMOOTH_STREETS and hw in STREETS)):
             return self.geom(w, FINE_SIMPLIFY)
         try:
             coords = [(n.lon, n.lat) for n in w.nodes]
@@ -403,6 +444,8 @@ class WayPass(osmium.SimpleHandler):
         hw = w.tags.get("highway", "")
         low = hw in LOW_WAYS and w.tags.get("footway") not in ("sidewalk", "crossing") and w.tags.get("area") != "yes"
         extra = TILES is not None and not (low or sac) and tile_extra(w.tags, hw)
+        if TILES is not None and hw in STREETS and w.tags.get("area") != "yes":
+            self.add_street(w, hw)
         if not routes and not sac and not mtb and not faint and not quality and not low and not extra:
             return
         line = self.geom(w)
@@ -466,6 +509,14 @@ class WayPass(osmium.SimpleHandler):
             self.tile_paths.append({"type": "Feature", "geometry": fine or rounded(mapping(self.fine_geom(w, hw))),
                                     "properties": {"k": "x", **tile_attrs(w.tags, hw)}})
 
+    def add_street(self, w, hw):
+        line = self.fine_geom(w, hw)
+        if line is None:
+            return
+        zooms = (14, 14) if hw == "service" and w.tags.get("service") in MINOR_SERVICE else HIGH_ZOOMS
+        self.streets.append({"type": "Feature", "geometry": rounded(mapping(line), 6 if SMOOTH_STREETS else 5),
+                             "properties": street_attrs(w.tags, hw), "zooms": zooms})
+
     @staticmethod
     def quality(w):
         """Way-quality props for ways.geojson, or None if nothing the map would show differently."""
@@ -518,7 +569,7 @@ def compact(props):
     return {k: v for k, v in props.items() if v != ""}
 
 
-def write_tiles(tiles_dir, layers, low, tile_paths):
+def write_tiles(tiles_dir, layers, low, tile_paths, streets):
     """Format 2: one line-delimited GeoJSON file per tile layer, input of tools/build_overlays.sh. "paths" holds the
     former lowways as a coarse copy for z11-12 and the exact ways for z13-14 (per-feature tippecanoe zoom range)."""
     import os
@@ -539,7 +590,10 @@ def write_tiles(tiles_dir, layers, low, tile_paths):
             dump(f, {"geometry": feat["geometry"], "properties": {"k": feat["properties"].get("k", "p")}}, LOW_ZOOMS)
         for feat in tile_paths:
             dump(f, feat, HIGH_ZOOMS)
-    print("tiles: paths", len(low), "+", len(tile_paths), "->", tiles_dir)
+    with open(f"{tiles_dir}/streets.ndjson", "w") as f:
+        for feat in streets:
+            dump(f, feat, feat["zooms"])
+    print("tiles: paths", len(low), "+", len(tile_paths), ", streets", len(streets), "->", tiles_dir)
 
 
 def main():
@@ -557,7 +611,7 @@ def main():
                 json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
             print(name, len(feats))
     if TILES is not None:
-        write_tiles(TILES, layers, wp.low, wp.tile_paths)
+        write_tiles(TILES, layers, wp.low, wp.tile_paths, wp.streets)
 
 
 main()

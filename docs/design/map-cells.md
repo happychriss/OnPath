@@ -277,8 +277,8 @@ Own point cell (~28 MB today, ≈ 10 MB in format 2): automatic. Neighbours / co
    used. The previous version stays until the new one is active and the map loaded fine; then it is deleted (R-16,
    F-OFF-04).
 
-### Joining cells into the local store – open (see map-data-size.md)
-Many cells as separate MapLibre sources would multiply the layers (too slow). Options:
+### Joining cells into the local store – decided 2026-10-21: B (PMTiles generations), see §19
+Many cells as separate MapLibre sources would multiply the layers (too slow). Options considered:
 
 | Option | How | For / against |
 | --- | --- | --- |
@@ -286,8 +286,9 @@ Many cells as separate MapLibre sources would multiply the layers (too slow). Op
 | B. Rewrite one PMTiles per layer when a cell is added | Simple reading | Rewrites large files on each add |
 | C. Concatenate GeoJSON overlays per kind (format 1 only) | Works with today's files | Large in-memory GeoJSON, rebuild on each add; fine as a bridge |
 
-**Recommendation:** A (or B if MBTiles is not usable on Android), together with format 2; C only as a bridge while
-format 1 is in use. A short spike decides (map-data-size.md §7).
+**Decision (2026-10-21):** B, written as a new store generation per change – robust offline, no second SQLite
+library writing next to MapLibre's, testable on the JVM; reasons and measurements in §19.1. C is not needed (cells
+ship in format 2 only, Q11).
 
 ### Refresh and storage
 - Downloaded cells are kept. The app lists them (F-OFF-05: area, size, date, delete; total storage).
@@ -454,5 +455,142 @@ base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 
 `onpath-build/out/`: ~125 MB without addresses). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
 
 The cloud builds and serves format 2 only since 2026-10-21 (first cloud builds of both cells: identical sizes and
-seam check, map-hosting.md §7b). Open: the builder image on zo must be rebuilt (tippecanoe); the app does not download cells yet (phase 2) and has to join cell tiles into one
-store (§9 "Joining cells").
+seam check, map-hosting.md §7b). Open: the builder image on zo must be rebuilt (tippecanoe). App download + store
+(joining cell tiles into one store, §9 "Joining cells"): §19.
+
+## 19. App side: cell store, downloads, API for the UI (2026-10-21, laptop, step 8)
+
+Code: `app/src/main/java/com/onpath/app/cells/`. No UI beyond a debug block (Settings → Diagnostics → "Map cells
+(debug)": installed cells with version + size, Delete, cells in progress, "Request cell at map centre"). The triggers
+(T1, T3–T6), the card, the overview hint and the Settings list are built on the API below.
+
+### 19.1 Store decision: one PMTiles per layer, rewritten as a new generation (option B)
+
+| | A. MBTiles (`mbtiles://`) | **B. PMTiles generations (chosen)** |
+| --- | --- | --- |
+| MapLibre 13.7.1 Android | `MBTilesFileSource` is in the native library (absolute paths only) – never used by us, untested on the phone | `pmtiles://file://` – every map of the app uses it today |
+| New tiles visible | MapLibre keeps its own SQLite handle and caches tiles / TileJSON (bounds from the metadata table) → a style reload is needed anyway | new generation = new paths → a style reload shows them; no app restart (unlike replacing a file in place, which needs a restart because MapLibre keeps the PMTiles index per URL) |
+| Crash safety | SQLite transaction | write `gNNNNNN.tmp`, verify every file, one atomic folder rename; the previous generation stays until the map loaded the new one |
+| Concurrency | **our writes (Android's SQLite) and MapLibre's reads (its own bundled SQLite) on one file in one process** – two SQLite libraries in one process break each other's POSIX locks (sqlite.org/howtocorrupt.html §2.2) | MapLibre only reads finished, never-changing files |
+| JVM tests | needs sqlite-jdbc + a writer anyway | pure Kotlin (`PmTiles.kt`), round trips + real cells tested |
+| Cost | insert/delete only the cell's tiles | full rewrite per change: 2 real cells 0.4 s, 2 cells + the 53 MB region package 1 s on the laptop (phone ≈ 3–5×); cells change rarely |
+
+Rewriting is cheap because a cell holds only its own z ≥ 10 tiles (§4, ~340 tiles per layer): joining = copying
+tiles, no feature merging. The writer keeps tile bytes unchanged, stores identical tiles of one input once, writes
+clustered archives with leaf directories when the root would exceed 16 KiB.
+
+### 19.2 Layout and rules
+
+```
+<dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson store.json
+<dataDir>/cells/download/10-543-361/2026-10-19.part/   downloading (Range resume, never read by the map)
+<dataDir>/cells/download/10-543-361/2026-10-19/        complete, size + sha256 verified, waiting to be joined
+<dataDir>/cells/requests.json   queue (survives restarts)      <dataDir>/cells/usage.json   last use per cell (T6)
+<dataDir>/addresses/10-543-361.sqlite   the cell's addresses (AddressSearch already reads every file there)
+```
+
+- **Map folder** (`DataFiles.mapDir()`): the current generation when it holds ≥ 1 cell, else the data folder exactly as
+  before. `StyleLoader` replaces `{DATA_DIR}` with it (style overrides still come from `<dataDir>/styles`), the
+  missing-data check and the search index read it. Source ids stay `base`, `overlays`, `terrain`, `contours`, `pois` →
+  the format-2 style works unchanged; `OptionalSources` still strips a missing optional file.
+- **Ownership** decides where every tile / POI comes from: a tile at z ≥ 10 inside an installed cell, and a POI inside
+  it (half-open rule §2), come only from that cell; everything else from the region package.
+- **Region package + cells:** a **format-2** package in the data folder is joined as the bottom layer (fills areas
+  without cells and z0–9); cells override it where both exist. A new import → `regionChanged()` → joined again.
+  A **format-1** package is not joined (GeoJSON overlays, other terrain encoding – mixing would break the style):
+  with the first cell the map shows cells only (+ overview). Without cells, both formats work as before.
+- **POIs:** one merged `pois.geojson` per generation (same ownership rule, streamed) – the style's single geojson
+  source, POI tap and search stay unchanged. Chosen over one file per cell (would need a source per cell).
+- **Generations:** number = highest folder + 1; current = highest complete one with a readable `store.json`
+  (`.tmp` / `.bad` / unreadable folders are ignored and cleaned). After the map loaded a generation
+  (`confirmLoaded`), older ones are deleted; if MapLibre fails to load it, `rollback` sets it aside and the previous
+  becomes current (R-16) – its newly added cells must then be loaded again.
+- **Space (R-11):** before a download: free ≥ 2 × cell size + 32 MB; before writing a generation: free ≥ sum of its
+  inputs + 32 MB. Otherwise nothing is written and the cell shows "Not enough space (needs N MB) …".
+- The region package's files exist twice while cells are installed (data folder + store) – accepted, region packages
+  are phased out (Q9).
+
+### 19.3 Download flow (per cell, one worker coroutine)
+
+request (`POST /v1/cells/request`, once per app run, grouped by reason) → poll `GET /v1/cells/status` every `poll_s`
+**only while the app is in the foreground** (no WorkManager – not a dependency; the queue continues on the next start)
+→ `ready` and allowed by the data rule → `GET …/manifest?format=2` (checks cell id, format 2, `min_app`) → each file
+to `<name>.part` with `Range` resume → size + sha256 (wrong → deleted, one retry, then failed) → folder renamed from
+`.part` → joined into a new generation → addresses moved → download folder deleted → `generation` changes → the app
+reloads the style. A complete download found at start (crash before joining) is joined then.
+HttpURLConnection like AppUpdater; headers `X-OnPath-Key`, `X-OnPath-App`.
+
+**Mobile data rule** (§9, Q2/Q5): unmetered network (`NET_CAPABILITY_NOT_METERED`) → always; refresh → Wi-Fi only;
+`wifiOnly` setting → Wi-Fi only; else a cell requested with `ownPoint` loads at once, others wait as
+`WaitingForWifi(bytes)` until Wi-Fi or `approveMobile(cells)`.
+
+**Failures** (§10) → state + Problems: no network → `Offline` ("No connection – … will load when you are online.",
+INFO), retried on network change or after 60 s; server down / 5xx / 429 → `Offline("Map server not reachable – trying
+again.")`, backoff 1, 2, 5, 10 min (or `Retry-After`); 401 → `Failed(retryable = false)` "Map server refused the
+request – update the app." (ERROR); build failed → `Failed("This area could not be prepared (reason). Planning still
+works with a straight line.")` and dropped from the queue (the next trigger asks again); damaged twice / storage full /
+store error → `Failed`.
+
+### 19.4 API for the UI agent (`MapCells`, one instance: `AppCells.get(context)`, also `vm.cells`)
+
+| Call / state | Use |
+| --- | --- |
+| `cellFor(p)`, `cellsAround(p, radiusM = 5000)` (own first), `cellsFor(s, w, n, e)`, `cellsAlong(line, corridorM = 10 000)` | cells for a point, box, route corridor (`CellId`: `id` "10-543-361", `bbox`, `center`) |
+| `missing(cells)` | of these, not installed and not queued – what a trigger requests |
+| `hasDetailedMap(p)` | installed cell or region package covers p → "Overview only" hint when false |
+| `request(cells, CellReason.POINT/NEAR/CORRIDOR/REFRESH, ownPoint = reason == POINT)` → added cells | T1/T3: `request(listOf(own), POINT)` + `request(near, NEAR)`; T4: `CORRIDOR`; T5: `NEAR` with `ownPoint = true`; T6: `REFRESH` |
+| `states: StateFlow<Map<CellId, CellState>>`, `state(c)` | `None`, `Requested`, `Queued(position, etaS)`, `Building(step, progress, etaS)`, `WaitingForWifi(bytes)`, `Downloading(done, total)` (`percent`), `Installing`, `Ready(version)`, `Offline(message)`, `Failed(message, retryable)`; `CellState.label()` gives a short line |
+| `waitingForMobileApproval()` → (cell, bytes) · `approveMobile(cells)` | the card's "3 more cells, 85 MB – download now or on Wi-Fi?" |
+| `wifiOnly` (var) | Settings "Wi-Fi only" (F-OFF-03) – not stored yet, the UI keeps it in AppSettings |
+| `installed: StateFlow<List<InstalledCell>>` (id, version, built, `bytes` per file, `totalBytes`, installedAt) · `delete(cells)` | Settings list (F-OFF-05) |
+| `cancel(cells)` | user closed the card / does not want them |
+| `markUsed(cells)` · `refreshDue(ageDays = 30)` | T6: mark cells when planning / navigating; request `refreshDue()` with `REFRESH` once a day on Wi-Fi |
+| `generation: StateFlow<Int>` · `mapDir()` | the VM reloads the style when the map folder changed (done) |
+| `setForeground(on)`, `networkChanged()` | done by MapHost / AndroidNetworkStatus |
+
+Card text per §9 ("Because you planned here" / "Because you are here") is the UI's: the reason is the trigger's.
+
+### 19.5 Tests (JVM)
+
+`PmTilesTest` (spec tile ids, directory round trip, leaf directories, merge filter / override / dedupe, mixed tile
+types refused, truncated file), `CellIdTest` (Meran values, half-open rule, neighbours, corridor), `CellStoreTest`
+(add / neighbour / replace / delete / last delete, damaged input keeps the old generation, crash leftovers, low storage,
+region join + re-join, format-1 not joined, rollback, search index on a generation), `CellDownloadTest` against a tiny
+socket-based fake doorman (request / status / manifest, 401, offline, Range resume, sha256 damage, request → poll →
+download → join, mobile-data rule, Wi-Fi only, offline → online, server failure, refresh, restart resume, delete).
+Optional: `RealCellsTest` with `ONPATH_CELLS_DIR=…/cells-data/cells/f2` (+ `ONPATH_REGION_DIR=…/out-f2/onpath-data`)
+joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from the test doorman (key from
+`~/.gradle/gradle.properties`, never printed) – passed 2026-10-21. Gradle caches test results: add `--rerun`.
+
+### 19.6 To check on the phone
+
+1. Settings → Diagnostics → "Request cell at map centre" (map centred on Meran) → states → map shows the cell
+   without restart; no seam at lon 11.25 after the second cell (Bozen side).
+2. With the format-2 South Tyrol package installed: cell area and package area join; POI tap and search find POIs,
+   peaks, trail names and addresses inside the cell.
+3. Style reload while navigating (T5 later): location puck and app layers come back, camera untouched.
+4. Speed of a generation write with ~9 cells (+ package) on the Pixel; mobile data vs Wi-Fi detection; resume after
+   switching off Wi-Fi mid-download; app killed mid-join → joined at next start.
+
+
+### 19.7 Step 9: triggers, card, hint, Settings (2026-10-21, laptop)
+
+- **Triggers** (`cells/CellTriggers.kt`, pure, on the `CellSource` interface that `MapCells` implements; called by
+  `AppViewModel`): T1 every new point value in a plan edit (hold → Start here / Go here, stops, moved points; more than 3
+  new points at once = a loaded route → T4 only) → own cell `POINT` + neighbours within 5 km `NEAR`; T3 first fix ≤ 500 m
+  after start / return in Plan; T4 every computed route → corridor 10 km `CORRIDOR` (+ `markUsed`); T5 on tour every
+  300 m → cells within 5 km of the position without detailed map, `NEAR` + own-point rule, each cell at most every
+  30 min, no card; T6 once a day (start / return) `refreshDue()` → `REFRESH`, no card. A cell counts as covered when an
+  installed cell or the region package covers its centre (no cells inside the region package are fetched).
+- **Card** (`ui/CellCard.kt`, `CellCards.build` pure): in the plan sheet under the route note; one line in the MINI
+  sheet (an open mobile-data question stays visible). Closed only by the user: OK (ready / not available), Not now
+  (failed), × while loading (downloads go on). Several triggers join one open card; a finished card is replaced.
+  Cells still loading from the last run show on the card at start.
+- **Mobile data:** `AppSettings.mapsWifiOnly` (persisted) → `MapCells.wifiOnly`. "Yes" → `approveMobile` for the card's
+  waiting cells; "Only on Wi-Fi" → the question goes, the card says how many areas wait for Wi-Fi.
+- **Overview hint** (Plan, z ≥ 10, map centre without detailed map; checked off the main thread per ~1 km / generation).
+- **Settings → Offline maps** (`ui/OfflineMapsSection.kt`): areas named by `RouteNamer.label` on the offline index
+  (else coordinates), size, map date, Delete with in-page confirmation, total, Wi-Fi only switch, "Update maps now"
+  (`REFRESH` for all installed areas). Debug block stays in Diagnostics.
+- **No app key** (release builds today): `MapCells.downloadsAvailable = false` → nothing is requested; the card says
+  "Map downloads not available in this build" once per app run; Settings says so too.

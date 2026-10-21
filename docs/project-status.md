@@ -4,6 +4,18 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-21 evening – HANDOVER to the laptop: read `docs/handover-2026-10-21-cloud.md`.** Releases 0.8.1–0.8.5
+  (map-loading UX, route bands over streets, check after routing, mobile data default, routing data refresh, update
+  download resume), core-feature tests + emulator gate before every release. **Open core bug C1** (hold a point →
+  new point instead of menu, owner on 0.8.5) – not reproduced on the emulator yet; branch `e2e` has the hold log,
+  the Points… delete list and field-condition tests (merge + 0.8.6 when green). Owner: one world overview map (no
+  Alps special case); testing starts as a fresh install.
+- **cloud, 2026-10-21 – cloud takes over cells / map hosting (owner: laptop not used):**
+  - Crash fix (elevation profile drawn tiny), content schema for cells (`-s2` versions; old cells rebuilt + reloaded
+    automatically – fixes missing small streets), modal map-loading overlay (Cancel only, Wi-Fi/mobile question),
+    Settings → Diagnostics → Reset maps (like a fresh install), release APKs carry the test map key → **release 0.8.1**.
+  - Docs: `docs/design/map-hosting.md` §7c–7d, backlog "Next". Open: production deploy, owner phone test of 0.8.1,
+    first-start "path not found" for base/terrain (backlog), cleanup of old version folders.
 - **laptop, 2026-10-20 (map rework format 2 + cloud hosting):**
   - **Done on main:** format 2 = one `overlays.pmtiles` (tippecanoe; paths smoothed, green ways/bike/via-ferrata data),
     trimmed base, terrain WebP z12, contours from z12, overview map (Alps, optional APK assets), format-2 cells

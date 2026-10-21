@@ -18,18 +18,28 @@ class DataFiles(context: Context) {
         try { dir.mkdirs() } catch (e: Exception) { Problems.warn("data", "Map data folder could not be created", e) }
     }
 
+    /**
+     * Folder the map files are read from: the current generation of the downloaded map cells
+     * (docs/design/map-cells.md §19, [com.onpath.app.cells.CellStore]) when at least one cell is installed, else the
+     * data folder (region package / adb push, as before cells existed). Never throws.
+     */
+    fun mapDir(): File = try { com.onpath.app.cells.CellStore(dir).mapDir() ?: dir } catch (e: Exception) {
+        Problems.error("data", "Downloaded map areas unreadable; using the map package in the data folder", e); dir
+    }
+
     fun check(): List<Check> {
-        fun f(name: String, hint: String) = Check(name, File(dir, name).let { it.isFile && it.length() > 0 }, hint)
+        val map = mapDir()
+        fun f(name: String, hint: String) = Check(name, File(map, name).let { it.isFile && it.length() > 0 }, hint)
         val rd5 = segmentsDir.listFiles { file -> file.name.endsWith(".rd5") && file.length() > 0 }.orEmpty()
         return listOf(
             f("base.pmtiles", "Base map"),
             f("terrain.pmtiles", "Relief / elevation"),
-        ) + overlayChecks { name -> File(dir, name).let { it.isFile && it.length() > 0 } } +
+        ) + overlayChecks { name -> File(map, name).let { it.isFile && it.length() > 0 } } +
             Check("segments/*.rd5", rd5.isNotEmpty(), "Routing data")
     }
 
-    /** Map package format of the data folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
-    fun format(): Int = formatOf { File(dir, it).isFile }
+    /** Map package format of the map folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
+    fun format(): Int = mapDir().let { m -> formatOf { File(m, it).isFile } }
 
     fun allPresent() = check().all { it.present }
 

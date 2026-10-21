@@ -99,7 +99,10 @@ PY
 GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 DEST="$DATA_ROOT/cells/f$FORMAT/$Z/$X/$Y"
-VER="$DEST/$OSM_DATE"
+# version folder = OSM date + content schema ("2026-10-20-s2", cells.py CELL_SCHEMA): a rebuild for a newer style is
+# a new version, not an overwrite of an immutable folder the app and caches already have
+VERSION=$($PY version-name "$OSM_DATE")
+VER="$DEST/$VERSION"
 
 rm -rf "$TMP"; mkdir -p "$TMP/logs" "$TMP/raw" "$TMP/out" "$TMP/planetiler"
 : > "$STEPS"
@@ -183,8 +186,8 @@ else REQ="base.pmtiles terrain.pmtiles routes.geojson trails.geojson"; fi
 for f in $REQ; do
   [ -s "$TMP/out/$f" ] || die "required file $f missing or empty"
 done
-run manifest $PY manifest "$Z" "$X" "$Y" "$TMP/out" "$OSM_DATE" "$GIT_REV" "cells/f$FORMAT/$Z/$X/$Y/$OSM_DATE" \
-  --format "$FORMAT"
+run manifest $PY manifest "$Z" "$X" "$Y" "$TMP/out" "$OSM_DATE" "$GIT_REV" "cells/f$FORMAT/$Z/$X/$Y/$VERSION" \
+  --format "$FORMAT" --version "$VERSION"
 
 # build.json: timings + sizes (diagnostics only, not listed in the manifest)
 python3 - "$STEPS" "$TMP/out" "$TMP/cell.osm.pbf" "$ID" "$(( $(date +%s) - T0 ))" "$FORMAT" > "$TMP/build.json" <<'PY'
@@ -205,7 +208,7 @@ PY
 mkdir -p "$DEST"
 rm -rf "$VER.tmp"; cp -r "$TMP/out" "$VER.tmp"; cp "$TMP/build.json" "$VER.tmp/build.json"
 rm -rf "$VER"; mv "$VER.tmp" "$VER"
-printf '{"version": "%s"}\n' "$OSM_DATE" > "$DEST/current.json.tmp" && mv "$DEST/current.json.tmp" "$DEST/current.json"
+printf '{"version": "%s"}\n' "$VERSION" > "$DEST/current.json.tmp" && mv "$DEST/current.json.tmp" "$DEST/current.json"
 [ "${KEEP_WORK:-0}" = 1 ] || rm -rf "$TMP"
 
 log "OK: cell $ID (format $FORMAT) in $(( $(date +%s) - T0 ))s -> $VER ($(du -sh "$VER" | cut -f1))"
