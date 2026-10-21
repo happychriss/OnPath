@@ -302,6 +302,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Card → OK / Not now / ×: the card goes; cells still loading go on (Settings → Offline maps shows them). */
     fun closeCellCard() { cellJob = null; mobileDeclined = false }
 
+    /** Overlay → Cancel: stop loading the areas of this job (installed ones stay; setting a point there asks again). */
+    fun cancelCellLoading() {
+        val job = cellJob ?: return
+        val inst = cells.installed.value.map { it.id }.toSet()
+        safeCells("cancel") { cells.cancel(job.cells.filter { it !in inst || job.why == com.onpath.app.cells.CellWhy.UPDATE }) }
+        closeCellCard()
+    }
+
+    /**
+     * Settings → Diagnostics → "Reset maps": deletes every downloaded map area and the queue – the app is like freshly
+     * installed for maps; the own position (T3) and the next point set fetch them again (owner: test a fresh install).
+     */
+    fun resetMapsLikeFreshInstall() = safeCells("reset") {
+        val all = cells.installed.value.map { it.id }
+        cells.cancel(cells.states.value.keys.toList())
+        if (all.isNotEmpty()) cells.delete(all)
+        closeCellCard(); t3Pending = true; t5LastAt = null
+        message = "Map areas deleted (${all.size}). The map for your position loads again as on a new install."
+        Problems.info("cells", "Maps reset like a fresh install (${all.size} area(s) deleted)")
+    }
+
     /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
     fun overviewOnly(lat: Double, lon: Double, zoom: Double): Boolean =
         zoom >= 10.0 && try { !cells.hasDetailedMap(GeoPoint(lat, lon)) } catch (e: Exception) {
@@ -332,7 +353,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
     private fun cellsRefreshIfDue() = safeCells("refresh") {
         val old = cellTriggers.updateOutdated()
-        if (old.isNotEmpty()) Problems.info("cells", "${old.size} map area(s) built for an older map style – requested again")
+        if (old.isNotEmpty()) {
+            Problems.info("cells", "${old.size} map area(s) built for an older map style – requested again")
+            // shown like any map load (overlay): the user sees why the map is being prepared again
+            showCellJob(com.onpath.app.cells.CellJob(old, null, com.onpath.app.cells.CellWhy.UPDATE))
+        }
         cellTriggers.refreshIfDue()
     }
 

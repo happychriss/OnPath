@@ -167,7 +167,8 @@ class MapCells(
             saveQueue()
         }
         if (added.isNotEmpty()) {
-            update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
+            // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
+            update { m -> added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }

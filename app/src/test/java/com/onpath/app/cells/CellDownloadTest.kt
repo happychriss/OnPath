@@ -196,6 +196,26 @@ class CellDownloadTest {
         assertEquals(emptyList<CellId>(), mc.outdated())
     }
 
+    /**
+     * Fresh-install simulation (owner 2026-10-21): empty phone → own point → the server builds → download over mobile
+     * data (own point) → map installed; "Reset maps" deletes everything → asked again → installed again, same version.
+     */
+    @Test fun freshInstallAndResetLoadTheMapAgain() {
+        server.publish(a, "2026-10-21-s2"); server.buildPolls = 2
+        val mc = cells(Net(unmetered = false))
+        assertEquals(null, mc.mapDir())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s2") }
+        assertTrue(File(mc.mapDir()!!, "base.pmtiles").isFile)
+        assertEquals(emptyList<CellId>(), mc.outdated())
+        // Settings → Diagnostics → Reset maps
+        mc.cancel(mc.states.value.keys.toList()); mc.delete(listOf(a))
+        waitFor("deleted") { mc.installed.value.isEmpty() }
+        assertEquals(listOf(a), mc.missing(listOf(a)))
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("loaded again") { mc.state(a) == CellState.Ready("2026-10-21-s2") && mc.installed.value.size == 1 }
+    }
+
     /** Requests survive a restart; a complete download not yet joined is joined at start. */
     @Test fun resumeAfterRestart() {
         server.publish(a, "v1"); server.buildPolls = 0

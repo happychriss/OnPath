@@ -5,12 +5,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Map rework steps 8–9: app cell store + download client (`data/cells/`), then triggers T1/T3/T4/T5/T6, "Preparing map" card, overview hint, cells in Settings – since 2026-10-21
-- [laptop] **Map hosting (Cloudflare Worker + R2 EU + Cloud Run Jobs)** – test environment live (`maps-test.free-your-pictures.org`), first cloud cell build running; production not deployed yet. – since 2026-10-20
-- [laptop] **Map rework format 2** – steps 0–6 done (main); next: phone test of format 2, doorman/job on format 2, steps 8–9 (app cell store + downloads). Laptop owns map pipeline + `make_style.py`/themes + cells – cloud: please don't edit style/pipeline files. – since 2026-10-20
 
 
 ## Next
+- **Cells / map hosting now owned by the cloud (owner 2026-10-21: "Laptop wird nicht benutzt, kannst du übernehmen?").**
+  0.8.1 (cloud): release APKs carry the test map key (from GitHub environment `test`), modal loading overlay with
+  Cancel + Wi-Fi/mobile question, outdated (schema 1) areas update by themselves, Settings → Diagnostics → Reset maps
+  (like a fresh install). Details: `docs/design/map-hosting.md` §7c–7d. Owner to test on the phone: update, Reset
+  maps, set a point → overlay. Production environment still not deployed.
 - **Small streets missing at z13+ (owner field report 2026-10-21) – fixed by the cloud:** content schema for cells
   (`docs/design/map-hosting.md` §7c): builder versions `<osm_date>-s2`, doorman rebuilds older-schema cells when
   asked, app re-requests outdated cells at start. Owner with the current phone app: delete the 2 areas in

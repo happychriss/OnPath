@@ -42,6 +42,9 @@ import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +106,8 @@ fun SettingsScreen(
     onClearProblems: () -> Unit = {},
     /** Diagnostics → "Map cells (debug)"; null = hidden. */
     mapCells: MapCellsDebug? = null,
+    /** Diagnostics → "Reset maps (like a fresh install)"; null = hidden (no map downloads in this build). */
+    onResetMaps: (() -> Unit)? = null,
     /** Settings → "Offline maps" (downloaded map areas); null = section hidden. */
     offlineMaps: OfflineMapsUi? = null,
     offlineMapsCb: OfflineMapsCallbacks = OfflineMapsCallbacks(),
@@ -298,6 +303,17 @@ fun SettingsScreen(
                             Text("Map server: ${com.onpath.app.data.MapServer.describe()}", fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             mapCells?.let { MapCellsDebugList(it) }
+                            onResetMaps?.let { reset ->
+                                var ask by remember { mutableStateOf(false) }
+                                androidx.compose.material3.OutlinedButton(onClick = { ask = true },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reset maps (like a fresh install)") }
+                                if (ask) androidx.compose.material3.AlertDialog(onDismissRequest = { ask = false },
+                                    title = { Text("Reset maps?") },
+                                    text = { Text("All downloaded map areas are deleted. The map for your position and for the points you " +
+                                        "set loads again, as on a new install. Tours and routes are kept.") },
+                                    confirmButton = { TextButton(onClick = { ask = false; reset() }) { Text("Reset") } },
+                                    dismissButton = { TextButton(onClick = { ask = false }) { Text("Cancel") } })
+                            }
                             ProblemList(problems, onClearProblems)
                         }
                     }
