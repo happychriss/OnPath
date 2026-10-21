@@ -203,6 +203,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The app is on screen again (e.g. taken out of the pocket): in Navigate jump back to the own position (owner). */
     fun onReturnToApp() {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
+        cells.setForeground(true)
+    }
+
+    /** The app left the screen: map cell status is not polled in the background (map-cells.md §8). */
+    fun onLeaveApp() = cells.setForeground(false)
+
+    // ---------------- map cells (docs/design/map-cells.md §9, §19) ----------------
+
+    /** Downloaded map cells: requests, states, installed list (UI: card, Settings list – see map-cells.md §19). */
+    val cells: com.onpath.app.cells.MapCells by lazy { com.onpath.app.cells.AppCells.get(getApplication()) }
+
+    /** The map style loaded from [dir]: when it is a cell store generation, older generations can go (R-16). */
+    fun onMapStyleLoaded(dir: java.io.File?) {
+        val gen = com.onpath.app.cells.CellStore.generationOf(dir) ?: return
+        viewModelScope.launch(Dispatchers.IO) { cells.confirmLoaded(gen) }
+    }
+
+    /** The map could not load from [dir]: if that is a cell store generation, go back to the previous one. */
+    fun rollbackMapCells(dir: java.io.File?): Boolean {
+        val gen = com.onpath.app.cells.CellStore.generationOf(dir) ?: return false
+        return cells.rollback(gen)
+    }
+
+    /** Settings → Diagnostics → "Map cells (debug)": request the cell under the map centre (own-point rule). */
+    fun requestCellAtMapCentre() {
+        val (lat, lon, _) = initialCamera()
+        val c = com.onpath.app.cells.CellId.at(lat, lon) ?: return
+        val added = cells.request(listOf(c), com.onpath.app.cells.CellReason.POINT)
+        message = if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see Settings → Diagnostics."
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
@@ -450,6 +479,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
                 .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
             .put("styleVersion", styleVersion).put("missingData", missing.map { it.name })
+            .put("mapDir", dataFiles.mapDir().path)
+            .put("mapCells", org.json.JSONObject().put("generation", cells.generation.value)
+                .put("installed", org.json.JSONArray(cells.installed.value.map { "${it.id} ${it.version} ${it.totalBytes}" }))
+                .put("states", org.json.JSONObject(cells.states.value.entries.associate { (c, s) -> c.id to s.toString() } as Map<*, *>)))
     } catch (e: Throwable) {
         Problems.warn("ui", "Diagnostics app state could not be collected", e)
         org.json.JSONObject().put("error", e.toString())
@@ -575,6 +608,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // old index (gaps, wrong tiles) until the process restarts. So after new .pmtiles: restart the app
                 // (not during a tour – then the user is asked to restart after it).
                 val newTiles = r.imported.any { it.endsWith(".pmtiles") }
+                // downloaded map cells are joined with the region package: join the new one
+                if (newTiles || r.imported.contains("pois.geojson")) cells.regionChanged()
                 withContext(Dispatchers.Main) {
                     recheckData()
                     if (newTiles && recState.value == null) restartForData = true else styleVersion++
@@ -767,7 +802,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val searchStore by lazy { com.onpath.app.search.SearchStore(getApplication()) }
     val search by lazy {
         com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
-            com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))) {
+            com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
+            mapDir = { dataFiles.mapDir() }) {
             val loc = tracker.location.value
             val (cLat, cLon, _) = initialCamera()
             // Position when known and near what the user looks at, else the map centre.
@@ -1883,6 +1919,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: Exception) {
                 Problems.error("gpx", "GPX import failed", e)
                 message = "Could not import this file: ${e.message ?: "unknown error"}"
+            }
+        }
+    }
+
+    // Last in the class: every property it touches is initialised by now.
+    init {
+        // a new cell store generation (cell added / replaced / deleted, region re-joined) → reload the map style
+        // (new file paths; MapLibre keeps no stale PMTiles index) and recheck the data. The search index notices by itself.
+        viewModelScope.launch {
+            cells.generation.collect {
+                val onMap = com.onpath.app.map.StyleLoader.lastMapDir
+                if (onMap == null) recheckData() // no map shown yet (missing-data screen): the first cell may complete the data
+                else if (dataFiles.mapDir() != onMap) { recheckData(); styleVersion++ }
             }
         }
     }
