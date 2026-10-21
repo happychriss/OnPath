@@ -27,13 +27,13 @@ const ctx = () => {
   return { waitUntil: (x) => p.push(x), done: () => Promise.all(p) };
 };
 
-async function putStatus(env, id, s, format = 1) {
+async function putStatus(env, id, s, format = 2) {
   await env.BUCKET.put(`status/f${format}/${id}.json`, JSON.stringify({ cell: id, format, ...s }));
 }
 
 async function publish(env, id, version = "2026-10-19") {
   const [z, x, y] = id.split("-");
-  const base = `cells/f1/${z}/${x}/${y}`;
+  const base = `cells/f2/${z}/${x}/${y}`;
   await env.BUCKET.put(`${base}/${version}/base.pmtiles`, new Uint8Array(1000).map((_, i) => i % 256));
   await env.BUCKET.put(`${base}/${version}/manifest.json`, JSON.stringify({ cell: id, files: [{ name: "base.pmtiles", size: 1000 }] }));
   await env.BUCKET.put(`${base}/current.json`, JSON.stringify({ version }));
@@ -92,7 +92,7 @@ test("request → queued, deduped, build starts, cell ready, manifest and file w
   const env = testEnv();
   const g = fakeGoogle();
   const c = ctx();
-  let r = await handle(req("/v1/cells/request", { method: "POST", body: { cells: [MERAN, BOZEN], reason: "point", formats: [1] } }), env, c, g);
+  let r = await handle(req("/v1/cells/request", { method: "POST", body: { cells: [MERAN, BOZEN], reason: "point", formats: [2] } }), env, c, g);
   assert.equal(r.status, 200);
   let j = await r.json();
   assert.deepEqual(j.cells.map((x) => x.state), ["queued", "queued"]);
@@ -100,7 +100,7 @@ test("request → queued, deduped, build starts, cell ready, manifest and file w
   const runs = g.calls.filter((x) => x.url.endsWith(":run"));
   assert.equal(runs.length, 1);
   const override = JSON.parse(runs[0].body).overrides.containerOverrides[0].env;
-  assert.deepEqual(override, [{ name: "CELLS", value: `${MERAN} ${BOZEN}` }, { name: "FORMAT", value: "1" }]);
+  assert.deepEqual(override, [{ name: "CELLS", value: `${MERAN} ${BOZEN}` }, { name: "FORMAT", value: "2" }]);
 
   // same request again: joins the running job, no second execution
   const c2 = ctx();
@@ -139,25 +139,26 @@ test("request → queued, deduped, build starts, cell ready, manifest and file w
   assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, 2);
 
   // manifest + file
-  r = await handle(req("/v1/cells/10/543/361/manifest?format=1"), env);
+  r = await handle(req("/v1/cells/10/543/361/manifest?format=2"), env);
   assert.equal(r.status, 200);
   assert.equal((await r.json()).cell, MERAN);
   assert.equal((await handle(req("/v1/cells/10/544/361/manifest"), env)).status, 404);
-  r = await handle(req("/v1/files/cells/f1/10/543/361/2026-10-19/base.pmtiles", { headers: { range: "bytes=10-19" } }), env);
+  assert.equal((await handle(req("/v1/cells/10/543/361/manifest?format=1"), env)).status, 404); // f1 not served
+  r = await handle(req("/v1/files/cells/f2/10/543/361/2026-10-19/base.pmtiles", { headers: { range: "bytes=10-19" } }), env);
   assert.equal(r.status, 206);
   assert.equal(r.headers.get("content-range"), "bytes 10-19/1000");
   assert.match(r.headers.get("cache-control"), /immutable/);
   assert.deepEqual([...new Uint8Array(await r.arrayBuffer())], [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
-  r = await handle(req("/v1/files/cells/f1/10/543/361/2026-10-19/base.pmtiles"), env);
+  r = await handle(req("/v1/files/cells/f2/10/543/361/2026-10-19/base.pmtiles"), env);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-length"), "1000");
   const etag = r.headers.get("etag");
-  r = await handle(req("/v1/files/cells/f1/10/543/361/2026-10-19/base.pmtiles", { headers: { "if-none-match": etag } }), env);
+  r = await handle(req("/v1/files/cells/f2/10/543/361/2026-10-19/base.pmtiles", { headers: { "if-none-match": etag } }), env);
   assert.equal(r.status, 304);
-  r = await handle(req("/v1/files/cells/f1/10/543/361/2026-10-19/base.pmtiles", { method: "HEAD" }), env);
+  r = await handle(req("/v1/files/cells/f2/10/543/361/2026-10-19/base.pmtiles", { method: "HEAD" }), env);
   assert.equal(r.headers.get("content-length"), "1000");
-  assert.equal((await handle(req("/v1/files/cells/f1/../../status/f1/x.json"), env)).status, 404);
-  assert.equal((await handle(req("/v1/files/status/f1/10-543-361.json"), env)).status, 404);
+  assert.equal((await handle(req("/v1/files/cells/f2/../../status/f2/x.json"), env)).status, 404);
+  assert.equal((await handle(req("/v1/files/status/f2/10-543-361.json"), env)).status, 404);
 });
 
 test("permanent failure and retries are limited", async () => {
@@ -234,7 +235,7 @@ test("old ready cell: answered ready and a low-priority refresh is queued", asyn
   const env = testEnv();
   const cfg = config(env);
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
-      VALUES (?, 1, '2026-01-01', '2026-01-01', 5, 3, 1)`).bind(MERAN).run();
+      VALUES (?, 2, '2026-01-01', '2026-01-01', 5, 3, 1)`).bind(MERAN).run();
   const j = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-20"));
   assert.equal(j.cells[0].state, "ready");
   const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();

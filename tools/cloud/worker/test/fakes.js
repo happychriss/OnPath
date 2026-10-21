@@ -152,7 +152,7 @@ export function fakeGoogle() {
 export function testEnv(extra = {}) {
   return {
     ENVIRONMENT: "test",
-    FORMATS: "1",
+    FORMATS: "2",
     GCP_PROJECT: "proj",
     GCP_REGION: "europe-west1",
     GCP_JOB: "onpath-cell-test",

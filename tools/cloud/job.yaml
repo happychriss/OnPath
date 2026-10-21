@@ -39,7 +39,7 @@ spec:
                 - name: ONPATH_ENV
                   value: ${ENV_NAME}
                 - name: FORMAT
-                  value: "1"
+                  value: "2" # cells ship only in format 2 (map-cells.md Q11); the doorman sends FORMAT per execution too
                 - name: SRC_DIR
                   value: /src
                 - name: R2_ACCOUNT_ID

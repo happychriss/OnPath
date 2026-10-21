@@ -11,7 +11,7 @@ secret, nothing to reach inside the job.
 
 Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execution from the doorman's overrides):
   CELLS="10-543-361 10-544-361"   cell ids (also 10/543/361), space or comma separated
-  FORMAT=1                        cell format (build_cell.sh writes cells/f<FORMAT>/…)
+  FORMAT=2                        cell format (build_cell.sh writes cells/f<FORMAT>/…)
   SRC_DIR=/src                    source bucket (Cloud Storage volume mount): osm/<id>.osm.pbf, planetiler-sources/
   SOURCES_JSON=<this dir>/sources.json   which extract covers which area
   WORK=/tmp/onpath/work  DATA_ROOT=/tmp/onpath/store   local (in-memory on Cloud Run) work + output folders
@@ -93,7 +93,7 @@ def content_type(name):
 class Builder:
     def __init__(self, env=os.environ, store=None, run=subprocess.Popen, download=None):
         self.env = env
-        self.fmt = int(env.get("FORMAT", "1"))
+        self.fmt = int(env.get("FORMAT", "2"))
         self.src_dir = env.get("SRC_DIR", "/src")
         self.work = env.get("WORK", "/tmp/onpath/work")
         self.data_root = env.get("DATA_ROOT", "/tmp/onpath/store")

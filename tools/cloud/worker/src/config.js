@@ -9,7 +9,7 @@ const num = (v, d) => {
 export function config(env) {
   return {
     environment: env.ENVIRONMENT || "dev",
-    formats: String(env.FORMATS || "1").split(",").map((s) => Number(s.trim())).filter((n) => n > 0),
+    formats: String(env.FORMATS || "2").split(",").map((s) => Number(s.trim())).filter((n) => n > 0),
     buildsEnabled: String(env.BUILDS_ENABLED ?? "true") === "true",
     gcpProject: env.GCP_PROJECT || "",
     gcpRegion: env.GCP_REGION || "",

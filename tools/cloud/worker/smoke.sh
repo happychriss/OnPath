@@ -47,7 +47,7 @@ H=(-H "X-OnPath-Key: $KEY" -H "X-OnPath-App: smoke")
 check health          200 "$BASE/v1/health"
 check "no key → 401"  401 "$BASE/v1/cells/status?ids=$CELL"
 check request         200 "${H[@]}" -H 'content-type: application/json' -X POST \
-  --data "{\"cells\":[\"$CELL\"],\"reason\":\"point\",\"formats\":[1]}" "$BASE/v1/cells/request"
+  --data "{\"cells\":[\"$CELL\"],\"reason\":\"point\",\"formats\":[2]}" "$BASE/v1/cells/request"
 check status          200 "${H[@]}" "$BASE/v1/cells/status?ids=$CELL"
 check "outside sources → failed" 200 "${H[@]}" "$BASE/v1/cells/status?ids=10-536-360"
 grep -q "Source data not available" /tmp/onpath-smoke-body || { echo "FAIL  no-source reason missing"; fail=1; }
