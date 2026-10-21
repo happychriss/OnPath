@@ -13,6 +13,7 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | C5 | Navigate: follow, off-route alarm, re-route, arrival | 0.7.26 (re-route kept the old route) | `NavigatorTest`, `NavReplayTest`, `OffRouteDetectorTest`, `RerouteTargetsTest`, `ArrivalGateTest` |
 | C6 | Map loads: missing data / cells / style never crash; old map stays until the new one is complete | 0.8.0 (profile crash), small streets missing | `CellStoreTest`, `CellDownloadTest`, `StyleLoaderTest`, `ProfileTinyTest` |
 | C7 | GPX import / export | – | `GpxParserTest` |
+| C8 | App update from GitHub (Settings → Updates) – resumes after a broken connection | 2026-10-21 (4× "connection abort") | `UpdateDownloadTest`, `AppUpdaterTest` |
 
 Gaps (to do): an end-to-end test on an emulator that really holds a marker on the MapLibre map (C1/C2) – the JVM
 tests cover the decision functions MapHost uses (`MapGestures.markerUnderFinger`, `decide`), not the Android touch
