@@ -368,6 +368,21 @@ queued. Owner decision: up to 4 builds at once, waiting users first, an honest E
   per answer and fully after `ETA_SMOOTH_S` (60 s) – no jumps, but no stale numbers either; a finish time already
   passed is replaced at once; never below 20 s.
 
+Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback times):
+- Round 1, all slots idle: refresh Bonn 10/532/344 asked 20:42:05, then 3 points around Münster (10/533/338,
+  10/532/338, 10/533/339) 20:42:06 → **4 executions running at once** (the refresh's own pump started it while
+  every slot was idle). Reported ETA 510 s (→ 20:50:36); ready 20:47:19, 20:48:21, 20:48:21 (5.2–6.3 min – the
+  fallback guesses are pessimistic until real builds are measured); Bonn: ETA 539 s → 20:51:04, ready 20:50:25.
+  The three Münster cells share an extract: one downloaded, the others reported `download` (waiting on the lock)
+  and went on afterwards.
+- Round 2, all 4 slots busy: refresh Aachen 10/529/343 asked 20:44:07, point Dortmund 10/533/340 20:44:28 → the
+  point was position 1 at once, **started first** when the first slot freed (20:47:07); the refresh started only
+  when two slots were free (20:48:09). Point: ETA at request 699 s → 20:56:07, **ready 20:56:26** (last poll;
+  between 20:55:55 and 20:56:26). Bonn at 20:44:31: ETA 343 s → 20:50:14, ready 20:50:15. The Ruhr cell built
+  ~3 min slower than average (dense area) – the step progress showed it, the rolling mean learns.
+- Fixed after the proof: a cell the builder had published but the pump not yet recorded showed "starting" again
+  for up to a minute; now `upload`, progress 1, ~30 s.
+
 ## 8. Open points
 
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other
