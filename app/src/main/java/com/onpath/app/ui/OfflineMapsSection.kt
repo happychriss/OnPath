@@ -54,8 +54,8 @@ class OfflineMapsCallbacks(
 
 /** Settings → Offline maps: installed areas, total size, delete (asked in the page), Wi-Fi only, update now. */
 @Composable
-fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks) {
-    var confirm by remember { mutableStateOf<String?>(null) }
+fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfirm: String? = null) {
+    var confirm by remember { mutableStateOf(initialConfirm) }
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     Section("Offline maps") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

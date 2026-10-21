@@ -225,9 +225,10 @@ fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, mo
                                 Text(if (r.own) "●" else "○", color = if (r.own) OnPathColors.Green else variant,
                                     style = MaterialTheme.typography.bodySmall)
                                 Spacer(Modifier.width(6.dp))
-                                Text(r.name, style = MaterialTheme.typography.bodySmall, maxLines = 1, modifier = Modifier.weight(1f))
+                                Text(r.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                                 Text(r.state, style = MaterialTheme.typography.bodySmall, color = variant, maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis)
+                                    overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(1f).padding(start = 8.dp))
                             }
                         }
                         ui.more?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
