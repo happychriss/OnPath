@@ -75,13 +75,13 @@ fun MapOverlayHost(
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
     vm.firstPointMenu?.let { p ->
-        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.firstPointMenu = null }) {
+        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
         }
     }
     vm.poiMenu?.let { poi ->
-        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { vm.poiMenu = null }) {
+        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),

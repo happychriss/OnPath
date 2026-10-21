@@ -103,7 +103,8 @@ abstract class E2EBase {
                 "canEdit ${vm.canEditMap}, peek ${vm.routePeek}, map ${mv?.width}x${mv?.height}"
         }
         val problems = com.onpath.app.debug.Problems.snapshot().take(8).joinToString(" | ") { "${it.level} ${it.area}: ${it.message}" }
-        return "$s; problems: $problems"
+        val events = com.onpath.app.debug.Problems.events().take(8).joinToString(" | ") { "${it.area}: ${it.message}" }
+        return "$s; events (newest first): $events; problems: $problems"
     }
 
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */
