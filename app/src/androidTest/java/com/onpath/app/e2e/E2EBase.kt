@@ -50,6 +50,8 @@ abstract class E2EBase {
         // empty plan, default camera (Meran); the one-time "Allow all the time" question already answered (it would
         // cover the map on the first tour)
         ctx.getSharedPreferences("onpath", 0).edit().clear().putBoolean("backgroundAsked", true).commit()
+        // the one-time restore offer on an empty tour list (backup) would cover the map too
+        ctx.getSharedPreferences("backup", 0).edit().putBoolean("restoreOffered", true).commit()
         val dir = dataDir
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)

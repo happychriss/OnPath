@@ -40,10 +40,10 @@ class BackupQueue(
         run.invoke(Runnable { guarded { val b = backup(); uuids.forEach { b.purge(it) } } })
     }
 
-    /** Writes every tour without a file in the current folder ([missingOnly]) or all again. */
+    /** Writes every tour without a file in the current folder ([missingOnly]) or all again; [done] gets the count (-1 = failed). */
     fun syncAll(missingOnly: Boolean, done: ((Int) -> Unit)? = null) = run.invoke(Runnable {
         var n = 0
-        guarded {
+        val ok = guarded {
             val b = backup()
             for (t in source.all()) {
                 if (t.state != "done" || t.uuid.isEmpty()) continue
@@ -52,7 +52,7 @@ class BackupQueue(
             }
             if (n > 0) listener.saved("$n files", b.count())
         }
-        done?.invoke(n)
+        done?.invoke(if (ok) n else -1)
     })
 
     private fun saveNow(id: Long) {
@@ -67,9 +67,9 @@ class BackupQueue(
         return b.save(BackupMeta.of(t, segs, now()), segs)
     }
 
-    private inline fun guarded(block: () -> Unit) {
-        try { block() } catch (e: BackupException) { listener.failed(e.reason, e) } catch (e: Exception) {
-            listener.failed(e.message ?: e.javaClass.simpleName, e)
-        }
+    private inline fun guarded(block: () -> Unit): Boolean = try { block(); true } catch (e: BackupException) {
+        listener.failed(e.reason, e); false
+    } catch (e: Exception) {
+        listener.failed(e.message ?: e.javaClass.simpleName, e); false
     }
 }

@@ -76,6 +76,32 @@ class MainActivity : ComponentActivity() {
         if (uri != null) vm.importGpx(uri)
     }
 
+    /** Restore: the folder with the backup files (a reinstalled app may read it only after this picker). */
+    private val pickRestoreFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) vm.restoreFrom(uri)
+    }
+
+    /** Settings → Backup → Choose another folder (synced Drive / Nextcloud folder …). */
+    private val pickBackupFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) com.onpath.app.backup.Backups.setFolder(this, uri)
+    }
+
+    /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
+    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) com.onpath.app.backup.Backups.backupAll(this)
+        else vm.message = "Without storage access OnPath cannot copy tours to Documents/OnPath. Choose another folder in Settings → Backup."
+    }
+
+    private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
+        try { launcher.launch(com.onpath.app.backup.BackupFolder.initialUri) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("backup", "No folder picker available", e)
+            vm.message = "This phone has no folder picker – restore and folder choice are not possible."
+        }
+    }
+
+    private fun needsStorageAccess() = Build.VERSION.SDK_INT < 29 &&
+        ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // the app is light: dark status/nav bar icons also when the phone is in dark mode (polish audit A7)
         enableEdgeToEdge(
@@ -139,7 +165,19 @@ class MainActivity : ComponentActivity() {
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
+                                onExportAll = { vm.exportAll() },
+                                onRecycleBin = { vm.openRecycleBin() },
                             )
+                        }
+                        vm.recycleBin?.let { bin ->
+                            BackHandler { vm.recycleBin = null }
+                            com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recycleBin = null },
+                                onRestore = { vm.restoreFromBin(it) }, onDeleteForever = { vm.deleteForever(it) })
+                        }
+                        if (vm.restoreOffer && vm.recState.collectAsState().value == null) {
+                            com.onpath.app.ui.RestoreOfferDialog(
+                                onRestore = { vm.restoreOfferAnswered(); launchTreePicker(pickRestoreFolder) },
+                                onNotNow = { vm.restoreOfferAnswered() })
                         }
                     }
                     vm.route?.takeIf { vm.routeDetailsOpen }?.let { r ->
@@ -200,6 +238,24 @@ class MainActivity : ComponentActivity() {
                             onInstallUpdate = { vm.installUpdate() },
                             learnedPace = vm.learnedPace,
                             onResetPace = vm::resetLearnedPace,
+                            backup = run {
+                                val b by com.onpath.app.backup.Backups.status.collectAsState()
+                                com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,
+                                    needsStorageAccess = remember(b) { needsStorageAccess() })
+                            },
+                            backupCb = com.onpath.app.ui.BackupCallbacks(
+                                onBackupNow = {
+                                    vm.message = "Backing up all tours and routes…"
+                                    com.onpath.app.backup.Backups.backupAll(this@MainActivity) { n ->
+                                        // a failure says itself (Backups.failure); only success here
+                                        runOnUiThread { if (n >= 0) vm.message = "Backup done: $n ${if (n == 1) "file" else "files"} written." else if (vm.message?.startsWith("Backing up") == true) vm.message = null }
+                                    }
+                                },
+                                onChooseFolder = { launchTreePicker(pickBackupFolder) },
+                                onUseDocuments = { com.onpath.app.backup.Backups.setFolder(this@MainActivity, null) },
+                                onRestore = { launchTreePicker(pickRestoreFolder) },
+                                onAllowStorage = { storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) },
+                            ),
                         )
                     }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
@@ -218,6 +274,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 RouteDialogs(vm)
+                vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
                 if (vm.askBackground) {
                     AlertDialog(
                         onDismissRequest = { vm.backgroundAnswered() },
