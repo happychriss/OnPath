@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import job_build  # noqa: E402
 import osm_sources  # noqa: E402
 import r2  # noqa: E402
+import src_objects  # noqa: E402
 from cells import buffered_bbox, cell_bbox  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -350,6 +351,97 @@ class BuilderFlow(unittest.TestCase):
         b = job_build.Builder(self.env, download=self.download, run=popen)
         b.main([(10, 543, 361)])
         self.assertEqual(calls, [])
+
+    def test_ready_status_has_measured_times(self):
+        self.real_sources()
+        self.builder().main([(10, 547, 358)])  # austria downloaded for it
+        s = self.status("10-547-358")
+        self.assertTrue(s["new_source"])
+        self.assertEqual(s["download_mb"], 1.1)
+        self.assertGreaterEqual(s["build_s"], 0)
+        self.assertIn("download_s", s)
+        self.env["CLOUD_RUN_EXECUTION"] = "onpath-cell-test-next"
+        self.builder().main([(10, 547, 358)])  # next execution: cached now
+        self.assertFalse(self.status("10-547-358")["new_source"])
+
+    def test_lock_held_by_a_parallel_execution_on_another_machine(self):
+        # the lock is only in the bucket (the GCS API sees it), not in this machine's mount: still waits, no download
+        self.real_sources()
+        p = self.src("geofabrik", "europe", "austria.osm.pbf")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        local = src_objects.FileObjects(self.env["SRC_DIR"])
+        remote = {"osm/geofabrik/europe/austria.osm.pbf.lock":
+                  json.dumps({"execution": "other", "t": int(time.time()), "eta_at": int(time.time()) + 50}).encode()}
+
+        class Remote(src_objects.FileObjects):
+            def create_if_absent(self, name, data):
+                return False if name in remote else local.create_if_absent(name, data)
+
+            def read(self, name):
+                return remote.get(name) or local.read(name)
+
+            def stat(self, name):
+                return {"size": len(remote[name]), "mtime": time.time()} if name in remote else local.stat(name)
+
+        statuses = []
+
+        def sleep(s):  # the other execution finishes while we wait
+            statuses.append(self.status("10-547-358"))
+            with open(p, "wb") as f:
+                f.write(b"\0" * 1_100_000)
+            del remote["osm/geofabrik/europe/austria.osm.pbf.lock"]
+        job_build.Builder(self.env, download=self.download, sleep=sleep, objects=Remote(self.env["SRC_DIR"])).main(
+            [(10, 547, 358)])
+        self.assertEqual(self.downloads, [])
+        self.assertEqual(statuses[0]["step"], "download")
+        self.assertTrue(45 <= statuses[0]["source_eta_s"] <= 50)  # the downloader's ETA from the lock
+        s = self.status("10-547-358")
+        self.assertEqual(s["state"], "ready")
+        self.assertTrue(s["new_source"])  # waited for a fresh extract
+
+
+class GcsLocks(unittest.TestCase):
+    def test_create_if_absent_uses_generation_precondition(self):
+        import urllib.error
+        calls = []
+
+        class Resp(io.BytesIO):
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def opener(req, timeout=None):
+            url = req.full_url if hasattr(req, "full_url") else req
+            calls.append((req.get_method(), url))
+            if "metadata.google.internal" in url:
+                return Resp(json.dumps({"access_token": "t", "expires_in": 3600}).encode())
+            if "ifGenerationMatch=0" in url and len(calls) > 2:
+                raise urllib.error.HTTPError(url, 412, "precondition", {}, None)
+            if url.endswith("?alt=media"):
+                raise urllib.error.HTTPError(url, 404, "nf", {}, None)
+            if "fields=size,updated" in url:
+                return Resp(json.dumps({"size": "123", "updated": "2026-10-21T10:00:00.000Z"}).encode())
+            return Resp(b"{}")
+        g = src_objects.GcsObjects("bkt", opener=opener)
+        self.assertTrue(g.create_if_absent("osm/a b.osm.pbf.lock", b"{}"))
+        self.assertFalse(g.create_if_absent("osm/a b.osm.pbf.lock", b"{}"))  # someone else holds it
+        self.assertIn("ifGenerationMatch=0", calls[1][1])
+        self.assertIn("name=osm%2Fa%20b.osm.pbf.lock", calls[1][1])
+        self.assertIsNone(g.read("osm/x"))
+        st = g.stat("osm/x")
+        self.assertEqual(st["size"], 123)
+        self.assertEqual(datetime.datetime.fromtimestamp(st["mtime"], datetime.timezone.utc).hour, 10)
+        self.assertEqual(sum(1 for c in calls if "metadata" in c[1]), 1)  # token cached
+
+    def test_from_env(self):
+        self.assertIsInstance(src_objects.from_env({"SRC_BUCKET": "b"}, "/src"), src_objects.GcsObjects)
+        self.assertIsInstance(src_objects.from_env({}, "/src"), src_objects.FileObjects)
+        self.assertIsInstance(src_objects.from_env({"SRC_BUCKET": "b", "SRC_LOCKS": "file"}, "/src"),
+                              src_objects.FileObjects)
 
 
 if __name__ == "__main__":

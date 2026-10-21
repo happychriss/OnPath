@@ -104,4 +104,31 @@ object PlanPoints {
         to < from && i in to until from -> 1
         else -> 0
     }
+
+    /** The row under [yPx] (rows of [rowPx] from the top of the list), null outside the list. */
+    fun rowAt(yPx: Float, rowPx: Float, count: Int): Int? {
+        if (rowPx <= 0f || yPx < 0f) return null
+        val r = (yPx / rowPx).toInt()
+        return if (r in 0 until count) r else null
+    }
+
+    /**
+     * Auto-scroll while a row is dragged near an edge of the visible list: px to scroll this frame (negative = up,
+     * 0 = not near an edge). [fingerPx] = finger in the visible list (0 = its top), [viewPx] = its height; faster the
+     * closer to the edge (up to [maxStepPx]).
+     */
+    fun autoScroll(fingerPx: Float, viewPx: Float, edgePx: Float, maxStepPx: Float): Float {
+        if (viewPx <= 0f || edgePx <= 0f) return 0f
+        return when {
+            fingerPx < edgePx -> -maxStepPx * ((edgePx - fingerPx) / edgePx).coerceIn(0f, 1f)
+            fingerPx > viewPx - edgePx -> maxStepPx * ((fingerPx - (viewPx - edgePx)) / edgePx).coerceIn(0f, 1f)
+            else -> 0f
+        }
+    }
+
+    /** [items] with the one at [from] moved to [to] – the list shows the drop at once, before the plan catches up. */
+    fun <T> moved(items: List<T>, from: Int, to: Int): List<T> {
+        if (from !in items.indices || to !in items.indices || from == to) return items
+        return items.toMutableList().apply { add(to, removeAt(from)) }
+    }
 }

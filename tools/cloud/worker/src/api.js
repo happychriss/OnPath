@@ -1,6 +1,7 @@
 // HTTP API /v1 (docs/design/map-cells.md §8).
 import { config } from "./config.js";
 import { parseCellId } from "./cells.js";
+import { slotCount } from "./eta.js";
 import { globalFetch } from "./gcp.js";
 import { HttpError, log, pickFormat, pump, requestCells, statusFor } from "./queue.js";
 
@@ -116,7 +117,7 @@ export async function handle(request, env, ctx, fetchImpl = globalFetch) {
       const q = await env.DB.prepare(`SELECT SUM(CASE WHEN job = 'queued' THEN 1 ELSE 0 END) AS queued,
           SUM(CASE WHEN job = 'building' THEN 1 ELSE 0 END) AS building FROM cells`).first();
       return json({ ok: true, env: cfg.environment, queue: q?.queued || 0, building: q?.building || 0,
-        builds_enabled: cfg.buildsEnabled, formats: cfg.formats });
+        builds_enabled: cfg.buildsEnabled, formats: cfg.formats, slots: await slotCount(env.DB, cfg, Date.now()) });
     }
     if (!path.startsWith("/v1/")) return json({ error: "not found" }, 404);
     if (!env.APP_KEYS) return json({ error: "server not configured" }, 503); // fail closed

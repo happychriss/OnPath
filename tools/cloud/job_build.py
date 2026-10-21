@@ -45,6 +45,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "cells"))
 import osm_sources  # noqa: E402
 import r2  # noqa: E402
+import src_objects  # noqa: E402
 from cells import buffered_bbox, cell_bbox  # noqa: E402
 
 NO_SOURCE = "No map data exists for this area (open sea)"
@@ -101,7 +102,8 @@ def content_type(name):
 
 
 class Builder:
-    def __init__(self, env=os.environ, store=None, run=subprocess.Popen, download=None, sleep=time.sleep):
+    def __init__(self, env=os.environ, store=None, run=subprocess.Popen, download=None, sleep=time.sleep,
+                 objects=None):
         self.env = env
         self.fmt = int(env.get("FORMAT", "2"))
         self.src_dir = env.get("SRC_DIR", "/src")
@@ -121,6 +123,10 @@ class Builder:
         self.sleep = sleep
         self._regions = None
         self.checked = set()
+        # locks + freshness: GCS API on Cloud Run (atomic across parallel executions), else the folder
+        self.objects = objects or src_objects.from_env(env, self.src_dir)
+        self.dl = {"s": 0.0, "mb": 0.0}
+        self.waited_for_source = False
 
     # ------------------------------------------------------------------ status
     def status_key(self, cid):
@@ -212,56 +218,68 @@ class Builder:
     def _meta_path(path):
         return path[:-len(".osm.pbf")] + ".meta.json"
 
+    def _rel(self, path):
+        return os.path.relpath(path, self.src_dir)
+
     def _fresh(self, path):
-        if not os.path.exists(path) or os.path.getsize(path) < MIN_SOURCE_BYTES:
+        """Extract in the bucket, big enough and younger than max_age_days – asked through self.objects (the GCS API
+        on Cloud Run: the mount's stat cache may not see another execution's download yet)."""
+        st = self.objects.stat(self._rel(path))
+        if not st or st["size"] < MIN_SOURCE_BYTES:
             return False
         try:
-            with open(self._meta_path(path)) as f:
-                t = json.load(f).get("downloaded")
-        except (OSError, ValueError):
-            t = None  # expected: pinned extracts saved before meta files existed → file time
-        return time.time() - (t or os.path.getmtime(path)) < self.max_age_s
+            t = json.loads(self.objects.read(self._rel(self._meta_path(path))) or b"null")
+            t = t.get("downloaded") if isinstance(t, dict) else None
+        except ValueError:
+            t = None  # expected: pinned extracts saved before meta files existed → object time
+        return time.time() - (t or st["mtime"]) < self.max_age_s
+
+    def _lock_info(self, lock):
+        try:
+            info = json.loads(self.objects.read(lock) or b"{}")
+            return info if isinstance(info, dict) else {}
+        except ValueError:
+            return {}  # expected: half-written lock – judged by its age below
 
     def _lock(self, path, cid):
-        """<path>.lock (O_EXCL): one downloader per extract. Waits while another job holds it; takes over a lock
-        older than LOCK_STALE_S. True = we hold it; False = it went away (the other job is done – check again)."""
-        lock = path + ".lock"
+        """<path>.lock, created atomically (self.objects: GCS ifGenerationMatch=0 on Cloud Run, O_EXCL locally): one
+        downloader per extract, also across parallel executions. Waits while another job holds it (its download ETA
+        is in the lock); takes over a lock older than LOCK_STALE_S. True = we hold it; False = it went away (the
+        other job is done – check again)."""
+        lock = self._rel(path) + ".lock"
         waited = 0
         while True:
-            try:
-                fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-                with os.fdopen(fd, "w") as f:
-                    json.dump({"execution": self.execution, "t": int(time.time())}, f)
+            body = json.dumps({"execution": self.execution, "t": int(time.time())}).encode()
+            if self.objects.create_if_absent(lock, body):
                 return True
-            except FileExistsError:
-                try:
-                    with open(lock) as f:
-                        info = json.load(f)
-                except (OSError, ValueError):
-                    info = {}  # expected: half-written lock – judged by its age below
-                age = time.time() - info.get("t", os.path.getmtime(lock) if os.path.exists(lock) else 0)
-                if age > LOCK_STALE_S or info.get("execution") == self.execution:
-                    log(f"source lock {lock}: stale ({int(age)} s) – taking over")
-                    try:
-                        os.remove(lock)
-                    except FileNotFoundError:  # expected: the other job just finished
-                        pass
-                    continue
-                if waited == 0:
-                    log(f"source {os.path.basename(path)}: another build is downloading it, waiting")
-                    self.status(cid, "building", step="download", progress=0.0, source_eta_s=300)
-                self.sleep(20)
-                waited += 20
-                if not os.path.exists(lock):
-                    return False
+            info = self._lock_info(lock)
+            st = self.objects.stat(lock)
+            if st is None:
+                continue  # expected: released between our create and read – try again
+            age = time.time() - info.get("t", st["mtime"])
+            if age > LOCK_STALE_S or info.get("execution") == self.execution:
+                log(f"source lock {lock}: stale ({int(age)} s) – taking over")
+                self.objects.delete(lock)
+                continue
+            eta = info.get("eta_at")
+            eta_s = max(15, int(eta - time.time())) if isinstance(eta, (int, float)) else 120
+            if waited == 0:
+                log(f"source {os.path.basename(path)}: another build ({info.get('execution')}) is downloading it, waiting")
+            self.waited_for_source = True
+            self.status(cid, "building", step="download", progress=0.0, source_eta_s=eta_s)
+            self.sleep(20)
+            waited += 20
+            if self.objects.stat(lock) is None:
+                return False
 
     def ensure_source(self, src, cid):
         """Path of a fresh copy of the extract in the source bucket (downloaded into it when missing or older than
-        max_age_days). Raises SourceUnavailable / SourceTooLarge."""
+        max_age_days). Raises SourceUnavailable / SourceTooLarge. Adds the download time and size to self.dl."""
         path = src["path"]
         if path in self.checked:
             return path
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        lock = self._rel(path) + ".lock"
         while not self._fresh(path):
             if not self._lock(path, cid):
                 continue
@@ -275,6 +293,11 @@ class Builder:
                     eta = int((total - done) / rate) + 30 if total and rate > 0 else 300
                     self.status(cid, "building", step="download", progress=0.0, source_eta_s=eta,
                                 source={"id": src["id"], "mb": round(done / 1e6), "total_mb": round(total / 1e6)})
+                    try:  # waiting executions read our ETA from the lock
+                        self.objects.write(lock, json.dumps({"execution": self.execution, "t": int(t0),
+                                                             "eta_at": int(time.time() + eta)}).encode())
+                    except OSError as e:
+                        log(f"WARN: lock progress not written: {e}")
                 self.status(cid, "building", step="download", progress=0.0, source_eta_s=300, source={"id": src["id"]})
                 if self.download == self._download:
                     self.download(src["url"], path + ".part", progress=progress)
@@ -288,12 +311,11 @@ class Builder:
                         "seconds": round(time.time() - t0), "execution": self.execution}
                 with open(self._meta_path(path), "w") as f:
                     json.dump(meta, f)
+                self.dl["s"] += time.time() - t0
+                self.dl["mb"] += size / 1e6
                 log(f"source {src['id']}: {size // 1_000_000} MB in {meta['seconds']} s")
             finally:
-                try:
-                    os.remove(path + ".lock")
-                except FileNotFoundError:  # expected: taken over as stale meanwhile
-                    pass
+                self.objects.delete(lock)
             break
         self.checked.add(path)
         return path
@@ -374,6 +396,9 @@ class Builder:
             log(f"cell {cid}: already published by this execution")
             return True
         self.status(cid, "building", step="source", progress=0.0)
+        self.dl = {"s": 0.0, "mb": 0.0}
+        self.waited_for_source = False
+        t_src = time.time()
         try:
             sources = self.choose_sources(z, x, y)
             if not sources:
@@ -390,6 +415,7 @@ class Builder:
             log(f"cell {cid}: source failed: {e}")
             self.status(cid, "failed", reason=UNAVAILABLE, detail=str(e)[:500])
             return False
+        t_build = time.time()
         rc, tail = self.run_build(z, x, y, pbfs, cid)
         if rc != 0:
             step = next((m.group(1) for line in reversed(tail) for m in [re.search(r"step (\S+) failed", line)] if m),
@@ -405,6 +431,11 @@ class Builder:
             self.status(cid, "failed", reason="Upload failed", detail=str(e)[:500])
             return False
         info["sources"] = [s["id"] for s in sources]
+        # measured times for the doorman's ETA (rolling averages, map-hosting.md §7f): build + upload without the
+        # extract download / lock wait; the download itself (rate = MB / s)
+        info.update(build_s=round(time.time() - t_build, 1), source_s=round(t_build - t_src, 1),
+                    new_source=bool(self.dl["mb"] or self.waited_for_source),
+                    download_s=round(self.dl["s"], 1), download_mb=round(self.dl["mb"], 1))
         self.status(cid, "ready", progress=1.0, **info)
         log(f"cell {cid}: ready ({info['version']}, {info['size']} bytes)")
         return True
