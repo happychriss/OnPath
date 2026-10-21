@@ -181,7 +181,12 @@ it are still in use.
 
 Never a blank screen (R-01): the APK carries one small world overview – base z0–5 (Natural Earth: coast, water,
 borders, country and city names) and hillshade z0–6, no special case for any region (map-pipeline.md §9b). Up to zoom 9 the overview is over-zoomed; cells start at zoom 10.
-Size and exact zoom range: see map-data-size.md. Where no cell is on the phone, the map shows a light hint:
+From zoom 10 the overview goes on **underneath** the detailed layers (fills, lines, relief – no labels, no Natural Earth
+urban areas), so the map is never empty beige outside the downloaded cells; an opaque cover in the background colour
+over the installed cells / region package hides it there (no offset lakes, no doubled relief) – `map/Overview.kt`
+(owner field test 0.8.7).
+Size and exact zoom range: see map-data-size.md. Where a large part of the visible map (≥ 30 % of a 5 × 5 sample
+grid, not just the centre) has no cell, the map shows a light persistent hint (z ≥ 10, Plan):
 **"Overview only – set a point and the detailed map follows."**
 
 ## 8. API between app and doorman

@@ -338,10 +338,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
-    fun overviewOnly(lat: Double, lon: Double, zoom: Double): Boolean =
-        zoom >= 10.0 && try { !cells.hasDetailedMap(GeoPoint(lat, lon)) } catch (e: Exception) {
-            Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); false
-        }
+    /** Areas with the detailed map (installed cells, region package) for the style's overview cover. */
+    fun detailedAreas(): List<DoubleArray> = cells.detailedAreas()
+
+    /** True when a large part of the visible box (z ≥ 10) has no detailed map ([OverviewHintRule]). */
+    fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = try {
+        OverviewHintRule.show(OverviewHintRule.MIN_ZOOM,
+            OverviewHintRule.samples(south, west, north, east).map { (lat, lon) -> cells.hasDetailedMap(GeoPoint(lat, lon)) })
+    } catch (e: Exception) {
+        Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); false
+    }
 
     /** Every fix: T3 (first usable fix after start / return in Plan) and T5 (on tour, near the edge of the map). */
     private fun cellsForFix(loc: android.location.Location) {
