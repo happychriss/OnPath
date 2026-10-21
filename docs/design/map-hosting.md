@@ -247,6 +247,22 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
   waterway 15/15 joined with equal attributes; contours 323 of 412 within 3 units (the same per-tile tracing offset
   as locally) – identical to the local check.
 
+## 7c. Content schema – rebuilding cells for a newer style (2026-10-21)
+
+Field report: the 09:11 format-2 cells had no overlays layer `streets` (added 10:15), the style draws small streets
+at z13+ only from it → no small streets on the phone. Versions were named by the OSM date alone, so a rebuild on the
+same OSM date would have had the same (immutable, cached) name. Now:
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, now 2); the manifest has
+  `version` and `schema`.
+- **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
+  rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
+  A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
+- **App:** `CellApi.CELL_SCHEMA`; installed cells of an older schema are requested again at every start
+  (`CellTriggers.updateOutdated`, reason `UPDATE`, sent as `point`, allowed on mobile data); the manifest's `version`
+  is the installed version (older manifests: `osm_date`).
+- **Bump all three** whenever the style needs data older cells lack. Old apps (before this) still work: delete the
+  area in Settings → Offline maps and it is loaded again (the doorman rebuilds it first).
+
 ## 8. Open points
 
 - **Release APK → which server:** `release.yml` builds the *debug* variant (fixed test signing key), so

@@ -179,6 +179,23 @@ class CellDownloadTest {
         assertEquals("v2", mc.installed.value.single().version)
     }
 
+    /**
+     * Field report 2026-10-21: cells built before the "streets" overlay (content schema 1, version = OSM date) are found
+     * as outdated and loaded again as soon as the server has the schema-2 build – also on mobile data.
+     */
+    @Test fun outdatedSchemaIsLoadedAgain() {
+        assertEquals(1, CellApi.schemaOf("2026-10-20")); assertEquals(2, CellApi.schemaOf("2026-10-20-s2"))
+        server.publish(a, "2026-10-20"); server.buildPolls = 0
+        val mc = cells(Net(unmetered = false))
+        mc.request(listOf(a), CellReason.POINT)   // own point: allowed on mobile data
+        waitFor("old") { mc.state(a) == CellState.Ready("2026-10-20") }
+        assertEquals(listOf(a), mc.outdated())
+        server.publish(a, "2026-10-20-s2")
+        mc.request(mc.outdated(), CellReason.UPDATE, ownPoint = true)
+        waitFor("schema 2") { mc.state(a) == CellState.Ready("2026-10-20-s2") }
+        assertEquals(emptyList<CellId>(), mc.outdated())
+    }
+
     /** Requests survive a restart; a complete download not yet joined is joined at start. */
     @Test fun resumeAfterRestart() {
         server.publish(a, "v1"); server.buildPolls = 0
