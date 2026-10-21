@@ -368,6 +368,14 @@ class ScreenshotTest {
         }
     }
 
+    /** Fresh install (field test 2026-10-21): routing data still loading – a plain notice, never a file path. */
+    @Test fun planRoutingDataLoading() = paparazzi.snapshot {
+        Frame {
+            PlanPanel(planUi(2, route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList()),
+                error = com.onpath.app.data.RoutingDataNotice.LOADING), PlanCallbacks())
+        }
+    }
+
     /** Swiped down twice: one line with the key numbers. */
     @Test fun planMini() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }

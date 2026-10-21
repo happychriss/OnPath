@@ -25,9 +25,12 @@ object SegmentDownloader {
 
     /**
      * Downloads [name] into [segmentsDir]. [onProgress] gets (bytesDone, bytesTotal or -1).
-     * Throws an exception with a plain message on failure; the partial file is kept for resuming.
+     * Throws an exception with a plain message on failure; the partial file is kept for resuming. [cancelled] is asked
+     * between blocks: true stops with [Cancelled] (partial file kept). The size is checked against Content-Length
+     * (brouter.de publishes no checksums); the file appears under its name only when complete (atomic rename).
      */
-    fun download(name: String, segmentsDir: File, onProgress: (Long, Long) -> Unit = { _, _ -> }) {
+    fun download(name: String, segmentsDir: File, onProgress: (Long, Long) -> Unit = { _, _ -> },
+                 cancelled: () -> Boolean = { false }) {
         segmentsDir.mkdirs()
         val dest = File(segmentsDir, name)
         val part = File(segmentsDir, ".$name.part")
@@ -54,6 +57,7 @@ object SegmentDownloader {
                     val buf = ByteArray(256 * 1024)
                     var lastReport = 0L
                     while (true) {
+                        if (cancelled()) throw Cancelled()
                         val n = inp.read(buf)
                         if (n < 0) break
                         out.write(buf, 0, n)
@@ -71,6 +75,9 @@ object SegmentDownloader {
             conn.disconnect()
         }
     }
+
+    /** The download was stopped by the user (Cancel); the partial file stays for resuming. */
+    class Cancelled : Exception("Routing data download stopped.")
 
     /**
      * Newer routing data: asks brouter.de for the date of [name] and downloads it again when that is newer than the
