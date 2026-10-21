@@ -527,11 +527,19 @@ def green_ways():
     layer(id_="pedestrian-line", type="line", **src, minzoom=13,
           filter=["all", path, ["==", sub, "pedestrian"]], layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("path.color"), "line-width": Z("greenway.width")})
-    foot = ["all", path, ["any",
-            ["all", ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
-             ["!=", ["coalesce", ["get", "foot"], ""], "no"]],
+    # never green when the activity may not use the way (owner 2026-10-21, private garden footway at Plarserhof):
+    # foot / bicycle = no|private, or access=no/private without foot / bicycle = yes|designated|permissive – the same
+    # rule as access_restrictions(), so a way never carries both the green line and the no-entry sign
+    restricted = ["has", "ac"] if FMT == 2 else ["==", ["get", "access"], "no"]
+
+    def may_use(tag):
+        val = ["coalesce", ["get", tag], ""]
+        return ["all", ["!", ["in", val, ["literal", ["no", "private"]]]],
+                ["any", ["!", restricted], ["in", val, ["literal", ["yes", "designated", "permissive"]]]]]
+    foot = ["all", path, may_use("foot"), ["any",
+            ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
             ["all", is_path, ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
-    bike = ["all", path, ["any",
+    bike = ["all", path, may_use("bicycle"), ["any",
             ["==", sub, "cycleway"],
             ["all", ["any", ["in", sub, ["literal", ["footway", "pedestrian"]]], is_path],
              ["in", ["coalesce", ["get", "bicycle"], ""], ok]]]]
