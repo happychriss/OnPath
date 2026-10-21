@@ -262,8 +262,10 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,
+            onPoints = { vm.pointListOpen = true },
         ),
     )
+    if (vm.pointListOpen) PointListDialog(vm.pointRows(), onDelete = vm::deletePointFromList, onClose = { vm.pointListOpen = false })
 }
 
 /** Keeps the map layers in step with the app state. */
