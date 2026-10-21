@@ -284,11 +284,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
     // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
     LaunchedEffect(c) {
-        snapshotFlow { Triple(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.waypoints.toList()) }
-            .collect { (r, showLine, w) ->
-                c.setPlanned(if (showLine) r else null)
-                val show = vm.canEditMap
-                c.setWaypoints(if (show) w else emptyList(), vm.pinnedIndices())
+        // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
+        snapshotFlow { PlanDrawing(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.canEditMap, vm.waypoints.toList()) }
+            .collect { d ->
+                c.setPlanned(if (d.showLine) d.route else null)
+                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices())
             }
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
@@ -385,3 +385,11 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Fl
 
 /** Farther from the followed line than this, heading-up uses the compass / GPS bearing instead of the route. */
 private const val ROUTE_UP_MAX_OFF_M = 30.0
+
+/** What the plan drawing on the map depends on (MapSync). */
+private data class PlanDrawing(
+    val route: com.onpath.app.routing.PlannedRoute?,
+    val showLine: Boolean,
+    val showMarkers: Boolean,
+    val points: List<com.onpath.app.routing.GeoPoint>,
+)

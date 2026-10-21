@@ -29,7 +29,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.8.3"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.8.4"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
