@@ -31,7 +31,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Core features on an emulator first (docs/core-features.md): no release when holding / deleting points breaks.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   build:
+    needs: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: test
