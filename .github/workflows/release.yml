@@ -78,6 +78,27 @@ jobs:
         if: steps.ver.outputs.skip != 'true'
         run: ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION"
 
+      # World overview map in the APK (docs/map-pipeline.md §9b): map data is not in git; the files are built on the
+      # laptop (tools/build_overview.sh) and stored in a versioned folder (R2 overview/<date>/). Repository variable
+      # ONPATH_OVERVIEW_URL = that folder's URL (ends with /), holding base.pmtiles, terrain.pmtiles and SHA256SUMS.
+      # Not set → the APK has no overview (empty map below zoom 10 outside downloaded cells), with a warning.
+      - name: Overview map
+        if: steps.ver.outputs.skip != 'true'
+        env:
+          OVERVIEW_URL: ${{ vars.ONPATH_OVERVIEW_URL }}
+        run: |
+          if [ -z "$OVERVIEW_URL" ]; then
+            echo "::warning::ONPATH_OVERVIEW_URL not set – this APK ships without the overview map"; exit 0
+          fi
+          DIR="$RUNNER_TEMP/overview-assets/overview"
+          mkdir -p "$DIR"
+          for f in SHA256SUMS base.pmtiles terrain.pmtiles; do
+            curl -fsSL --retry 5 --retry-delay 5 -o "$DIR/$f" "${OVERVIEW_URL%/}/$f"
+          done
+          (cd "$DIR" && grep -E ' \*?(base|terrain)\.pmtiles$' SHA256SUMS | sha256sum -c -) && rm "$DIR/SHA256SUMS"
+          ls -la "$DIR"
+          echo "ONPATH_OVERVIEW_ASSETS=$RUNNER_TEMP/overview-assets" >> "$GITHUB_ENV"
+
       - name: Build APK
         if: steps.ver.outputs.skip != 'true'
         env:
