@@ -16,6 +16,20 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | C8 | App update from GitHub (Settings → Updates) – resumes after a broken connection | 2026-10-21 (4× "connection abort") | `UpdateDownloadTest`, `AppUpdaterTest` |
 | C9 | **Plan: point editor = the full plan sheet** (only via swipe up / handle tap) – ✕ deletes at once (Undo on the map), hold ≡ and drag reorders (to the top = new start), tap a row → map shows the point, round trips (start = goal once, ↺) | – (new 2026-10-21, replaces ⋯ → "Points… (delete)") | `PlanPointsTest`, `PlanHapticsTest`, screenshots `planPoints*`; emulator `CorePointsListE2ETest` |
 | C10 | **Routing data comes with the map** – the missing 1° routing parts (of BRouter's 5° .rd5, ~10 MB each, `Rd5PartStore`) load by themselves with every map region and where a route is planned (first start, point set, search, route corridor); mobile data too unless "Maps only on Wi-Fi"; one loading modal "Loading the map for your area · about X MB" (one % by bytes, one Cancel, never the words "routing data"); plain notice while missing ("The map for this area is still loading …", never a file name/path); the plan is computed again when it arrives; Offline maps sizes include the parts, Delete removes parts no other region needs (`RoutingDataLoader`, `RoutingLoads`) | 2026-10-21 (fresh phone: never downloaded, straight line, notice with a file path) | `RoutingDataAutoTest`, `RoutingLoadsTest`, `Rd5PartsTest`, `Rd5PartStoreTest`, screenshots `MapLoadOverlayTest.withRoutingData`, `planRoutingDataLoading`; phone `RoutingDataFreshInstallE2ETest` (`routingDownload=true`) |
+| C11 | **Tours & plans are never lost: backup, restore, recycle bin** – a GPX per finished tour / saved plan / import in Documents/OnPath (or a chosen folder), restore after a reinstall / on a new phone, delete = 30-day recycle bin, Export all (ZIP), Android backup of the DB; map updates / Reset maps never touch tours | – (new 2026-10-21, owner decision) | `BackupTest`, `MapsNeverTouchToursTest`, screenshots `recycleBin*`, `settingsBackup`, `restoreOffer`; emulator `CoreBackupE2ETest` |
+
+C11 details (owner 2026-10-21, `backup/`): file `YYYY-MM-DD Name.gpx` (sanitised, unique; rename / re-save overwrite the
+same file via `files/backup-index.json`), GPX 1.1 with `<metadata><extensions><onpath:backup>` = JSON (uuid, type
+tour|plan|imported, name, activity, SAC, dates, stats, stops with names, pinned POIs, deleted). Written on one background
+thread (`Backups`) after: tour end (RecordingService.finish), "Save" of an unfinished tour, plan save / overwrite,
+rename (also the automatic place name), GPX import, delete → `Deleted/`, restore from the bin; at app start the bin is
+emptied of entries older than 30 days (files too) and tours without a file are written (first start of this version,
+new folder). Failures → Problems WARN + message "Backup to … failed – reason" until OK (kept across restarts).
+Android 10+: MediaStore (Files, RELATIVE_PATH Documents/OnPath, no permission); Android 8–9: the folder with
+WRITE_EXTERNAL_STORAGE (Settings → Backup → Allow); chosen folder: SAF tree with persistable permission. Restore:
+folder picker (opens at Documents/OnPath), imports only files with the OnPath record, newest per uuid, skips uuids on
+the phone and the bin. First start with no tours asks once (prefs `backup` → `restoreOffered`). Android Auto Backup:
+`res/xml/backup_rules.xml` + `data_extraction_rules.xml` – tours DB, settings, tour/plan times only.
 
 End to end on an emulator (since 2026-10-21): `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
 map, a finger held on the screen (UiAutomator): hold → Start here, hold → point added, hold a point → menu → Delete,

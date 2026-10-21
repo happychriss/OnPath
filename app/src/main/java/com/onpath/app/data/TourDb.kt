@@ -29,6 +29,12 @@ data class Tour(
     val state: String,
     /** Planned: via points; imported: GPX waypoints. */
     val waypoints: List<GpxWaypoint>,
+    /** Stable id across reinstalls and phones (backup file record, restore dedupe). */
+    val uuid: String = "",
+    /** Planned: indices of [waypoints] pinned on a POI. */
+    val pinned: Set<Int> = emptySet(),
+    /** In the recycle bin since (ms); null = in My routes. */
+    val deletedMs: Long? = null,
 )
 
 /**
@@ -36,7 +42,7 @@ data class Tour(
  * Recording writes every accepted point immediately (R-07).
  */
 class TourDb private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, 1, KeepCorruptFile()) {
+    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, VERSION, KeepCorruptFile()) {
 
     init { setWriteAheadLoggingEnabled(true) }
 
@@ -74,8 +80,10 @@ class TourDb private constructor(context: Context) :
                 activity TEXT, sac INTEGER NOT NULL DEFAULT 3,
                 distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
                 descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT)"""
+                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
+                uuid TEXT, pinned TEXT, deleted_at INTEGER)"""
         )
+        db.execSQL("CREATE INDEX tours_uuid ON tours(uuid)")
         db.execSQL(
             """CREATE TABLE points(
                 tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
@@ -84,7 +92,34 @@ class TourDb private constructor(context: Context) :
         db.execSQL("CREATE INDEX points_tour ON points(tour_id, seq)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+    /**
+     * 1 → 2 (backup, 2026-10-21): uuid (backup files, restore dedupe), pinned stops, recycle bin (deleted_at).
+     * Every existing tour gets its uuid here. A column already there is fine.
+     */
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            for (col in listOf("uuid TEXT", "pinned TEXT", "deleted_at INTEGER")) {
+                try { db.execSQL("ALTER TABLE tours ADD COLUMN $col") } catch (e: Exception) {
+                    Problems.info("db", "Column ${col.substringBefore(' ')} already there", e)
+                }
+            }
+            db.execSQL("CREATE INDEX IF NOT EXISTS tours_uuid ON tours(uuid)")
+        }
+        assignMissingUuids(db)
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        // an older build (after a downgrade) may have added tours without uuid
+        if (!db.isReadOnly) try { assignMissingUuids(db) } catch (e: Exception) { Problems.warn("db", "Tour ids for the backup not assigned", e) }
+    }
+
+    private fun assignMissingUuids(db: SQLiteDatabase) {
+        val ids = db.rawQuery("SELECT id FROM tours WHERE uuid IS NULL OR uuid=''", null).use { c ->
+            buildList { while (c.moveToNext()) add(c.getLong(0)) }
+        }
+        ids.forEach { id -> db.update("tours", ContentValues().apply { put("uuid", newUuid()) }, "id=?", arrayOf(id.toString())) }
+    }
 
     // ---- tours ----
 
@@ -93,12 +128,17 @@ class TourDb private constructor(context: Context) :
         distance: Double, ascent: Double, descent: Double, duration: Double,
         segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint> = emptyList(),
         state: String = "done",
+        pinned: Set<Int> = emptySet(),
+        /** Restore: the backup's id and date; otherwise new. */
+        uuid: String = newUuid(),
+        createdMs: Long = System.currentTimeMillis(),
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
         try {
             val id = db.insertOrThrow("tours", null, ContentValues().apply {
-                put("kind", kind.name); put("name", name); put("created", System.currentTimeMillis())
+                put("kind", kind.name); put("name", name); put("created", createdMs)
+                put("uuid", uuid); put("pinned", pinnedToJson(pinned))
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("state", state)
                 put("waypoints", waypointsToJson(waypoints))
@@ -112,16 +152,43 @@ class TourDb private constructor(context: Context) :
         }
     }
 
+    /** My routes: everything not in the recycle bin. */
     fun listTours(): List<Tour> = readableDatabase.rawQuery(
-        "SELECT * FROM tours ORDER BY created DESC", null
+        "SELECT * FROM tours WHERE deleted_at IS NULL ORDER BY created DESC", null
     ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
+
+    /** The recycle bin, most recently deleted first. */
+    fun listDeleted(): List<Tour> = readableDatabase.rawQuery(
+        "SELECT * FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC", null
+    ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
+
+    /** Number of tours including the recycle bin (restore offer on an empty database). */
+    fun countAll(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM tours", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
+    /** uuids of every tour on the phone, recycle bin included (restore skips these). */
+    fun allUuids(): Set<String> = readableDatabase.rawQuery("SELECT uuid FROM tours WHERE uuid IS NOT NULL", null).use { c ->
+        buildSet { while (c.moveToNext()) add(c.getString(0)) }
+    }
+
+    /** Moves a tour to the recycle bin ([deletedMs]) or back (null). False when the tour is gone. */
+    fun setDeleted(id: Long, deletedMs: Long?): Boolean = writableDatabase.update("tours", ContentValues().apply {
+        if (deletedMs == null) putNull("deleted_at") else put("deleted_at", deletedMs)
+    }, "id=?", arrayOf(id.toString())) > 0
+
+    /** Removes recycle-bin entries deleted before [cutoffMs] for good; returns their uuids (their files go too). */
+    fun purgeDeleted(cutoffMs: Long): List<String> {
+        val old = readableDatabase.rawQuery("SELECT id, uuid FROM tours WHERE deleted_at IS NOT NULL AND deleted_at < ?",
+            arrayOf(cutoffMs.toString())).use { c -> buildList { while (c.moveToNext()) add(c.getLong(0) to (c.getString(1) ?: "")) } }
+        old.forEach { (id, _) -> deleteTour(id) }
+        return old.map { it.second }.filter { it.isNotEmpty() }
+    }
 
     fun getTour(id: Long): Tour? = readableDatabase.rawQuery(
         "SELECT * FROM tours WHERE id=?", arrayOf(id.toString())
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
 
     fun findActiveRecording(): Tour? = readableDatabase.rawQuery(
-        "SELECT * FROM tours WHERE kind=? AND state='active' ORDER BY created DESC LIMIT 1",
+        "SELECT * FROM tours WHERE kind=? AND state='active' AND deleted_at IS NULL ORDER BY created DESC LIMIT 1",
         arrayOf(TourKind.RECORDED.name)
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
 
@@ -141,7 +208,7 @@ class TourDb private constructor(context: Context) :
     fun replacePlanned(
         id: Long, activity: String?, sac: Int,
         distance: Double, ascent: Double, descent: Double, duration: Double,
-        segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>,
+        segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>, pinned: Set<Int> = emptySet(),
     ): Boolean {
         val db = writableDatabase
         db.beginTransaction()
@@ -149,7 +216,8 @@ class TourDb private constructor(context: Context) :
             val n = db.update("tours", ContentValues().apply {
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
-            }, "id=? AND kind=?", arrayOf(id.toString(), TourKind.PLANNED.name))
+                put("pinned", pinnedToJson(pinned))
+            }, "id=? AND kind=? AND deleted_at IS NULL", arrayOf(id.toString(), TourKind.PLANNED.name))
             if (n == 0) return false
             db.delete("points", "tour_id=?", arrayOf(id.toString()))
             var seq = 0
@@ -242,11 +310,29 @@ class TourDb private constructor(context: Context) :
             distanceM = d("distance"), ascentM = d("ascent"), descentM = d("descent"), durationS = d("duration"),
             state = s("state") ?: "done",
             waypoints = jsonToWaypoints(s("waypoints")),
+            uuid = opt(c, "uuid")?.let { c.getString(it) } ?: "",
+            pinned = opt(c, "pinned")?.let { jsonToPinned(c.getString(it)) } ?: emptySet(),
+            deletedMs = opt(c, "deleted_at")?.let { c.getLong(it) },
         )
     }
 
+    /** Column index when the column exists and is not null. */
+    private fun opt(c: android.database.Cursor, n: String): Int? = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }
+
     companion object {
+        const val VERSION = 2
         @Volatile private var instance: TourDb? = null
+
+        fun newUuid(): String = java.util.UUID.randomUUID().toString()
+
+        fun pinnedToJson(p: Set<Int>): String = JSONArray().apply { p.sorted().forEach { put(it) } }.toString()
+
+        fun jsonToPinned(json: String?): Set<Int> {
+            if (json.isNullOrBlank()) return emptySet()
+            return try { JSONArray(json).let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() } } catch (e: Exception) {
+                Problems.warn("db", "Stored pinned stops unreadable, dropped", e); emptySet()
+            }
+        }
         fun get(context: Context): TourDb =
             instance ?: synchronized(this) { instance ?: TourDb(context).also { instance = it } }
 
