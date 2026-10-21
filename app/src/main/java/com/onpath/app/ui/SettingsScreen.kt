@@ -228,6 +228,8 @@ fun SettingsScreen(
                             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
                             onChange(settings.copy(offRouteVibrate = it))
                         }
+                        SwitchRow("Vibrate when planning", "1× a point set, 2× a point deleted",
+                            settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text("Warn after", fontSize = 14.sp)

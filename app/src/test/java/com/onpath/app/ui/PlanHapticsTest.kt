@@ -2,6 +2,7 @@ package com.onpath.app.ui
 
 import com.onpath.app.ui.PlanHaptics.Feel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,6 +24,31 @@ class PlanHapticsTest {
         // the tick is lighter than one pulse – a menu must never feel like a delete (it was 2× before)
         assertTrue(PlanHaptics.pattern(Feel.TICK)[1] < PlanHaptics.pattern(Feel.ONE)[1])
         assertTrue(PlanHaptics.pattern(Feel.TWO).sum() < 300)
+    }
+
+    /**
+     * Owner 2026-10-21: his phone has the system "Touch feedback" off and he wants the plan vibrations – point set /
+     * deleted / reorder follow only OnPath's "Vibrate when planning"; the system flag may only silence the menu tick.
+     */
+    @Test fun gatedByOwnSettingNotSystemTouchFeedback() {
+        for (f in listOf(Feel.ONE, Feel.TWO)) {
+            assertTrue(PlanHaptics.shouldPlay(f, planVibrate = true, systemTouch = false))
+            assertTrue(PlanHaptics.shouldPlay(f, planVibrate = true, systemTouch = true))
+            assertFalse(PlanHaptics.shouldPlay(f, planVibrate = false, systemTouch = true))
+        }
+        assertTrue(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = true, systemTouch = true))
+        assertFalse(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = true, systemTouch = false))
+        assertFalse(PlanHaptics.shouldPlay(Feel.TICK, planVibrate = false, systemTouch = true))
+        assertFalse(PlanHaptics.shouldPlay(Feel.NONE, planVibrate = true, systemTouch = true))
+        assertTrue(com.onpath.app.data.AppSettings().planVibrate) // on by default
+    }
+
+    /** Pulses are clearly felt where the vibrator supports strength; the tick stays lighter. */
+    @Test fun amplitudesMatchPatterns() {
+        for (f in Feel.values()) assertEquals(PlanHaptics.pattern(f).size, PlanHaptics.amplitudes(f).size)
+        assertTrue(PlanHaptics.amplitudes(Feel.ONE)[1] >= 200)
+        assertTrue(PlanHaptics.amplitudes(Feel.TWO).filter { it > 0 }.all { it >= 200 })
+        assertTrue(PlanHaptics.amplitudes(Feel.TICK)[1] < PlanHaptics.amplitudes(Feel.ONE)[1])
     }
 
     /** A hold that opens a menu (point, POI, empty plan) only ticks; the edit itself vibrates afterwards. */

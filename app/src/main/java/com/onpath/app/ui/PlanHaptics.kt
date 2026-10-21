@@ -19,7 +19,8 @@ enum class PlanEdit {
 /**
  * Plan haptics in one place (owner 2026-10-21): 1 pulse = a point set, 2 pulses = a point deleted, a very light short
  * tick = a menu opens / a hold is armed, reorder drop = 1, undo = none. Pure, unit tested (PlanHapticsTest); played by
- * [Haptics] (respects the system "touch vibration" setting).
+ * [Haptics]: only OnPath's own setting "Vibrate when planning" counts (owner 2026-10-21) – the system "Touch feedback"
+ * flag may only silence the light menu tick ([shouldPlay]).
  */
 object PlanHaptics {
     enum class Feel { NONE, TICK, ONE, TWO }
@@ -35,7 +36,27 @@ object PlanHaptics {
     fun pattern(f: Feel): LongArray = when (f) {
         Feel.NONE -> LongArray(0)
         Feel.TICK -> longArrayOf(0, 8)
-        Feel.ONE -> longArrayOf(0, 30)
-        Feel.TWO -> longArrayOf(0, 30, 90, 30)
+        Feel.ONE -> longArrayOf(0, 40)
+        Feel.TWO -> longArrayOf(0, 40, 100, 40)
     }
+
+    /** Strength per [pattern] step (0..255) where the vibrator supports it: pulses clearly felt, the tick light. */
+    fun amplitudes(f: Feel): IntArray = when (f) {
+        Feel.NONE -> IntArray(0)
+        Feel.TICK -> intArrayOf(0, 120)
+        Feel.ONE -> intArrayOf(0, PULSE_AMPLITUDE)
+        Feel.TWO -> intArrayOf(0, PULSE_AMPLITUDE, 0, PULSE_AMPLITUDE)
+    }
+
+    /**
+     * Whether [f] vibrates: [planVibrate] = OnPath's setting "Vibrate when planning"; [systemTouch] = the system
+     * "Touch feedback" flag, which only gates the light menu tick – point set / deleted / reorder follow only our setting.
+     */
+    fun shouldPlay(f: Feel, planVibrate: Boolean, systemTouch: Boolean): Boolean = when (f) {
+        Feel.NONE -> false
+        Feel.TICK -> planVibrate && systemTouch
+        Feel.ONE, Feel.TWO -> planVibrate
+    }
+
+    const val PULSE_AMPLITUDE = 230
 }

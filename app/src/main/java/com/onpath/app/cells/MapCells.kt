@@ -346,6 +346,11 @@ class MapCells(
         }
     }
 
+    private fun queued(c: CellId): Boolean = synchronized(queue) { c in queue }
+
+    /** The user cancelled a cell while it downloaded ([cancel]). */
+    private class Cancelled : RuntimeException("cancelled by the user")
+
     private fun dequeue(c: CellId) { synchronized(queue) { queue.remove(c); saveQueue() } }
 
     private suspend fun loop() {
@@ -409,6 +414,7 @@ class MapCells(
         for (s in answer.cells) {
             val c = CellId.parse(s.id) ?: continue
             val p = pending.firstOrNull { it.id == c } ?: continue
+            if (!queued(c)) continue // cancelled while the server answered (modal → Cancel): no state for it any more
             when (s.state) {
                 "ready" -> {
                     val have = inst[c]?.version
@@ -489,7 +495,10 @@ class MapCells(
                     dest.delete()
                     val tmp = File(part, f.name + ".part")
                     val base = before
-                    api.download(f, tmp) { done -> set(c, CellState.Downloading(base + done, m.totalSize)) }
+                    api.download(f, tmp) { done ->
+                        if (!queued(c)) throw Cancelled() // modal → Cancel: stop the download now (the part file stays)
+                        set(c, CellState.Downloading(base + done, m.totalSize))
+                    }
                     if (!tmp.renameTo(dest)) throw java.io.IOException("could not save ${f.name}")
                 }
                 before += f.size
@@ -504,6 +513,9 @@ class MapCells(
             dequeue(c); damaged -= c
             publish(gen)
             set(c, CellState.Ready(m.version))
+        } catch (e: Cancelled) {
+            Problems.info("cells", "Map cell $c download stopped: cancelled by the user", e)
+            update { it.remove(c) }
         } catch (e: CellApi.ChecksumException) {
             if (c in damaged) {
                 Problems.warn("cells", "Map cell $c damaged twice while downloading", e)
