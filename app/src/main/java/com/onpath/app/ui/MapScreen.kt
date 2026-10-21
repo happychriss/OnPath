@@ -233,11 +233,16 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     val cellStates by vm.cells.states.collectAsState()
     val cellsInstalled by vm.cells.installed.collectAsState()
+    val cellCard = vm.cellCardUi(cellStates, cellsInstalled)
+    val cellCb = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
+        onRetry = vm::cellCardRetry, onClose = vm::closeCellCard, onCancel = vm::cancelCellLoading)
+    // building / downloading map areas: a clear modal overlay with Cancel (owner 2026-10-21)
+    if (cellCard?.wantsOverlay() == true) MapLoadOverlay(cellCard, cellCb)
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
-            cellCard = vm.cellCardUi(cellStates, cellsInstalled)),
+            cellCard = cellCard),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -246,8 +251,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onHighlight = { vm.highlight = it },
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
-            cellCard = CellCardCallbacks(onMobileYes = vm::cellCardMobileYes, onWifiOnly = vm::cellCardWifiOnly,
-                onRetry = vm::cellCardRetry, onClose = vm::closeCellCard),
+            cellCard = cellCb,
         ),
     )
 }

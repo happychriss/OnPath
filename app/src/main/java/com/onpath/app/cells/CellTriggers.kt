@@ -25,6 +25,8 @@ enum class CellWhy {
     PLANNED,
     /** T3 / T5: the own position. */
     HERE,
+    /** Installed areas built for an older map style are loaded again (content schema). */
+    UPDATE,
 }
 
 /** Cells one trigger asked for: [own] (the point's / position's cell, null for a corridor) first in [cells]. */

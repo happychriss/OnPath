@@ -158,6 +158,7 @@ class MainActivity : ComponentActivity() {
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
+                            onResetMaps = if (vm.cells.downloadsAvailable) ({ vm.resetMapsLikeFreshInstall() }) else null,
                             mapCells = run {
                                 val installed by vm.cells.installed.collectAsState()
                                 val states by vm.cells.states.collectAsState()
