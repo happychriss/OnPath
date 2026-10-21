@@ -101,7 +101,9 @@ object Problems {
                 entries[key] = entry // re-insert: most recent last
                 while (entries.size > MAX_ENTRIES) entries.remove(entries.keys.first())
                 _count.value = entries.size
-                if (entry.level >= Level.ERROR && announced.add(key)) _newSerious.value = entry
+                // announce by the level of THIS report: an entry stored as ERROR by an earlier run / older version that
+                // now comes in as INFO (e.g. a re-classified MapLibre note) is not announced again
+                if (level >= Level.ERROR && announced.add(key)) _newSerious.value = entry
             }
             if (entry.count == 1 || entry.count % 100 == 0) log(level, "[$area] $message", t)
             if (level == Level.CRASH) writeNow() else scheduleWrite()
