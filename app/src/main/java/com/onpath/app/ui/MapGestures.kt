@@ -10,14 +10,14 @@ import kotlin.math.min
  *
  * | hold ≥ 0.3 s on…                         | vibration | result |
  * | --- | --- | --- |
- * | empty map, plan still empty              | tick      | first-point menu: Start here · Go here (from my location) |
- * | empty map / route line                   | tick + 1× | add point (smart insertion), no message |
- * | POI that is not a route point            | tick      | POI menu: Add to route · Open in Google Maps |
- * | route point (incl. a POI that is a stop) | tick      | point menu ([pointMenu]) |
- * | near a route point (48–80 dp)            | tick      | ask: "Point N: options" · "New point here" |
+ * | empty map, plan still empty              | 1×        | first-point menu: Start here · Go here (from my location) |
+ * | empty map / route line                   | 1×        | add point (smart insertion), no message |
+ * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
+ * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
+ * | near a route point (48–80 dp)            | 1×        | ask: "Point N: options" · "New point here" |
  *
- * The hold itself only ticks (very light); the edit that follows vibrates in the ViewModel (PlanHaptics:
- * 1× a point set, 2× a point deleted) – the same for map, menus and the Points list (owner 2026-10-21).
+ * The vibration comes at the moment the hold is recognised (ring full), never after the edit (owner 2026-10-21,
+ * PlanHaptics) – menu buttons, set / delete and the Points list do not vibrate.
  *
  * The marker wins (within [MARKER_RADIUS_DP], nearest marker first), then a POI, then a point within
  * [NEAR_RADIUS_DP] (ask), then the line / map.
@@ -51,8 +51,8 @@ object MapGestures {
         data object None : Action
     }
 
-    /** Vibration when a hold is armed (ring full): a very light tick (PlanHaptics), or nothing. */
-    enum class Buzz { NONE, TICK }
+    /** Vibration when a hold is recognised (ring full): 1× (map, line, POI), 2× (route point) or nothing (PlanHaptics). */
+    enum class Buzz { NONE, ONE, TWO }
 
     /** Entries of the point menu, in display order. */
     enum class PointAction { MAKE_START, END_HERE, LOOP_START, GOOGLE, DELETE }
@@ -90,10 +90,10 @@ object MapGestures {
     /** How the armed hold feels (decided at finger-down, same targets as [decide]); [Buzz.NONE] = no ring either. */
     fun buzz(editable: Boolean, menuOpen: Boolean, marker: Int, poi: Boolean): Buzz = when {
         !editable -> Buzz.NONE
-        marker >= 0 -> Buzz.TICK
-        poi -> Buzz.TICK
+        marker >= 0 -> Buzz.TWO
+        poi -> Buzz.ONE
         menuOpen -> Buzz.NONE
-        else -> Buzz.TICK
+        else -> Buzz.ONE
     }
 
     /**
