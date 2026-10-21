@@ -1,6 +1,7 @@
 package com.onpath.app
 
 import android.Manifest
+import com.onpath.app.cells.label
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -157,6 +158,19 @@ class MainActivity : ComponentActivity() {
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
+                            mapCells = run {
+                                val installed by vm.cells.installed.collectAsState()
+                                val states by vm.cells.states.collectAsState()
+                                val gen by vm.cells.generation.collectAsState()
+                                com.onpath.app.ui.MapCellsDebug(
+                                    installed = installed.map { Triple(it.id.id, it.version, it.totalBytes) },
+                                    active = states.filter { it.value !is com.onpath.app.cells.CellState.Ready }
+                                        .map { (c, s) -> c.id to s.label() },
+                                    store = if (installed.isEmpty()) "no cells – data folder" else "cell store generation $gen",
+                                    onRequestAtCentre = { vm.requestCellAtMapCentre() },
+                                    onDelete = { id -> com.onpath.app.cells.CellId.parse(id)?.let { vm.cells.delete(listOf(it)) } },
+                                )
+                            },
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                             onBack = { vm.showSettings = false },
