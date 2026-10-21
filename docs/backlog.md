@@ -5,10 +5,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Tour & plan backup: auto GPX to Documents/OnPath, restore after reinstall, recycle bin, Android backup, export all (owner) – since 2026-10-21
 
 
 ## Next
+- **Laptop → cloud handover 2026-10-22: read `docs/handover-2026-10-22-laptop.md` §3 – open tasks in order (manifest sources, cloud cleanup, T5 in background, flaky test, junction vibration + lock-screen info, approach 1 router-decides, world map in release APKs, release 0.9.0).**
 - **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
   `/v1` API documented as an open spec; two ways to host: (A) all-in-one Docker Compose (doorman + builder + local
