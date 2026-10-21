@@ -92,6 +92,8 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
 - **No Google Play Services** (LocationManager directly); keep dependencies few.
+- **Core features** (`docs/core-features.md`, e.g. hold a route point → menu → Delete): each has regression tests;
+  a field bug in one first gets a test that reproduces it, then the fix (owner 2026-10-21, after the second regression).
 - **No silent errors:** every `catch` / `runCatching` that recovers reports to `debug/Problems`
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
   without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs
