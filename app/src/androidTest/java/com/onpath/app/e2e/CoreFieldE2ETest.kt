@@ -27,8 +27,12 @@ class CoreFieldE2ETest : E2EBase() {
 
     @Before fun setUp() {
         sh("appops set com.android.shell android:mock_location allow")
-        sh("cmd location providers add-test-provider gps")
-        sh("cmd location providers set-test-provider-enabled gps true")
+        // Both providers the app listens to: on a real phone the network provider otherwise reports where the phone
+        // really is, the map follows that and the plan's points end up off screen (owner's Pixel, 2026-10-21).
+        for (p in PROVIDERS) {
+            sh("cmd location providers add-test-provider $p")
+            sh("cmd location providers set-test-provider-enabled $p true")
+        }
         fix()
         // a walker: a fix every 0.5 s, ~1.4 m/s north-east
         thread(isDaemon = true) {
@@ -41,10 +45,12 @@ class CoreFieldE2ETest : E2EBase() {
     @After fun stopGps() {
         walking = false
         try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() } } catch (_: Exception) {} // expected: app already closed
-        sh("cmd location providers remove-test-provider gps")
+        for (p in PROVIDERS) sh("cmd location providers remove-test-provider $p")
     }
 
-    private fun fix() { sh("cmd location providers set-test-provider-location gps --location $lat,$lon --accuracy 4") }
+    private fun fix() { for (p in PROVIDERS) sh("cmd location providers set-test-provider-location $p --location $lat,$lon --accuracy 4") }
+
+    private companion object { val PROVIDERS = listOf("gps", "network") }
 
     private fun follow() { scenario.onActivity { vm(it).followMe = true }; Thread.sleep(1_500) }
 

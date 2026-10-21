@@ -7,7 +7,7 @@ package com.onpath.app.ui
  * A fresh fix centres at once; if none comes within [FRESH_WAIT_MS], the last known position is used (even if
  * old); without any position it keeps waiting – e.g. for the permission answer or a cold GPS start – and centres
  * when the first position arrives. Never against the user: once they moved the map, or when a tour is running /
- * the app is in Navigate, nothing happens.
+ * the app is in Navigate, nothing happens. A hold on the map counts as moving it (MapHost).
  */
 object StartCamera {
     const val FRESH_WAIT_MS = 4_000L
