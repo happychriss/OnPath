@@ -34,12 +34,17 @@ object OptionalSources {
     /** Logging must never break style loading (and is not available in JVM tests). */
     private fun log(msg: String) { try { Log.i("OnPath", msg) } catch (_: Throwable) { } }
 
-    fun strip(styleJson: String, exists: (String) -> Boolean = { File(it).isFile }): String = try {
+    /**
+     * [standIn]: essential sources that may be stripped like optional ones when their file is missing (the app passes
+     * true for all: fresh install without map files – only the overview from the APK draws, MapLibre never tries to
+     * open a missing file). Default: essential sources are always kept.
+     */
+    fun strip(styleJson: String, standIn: (String) -> Boolean = { false }, exists: (String) -> Boolean = { File(it).isFile }): String = try {
         val root = JSONObject(styleJson)
         val sources = root.optJSONObject("sources") ?: return styleJson
         val missing = mutableSetOf<String>()
         sources.keys().asSequence().toList().forEach { id ->
-            if (id in ESSENTIAL) return@forEach
+            if (id in ESSENTIAL && !standIn(id)) return@forEach
             val file = sources.optJSONObject(id)?.let { localFile(it) } ?: return@forEach
             if (!exists(file)) missing += id
         }
@@ -52,7 +57,8 @@ object OptionalSources {
             for (i in 0 until layers.length()) {
                 val l = layers.optJSONObject(i) ?: continue
                 val fb = fallbackFor(l)
-                val keep = if (fb != null) fb in missing else l.optString("source") !in missing
+                // a stand-in layer needs its own source too (the base map may be gone as well – overview only)
+                val keep = (fb == null || fb in missing) && l.optString("source") !in missing
                 if (keep) kept.put(l)
             }
             root.put("layers", kept)
