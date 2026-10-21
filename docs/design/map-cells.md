@@ -215,7 +215,7 @@ Response (also the shape of `status`):
     {"id": "10-543-361", "state": "ready", "osm_date": "2026-10-17", "size": 28311552},
     {"id": "10-544-361", "state": "building", "step": "base", "progress": 0.4, "eta_s": 150},
     {"id": "10-545-361", "state": "queued", "position": 2, "eta_s": 520},
-    {"id": "10-546-361", "state": "failed", "reason": "Source data not available for this area yet"}
+    {"id": "10-398-405", "state": "failed", "reason": "No map data exists for this area (open sea)"}
   ],
   "poll_s": 15
 }

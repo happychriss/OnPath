@@ -6,7 +6,10 @@
 #
 # Env (defaults fit the Docker image, paths inside the container):
 #   FORMAT=2                 cell format: 2 (default; docs/design/map-data-size.md) or 1 (GeoJSON overlays, PNG terrain)
-#   SRC_PBF=/data/work/osm/trentino_alto_adige-latest.osm.pbf   regional extract covering cell + buffer
+#   SRC_PBF=/data/work/osm/trentino_alto_adige-latest.osm.pbf   regional extract(s) covering cell + buffer; several
+#                            space-separated (a border cell: austria + italy/nord-est) are cut one by one and merged
+#   CUT=raw                  raw: cut each source as it is, then renumber the small cut (any number of sources)
+#                            renumbered: renumber the whole source first (one source only; low-memory machines)
 #   DATA_ROOT=/data          store root: cells are written to $DATA_ROOT/cells/f$FORMAT/Z/X/Y/<osm_date>/
 #   WORK=/data/work          caches (planetiler-sources, terrarium) and temp folder work/cells/Z-X-Y (deleted on success)
 #   PLANETILER_JAR=/opt/planetiler.jar  PLANETILER_SOURCES=$WORK/planetiler-sources  JAVA_XMX=2g
@@ -15,14 +18,21 @@
 #   BUFFER_KM=5              osmium cut buffer (complete features at the edge)
 #   KEEP_WORK=1              keep the temp folder (raw unclipped files, for the seam check)
 #
-# Before the cut the source is renumbered once (cached next to it until the source changes): osmium's smart
-# strategy keeps bit sets over the whole id range – with today's OSM node ids (~13e9) that is ~4 GB even for a small
-# extract; on dense ids (1..N) the cut needs ~170 MB. POI ids are mapped back to OSM ids afterwards; the base map's
-# feature ids are the renumbered ones (the app does not use them).
+# Memory of the cut: osmium's smart strategy keeps bit sets over the whole id range – with today's OSM node ids
+# (~13e9) that is ~4.0 GB for ANY raw source (measured 2026-10-21: trentino 136 MB 8 s, alps 2.3 GB 62 s, both
+# 3.9–4.1 GB peak; -s simple 2.2 GB but incomplete ways/relations), on dense ids (1..N) ~170 MB.
+#   CUT=raw (default, cloud job, 8 GiB): each source is cut raw (~4 GB, reads the source sequentially – it can stay
+#     on the bucket mount), several cuts are merged + reduced to the newest version of each object
+#     (osmium time-filter), then the small cut is renumbered (~2 s, ~150 MB). Memory does not grow with the source.
+#   CUT=renumbered (zo, OOM at 3 GB): renumber the whole source once (cached next to it until it changes; trentino
+#     10 s / 290 MB, but alps 221 s / 2.5 GB + 4.3 GB of files), then cut from dense ids. One source only.
+# POI ids are mapped back to OSM ids afterwards; the base map's feature ids are the renumbered ones (the app does
+# not use them).
 #
 # Steps (each timed, peak RAM via /usr/bin/time; summary in <version>/build.json, not part of the manifest):
-#   renumber  osmium renumber -i (only when the source changed; ~6 s, ~300 MB)
-#   cut       osmium extract -b <cell + buffer> -s smart -S types=multipolygon,route,boundary
+#   cut       osmium extract -b <cell + buffer> -s smart -S types=multipolygon,route,boundary (per source)
+#   merge     several sources: osmium merge + time-filter (one version per object)
+#   renumber  osmium renumber -i of the cut (CUT=raw) or of the whole source (CUT=renumbered, when it changed)
 #   base      Planetiler z10-14, --bounds = cell; only the cell's own tiles are kept
 #             format 2: --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de, then trim_base.sh
 #   overlays  format 1: tools/extract_overlays.py on the buffered bbox (attributes from whole features), then clipped
@@ -75,7 +85,12 @@ run() {
 }
 trap 'rc=$?; [ $rc -ne 0 ] && log "FAILED: cell $ID (temp kept in $TMP)" >&2' EXIT
 
-[ -s "$SRC_PBF" ] || die "SRC_PBF=$SRC_PBF not found"
+read -r -a SRCS <<<"$SRC_PBF"
+[ ${#SRCS[@]} -ge 1 ] || die "SRC_PBF is empty"
+for f in "${SRCS[@]}"; do [ -s "$f" ] || die "SRC_PBF $f not found"; done
+CUT=${CUT:-raw}
+case "$CUT" in raw) ;; renumbered) [ ${#SRCS[@]} = 1 ] || die "CUT=renumbered takes one source only" ;;
+  *) die "CUT must be raw or renumbered" ;; esac
 [ -s "$PLANETILER_JAR" ] || die "planetiler jar missing: $PLANETILER_JAR"
 command -v osmium >/dev/null || die "osmium-tool missing"
 if [ "$FORMAT" = 2 ]; then
@@ -87,15 +102,19 @@ CELL_BBOX=$($PY bbox "$Z" "$X" "$Y")                              # exact (for -
 INSET_BBOX=$($PY bbox "$Z" "$X" "$Y" --inset)                     # tile-range tools: no neighbour tiles
 BUF_BBOX=$($PY bbox "$Z" "$X" "$Y" --buffer-km "$BUFFER_KM")
 RING_BBOX=$($PY bbox "$Z" "$X" "$Y" --ring-z12 --inset)
-OSM_DATE=$(python3 - "$SRC_PBF" <<'PY'
-import sys, osmium
-r = osmium.io.Reader(sys.argv[1], osmium.osm.osm_entity_bits.NOTHING)
-h = r.header()
-print((h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")[:10])
-r.close()
+# several sources: the oldest date (the cell is as new as its oldest part)
+OSM_DATE=$(python3 - "${SRCS[@]}" <<'PY'
+import os, sys, time, osmium
+dates = []
+for p in sys.argv[1:]:
+    r = osmium.io.Reader(p, osmium.osm.osm_entity_bits.NOTHING)
+    h = r.header()
+    d = (h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")[:10]
+    r.close()
+    dates.append(d or time.strftime("%Y-%m-%d", time.gmtime(os.path.getmtime(p))))
+print(min(dates))
 PY
 )
-[ -n "$OSM_DATE" ] || OSM_DATE=$(date -u -r "$SRC_PBF" +%Y-%m-%d)
 GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 DEST="$DATA_ROOT/cells/f$FORMAT/$Z/$X/$Y"
@@ -107,24 +126,43 @@ VER="$DEST/$VERSION"
 rm -rf "$TMP"; mkdir -p "$TMP/logs" "$TMP/raw" "$TMP/out" "$TMP/planetiler"
 : > "$STEPS"
 T0=$(date +%s)
-log "cell $ID  format $FORMAT  bbox=$CELL_BBOX  buffer=${BUFFER_KM} km  osm=$(basename "$SRC_PBF") ($OSM_DATE)  git=$GIT_REV"
+log "cell $ID  format $FORMAT  bbox=$CELL_BBOX  buffer=${BUFFER_KM} km  osm=$(for f in "${SRCS[@]}"; do basename "$f"; done | paste -sd+) ($OSM_DATE) cut=$CUT  git=$GIT_REV"
 
 IFS=, read -r -a CELL_ARGS <<<"$CELL_BBOX"
 IFS=, read -r -a BUF_ARGS <<<"$BUF_BBOX"
 IFS=, read -r -a INSET_ARGS <<<"$INSET_BBOX"
 IFS=, read -r -a RING_ARGS <<<"$RING_BBOX"
 
-# renumbered source, shared by all cells of one source (rebuilt when the source is newer)
-RENUM="$WORK/osm/$(basename "$SRC_PBF" .osm.pbf).renum"
-if [ ! -s "$RENUM/renum.osm.pbf" ] || [ "$SRC_PBF" -nt "$RENUM/renum.osm.pbf" ]; then
-  rm -rf "$RENUM.tmp"; mkdir -p "$RENUM.tmp/idx"
-  run renumber osmium renumber -i "$RENUM.tmp/idx" -o "$RENUM.tmp/renum.osm.pbf" "$SRC_PBF"
-  rm -rf "$RENUM"; mv "$RENUM.tmp" "$RENUM"
-fi
-
 # boundary relations complete too: the address index needs whole municipality polygons
-run cut osmium extract -b "$BUF_BBOX" -s smart -S types=multipolygon,route,boundary --overwrite \
-  -o "$TMP/cell.osm.pbf" "$RENUM/renum.osm.pbf"
+CUT_ARGS=(-b "$BUF_BBOX" -s smart -S types=multipolygon,route,boundary --overwrite)
+if [ "$CUT" = renumbered ]; then
+  # renumbered source, shared by all cells of one source (rebuilt when the source is newer)
+  RENUM="$WORK/osm/$(basename "${SRCS[0]}" .osm.pbf).renum"
+  if [ ! -s "$RENUM/renum.osm.pbf" ] || [ "${SRCS[0]}" -nt "$RENUM/renum.osm.pbf" ]; then
+    rm -rf "$RENUM.tmp"; mkdir -p "$RENUM.tmp/idx"
+    run renumber osmium renumber -i "$RENUM.tmp/idx" -o "$RENUM.tmp/renum.osm.pbf" "${SRCS[0]}"
+    rm -rf "$RENUM"; mv "$RENUM.tmp" "$RENUM"
+  fi
+  run cut osmium extract "${CUT_ARGS[@]}" -o "$TMP/cell.osm.pbf" "$RENUM/renum.osm.pbf"
+  IDX="$RENUM/idx"
+else
+  CUTS=()
+  for i in "${!SRCS[@]}"; do
+    run cut osmium extract "${CUT_ARGS[@]}" -o "$TMP/cut-$i.osm.pbf" "${SRCS[$i]}"
+    CUTS+=("$TMP/cut-$i.osm.pbf")
+  done
+  if [ ${#CUTS[@]} -gt 1 ]; then
+    # the same object can come in two versions (extracts of different days): keep the newest of each
+    run merge bash -c "osmium merge --overwrite -o '$TMP/merged.osm.pbf' ${CUTS[*]} \
+      && osmium time-filter --overwrite -o '$TMP/raw-cut.osm.pbf' '$TMP/merged.osm.pbf'"
+    rm -f "$TMP/merged.osm.pbf" "${CUTS[@]}"
+  else
+    mv "${CUTS[0]}" "$TMP/raw-cut.osm.pbf"
+  fi
+  IDX="$TMP/idx"; mkdir -p "$IDX"
+  run renumber osmium renumber -i "$IDX" --overwrite -o "$TMP/cell.osm.pbf" "$TMP/raw-cut.osm.pbf"
+  rm -f "$TMP/raw-cut.osm.pbf"
+fi
 log "    cell.osm.pbf $(du -h "$TMP/cell.osm.pbf" | cut -f1)"
 
 # ---------------------------------------------------------------------------------------- base map
@@ -150,7 +188,7 @@ if [ "$FORMAT" = 2 ]; then
   run overlays-tiles "$TOOLS/build_overlays.sh" "$TMP/raw/otiles" "$TMP/raw/overlays.pmtiles" --clip "$BUF_BBOX"
   run overlays-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/overlays.pmtiles" "$TMP/out/overlays.pmtiles"
   run pois python3 "$TOOLS/extract_pois.py" "$TMP/cell.osm.pbf" "$TMP/raw/pois" "${BUF_ARGS[@]}"
-  run pois-ids $PY remap-ids "$RENUM/idx" "$TMP/raw/pois/pois.geojson"
+  run pois-ids $PY remap-ids "$IDX" "$TMP/raw/pois/pois.geojson"
   run clip $PY clip "$Z" "$X" "$Y" "$TMP/raw/pois" "$TMP/out"
   mkdir -p "$TMP/out/addresses"
   # streets / places by the owner rule (point inside the cell); municipalities from the whole boundaries of the cut
@@ -160,7 +198,7 @@ else
   mkdir -p "$TMP/raw/overlays"
   run overlays python3 "$TOOLS/extract_overlays.py" "$TMP/cell.osm.pbf" "$TMP/raw/overlays" "${BUF_ARGS[@]}"
   run pois python3 "$TOOLS/extract_pois.py" "$TMP/cell.osm.pbf" "$TMP/raw/overlays" "${BUF_ARGS[@]}"
-  run pois-ids $PY remap-ids "$RENUM/idx" "$TMP/raw/overlays/pois.geojson"
+  run pois-ids $PY remap-ids "$IDX" "$TMP/raw/overlays/pois.geojson"
   run clip $PY clip "$Z" "$X" "$Y" "$TMP/raw/overlays" "$TMP/out"
 fi
 sed 's/^/    /' "$TMP/logs/clip.log"

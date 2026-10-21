@@ -41,7 +41,7 @@ zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
 | Region | **europe-west1** (Belgium) | Cloud Run Jobs + Cloud Storage volumes available; Tier-1 prices (europe-west3 Frankfurt is Tier 2, ~20–40 % dearer CPU/RAM); low CO2. Latency is irrelevant for batch builds; bucket and job in the same region = free traffic |
 | Job size | **2 vCPU, 8 GiB, 60 min timeout, 1 retry, parallelism 1** | A cell peaks at ~2.3 GB RAM, but Cloud Run's disk is memory: Planetiler sources (~1.4 GB) + OSM extract + work folder live in RAM too. 8 GiB needs ≥ 2 vCPU. Settable via repository variables `JOB_CPU`, `JOB_MEMORY`, `JOB_TIMEOUT_S` |
 | Planetiler sources (water polygons, Natural Earth, ~1.4 GB) | **in the source bucket, copied in at start** (~15–30 s in-region) | Baking them in would make every image push ~2 GB and pin them to the image; downloading from the internet every run is slow and unfriendly to the hosts. First run: Planetiler downloads them, the builder saves them to the bucket |
-| OSM extracts | **in the source bucket, refreshed by the builder itself** when older than 30 days (`tools/cloud/sources.json` lists URL + covered area) | No extra job or schedule; the first build after a month refreshes. Areas outside `sources.json` answer "Source data not available for this area yet" (no build started). Later: Geofabrik leaf selection like `tools/hetzner/server/onpath_maps/sources.py` |
+| OSM extracts | **chosen per cell from the Geofabrik index, kept in the source bucket, refreshed by the builder itself** when older than 30 days (§7e) | Any area works; the first cell in a new country waits for one download (minutes). No extra job or schedule. Open sea: answered "No map data exists for this area" by the builder |
 | Bucket access in the job | Cloud Storage **volume mount** at `/src` (gcsfuse) | No gcloud/gsutil in the image (keeps it small); plain file copies |
 | R2 upload | **stdlib SigV4 client** (`tools/cloud/r2.py`, tested against AWS's published examples) | No aws-cli/boto3/rclone in the image |
 | Job state | **D1** | A queue needs consistent reads (KV is eventually consistent) and the doc's design was already SQLite |
@@ -218,8 +218,8 @@ done
 | `tools/cloud/Dockerfile.job` (+ `.dockerignore`), `git-shim.sh` | Job image = zo image + `tools/` + entry point |
 | `tools/cloud/job.yaml` | Cloud Run Job definition (filled by the workflow, `gcloud run jobs replace`) |
 | `tools/cloud/job_build.py`, `r2.py` | Entry point: sources, `build_cell.sh`, upload, status files; stdlib S3 client. Also usable on zo with `R2_LOCAL_DIR` |
-| `tools/cloud/sources.json` | OSM extracts and the areas they cover (builder and Worker) |
-| `tools/cloud/test_cloud.py` | Builder tests (SigV4 vectors, source choice, build/upload/status flow with a fake build) |
+| `tools/cloud/osm_sources.py`, `sources.json` | Extract choice from the Geofabrik index (§7e); pinned extracts + source limits |
+| `tools/cloud/test_cloud.py` (+ `testdata/`) | Builder tests (SigV4 vectors, extract choice on a Geofabrik index subset, downloads/locks/limits, build/upload/status flow with a fake build) |
 | `tools/cloud/worker/` | Worker (`src/`), D1 migrations, `wrangler.toml` (test/production), tests (`node --test`), `smoke.sh` |
 | `.github/workflows/maps-deploy.yml` | Tests, then deploy test / production |
 | `app/…/data/MapServer.kt` | Server URL + key per build type, shown in Settings → Diagnostics |
@@ -279,14 +279,41 @@ same OSM date would have had the same (immutable, cached) name. Now:
   cancels all, deletes installed cells, resets the T3/T5 memory; the next start / point loads as on a new phone.
   JVM test: `CellDownloadTest.freshInstallAndResetLoadTheMapAgain`.
 
+## 7e. Source data for any area (2026-10-21)
+
+Field test: a point outside South Tyrol gave "source data not available". Now every cell is built:
+- **Choice** (`tools/cloud/osm_sources.py`, standard library only): bbox B = cell + 5 km. (1) A *pinned* extract
+  (`sources.json`, today Trentino-Alto Adige with its conservative rectangles) wins when it contains the cell – South
+  Tyrol is built as before. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
+  region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
+  dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
+  states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–4 leaves touching B,
+  smallest first (border cell; Innsbruck reaches the Brenner → nord-est + austria, Scuol → 4). (3) More than 4, or
+  none of them: the smallest leaf of any kind containing B (alps, great-britain …). (4) Nothing → open sea, a
+  permanent failure. Tests on a 24-region subset of the real index (`testdata/`).
+- **Cut** (`build_cell.sh CUT=raw`): each extract is cut raw (`osmium extract -s smart`, ~4.0 GB peak for any
+  extract – the bit sets span the OSM id range; trentino 8 s, alps 2.3 GB 62 s locally), several cuts are merged
+  and `osmium time-filter` keeps one version per object (extracts of different days), then only the small cut is
+  renumbered (~2 s, ~150 MB). Whole-extract renumbering would need ~1 GB RAM per 1 GB extract (alps: 2.5 GB, 221 s,
+  4.3 GB of files) and cannot merge two extracts. zo keeps `CUT=renumbered` (`run.sh`, 3 GB limit).
+- **Cache** in the source bucket: `osm/geofabrik/<path>.osm.pbf` + `.meta.json` (download time, size, seconds),
+  `osm/geofabrik/index-v1.json` (weekly), `osm/downloads.json`. Downloads stream straight into the bucket mount
+  (no RAM copy) and the cut reads the extract from there. `<extract>.lock` (O_EXCL) – a second job waits for the
+  first one's download (stale after 45 min). Older than `max_age_days` (30) → downloaded again.
+- **Cost guards:** `max_downloads_per_day` (10): a *new* area beyond it fails with `defer` (the doorman counts no
+  attempt; asking again queues it), an old extract is used a little longer; `max_extract_mb` (2500) refuses huge
+  extracts for good. The doorman's execution limits stay.
+- **Doorman:** no coverage check any more (no `sources.json` in the Worker). ETA: `+NEW_AREA_S` (180) for a cell
+  whose z7 block (8 × 8 cells) has no built/building cell yet; while the builder downloads, its own estimate
+  (`source_eta_s` in the status file, step `download`) replaces the guess.
+- Planetiler's sources (water polygons, Natural Earth, lake centerlines) are global – nothing per area.
+
 ## 8. Open points
 
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other
   workflows, so "deploy production on release" would need a PAT or `workflow_run`; for now production is by hand.
 - Old version folders (map-cells.md §6: delete 7 days after `current.json` moved) and cells unused for 12 months are
   **not cleaned up yet** – storage is cheap; add to the Worker cron later.
-- `sources.json` covers South Tyrol only (hand-made conservative rectangles). Next: Geofabrik leaf extracts chosen
-  automatically and merged (reuse `sources.py`).
 - Format 1 cells built before the switch (test: 10/543/361 under `cells/f1/…`, D1 rows with format 1) are no
   longer served; they can be deleted from the bucket by hand.
 - Not verified against the real services (no accounts used while writing): `gcloud run jobs replace` of `job.yaml`

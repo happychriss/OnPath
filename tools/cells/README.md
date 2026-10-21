@@ -59,9 +59,11 @@ docker run --rm -v ~/onpath-data:/data -v ~/onpath:/onpath:ro onpath-cell-builde
 
 ## Notes
 - **Memory of the cut:** osmium's `smart` strategy keeps bit sets over the whole OSM id range (node ids ~13e9):
-  ~4 GB even for a 14 MB cell extract – it was OOM-killed at 3 GB on zo. `build_cell.sh` therefore renumbers the
-  source once (`osmium renumber -i`, ~10 s, ~300 MB, cached next to the source until it changes); the cut then needs
-  ~170 MB. POI ids are mapped back to OSM ids (`cells.py remap-ids`).
+  ~4 GB for any raw source, even for a 14 MB cell extract – it was OOM-killed at 3 GB on zo. Two modes (`CUT`):
+  `raw` (default of `build_cell.sh`, the cloud job with 8 GiB): cut each source raw, merge several (border cells),
+  renumber the small cut. `renumbered` (default of `run.sh` on zo): renumber the one source once (`osmium renumber
+  -i`, ~10 s, ~300 MB for Trentino, cached next to the source until it changes); the cut then needs ~170 MB. POI ids
+  are mapped back to OSM ids (`cells.py remap-ids`).
 - **zo and Docker networking:** every container on the default bridge adds a `veth` interface at start and removes it
   at stop. The owner's Docbox mDNS daemon (`dnssd`, `cdclient_daemon.rb`) crashes on the vanished interface and
   systemd restarts the Docbox services (seen 2026-10-20 at each `docker build` step and run). **Fix (2026-10-20): `run.sh`

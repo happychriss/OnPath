@@ -1,5 +1,4 @@
 // Cell math (docs/design/map-cells.md §2) – same formulas as tools/cells/cells.py, same test values (Meran).
-import sources from "../../sources.json" with { type: "json" };
 
 export const CELL_Z = 10;
 
@@ -25,10 +24,6 @@ export function parseCellId(s) {
   return { z, x, y, id: `${z}-${x}-${y}` };
 }
 
-const inside = (b, r) => r[0] <= b[0] && r[1] <= b[1] && b[2] <= r[2] && b[3] <= r[3];
-
-/** Source extract that covers the whole cell (tools/cloud/sources.json, same rule as job_build.py), or null. */
-export function sourceFor(cell, list = sources) {
-  const b = cellBbox(cell.z, cell.x, cell.y);
-  return (list.sources || []).find((s) => (s.cover || []).some((r) => inside(b, r))) || null;
-}
+/** z7 block of a cell (8 × 8 cells, ~250 km): the doorman's guess whether a source extract is already cached
+ *  there (map-hosting.md §Source data) – used only for the ETA. */
+export const blockOf = (c) => `${c.x >> 3}-${c.y >> 3}`;

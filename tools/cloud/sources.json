@@ -1,6 +1,9 @@
 {
- "_comment": "OSM extracts the cloud builder may use (docs/design/map-hosting.md §Source data). A cell is built only when its exact bbox lies inside one 'cover' rectangle of a source ([west, south, east, north], conservative: well inside the extract's real border). The doorman (Worker) uses the same file to answer 'Source data not available for this area yet' without starting a build. Add an extract = add an entry + push (deploys to test). Later: choose Geofabrik leaf extracts automatically (tools/hetzner/server/onpath_maps/sources.py).",
+ "_comment": "OSM source data of the cloud builder (docs/design/map-hosting.md §Source data). Any cell is built: its extracts are chosen from the Geofabrik index (tools/cloud/osm_sources.py – smallest country leaf containing cell + 5 km, or the leaves of a border cell, merged after the cut). 'sources' are PINNED extracts checked first: a cell whose exact bbox lies inside one of their 'cover' rectangles ([west, south, east, north], conservative) is cut from that extract only (South Tyrol keeps the extract its first cells were built from). Extracts older than max_age_days are downloaded again; at most max_downloads_per_day downloads per day (cost guard: a NEW area beyond it waits, an old extract is used a little longer); extracts above max_extract_mb are refused.",
  "max_age_days": 30,
+ "max_downloads_per_day": 10,
+ "max_extract_mb": 2500,
+ "index_url": "https://download.geofabrik.de/index-v1.json",
  "sources": [
   {
    "id": "trentino_alto_adige",
