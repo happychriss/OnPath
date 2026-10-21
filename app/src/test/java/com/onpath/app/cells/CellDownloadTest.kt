@@ -245,6 +245,28 @@ class CellDownloadTest {
         waitFor("loaded again") { mc.state(a) == CellState.Ready("2026-10-21-s2") && mc.installed.value.size == 1 }
     }
 
+    /**
+     * Modal → Cancel (owner 2026-10-21: "Cancel = stop"): a cell still being built is dropped – no more polling, no
+     * download, no state – even when the server finishes it; asking again (a point / search there) loads it.
+     */
+    @Test fun cancelStopsLoadingAndAskingAgainLoads() {
+        server.publish(a, "v1"); server.buildPolls = 1_000_000
+        val mc = cells(Net())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("building") { mc.state(a) is CellState.Building }
+        mc.cancel(listOf(a))
+        assertEquals(CellState.None, mc.state(a))
+        server.buildPolls = 0 // the server finishes its build anyway
+        val polls = server.log.size
+        Thread.sleep(400)
+        assertEquals(CellState.None, mc.state(a))
+        assertTrue(mc.installed.value.isEmpty())
+        assertFalse(server.log.drop(polls).any { it.contains("/files/") || it.contains("/manifest") })
+        assertEquals(listOf(a), mc.missing(listOf(a)))
+        assertEquals(listOf(a), mc.request(listOf(a), CellReason.POINT))
+        waitFor("loaded after asking again") { mc.state(a) == CellState.Ready("v1") }
+    }
+
     /** Requests survive a restart; a complete download not yet joined is joined at start. */
     @Test fun resumeAfterRestart() {
         server.publish(a, "v1"); server.buildPolls = 0

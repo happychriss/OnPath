@@ -51,6 +51,7 @@ class Prefs(context: Context) {
             offRouteWarning = sp.getBoolean("offRouteOn", true),
             offRouteVibrate = sp.getBoolean("offRouteVibrate", true),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
+            planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
@@ -68,6 +69,7 @@ class Prefs(context: Context) {
             .putBoolean("offRouteOn", v.offRouteWarning)
             .putBoolean("offRouteVibrate", v.offRouteVibrate)
             .putInt("offRouteM", v.offRouteM)
+            .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation

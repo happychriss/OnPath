@@ -292,7 +292,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // visible map has none): the modal shows (again), over all regions asked for so far
         if (j.own != null || viewWithoutDetail) {
             jobWaited = true
-            if (loadModalFor.isEmpty()) { loadProgress.clear(); loadHeld = 0 }
+            if (loadModalFor.isEmpty()) { loadProgress.clear(); loadHeld = 0; loadBySearch = false }
+            if (j.why == com.onpath.app.cells.CellWhy.SEARCHED) loadBySearch = true
             loadModalFor = loadModalFor + j.cells
         }
     }
@@ -306,6 +307,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val loadProgress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
     /** Last % shown (never backwards). */
     private var loadHeld = 0
+    /** A search / shared place opened (or joined) the modal: Cancel also removes its ring ([MapLoadCancel]). */
+    private var loadBySearch = false
     /** A large part of the visible map has no detailed map (MapScreen, any zoom) – a route computed now is waited for. */
     var viewWithoutDetail = false
 
@@ -322,8 +325,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return ui
     }
 
-    /** Modal → Cancel / Close: the modal goes, the map keeps loading in the background (the plan sheet's card shows it). */
+    /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
     fun hideLoadModal() { loadModalFor = emptySet() }
+
+    /**
+     * Modal → Cancel (owner 2026-10-21: "Cancel = stop", [MapLoadCancel]): the waited-for regions stop loading, no card
+     * follows, a searched place's ring goes, points set stay, the camera stays.
+     */
+    fun cancelLoadModal() {
+        val job = cellJob
+        val o = MapLoadCancel.decide(loadModalFor, job, jobWaited, cells.installed.value.map { it.id }.toSet(), loadBySearch)
+        Problems.trace("cells", "Map loading cancelled: ${o.stop.size} region(s) stopped" +
+            (job?.let { ", job ${it.why.name.lowercase()}" } ?: "") + (if (o.clearSearchMark) ", search ring removed" else ""))
+        if (o.stop.isNotEmpty()) safeCells("cancel") { cells.cancel(o.stop) }
+        o.stop.forEach { loadProgress.remove(it) }
+        loadModalFor = emptySet(); loadBySearch = false
+        if (o.closeCard) { cellJob = null; mobileDeclined = false; jobWaited = false; firstStartHidden = true }
+        if (o.clearSearchMark) { searchMark = null; searchPlace = null }
+    }
 
     /** A tap on the world map where there is no detailed map: "Load the map for this area? N regions · ≈ X MB". */
     data class LoadAsk(val at: GeoPoint, val regions: Int, val bytes: Long)
@@ -979,7 +998,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
-        Haptics.play(getApplication(), PlanHaptics.feel(edit))
+        Haptics.play(getApplication(), PlanHaptics.feel(edit), settings.planVibrate)
         recalc()
     }
 

@@ -66,6 +66,18 @@ class CellTriggersTest {
         assertTrue(CellTriggers(f).preview(nearEdge).isEmpty()) // all asked for already
     }
 
+    /** Modal → Cancel drops the cells (owner 2026-10-21): searching there again starts loading again normally. */
+    @Test fun searchAgainAfterCancelLoadsAgain() {
+        val f = FakeCells()
+        val t = CellTriggers(f)
+        val first = t.pointSet(nearEdge, CellWhy.SEARCHED)!!
+        assertEquals(CellWhy.SEARCHED, first.why)
+        first.cells.forEach { f.queued.remove(it) } // MapCells.cancel
+        val again = t.pointSet(nearEdge, CellWhy.SEARCHED)!!
+        assertEquals(first.cells, again.cells)
+        assertEquals(meran, again.own)
+    }
+
     @Test fun t1PointWithDetailedMapAsksNothing() {
         val f = FakeCells(installed = mutableSetOf(meran))
         assertNull(CellTriggers(f).pointSet(middle))

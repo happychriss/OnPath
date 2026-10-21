@@ -35,7 +35,7 @@ import kotlin.math.min
 /**
  * The one modal while the user waits for the map of their area (owner 2026-10-21, field test 0.8.7): first start (T3)
  * and a point set where there is no detailed map (T1). Plain words, one bar with %, the time left, one button. Closes
- * by itself only when the map is there; Cancel only hides it (the download goes on, the plan sheet's card shows it).
+ * by itself only when the map is there; Cancel stops it ([MapLoadCancel], owner 2026-10-21: "Cancel = stop").
  * Background loads (route corridor, on tour, newer versions) never show it.
  */
 data class MapLoadUi(
@@ -197,6 +197,38 @@ object MapLoads {
             MapLoadUi.Kind.PREPARING in kinds -> MapLoadUi(MapLoadUi.Kind.PREPARING, pct, left, regions = total, bytes = bytes)
             else -> MapLoadUi(MapLoadUi.Kind.WIFI, pct, null, regions = total, bytes = bytes)
         }
+    }
+}
+
+/**
+ * Modal → Cancel (owner 2026-10-21, field test: searched Hilden → "about 30 minutes" → Cancel): **Cancel = stop.** The
+ * regions the modal waited for stop loading (installed ones stay; the server may finish its build – the next request is
+ * then quick), no card follows for that job, the searched place's ring goes when a search / shared place started it, a
+ * point the user set stays in the plan, the map stays where it is. Setting a point or searching there again loads anew.
+ * Pure, unit-tested.
+ */
+object MapLoadCancel {
+    data class Outcome(
+        /** Regions to drop from the queue (not installed). */
+        val stop: List<CellId>,
+        /** Remove the orange search ring / searched-place marker. */
+        val clearSearchMark: Boolean,
+        /** The plan sheet's card for this job goes too (no "waiting for Wi-Fi" afterwards). */
+        val closeCard: Boolean,
+    )
+
+    /**
+     * [waitedFor]: the modal's regions; [job] / [jobWaited]: the card's job and whether the modal waited for it;
+     * [installed]: regions on the phone; [bySearch]: a search / shared place opened (or joined) the modal.
+     */
+    fun decide(
+        waitedFor: Set<CellId>, job: com.onpath.app.cells.CellJob?, jobWaited: Boolean, installed: Set<CellId>,
+        bySearch: Boolean,
+    ): Outcome {
+        val closeCard = job != null && jobWaited
+        val all = LinkedHashSet<CellId>(waitedFor)
+        if (closeCard) all += job!!.cells
+        return Outcome(all.filter { it !in installed }, bySearch, closeCard)
     }
 }
 

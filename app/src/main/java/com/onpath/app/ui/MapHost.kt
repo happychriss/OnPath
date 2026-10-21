@@ -229,7 +229,7 @@ fun MapHost(
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        HoldRing(holdAt.value, onArmed = { buzz(mapView, holdBuzz.value) })
+        HoldRing(holdAt.value, onArmed = { buzz(mapView, holdBuzz.value, vm.settings.planVibrate) })
     }
 }
 
@@ -237,8 +237,8 @@ fun MapHost(
 const val HOLD_MS = 300L
 
 /** Hold armed (ring full): a very light tick, through the one plan haptics helper (Haptics). Never throws. */
-private fun buzz(view: View, b: MapGestures.Buzz) {
-    if (b == MapGestures.Buzz.TICK) Haptics.play(view.context, PlanHaptics.feel(PlanEdit.MENU_OPENED))
+private fun buzz(view: View, b: MapGestures.Buzz, planVibrate: Boolean) {
+    if (b == MapGestures.Buzz.TICK) Haptics.play(view.context, PlanHaptics.feel(PlanEdit.MENU_OPENED), planVibrate)
 }
 
 /** Follows one finger on the map: how long it was held without moving (for the plan-mode hold). */
