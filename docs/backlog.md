@@ -29,39 +29,35 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   in the plan sheet (+ Show), no extra action; (4) map: difficulty = grey line (incl. via ferrata, MTB steps), red only
   for access bans, via ferrata keeps its ticks; (5) hill shading "balanced" + format-2 terrain to z13; (6) Offline maps
   gets **"Clean up"** (keeps plan, saved routes, running tour, current area; shows what is removed first) and a red
-  **"Clear all"** (second confirmation).
+  **"Clear all"** (second confirmation); (7) **Settings as a topic list** – no switches on the main page, each topic its
+  own page; (8) **Privacy page** + online search sends only a rough position (~1 km); (9) route warnings: one amber line
+  in the plan sheet + list of spots, "Route changed for …" notice after an activity change; (10) **release 0.10.0 without
+  a separate phone test**; (11) **German UI: not needed for now**; (12) ideas dropped – sunset warning, emergency screen,
+  battery check at start, weather ("focus on the core").
 - **[cloud → laptop] HANDOVER 2026-10-22 evening: `docs/handover-2026-10-22-cloud.md`** – 0.9.2 current (0.9.1 crashes
   at start – never use); laptop first: track-gap check with the phone's GPX + diagnostics, "route without points during
   a tour", confirm the new release smoke gate; then vehicle detection / approach 1.
 - **Bus / car / lift during a recording (owner 2026-10-22)** – design `docs/design/vehicle-detection.md`, owner agreed:
   nothing during the ride (warnings + junction vibration stay on), summary with four choices at "End tour", raw
   points kept. Build first.
-- **Approach 1 "the router decides, the map shows it"** (~3 days) – `docs/design/map-vs-router-audit.md`, plan in
-  `docs/handover-2026-10-22-laptop.md` §3.6. Owner reviews renders before main.
-- **Battery batch 2** (owner answer 13, `docs/design/battery-audit.md`): slower GPS when standing / screen off (never
-  lose a point), frozen track + tail, battery %/h in the tour summary. Only batch 1 (0.7.3) + 10 s GPS while paused exist.
+- **Battery batch 2 – rest** (owner answer 13, `docs/design/battery-audit.md`): slower GPS at rest is done (0.10.0,
+  `RestWatch`); open: slower GPS with the screen off, frozen track + tail. No battery % in the summary (owner (10)).
+- **Router classes – open:** the app does not yet compare the cells' `wayclass` hash with its own profiles (a profile
+  change needs a rebuild of all cells); tertiary and bigger roads have no class (`docs/map-style-notes.md`).
 - **Arrival forecast after plan edits – rest:** same route keeps the session and no "whole route from 0" are done;
   open: keep time already lost as an offset blended over ~10 min (`TripPace.setLine` still resets the calm limit),
   say why once when arrival moves > 5 min.
-- **Safety audit batch B:** one amber warning line in the plan sheet (https://claude.ai/artifact/3KJ4LidPD9uxi1QngAmPNr);
-  with it the "route warnings list" (steep, push bike, steps, terrain above T level). Batch D rest: cliffs, fords on the map.
+- **Safety audit batch D rest:** cliffs, fords on the map (batch B – amber line + route warnings list – done in 0.10.0).
 - **Track safety review leftovers:** raw exception texts in messages (update / import / export, `BRouterEngine`
-  "Routing failed: …"); Photon gets the exact GPS position (needs an online-search switch + coarse position); total
-  planning budget + cancel in `Planner`; CI: `verifyPaparazziDebug` + lint on push; compass accuracy gating;
+  "Routing failed: …"); total planning budget + cancel in `Planner`; CI: `verifyPaparazziDebug` + lint on push; compass accuracy gating;
   DEM-based ascent (today GPS altitude with 5 m hysteresis).
-- **Smooth Plan ⇄ Navigate transition (B2)** – `MapScreen` switches with a plain `when`.
-- **EN + DE strings** (owner approved): all UI texts to `strings.xml` (EN + DE) in one go, when no big UI work runs.
 - **Small:** Navigate "Waiting for GPS · last fix …" line can be cut (`NavigateScreen.recordingLine`, maxLines 1 –
   check on the phone); unused theme tokens `track.edge/fill/cover.*` in `classic.json`; unused `batteryHintShown`;
   Ifinger T1 JVM test (`RerouterJvmTest.kt:90`, expects "unreachable", BRouter found 7.2 km – expectation or gap?);
-  deleting the target of a 2-point plan does not route home; unnamed Navigate target shows no name; zip import checks
+  unnamed Navigate target shows no name; zip import checks
   only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
-- **Address search:** mix online results into one list? municipality vs village as town? "Position from the address
-  (offline)" note for shared places not built.
-- **Delete remote branches** (sessions cannot): `downloads`, `e2e`, `fix/arrival-estimate`, `wip-build2`,
-  `wip-map-style`, `wip-0.6`, `wip-no-silent-errors`. GCS: `gsutil rm` of the Trentino source (map-hosting §7g).
 - **Google Play internal test track:** create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
   secrets, upload from release.yml (today: fixed test key). Removes Play Protect warnings.
 - **Field tests:** 0.9.0 (routing data loading itself on the phone, junction vibration, lock screen, map ahead on tour),
@@ -72,8 +68,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
   `/v1` API as an open spec; (A) all-in-one Docker Compose, (B) the cloud setup with gcp-setup.sh; builder image on
   ghcr.io. Pricing stays on the owner's server; self-hosted = free; F-Droid build without Play Billing. Not before Play launch.
-- **Ideas (owner 2026-10-21):** sunset warning, emergency screen (position, 112, SMS), battery check at start, weather
-  along the route, outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help page.
+- **EN + DE strings:** all UI texts to `strings.xml` (EN + DE) – owner 2026-10-22: German UI not needed for now.
+- **Ideas (owner 2026-10-21; sunset warning, emergency screen, battery check at start and weather dropped 2026-10-22 –
+  "focus on the core"):** outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help page.
 - **Map wishes (start only when the owner says so):** shrub ("Sträucher") symbols; trail numbers abroad beyond numeric
   refs (letters like E5 / GR20, `osmc:symbol`); contours below z12 (owner chose "from z12" on 2026-10-20).
 - **Unverified paths (owner: keep):** untagged OSM ways joining two paths, ≤ 300 m, grey dashed + point-menu hint,
@@ -81,6 +78,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
 
 ## Done (recent)
+- **2026-10-22 (laptop), merged into main and released as 0.10.0:** (1) map colours from the router classes
+  (`tools/routing/wayclass/WayClass.java`, classes 0 good / 1 possible / 2 forbidden / 3 too hard = grey line, red only
+  for access bans, via ferrata ticks kept, MTB steps grey; cell schema `-s3`; hiking band above the T level grey via
+  `MapController.setSacLimit`), balanced hill shading, format-2 terrain to z13, overview raster tweaks; (2) "Route back to
+  the start?" when the goal of a 2-point plan is deleted during a tour + slower GPS at rest (`RestWatch`); (3) smooth
+  Plan ⇄ Navigate transition (`ui/ModeSwitch.kt`, ~250 ms); (4) search: one mixed list, village + municipality, rough
+  position to Photon (2 decimals), "Position from the address" note for shared places, late online rows below the shown
+  ones; (5) route warnings: one amber line + list of spots, "Route changed for …" after an activity change,
+  `WayAttrs.bicycle`; (6) Settings as a topic list with sub-pages, Privacy page, Offline maps Clean up / Clear all (core
+  feature C14), short "© OpenStreetMap" on the map → About credits. Remote branches and the GCS Trentino file deleted
+  (owner, 2026-10-22).
 - **2026-10-22 (laptop), merged into main:** (1) 5 pace levels around DIN 33466, e-bike cap ~25 km/h, old pace keys
   migrated; (2) performance – style reload debounced (`ui/QuietGate.kt`), routing time limit by distance / profile and no
   leg-by-leg retry after a timeout, one rd5 write per batch, corridor work off the main thread, Offline maps size cache,
