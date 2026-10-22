@@ -178,10 +178,14 @@ internal class ProfileCache(private val data: Profile, private val steep: List<R
         val maxE = data.max + range * 0.08
         val x = { d: Double -> left + (d / data.total * w).toFloat() }
         val y = { e: Double -> (bottom - (e - minE) / (maxE - minE) * (bottom - top)).toFloat() }
+        // about the pixel width: first / lowest / highest / last point per pixel column (perf report 2026-10-22: a
+        // 250 km route drew 10k+ vertices per frame); peaks and valleys stay exact
+        val keep = columnIndices(data.dist, data.ele, data.total, w.toInt().coerceAtLeast(1))
         val line = Path()
-        for (i in data.dist.indices) {
+        for (k in keep.indices) {
+            val i = keep[k]
             val px = x(data.dist[i]); val py = y(data.ele[i])
-            if (i == 0) line.moveTo(px, py) else line.lineTo(px, py)
+            if (k == 0) line.moveTo(px, py) else line.lineTo(px, py)
         }
         val area = Path().apply {
             addPath(line)
@@ -191,12 +195,15 @@ internal class ProfileCache(private val data: Profile, private val steep: List<R
         val byClass = steep?.let { s ->
             val paths = List(STEEP_ORDER.size) { Path() }
             val lastEnd = IntArray(STEEP_ORDER.size) { -1 }
-            for (i in s.indices) {
-                val k = s[i].ordinal
+            // per kept span (keep[j] .. keep[j + 1]) the steepest class of the segments in it: short steep bits stay visible
+            for (j in 0 until keep.size - 1) {
+                val a = keep[j]; val b = keep[j + 1]
+                var k = 0
+                for (i in a until minOf(b, s.size)) if (s[i].ordinal > k) k = s[i].ordinal
                 val p = paths[k]
-                if (lastEnd[k] != i) p.moveTo(x(data.dist[i]), y(data.ele[i]))
-                p.lineTo(x(data.dist[i + 1]), y(data.ele[i + 1]))
-                lastEnd[k] = i + 1
+                if (lastEnd[k] != a) p.moveTo(x(data.dist[a]), y(data.ele[a]))
+                p.lineTo(x(data.dist[b]), y(data.ele[b]))
+                lastEnd[k] = b
             }
             paths
         }
@@ -232,6 +239,29 @@ fun GradientLegend(flat: Color = OnPathColors.Route) {
                 }
             }
     }
+}
+
+/**
+ * Indices of the points to draw for [columns] pixel columns: all when there are few, else per column the first, the
+ * lowest, the highest and the last point, in order (the line looks the same at that width). Pure, unit-tested.
+ */
+internal fun columnIndices(dist: DoubleArray, ele: DoubleArray, total: Double, columns: Int): IntArray {
+    val n = dist.size
+    if (n <= 4 * columns || total <= 0) return IntArray(n) { it }
+    val out = ArrayList<Int>(4 * columns + 2)
+    var i = 0
+    while (i < n) {
+        val col = (dist[i] / total * columns).toInt().coerceIn(0, columns - 1)
+        var lo = i; var hi = i; var j = i
+        while (j + 1 < n && (dist[j + 1] / total * columns).toInt().coerceIn(0, columns - 1) == col) {
+            j++
+            if (ele[j] < ele[lo]) lo = j
+            if (ele[j] > ele[hi]) hi = j
+        }
+        for (k in listOf(i, minOf(lo, hi), maxOf(lo, hi), j)) if (out.isEmpty() || out.last() < k) out += k
+        i = j + 1
+    }
+    return out.toIntArray()
 }
 
 internal class Profile(val dist: DoubleArray, val ele: DoubleArray, val idx: IntArray, val min: Double, val max: Double, val total: Double)
