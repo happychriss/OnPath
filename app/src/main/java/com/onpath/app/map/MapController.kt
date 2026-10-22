@@ -554,6 +554,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 "bike-both-ways" to !walking,
                 "barrier-blocked-foot" to walking, "barrier-blocked-bike" to trekking,
                 "barrier-blocked-touring" to touring, "barrier-blocked-mtb" to mtb,
+                // ways excluded only for their difficulty: a grey line (router class 3)
+                "too-hard-foot" to walking, "too-hard-bike" to trekking, "too-hard-touring" to touring, "too-hard-mtb" to mtb,
                 "trails-sac-label" to !mtb, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
@@ -573,8 +575,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * Hiking route band over trails above the user's T level (the router forbids them): grey dashes instead of the
-     * band (owner decision 2026-10-22 (3)). Route pieces carry "sac" and "hx" = forbidden at any level
+     * Hiking route band over trails above the user's T level (the router does not use them): a plain grey band instead
+     * of the green one (owner decision 2026-10-22 (3)). Route pieces carry "sac" and "hx" = forbidden at any level
      * (tools/extract_overlays.py); the same two filters as tools/make_style.py hike_band_filter, which ships them for T3.
      */
     fun setSacLimit(limit: Int) {

@@ -44,7 +44,8 @@ OVERLAY_LAYERS = {"routes": "routes", "trails": "trails", "ways": "ways", "paths
 
 # Router classes (format 2 packages built with extract_overlays.py --wayclass; docs/map-style-notes.md "Router
 # classes", owner decisions 2026-10-22): per activity group 0 good (green) / 1 possible (black) / 2 forbidden (red,
-# dashed + sign). A feature with the class key uses ONLY the class; features without it (older map cells) keep the
+# dashed + sign: access bans, one-way) / 3 too hard (excluded only by sac_scale / mtb:scale / trail_visibility or
+# as a via ferrata: a plain grey line – owner after the renders: "it's not forbidden there"). A feature with the class key uses ONLY the class; features without it (older map cells) keep the
 # tag rules. Activity groups = the app's BRouter profiles (BRouterEngine.profileFile), one style mode each, switched
 # by MapController.setOverlay: foot = Hike, bike = Bike trekking + E-bike, touring = Bike touring, mtb = MTB + MTB e-bike.
 CLASS_KEY = {"foot": "ch", "bike": "ct", "touring": "cf", "mtb": "cm"}
@@ -374,11 +375,12 @@ def route_bands():
                      "line-width": band_w})
         if kind == "hike":
             # pieces over trails above the user's T level (the router forbids them): grey dashes instead of the band
+            # (owner after the renders 2026-10-22: a plain grey band, no dashes)
             layer(id_="routes-hike-over", type="line", source="routes", minzoom=minz,
                   filter=hike_band_filter(DEFAULT_SAC_LIMIT, over=True),
-                  layout={"line-join": "round", "visibility": vis},
+                  layout={"line-join": "round", "line-cap": "round", "visibility": vis},
                   paint={"line-color": T("route.over.color", "#6f6f6f"), "line-opacity": T("route.over.opacity", 0.55),
-                         "line-width": band_w, "line-dasharray": T("route.over.dash", [0.9, 0.7])})
+                         "line-width": band_w})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
@@ -771,6 +773,19 @@ def bike_map():
                   "icon-padding": 2, **hidden})
 
 
+def too_hard():
+    """Format 2 with router classes: ways the activity's profile excludes only for their difficulty (class 3: T3+ for
+    trekking / touring, T4+ / mtb:scale 4+ for MTB, trail_visibility=no and via ferratas for hiking) – a plain grey line over the way,
+    no red, no sign (owner 2026-10-22). One layer per profile group (MapController.setOverlay)."""
+    own = own_paths()
+    for mode in CLASS_KEY:
+        layer(id_=f"too-hard-{mode}", type="line", **own, minzoom=13,
+              filter=["all", ["has", CLASS_KEY[mode]], class_is(mode, 3)],
+              layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if mode == "foot" else "none"},
+              paint={"line-color": T("toohard.color", "#8a8a8a"), "line-opacity": T("toohard.opacity", 0.75),
+                     "line-width": Z("toohard.width", 2.0)})
+
+
 def barriers():
     """Format 2 with router classes: barrier nodes (gates, stiles, bollards …) the activity's profile cannot pass
     (overlays "barriers", b = blocked-profile mask, extract_overlays.py --wayclass) – the no-entry sign on the node,
@@ -1000,7 +1015,7 @@ def build(theme=DEFAULT_THEME, fmt=1):
     green_ways()
     trails(); surface_loose(); access_restrictions()
     if FMT == 2:
-        via_ferrata(); bike_map(); barriers()
+        via_ferrata(); too_hard(); bike_map(); barriers()
     bridges(); boundaries()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())

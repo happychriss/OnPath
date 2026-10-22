@@ -32,7 +32,8 @@ import java.util.Map;
  *   W  id  key=value  key=value ...          a way: its OSM tags + BRouter's route pseudo-tags (route_hiking_lwn=yes …)
  *   N  id  wayId,wayId,...  key=value ...    a barrier node: its tags + the W ids of the ways through it (sent before)
  * Answers (first line "H  <profile hash>"):
- *   W  id  ch  ct  cf  cm  cr                classes 0 = good, 1 = possible, 2 = forbidden; cr = bikes' one-way:
+ *   W  id  ch  ct  cf  cm  cr                classes 0 = good, 1 = possible, 2 = forbidden, 3 = too hard;
+ *                                            cr = bikes' one-way:
  *                                            1 = only along the way's direction, -1 = only against it, 0 = both
  *   N  id  mask                              profiles the node blocks: 1 hike, 2 trekking, 4 touring, 8 MTB
  *   --costs appends the raw forward / reverse costfactors per profile (threshold tuning, consistency test).
@@ -46,7 +47,10 @@ import java.util.Map;
  * (the app's default T3) only shifts every istrack way by the same small amount.
  *
  * Classes from the costfactor c of the better direction (BRouter: c > 9998 = not routable, OsmPath):
- *   forbidden  c > 9998
+ *   forbidden  c > 9998 – and still so without the difficulty tags (access bans, via ferrata, one-way …)
+ *   too hard   c > 9998 only because of DIFFICULTY_KEYS (sac_scale, mtb:scale, trail_visibility) or highway=via_ferrata
+ *              (judged as a path): the router never
+ *              uses it either, but the map shows a grey line, not the red "forbidden" (owner 2026-10-22)
  *   good       c <= GOOD[profile]     (thresholds below, docs/map-style-notes.md "Router classes")
  *   possible   everything between ("avoid / poor look like black", owner 2026-10-22)
  * A one-way flag for bikes (cr) where one direction is forbidden or costs at least ONEWAY_EXTRA more than the other.
@@ -57,7 +61,7 @@ import java.util.Map;
 public class WayClass {
   static final String[] PROFILES = {"hiking-mountain", "trekking", "fastbike-verylowtraffic", "mtb"};
   /** Bump when a threshold or the evaluation changes: it is part of the profile hash. */
-  static final String VERSION = "wayclass-1";
+  static final String VERSION = "wayclass-3";
   /**
    * Good = at most this costfactor (better direction). Chosen from the length-weighted costs of the test region's
    * ways (docs/map-style-notes.md "Router classes"). The map draws green only on path-like ways (paths, footways,
@@ -127,6 +131,27 @@ public class WayClass {
     return ctx.encode(ld);
   }
 
+  /** Tags that make a way too hard rather than not allowed (class 3 instead of 2). */
+  static final List<String> DIFFICULTY_KEYS = List.of("sac_scale", "mtb:scale", "mtb:scale:uphill", "trail_visibility");
+
+  /** forbidden only because of its difficulty: allowed once the difficulty tags are left out */
+  boolean tooHard(int p, List<String[]> tags) {
+    List<String[]> rest = new ArrayList<>();
+    boolean changed = false;
+    for (String[] kv : tags) {
+      if (DIFFICULTY_KEYS.contains(kv[0])) { changed = true; continue; }
+      // a via ferrata is a (very) hard trail, not a ban (owner 2026-10-22): judged like a path without the grade
+      if (kv[0].equals("highway") && kv[1].equals("via_ferrata")) { rest.add(new String[]{"highway", "path"}); changed = true; continue; }
+      rest.add(kv);
+    }
+    if (!changed) return false;
+    BExpressionContextWay ctx = ways[p];
+    byte[] d = encodeWay(p, rest);
+    ctx.evaluate(false, d); float f = ctx.getCostfactor();
+    ctx.evaluate(true, d); float r = ctx.getCostfactor();
+    return Math.min(f, r) <= FORBIDDEN;
+  }
+
   static int classOf(float c, int p) {
     if (c > FORBIDDEN) return 2;
     return c <= GOOD[p] ? 0 : 1;
@@ -152,7 +177,9 @@ public class WayClass {
       grant[p] = ctx.getNodeAccessGranted() != 0f;
       ctx.evaluate(true, d);
       float r = ctx.getCostfactor();
-      sb.append('\t').append(classOf(Math.min(f, r), p));
+      int cls = classOf(Math.min(f, r), p);
+      if (cls == 2 && tooHard(p, tags)) cls = 3;
+      sb.append('\t').append(cls);
       if (p == 1) cr = oneway(f, r);  // trekking: the bike one-way rules are the same in all bike profiles (selftest)
       raw.append(String.format("\t%.2f/%.2f", f, r));
     }
@@ -238,11 +265,13 @@ public class WayClass {
       {t("highway=path", "route_hiking_lwn=yes"), "0 1 1 1 0"},
       {t("highway=path", "bicycle=designated"), "0 0 0 0 0"},
       {t("highway=path", "bicycle=yes"), "0 0 1 0 0"},
-      {t("highway=path", "sac_scale=alpine_hiking"), "0 2 2 2 0"},
-      {t("highway=path", "sac_scale=demanding_mountain_hiking"), "0 2 2 1 0"},
+      {t("highway=path", "sac_scale=alpine_hiking"), "0 3 3 3 0"},
+      {t("highway=path", "sac_scale=demanding_mountain_hiking"), "0 3 3 1 0"},
+      {t("highway=path", "sac_scale=alpine_hiking", "access=private"), "2 2 2 2 0"},
       {t("highway=path", "trail_visibility=bad"), "1 1 1 1 0"},
-      {t("highway=path", "trail_visibility=no"), "2 1 1 1 0"},
-      {t("highway=via_ferrata"), "2 2 2 2 0"},
+      {t("highway=path", "trail_visibility=no"), "3 1 1 1 0"},
+      {t("highway=via_ferrata"), "3 3 3 3 0"},
+      {t("highway=via_ferrata", "access=no"), "2 2 2 2 0"},
       {t("highway=steps"), "1 1 1 2 0"},
       {t("highway=cycleway"), "0 0 0 0 0"},
       {t("highway=cycleway", "surface=asphalt"), "0 0 0 1 0"},

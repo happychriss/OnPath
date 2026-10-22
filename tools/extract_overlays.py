@@ -30,7 +30,8 @@ docs/map-pipeline.md "Overlays as vector tiles"). --no-geojson skips the format-
 Router classes (--wayclass JAR, format 2; docs/map-style-notes.md "Router classes", owner decisions 2026-10-22):
 tools/routing/wayclass (BRouter's own expression engine and OnPath's profiles, --profiles DIR) classifies every
 "paths" (z13-14) and "streets" feature per activity group: ch hike, ct trekking + e-bike, cf touring, cm MTB +
-e-MTB, each 0 good / 1 possible / 2 forbidden; cr 1 / -1 = bikes may ride only along / against the line. Barrier
+e-MTB, each 0 good / 1 possible / 2 forbidden / 3 too hard (forbidden only by sac_scale / mtb:scale /
+trail_visibility or as a via ferrata: grey, not red); cr 1 / -1 = bikes may ride only along / against the line. Barrier
 nodes that block an activity go to the tile layer "barriers" (b = mask 1 hike, 2 trekking, 4 touring, 8 MTB). Hiking
 route pieces carry "sac" so the app can grey the band above the user's T level. The profile hash goes into
 DIR/wayclass.json (build_overlays.sh, package.json, cell manifest).
@@ -634,7 +635,7 @@ def merged_routes(routes):
     for f in routes:
         # hiking pieces per SAC grade (where graded): the app greys the band above the user's T level
         # (MapController.setSacLimit); a grade change is a seam (slightly darker where the transparent pieces meet)
-        # hx 1: the hiking profile forbids the way at any T level (via ferrata, trail_visibility=no, private …;
+        # hx 1: the hiking profile excludes the way at any T level (via ferrata, trail_visibility=no, private …;
         # --wayclass only) – greyed like a trail above the user's T level
         key = (f["properties"]["kind"], f["properties"].get("sac", 0), f["properties"].get("hx", 0))
         by_kind.setdefault(key, []).append(shape_of(f["geometry"]))
@@ -688,7 +689,7 @@ def classify(wp, tiles_dir):
         sys.exit(f"wayclass answered incompletely (hash {phash}, {missing} tag sets without a class)")
     for f in wp.routes:
         cid = f.pop("cid", None)
-        if cid is not None and f["properties"]["kind"] == "hike" and classes[cid][0] == "2":
+        if cid is not None and f["properties"]["kind"] == "hike" and classes[cid][0] in ("2", "3"):
             f["properties"]["hx"] = 1
     for feats in (wp.tile_paths, wp.streets):
         for f in feats:
