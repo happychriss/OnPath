@@ -107,6 +107,8 @@ class RoutingDataLoader(
 
     private val lock = Any()
     private val wanted = LinkedHashSet<String>()
+    /** Of [wanted]: asked for only by the plan's route corridor ([ensure] with corridor = true). */
+    private val corridorOnly = HashSet<String>()
     private val sizes = HashMap<String, Long>()
     private val done = HashMap<String, Long>()
     private var phase: Phase? = null
@@ -158,17 +160,40 @@ class RoutingDataLoader(
     }
 
     /** Loads the missing tiles of [names] (already loading ones are not asked twice). Returns the missing ones. */
-    fun ensure(names: Collection<String>, ignoreWifiOnly: Boolean = false): List<String> {
+    fun ensure(names: Collection<String>, ignoreWifiOnly: Boolean = false, corridor: Boolean = false): List<String> {
         if (ignoreWifiOnly) wifiOverride = true
         val miss = missing(names)
         if (miss.isEmpty()) return miss
         val start = synchronized(lock) {
+            // [corridor]: wanted only for the plan's route corridor – dropped when the plan changes ([keepCorridor]);
+            // asked for by a point / region as well: kept
+            if (corridor) miss.filter { it !in wanted }.forEach { corridorOnly += it } else corridorOnly -= miss.toSet()
             val added = miss.filter { wanted.add(it) }
             if (added.isNotEmpty()) Problems.info("routing", "Routing data missing for ${added.joinToString()}; loading it")
             !running || phase != Phase.LOADING
         }
         if (start) start()
         return miss
+    }
+
+    /**
+     * The plan's route corridor changed (field bug 2026-10-22): parts wanted only for an older corridor and not in
+     * [keep] are dropped – a running download of one stops (its partial file stays for resuming). Returns them.
+     */
+    fun keepCorridor(keep: Collection<String>): List<String> {
+        val k = keep.toSet()
+        val drop = synchronized(lock) {
+            val d = corridorOnly.filter { it !in k && it in wanted }
+            corridorOnly.removeAll { it !in k }
+            wanted.removeAll(d.toSet()); d.forEach { done.remove(it) }
+            if (wanted.isEmpty() && !running) phase = null
+            d
+        }
+        if (drop.isNotEmpty()) {
+            Problems.trace("routing", "Dropped ${drop.size} corridor routing parts – plan changed: ${drop.joinToString()}")
+            onChange()
+        }
+        return drop
     }
 
     /** Network back / "Try again": continue the wanted tiles. */
@@ -196,7 +221,7 @@ class RoutingDataLoader(
     fun cancel() {
         synchronized(lock) {
             if (wanted.isEmpty()) return
-            cancelled = true; wanted.clear(); phase = null; wifiOverride = false
+            cancelled = true; wanted.clear(); corridorOnly.clear(); phase = null; wifiOverride = false
         }
         Problems.info("routing", "Routing data download stopped by the user (partial file kept)")
         onChange()
@@ -228,9 +253,14 @@ class RoutingDataLoader(
                 if (exists(name)) { synchronized(lock) { wanted.remove(name) }; got += name; continue }
                 try {
                     synchronized(lock) { rateAt = System.currentTimeMillis(); rateBytes = partSize(name); rate = null }
-                    download(name, segmentsDir, { d, t -> progress(name, d, t) }, { cancelled })
-                    synchronized(lock) { wanted.remove(name); done.remove(name) }
+                    val why = if (synchronized(lock) { name in corridorOnly }) "corridor" else "point"
+                    Problems.trace("routing", "Routing download start: $name ($why), ${sizeOf(name) / 1_048_576} MB" +
+                        (if (network.unmetered()) "" else " on mobile data"))
+                    // dropped meanwhile ([keepCorridor]) or Cancel: stops at once (the partial file stays)
+                    download(name, segmentsDir, { d, t -> progress(name, d, t) }, { cancelled || synchronized(lock) { name !in wanted } })
+                    synchronized(lock) { wanted.remove(name); done.remove(name); corridorOnly.remove(name) }
                     Problems.info("routing", "Routing data $name installed in ${segmentsDir.absolutePath}")
+                    Problems.trace("routing", "Routing download finished: $name ($why)")
                     got += name
                     onChange()
                 } catch (e: SegmentDownloader.Cancelled) {
