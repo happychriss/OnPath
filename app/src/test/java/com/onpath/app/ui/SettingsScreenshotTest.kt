@@ -105,4 +105,10 @@ class SettingsScreenshotTest {
         Screen(SettingsPage.OFFLINE_MAPS, OfflineMapsUi(true, areas, wifiOnly = false,
             clearAllBlocked = "Not during a tour – the map stays as it is until you end it."))
     }
+
+    /** After Clean up: a plain line on the page (owner 2026-10-22: no message box on the map), until the page is left. */
+    @Test fun offlineMapsAfterCleanUp() = paparazzi.snapshot {
+        Screen(SettingsPage.OFFLINE_MAPS, OfflineMapsUi(true, areas.take(2), wifiOnly = false,
+            result = OfflineResult.removed(37, 450L * 1_048_576, afterTour = false)))
+    }
 }
