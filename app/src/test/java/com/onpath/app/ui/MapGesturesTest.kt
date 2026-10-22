@@ -33,13 +33,9 @@ class MapGesturesTest {
         // a POI already on the route has its marker on top of it: never added twice
         assertEquals(Action.PointMenu(2), plan(Press.HOLD, marker = 2, poi = true))
 
-    @Test fun holdNearAPointAsks() {
-        assertEquals(Action.NearPointChoice(3), MapGestures.decide(true, Press.HOLD, false, -1, false, false, near = 3))
-        assertEquals(Action.PointMenu(1), MapGestures.decide(true, Press.HOLD, false, 1, false, false, near = 3))
-        assertEquals(Action.PoiMenu, MapGestures.decide(true, Press.HOLD, false, -1, true, false, near = 3))
-        assertEquals(Action.None, MapGestures.decide(true, Press.TAP, false, -1, false, false, near = 3))
-        assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false)) // near zone: 1× like the map
-    }
+    /** Owner 2026-10-22: no question next to a point – a hold beside it is a new point (undo / hold again if wrong). */
+    @Test fun noQuestionNextToAPoint() =
+        assertEquals(Action.AddPoint, MapGestures.decide(true, Press.HOLD, false, -1, false, false))
 
     // --- empty plan: the first hold asks how to start ---
     @Test fun firstHoldOnEmptyPlanOpensFirstPointMenu() {
@@ -86,7 +82,7 @@ class MapGesturesTest {
         assertEquals(listOf(PointAction.GOOGLE, PointAction.DELETE), MapGestures.pointMenu(0, 4, isPlace = true))
     }
     @Test fun pointMenuOnMiddlePoint() = assertEquals(
-        listOf(PointAction.MAKE_START, PointAction.END_HERE, PointAction.GOOGLE, PointAction.DELETE),
+        listOf(PointAction.MAKE_START, PointAction.GOOGLE, PointAction.DELETE),
         MapGestures.pointMenu(1, 4, isPlace = true))
     @Test fun pointMenuOnDestination() =
         assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(3, 4, isPlace = false))

@@ -122,7 +122,6 @@ fun MapHost(
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
             // move the map – field test 2026-10-20: holding a point added a new one instead of opening its menu).
             var downMarker = -1
-            var downNear = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = ctrlRef[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
@@ -137,14 +136,11 @@ fun MapHost(
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
                 val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(pts, toScreen, screen.x, screen.y,
                     press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
-                // 48–80 dp from a point: ask (its options / new point here) instead of adding a point next to it
-                val nearMarker = if (!edit || c == null || marker >= 0) -1 else MapGestures.markerUnderFinger(pts, toScreen,
-                    screen.x, screen.y, press, downNear, c.dpToPx(MapGestures.NEAR_RADIUS_DP))
                 val dpOf: (Int) -> Int? = { i -> pts.getOrNull(i)?.let { p -> c?.toScreen(p)?.let { (kotlin.math.hypot(it.x - screen.x, it.y - screen.y) / c.dpToPx(1f)).toInt() } } }
                 if (press == MapGestures.Press.HOLD && edit && c != null) {
                     // every hold in Plan goes into Diagnostics, each as its own line (core feature C1 – field 0.8.3 / 0.8.5)
                     val near = pts.indices.minByOrNull { i -> c.toScreen(pts[i])?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
-                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, near ${nearMarker + 1}, finger-down ${downMarker + 1}, nearest point " +
+                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
                         "follow ${vm.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.mapOverlayOpen}")
                 }
@@ -156,9 +152,8 @@ fun MapHost(
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(24f) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
-                return when (val a = MapGestures.decide(edit, press, vm.mapOverlayOpen, marker, poi != null, vm.waypoints.isEmpty(), nearMarker)) {
+                return when (val a = MapGestures.decide(edit, press, vm.mapOverlayOpen, marker, poi != null, vm.waypoints.isEmpty())) {
                     is MapGestures.Action.PointMenu -> { vm.openPointMenu(a.index, dpOf(a.index)); true }
-                    is MapGestures.Action.NearPointChoice -> { vm.openNearChoice(a.index, p, snap, dpOf(a.index)); true }
                     MapGestures.Action.PoiMenu -> { poi?.let(vm::openPoiMenu); true }
                     MapGestures.Action.FirstPointMenu -> { vm.openFirstPointMenu(p); true }
                     MapGestures.Action.AddPoint -> {
@@ -195,7 +190,6 @@ fun MapHost(
                     val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) ctrlRef[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
-                    downNear = if (edit && marker < 0) ctrlRef[0]?.waypointAt(at, vm.waypoints.toList(), MapGestures.NEAR_RADIUS_DP, log = false) ?: -1 else -1
                     val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null

@@ -103,7 +103,6 @@ fun MapOverlayHost(
             PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip()) { a ->
                 when (a) {
                     PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu()
-                    PointAction.END_HERE -> vm.endRouteAt()
                     PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
                         com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, g.lat, g.lon))
                     }
@@ -111,38 +110,6 @@ fun MapOverlayHost(
                 }
             }
         }
-    }
-    vm.nearChoice?.let { n ->
-        val i = n.target.indexIn(vm.waypoints)
-        if (i == null) { LaunchedEffect(n) { vm.closeMapOverlays("its point is no longer in the plan") }; return@let }
-        Anchored(c, n.at, cameraTick, topPx, bottomPx, onGone = { vm.closeMapOverlays("held spot left the visible map (onGone)") }) {
-            NearPointMenu(i, vm.waypoints.size, vm.stopName(vm.waypoints[i]),
-                onOptions = vm::nearChoiceOptions, onNewPoint = vm::nearChoiceNewPoint)
-        }
-    }
-}
-
-/**
- * Hold 48–80 dp from a route point (MapGestures.NearPointChoice): was the point meant, or a new point here?
- * Field 2026-10-21: holds the owner felt "on the point" were 68 dp away and silently added a new point.
- */
-@Composable
-fun NearPointMenu(index: Int, count: Int, name: String?, onOptions: () -> Unit, onNewPoint: () -> Unit,
-                  modifier: Modifier = Modifier) {
-    MenuSurface(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
-            Box(Modifier.size(24.dp).clip(CircleShape).background(stopColor(index, count)), contentAlignment = Alignment.Center) {
-                Text("${index + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(10.dp))
-            Text("Near ${stopLabel(index, count, name)}", style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.TripOrigin, "Point ${index + 1}: options", supporting = "Delete and more",
-            onClick = onOptions)
-        HoldMenuItem(Icons.Outlined.AddLocationAlt, "New point here", onClick = onNewPoint)
     }
 }
 
@@ -246,8 +213,6 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start here",
                 supporting = "Removes ${points(index)} before") { onAction(a) }
-            PointAction.END_HERE -> HoldMenuItem(Icons.Outlined.Flag, "End here",
-                supporting = "Removes ${points(count - 1 - index)} after") { onAction(a) }
             PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start & finish here",
                 supporting = "Same loop, starts here") { onAction(a) }
             PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
