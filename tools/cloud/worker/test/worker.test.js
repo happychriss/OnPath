@@ -406,3 +406,51 @@ test("scheduled handler runs the pump", async () => {
   await worker.scheduled({}, env, c);
   await c.done();
 });
+
+// ------------------------------------------------------------------------------------------------ storage cleanup
+import { cleanupDue, cleanupStorage } from "../src/cleanup.js";
+
+test("cleanup: format 1 goes, format 2 keeps current + previous, older versions after 7 days", async () => {
+  const env = testEnv();
+  const now = Date.parse("2026-11-01T03:17:00Z");
+  const old = now - 10 * 86_400_000;
+  const fresh = now - 2 * 86_400_000;
+  const B = env.BUCKET;
+  await B.put("cells/f1/10/543/361/2026-10-17/base.pmtiles", "x", { _uploaded: old });
+  await B.put("status/f1/10-543-361.json", "{}", { _uploaded: old });
+  await env.DB.prepare("INSERT INTO cells (id, format, version) VALUES (?, 1, '2026-10-17')").bind(MERAN).run();
+  const base = "cells/f2/10/543/361";
+  for (const [v, t] of [["2026-10-17", old], ["2026-10-19-s2", old], ["2026-10-20-s2", fresh], ["2026-10-21-s2", fresh]]) {
+    await B.put(`${base}/${v}/base.pmtiles`, "x", { _uploaded: t });
+    await B.put(`${base}/${v}/manifest.json`, "{}", { _uploaded: t });
+  }
+  await B.put(`${base}/current.json`, JSON.stringify({ version: "2026-10-21-s2" }));
+  // a cell with only two versions: nothing to do
+  await B.put("cells/f2/10/544/361/2026-10-17/base.pmtiles", "x", { _uploaded: old });
+  await B.put("cells/f2/10/544/361/2026-10-19-s2/base.pmtiles", "x", { _uploaded: old });
+  await B.put("cells/f2/10/544/361/current.json", JSON.stringify({ version: "2026-10-19-s2" }));
+
+  assert.equal(cleanupDue(now), true);
+  assert.equal(cleanupDue(now + 60_000), false);
+  const r = await cleanupStorage(env, now);
+  assert.deepEqual(r, { f1Objects: 2, f1Rows: 1, oldVersions: 2, oldObjects: 4 });
+  const keys = [...B.objects.keys()].sort();
+  assert.ok(!keys.some((k) => k.includes("/f1/")));
+  assert.ok(keys.includes(`${base}/2026-10-21-s2/base.pmtiles`) && keys.includes(`${base}/2026-10-20-s2/base.pmtiles`));
+  assert.ok(!keys.some((k) => k.startsWith(`${base}/2026-10-17/`) || k.startsWith(`${base}/2026-10-19-s2/`)));
+  assert.ok(keys.includes(`${base}/current.json`));
+  assert.ok(keys.includes("cells/f2/10/544/361/2026-10-17/base.pmtiles")); // only two versions there
+  // a version younger than 7 days stays even when it is neither current nor previous
+  await B.put(`${base}/2026-10-22-s2/base.pmtiles`, "x", { _uploaded: fresh });
+  await B.put(`${base}/current.json`, JSON.stringify({ version: "2026-10-22-s2" }));
+  const r2 = await cleanupStorage(env, now);
+  assert.equal(r2.oldVersions, 0);
+});
+
+test("cleanup: deletes at most maxDeletes per run", async () => {
+  const env = testEnv();
+  for (let i = 0; i < 30; i++) await env.BUCKET.put(`cells/f1/10/1/${i}/v/base.pmtiles`, "x");
+  const r = await cleanupStorage(env, Date.now(), { maxDeletes: 10 });
+  assert.equal(r.f1Objects, 10);
+  assert.equal([...env.BUCKET.objects.keys()].length, 20);
+});

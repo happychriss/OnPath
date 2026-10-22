@@ -70,7 +70,27 @@ export function fakeR2() {
     objects,
     async put(key, value, opts = {}) {
       const data = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value);
-      objects.set(key, { data, contentType: opts.httpMetadata?.contentType });
+      // _uploaded: tests set the upload time (R2 sets it itself)
+      objects.set(key, { data, contentType: opts.httpMetadata?.contentType, uploaded: new Date(opts._uploaded ?? Date.now()) });
+    },
+    /** R2 list: prefix, delimiter, cursor; pages of `limit` (default 1000) objects, sorted by key. */
+    async list({ prefix = "", delimiter, cursor, limit = 1000 } = {}) {
+      const keys = [...objects.keys()].filter((k) => k.startsWith(prefix)).sort();
+      const start = cursor ? Number(cursor) : 0;
+      const page = keys.slice(start, start + limit);
+      const prefixes = new Set();
+      const objs = [];
+      for (const k of page) {
+        const rest = k.slice(prefix.length);
+        const i = delimiter ? rest.indexOf(delimiter) : -1;
+        if (i >= 0) prefixes.add(prefix + rest.slice(0, i + 1));
+        else objs.push({ key: k, size: objects.get(k).data.length, uploaded: objects.get(k).uploaded });
+      }
+      const truncated = start + limit < keys.length;
+      return { objects: objs, delimitedPrefixes: [...prefixes], truncated, cursor: truncated ? String(start + limit) : undefined };
+    },
+    async delete(keys) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) objects.delete(k);
     },
     async head(key) {
       const o = objects.get(key);
