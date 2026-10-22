@@ -60,7 +60,7 @@ class PaceLevelsTest {
             val texts = Pace.entries.map { it.meaning(a) }
             println("$a: $texts")
             assertTrue(texts[2], texts[2].startsWith("about ${Math.round(flat)} km/h · "))
-            assertEquals(5, texts.distinct().size)
+            assertEquals(5, texts.distinct().size) // e-bikes: same flat speed from Average up, but climbs differ
         }
         // e-bikes climb faster than the same bike without motor
         fun up(a: Activity) = Pace.AVERAGE.meaning(a).substringAfter("· ").substringBefore(" m").toInt()
@@ -101,6 +101,29 @@ class PaceLevelsTest {
         for (p in Pace.entries) {
             assertEquals(Factors.ONE * p.factor, TimeEstimate.planFactors(Activity.HIKE, AppSettings(hikePace = p)))
             assertEquals(Factors.ONE * p.factor, TimeEstimate.planFactors(Activity.MTB, AppSettings(bikePace = p)))
+            assertEquals(p.factors(Activity.EBIKE), TimeEstimate.planFactors(Activity.EBIKE, AppSettings(bikePace = p)))
         }
+    }
+
+    /** Owner 2026-10-22: the motor stops at 25 km/h – e-bikes are no faster on the flat at any level, but climb faster. */
+    @Test fun eBikesStayAtAbout25KmhOnTheFlat() {
+        for (a in listOf(Activity.EBIKE, Activity.EMTB)) {
+            val flat = PaceModel.bikeSpeedMs(0.0, a) * 3.6
+            for (p in Pace.entries) {
+                val f = TimeEstimate.planFactors(a, AppSettings(bikePace = p))
+                assertTrue("$a $p", flat / f.flat <= Pace.E_FLAT_CAP_KMH + 1e-9)
+                assertEquals(p.factor, f.up, 1e-12)
+                assertEquals(p.factor, f.down, 1e-12)
+                val kmh = p.meaning(a).substringAfter("about ").substringBefore(" km/h").toDouble()
+                assertTrue("$a $p: ${p.meaning(a)}", kmh <= 25.0)
+            }
+            // slower levels stay slower on the flat; Fit / Very fit = the capped speed, still faster uphill
+            assertTrue(TimeEstimate.planFactors(a, AppSettings(bikePace = Pace.RELAXED)).flat > 1.0)
+            assertEquals("about 25 km/h", Pace.VERY_FIT.meaning(a).substringBefore(" ·"))
+            fun up(p: Pace) = p.meaning(a).substringAfter("· ").substringBefore(" m").toInt()
+            assertTrue(up(Pace.VERY_FIT) > up(Pace.FIT) && up(Pace.FIT) > up(Pace.AVERAGE))
+        }
+        // other bikes are not capped
+        assertEquals(Factors.ONE * Pace.VERY_FIT.factor, TimeEstimate.planFactors(Activity.BIKE_TOURING, AppSettings(bikePace = Pace.VERY_FIT)))
     }
 }

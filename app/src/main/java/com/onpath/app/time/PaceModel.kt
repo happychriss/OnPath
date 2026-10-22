@@ -248,15 +248,26 @@ enum class Pace(val label: String, val speed: Double) {
     val factor: Double get() = 1.0 / speed
 
     /**
+     * Time factors (down / flat / up) of this level for [activity]: [factor] everywhere, except e-bikes on the flat
+     * (owner 2026-10-22): the motor stops at 25 km/h, so a fitter rider is not faster there – the flat speed stays at
+     * most about [E_FLAT_CAP_KMH] at every level (climbs still get faster with the level).
+     */
+    fun factors(activity: com.onpath.app.routing.Activity): Factors {
+        if (!isEBike(activity)) return Factors.ONE * factor
+        val flatKmh = PaceModel.bikeSpeedMs(0.0, activity) * 3.6
+        return Factors(factor, maxOf(factor, flatKmh / E_FLAT_CAP_KMH), factor)
+    }
+
+    /**
      * What the level means for [activity], in plain words for Settings: hiking "about 4 km/h · 300 m up per hour"
      * ([Din33466] × [speed]); bikes the same from the power model: speed on the flat and height gained per hour on a
-     * steady [BIKE_CLIMB] climb, both on the activity's usual surface, × [speed].
+     * steady [BIKE_CLIMB] climb, both on the activity's usual surface, × [speed] (e-bikes on the flat: capped, see [factors]).
      */
     fun meaning(activity: com.onpath.app.routing.Activity): String {
         val (kmh, upMh) = if (activity == com.onpath.app.routing.Activity.HIKE) {
             Din33466.FLAT_KMH * speed to Din33466.UP_M_PER_H * speed
         } else {
-            PaceModel.bikeSpeedMs(0.0, activity) * 3.6 * speed to
+            PaceModel.bikeSpeedMs(0.0, activity) * 3.6 / factors(activity).flat to
                 PaceModel.bikeSpeedMs(BIKE_CLIMB, activity) * BIKE_CLIMB * 3600 * speed
         }
         val speedText = if (kmh < 10) {
@@ -268,6 +279,12 @@ enum class Pace(val label: String, val speed: Double) {
 
     companion object {
         val DEFAULT = AVERAGE
+
+        /** Highest flat speed of e-bikes at any level (km/h): the assist limit. */
+        const val E_FLAT_CAP_KMH = 25.0
+
+        fun isEBike(a: com.onpath.app.routing.Activity) =
+            a == com.onpath.app.routing.Activity.EBIKE || a == com.onpath.app.routing.Activity.EMTB
 
         /** Gradient of the "steady climb" in a bike level's [meaning] (6 %: a typical pass road). */
         const val BIKE_CLIMB = 0.06
