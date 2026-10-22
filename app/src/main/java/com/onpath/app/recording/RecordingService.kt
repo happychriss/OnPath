@@ -249,6 +249,10 @@ class RecordingService : Service() {
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
+        // T5 in the background (owner 2026-10-22): map areas ahead load also with the screen off; joined after the tour
+        try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = true; holdUpdates = true } } catch (e: Exception) {
+            Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
+        }
         acquireWakeLock()
         tracker.onFix = { onFix(it) }
         tracker.start()
@@ -332,6 +336,9 @@ class RecordingService : Service() {
         }
         try { junctionCue() } catch (e: Exception) {
             Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
+        }
+        try { mapsAhead(p.toGeo()) } catch (e: Exception) {
+            Problems.warn("cells", "Map ahead not requested on a GPS fix; asked again further on", e)
         }
         try {
             // position on the line (null = not on the route) and whether it may be learned (forwards, on the line)
@@ -503,6 +510,22 @@ class RecordingService : Service() {
         rerouteJob?.cancel(); rerouteJob = null
     }
 
+    private var t5LastAt: GeoPoint? = null
+    private val tourCells by lazy { com.onpath.app.cells.CellTriggers(com.onpath.app.cells.AppCells.get(this)) }
+
+    /**
+     * T5 in the background: every [T5_STEP_M] on a tour, the map areas within ~5 km of the edge of the detailed map
+     * and the routing data around the position (re-routing past the edge). Quiet; map areas are joined after the tour.
+     */
+    private fun mapsAhead(g: GeoPoint) {
+        val last = t5LastAt
+        if (last != null && com.onpath.app.data.Geo.distance(last, g) < T5_STEP_M) return
+        t5LastAt = g
+        val asked = tourCells.onTour(g)
+        if (asked.isNotEmpty()) Problems.info("cells", "Tour near the edge of the map: asked for ${asked.joinToString()}")
+        com.onpath.app.data.AppRouting.get(this).ensure(com.onpath.app.data.RoutingTiles.forPoints(listOf(g), T5_ROUTING_MARGIN_M))
+    }
+
     /** Before a junction of the followed line: 2 short pulses = left, 3 = right ([JunctionCues]). */
     private fun junctionCue() {
         val st = navigator?.state ?: return
@@ -629,6 +652,9 @@ class RecordingService : Service() {
     }
 
     private fun finish() {
+        try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = false; holdUpdates = false } } catch (e: Exception) {
+            Problems.warn("cells", "Map areas loaded during the tour not released; they join at the next app start", e)
+        }
         if (tourId >= 0) {
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
             // GPX copy in Documents/OnPath (backup/Backups): on its own thread, never holds up the end of the tour
@@ -864,6 +890,9 @@ class RecordingService : Service() {
     }
 
     companion object {
+        /** T5 in the background: checked every this many metres on a tour; routing data within this margin. */
+        const val T5_STEP_M = 300.0
+        const val T5_ROUTING_MARGIN_M = 5_000.0
         const val ACTION_START = "com.onpath.app.START"
         const val ACTION_PAUSE = "com.onpath.app.PAUSE"
         const val ACTION_RESUME = "com.onpath.app.RESUME"

@@ -47,6 +47,8 @@ sealed interface CellState {
     }
     /** Joining the downloaded cell into the map. */
     data object Installing : CellState
+    /** Downloaded during a tour ([MapCells.holdUpdates]): joined into the map after the tour / back in Plan. */
+    data object Downloaded : CellState
     data class Ready(val version: String) : CellState
     /** No connection / server not reachable: retried by itself. [message] is plain language for the card. */
     data class Offline(val message: String) : CellState
@@ -63,6 +65,7 @@ fun CellState.label(): String = when (this) {
     is CellState.WaitingForWifi -> "ready – waits for Wi-Fi" + (bytes?.let { " (${it / 1_048_576} MB)" } ?: "")
     is CellState.Downloading -> if (totalBytes <= 0) "ready – downloading" else "downloading $percent %"
     CellState.Installing -> "adding to the map"
+    CellState.Downloaded -> "on the phone – shows after the tour"
     is CellState.Ready -> "ready ($version)"
     is CellState.Offline -> message
     is CellState.Failed -> message
@@ -98,6 +101,8 @@ class MapCells(
     private val appVersion: String,
     /** Seconds the server asks to wait → milliseconds to wait (tests shorten it). */
     private val pollDelayMs: (Int) -> Long = { it * 1000L },
+    /** Polling while the app is not on screen and a tour runs (tests shorten it). */
+    private val backgroundPollMs: Long = BACKGROUND_POLL_MS,
     private val now: () -> Long = System::currentTimeMillis,
 ) : CellSource {
     // ------------------------------------------------------------------------------------------- public state
@@ -118,9 +123,22 @@ class MapCells(
     @Volatile var wifiOnly: Boolean = false
         set(v) { field = v; wake() }
 
-    /** True while a tour runs (Navigate): newer versions of installed cells wait – the map never switches mid-tour. */
+    /**
+     * True while a tour runs (Navigate / recording service): cells still download, but are joined into the map only
+     * when this goes false (after the tour / back in Plan) – the map never switches under the user's feet (owner).
+     */
     @Volatile var holdUpdates: Boolean = false
-        set(v) { val was = field; field = v; if (was && !v) wake() }
+        set(v) {
+            val was = field; field = v
+            if (was && !v) { scope.launch { work.withLock { joinHeld() } }; wake() }
+        }
+
+    /**
+     * The recording service runs a tour: requests are sent and polled also while the app is not on screen (T5 in the
+     * background, owner 2026-10-22) – at most every [BACKGROUND_POLL_MS].
+     */
+    @Volatile var tourInBackground: Boolean = false
+        set(v) { field = v; if (v) wake() }
 
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
@@ -350,6 +368,22 @@ class MapCells(
         }
     }
 
+    /** Joins the cells downloaded during a tour ([CellState.Downloaded]) – called when [holdUpdates] goes false. */
+    private fun joinHeld() {
+        try {
+            val cur = store.current()
+            val pending = store.pendingDownloads()
+            val toJoin = pending.filter { d -> cur?.cell(d.manifest.cell)?.version != d.manifest.version }
+            pending.filter { it !in toJoin }.forEach { store.deleteDownloads(it.manifest.cell) }
+            if (toJoin.isEmpty()) return
+            publish(store.apply(add = toJoin))
+            toJoin.forEach { store.deleteDownloads(it.manifest.cell); set(it.manifest.cell, CellState.Ready(it.manifest.version)) }
+            Problems.info("cells", "Map cells downloaded during the tour joined: ${toJoin.joinToString { it.manifest.cell.id }}")
+        } catch (e: Exception) {
+            Problems.error("cells", "Map areas downloaded during the tour could not be joined; they load again", e)
+        }
+    }
+
     private fun queued(c: CellId): Boolean = synchronized(queue) { c in queue }
 
     /** The user cancelled a cell while it downloaded ([cancel]). */
@@ -382,9 +416,9 @@ class MapCells(
             // 1. ready cells we may download: own point first
             val ready = pending.filter { state(it.id).let { s -> s is CellState.WaitingForWifi || s is CellState.Downloading || s == READY_ON_SERVER } }
             val inst = _installed.value.map { it.id }.toSet()
-            val next = ready.filter { allowed(it) && !(holdUpdates && it.id in inst) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
+            val next = ready.filter { allowed(it) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
             if (next != null) { downloadAndInstall(next); backoff = 0; return 0 }
-            if (!foreground) return IDLE_MS
+            if (!foreground && !tourInBackground) return IDLE_MS
             // 2. send requests not sent in this run (grouped by reason), else poll status
             val unsent = pending.filter { it.id !in sent }
             val answer = if (unsent.isNotEmpty()) {
@@ -403,7 +437,8 @@ class MapCells(
             val anyReadyAllowed = pending.any { state(it.id) == READY_ON_SERVER && allowed(it) }
             if (anyReadyAllowed) return 0
             val stillBuilding = pending.any { state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
-            return if (stillBuilding) pollDelayMs(answer.pollS) else IDLE_MS
+            return if (!stillBuilding) IDLE_MS
+                else if (foreground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
         } catch (e: CellApi.ApiException) {
             return failed(e, pending)
         }
@@ -511,6 +546,13 @@ class MapCells(
             val complete = store.completeDir(m)
             complete.deleteRecursively()
             if (!part.renameTo(complete)) throw java.io.IOException("could not finish the download folder")
+            if (holdUpdates) {
+                // a tour runs: the download stays complete on disk and is joined after the tour ([joinHeld])
+                dequeue(c); damaged -= c
+                set(c, CellState.Downloaded)
+                Problems.info("cells", "Map cell $c downloaded during a tour; shown after the tour")
+                return
+            }
             set(c, CellState.Installing)
             val gen = store.apply(add = listOf(CellStore.Download(m, complete)))
             store.deleteDownloads(c)
@@ -596,6 +638,8 @@ class MapCells(
         /** Ready on the server, download allowed – internal marker state (shown as 0 % downloading). */
         private val READY_ON_SERVER = CellState.Downloading(0, 0)
         private const val IDLE_MS = 15 * 60_000L
+        /** Polling the build status while the app is not on screen (tour in the background). */
+        const val BACKGROUND_POLL_MS = 30_000L
         private const val MAX_PER_CALL = 40
         private const val DAY = 24L * 3600 * 1000
     }

@@ -136,6 +136,8 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
                 MapLoadUi(MapLoadUi.Kind.LOADING, shown.toInt(), left)
             }
             CellState.Installing -> { shown = max(shown, 99.0); MapLoadUi(MapLoadUi.Kind.LOADING, 99, 0) }
+            // downloaded during a tour: on the phone, joined after it – as far as the loading window goes, it is done
+            CellState.Downloaded -> { shown = 100.0; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
             is CellState.Ready -> { shown = 100.0; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
             is CellState.Offline -> MapLoadUi(MapLoadUi.Kind.OFFLINE, shown.toInt(), null)
             is CellState.WaitingForWifi -> MapLoadUi(MapLoadUi.Kind.WIFI, shown.toInt(), null)
