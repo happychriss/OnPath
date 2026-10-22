@@ -19,7 +19,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   suggestions; (9) deleting the goal of a 2-point plan during a tour → persistent question "Route back to the start?"
   (Yes = route from position to start, No = plain recording); (10) battery: slower GPS when standing still (never lose a
   point), NO battery % in the tour summary; (11) Play internal test track later (after vehicle detection + approach 1);
-  (12) "empty plan during a tour" – decide after the diagnostics check (cause unknown).
+  (12) "empty plan during a tour" – decide after the diagnostics check (cause unknown); (13) **Navigate shows only the route
+  line – no numbered plan points** (reverts 0.9.1 fix 4; Plan keeps the points).
 - **[cloud → laptop] HANDOVER 2026-10-22 evening: `docs/handover-2026-10-22-cloud.md`** – 0.9.2 current (0.9.1 crashes
   at start – never use); laptop first: track-gap check with the phone's GPX + diagnostics, "route without points during
   a tour", confirm the new release smoke gate; then vehicle detection / approach 1.
