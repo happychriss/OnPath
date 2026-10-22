@@ -49,7 +49,9 @@ class CorePointsListE2ETest : E2EBase() {
             desc("Resize panel").click(); Thread.sleep(500)
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
-        if (device.wait(Until.findObject(By.text("Points")), 5_000) == null) {
+        // the rows' ✕ (content descriptions) – UiAutomator found the "Points" header text only now and then on CI,
+        // although it was on screen (screenshots 2026-10-22)
+        if (device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000) == null) {
             shot("no-points-section")
             var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
             throw AssertionError("Points section shown – tour running $rec – ${state()}")
@@ -118,12 +120,12 @@ class CorePointsListE2ETest : E2EBase() {
         }
         dragHandle(-(h * 0.35f).toInt())
         waitUntil("full sheet after a swipe up") { size() == PlanSize.FULL }
-        assertNotNull("points shown", device.wait(Until.findObject(By.text("Points")), 5_000))
+        assertNotNull("points shown", device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000))
         Thread.sleep(600)
         dragHandle((h * 0.2f).toInt())
         waitUntil("half sheet after a swipe down") { size() == PlanSize.COMPACT }
         // the list leaves with the sheet's animation: wait until it is gone (a single look found a stale node, CI 2026-10-22)
-        if (!device.wait(Until.gone(By.text("Points")), 3_000)) {
+        if (!device.wait(Until.gone(By.descStartsWith("Delete point")), 3_000)) {
             shot("points-still-there")
             throw AssertionError("no points list in the half sheet – size ${size()} – ${state()}")
         }

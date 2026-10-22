@@ -1140,12 +1140,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** First hold on an empty plan: the held spot, its menu "Start here · Go here (from my location)" is open. */
     var firstPointMenu by mutableStateOf<GeoPoint?>(null)
 
-    /** Hold 48–80 dp from a route point: "Point N: options" · "New point here" is open. */
-    var nearChoice by mutableStateOf<NearPointChoice?>(null)
-        private set
-
     val mapOverlayOpen: Boolean get() =
-        poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null || nearChoice != null
+        poiMenu != null || pointMenu != null || firstPointMenu != null || planPoi != null
 
     /** Closes every map menu; [why] goes into the gesture log (Diagnostics) when a point menu was open. */
     fun closeMapOverlays(why: String = "closed") {
@@ -1153,7 +1149,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // tapping elsewhere – removes the orange ring too.
         if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
         closePointMenu(why)
-        if (nearChoice != null) { Problems.trace("plan", "Near-point menu closed: $why"); nearChoice = null }
         if (firstPointMenu != null) Problems.trace("plan", "First-point menu closed: $why")
         if (poiMenu != null) Problems.trace("plan", "POI menu closed: $why")
         poiMenu = null; firstPointMenu = null; if (planPoi != null) closePlaceCard()
@@ -1166,33 +1161,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "Point menu closed (point ${t.index + 1}): $why")
     }
 
-    /**
-     * Hold 48–80 dp from route point [index] ([distDp] from the finger): ask "Point N: options" · "New point here".
-     * [at] = the held spot, [lineSnapM] its "on the line" distance for a new point.
-     */
-    fun openNearChoice(index: Int, at: GeoPoint, lineSnapM: Double, distDp: Int?) {
-        closeMapOverlays("hold near point ${index + 1}")
-        val p = waypoints.getOrNull(index) ?: return
-        nearChoice = NearPointChoice(PointMenuTarget(index, p), at, lineSnapM)
-        Problems.trace("plan", "Near-point menu opened: point ${index + 1} of ${waypoints.size} at ${distDp ?: "?"} dp")
-    }
-
-    /** Near-point menu → "Point N: options": that point's menu. */
-    fun nearChoiceOptions() {
-        val c = nearChoice ?: return
-        nearChoice = null
-        val i = c.target.indexIn(waypoints)
-        Problems.trace("plan", "Near-point menu: options of point ${c.target.index + 1} (now ${i?.plus(1)})")
-        if (i != null) openPointMenu(i, via = "near-point menu")
-    }
-
-    /** Near-point menu → "New point here": the held spot is added like any hold on the map. */
-    fun nearChoiceNewPoint() {
-        val c = nearChoice ?: return
-        nearChoice = null
-        Problems.trace("plan", "Near-point menu: new point here (plan ${waypoints.size} → ${waypoints.size + 1})")
-        addPoint(c.at, c.lineSnapM)
-    }
     fun openFirstPointMenu(p: GeoPoint) {
         closeMapOverlays("first-point menu opened")
         if (waypoints.isEmpty()) { firstPointMenu = p; Problems.trace("plan", "First-point menu opened") }
@@ -1254,7 +1222,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
 
     /** Point menu → "End route here" (middle points only): that point becomes the destination. */
-    fun endRouteAt() { val index = menuAction("End here") ?: return; set(PlanEdits.endAt(waypoints, index)) }
 
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
@@ -1593,7 +1560,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prev ?: return
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
-        closePointMenu("undo / redo"); nearChoice = null; firstPointMenu = null
+        closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
         recalc()
@@ -1615,7 +1582,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         confirmClear = false
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
-        closePointMenu("plan cleared"); nearChoice = null; firstPointMenu = null; highlight = null
+        closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
@@ -1798,7 +1765,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.replacePoints(moves)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
         pointMenuTarget = pointMenuTarget?.afterSnap(moves)
-        nearChoice = nearChoice?.let { it.copy(target = it.target.afterSnap(moves)) }
         prefs.planWaypoints = waypoints.toList()
     }
 
@@ -2017,7 +1983,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
     private fun enter(m: AppMode) {
         mode = m
-        if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); nearChoice = null; firstPointMenu = null; highlight = null; followMe = true }
+        if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; highlight = null; followMe = true }
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
         // map); north up stops following as before
         else followMe = headingUp && followMe && tracker.location.value != null

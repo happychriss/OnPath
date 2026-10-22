@@ -8,6 +8,7 @@ import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -55,8 +56,8 @@ class CoreDeleteE2ETest : E2EBase() {
         waitUntil("third point by a hold") { waypointCount() == 3 }
     }
 
-    /** Catch zone: ≤ 48 dp → the point's menu; 48–80 dp → ask; beyond → a new point. */
-    @Test fun catchZoneAt30_45_68_90dp() {
+    /** Catch zone: ≤ 48 dp → the point's menu; beyond → a new point, no question in between (owner 2026-10-22). */
+    @Test fun catchZoneAt30_45_68dp() {
         startPlanWithTwoPoints()
         settle()
         for (dp in listOf(30f, 45f)) {
@@ -66,27 +67,8 @@ class CoreDeleteE2ETest : E2EBase() {
             closeMenu()
         }
         holdAbove(1, 68f)
-        assertNotNull("ask at 68 dp – ${state()}", device.wait(Until.findObject(By.text("New point here")), 5_000))
-        assertEquals("no point added at 68 dp", 2, waypointCount())
-        clickText("Point 2: options")
-        clickText("Delete")
-        waitUntil("point 2 deleted via the near-point menu") { waypointCount() == 1 }
-        // a point again, then 90 dp away: a new point
-        val (w, h) = mapSize()
-        hold(w * 0.65f, h * 0.45f)
-        waitUntil("second point again") { waypointCount() == 2 }
-        settle()
-        holdAbove(1, 90f)
-        waitUntil("new point at 90 dp") { waypointCount() == 3 }
-    }
-
-    /** "New point here" in the near-point menu adds the point after all. */
-    @Test fun nearPointMenuNewPointHere() {
-        startPlanWithTwoPoints()
-        settle()
-        holdAbove(1, 68f)
-        clickText("New point here")
-        waitUntil("point added from the near-point menu") { waypointCount() == 3 }
+        waitUntil("new point at 68 dp, no question") { waypointCount() == 3 }
+        assertNull("no near-point question", device.findObject(By.text("New point here")))
     }
 
     /** Delete right after the route was calculated (points just snapped onto ways). */

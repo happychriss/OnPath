@@ -79,8 +79,3 @@ data class PointMenuTarget(val index: Int, val point: GeoPoint) {
     fun afterSnap(moves: Map<GeoPoint, GeoPoint>): PointMenuTarget = moves[point]?.let { copy(point = it) } ?: this
 }
 
-/**
- * Hold 48–80 dp from route point [index] (MapGestures.NearPointChoice): the small menu "Point N: options" ·
- * "New point here". [at] = the held spot, [lineSnapM] = "on the line" distance at the zoom of the hold.
- */
-data class NearPointChoice(val target: PointMenuTarget, val at: GeoPoint, val lineSnapM: Double)

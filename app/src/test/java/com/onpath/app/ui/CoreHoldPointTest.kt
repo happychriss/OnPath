@@ -35,8 +35,7 @@ class CoreHoldPointTest {
     private fun press(points: List<GeoPoint>, cam: Camera, finger: Pair<Float, Float>, press: Press = Press.HOLD,
                       downMarker: Int = -1, menuOpen: Boolean = false, poi: Boolean = false): Action {
         val m = MapGestures.markerUnderFinger(points, cam::toScreen, finger.first, finger.second, press, downMarker, radius)
-        val near = if (m >= 0) -1 else MapGestures.markerUnderFinger(points, cam::toScreen, finger.first, finger.second, press, -1, nearRadius)
-        return MapGestures.decide(true, press, menuOpen, m, poi = poi, planEmpty = points.isEmpty(), near = near)
+        return MapGestures.decide(true, press, menuOpen, m, poi = poi, planEmpty = points.isEmpty())
     }
 
     /** A finger [dp] away from point [i], in direction [deg]. */
@@ -61,15 +60,15 @@ class CoreHoldPointTest {
 
     /**
      * Field 2026-10-21 (Pixel 8, 0.8.5): 4 of 21 holds were 68 dp from the point ("felt on the point", about 1 cm) and
-     * added a new point. Catch zone: up to 48 dp -> that point's menu; 48-80 dp -> ask (its options / new point here);
-     * beyond -> new point.
+     * added a new point. Catch zone: up to 48 dp -> that point's menu; beyond -> a new point, no question (owner
+     * 2026-10-22: "Punkt setzen ist Punkt setzen, Punkt löschen ist Punkt löschen").
      */
     @Test fun catchZoneAt30_45_68_90dp() {
         val cam = Camera(mPerPx = 1.0) // points >= 160 dp apart: only point 2 is in reach
         for (deg in listOf(0.0, 90.0, 200.0, 315.0)) {
             assertEquals("30 dp at $deg", Action.PointMenu(1), press(plan, cam, beside(cam, 1, 30f, deg)))
             assertEquals("45 dp at $deg", Action.PointMenu(1), press(plan, cam, beside(cam, 1, 45f, deg)))
-            assertEquals("68 dp at $deg", Action.NearPointChoice(1), press(plan, cam, beside(cam, 1, 68f, deg)))
+            assertEquals("68 dp at $deg", Action.AddPoint, press(plan, cam, beside(cam, 1, 68f, deg)))
             assertEquals("90 dp at $deg", Action.AddPoint, press(plan, cam, beside(cam, 1, 90f, deg)))
         }
     }
@@ -81,8 +80,8 @@ class CoreHoldPointTest {
         val (x0, y0) = cam.toScreen(pts[0])
         assertEquals(Action.PointMenu(0), press(pts, cam, x0 + 30 * density to y0))
         assertEquals(Action.PointMenu(1), press(pts, cam, x0 + 40 * density to y0))
-        // 60 dp left of point 1 (130 dp from point 2): ask about point 1
-        assertEquals(Action.NearPointChoice(0), press(pts, cam, x0 - 60 * density to y0))
+        // 60 dp left of point 1 (130 dp from point 2): a new point
+        assertEquals(Action.AddPoint, press(pts, cam, x0 - 60 * density to y0))
     }
 
     @Test fun catchZoneCountsForPinnedPoiStopsAndBeatsAnotherPoi() {
@@ -93,7 +92,7 @@ class CoreHoldPointTest {
         assertEquals(Action.PoiMenu, press(plan, cam, beside(cam, 1, 68f), poi = true))
     }
 
-    @Test fun nearChoiceOnlyForAHold() {
+    @Test fun besideAPointTapAndDismiss() {
         val cam = Camera(mPerPx = 1.0)
         assertEquals(Action.None, press(plan, cam, beside(cam, 1, 68f), press = Press.TAP))
         // with a menu open a hold near a point only closes it (dismissing never adds or asks)
