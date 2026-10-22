@@ -222,7 +222,8 @@ def version_name(osm_date, schema=CELL_SCHEMA):
     return f"{osm_date}-s{schema}"
 
 
-def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None):
+def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None):
+    """sources: [{id, date, url}] of the OSM extracts the cell was cut from (debugging aid; the app ignores it)."""
     files = []
     for name in list_files(d):
         p = os.path.join(d, name)
@@ -232,6 +233,8 @@ def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, versio
          "osm_date": osm_date, "version": version or osm_date, "schema": CELL_SCHEMA, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "pipeline": f"git:{git_rev}", "min_app": MIN_APP, "files": files,
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
+    if sources:
+        m["sources"] = [{k: s.get(k) for k in ("id", "date", "url")} for s in sources]
     with open(os.path.join(d, "manifest.json.tmp"), "w") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
     os.replace(os.path.join(d, "manifest.json.tmp"), os.path.join(d, "manifest.json"))
@@ -287,7 +290,11 @@ def main(argv):
     elif cmd == "manifest":
         fmt = int(a[a.index("--format") + 1]) if "--format" in a else FORMAT
         ver = a[a.index("--version") + 1] if "--version" in a else None
-        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver)
+        src = None
+        if "--sources" in a:
+            with open(a[a.index("--sources") + 1]) as f:
+                src = json.load(f)
+        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver, src)
         print(f"    manifest: {len(m['files'])} files, {m['total_size'] / 1e6:.1f} MB")
     else:
         print(__doc__)

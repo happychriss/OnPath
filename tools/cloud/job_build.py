@@ -348,8 +348,9 @@ class Builder:
             log(f"WARN: could not save planetiler sources: {e}")
 
     # ------------------------------------------------------------------ one cell
-    def run_build(self, z, x, y, src_pbfs, cid):
+    def run_build(self, z, x, y, src_pbfs, cid, src_meta=None):
         env = dict(self.env, SRC_PBF=" ".join(src_pbfs), DATA_ROOT=self.data_root, WORK=self.work,
+                   SRC_META=json.dumps([{"id": m.get("id"), "url": m.get("url")} for m in (src_meta or [])]),
                    FORMAT=str(self.fmt), PLANETILER_SOURCES=os.path.join(self.work, "planetiler-sources"),
                    KEEP_WORK="0", BUFFER_KM=str(self.buffer_km).rstrip("0").rstrip("."))
         p = self.popen(["bash", self.build_cell, str(z), str(x), str(y)], env=env, stdout=subprocess.PIPE,
@@ -416,7 +417,7 @@ class Builder:
             self.status(cid, "failed", reason=UNAVAILABLE, detail=str(e)[:500])
             return False
         t_build = time.time()
-        rc, tail = self.run_build(z, x, y, pbfs, cid)
+        rc, tail = self.run_build(z, x, y, pbfs, cid, sources)
         if rc != 0:
             step = next((m.group(1) for line in reversed(tail) for m in [re.search(r"step (\S+) failed", line)] if m),
                         None)
