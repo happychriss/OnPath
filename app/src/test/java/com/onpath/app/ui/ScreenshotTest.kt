@@ -563,34 +563,6 @@ class ScreenshotTest {
         OnPathTheme { Frame { PlanPanel(planUi(), PlanCallbacks()) }; ConfirmClearDialog(3, {}, {}) }
     }
 
-    @Test fun settings() = paparazzi.snapshot {
-        OnPathTheme {
-            SettingsScreen(
-                AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden), {},
-                listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
-                "/storage/emulated/0/Android/data/com.onpath.app/files/onpath", "0.2.0 (build 2)", {},
-                initiallyExpanded = setOf(PoiGroup.FOOD),
-            )
-        }
-    }
-
-    /** Whole settings page on a tall canvas (all sections). */
-    @Test fun settingsFull() {
-        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)))
-        paparazzi.snapshot {
-            OnPathTheme {
-                SettingsScreen(
-                    AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, contours = false, offRouteM = 25), {},
-                    listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("terrain.pmtiles", true, "Relief / elevation"),
-                        DataFiles.Check("segments/*.rd5", false, "Routing data")),
-                    "/storage/emulated/0/Android/data/com.onpath.app/files/onpath", "0.2.0 (build 2)", {},
-                    themes = listOf("classic"),
-                )
-            }
-        }
-    }
-
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),

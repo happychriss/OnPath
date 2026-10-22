@@ -313,21 +313,36 @@ class MapCells(
         update { m -> cells.forEach { c -> if (m[c] !is CellState.Ready) m.remove(c) } }
     }
 
-    /** Deletes installed cells (tiles, POIs, addresses). Runs on the worker; [generation] changes when done. */
-    fun delete(cells: Collection<CellId>) {
+    /**
+     * Deletes installed cells (tiles, POIs, addresses) – Settings → Offline maps (one area, "Clean up", "Clear all").
+     * Their requests go at once; the files leave the map through the normal store generation path on the worker
+     * ([removeIfDue]): batched (several calls in one generation), never while the user drags the map, and never while
+     * [holdUpdates] (a tour runs – the map does not switch under the user's feet; removed after the tour).
+     */
+    fun delete(cells: Collection<CellId>, why: String = "deleted in Settings") {
+        if (cells.isEmpty()) return
         cancel(cells)
-        scope.launch {
-            work.withLock {
-                try {
-                    synchronized(finished) { cells.forEach { finished.remove(it) } }
-                    store.apply(remove = cells.toSet()).also { publish(it) }
-                    cells.forEach { store.deleteDownloads(it); update { m -> m.remove(it) } }
-                } catch (e: Exception) {
-                    Problems.error("cells", "Map area could not be deleted", e)
-                }
-            }
-        }
+        synchronized(finished) { cells.forEach { finished.remove(it) } }
+        synchronized(toRemove) { toRemove += cells }
+        Problems.trace("cells", "Removing ${cells.size} region(s) – $why: ${cells.joinToString { it.id }}" +
+            (if (holdUpdates) " (after the tour)" else ""))
+        wake()
     }
+
+    /**
+     * Settings → Offline maps → "Clear all" (owner 2026-10-22): every request goes and every downloaded area is removed
+     * (the world overview in the APK stays); areas load again when needed. Returns the removed areas.
+     */
+    fun clearAll(): List<CellId> {
+        val all = _installed.value.map { it.id }
+        cancel(synchronized(queue) { queue.keys.toList() } + _states.value.keys)
+        delete(all, "Clear all in Settings")
+        if (all.isEmpty()) Problems.trace("cells", "Clear all in Settings: no downloaded areas")
+        return all
+    }
+
+    /** Installed areas waiting to be removed ([delete]) – Settings shows "removed after the tour". */
+    fun removing(): Set<CellId> = synchronized(toRemove) { toRemove.toSet() }
 
     /** Connectivity changed (Wi-Fi came back …): check at once instead of waiting for the next round. */
     fun networkChanged() = wake()
@@ -405,6 +420,8 @@ class MapCells(
     private val sizes = java.util.concurrent.ConcurrentHashMap<CellId, Long>()
     /** Downloaded and verified, waiting to be joined with others in one generation ([joinIfDue]). */
     private val finished = LinkedHashMap<CellId, CellStore.Download>()
+    /** Installed areas to remove in the next generation ([delete], [removeIfDue]). */
+    private val toRemove = LinkedHashSet<CellId>()
     private var firstFinishedAt = 0L
     private var lastFinishedAt = 0L
 
@@ -507,9 +524,33 @@ class MapCells(
      */
     private fun step(): Long {
         prune()
+        val removeWait = removeIfDue()
         val joinWait = joinIfDue()
         val w = stepQueue()
-        return if (joinWait == null) w else minOf(w, joinWait)
+        return listOfNotNull(w, joinWait, removeWait).min()
+    }
+
+    /**
+     * Applies the areas waiting in [toRemove] in one generation – not while [userBusy] (rechecked soon), not while
+     * [holdUpdates] (the setter wakes the worker after the tour). Null = nothing to do now.
+     */
+    private fun removeIfDue(): Long? {
+        val ids = synchronized(toRemove) { toRemove.toSet() }
+        if (ids.isEmpty() || holdUpdates) return null
+        if (userBusy) return BUSY_RECHECK_MS
+        try {
+            val gen = store.apply(remove = ids)
+            ids.forEach { store.deleteDownloads(it) }
+            synchronized(toRemove) { toRemove.removeAll(ids) }
+            publish(gen)
+            update { m -> ids.forEach { m.remove(it) } }
+            Problems.trace("cells", "Removed ${ids.size} region(s) from the map in one update (generation ${gen.number}): " +
+                ids.joinToString { it.id })
+        } catch (e: Exception) {
+            synchronized(toRemove) { toRemove.removeAll(ids) }
+            Problems.error("cells", "Map areas could not be deleted", e)
+        }
+        return null
     }
 
     /**
@@ -712,7 +753,7 @@ class MapCells(
             val free = store.root.apply { mkdirs() }.usableSpace
             val need = m.totalSize * 2 + CellStore.MARGIN // download + its tiles in the new store generation
             if (free in 0 until need) {
-                set(c, CellState.Failed("Not enough space (needs ${need / 1_048_576} MB). Delete old areas in Settings → Map data."))
+                set(c, CellState.Failed("Not enough space (needs ${need / 1_048_576} MB). Delete old areas in Settings → Offline maps."))
                 Problems.warn("cells", "Not enough space for map cell $c (${need / 1_048_576} MB needed)")
                 dequeue(c); return
             }

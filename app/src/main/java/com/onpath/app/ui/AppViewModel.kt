@@ -158,6 +158,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var settings by mutableStateOf(prefs.settings)
         private set
     var showSettings by mutableStateOf(false)
+    /** Open topic of Settings (owner 2026-10-22: list of topics → pages); null = the list. */
+    var settingsPage by mutableStateOf<SettingsPage?>(null)
+
+    /** Opens Settings, at [page] if given (map credits → About). */
+    fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }
+
+    /** Back in Settings: a topic page returns to the list, the list closes Settings. */
+    fun settingsBack() { if (settingsPage != null) settingsPage = null else showSettings = false }
 
     // --- Navigate orientation + next turn (navigation agent; see NavigateScreen, MapController.setCamera) ---
     /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
@@ -568,18 +576,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeCellCard()
     }
 
+    /** Offline maps → "Clear all" is not offered while a tour runs (its map must not change under the user's feet). */
+    val mapsLocked: Boolean get() = recState.value != null || mode == AppMode.NAVIGATE
+
     /**
-     * Settings → Diagnostics → "Reset maps": deletes every downloaded map area and the queue – the app is like freshly
-     * installed for maps; the own position (T3) and the next point set fetch them again (owner: test a fresh install).
+     * Settings → Offline maps → "Clear all" (owner 2026-10-22, replaces Diagnostics → "Reset maps"): every downloaded
+     * map area and every waiting request goes, the world overview stays; the area of the position (T3) and the next
+     * point set load again as on a new install. Not during a tour.
      */
-    fun resetMapsLikeFreshInstall() = safeCells("reset") {
-        val all = cells.installed.value.map { it.id }
-        cells.cancel(cells.states.value.keys.toList())
-        if (all.isNotEmpty()) cells.delete(all)
+    fun clearAllMaps() = safeCells("clear all") {
+        if (mapsLocked) { Problems.info("cells", "Clear all refused: a tour runs"); return@safeCells }
+        val all = cells.clearAll()
         if (all.isNotEmpty()) removeRoutingParts(all, emptyList())
+        cleanupPreview = null
         closeCellCard(); t3Pending = true; t5LastAt = null
-        message = "Map areas deleted (${all.size}). The map for your position loads again as on a new install."
-        Problems.info("cells", "Maps reset like a fresh install (${all.size} area(s) deleted)")
+        message = if (all.isEmpty()) "No map areas to remove."
+            else "All map areas removed (${all.size}). They load again when you plan or go there."
+    }
+
+    /** Settings → Offline maps → "Clean up": what would go, shown before anything is removed ([confirmCleanup]). */
+    fun prepareCleanup() {
+        val installed = cells.installed.value
+        val removing = cells.removing()
+        val planLine = route?.points?.takeIf { it.size >= 2 } ?: waypoints.toList()
+        val rec = recState.value
+        val tour = rec?.track.orEmpty()
+        val followed = rec?.nav?.line.orEmpty()
+        val pos = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
+        val routingBytes = routingBytesCache?.second.orEmpty()
+        viewModelScope.launch {
+            val preview = try {
+                withContext(Dispatchers.IO) {
+                    val saved = db.listTours().filter { it.kind != com.onpath.app.data.TourKind.RECORDED }
+                        .map { t -> db.loadSegments(t.id).flatten().map { GeoPoint(it.lat, it.lon) } }
+                        .filter { it.isNotEmpty() }
+                    val inputs = com.onpath.app.cells.MapCleanup.Inputs(planLine, saved, tour, followed, pos)
+                    val sizes = installed.filter { it.id !in removing }.map { it.id to it.totalBytes + (routingBytes[it.id] ?: 0L) }
+                    val plan = com.onpath.app.cells.MapCleanup.plan(sizes, inputs)
+                    CleanupPreview(plan.remove, plan.removeBytes, buildList {
+                        if (planLine.isNotEmpty()) add("your current plan")
+                        if (saved.isNotEmpty()) add("saved routes")
+                        if (rec != null) add("running tour")
+                        if (pos != null) add("where you are now")
+                    })
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                Problems.error("cells", "Clean up could not work out which map areas are needed; nothing removed", e)
+                message = "Clean up is not possible right now – nothing was removed."
+                return@launch
+            }
+            Problems.trace("cells", "Clean up preview: ${preview.remove.size} region(s) could go (${preview.bytes / 1_048_576} MB); keeps " +
+                preview.keeps.joinToString().ifEmpty { "nothing in use" })
+            cleanupPreview = preview
+        }
+    }
+
+    /** "Clean up" → Remove: the areas of [cleanupPreview] go (after the tour if one runs); routing data they alone need too. */
+    fun confirmCleanup() {
+        val p = cleanupPreview ?: return
+        cleanupPreview = null
+        if (p.remove.isEmpty()) return
+        safeCells("clean up") {
+            val kept = cells.installed.value.map { it.id }.filter { it !in p.remove }
+            cells.delete(p.remove, "Clean up in Settings")
+            removeRoutingParts(p.remove, kept)
+            message = "${p.remove.size} map ${if (p.remove.size == 1) "area" else "areas"} removed." +
+                if (mapsLocked) " The map changes after the tour." else ""
+        }
     }
 
     /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
@@ -697,12 +760,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             Problems.warn("routing", "Routing data sizes for Offline maps not readable; map sizes only", e); emptyMap()
         }
+        val removing = try { cells.removing() } catch (e: Exception) { Problems.warn("cells", "Areas being removed unknown", e); emptySet() }
         val areas = sorted.map { c ->
             val built = c.built?.take(10)?.let { b -> runCatching { iso.parse(b) }.getOrNull() }
             val st = states[c.id]
             OfflineArea(c.id.id, areaNames[c.id] ?: coordName(c.id), c.totalBytes + (routingBytes[c.id] ?: 0L),
                 fmt.format(built ?: Date(c.installedAt)),
-                st?.takeIf { it !is com.onpath.app.cells.CellState.Ready && it != com.onpath.app.cells.CellState.None }?.label())
+                if (c.id in removing) "removed after the tour" else st?.takeIf { it !is com.onpath.app.cells.CellState.Ready && it != com.onpath.app.cells.CellState.None }?.label())
         }
         val ids = installed.map { it.id }.toSet()
         val loading = states.count { (c, s) -> c !in ids && s !is com.onpath.app.cells.CellState.Failed && s != com.onpath.app.cells.CellState.None }
@@ -711,7 +775,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val r = try { routingData.status } catch (e: Exception) { Problems.warn("routing", "Routing downloads unknown", e); null }
         val waiting = WaitingDownloads(w?.regions ?: 0, r?.names?.size ?: 0,
             (w?.knownBytes ?: 0L) + (w?.unknownSize ?: 0) * BackgroundProgress.ESTIMATE_BYTES + (r?.let { it.totalBytes - it.doneBytes } ?: 0L))
-        return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading, waiting.takeIf { it.any })
+        return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading, waiting.takeIf { it.any },
+            cleanup = cleanupPreview, clearAllBlocked = if (mapsLocked) "Not during a tour – the map stays as it is until you end it." else null)
     }
 
     private fun coordName(c: com.onpath.app.cells.CellId): String = c.center.let {
@@ -731,7 +796,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteMapArea(id: String) {
         val c = com.onpath.app.cells.CellId.parse(id) ?: return
         val kept = cells.installed.value.map { it.id }.filter { it != c }
-        safeCells("delete") { cells.delete(listOf(c)) }
+        safeCells("delete") { cells.delete(listOf(c), "deleted in Settings: ${areaNames[c] ?: c.id}") }
         removeRoutingParts(listOf(c), kept)
     }
 
@@ -782,6 +847,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routeError by mutableStateOf<String?>(null)
         private set
     var highlight by mutableStateOf<GeoPoint?>(null)
+    /** Settings → Offline maps → "Clean up": what would be removed, shown until Remove / Cancel; null = no question. */
+    var cleanupPreview by mutableStateOf<CleanupPreview?>(null)
     /**
      * Plan points the route does not reach (owner 2026-10-22, [PlanGaps]): grey dashed piece + hollow point on the map,
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.

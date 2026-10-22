@@ -54,13 +54,15 @@ import com.onpath.app.recording.GpsStatus
  * (locate; in Navigate also the orientation button above it) stacked on the right.
  */
 @Composable
-fun MapFooter(scale: Pair<String, Dp>?, fabs: @Composable ColumnScope.() -> Unit) {
+fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             scale?.let { (label, width) -> ScaleBar(label, width) }
-            Text("© OpenStreetMap contributors, © OpenMapTiles, Terrarium (Mapzen/AWS)", fontSize = 9.sp, lineHeight = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2,
-                modifier = Modifier.padding(top = 4.dp).background(Color(0x99FFFFFF), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 1.dp))
+            // short credit on the map (owner 2026-10-22); a tap opens the full credits (Settings → About)
+            Text("© OpenStreetMap", fontSize = 10.sp, lineHeight = 12.sp, color = Color(0xFF333333), maxLines = 1,
+                modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
+                    .clickable(onClickLabel = "Show map credits", onClick = onCredits)
+                    .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
     }
