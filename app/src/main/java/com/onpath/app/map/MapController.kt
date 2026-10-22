@@ -48,6 +48,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_ORIGINAL_COLOR = "#8A8F98" // grey: the original route while a new one is followed
         const val SRC_PLANNED = "planned-route"
         const val SRC_GPX = "gpx-track"
+        /** Rides of a shown tour that are not counted (vehicle detection): grey dashed (bus / car), purple dashed (lift). */
+        const val SRC_RIDES = "tour-rides"
+        const val SRC_LIFTS = "tour-lifts"
         const val SRC_REC = "recorded-track"
         const val SRC_WPT = "waypoints"
         const val SRC_HL = "highlight"
@@ -73,7 +76,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val NAV_LAYERS = listOf(SRC_NAV_ORIGINAL, SRC_NAV_PROPOSAL, SRC_NAV_GUIDE)
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
-            "$SRC_GPX-casing", SRC_GPX, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
+            "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
             "planned-route-arrows", "$SRC_GPX-arrows",
         )
         private const val ARROW_IMAGE = "route-arrow"
@@ -157,6 +160,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     init {
         addNavOriginal() // below the followed line
+        addRideLine(SRC_RIDES, NAV_ORIGINAL_COLOR)
+        addRideLine(SRC_LIFTS, GPX_COLOR)
         addLine(SRC_GPX, GPX_COLOR, 5f, casing = true)
         addLine(SRC_REC, REC_COLOR, 4.5f, casing = true)
         addPlannedLayers()
@@ -185,6 +190,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         addBelowPosition(LineLayer(id, id).withProperties(
             PF.lineColor(color), PF.lineWidth(width),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
+        ))
+    }
+
+    private fun addRideLine(id: String, color: String) {
+        style.addSource(GeoJsonSource(id))
+        addBelowPosition(LineLayer(id, id).withProperties(
+            PF.lineColor(color), PF.lineWidth(3.5f), PF.lineOpacity(0.9f), PF.lineDasharray(arrayOf(1.4f, 1.2f)),
+            PF.lineJoin(Property.LINE_JOIN_ROUND),
         ))
     }
 

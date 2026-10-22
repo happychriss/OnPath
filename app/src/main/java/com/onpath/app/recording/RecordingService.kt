@@ -668,8 +668,15 @@ class RecordingService : Service() {
         }
         if (tourId >= 0) {
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
+            // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
+            // rides are only marked. The points stay as recorded; never throws (failures reported, tour as recorded).
+            val parts = com.onpath.app.rides.RideApply.finish(com.onpath.app.rides.TourDbRides(db), tourId,
+                com.onpath.app.rides.TourStats(distance, ascent, descent, elapsedS.toDouble()), System.currentTimeMillis(),
+                timeActivity())
+            finishedParts = parts
             // GPX copy in Documents/OnPath (backup/Backups): on its own thread, never holds up the end of the tour
             com.onpath.app.backup.Backups.tourChanged(this, tourId)
+            parts.forEach { com.onpath.app.backup.Backups.tourChanged(this, it) }
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
@@ -936,6 +943,8 @@ class RecordingService : Service() {
         private val _finished = MutableStateFlow<Long?>(null)
         /** Id of the last tour stopped (UI shows a summary, then clears it). */
         val finished: MutableStateFlow<Long?> = _finished
+        /** Tours split off the last stopped tour ("Split into two tours"); set before [finished]. */
+        @Volatile var finishedParts: List<Long> = emptyList()
         private val _startFailed = MutableStateFlow<String?>(null)
         /** Why the service stopped by itself (plain text; the app shows it and clears it). */
         val startFailed: MutableStateFlow<String?> = _startFailed
