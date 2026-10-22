@@ -229,6 +229,20 @@ class Rd5PartStoreTest {
         assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.message.contains("does not match") })
     }
 
+    /** Perf report 2026-10-22: the parts list is cached by file length + time; a change on disk is still seen. */
+    @Test fun cachedStateFollowsTheFiles() {
+        val (seg, _, store) = setup()
+        store.download(listOf(meran))
+        val s1 = store.state("E10_N45.rd5")
+        assertTrue(s1 === store.state("E10_N45.rd5")) // not read again
+        assertTrue(store.sizeOnPhone(meran) > 0)
+        store.download(listOf(ulten))
+        assertTrue(store.has(ulten)) // own write: entry dropped
+        File(seg, "E10_N45.rd5").delete() // gone from outside
+        assertFalse(store.has(meran))
+        assertEquals(0L, store.sizeOnPhone(meran))
+    }
+
     @Test fun readerDuringAnInstallDoesNotWarn() {
         val (seg, remote, _) = setup()
         val seen = mutableListOf<Boolean>()
