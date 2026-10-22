@@ -1297,8 +1297,50 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
+        routeBackAsk = RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
+        if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
         endGuidanceIfPlanEmpty()
         recalc()
+    }
+
+    /** Current position (the map's GPS), else the tour's last recorded point; null without either. */
+    private fun myPosition(): GeoPoint? =
+        tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
+            ?: recState.value?.track?.lastOrNull()?.lastOrNull()
+
+    /**
+     * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour – "Route back to
+     * the start?" stays until answered (never self-dismissing). The followed line is unchanged while it is open.
+     */
+    var routeBackAsk by mutableStateOf(false)
+        private set
+
+    /**
+     * Yes: the plan becomes position → start and the tour follows it (followEditedPlan) – no extra Undo step, so one
+     * Undo brings the plan from before the delete. No (or Yes without a position): plain recording, the route guidance
+     * ends as for an empty plan; Undo brings the plan and the guidance back.
+     */
+    fun answerRouteBack(yes: Boolean) {
+        if (!routeBackAsk) return
+        routeBackAsk = false
+        if (recState.value == null) return
+        val pos = myPosition()
+        val back = if (yes) RouteBack.plan(waypoints, pos) else null
+        if (back != null) {
+            Problems.trace("plan", "Route back to the start: yes – plan = position → start")
+            val before = waypoints.toList()
+            waypoints.clear(); waypoints.addAll(back)
+            cellsForNewPoints(before, waypoints)
+            prefs.planWaypoints = waypoints.toList()
+            prunePinned()
+            planEditPending = true
+            recalc()
+            return
+        }
+        if (yes) message = "No GPS position yet, so no route back. The tour keeps recording; set a new goal any time."
+        Problems.trace("plan", "Route back to the start: " + (if (yes) "yes, but no position" else "no") +
+            " – route guidance ended, recording continues (Undo brings it back)")
+        if (followLine != null && !followIsTrack) { clearFollow(); guidanceEndedByEmptyPlan = true }
     }
 
     /**
@@ -1764,6 +1806,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
+        routeBackAsk = false // the plan the question was about is gone
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
@@ -2679,7 +2722,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun pauseRecording(pause: Boolean) =
         RecordingService.send(getApplication(), if (pause) RecordingService.ACTION_PAUSE else RecordingService.ACTION_RESUME)
 
-    fun stopRecording() = RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
+    fun stopRecording() {
+        routeBackAsk = false // a question about this tour's plan never reaches the next tour
+        RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
+    }
 
     // ---------------- tours ----------------
 
