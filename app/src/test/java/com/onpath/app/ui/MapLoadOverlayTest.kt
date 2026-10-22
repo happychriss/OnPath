@@ -52,14 +52,4 @@ class MapLoadOverlayTest {
             }
         }
     }
-
-    /** Newer map of an area the user has: soft veil + pill (seconds), or the small hint while it is built (minutes). */
-    @Test fun updateVeilAndHint() = paparazzi.snapshot {
-        OnPathTheme {
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFE8E4DA))) {
-                MapUpdateLayer(MapUpdateUi.Loading(0.6f), Modifier.fillMaxSize())
-                MapPreparingHint(MapUpdateUi.Preparing(6), Modifier.align(androidx.compose.ui.Alignment.TopCenter).padding(top = 76.dp))
-            }
-        }
-    }
 }

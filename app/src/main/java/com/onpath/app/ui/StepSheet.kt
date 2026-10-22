@@ -37,6 +37,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -166,10 +167,11 @@ fun StepSheet(
         }
     }
     SheetFrameMeter(state)
-    // while the sheet is dragged, finished map regions wait to join the map (same rule as a map drag, owner 2026-10-22)
+    // while the sheet is dragged or still springs after the finger let go, finished map regions wait to join the map
+    // and a style reload waits (same rule as a map drag, owner 2026-10-22; phone trace 0.10.0: the settle frames janked too)
     val onDraggingNow by rememberUpdatedState(onDragging)
-    LaunchedEffect(state) { snapshotFlow { state.dragging }.drop(1).collect { onDraggingNow(it) } }
-    DisposableEffect(state) { onDispose { if (state.dragging) onDraggingNow(false) } }
+    LaunchedEffect(state) { snapshotFlow { state.moving }.distinctUntilChanged().drop(1).collect { onDraggingNow(it) } }
+    DisposableEffect(state) { onDispose { if (state.moving) onDraggingNow(false) } }
 
     fun start() {
         if (state.dragging) return

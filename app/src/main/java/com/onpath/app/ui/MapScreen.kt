@@ -120,14 +120,9 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
-        // A newer version of an area the user has (checked after each route, owner 2026-10-21): the map is veiled for
-        // the few seconds it loads and switches; panels stay usable on top.
-        val updStates by vm.cells.states.collectAsState()
-        val updInstalled by vm.cells.installed.collectAsState()
-        // no flash (owner rule): a load of a second never shows, whatever shows stays readable (NoFlash)
-        val mapUpdate = rememberNoFlash(if (vm.mode == AppMode.PLAN) MapUpdates.of(updStates, updInstalled.map { it.id }.toSet()) else null,
-            remember { NoFlash<MapUpdateUi>(stepKey = { it::class }) })
-        MapUpdateLayer(mapUpdate, Modifier.fillMaxSize())
+        // A newer version of an area the user has (checked after each route, owner 2026-10-21) is told by the blue
+        // background-download strip only ("Loading newer map", details: being prepared / about N min) – owner 2026-10-22:
+        // one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         MapSync(vm, controller, rec, location, panelHeightPx)
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
         // Quiet update check (once a day, only when online; F-OFF-06).
@@ -176,10 +171,6 @@ fun MapScreen(
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
         if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
-        }
-        // A newer version of an area the user has: small hint while the server builds it (the veil is under the panels).
-        if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !sharedLookup) {
-            MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
@@ -235,12 +226,8 @@ private fun PlanMode(
         )
         // background downloads (corridor, refresh, routing data): thin blue strip below the search bar, after 10 s,
         // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
-        val bg = rememberBackgroundDownload(vm)
-        val stripOn = bg != null && !vm.searchOpen
-        LaunchedEffect(stripOn) { vm.backgroundStripShown = stripOn }
-        if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true },
-            modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
-        BackgroundDownloadDetails(vm, bg)
+        // (own composable: its per-second progress recomposes only the strip, not PlanMode with the sheet)
+        PlanBackgroundStrip(vm)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
         val sheetHeight = remember { mutableIntStateOf(0) }
@@ -278,6 +265,17 @@ private fun PlanMode(
     }
 }
 
+/** The blue background-download strip of Plan + its details dialog. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel) {
+    val bg = rememberBackgroundDownload(vm)
+    val stripOn = bg != null && !vm.searchOpen
+    LaunchedEffect(stripOn) { vm.backgroundStripShown = stripOn }
+    if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true },
+        modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
+    BackgroundDownloadDetails(vm, bg)
+}
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
@@ -295,20 +293,24 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         )
         return
     }
-    val cellStates by vm.cells.states.collectAsState()
-    val cellsInstalled by vm.cells.installed.collectAsState()
+    // Cell states tick with every downloaded chunk: read only through derived values, so the sheet (and its points rows)
+    // recomposes when the card / modal really changes, not per tick (phone trace 0.10.0: sheet moves janky while
+    // map areas downloaded – CellStateReads.kt).
+    val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
     // no flash (owner rule, field test 0.8.7): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
     // whatever shows stays readable; a tap answers at once
     val cellGate = remember { NoFlash<CellCardUi>(stepKey = CellCards::stepKey, urgent = CellCards::waitsForUser) }
-    val cellCard = rememberNoFlash(vm.cellCardUi(cellStates, cellsInstalled), cellGate)
+    val cellCard = rememberNoFlash(cellCardTarget, cellGate)
     fun acted(f: () -> Unit): () -> Unit = { cellGate.userActed(android.os.SystemClock.uptimeMillis()); f() }
     val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
         onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
         onAllowLocation = acted(onRequestLocation))
     // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
     // time left and Cancel (owner 2026-10-21); ticks every second so the bar moves smoothly
-    val loadUi by produceState<MapLoadUi?>(null, cellStates, vm.cellJob, vm.mode) {
-        while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
+    val loadUi by produceState<MapLoadUi?>(null, vm.cellJob, vm.mode) {
+        vm.cells.states.collectLatest { states ->
+            while (true) { value = vm.mapLoadUi(states, android.os.SystemClock.uptimeMillis()); delay(1000) }
+        }
     }
     // Rows of the Points section, composed with the sheet in every step (StepSheet: it is only revealed). The distances
     // along the route walk the whole line: done once per route off the main thread (PlanPoints.legsCached); until then

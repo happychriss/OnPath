@@ -358,9 +358,9 @@ object OverviewHintRule {
 }
 
 /**
- * A newer version of a map area the user already has (checked after each route, owner 2026-10-21) – never modal:
- * [Loading] veils the map for the few seconds the download + switch take; [Preparing] (the server builds it first,
- * minutes) is a small hint while planning goes on with the current map.
+ * A newer version of a map area the user already has (checked after each route, owner 2026-10-21) – never modal; shown
+ * only through the background-download strip and its details (owner 2026-10-22: one loading indicator), [Preparing]
+ * gives the "about N min" there.
  */
 sealed interface MapUpdateUi {
     data class Loading(val progress: Float?) : MapUpdateUi
@@ -390,43 +390,3 @@ object MapUpdates {
     }
 }
 
-/** Over the map (Plan): a soft veil + pill while the newer map loads, or a small hint while it is prepared. */
-@Composable
-fun MapUpdateLayer(u: MapUpdateUi?, modifier: Modifier = Modifier) {
-    androidx.compose.animation.AnimatedVisibility(u is MapUpdateUi.Loading, modifier = Modifier.then(modifier),
-        enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
-        androidx.compose.foundation.layout.Box(
-            Modifier.fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)),
-            contentAlignment = Alignment.Center) {
-            Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), shadowElevation = 3.dp,
-                color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text(MapUpdates.text(MapUpdateUi.Loading(null)), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    val p = (u as? MapUpdateUi.Loading)?.progress
-                    if (p != null) {
-                        Spacer(Modifier.size(8.dp))
-                        LinearProgressIndicator(progress = { p }, modifier = Modifier.width(160.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** The small "being prepared" hint (top of the map, like the overview hint). */
-@Composable
-fun MapPreparingHint(u: MapUpdateUi.Preparing, modifier: Modifier = Modifier) {
-    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), shadowElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), modifier = modifier) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.CloudDownload, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(MapUpdates.text(u), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}

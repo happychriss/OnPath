@@ -701,7 +701,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), cells::knownSize)
         val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
         val items = cellItems + listOfNotNull(r?.let { BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes) })
-        bgProgress.update(items, cellItems.size, r?.names?.size ?: 0)
+        // newer versions of installed areas: told in the strip / its details (no second indicator on the map)
+        val installed = if (modal) emptySet() else cells.installed.value.map { it.id }.toSet()
+        val newer = if (modal) 0 else states.count { (c, s) -> c in installed && BackgroundProgress.loading(s) }
+        val eta = (MapUpdates.of(states, installed) as? MapUpdateUi.Preparing)?.minutes
+        bgProgress.update(items, cellItems.size, r?.names?.size ?: 0, newer, eta)
     } catch (e: Exception) {
         Problems.warn("cells", "Background download status unknown; strip hidden", e); null
     }
