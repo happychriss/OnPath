@@ -446,6 +446,40 @@ class ScreenshotTest {
             gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike"), PlanCallbacks()) }
     }
 
+    /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
+    @Test fun planWarningsWithGap() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
+            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike",
+            warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
+    }
+
+    /** The amber line alone in the profile step; here the notice after an activity change. */
+    @Test fun planRouteChanged() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
+            warnText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
+    }
+
+    /** The list behind the amber line (shown in a bottom sheet over the map). */
+    @Test fun routeSpotsList() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(top = 24.dp)) {
+                        RouteSpotsList(listOf(
+                            RouteSpot(SpotKind.PUSH, 13, 20, 0.0, 350.0),
+                            RouteSpot(SpotKind.STEEP, 0, 5, 1200.0, 1350.0, 28),
+                            RouteSpot(SpotKind.ABOVE_T, 6, 9, 3420.0, 3640.0, 4),
+                            RouteSpot(SpotKind.ABOVE_T, 10, 12, 5100.0, 5180.0, 5),
+                            RouteSpot(SpotKind.STEPS, 21, 22, 7020.0, 7060.0),
+                        ), sac = 2, onShow = {})
+                    }
+                }
+            }
+        }
+    }
+
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,

@@ -278,6 +278,7 @@ private fun PlanMode(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
                        onRequestLocation: () -> Unit = {}) {
@@ -331,7 +332,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
             points = rows,
-            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText()),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText()),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -341,12 +342,19 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
             onShowGap = vm::showPlanGap,
+            onWarnings = vm::tapWarningLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )
+    if (vm.spotsOpen) {
+        // the spots of the amber line (owner 2026-10-22): tap one → the map shows it
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = vm::closeSpots) {
+            RouteSpotsList(vm.routeSpots, vm.sac, onShow = vm::showSpot)
+        }
+    }
     // names for the Points section (offline place index, off the main thread) whenever the points change – ready before
     // the sheet is pulled up (owner field report 0.9.3: names arriving mid-pull rebuilt the list)
     LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
@@ -416,6 +424,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
+    // the spot tapped in the route warnings list: its piece of route amber (Plan only)
+    LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }
     LaunchedEffect(c, vm.searchMark) {
         val m = vm.searchMark
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
