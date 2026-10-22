@@ -45,7 +45,7 @@ OVERLAY_LAYERS = {"routes": "routes", "trails": "trails", "ways": "ways", "paths
 # Router classes (format 2 packages built with extract_overlays.py --wayclass; docs/map-style-notes.md "Router
 # classes", owner decisions 2026-10-22): per activity group 0 good (green) / 1 possible (black) / 2 forbidden (red,
 # dashed + sign: access bans, one-way) / 3 too hard (excluded only by sac_scale / mtb:scale / trail_visibility or
-# as a via ferrata: a plain grey line – owner after the renders: "it's not forbidden there"). A feature with the class key uses ONLY the class; features without it (older map cells) keep the
+# as a via ferrata / steps: a plain grey line – owner after the renders: "it's not forbidden there"). A feature with the class key uses ONLY the class; features without it (older map cells) keep the
 # tag rules. Activity groups = the app's BRouter profiles (BRouterEngine.profileFile), one style mode each, switched
 # by MapController.setOverlay: foot = Hike, bike = Bike trekking + E-bike, touring = Bike touring, mtb = MTB + MTB e-bike.
 CLASS_KEY = {"foot": "ch", "bike": "ct", "touring": "cf", "mtb": "cm"}

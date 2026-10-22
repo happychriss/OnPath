@@ -48,7 +48,7 @@ import java.util.Map;
  *
  * Classes from the costfactor c of the better direction (BRouter: c > 9998 = not routable, OsmPath):
  *   forbidden  c > 9998 – and still so without the difficulty tags (access bans, via ferrata, one-way …)
- *   too hard   c > 9998 only because of DIFFICULTY_KEYS (sac_scale, mtb:scale, trail_visibility) or highway=via_ferrata
+ *   too hard   c > 9998 only because of DIFFICULTY_KEYS (sac_scale, mtb:scale, trail_visibility) or highway=via_ferrata / steps
  *              (judged as a path): the router never
  *              uses it either, but the map shows a grey line, not the red "forbidden" (owner 2026-10-22)
  *   good       c <= GOOD[profile]     (thresholds below, docs/map-style-notes.md "Router classes")
@@ -61,7 +61,7 @@ import java.util.Map;
 public class WayClass {
   static final String[] PROFILES = {"hiking-mountain", "trekking", "fastbike-verylowtraffic", "mtb"};
   /** Bump when a threshold or the evaluation changes: it is part of the profile hash. */
-  static final String VERSION = "wayclass-3";
+  static final String VERSION = "wayclass-4";
   /**
    * Good = at most this costfactor (better direction). Chosen from the length-weighted costs of the test region's
    * ways (docs/map-style-notes.md "Router classes"). The map draws green only on path-like ways (paths, footways,
@@ -141,7 +141,10 @@ public class WayClass {
     for (String[] kv : tags) {
       if (DIFFICULTY_KEYS.contains(kv[0])) { changed = true; continue; }
       // a via ferrata is a (very) hard trail, not a ban (owner 2026-10-22): judged like a path without the grade
-      if (kv[0].equals("highway") && kv[1].equals("via_ferrata")) { rest.add(new String[]{"highway", "path"}); changed = true; continue; }
+      // steps: carrying the bike is hard, not banned (owner 2026-10-22: MTB steps grey, not red)
+      if (kv[0].equals("highway") && (kv[1].equals("via_ferrata") || kv[1].equals("steps"))) {
+        rest.add(new String[]{"highway", "path"}); changed = true; continue;
+      }
       rest.add(kv);
     }
     if (!changed) return false;
@@ -272,7 +275,8 @@ public class WayClass {
       {t("highway=path", "trail_visibility=no"), "3 1 1 1 0"},
       {t("highway=via_ferrata"), "3 3 3 3 0"},
       {t("highway=via_ferrata", "access=no"), "2 2 2 2 0"},
-      {t("highway=steps"), "1 1 1 2 0"},
+      {t("highway=steps"), "1 1 1 3 0"},
+      {t("highway=steps", "access=private"), "2 2 2 2 0"},
       {t("highway=cycleway"), "0 0 0 0 0"},
       {t("highway=cycleway", "surface=asphalt"), "0 0 0 1 0"},
       {t("highway=cycleway", "oneway=yes"), "0 0 0 0 1"},

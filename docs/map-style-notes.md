@@ -273,6 +273,6 @@ profiles, evaluated per way with BRouter's expression engine – no tag rules of
 - **Owner after the renders (2026-10-22): difficulty is not "forbidden".** New class **3 = too hard**: forbidden only
   because of `sac_scale` / `mtb:scale` / `trail_visibility`, or as a via ferrata (WayClass re-evaluates without them,
   via ferrata as a path). Drawn as a plain grey line (`too-hard-<mode>`, `toohard.*` tokens) – no red, no sign; routing
-  unchanged. Red dashes + sign stay for real bans (access / foot / bicycle = no, private, locked gates, one-way, steps
-  for MTB). The hiking band above the T level (and over class 2 / 3 for hiking, `hx`) is a plain grey band, no dashes.
+  unchanged. Red dashes + sign stay for real bans (access / foot / bicycle = no, private, locked gates, one-way). Owner later: steps for MTB are "too hard" too (grey), the via
+  ferrata keeps its dark-red tick symbol under the grey line. The hiking band above the T level (and over class 2 / 3 for hiking, `hx`) is a plain grey band, no dashes.
   Consistency re-run with classes 2 + 3 as "not routable": still 0 / 0 (both seeds).
