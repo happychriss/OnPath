@@ -70,16 +70,19 @@ class CorePlanE2ETest : E2EBase() {
     /** Field test 2026-10-22: after a style reload the route points were drawn above the "I am here" dot. */
     @Test fun positionDotStaysAboveRoutePointsAfterAReload() {
         startPlanWithTwoPoints()
+        assertPositionDotOnTop("plan")
         scenario.onActivity { vm(it).reloadMapStyleForTest() }
         waitForMap(reloaded = true)
+        assertPositionDotOnTop("after a style reload")
+        // the app's own layers exist and sit below it
         var ids = emptyList<String>()
         onMap { m -> ids = m.style?.layers?.map { it.id } ?: emptyList() }
-        val dot = ids.indexOfFirst { it.startsWith(com.onpath.app.map.MapController.POSITION_LAYER_PREFIX) }
-        assertTrue("position layers present: $ids", dot >= 0)
-        for (own in listOf(com.onpath.app.map.MapController.LAYER_WPT, "planned-route", "recorded-track")) {
-            val i = ids.indexOf(own)
-            assertTrue("$own ($i) below the position dot ($dot)", i in 0 until dot)
-        }
+        for (own in listOf(com.onpath.app.map.MapController.LAYER_WPT, "planned-route", "recorded-track", "highlight-dot"))
+            assertTrue("$own exists", own in ids)
+        // layers the app adds later (search mark, highlight) go below it too
+        scenario.onActivity { a -> vm(a).highlight = vm(a).waypoints.first() }
+        Thread.sleep(1_000)
+        assertPositionDotOnTop("with a highlight")
     }
 
     /** C1 on a turned map (compass, hand rotation – the 0.7.19 bug class). */

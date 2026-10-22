@@ -184,6 +184,20 @@ abstract class E2EBase {
         }
     }
 
+    /**
+     * The "I am here" dot is the top of the map: every layer above its first layer is one of its own
+     * (owner 2026-10-22, after the dot vanished under route items twice). [where] names the moment for the message.
+     */
+    protected fun assertPositionDotOnTop(where: String) {
+        var ids = emptyList<String>()
+        onMap { m -> ids = m.style?.layers?.map { it.id } ?: emptyList() }
+        val prefix = com.onpath.app.map.MapController.POSITION_LAYER_PREFIX
+        val dot = ids.indexOfFirst { it.startsWith(prefix) }
+        if (dot < 0) { shot("no-position-$where"); throw AssertionError("$where: no position layers – $ids") }
+        val above = ids.drop(dot).filterNot { it.startsWith(prefix) }
+        if (above.isNotEmpty()) { shot("dot-covered-$where"); throw AssertionError("$where: above the position dot: $above") }
+    }
+
     /** What the app thinks right now (failure messages). */
     protected fun state(): String {
         var s = ""
