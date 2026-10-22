@@ -19,6 +19,7 @@ import com.onpath.app.search.SearchKinds
 import com.onpath.app.search.SearchMerge
 import com.onpath.app.search.SearchProvider
 import com.onpath.app.search.SearchQuery
+import com.onpath.app.search.SearchRanking
 import com.onpath.app.search.SearchStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,9 @@ data class SearchUi(
     val hasRoute: Boolean = false,
 ) {
     val active: Boolean get() = query.isNotBlank() || category != null
+
+    /** Offline and online results as ONE list, best first (owner 2026-10-22). */
+    val results: List<SearchHit> get() = SearchRanking.mix(hits, online)
 }
 
 /**
@@ -204,8 +208,8 @@ class SearchSession(
                 val (bLat, bLon) = if (centre != null) centre.lat to centre.lon else ctx.refLat to ctx.refLon
                 try {
                     val r = online.search(text, bLat, bLon, 20)
-                    OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon),
-                        OnlineRanking.queryTowns(text, named)).take(10)
+                    val towns = OnlineRanking.queryTowns(text, named)
+                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns).take(10), towns, bLat, bLon)
                 } catch (e: Exception) {
                     Problems.info("search", "Online search failed (offline or server unreachable)", e); null
                 }
@@ -214,12 +218,15 @@ class SearchSession(
             offlineJob?.join()
             if (res == null) { ui = ui.copy(online = emptyList(), onlineState = OnlineState.FAILED); return@launch }
             val kinds = u.category?.kinds
-            val extras = SearchMerge.onlineExtras(ui.hits.map { it.place }, res)
+            val extras = SearchMerge.onlineExtras(ui.hits.map { it.place }, res.places)
                 .filter { kinds == null || it.kind in kinds }
-                .map { SearchHit(it, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, it.lat, it.lon), false) }
-            ui = ui.copy(online = extras, onlineState = OnlineState.DONE)
+            // scored like the offline hits: SearchUi.results mixes both into one list
+            val scored = SearchRanking.onlineHits(extras, q, res.towns, res.lat, res.lon)
+            ui = ui.copy(online = scored, onlineState = OnlineState.DONE)
         }
     }
+
+    private class OnlineAnswer(val places: List<Place>, val towns: Set<String>, val lat: Double, val lon: Double)
 
     companion object {
         const val DEBOUNCE_MS = 350L
