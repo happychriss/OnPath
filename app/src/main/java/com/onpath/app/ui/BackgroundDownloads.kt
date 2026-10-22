@@ -32,7 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.getValue
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellState
@@ -50,7 +50,19 @@ data class BackgroundDownloadUi(
     /** Bytes of everything loading, as far as known. */
     val bytes: Long,
     val percent: Int,
+    /** Of [regions]: newer versions of areas the user already has (they replace the current map once loaded). */
+    val newer: Int = 0,
+    /** The server still builds some newer version: about this many minutes (null = unknown / none). */
+    val newerEtaMin: Int? = null,
 ) {
+    /** "Loading newer map" when only newer versions load (owner 2026-10-22: the strip is the one indicator for them). */
+    val title: String get() = if (regions > 0 && newer >= regions && routingParts == 0) "Loading newer map" else "Loading map"
+
+    /** Details line about the newer versions, null when none loads. */
+    val newerLine: String? get() = if (newer <= 0) null else
+        "Newer version of ${if (newer == 1) "1 area" else "$newer areas"} you have – it replaces the current map when loaded" +
+            (newerEtaMin?.let { " (being prepared, about $it min)" } ?: "")
+
     /** "3 areas · 24 MB · 40 %" (the strip), "routing data" when only that loads. */
     val line: String get() {
         val what = when {
@@ -72,7 +84,7 @@ class BackgroundProgress {
     /** One item loading now: [done] of [total] bytes (total 0 = unknown, counted with an estimate). */
     data class Item(val key: String, val done: Long, val total: Long)
 
-    fun update(active: List<Item>, regions: Int, routingParts: Int): BackgroundDownloadUi? {
+    fun update(active: List<Item>, regions: Int, routingParts: Int, newer: Int = 0, newerEtaMin: Int? = null): BackgroundDownloadUi? {
         if (active.isEmpty()) { items.clear(); held = 0; return null }
         val now = active.associateBy { it.key }
         for ((k, v) in items) if (k !in now) v[0] = v[1] // finished (or dropped): full
@@ -85,7 +97,7 @@ class BackgroundProgress {
         val done = items.values.sumOf { it[0] }
         val pct = if (total <= 0) 0 else (done * 100 / total).toInt().coerceIn(0, 99)
         held = maxOf(held, pct)
-        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held)
+        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held, newer, newerEtaMin)
     }
 
     companion object {
@@ -112,7 +124,7 @@ private val InfoBlue = Color(0xFF1565C0)
 /** Plan: thin, slightly transparent blue strip below the search bar: "⬇ Loading map · 3 areas · 24 MB · 40 %". Tap → details. */
 @Composable
 fun BackgroundDownloadStrip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val text = "Loading map · ${ui.line}"
+    val text = "${ui.title} · ${ui.line}"
     Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.88f), contentColor = Color.White, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().heightIn(min = 36.dp)
             .clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
@@ -153,7 +165,9 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
         title = { Text("Loading in the background") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (ui.regions > 0) Text("Map: ${ui.regions} ${if (ui.regions == 1) "area" else "areas"} along your route or around you")
+                val fresh = ui.regions - ui.newer
+                if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
+                ui.newerLine?.let { Text(it) }
                 if (ui.routingParts > 0) Text("Routing data: ${ui.routingParts} ${if (ui.routingParts == 1) "part" else "parts"}")
                 Text(listOfNotNull(if (ui.bytes > 0) "About ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "))
                 Text("Cancel stops it. The maps you have stay; an area loads again when you plan there.", fontSize = 13.sp)
@@ -177,9 +191,11 @@ fun backgroundGate() = NoFlash<BackgroundDownloadUi>(showDelayMs = BACKGROUND_SH
 /** What the strip / chip shows now (gated: after [BACKGROUND_SHOW_DELAY_MS], until all is done); ticks every second. */
 @androidx.compose.runtime.Composable
 internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi? {
-    val states by vm.cells.states.collectAsState()
-    val target by androidx.compose.runtime.produceState<BackgroundDownloadUi?>(null, states) {
-        while (true) { value = vm.backgroundDownloadUi(states); kotlinx.coroutines.delay(1000) }
+    // the states are collected inside the producer: a download tick does not recompose the caller, only a changed value
+    val target by androidx.compose.runtime.produceState<BackgroundDownloadUi?>(null) {
+        vm.cells.states.collectLatest { states ->
+            while (true) { value = vm.backgroundDownloadUi(states); kotlinx.coroutines.delay(1000) }
+        }
     }
     val gate = androidx.compose.runtime.remember { backgroundGate() }
     return rememberNoFlash(target, gate)

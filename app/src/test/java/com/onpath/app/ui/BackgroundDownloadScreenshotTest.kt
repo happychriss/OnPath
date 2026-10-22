@@ -72,4 +72,29 @@ class BackgroundDownloadScreenshotTest {
             }
         }
     }
+
+    private val newer = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 22L * 1_048_576, percent = 34, newer = 3, newerEtaMin = 4)
+
+    /** A newer version of the areas the user has: the strip is the one indicator (no veil on the map, owner 2026-10-22). */
+    @Test fun planStripNewerMap() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
+                    BackgroundDownloadStrip(newer, onClick = {}, modifier = Modifier.padding(top = 68.dp, start = 16.dp, end = 16.dp))
+                }
+            }
+        }
+    }
+
+    /** Its details: newer version, being prepared, about N min. */
+    @Test fun detailsNewerMap() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                BackgroundDownloadDialog(newer, onCancelAll = {}, onClose = {})
+            }
+        }
+    }
 }

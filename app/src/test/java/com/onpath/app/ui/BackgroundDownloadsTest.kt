@@ -74,4 +74,17 @@ class BackgroundDownloadsTest {
         assertEquals("Waiting to download: routing data · about 9 MB", WaitingDownloads(0, 1, 9 * mb).line)
         assertEquals(false, WaitingDownloads(0, 0, 0).any)
     }
+
+    /** Owner 2026-10-22: one loading indicator – a newer version of an area is told by the strip, no veil on the map. */
+    @Test fun newerMapIsToldByTheStrip() {
+        val onlyNewer = BackgroundProgress().update(listOf(BackgroundProgress.Item("cell:${a.id}", 0, 10 * mb)), 1, 0, newer = 1, newerEtaMin = 6)!!
+        assertEquals("Loading newer map", onlyNewer.title)
+        assertEquals("Newer version of 1 area you have – it replaces the current map when loaded (being prepared, about 6 min)", onlyNewer.newerLine)
+        val mixed = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 0, percent = 10, newer = 1)
+        assertEquals("Loading map", mixed.title)
+        assertNull(BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 0, percent = 10).newerLine)
+        // MapScreen no longer reads cell states (no "Loading the newer map…" veil): download ticks don't recompose it
+        val src = java.io.File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue("MapScreen must not collect cell states", "cells.states.collectAsState" !in src && "MapUpdateLayer" !in src)
+    }
 }
