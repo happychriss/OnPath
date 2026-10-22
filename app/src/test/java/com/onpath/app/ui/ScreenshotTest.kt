@@ -197,6 +197,16 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL).copy(cellCard = CellCardUi.NotAvailable), PlanCallbacks()) }
     }
 
+    /**
+     * E2E 2026-10-22 (swipeTheSheetHalfFullHalf): an unreachable point's red line + the amber warnings line + a map card
+     * never squeeze the points away in the point editor.
+     */
+    @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(cellCard = CellCardUi.NotAvailable,
+            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike",
+            warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
+    }
+
     /** Full while the route is calculated: the Points list right away, straight-line distances (~). */
     @Test fun planPointsFullRouting() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
