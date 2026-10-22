@@ -82,7 +82,19 @@
     "grass"
    ],
    "paint": {
-    "fill-color": "#dfeacb",
+    "fill-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     "#e3edd2",
+     15,
+     "#e9f1dc"
+    ],
     "fill-antialias": false
    }
   },
@@ -101,7 +113,19 @@
     "wood"
    ],
    "paint": {
-    "fill-color": "#c3dcab",
+    "fill-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     12,
+     "#cde3b8",
+     15,
+     "#d8eac6"
+    ],
     "fill-antialias": false
    }
   },
@@ -464,15 +488,41 @@
      9,
      0.8,
      11,
-     0.6,
+     0.75,
      13,
-     0.4,
+     0.75,
      15,
-     0.25
+     0.8
     ],
-    "hillshade-shadow-color": "rgba(45,68,45,0.40)",
-    "hillshade-highlight-color": "rgba(255,254,246,0.55)",
-    "hillshade-accent-color": "rgba(50,58,84,0.18)"
+    "hillshade-shadow-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     "rgba(38,56,42,0.45)",
+     13,
+     "rgba(38,56,42,0.33)",
+     15,
+     "rgba(38,56,42,0.23)"
+    ],
+    "hillshade-highlight-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     "rgba(255,255,245,0.80)",
+     15,
+     "rgba(255,255,245,0.90)"
+    ],
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
    }
   },
   {
@@ -494,13 +544,13 @@
      8,
      0.4,
      10,
-     0.35,
+     0.4,
      13,
-     0.2,
+     0.35,
      15,
-     0.1
+     0.35
     ],
-    "hillshade-shadow-color": "rgba(45,68,45,0.22)",
+    "hillshade-shadow-color": "rgba(38,56,42,0.12)",
     "hillshade-highlight-color": "rgba(255,255,255,0)",
     "hillshade-accent-color": "rgba(0,0,0,0)"
    }

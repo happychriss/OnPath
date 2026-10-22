@@ -276,3 +276,15 @@ profiles, evaluated per way with BRouter's expression engine – no tag rules of
   unchanged. Red dashes + sign stay for real bans (access / foot / bicycle = no, private, locked gates, one-way). Owner later: steps for MTB are "too hard" too (grey), the via
   ferrata keeps its dark-red tick symbol under the grey line. The hiking band above the T level (and over class 2 / 3 for hiking, `hx`) is a plain grey band, no dashes.
   Consistency re-run with classes 2 + 3 as "not routable": still 0 / 0 (both seeds).
+
+## Hill shading "balanced (c)" + terrain z13 (2026-10-22, owner; ships with the s3 cell rebuild)
+Values from the hill-shading proposal, variant c: `hillshade-nw` exaggeration 0.8 / 0.8 / 0.75 / 0.75 / 0.8 (z5 / 9 / 11 /
+13 / 15), shadow rgba(38,56,42) 0.45 → 0.33 → 0.23 (z11 / 13 / 15), highlight rgba(255,255,245) 0.80 → 0.90 (z11 / 15),
+accent 0.06; `hillshade-w` exaggeration 0.4 / 0.4 / 0.35 / 0.35 (z8 / 10 / 13 / 15), shadow 0.12; lighter wood
+(#cde3b8 → #d8eac6, z12 / 15) and grass (#e3edd2 → #e9f1dc). Colour tokens may now be zoom stops (`Z()`,
+`<token>.z<N>` + `.base 1`). Overview raster (`Overview.kt`): raster-contrast 0.25, raster-brightness-max 0.9.
+Format-2 terrain goes to **z13** (was z12; `build_terrain.py --format 2`, cells z10–13, regions z5–13): per cell
+terrain 1.0 → 3.1 MB (Meran 10/543/361: 1.02 → 3.13 MB, 542/361 1.01 → 3.10, 544/362 0.95 → 2.93), i.e. a cell
+~9.3 → ~11.4 MB (+23 %); test region terrain 8.7 → 21.9 MB. Mean brightness of the map at Partschins (z11 / 13 / 15):
+−0.2 / +2.2 / +1.3 % against main. Cells of schema 2 (terrain z12) mixed with new ones show no relief at z13 tiles of
+the old cells until they are rebuilt (the s3 bump asks for all of them).
