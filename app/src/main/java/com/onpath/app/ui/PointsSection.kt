@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,6 +68,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.routing.PlanPointRow
 import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.PointRole
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -79,6 +81,8 @@ private val HANDLE_WIDTH = 48.dp
  * Points section of the full plan sheet (owner 2026-10-21): header with ⇅ Reverse and ↺ Round trip, then one row per
  * route point – ≡ (drag it to reorder; holding first works too), marker, name, distance from the previous point, ✕
  * (delete at once, Undo brings it back). Tapping a row shows the point on the map. No vibration in the list (owner).
+ * After a ✕ the deleted row stays as a quiet placeholder for a moment and the list ignores taps ([PointsDeleteGuard]):
+ * the rows never shift under the finger (field test 2026-10-22: a second tap deleted the next point).
  */
 @Composable
 fun PointsSection(
@@ -136,8 +140,24 @@ private fun PointRows(
     val viewportNow by rememberUpdatedState(viewport)
     // the drop shows at once; the plan's own rows replace it as soon as they arrive
     var pending by remember(rows) { mutableStateOf<Pair<Int, Int>?>(null) }
-    val shown = pending?.let { (f, t) -> PlanPoints.moved(rows, f, t) } ?: rows
-    val count = shown.size
+    // safe ✕: the deleted row keeps its place for a moment, taps are ignored meanwhile (PointsDeleteGuard)
+    val guard = remember { PointsDeleteGuard() }
+    var guardNow by remember { mutableLongStateOf(0L) }
+    val delete by rememberUpdatedState(onDelete)
+    val show by rememberUpdatedState(onShow)
+    val rowsNow by rememberUpdatedState(rows)
+    val calmDelete: (Int) -> Unit = { i ->
+        val t = System.currentTimeMillis()
+        val r = rowsNow.getOrNull(i)
+        if (r != null && guard.onDelete(i, r, rowsNow.size, t)) {
+            guardNow = t
+            delete(i)
+            scope.launch { delay(PointsDeleteGuard.QUIET_MS + 50); guardNow = System.currentTimeMillis() }
+        }
+    }
+    val calmShow: (Int) -> Unit = { i -> if (guard.allowsTap(System.currentTimeMillis())) show(i) }
+    val entries = guard.entries(pending?.let { (f, t) -> PlanPoints.moved(rows, f, t) } ?: rows, guardNow)
+    val count = entries.size
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     // the dropped row glides from under the finger into its slot
@@ -155,6 +175,7 @@ private fun PointRows(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     if (down.position.x > handlePx) return@awaitEachGesture
+                    if (!guard.allowsTap(System.currentTimeMillis())) return@awaitEachGesture // just deleted: calm
                     val row = PlanPoints.rowAt(down.position.y, rowPx, count) ?: return@awaitEachGesture
                     val picked = awaitVerticalTouchSlopOrCancellation(down.id) { c, _ -> c.consume() }
                         ?: return@awaitEachGesture
@@ -194,7 +215,8 @@ private fun PointRows(
                 }
             },
     ) {
-        shown.forEachIndexed { i, r ->
+        entries.forEachIndexed { i, e ->
+            val r = e.row
             val dragged = dragFrom == i
             val lifted = dragged || settleRow == i
             val from = dragFrom
@@ -215,7 +237,8 @@ private fun PointRows(
                         }
                     },
             ) {
-                PointRow(i, r, count, onDelete, onShow)
+                val ri = e.rowIndex
+                if (ri == null) DeletedRow(r) else PointRow(ri, r, rowsNow.size, calmDelete, calmShow)
             }
         }
     }
@@ -255,6 +278,18 @@ private fun PointRow(i: Int, r: PlanPointRow, count: Int, onDelete: (row: Int) -
             .semantics { contentDescription = "Delete point ${i + 1}" }) {
             Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** The row just deleted, for a moment in its old place (no buttons: a second tap there does nothing). */
+@Composable
+private fun DeletedRow(r: PlanPointRow) {
+    Row(Modifier.fillMaxWidth().height(ROW_HEIGHT).semantics { contentDescription = "Point deleted: ${r.name}" },
+        verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.width(HANDLE_WIDTH))
+        Text("Deleted – Undo brings it back", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
     }
 }
 
