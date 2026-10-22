@@ -159,7 +159,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var showSettings by mutableStateOf(false)
     /** Open topic of Settings (owner 2026-10-22: list of topics → pages); null = the list. */
-    var settingsPage by mutableStateOf<SettingsPage?>(null)
+    private var page by mutableStateOf<SettingsPage?>(null)
+    var settingsPage: SettingsPage?
+        get() = page
+        set(v) { if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null; page = v } // the result line lasts until the page is left
 
     /** Opens Settings, at [page] if given (map credits → About). */
     fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }
@@ -584,15 +587,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * map area and every waiting request goes, the world overview stays; the area of the position (T3) and the next
      * point set load again as on a new install. Not during a tour.
      */
-    fun clearAllMaps() = safeCells("clear all") {
-        if (mapsLocked) { Problems.info("cells", "Clear all refused: a tour runs"); return@safeCells }
+    fun clearAllMaps() = removeAreas("clear all") {
+        if (mapsLocked) { Problems.info("cells", "Clear all refused: a tour runs"); return@removeAreas }
+        val bytes = offlineBytes(cells.installed.value.map { it.id })
         val all = cells.clearAll()
         if (all.isNotEmpty()) removeRoutingParts(all, emptyList())
         cleanupPreview = null
         closeCellCard(); t3Pending = true; t5LastAt = null
-        message = if (all.isEmpty()) "No map areas to remove."
-            else "All map areas removed (${all.size}). They load again when you plan or go there."
+        // the user confirmed it on the Offline maps page: the result is a plain line there, nothing on the map (owner 2026-10-22)
+        offlineResult = OfflineResult.removed(all.size, bytes, afterTour = false)
     }
+
+    /**
+     * Settings → Offline maps → "Clear all" / "Clean up" remove: a failure keeps a persistent message (the line on the
+     * page is only for success).
+     */
+    private inline fun removeAreas(what: String, block: () -> Unit) {
+        try { block() } catch (e: Exception) {
+            Problems.error("cells", "Offline maps: $what failed", e)
+            offlineResult = null
+            message = "The map areas could not be removed. Your maps are unchanged as far as possible – try again later."
+        }
+    }
+
+    /** Bytes of [ids] on the phone (map + routing data), as Offline maps lists them. */
+    private fun offlineBytes(ids: List<com.onpath.app.cells.CellId>): Long {
+        val routing = routingBytesCache?.second.orEmpty()
+        val set = ids.toSet()
+        return cells.installed.value.filter { it.id in set }.sumOf { it.totalBytes + (routing[it.id] ?: 0L) }
+    }
+
+    /** Offline maps: what the last Clean up / Clear all removed ("37 areas removed · 450 MB freed"); until the page is left. */
+    var offlineResult by mutableStateOf<String?>(null)
 
     /** Settings → Offline maps → "Clean up": what would go, shown before anything is removed ([confirmCleanup]). */
     fun prepareCleanup() {
@@ -636,12 +662,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val p = cleanupPreview ?: return
         cleanupPreview = null
         if (p.remove.isEmpty()) return
-        safeCells("clean up") {
+        removeAreas("clean up") {
             val kept = cells.installed.value.map { it.id }.filter { it !in p.remove }
             cells.delete(p.remove, "Clean up in Settings")
             removeRoutingParts(p.remove, kept)
-            message = "${p.remove.size} map ${if (p.remove.size == 1) "area" else "areas"} removed." +
-                if (mapsLocked) " The map changes after the tour." else ""
+            offlineResult = OfflineResult.removed(p.remove.size, p.bytes, afterTour = mapsLocked)
         }
     }
 
@@ -780,7 +805,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val waiting = WaitingDownloads(w?.regions ?: 0, r?.names?.size ?: 0,
             (w?.knownBytes ?: 0L) + (w?.unknownSize ?: 0) * BackgroundProgress.ESTIMATE_BYTES + (r?.let { it.totalBytes - it.doneBytes } ?: 0L))
         return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading, waiting.takeIf { it.any },
-            cleanup = cleanupPreview, clearAllBlocked = if (mapsLocked) "Not during a tour – the map stays as it is until you end it." else null)
+            cleanup = cleanupPreview, result = offlineResult, clearAllBlocked = if (mapsLocked) "Not during a tour – the map stays as it is until you end it." else null)
     }
 
     private fun coordName(c: com.onpath.app.cells.CellId): String = c.center.let {
@@ -1787,7 +1812,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * coordinate (short link offline, address only) the address is searched offline, then online, with a note.
      */
     fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {
-        routesOpen = false; showSettings = false; timeDetails = null; routeDetailsOpen = false; searchOpen = false
+        routesOpen = false; showSettings = false; offlineResult = null; timeDetails = null; routeDetailsOpen = false; searchOpen = false
         closeMapOverlays()
         // A shown track hides the plan sheet and blocks map holds – the ring's menu must work.
         if (shown != null) closeShown()

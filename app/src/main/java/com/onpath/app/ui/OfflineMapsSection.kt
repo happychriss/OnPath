@@ -52,7 +52,18 @@ data class OfflineMapsUi(
     val cleanup: CleanupPreview? = null,
     /** "Clear all" not possible now (a tour runs): the short reason; null = possible. */
     val clearAllBlocked: String? = null,
+    /** What the last Clean up / Clear all removed – a plain line on the page until it is left ([OfflineResult]). */
+    val result: String? = null,
 )
+
+/** The result line of Clean up / Clear all (owner 2026-10-22: on the page, not a message box on the map). Unit-tested. */
+object OfflineResult {
+    fun removed(areas: Int, bytes: Long, afterTour: Boolean): String = when {
+        areas <= 0 -> "No map areas to remove"
+        else -> listOfNotNull("$areas ${if (areas == 1) "area" else "areas"} removed", if (bytes > 0) "${mbText(bytes)} freed" else null,
+            if (afterTour) "the map changes after the tour" else null).joinToString(" · ")
+    }
+}
 
 /** Offline maps → "Clean up" (owner 2026-10-22): the areas that would go, their size and what is kept. */
 data class CleanupPreview(
@@ -105,6 +116,7 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             if (!ui.available) Text("Map downloads not available in this build. Import a map package in Diagnostics → Developer tools.", fontSize = 13.sp, color = variant)
             else Text("The detailed map downloads by itself where you set a point, plan a route or are on tour.",
                 fontSize = 13.sp, color = variant)
+            ui.result?.let { Text(it, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
             if (ui.areas.isEmpty()) Text("No map areas downloaded yet.", fontSize = 14.sp)
             ui.areas.forEach { a ->
                 HorizontalDivider(Modifier.padding(vertical = 2.dp))
