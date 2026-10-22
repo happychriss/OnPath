@@ -85,9 +85,10 @@ fun MapScreen(
     }
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
     // (only with something route-like on the map), locate (always, with the GPS dot).
-    val footer = @Composable {
+    // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
+    val footer = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (owner 2026-10-22, the compass went over ☰)
-        val pointsOpen = vm.mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
+        val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
         MapFooter(scale) {
             MapControls(
                 // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
@@ -96,8 +97,8 @@ fun MapScreen(
                 showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
-                onUndo = if (vm.mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                large = vm.mode == AppMode.NAVIGATE,
+                onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
+                large = mode == AppMode.NAVIGATE,
             )
         }
     }
@@ -132,12 +133,15 @@ fun MapScreen(
         // Quiet update check (once a day, only when online; F-OFF-06).
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
-        when (vm.mode) {
-            AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onRequestLocation,
-                onActivity = { showActivity = true }, onEndTour = { vm.askEndTour() },
-                onPanelHeight = { panelHeightPx = it })
-            AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
-        }
+        // Plan ⇄ Navigate: the control layers slide / fade (≈250 ms, ModeSwitch); the map above is not touched.
+        ModeSwitch(vm.mode,
+            plan = {
+                PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation,
+                    onActivity = { showActivity = true }, onEndTour = { vm.askEndTour() },
+                    onPanelHeight = { panelHeightPx = it })
+            },
+            navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
+        )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
@@ -227,7 +231,7 @@ private fun PlanMode(
                 // owner 2026-10-20: no "Check for updates" in the ☰ menu – Settings has the Updates section
                 onUpdates = null,
             ),
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
+            modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
         )
         // background downloads (corridor, refresh, routing data): thin blue strip below the search bar, after 10 s,
         // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
@@ -235,7 +239,7 @@ private fun PlanMode(
         val stripOn = bg != null && !vm.searchOpen
         LaunchedEffect(stripOn) { vm.backgroundStripShown = stripOn }
         if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true },
-            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
+            modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
         BackgroundDownloadDetails(vm, bg)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
@@ -246,7 +250,7 @@ private fun PlanMode(
         }
         val density = LocalDensity.current
         val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
-        SheetWithFooter(topLimit, footer = {
+        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 val upd = vm.update
                 val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
