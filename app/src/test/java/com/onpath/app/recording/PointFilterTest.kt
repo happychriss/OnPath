@@ -63,4 +63,22 @@ class PointFilterTest {
         assertFalse("too fast", PointFilter.bridgesGap(p(0.0, 0), p(0.05, 60_000)))
         assertFalse("no time", PointFilter.bridgesGap(TrackPoint(46.67, 11.1, null, null), p(0.001, 60_000)))
     }
+
+    /**
+     * Field test 2026-10-22: two walking gaps (96 s, 154 s) – the data could not tell weak fixes (> 50 m) from no fix
+     * at all. The gap trace now says which.
+     */
+    @Test fun gapTraceSaysFixesWereTooInaccurate() {
+        val w = PointFilter.GapWatch()
+        w.onDropped(true, 80f); w.onDropped(true, 63f); w.onDropped(true, 120f); w.onDropped(false, 0f)
+        assertEquals("4 fixes dropped for accuracy, best 63 m", w.why())
+        w.reset()
+        assertEquals("no GPS fix at all", w.why())
+    }
+
+    @Test fun gapTraceWithoutAccuracyValues() {
+        val w = PointFilter.GapWatch()
+        w.onDropped(false, 0f)
+        assertEquals("1 fix dropped for accuracy, best unknown", w.why())
+    }
 }
