@@ -74,6 +74,19 @@ class TimeScreenshotTest {
         }
     }
 
+    /** Navigate after a plan edit / re-route that moved the arrival > 5 min: the reason stays in the card. */
+    @Test fun navigateNewRouteNote() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Column(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NavStatusCard(ui.copy(arriveAt = "12:45", routeNote = "New route: arrival 12:45, was 13:15"), onResume = {})
+                    NavStatusCard(ui.copy(arriveAt = "12:45", routeNote = "New route: arrival 12:45, was 13:15"), onResume = {}, profileOpen = true)
+                }
+            }
+        }
+    }
+
     /** Settings → Your pace: chips for hiking and cycling (learning per tour only: nothing stored to show). */
     @Test fun settingsPace() = paparazzi.snapshot {
         OnPathTheme {

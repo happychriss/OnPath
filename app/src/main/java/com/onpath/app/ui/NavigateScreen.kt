@@ -103,6 +103,11 @@ data class NavUi(
     val breakS: Double? = null,
     /** "Your pace on this trip: up 0.9× · down 1.1×" in the opened card; null = nothing learned yet. */
     val paceNote: String? = null,
+    /**
+     * "New route: arrival 12:45, was 13:15" – the followed line changed (plan edit, re-route) and moved the arrival by
+     * more than 5 min; stays until the next change (owner: nothing disappears by itself). null = none.
+     */
+    val routeNote: String? = null,
     /** What is navigated / recorded as (icon first in the status card, tap = check-and-switch sheet); null = not shown. */
     val activity: Activity? = null,
     val sac: Int = 3,
@@ -326,6 +331,11 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        ui.routeNote?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+        }
         // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
@@ -515,6 +525,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         arriveAt = arrive,
         movingS = tt?.movingS, breakS = tt?.breakS,
         paceNote = tt?.learned?.let { paceNote(it) },
+        routeNote = tt?.lineNote?.text(),
         // what the service navigates is the truth; free recording: the app's activity
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,

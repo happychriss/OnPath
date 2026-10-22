@@ -298,4 +298,69 @@ class TripPaceTest {
         assertEquals(Factors.ONE, tour2.factors())
         assertEquals(TimeEstimate.round(times.total()), tour2.snapshot().toGoS!!, 1.0)
     }
+
+    private fun lagMin(trip: TripPace, s: Double): Double =
+        (trip.snapshot().arrivalMs!! - TimeEstimate.arrivalMs(wall(s), trip.rawToGoS()!!)) / 60_000.0
+
+    @Test fun newLineKeepsTheTimeNotYetShownAndBlendsItOut() {
+        // a slow walker: after the warm-up the learned time grows faster than the calm display may show it
+        val slow = Factors(2.0, 2.0, 2.0)
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, slow, 0.3)
+        val a = times.lengthM * 0.3
+        val lag = lagMin(trip, s)
+        assertTrue("precondition: the display lags the estimate by $lag min", abs(lag) > 5)
+        val shown = trip.snapshot().arrivalMs!!
+        // the same way as a new line (a plan edit that keeps the rest): the arrival must not jump by the lag
+        trip.setLine(RouteTimes.of(pts, Activity.HIKE), a)
+        trip.tick(s + 1, wall(s + 1))
+        val after = trip.snapshot().arrivalMs!!
+        assertEquals(0.0, (after - shown) / 60_000.0, 1.0)
+        assertNull(trip.snapshot().lineNote)
+        // blended out over ~10 min: then the display shows the estimate again, in small steps
+        var lastArr = after
+        var maxStep = 0.0
+        val end = walk(trip, slow, 0.4, startS = s + 1, startAlong = a) { _, _ ->
+            val arr = trip.snapshot().arrivalMs!!
+            maxStep = maxOf(maxStep, abs(arr - lastArr) / 60_000.0); lastArr = arr
+        }
+        assertTrue("walked ${(end - s) / 60} min", end - s > 12 * 60)
+        assertEquals(0.0, lagMin(trip, end), 2.0)
+        assertTrue("arrival step $maxStep min", maxStep <= 1 + 0.02 * 4 * 60 + 0.5)
+    }
+
+    @Test fun newLineThatMovesTheArrivalSaysWhyOnce() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.3)
+        val a = times.lengthM * 0.3
+        val was = trip.snapshot().arrivalMs!!
+        assertNull(trip.snapshot().lineNote)
+        // the plan gets 2 km longer at the end (flat)
+        val last = pts.last()
+        val longer = pts + (1..40).map { GeoPoint(last.lat, last.lon + it * 0.00065, last.ele) }
+        trip.setLine(RouteTimes.of(longer, Activity.HIKE), a)
+        val p = line.pointAt(a)
+        trip.onFix(s + 1, wall(s + 1), p.lat, p.lon, a, true)
+        val note = trip.snapshot().lineNote!!
+        assertEquals(was, note.wasMs)
+        assertEquals(trip.snapshot().arrivalMs!!, note.nowMs)
+        assertTrue((note.nowMs - note.wasMs) / 60_000.0 > 20)
+        assertTrue(note.text(), note.text().startsWith("New route: arrival ") && ", was " in note.text())
+        // stays (no timeout) while walking on
+        val s2 = walk(trip, Factors.ONE, 0.5, startS = s + 1, startAlong = a)
+        assertEquals(note, trip.snapshot().lineNote)
+        // the same line again (sent twice): still there
+        trip.setLine(RouteTimes.of(longer, Activity.HIKE), times.lengthM * 0.5)
+        trip.tick(s2 + 1, wall(s2 + 1))
+        assertEquals(note, trip.snapshot().lineNote)
+        // back to the shorter plan: a new note (earlier)
+        trip.setLine(times, times.lengthM * 0.5)
+        trip.tick(s2 + 2, wall(s2 + 2))
+        val back = trip.snapshot().lineNote!!
+        assertTrue(back.nowMs < back.wasMs - 20 * 60_000)
+        // a change of less than 5 min: no note (the old one ends with the change)
+        trip.setLine(RouteTimes.of(pts.dropLast(1), Activity.HIKE), times.lengthM * 0.5)
+        trip.tick(s2 + 3, wall(s2 + 3))
+        assertNull(trip.snapshot().lineNote)
+    }
 }
