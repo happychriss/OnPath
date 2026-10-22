@@ -88,9 +88,13 @@ class CellStore(
 
     fun installed(): List<InstalledCell> = current()?.cells.orEmpty()
 
-    /** Complete generations, oldest first; unreadable ones are skipped (and reported). */
+    /**
+     * Complete generations, oldest first; unreadable ones are skipped (and reported). Only `gNNNNNN` folders: a `.tmp`
+     * may be half written by [apply] right now, a `.bad` was set aside (field 2026-10-22: false ERROR on g000013.tmp).
+     * [GEN] (with the suffixes) is only for numbering.
+     */
     private fun generations(): List<Generation> =
-        storeDir.listFiles { f -> f.isDirectory && GEN.matches(f.name) }.orEmpty()
+        storeDir.listFiles { f -> f.isDirectory && GEN.matchEntire(f.name)?.groupValues?.get(2)?.isEmpty() == true }.orEmpty()
             .sortedBy { it.name }
             .mapNotNull { dir -> read(dir) }
 
