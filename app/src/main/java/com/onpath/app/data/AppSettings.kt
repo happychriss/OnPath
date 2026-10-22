@@ -24,9 +24,6 @@ data class AppSettings(
     // --- Navigate orientation (navigation agent) ---
     /** Navigate: map turns so the walking direction points up (true, default) or stays north-up (false). */
     val navHeadingUp: Boolean = true,
-    /** The app starts with this activity (and SAC limit for hiking); the activity chip only changes the current route. */
-    val defaultActivity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
-    val defaultSac: Int = 3,
     // --- time estimate (docs/plan-time-estimate.md): pace factor on time only, never on the route ---
     val hikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,
     val bikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,

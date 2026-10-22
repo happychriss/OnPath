@@ -144,6 +144,8 @@ data class PlanUi(
     val canRedo: Boolean,
     val activity: Activity,
     val size: PlanSize = PlanSize.COMPACT,
+    /** Hiking level (SAC T1–T5): the activity chip shows "Hike · T2". */
+    val sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
     /** A tour records: the primary action is "Continue navigation" instead of Start; Clear is disabled. */
     val tourRunning: Boolean = false,
     /** Name the plan was last saved or loaded as (null = never). */
@@ -203,7 +205,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PlanBody(ui: PlanUi, 
         }
         // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ActivityButton(ui.activity, cb.onActivity)
+            ActivityButton(ui.activity, ui.sac, cb.onActivity)
             Spacer(Modifier.width(8.dp))
             Box(Modifier.weight(1f)) { Title(ui, route) }
             SheetOverflow(ui, cb, menuInitiallyOpen)
@@ -419,12 +421,15 @@ private fun ErrorBox(error: String) {
 
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
 @Composable
-private fun ActivityButton(activity: Activity, onClick: () -> Unit) {
+private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit) {
+    val name = com.onpath.app.data.LastActivity.chipText(activity, sac) // "Hike · T2" (owner 2026-10-22)
     androidx.compose.material3.Surface(onClick = onClick, shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Activity: ${activity.label}. Tap to change" }) {
+        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Activity: $name. Tap to change" }) {
         Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
+            // bike names stay icon-only: "Bike – trekking" would squeeze time and distance (the Start button names it)
+            if (activity == Activity.HIKE) Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
