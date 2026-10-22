@@ -50,6 +50,7 @@ class Prefs(context: Context) {
             hillshade = sp.getBoolean("hillshade", true),
             offRouteWarning = sp.getBoolean("offRouteOn", true),
             offRouteVibrate = sp.getBoolean("offRouteVibrate", true),
+            junctionVibrate = sp.getBoolean("junctionVibrate", true),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
@@ -68,6 +69,7 @@ class Prefs(context: Context) {
             .putBoolean("hillshade", v.hillshade)
             .putBoolean("offRouteOn", v.offRouteWarning)
             .putBoolean("offRouteVibrate", v.offRouteVibrate)
+            .putBoolean("junctionVibrate", v.junctionVibrate)
             .putInt("offRouteM", v.offRouteM)
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)

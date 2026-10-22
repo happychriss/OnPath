@@ -19,6 +19,9 @@ STD=$(ls $L/kotlin-stdlib-[0-9]*.jar)
 LIBS=$(ls "$ROOT"/app/libs/*.jar | tr '\n' ':')
 mkdir -p "$W/stub" "$W/kt"
 javac -d "$W/stub" $(find "$HERE/stubs" -name '*.java')
+# BRouter's turn instructions are read from its own package (package-private fields): compile next to the jars
+LIBS_EARLY=$(ls "$ROOT"/app/libs/*.jar | tr '\n' ':')
+javac -cp "$LIBS_EARLY" -d "$W/stub" "$ROOT/app/src/main/java/btools/router/OnPathHints.java"
 R="$ROOT/app/src/main/java/com/onpath/app/routing"
 N="$ROOT/app/src/main/java/com/onpath/app/navigation"; D="$ROOT/app/src/main/java/com/onpath/app/data"
 T=${KTTEST:-$HERE/KtTest.kt}; TN=$(basename "$T" .kt)
@@ -31,5 +34,5 @@ fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$R/TurnDetector.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$HERE/ProblemsStub.kt" "$W/$TN.kt"
+  "$R/StraightLineEngine.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$HERE/ProblemsStub.kt" "$W/$TN.kt"
 java -Xmx192m -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"
