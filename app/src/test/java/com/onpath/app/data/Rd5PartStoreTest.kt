@@ -236,8 +236,10 @@ class Rd5PartStoreTest {
         val s1 = store.state("E10_N45.rd5")
         assertTrue(s1 === store.state("E10_N45.rd5")) // not read again
         assertTrue(store.sizeOnPhone(meran) > 0)
+        val v = store.version
         store.download(listOf(ulten))
         assertTrue(store.has(ulten)) // own write: entry dropped
+        assertTrue(store.version > v) // Offline maps recomputes its routing sizes
         File(seg, "E10_N45.rd5").delete() // gone from outside
         assertFalse(store.has(meran))
         assertEquals(0L, store.sizeOnPhone(meran))
