@@ -117,6 +117,8 @@ class PlanCallbacks(
     val onPlanAnyway: () -> Unit = {},
     /** "Show" of the unreachable-point line: the map moves to the missing piece. */
     val onShowGap: () -> Unit = {},
+    /** Tap on the amber warning line: the list of spots (or the whole route when there are none). */
+    val onWarnings: () -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
@@ -179,6 +181,8 @@ data class PlanUi(
     val notRouted: NotRouted? = null,
     /** A plan point the route does not reach (PlanGaps.text): one red line + "Show", while it holds. */
     val gapText: String? = null,
+    /** Something to know about the route (RouteWarnings, or "Route changed for … – please check"): one amber line. */
+    val warnText: String? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -249,6 +253,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
     ui.error?.let { ErrorBox(it) }
     ui.gapText?.let { GapLine(it, cb.onShowGap) }
+    ui.warnText?.takeIf { !ui.routing }?.let { WarnLine(it, cb.onWarnings) }
     // outside the profile step the map card is one line: it must never squeeze the points away (CI 2026-10-22)
     ui.cellCard?.let { CellCard(it, cb.cellCard, compact = ui.size != PlanSize.COMPACT) }
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
@@ -315,6 +320,24 @@ private fun GapLine(text: String, onShow: () -> Unit) {
         androidx.compose.material3.TextButton(onClick = onShow) {
             Text("Show", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = red)
         }
+    }
+}
+
+/**
+ * Safety audit batch B (owner 2026-10-22): ONE amber line when the route has something to know ("1.2 km pushing ·
+ * steps · 2 sections above T2") or changed with the activity. The whole line is the tap target (→ list of spots).
+ */
+@Composable
+internal fun WarnLine(text: String, onTap: () -> Unit) {
+    val amber = OnPathColors.Amber
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(MaterialTheme.shapes.small)
+        .clickable(role = Role.Button, onClickLabel = "Show the spots") { onTap() }
+        .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Warning, null, tint = amber, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = amber,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(Icons.Filled.ChevronRight, null, tint = amber, modifier = Modifier.size(20.dp))
     }
 }
 
