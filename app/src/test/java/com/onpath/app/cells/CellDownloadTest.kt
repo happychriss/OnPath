@@ -234,14 +234,15 @@ class CellDownloadTest {
      */
     @Test fun outdatedSchemaIsLoadedAgain() {
         assertEquals(1, CellApi.schemaOf("2026-10-20")); assertEquals(2, CellApi.schemaOf("2026-10-20-s2"))
+        assertEquals(3, CellApi.CELL_SCHEMA)
         server.publish(a, "2026-10-20"); server.buildPolls = 0
         val mc = cells(Net(unmetered = false))
         mc.request(listOf(a), CellReason.POINT)   // own point: allowed on mobile data
         waitFor("old") { mc.state(a) == CellState.Ready("2026-10-20") }
         assertEquals(listOf(a), mc.outdated())
-        server.publish(a, "2026-10-20-s2")
+        server.publish(a, "2026-10-20-s3")
         mc.request(mc.outdated(), CellReason.UPDATE, ownPoint = true)
-        waitFor("schema 2") { mc.state(a) == CellState.Ready("2026-10-20-s2") }
+        waitFor("schema 3") { mc.state(a) == CellState.Ready("2026-10-20-s3") }
         assertEquals(emptyList<CellId>(), mc.outdated())
     }
 
@@ -250,11 +251,11 @@ class CellDownloadTest {
      * data (own point) → map installed; "Reset maps" deletes everything → asked again → installed again, same version.
      */
     @Test fun freshInstallAndResetLoadTheMapAgain() {
-        server.publish(a, "2026-10-21-s2"); server.buildPolls = 2
+        server.publish(a, "2026-10-21-s3"); server.buildPolls = 2
         val mc = cells(Net(unmetered = false))
         assertEquals(null, mc.mapDir())
         mc.request(listOf(a), CellReason.POINT)
-        waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s2") }
+        waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s3") }
         assertTrue(File(mc.mapDir()!!, "base.pmtiles").isFile)
         assertEquals(emptyList<CellId>(), mc.outdated())
         // Settings → Diagnostics → Reset maps
@@ -262,7 +263,7 @@ class CellDownloadTest {
         waitFor("deleted") { mc.installed.value.isEmpty() }
         assertEquals(listOf(a), mc.missing(listOf(a)))
         mc.request(listOf(a), CellReason.POINT)
-        waitFor("loaded again") { mc.state(a) == CellState.Ready("2026-10-21-s2") && mc.installed.value.size == 1 }
+        waitFor("loaded again") { mc.state(a) == CellState.Ready("2026-10-21-s3") && mc.installed.value.size == 1 }
     }
 
     /**

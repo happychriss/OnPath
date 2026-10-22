@@ -373,7 +373,7 @@ test("old ready cell: answered ready (+ updating) and a low-priority refresh is 
   const env = testEnv();
   const cfg = config(env);
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
-      VALUES (?, 2, '2026-01-01-s2', '2026-01-01', 5, 3, 1)`).bind(MERAN).run();
+      VALUES (?, 2, '2026-01-01-s3', '2026-01-01', 5, 3, 1)`).bind(MERAN).run();
   const j = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-20"));
   assert.equal(j.cells[0].state, "ready");
   assert.equal(j.cells[0].updating, true);
@@ -394,7 +394,7 @@ test("cell of an older content schema: rebuilt with the asked priority, not serv
   const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();
   assert.deepEqual({ ...row }, { job: "queued", priority: 0 });
   // a current-schema cell is just touched
-  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s2', job = NULL WHERE id = ?").bind(MERAN).run();
+  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s3', job = NULL WHERE id = ?").bind(MERAN).run();
   const k = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-21"));
   assert.equal(k.cells[0].state, "ready");
   assert.equal(k.cells[0].updating, undefined);

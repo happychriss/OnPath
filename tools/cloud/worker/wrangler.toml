@@ -19,7 +19,7 @@ crons = ["* * * * *"]
 [vars]
 ENVIRONMENT = "dev"
 FORMATS = "2"
-CELL_SCHEMA = "2"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "3"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 BUILDS_ENABLED = "false"
 GCP_JOB = "onpath-cell-dev"
 
@@ -41,7 +41,7 @@ routes = [{ pattern = "__MAPS_HOST_TEST__", custom_domain = true }]
 [env.test.vars]
 ENVIRONMENT = "test"
 FORMATS = "2"
-CELL_SCHEMA = "2"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "3"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-test"
 MAX_CELLS_PER_REQUEST = "40"
@@ -71,7 +71,7 @@ routes = [{ pattern = "__MAPS_HOST_PRODUCTION__", custom_domain = true }]
 [env.production.vars]
 ENVIRONMENT = "production"
 FORMATS = "2"
-CELL_SCHEMA = "2"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "3"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-prod"
 MAX_CELLS_PER_REQUEST = "40"

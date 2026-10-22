@@ -47,6 +47,8 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   run is fixed at once. Release gate = only the short `StartSmokeE2ETest`, the app opens). `-Ponpath.e2e=true` adds
   x86_64 libs – never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>`.
+- Map ↔ router classes (format 2 overlays): `tools/routing/wayclass/build.sh` (classifier jar, needs a JDK) and
+  `tools/routing/wayclass/consistency.py <package> <segmentsDir>` (routes never cross a way the map shows forbidden).
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
 

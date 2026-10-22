@@ -3,6 +3,8 @@ cloud/worker
 hetzner
 icons
 routing
+!routing/wayclass/WayClass.java
+!routing/wayclass/build.sh
 style_analysis
 themes-proposals
 **/__pycache__

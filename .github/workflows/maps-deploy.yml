@@ -19,6 +19,9 @@ on:
       - "tools/cloud/**"
       - "tools/*.py"
       - "tools/build_region.sh"
+      - "tools/routing/wayclass/**"
+      - "app/src/main/assets/brouter/**"
+      - "app/libs/brouter-*.jar"
       - ".github/workflows/maps-deploy.yml"
   workflow_dispatch:
     inputs:
@@ -132,6 +135,7 @@ jobs:
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           docker build -t onpath-cell-builder -f tools/cells/Dockerfile tools/cells
           docker build --build-arg BASE=onpath-cell-builder --build-arg "PIPELINE_REV=${GITHUB_SHA::7}" \
+            --build-context brouterlibs=app/libs --build-context brouter=app/src/main/assets/brouter \
             -t "$IMAGE" -f tools/cloud/Dockerfile.job tools
           docker push "$IMAGE"
 

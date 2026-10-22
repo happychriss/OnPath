@@ -40,7 +40,26 @@ L = []
 FMT = 1  # map package format the style is built for (build())
 # format 1 GeoJSON source -> format 2 source-layer of "overlays"
 OVERLAY_LAYERS = {"routes": "routes", "trails": "trails", "ways": "ways", "paths": "paths", "lowways": "paths",
-                  "trailnames": "trailnames"}
+                  "trailnames": "trailnames", "barriers": "barriers"}
+
+# Router classes (format 2 packages built with extract_overlays.py --wayclass; docs/map-style-notes.md "Router
+# classes", owner decisions 2026-10-22): per activity group 0 good (green) / 1 possible (black) / 2 forbidden (red,
+# dashed + sign). A feature with the class key uses ONLY the class; features without it (older map cells) keep the
+# tag rules. Activity groups = the app's BRouter profiles (BRouterEngine.profileFile), one style mode each, switched
+# by MapController.setOverlay: foot = Hike, bike = Bike trekking + E-bike, touring = Bike touring, mtb = MTB + MTB e-bike.
+CLASS_KEY = {"foot": "ch", "bike": "ct", "touring": "cf", "mtb": "cm"}
+BARRIER_BIT = {"foot": 1, "bike": 2, "touring": 4, "mtb": 8}  # overlays "barriers" b = blocked-profile mask
+# Hiking route band above the user's T level: grey, dashed (owner decision 2026-10-22 (3)). The app sets the real
+# level at runtime (MapController.setSacLimit rewrites both filters); the style ships with the app default T3.
+DEFAULT_SAC_LIMIT = 3
+
+
+def has_class(mode):
+    return ["has", CLASS_KEY[mode]]
+
+
+def class_is(mode, value):
+    return ["==", ["get", CLASS_KEY[mode]], value]
 
 
 def out_path(theme, fmt=1):
@@ -342,14 +361,24 @@ def route_bands():
             layer(id_=f"routes-{kind}-edge", type="line", source="routes", minzoom=minz, filter=flt,
                   layout={"line-join": "round", "line-cap": "round", "visibility": vis},
                   paint={"line-color": T("route.band.edge.color"), "line-width": Z("route.band.edge.width")})
+        band = ["all", flt, ["!", ["has", "majoronly"]]]
+        if kind == "hike":
+            band = hike_band_filter(DEFAULT_SAC_LIMIT, over=False)
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
-              filter=["all", flt, ["!", ["has", "majoronly"]]],
+              filter=band,
               layout={"line-join": "round", "line-cap": "round", "visibility": vis},
               # Zoomed out the route IS a thin line on the way (no empty band); from z13.5 it widens into the
               # soft band. Our own look (owner: similar to Komoot, not a copy).
               paint={"line-color": ["interpolate", ["linear"], ["zoom"], 13, T("route.line.color"), 14, T("route.band.color")],
                      "line-opacity": T("route.opacity"),
                      "line-width": band_w})
+        if kind == "hike":
+            # pieces over trails above the user's T level (the router forbids them): grey dashes instead of the band
+            layer(id_="routes-hike-over", type="line", source="routes", minzoom=minz,
+                  filter=hike_band_filter(DEFAULT_SAC_LIMIT, over=True),
+                  layout={"line-join": "round", "visibility": vis},
+                  paint={"line-color": T("route.over.color", "#6f6f6f"), "line-opacity": T("route.over.opacity", 0.55),
+                         "line-width": band_w, "line-dasharray": T("route.over.dash", [0.9, 0.7])})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
@@ -369,6 +398,16 @@ def route_bands():
                       "text-max-angle": 30, "text-padding": 4, "text-offset": [0, 1.0], "visibility": vis},
               paint={"text-color": T("route.major.label.color"), "text-halo-color": T("label.halo.color"),
                      "text-halo-width": 1.5})
+
+
+def hike_band_filter(limit, over):
+    """Hiking route band pieces at / below (over=False) or above (over=True) the T level `limit` (route "sac", set by
+    extract_overlays.py; pieces without it count as T0), and pieces the hiking profile forbids at any level ("hx":
+    via ferrata, trail_visibility=no, private – packages with router classes). MapController.setSacLimit builds the
+    same two filters."""
+    sac = ["coalesce", ["get", "sac"], 0]
+    return ["all", ["==", ["get", "kind"], "hike"], ["!", ["has", "majoronly"]],
+            ["any", [">", sac, limit], ["has", "hx"]] if over else ["all", ["<=", sac, limit], ["!", ["has", "hx"]]]]
 
 
 def paths():
@@ -568,9 +607,19 @@ def green_ways():
         if FMT == 2:
             flt += [["<=", ["coalesce", ["get", "sac"], 0], max_sac], ["<=", ["coalesce", ["get", "mtb"], 0], max_mtb]]
         return flt
+    # Router classes (format 2): green = the activity's class is "good" on a path-like way. Hiking: only ways built for
+    # walking (footways, pedestrian zones, cycleways, foot=designated paths) – hiking-mountain.brf costs a plain path
+    # like a footway, and plain paths keep their black / dotted difficulty look. Bikes: any path-like way (cycleway,
+    # footway, pedestrian, bridleway, path) – the profile tells which ones are good. Never tracks or streets.
+    hike_kind = ["all", path, ["any", ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
+                               ["all", is_path, ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
+    bike_kind = ["all", path, ["any", ["in", sub, ["literal", ["footway", "pedestrian", "cycleway", "bridleway"]]],
+                               is_path]]
     for mode, flt, visible in (("foot", foot, True), ("bike", bike_way(["yes", "designated"], 1, 1), False),
                                ("touring", bike_way(["designated"], 1, 1), False),
                                ("mtb", bike_way(["yes", "designated"], 2, 3), False)):
+        if FMT == 2:
+            flt = ["case", has_class(mode), ["all", hike_kind if mode == "foot" else bike_kind, class_is(mode, 0)], flt]
         layer(id_=f"greenway-{mode}", type="line", **src, minzoom=13,
               filter=flt, layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if visible else "none"},
               paint={"line-color": T("greenway.color"), "line-width": Z("greenway.width")})
@@ -605,19 +654,35 @@ def access_restrictions():
     steps = ["==", SUB, "steps"] if FMT == 2 else ["all", ["==", cls, "path"], ["==", ["get", "subclass"], "steps"]]
 
     def blocked_where(mode, where):
-        return ["any", where, steps] if mode == "bike" and where is not service else where
-    for mode, tag, visible in (("foot", "foot", True), ("bike", "bicycle", False)):
+        return ["any", where, steps] if mode != "foot" and where is not service else where
+    # Router classes (format 2): forbidden = the activity's class 2 on paths / tracks / via ferratas and on minor
+    # streets / service roads (not driveways). Bike profiles differ (steps: MTB forbidden, trekking / touring only
+    # expensive = black), so format 2 has one layer set per profile group; format 1 keeps foot / bike.
+    class_where = {"": ["any", ["==", ["get", "k"], "t"], OWN_PATH_CLASS, ["==", SUB, "via_ferrata"]],
+                   "-service": street}
+    modes = ([("foot", "foot", True), ("bike", "bicycle", False), ("touring", "bicycle", False),
+              ("mtb", "bicycle", False)] if FMT == 2 else [("foot", "foot", True), ("bike", "bicycle", False)])
+
+    def blocked_filter(mode, tag, suffix, where):
+        old = ["all", blocked_where(mode, where), ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
+        if FMT != 2:
+            return old
+        return ["case", has_class(mode), ["all", class_where[suffix], class_is(mode, 2)], old]
+    for mode, tag, visible in modes:
+        vis = {"visibility": "visible" if visible else "none"}
         for suffix, src, where in parts:
-            blocked = ["all", blocked_where(mode, where), ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
-            vis = {"visibility": "visible" if visible else "none"}
             layer(id_=f"access-no-tint-{mode}{suffix}", type="line", **src, minzoom=14,
-                  filter=blocked, layout={"line-join": "round", "line-cap": "round", **vis},
+                  filter=blocked_filter(mode, tag, suffix, where), layout={"line-join": "round", "line-cap": "round", **vis},
                   paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
+        # owner decision 2026-10-22 (4): forbidden = red and dashed – short red dashes along the way from z13
         for suffix, src, where in parts:
-            blocked = ["all", blocked_where(mode, where), ["!", ["in", ["coalesce", ["get", tag], ""], allowed]]]
-            vis = {"visibility": "visible" if visible else "none"}
+            layer(id_=f"access-no-dash-{mode}{suffix}", type="line", **src, minzoom=13,
+                  filter=blocked_filter(mode, tag, suffix, where), layout={"line-join": "round", **vis},
+                  paint={"line-color": T("forbidden.color", "#c62828"), "line-width": Z("forbidden.width", 1.4),
+                         "line-dasharray": T("forbidden.dash", [2, 2])})
+        for suffix, src, where in parts:
             layer(id_=f"access-no-sign-{mode}{suffix}", type="symbol", **src, minzoom=15,
-                  filter=blocked,
+                  filter=blocked_filter(mode, tag, suffix, where),
                   layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
                           "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
                           "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1, **vis})
@@ -672,23 +737,31 @@ def bike_map():
     cls = ["get", "class"]
     # bigger roads from the base map, small streets from overlays "streets" (base map trimmed at z13+) – same arrows,
     # MapController.setOverlay switches both
+    # Router classes: "cr" = the bike profiles' one-way (1 along the line, -1 against it; absent = both ways). Small
+    # streets with classes show the arrow only where bikes may not ride both ways (oneway:bicycle=no, contraflow lanes).
     for lid, src in (("bike-oneway", {"source": "base", "source-layer": "transportation"}),
                      ("bike-oneway-streets", OWN_STREETS)):
-        layer(id_=lid, type="symbol", **src, minzoom=15,
-              filter=["all", ["in", ["coalesce", ["get", "oneway"], 0], ["literal", [1, -1]]],
-                      ["!", ["in", cls, ["literal", ["path", "track", "rail", "transit", "aerialway", "cable_car"]]]]],
+        old = ["all", ["in", ["coalesce", ["get", "oneway"], 0], ["literal", [1, -1]]],
+               ["!", ["in", cls, ["literal", ["path", "track", "rail", "transit", "aerialway", "cable_car"]]]]]
+        rotate = ["case", ["==", ["get", "oneway"], -1], 180, 0]
+        if lid == "bike-oneway-streets":
+            old = ["case", ["has", "ct"], ["has", "cr"], old]
+            rotate = ["case", ["has", "cr"], ["case", ["==", ["get", "cr"], -1], 180, 0], rotate]
+        layer(id_=lid, type="symbol", **src, minzoom=15, filter=old,
               layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "oneway-arrow",
-                      "icon-rotate": ["case", ["==", ["get", "oneway"], -1], 180, 0], "icon-rotation-alignment": "map",
+                      "icon-rotate": rotate, "icon-rotation-alignment": "map",
                       "icon-size": interp(15, 0.75, 18, 1.0, base=1), "icon-padding": 2, **hidden})
     # one-way paths, footways, cycleways, tracks (overlay "ow" = oneway, "owb" = oneway:bicycle; audit #13 / #14):
     # BRouter makes the reverse ×100 for bikes. oneway:bicycle wins (owb=0: the both-ways symbol below).
     owb = ["coalesce", ["get", "owb"], 9]
     way = ["any", ["==", ["get", "k"], "t"], OWN_PATH_CLASS]
     # a little bigger than on streets: the grey arrow sits on a thin black line, not on a light lane
+    tag_oneway = ["all", way, ["any", ["all", ["has", "ow"], ["!", ["has", "owb"]]], ["in", owb, ["literal", [1, -1]]]]]
     layer(id_="bike-oneway-paths", type="symbol", **own, minzoom=15,
-          filter=["all", way, ["any", ["all", ["has", "ow"], ["!", ["has", "owb"]]], ["in", owb, ["literal", [1, -1]]]]],
+          filter=["case", ["has", "ct"], ["all", way, ["has", "cr"]], tag_oneway],
           layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "oneway-arrow",
-                  "icon-rotate": ["case", ["has", "owb"], ["case", ["==", owb, -1], 180, 0],
+                  "icon-rotate": ["case", ["has", "cr"], ["case", ["==", ["get", "cr"], -1], 180, 0],
+                                  ["has", "owb"], ["case", ["==", owb, -1], 180, 0],
                                   ["==", ["get", "ow"], -1], 180, 0], "icon-rotation-alignment": "map",
                   "icon-size": interp(15, 1.0, 18, 1.3, base=1), "icon-padding": 2, **hidden})
     layer(id_="bike-both-ways", type="symbol", **own, minzoom=15,
@@ -696,6 +769,18 @@ def bike_map():
           layout={"symbol-placement": "line", "symbol-spacing": interp(15, 80, 18, 140), "icon-image": "bike-both-ways",
                   "icon-rotation-alignment": "map", "icon-size": interp(15, 0.8, 18, 1.05, base=1),
                   "icon-padding": 2, **hidden})
+
+
+def barriers():
+    """Format 2 with router classes: barrier nodes (gates, stiles, bollards …) the activity's profile cannot pass
+    (overlays "barriers", b = blocked-profile mask, extract_overlays.py --wayclass) – the no-entry sign on the node,
+    one layer per profile group (MapController.setOverlay)."""
+    for mode, bit in BARRIER_BIT.items():
+        layer(id_=f"barrier-blocked-{mode}", type="symbol", source="barriers", minzoom=15,
+              filter=["==", ["%", ["floor", ["/", ["coalesce", ["get", "b"], 0], bit]], 2], 1],
+              layout={"icon-image": "access-no", "icon-size": interp(15, 0.7, 18, 0.95, base=1),
+                      "icon-allow-overlap": True, "icon-ignore-placement": False,
+                      "visibility": "visible" if mode == "foot" else "none"})
 
 
 def bridges():
@@ -915,7 +1000,7 @@ def build(theme=DEFAULT_THEME, fmt=1):
     green_ways()
     trails(); surface_loose(); access_restrictions()
     if FMT == 2:
-        via_ferrata(); bike_map()
+        via_ferrata(); bike_map(); barriers()
     bridges(); boundaries()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())

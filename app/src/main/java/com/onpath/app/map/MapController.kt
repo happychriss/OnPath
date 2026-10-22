@@ -533,33 +533,60 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
         val touring = activity == Activity.BIKE_TOURING
+        val trekking = !walking && !mtb && !touring
+        // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions
+        // 2026-10-22); format 1 has foot / bike only, where "bike" serves every bike activity.
+        val perProfile = runCatching { style.getLayer("access-no-tint-touring") != null }.getOrDefault(false)
+        val accessOn = mapOf("foot" to walking, "bike" to if (perProfile) trekking else !walking,
+            "touring" to (perProfile && touring), "mtb" to (perProfile && mtb))
+        val access = accessOn.flatMap { (mode, on) ->
+            listOf("tint", "dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
+        }
         // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
-        // label (mtb:scale too), loose-surface edges for every bike activity. Green ways per BRouter profile family:
-        // trekking.brf (Bike trekking, E-bike), fastbike (Bike touring), mtb.brf (MTB, MTB e-bike).
-        for ((id, on) in listOf("access-no-tint-foot" to walking, "access-no-sign-foot" to walking,
-                "access-no-tint-bike" to !walking, "access-no-sign-bike" to !walking,
-                // format 2 only (map package with overlays.pmtiles): service roads from overlays "streets", bike map
-                "access-no-tint-foot-service" to walking, "access-no-sign-foot-service" to walking,
-                "access-no-tint-bike-service" to !walking, "access-no-sign-bike-service" to !walking,
+        // label (mtb:scale too), loose-surface edges for every bike activity. Green ways, forbidden ways and blocking
+        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking, E-bike),
+        // fastbike (Bike touring), mtb.brf (MTB, MTB e-bike).
+        for ((id, on) in access + listOf(
+                // format 2 only (map package with overlays.pmtiles): bike map, barrier nodes
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
                 "bike-lane-right" to !walking, "bike-lane-right-shared" to !walking,
                 "bike-oneway" to !walking, "bike-oneway-streets" to !walking, "bike-oneway-paths" to !walking,
                 "bike-both-ways" to !walking,
+                "barrier-blocked-foot" to walking, "barrier-blocked-bike" to trekking,
+                "barrier-blocked-touring" to touring, "barrier-blocked-mtb" to mtb,
                 "trails-sac-label" to !mtb, "trails-mtb-label" to mtb,
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
-                "greenway-foot" to walking, "greenway-bike" to (!walking && !mtb && !touring),
+                "greenway-foot" to walking, "greenway-bike" to trekking,
                 "greenway-touring" to touring, "greenway-mtb" to mtb)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
                 .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
         }
         for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            // the band plus its major-route highlight (pink edges + name)
-            for (suffix in listOf("", "-major-low", "-major", "-major-label")) {
+            // the band plus its major-route highlight (pink edges + name); hiking: the grey pieces above the T level
+            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
                     .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }
             }
+        }
+    }
+
+    /**
+     * Hiking route band over trails above the user's T level (the router forbids them): grey dashes instead of the
+     * band (owner decision 2026-10-22 (3)). Route pieces carry "sac" and "hx" = forbidden at any level
+     * (tools/extract_overlays.py); the same two filters as tools/make_style.py hike_band_filter, which ships them for T3.
+     */
+    fun setSacLimit(limit: Int) {
+        val sac = Expression.coalesce(Expression.get("sac"), Expression.literal(0))
+        val hike = Expression.eq(Expression.get("kind"), Expression.literal("hike"))
+        val piece = Expression.not(Expression.has("majoronly"))
+        val t = Expression.literal(limit.coerceIn(1, 6))
+        val within = Expression.all(Expression.lte(sac, t), Expression.not(Expression.has("hx")))
+        val over = Expression.any(Expression.gt(sac, t), Expression.has("hx"))
+        for ((id, cmp) in listOf("routes-hike" to within, "routes-hike-over" to over)) {
+            runCatching { (style.getLayer(id) as? LineLayer)?.setFilter(Expression.all(hike, piece, cmp)) }
+                .onFailure { if (live()) Problems.warn("map", "Route layer $id not set to T$limit", it) }
         }
     }
 
