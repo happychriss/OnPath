@@ -5,6 +5,11 @@
 moving time + arrival clock with 10 % break allowance (Q2), three pace chips Relaxed/Normal/Fit (Q3), learning across
 tours automatic with Reset (Q4), no range for now (Q5), owner's GPX tours as trimmed test files in the repo (Q6).
 
+**Owner decision 2026-10-22: learning per tour only** (replaces Q4) – every plan and every tour starts from the
+Settings pace (Relaxed / Normal / Fit); learning across tours (`PaceStore`) is removed with its stored data; during a
+tour the arrival adapts gradually after ~15 min / 1 km, down / flat / up separately, breaks excluded; nothing is
+carried to the next tour. See "Learning per tour only (2026-10-22)" below.
+
 Status: **P0–P3 implemented** on branch `feat/time-estimate` (2026-10-18, see "Implementation status" below); **P4
 way factors implemented** on `feat/time-p4` (SAC / surface / steps / MTB scale per span, see "P4" below); tuning with
 the owner's tours still open. Original proposal text follows unchanged. Owner request: "Estimation of remaining walking/hiking time –
@@ -35,8 +40,8 @@ synthetic replays), run with
 - **Replay result** (synthetic hikers on 9 real routes, 900 runs): median error of the remaining time at half way
   **20 % today → 8 % with learning**, p90 **53 % → 21 %**. Biggest arrival-clock jump per 100 m: 29 min → **8 min**
   with the calm display.
-- **Across tours (optional):** after each tour your factors are stored per activity, so the next plan already says
-  "your" time. Shown in Settings ("Your pace: 12 % faster than standard, from 4 tours", Reset).
+- **Across tours:** ~~after each tour your factors are stored per activity~~ – dropped 2026-10-22 (owner: learning per
+  tour only; every plan and tour starts from the pace setting).
 
 ## Implementation status (2026-10-18, branch `feat/time-estimate`)
 
@@ -46,7 +51,7 @@ synthetic replays), run with
 | P1 | Settings → "Your pace" (Relaxed / Normal / Fit for hiking and cycling). Navigate card: "2 h 50 min · 7.4 km", "arrive ≈ 16:40" (10 % break allowance) on the right, recording line "moving 1:12 · breaks 0:11". "Tour saved" shows moving time, breaks and "On the route: planned 3:10 – you needed 2:52". | `ui/PaceSettings.kt`, `NavigateScreen` (`recordingLine`, arrival column), `FinishedDialog(times)`, `time/TourTimesStore` (`tour-times.json`) |
 | P2 | `TripPace` in the recording service (persisted in `trip-pace.json`): learning per group with τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2; pieces off route / jumps > 400 m / ratio outside 0.33…3 are not learned. Calm display. The opened Navigate card shows "Your pace on this trip: up 0.9× · down 1.1×" after 20 min of comparison. Replay harness for GPX pairs. | `time/TripPace`, `time/BreakDetector`, `RecordingService` (`timeLine`, `tripTime`), tests `TripReplay` / `TrackReplayTest` |
 | P4 | Way attributes per span of the routed line (`GeoPoint.way: WayAttrs`, from BRouter's track messages): hiking × SAC / rough ground / steps / faint-trail factor, bikes on the real surface with smoothness / MTB-scale caps and pushing. Used per 50 m piece; Time details has a second table "By way type / difficulty". Kept through leg fallback, chunks, re-route splice and the navigation session file; saved routes store their group times in `plan-times.json`. | `routing/RoutingContract` (`WayAttrs`), `BRouterWayStats.perNode`, `BRouterEngine.toResult`, `time/PaceModel` (`hikeWayFactor`, `ride`), `time/RouteTimes`, `time/TimeBreakdown`, `time/PlanTimesStore`, `NavSession` |
-| P3 | `PaceStore` per activity (6 activities, not 3 groups): after a tour with ≥ 30 min moving time on a followed route, weighted by compared time per group, half-life 5 tours; break ratio stored (not yet used). Settings lists it with Reset (asks first). Plan = model × pace × stored factors. | `time/PaceStore`, `Prefs.paceStore`, `RecordingService.learnAcrossTours`, `AppViewModel.resetLearnedPace` |
+| P3 (**removed 2026-10-22**) | `PaceStore` per activity (6 activities, not 3 groups): after a tour with ≥ 30 min moving time on a followed route, weighted by compared time per group, half-life 5 tours; break ratio stored (not yet used). Settings lists it with Reset (asks first). Plan = model × pace × stored factors. | `time/PaceStore`, `Prefs.paceStore`, `RecordingService.learnAcrossTours`, `AppViewModel.resetLearnedPace` |
 
 **Decisions taken while building** (open for the owner):
 - *Breaks:* "within 25 m for 2 min" alone flagged slow steep walking as breaks (replay: 2:28 h of "breaks" instead of
@@ -80,6 +85,44 @@ with bad knees 24 / 24 / 0 %, relaxed ×1.3 11 / 11 / 10 %, fit ×0.8 11 / 13 / 
 25 % without learning; breaks found within ±1 min; arrival jump per 100 m p90 2.4–3.9 min, max 3.3–12.3 min (the
 1 min + 2 % rule allows ~8 min per update on a 6 h day). Real tracks: add folders to `app/src/test/resources/tracks/`
 (plan.gpx + track.gpx + info.txt, see `TripReplay`).
+
+### Learning per tour only (2026-10-22)
+
+Owner decision: "learning per tour only". What the code does now (`time/TripPace`, `TimeEstimate.planFactors`):
+
+| Rule | Implementation |
+| --- | --- |
+| Every plan and every tour starts from the Settings pace | `TimeEstimate.planFactors(activity, settings)` = pace factor only; `RecordingService.priorFor` the same; `PaceStore`, `learnAcrossTours`, Settings "Learned · …" rows with Reset and the Time details "Learned from tours" row removed; the old Prefs value `paceStore` is deleted once at app start (`Prefs.dropOldLearnedPace`, Problems INFO) |
+| Warm-up: the setting alone for ~15 min / ~1 km | `factors()` = exactly 1 until **15 min of walking and 1 km of progress** were compared on the route (`WARMUP_S`, `WARMUP_M`; both, so a bike also waits 15 min and a slow walker 1 km). Compared walking only: breaks, pauses, off-route stretches never count |
+| Then gradually towards the measured pace, down / flat / up separately | the learned factors (unchanged: τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2) are blended in linearly over the next 15 min of compared walking (`BLEND_S`): `f = 1 + w · (f_learned − 1)`, w 0 → 1. No jump at the end of the warm-up (first step < 0.02, steps < 0.015 per fix in the test) |
+| Setting changed mid-tour | `setPrior` re-bases the start value (the new setting) and keeps what was measured (observed sums re-scaled); in the warm-up the new setting shows at once |
+| Nothing carried to the next tour | a new `TripPace(setting)` per tour; the trip file is deleted at the end (and only read back for the same tour id) |
+| Plan sheet | unchanged: setting-based times |
+
+**New line (plan edit, re-route) – backlog "arrival forecast after plan edits – rest":** `setLine` no longer throws
+away what the calm display held back. The arrival moves at once by what the new line changes, the rest (shown −
+estimate on the old line at that moment) is kept as an offset and blended out linearly over 10 min
+(`OFFSET_BLEND_MS`). When the shown arrival moves by more than 5 min because of a new line (`NOTE_MIN_MS`),
+`TripTime.lineNote` carries "New route: arrival 12:45, was 13:15"; the Navigate card shows it as a line under the
+status until the next line change (the same line sent again keeps it; not persisted across a service restart).
+
+Tests: `TripPaceTest` (start from the setting, warm-up, gradual blend per class, breaks excluded in the warm-up,
+setting change mid-tour, no carry-over, offset after a line change – without the offset the arrival jumps 15 min –,
+the "why" note), `NavReplayTest` (tour 3: setting alone in the first 10 min; plan edited mid-walk: note on the round
+trip), snapshot `TimeScreenshotTest.navigateNewRouteNote`.
+
+**Replay, before → after** (|shown to go − real moving time| / real at 25 / 50 / 75 %; arrival jump per 100 m p90 / max):
+
+| Case | Before (cross-tour prior, learning from the first fix) | After (warm-up + blend) |
+| --- | --- | --- |
+| Owner tour 3, A→B | 17 / 13 / 24 %, jump 2.1 / 2.6 min | 19 / 16 / 24 %, jump 1.2 / 1.9 min |
+| Owner tour 4 on A→B→A | 23 / 4 / 3 %, jump 2.1 / 4.2 min | 24 / 6 / 3 %, jump 1.8 / 1.9 min |
+| Synthetic H5 / H7 / H9 | 27/21/4, 12/10/13, 11/15/4 % | unchanged; H7 jump p90 2.5 → 2.0, H9 max 4.2 → 2.9 min |
+| Mean over all fixtures (plain model 23.1 %) | 13.5 % | 14.0 % |
+
+The owner's tours are short (~1 h), so the warm-up costs a little accuracy early on (the owner walked ~20 % off the
+plan); the arrival is calmer. Long synthetic days are unchanged. Open: check on the next walk that the first quarter
+hour feels right ("setting" time) and that a re-route shows the note only when the arrival really moved.
 
 ### P4: way type and difficulty (2026-10-18, branch `feat/time-p4`)
 
@@ -373,6 +416,9 @@ remaining = Σ over remaining segments  p_segment × pace setting × f_group(seg
 - Cost: predicted time per group is precomputed as cumulative sums along the line, so `remaining` is three
   subtractions and three multiplications per fix.
 
+**Warm-up (2026-10-22).** The first 15 min / 1 km of compared walking use the setting alone; then the factors above
+are blended in over 15 min (see "Learning per tour only" at the top).
+
 **Calm display.**
 - Recompute on every fix, **show** at most every 30 s or 100 m of progress.
 - The arrival clock moves at most **1 min + 2 % of the remaining time per update**; a real change (e.g. after a re-route
@@ -416,7 +462,10 @@ Per hiker type at half way (median error): today E0 / one factor E3 / recommende
   needs real tracks (§6). The literature says ~14 % per route for an unknown person with a good formula; learning across
   tours (§4.4) is what closes that gap *before* the start.
 
-### 4.4 Learning across tours (optional, recommended)
+### 4.4 Learning across tours (optional, recommended) – **dropped 2026-10-22**
+
+Built as P3, removed by the owner's decision "learning per tour only": every plan and tour starts from the pace
+setting. Kept below as the original proposal.
 
 - After a tour with ≥ 30 min moving time on a followed route, store per activity group (hike / bike / e-bike):
   `f_down, f_flat, f_up` (the trip's group factors) and the break ratio, as a weighted running average

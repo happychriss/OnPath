@@ -236,8 +236,6 @@ class MainActivity : ComponentActivity() {
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
                             onInstallUpdate = { vm.installUpdate() },
-                            learnedPace = vm.learnedPace,
-                            onResetPace = vm::resetLearnedPace,
                             backup = run {
                                 val b by com.onpath.app.backup.Backups.status.collectAsState()
                                 com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,

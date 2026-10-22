@@ -92,8 +92,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
     private val db = TourDb.get(app)
     // time estimate state, declared before init {} uses it (recalc / refreshTours)
-    /** Pace learned from earlier tours (Prefs JSON, written by the recording service when a tour ends). */
-    private var paceStore = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
+    init {
+        // learning per tour only (owner 2026-10-22): the pace stored across tours by older versions is not used – removed
+        try { if (prefs.dropOldLearnedPace()) Problems.info("time", "Pace learned across tours removed (learning per tour only)") }
+        catch (e: Exception) { Problems.warn("time", "Old learned pace could not be removed; it is not used", e) }
+    }
 
     /** Model times of saved planned routes, by tour id: (factors, stored distance) they were computed for → seconds. */
     private val plannedTimes = java.util.concurrent.ConcurrentHashMap<Long, Pair<Pair<com.onpath.app.time.Factors, Double>, Double>>()
@@ -907,7 +910,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
                         finishedTour?.let { nameRecordedTour(it) }
                     }
-                    reloadPace()
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
@@ -1768,11 +1770,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- time estimate (docs/plan-time-estimate.md) ----------------
 
-    /** Pace setting × learned factors for planning with [a]. */
+    /** The pace setting for planning with [a] (learning per tour only: nothing from earlier tours). */
     fun planFactors(a: Activity = activity): com.onpath.app.time.Factors =
-        com.onpath.app.time.TimeEstimate.planFactors(a, settings, learnedFactors(a))
-
-    private fun learnedFactors(a: Activity): com.onpath.app.time.Factors? = paceStore.factors(a)
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings)
 
     /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
     var timeDetails by mutableStateOf<TimeDetailsUi?>(null)
@@ -1780,10 +1780,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTimeDetails() {
         val r = route ?: return
         val pace = com.onpath.app.time.TimeEstimate.pace(activity, settings)
-        val entry = paceStore.entry(activity)
         timeDetails = TimeDetailsUi(
             com.onpath.app.time.TimeBreakdown.of(r.points, activity, planFactors()),
-            pace.label, pace.factor, entry?.factors, entry?.tours ?: 0,
+            pace.label, pace.factor,
         )
     }
 
@@ -1793,27 +1792,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
         r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
-
-    /** What was learned from earlier tours, per activity (Settings → Your pace). */
-    var learnedPace by mutableStateOf(learnedList())
-        private set
-
-    private fun learnedList() = paceStore.learned().map { (a, e) -> LearnedPace(a, e.tours, e.factors) }
-
-    /** Settings → Your pace → Reset (after a confirmation): times for [a] go back to the pace setting. */
-    fun resetLearnedPace(a: Activity) {
-        paceStore = paceStore.reset(a)
-        prefs.paceStore = paceStore.toJson()
-        learnedPace = learnedList()
-        retime()
-        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
-    }
-
-    /** A tour ended: the service may have learned something; new plan times. */
-    private fun reloadPace() {
-        val fresh = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
-        if (fresh.toJson() != paceStore.toJson()) { paceStore = fresh; learnedPace = learnedList(); retime() }
-    }
 
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
