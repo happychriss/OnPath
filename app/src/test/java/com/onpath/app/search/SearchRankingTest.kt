@@ -98,6 +98,28 @@ class SearchRankingTest {
         assertTrue(mixed.zipWithNext().all { (a, b) -> a.tier >= b.tier })
     }
 
+    @Test fun lateOnlineResultsNeverMoveShownRows() {
+        // owner rule: rows must not move under the finger. Online results arriving after the offline rows were
+        // shown go below them (ranked among themselves); with nothing shown yet, or after typing, all is re-ranked.
+        val q = q("meran")
+        val offline = index.search(q)
+        val online = SearchRanking.onlineHits(listOf(
+            Place("o:far", "Meraner Straße 12", "address", 46.50, 11.35, source = Place.Source.ONLINE),
+            Place("o:2", "Meran 2000", "lift", 46.68, 11.22, source = Place.Source.ONLINE),
+        ), q)
+        val kept = SearchRanking.mix(offline, online, keepShown = true)
+        assertEquals(offline, kept.take(offline.size))
+        assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(kept.drop(offline.size)))
+        // the lift would rank among the offline rows when nothing was shown yet / after the next keystroke
+        val mixed = SearchRanking.mix(offline, online, keepShown = false)
+        assertTrue(mixed.indexOfFirst { it.place.name == "Meran 2000" } < offline.size)
+        // no offline rows shown: online only, best first
+        assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(SearchRanking.mix(emptyList(), online, keepShown = true)))
+        // SearchUi uses the flag
+        val ui = com.onpath.app.ui.search.SearchUi(query = "meran", hits = offline, online = online, onlineBelow = true)
+        assertEquals(kept, ui.results)
+    }
+
     @Test fun onlineTieWithOfflineKeepsOfflineFirst() {
         val p = place("Leiter Alm", "restaurant", 46.70, 11.10)
         val off = index.search(q("leiter alm"))

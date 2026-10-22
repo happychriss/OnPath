@@ -323,9 +323,17 @@ object SearchRanking {
         }
     }
 
-    /** Offline and online hits as one list in [ORDER]. */
-    fun mix(offline: List<SearchHit>, online: List<SearchHit>): List<SearchHit> =
-        if (online.isEmpty()) offline else (offline + online).sortedWith(ORDER)
+    /**
+     * Offline and online hits as one list in [ORDER]. [keepShown]: the offline rows were already on screen when the
+     * online ones arrived – they stay exactly where they are and the online rows go below them, ranked among
+     * themselves (owner rule: rows never move under the finger; a field bug came from a shifted row). The next
+     * keystroke re-ranks everything.
+     */
+    fun mix(offline: List<SearchHit>, online: List<SearchHit>, keepShown: Boolean = false): List<SearchHit> = when {
+        online.isEmpty() -> offline
+        keepShown && offline.isNotEmpty() -> offline + online.sortedWith(ORDER)
+        else -> (offline + online).sortedWith(ORDER)
+    }
 
     /** Every n-th point (plus the last), at most [max] points. */
     fun simplify(line: List<GeoPoint>, max: Int): List<GeoPoint> {

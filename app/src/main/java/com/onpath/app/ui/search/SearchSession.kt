@@ -46,11 +46,13 @@ data class SearchUi(
     val indexing: Boolean = false,
     val recent: List<SearchHit> = emptyList(),
     val hasRoute: Boolean = false,
+    /** Offline rows were on screen when [online] arrived: those stay in place, online rows go below (no jumping). */
+    val onlineBelow: Boolean = false,
 ) {
     val active: Boolean get() = query.isNotBlank() || category != null
 
     /** Offline and online results as ONE list, best first (owner 2026-10-22). */
-    val results: List<SearchHit> get() = SearchRanking.mix(hits, online)
+    val results: List<SearchHit> get() = SearchRanking.mix(hits, online, keepShown = onlineBelow)
 }
 
 /**
@@ -180,6 +182,8 @@ class SearchSession(
 
     private fun run() {
         val gen = ++generation
+        // the user typed (or changed the category): the whole list may be re-ranked
+        ui = ui.copy(onlineBelow = false)
         val u = ui
         val ctx = context()
         offlineJob?.cancel(); onlineJob?.cancel()
@@ -222,7 +226,7 @@ class SearchSession(
                 .filter { kinds == null || it.kind in kinds }
             // scored like the offline hits: SearchUi.results mixes both into one list
             val scored = SearchRanking.onlineHits(extras, q, res.towns, res.lat, res.lon)
-            ui = ui.copy(online = scored, onlineState = OnlineState.DONE)
+            ui = ui.copy(online = scored, onlineState = OnlineState.DONE, onlineBelow = ui.hits.isNotEmpty())
         }
     }
 
