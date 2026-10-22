@@ -115,6 +115,8 @@ class PlanCallbacks(
     val onCancelRouting: () -> Unit = {},
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
     val onPlanAnyway: () -> Unit = {},
+    /** "Show" of the unreachable-point line: the map moves to the missing piece. */
+    val onShowGap: () -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
@@ -175,6 +177,8 @@ data class PlanUi(
     val routingSlow: Boolean = false,
     /** The plan is left without a route on purpose (Cancel with nothing to take back): notice + "Plan anyway". */
     val notRouted: NotRouted? = null,
+    /** A plan point the route does not reach (PlanGaps.text): one red line + "Show", while it holds. */
+    val gapText: String? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -244,6 +248,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
     ui.error?.let { ErrorBox(it) }
+    ui.gapText?.let { GapLine(it, cb.onShowGap) }
     // outside the profile step the map card is one line: it must never squeeze the points away (CI 2026-10-22)
     ui.cellCard?.let { CellCard(it, cb.cellCard, compact = ui.size != PlanSize.COMPACT) }
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
@@ -294,6 +299,22 @@ private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
         Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
         androidx.compose.material3.TextButton(onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
+    }
+}
+
+/**
+ * A plan point the route does not reach (owner 2026-10-22): red, bold, in the summary (visible in the small step), no OK
+ * and never self-dismissing – it goes when the plan changes so that every point is reached. "Show" = the map goes there.
+ */
+@Composable
+private fun GapLine(text: String, onShow: () -> Unit) {
+    val red = MaterialTheme.colorScheme.error
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = red, modifier = Modifier.weight(1f))
+        androidx.compose.material3.TextButton(onClick = onShow) {
+            Text("Show", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = red)
+        }
     }
 }
 
