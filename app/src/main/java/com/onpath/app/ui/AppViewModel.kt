@@ -843,16 +843,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             RecordingService.finished.collect { id ->
                 if (id != null) {
                     RecordingService.finished.value = null
-                    finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
-                    finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
-                    finishedTour?.let { nameRecordedTour(it) }
+                    val discard = deleteFinished; deleteFinished = false
+                    if (discard) {
+                        val ok = withContext(Dispatchers.IO) {
+                            runCatching { db.setDeleted(id, System.currentTimeMillis()) }
+                                .onFailure { Problems.error("db", "The ended tour could not be moved to the recycle bin; it stays in My routes", it) }
+                                .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
+                        }
+                        finishedTour = null; finishedTimes = null
+                        if (!ok) message = "The tour could not be deleted – it is in My routes, delete it there."
+                    } else {
+                        finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
+                        finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
+                        finishedTour?.let { nameRecordedTour(it) }
+                    }
                     reloadPace()
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
-                    // owner: a saved plan is safe in My routes – take it off the map after the tour (Undo brings it
-                    // back); an unsaved plan stays so nothing is lost
-                    if (waypoints.size >= 2 && !planUnsaved) clearPlan()
+                    // owner 2026-10-22: after Save or Delete the tour is done – the plan leaves the map, saved or not
+                    // (one Undo step brings it back)
+                    if (waypoints.isNotEmpty()) clearPlan()
                     enter(AppMode.PLAN)
                 }
             }
@@ -2235,7 +2246,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun switchToPlan() = enter(AppMode.PLAN)
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
-    fun endTour() { arrivalAsk = false; stopRecording() }
+    fun endTour() { arrivalAsk = false; deleteFinished = false; stopRecording() }
+
+    /** End tour → Delete (owner 2026-10-22): stop, then the tour goes straight to the recycle bin, no summary. */
+    fun endTourAndDelete() { arrivalAsk = false; deleteFinished = true; stopRecording() }
+    private var deleteFinished = false
 
     /** Called with each fix in Navigate: asks when the end of the followed line is reached ([ArrivalGate]). */
     fun checkArrival(position: GeoPoint, remainingAlongM: Double?) {

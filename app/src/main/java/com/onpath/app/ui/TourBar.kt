@@ -23,6 +23,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -69,31 +75,50 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
     Box(modifier.size(10.dp).background(if (paused) OnPathColors.Grey else OnPathColors.Rec, CircleShape))
 }
 
-/** "End tour" in Plan mode: one question, then stop & save (summary follows). */
+/**
+ * "End tour" (owner 2026-10-22): always Cancel · Delete · Save. Save stops and keeps the tour; Delete (red) asks once
+ * more, then the tour goes to the recycle bin (30 days) – for a short walk nobody wants to keep.
+ * [cancelLabel]: "Cancel" from the End button, "Keep going" on arrival.
+ */
 @Composable
-fun EndTourDialog(onEnd: () -> Unit, onDismiss: () -> Unit) {
+fun EndTourDialog(
+    onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit,
+    title: String = "End this tour?", cancelLabel: String = "Cancel",
+) {
+    var askDelete by remember { mutableStateOf(false) }
+    if (askDelete) {
+        AlertDialog(
+            onDismissRequest = { askDelete = false },
+            icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete this tour?") },
+            text = { Text("Recording stops and the tour is not kept. You can still get it back from the recycle bin " +
+                "for 30 days (My routes → ⋮ → Recycle bin).") },
+            confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
-        title = { Text("End this tour?") },
-        text = { Text("Recording stops and the tour is saved to My routes.") },
-        confirmButton = { TextButton(onClick = onEnd) { Text("End & save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        title = { Text(title) },
+        text = { Text("Save keeps the tour in My routes. Delete throws it away.") },
+        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onDismiss) { Text(cancelLabel) }
+                TextButton(onClick = { askDelete = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+            }
+        },
     )
 }
 
-/** Shown once in Navigate when the destination is reached. */
+/** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
-fun ArrivalDialog(onEnd: () -> Unit, onKeepGoing: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onKeepGoing,
-        icon = { Icon(Icons.Filled.Flag, null, tint = OnPathColors.Good) },
-        title = { Text("You have arrived – end tour?") },
-        text = { Text("End & save stops recording and saves the tour to My routes.") },
-        confirmButton = { TextButton(onClick = onEnd) { Text("End & save") } },
-        dismissButton = { TextButton(onClick = onKeepGoing) { Text("Keep going") } },
-    )
-}
+fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit) =
+    EndTourDialog(onSave, onDelete, onKeepGoing, title = "You have arrived – end tour?", cancelLabel = "Keep going")
 
 
 /**

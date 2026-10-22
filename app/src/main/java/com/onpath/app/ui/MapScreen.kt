@@ -181,8 +181,10 @@ fun MapScreen(
         onDismiss = { showActivity = false },
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
-    if (confirmEnd) EndTourDialog(onEnd = { confirmEnd = false; vm.endTour() }, onDismiss = { confirmEnd = false })
-    if (vm.arrivalAsk && rec != null) ArrivalDialog(onEnd = vm::endTour, onKeepGoing = { vm.arrivalAsk = false })
+    if (confirmEnd) EndTourDialog(onSave = { confirmEnd = false; vm.endTour() },
+        onDelete = { confirmEnd = false; vm.endTourAndDelete() }, onDismiss = { confirmEnd = false })
+    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = vm::endTour, onDelete = vm::endTourAndDelete,
+        onKeepGoing = { vm.arrivalAsk = false })
     vm.selectedPoi?.let { poi ->
         // Read-only details (Navigate, or a shown track): no "add to route" here.
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {

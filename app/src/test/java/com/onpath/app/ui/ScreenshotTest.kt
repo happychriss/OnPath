@@ -251,7 +251,7 @@ class ScreenshotTest {
                 TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
-            EndTourDialog({}, {})
+            EndTourDialog({}, {}, {})
         }
     }
 
@@ -350,7 +350,7 @@ class ScreenshotTest {
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
-            ArrivalDialog({}, {})
+            ArrivalDialog({}, {}, {})
         }
     }
 
