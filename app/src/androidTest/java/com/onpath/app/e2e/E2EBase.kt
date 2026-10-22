@@ -169,6 +169,21 @@ abstract class E2EBase {
         device.executeShellCommand("sh -c 'cp /sdcard/Android/data/com.onpath.app/files/*.xml /sdcard/e2e/ 2>/dev/null'")
     }
 
+    /**
+     * Waits until nothing matches [selector], looking afresh each time: UiAutomator may keep serving a cached node that
+     * Compose already removed (CI 2026-10-22: screenshot without the list, `Until.gone` still saw "Delete point").
+     */
+    protected fun goneFresh(selector: androidx.test.uiautomator.BySelector, timeoutMs: Long): Boolean {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            if (Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+            device.waitForIdle(500)
+            if (device.findObject(selector) == null) return true
+            if (System.currentTimeMillis() > end) return false
+            Thread.sleep(250)
+        }
+    }
+
     /** What the app thinks right now (failure messages). */
     protected fun state(): String {
         var s = ""
