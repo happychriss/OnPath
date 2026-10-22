@@ -107,6 +107,8 @@ class PlanCallbacks(
     val onHighlight: (GeoPoint?) -> Unit = {},
     /** "Cancel" next to the routing bar (only while a route takes a while). */
     val onCancelRouting: () -> Unit = {},
+    /** "Plan anyway" / "Calculate" of the not-routed notice. */
+    val onPlanAnyway: () -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
@@ -158,6 +160,8 @@ data class PlanUi(
     val points: List<PlanPointRow> = emptyList(),
     /** The route has been calculating for a while: show "Calculating route… Cancel". */
     val routingSlow: Boolean = false,
+    /** The plan is left without a route on purpose (Cancel with nothing to take back): notice + "Plan anyway". */
+    val notRouted: NotRouted? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -211,7 +215,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PlanBody(ui: PlanUi, 
             // owner 2026-10-22: a long calculation can be stopped (the last change is taken back)
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Calculating the route…", style = MaterialTheme.typography.bodySmall,
+                    Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
                 }
@@ -221,6 +225,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PlanBody(ui: PlanUi, 
             // full: the routing bar has a fixed slot (no jump when it comes and goes)
             if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
         } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
+        if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
         ui.error?.let { ErrorBox(it) }
         // in the point editor the map card is one line: it must never squeeze the points away (CI 2026-10-22)
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini || full) }
@@ -272,6 +277,16 @@ private fun PlanEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
     }
 }
 
+/** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
+@Composable
+private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        androidx.compose.material3.TextButton(onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
+    }
+}
+
 /** Visible save state instead of a message: "Saved as “Name”", or that it changed since. */
 @Composable
 private fun SavedLine(ui: PlanUi) {
@@ -309,15 +324,10 @@ private fun Title(ui: PlanUi, route: PlannedRoute?) {
 private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}) {
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     if (route == null) {
-        Text(
-            when (ui.pointCount) {
-                0 -> "Hold the map to start there – or to go there from your location. Hold a point or place for options. " +
-                    "To just record, use ☰ → Start recording."
-                1 -> "Hold the map to add the destination. Hold a point or place for options."
-                else -> "Calculating the route…"
-            },
-            style = MaterialTheme.typography.bodyMedium, color = variant,
-        )
+        if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
+        // "Calculating the route…" only while a request runs (0.9.3 bug: shown forever after Cancel)
+        Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
+            style = MaterialTheme.typography.bodyMedium, color = variant)
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically) {

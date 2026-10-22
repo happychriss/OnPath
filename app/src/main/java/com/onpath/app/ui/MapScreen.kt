@@ -279,7 +279,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
             points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList(),
-            routingSlow = vm.routingSlow),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -287,6 +287,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
+            onPlanAnyway = vm::planAnyway,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,

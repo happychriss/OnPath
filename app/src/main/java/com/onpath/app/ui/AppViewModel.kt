@@ -680,6 +680,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** The very long plan the user said yes to (not asked again for the same points). */
     private var longRouteOk: List<GeoPoint>? = null
+    /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
+    var notRouted by mutableStateOf<NotRouted?>(null)
+        private set
 
 
     // --- saved state of the plan (menus / Manage routes) ---
@@ -821,6 +824,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var followNextRoute = false
     /** The plan's points were edited (add, delete, round trip, reverse, undo …): a running tour follows the result. */
     private var planEditPending = false
+
+    // `by lazy` used from init (also from its IO jobs: refreshTours → withModelTime → planTimes) is declared here,
+    // above that init – below it the delegate is still null (0.9.0 crash, ViewModelInitOrderTest)
+    /** Model times of saved planned routes (with way attributes), stored at save. */
+    private val planTimes by lazy {
+        com.onpath.app.time.PlanTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.PlanTimesStore.FILE))
+    }
+    private val searchStore by lazy { com.onpath.app.search.SearchStore(getApplication()) }
+    val search by lazy {
+        com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
+            com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
+            mapDir = { dataFiles.mapDir() }) {
+            val loc = tracker.location.value
+            val (cLat, cLon, _) = initialCamera()
+            // Position when known and near what the user looks at, else the map centre.
+            val usePos = loc != null && Geo.distance(loc.latitude, loc.longitude, cLat, cLon) < 30_000
+            com.onpath.app.ui.search.SearchContext(if (usePos) loc!!.latitude else cLat, if (usePos) loc!!.longitude else cLon,
+                if (shown == null) route?.points else null)
+        }
+    }
 
     init {
         recalc()
@@ -1378,19 +1401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     enum class PlaceRole { SMART, START, DESTINATION }
 
-    private val searchStore by lazy { com.onpath.app.search.SearchStore(getApplication()) }
-    val search by lazy {
-        com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
-            com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
-            mapDir = { dataFiles.mapDir() }) {
-            val loc = tracker.location.value
-            val (cLat, cLon, _) = initialCamera()
-            // Position when known and near what the user looks at, else the map centre.
-            val usePos = loc != null && Geo.distance(loc.latitude, loc.longitude, cLat, cLon) < 30_000
-            com.onpath.app.ui.search.SearchContext(if (usePos) loc!!.latitude else cLat, if (usePos) loc!!.longitude else cLon,
-                if (shown == null) route?.points else null)
-        }
-    }
+    // searchStore / search: declared above the init that calls recalc() / refreshTours() (ViewModelInitOrderTest)
     var searchOpen by mutableStateOf(false)
         private set
     /** The picked search result (address, kind) behind planPoi; null for a POI tapped on the map. */
@@ -1645,8 +1656,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
-        if (plan) { longRouteOk = waypoints.toList(); recalc() }
-        else if (canUndo) undoStep() // the change that made it so long is taken back (Redo brings it again)
+        if (plan) { longRouteOk = waypoints.toList(); recalc(); return }
+        // the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan restored
+        // at start or loaded): the points stay without a route – never "Calculating…" with nothing running (0.9.3 bug)
+        when (PlanStatus.onCancel(canUndo)) {
+            PlanStatus.OnCancel.UNDO -> undoStep()
+            PlanStatus.OnCancel.KEEP_POINTS -> leaveUnrouted(NotRouted.LONG)
+        }
+    }
+
+    /** "Plan anyway" / "Calculate" of the not-routed notice. */
+    fun planAnyway() {
+        if (waypoints.size < 2) return
+        if (notRouted == NotRouted.LONG) longRouteOk = waypoints.toList()
+        recalc()
+    }
+
+    private fun leaveUnrouted(why: NotRouted) {
+        routeCancel?.cancel(); routeCancel = null
+        routeJob?.cancel(); routeJob = null
+        requests.invalidate()
+        route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null
+        followNextRoute = false; planEditPending = false
+        notRouted = why
+        Problems.info("routing", "Plan left without a route (${why.name.lowercase()}): ${waypoints.size} points")
     }
 
     /**
@@ -1655,12 +1688,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun cancelRouting() {
         if (!routing) return
-        routeCancel?.cancel(); routeCancel = null
-        routeJob?.cancel(); routeJob = null
-        requests.invalidate()
-        routing = false; routingSlow = false; followNextRoute = false; planEditPending = false
         Problems.info("routing", "Route calculation cancelled by the user")
-        if (canUndo) undoStep() else { route = null; routeError = "Route calculation stopped." }
+        leaveUnrouted(NotRouted.STOPPED)
+        if (PlanStatus.onCancel(canUndo) == PlanStatus.OnCancel.UNDO) undoStep()
     }
 
     private fun recalc() {
@@ -1670,6 +1700,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pts = waypoints.toList()
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
+        notRouted = null
         if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false; return }
         val act = activity; val level = sac
         // owner 2026-10-22: a plan far beyond a day (a point in another country by mistake) is asked about first –
@@ -1799,10 +1830,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshTours()
     }
 
-
-    private val planTimes by lazy {
-        com.onpath.app.time.PlanTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.PlanTimesStore.FILE))
-    }
 
     /** A planned route was saved as [id]: keep its model time per group (with way attributes) for the route list. */
     private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) {

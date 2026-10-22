@@ -5,7 +5,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.onpath.app.data.Prefs
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.AppMode
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Until
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -28,6 +32,27 @@ class StartSmokeE2ETest : E2EBase() {
         assertEquals(AppMode.PLAN, mode)
         waitUntil("route calculated", 30_000) { var r = true; scenario.onActivity { r = vm(it).routing }; !r }
         assertPositionDotOnTop("start with a plan")
+    }
+
+    /**
+     * Field bug 0.9.3 (owner phone 2026-10-22): start with a saved ≈ 8-day plan → "This route is very long" → Cancel →
+     * "Calculating the route…" forever, Start disabled. Now the points stay, not routed, with "Plan anyway".
+     */
+    @Test fun veryLongSavedPlanCancelIsNotStuckCalculating() {
+        launch {
+            val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+            Prefs(ctx).planWaypoints = listOf(GeoPoint(MERAN_LAT, MERAN_LON), GeoPoint(53.5511, 9.9937)) // Meran → Hamburg
+        }
+        waitUntil("long-route question", 15_000) { var a = false; scenario.onActivity { a = vm(it).longRouteAsk != null }; a }
+        clickText("Cancel")
+        waitUntil("question closed", 5_000) { var a = true; scenario.onActivity { a = vm(it).longRouteAsk != null }; !a }
+        var routing = true; var why: com.onpath.app.ui.NotRouted? = null
+        scenario.onActivity { routing = vm(it).routing; why = vm(it).notRouted }
+        assertEquals("the plan's points stay", 2, waypointCount())
+        assertFalse("no routing request runs", routing)
+        assertEquals(com.onpath.app.ui.NotRouted.LONG, why)
+        assertTrue("not stuck on Calculating – ${state()}", device.findObject(By.textContains("Calculating")) == null)
+        assertTrue("Plan anyway offered", device.wait(Until.findObject(By.text("Plan anyway")), 5_000) != null)
     }
 
     @Test fun opensEmpty() {

@@ -188,6 +188,14 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Field bug 0.9.3: Cancel at the long-route question for a plan restored at start left "Calculating the route…"
+     * forever. Now: the points stay, a plain notice says the route is not calculated, with "Plan anyway".
+     */
+    @Test fun planNotRoutedLong() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(n = 2, r = null).copy(notRouted = NotRouted.LONG), PlanCallbacks()) }
+    }
+
     /** Round trip: start = goal shown once with ↺ and the way back; Round trip greyed out. */
     @Test fun planPointsRoundTrip() = paparazzi.snapshot {
         val loop = stops.take(3) + stops[0]
