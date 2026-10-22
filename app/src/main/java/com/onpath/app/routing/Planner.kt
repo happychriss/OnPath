@@ -35,7 +35,19 @@ data class PlannedRoute(
  * Calls the engine for the whole route; if that fails, routes leg by leg and replaces
  * failing legs with straight lines so the user always sees something useful.
  */
-class Planner(private val engine: RoutingEngine) {
+class Planner(
+    private val engine: RoutingEngine,
+    /** "Cancel" while a route is calculated (owner 2026-10-22): stops the router at once, no leg-by-leg fallback. */
+    private val cancel: RouteCancel? = null,
+) {
+    private fun route(pts: List<GeoPoint>, activity: Activity, sac: Int): RouteResult {
+        if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED)
+        return if (cancel == null) engine.route(pts, activity, sac)
+        else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))
+    }
+
+    private fun stopIfCancelled() { if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED) }
+
 
     /**
      * @param pinned indices of waypoints that must be passed exactly (e.g. a tapped hut). The engine
@@ -65,13 +77,14 @@ class Planner(private val engine: RoutingEngine) {
                 "Offline router could not start (routing data missing?) – straight lines shown.")
         }
         try {
-            val r = engine.route(waypoints, activity, sac)
+            val r = route(waypoints, activity, sac)
             if (r.points.size >= 2) {
                 return PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
                     RouteSummary.mergeShares(listOf(r.wayTypes)), RouteSummary.mergeShares(listOf(r.surfaces)),
                     WaypointSnap.onRoute(waypoints, r.points, r.matched))
             }
         } catch (e: Exception) {
+            stopIfCancelled() // cancelled: no fallback, the caller shows nothing new
             // expected: RoutingException = no route (the user sees its message); anything else is an engine bug
             if (e !is RoutingException) Problems.error("routing", "Route request threw unexpectedly", e)
             // Two points: no need to retry leg by leg (BRouter can take ~30 s to fail).
@@ -90,8 +103,9 @@ class Planner(private val engine: RoutingEngine) {
         val snapped = arrayOfNulls<GeoPoint>(waypoints.size)
         for (i in 1 until waypoints.size) {
             val a = waypoints[i - 1]; val b = waypoints[i]
+            stopIfCancelled()
             try {
-                val r = engine.route(listOf(a, b), activity, sac)
+                val r = route(listOf(a, b), activity, sac)
                 if (r.points.size < 2) throw RoutingException("No route found between point ${i + offset} and ${i + offset + 1}.")
                 routed[i] = r
                 dist += r.distanceM; up += r.ascentM; down += r.descentM; time += r.durationS
@@ -101,6 +115,7 @@ class Planner(private val engine: RoutingEngine) {
                 if (snapped[i - 1] == null) snapped[i - 1] = s[0]
                 snapped[i] = s[1]
             } catch (e: Exception) {
+                stopIfCancelled()
                 // expected: RoutingException = no route for this leg (shown as a straight dashed line)
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
                 if (firstError == null) firstError = (e.message ?: "No route found.") .let {
@@ -123,6 +138,9 @@ class Planner(private val engine: RoutingEngine) {
     }
 
     companion object {
+        /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
+        const val PLAN_LIMIT_MS = 10 * 60_000L
+
         /** Joins per-chunk [PlannedRoute.snapped] lists (chunks share their boundary point) into one. */
         fun mergeSnapped(size: Int, cuts: List<Int>, parts: List<List<GeoPoint?>>): List<GeoPoint?> {
             val out = arrayOfNulls<GeoPoint>(size)
