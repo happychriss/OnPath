@@ -870,6 +870,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val ROUTING_SLOW_MS = 2_500L
+
     fun initialCamera(): Triple<Double, Double, Double> = prefs.camera ?: Triple(46.67, 11.16, 12.0)
     fun saveCamera(lat: Double, lon: Double, zoom: Double) { prefs.camera = Triple(lat, lon, zoom) }
 
@@ -1598,27 +1600,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
 
+    /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
+    private var routeCancel: com.onpath.app.routing.RouteCancel? = null
+    /** The route has been calculating for a while: the plan sheet offers Cancel. */
+    var routingSlow by mutableStateOf(false)
+        private set
+    /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
+    var longRouteAsk by mutableStateOf<Double?>(null)
+        private set
+    /** The very long plan the user said yes to (not asked again for the same points). */
+    private var longRouteOk: List<GeoPoint>? = null
+
+    fun answerLongRoute(plan: Boolean) {
+        longRouteAsk = null
+        if (plan) { longRouteOk = waypoints.toList(); recalc() }
+        else if (canUndo) undoStep() // the change that made it so long is taken back (Redo brings it again)
+    }
+
+    /**
+     * Cancel while a route is calculated (owner 2026-10-22): the router stops at once and the last change is taken back
+     * – the plan is as before (Redo brings the change again). Nothing to take back: the points stay, without a route.
+     */
+    fun cancelRouting() {
+        if (!routing) return
+        routeCancel?.cancel(); routeCancel = null
+        routeJob?.cancel(); routeJob = null
+        requests.invalidate()
+        routing = false; routingSlow = false; followNextRoute = false; planEditPending = false
+        Problems.info("routing", "Route calculation cancelled by the user")
+        if (canUndo) undoStep() else { route = null; routeError = "Route calculation stopped." }
+    }
+
     private fun recalc() {
         routeJob?.cancel(); routeJob = null
         val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
         highlight = null
         val pts = waypoints.toList()
         val pins = pinnedIndices()
+        routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
         if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false; return }
         val act = activity; val level = sac
+        // owner 2026-10-22: a plan far beyond a day (a point in another country by mistake) is asked about first –
+        // nothing is routed or loaded until the answer
+        if (pts != longRouteOk && com.onpath.app.routing.LongRoute.needsAsk(pts, act)) {
+            requests.invalidate(); route = null; routeError = null; routing = false
+            longRouteAsk = com.onpath.app.routing.LongRoute.estimateS(pts, act)
+            Problems.trace("routing", "Very long plan (${com.onpath.app.routing.LongRoute.describe(longRouteAsk!!)}) – asking first")
+            return
+        }
+        longRouteAsk = null
         val f = planFactors(act)
         val gen = requests.next()
         routing = true
         val started = android.os.SystemClock.elapsedRealtime()
+        val cancel = com.onpath.app.routing.RouteCancel().also { routeCancel = it }
         routeJob = viewModelScope.launch {
             delay(150) // debounce quick taps
+            // the Cancel button appears only when it takes a while (no flicker for normal routes)
+            val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
             val result = withContext(routingDispatcher) {
                 runCatching {
                     val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                         .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
-                    withModelTime(Planner(eng).plan(pts, act, level, pins), act, f)
+                    withModelTime(Planner(eng, cancel).plan(pts, act, level, pins), act, f)
                 }
             }
+            slow.cancel()
+            if (requests.isCurrent(gen)) routingSlow = false
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch

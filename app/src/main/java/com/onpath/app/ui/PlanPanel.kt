@@ -105,6 +105,8 @@ class PlanCallbacks(
     /** Points section: row tapped – the map shows that point. */
     val onShowPoint: (row: Int) -> Unit = {},
     val onHighlight: (GeoPoint?) -> Unit = {},
+    /** "Cancel" next to the routing bar (only while a route takes a while). */
+    val onCancelRouting: () -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
@@ -154,6 +156,8 @@ data class PlanUi(
     val cellCard: CellCardUi? = null,
     /** Rows of the Points section (full sheet), see PlanPoints.rows. */
     val points: List<PlanPointRow> = emptyList(),
+    /** The route has been calculating for a while: show "Calculating route… Cancel". */
+    val routingSlow: Boolean = false,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -171,6 +175,21 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         onSwipe = { down -> cb.onResize(if (down) ui.size.smaller() else ui.size.bigger()) },
         onHandleTap = { cb.onResize(ui.size.tapped()) },
     ) {
+        val full = ui.size == PlanSize.FULL
+        if (full) {
+            // owner 2026-10-22: the pulled-up sheet has ONE fixed height – deleting / adding / moving points (or the
+            // routing bar) never makes its top edge (and the profile) jump; the scrolling area takes what is left
+            val sheetH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp
+            Column(Modifier.fillMaxWidth().height(sheetH)) { PlanBody(ui, cb, menuInitiallyOpen) }
+        } else PlanBody(ui, cb, menuInitiallyOpen)
+    }
+}
+
+/** Share of the screen height the pulled-up plan sheet always takes (below the grab handle). */
+internal const val FULL_SHEET_FRACTION = 0.62f
+
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.PlanBody(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean) {
         val route = ui.route
         val mini = ui.size == PlanSize.MINI
         // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
@@ -186,15 +205,27 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
             SheetOverflow(ui, cb, menuInitiallyOpen)
         }
         val full = ui.size == PlanSize.FULL
-        // full = the point editor: only the one summary line above, then the points
         if (!mini && !full) SubLine(ui, route, cb.onDetails)
         if (!mini && !full && route != null) SavedLine(ui)
-        if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
+        if (ui.routing && ui.routingSlow) {
+            // owner 2026-10-22: a long calculation can be stopped (the last change is taken back)
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Calculating the route…", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
+                }
+                androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text("Cancel") }
+            }
+        } else if (full) Box(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp)) {
+            // full: the routing bar has a fixed slot (no jump when it comes and goes)
+            if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
+        } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
         // in the point editor the map card is one line: it must never squeeze the points away (CI 2026-10-22)
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini || full) }
         if (full) {
-            PlanEditor(ui, cb, Modifier.weight(1f, fill = false))
+            PlanEditor(ui, cb, Modifier.weight(1f))
         } else if (!mini && route != null && !ui.routing) {
             // Mini profile, always visible (Komoot-like) – tap for the route details.
             Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
@@ -208,7 +239,6 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
             Spacer(Modifier.height(12.dp))
             PrimaryAction(ui, cb)
         } else Spacer(Modifier.height(8.dp))
-    }
 }
 
 /**
@@ -218,12 +248,10 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
  */
 @Composable
 private fun PlanEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
-    // the map stays visible above the sheet
-    val maxH = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
     val scroll = rememberScrollState()
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     val route = ui.route
-    Column(modifier.heightIn(max = maxH).onGloballyPositioned { viewport = it }.verticalScroll(scroll)) {
+    Column(modifier.fillMaxWidth().onGloballyPositioned { viewport = it }.verticalScroll(scroll)) {
         if (route != null && !ui.routing) {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Elevation profile" }) {
                 ElevationProfile(route.points, height = 96.dp, gradient = true,

@@ -175,6 +175,19 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
     }
 
+    /** Owner 2026-10-22: a long calculation shows "Calculating the route… Cancel". */
+    @Test fun planRoutingSlowCancel() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
+    }
+
+    /** Owner 2026-10-22: a plan much longer than a day is asked about before it is routed. */
+    @Test fun longRouteQuestion() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+            LongRouteDialog(29 * 24 * 3600.0, com.onpath.app.routing.Activity.HIKE, {}, {})
+        }
+    }
+
     /** Round trip: start = goal shown once with ↺ and the way back; Round trip greyed out. */
     @Test fun planPointsRoundTrip() = paparazzi.snapshot {
         val loop = stops.take(3) + stops[0]

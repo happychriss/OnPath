@@ -181,6 +181,7 @@ fun MapScreen(
         onDismiss = { showActivity = false },
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
+    vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     if (confirmEnd) EndTourDialog(onSave = { confirmEnd = false; vm.endTour() },
         onDelete = { confirmEnd = false; vm.endTourAndDelete() }, onDismiss = { confirmEnd = false })
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = vm::endTour, onDelete = vm::endTourAndDelete,
@@ -277,13 +278,15 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
-            points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList()),
+            points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList(),
+            routingSlow = vm.routingSlow),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
+            onCancelRouting = vm::cancelRouting,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,

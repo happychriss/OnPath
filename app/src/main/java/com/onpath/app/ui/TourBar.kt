@@ -155,3 +155,22 @@ fun TourControls(
         }
     }
 }
+
+
+/**
+ * A plan far longer than a day (owner 2026-10-22: a point in another country by mistake). Asked before anything is
+ * routed or loaded. Cancel takes the last change back.
+ */
+@Composable
+fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {
+    val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
+    AlertDialog(
+        onDismissRequest = onCancel,
+        icon = { Icon(Icons.Filled.Flag, null) },
+        title = { Text("This route is very long") },
+        text = { Text("It would take ${com.onpath.app.routing.LongRoute.describe(seconds)} $how. Calculating it and " +
+            "loading the maps along it takes a long time. Plan it anyway?") },
+        confirmButton = { TextButton(onClick = onPlan) { Text("Plan anyway") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+    )
+}
