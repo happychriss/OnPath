@@ -104,6 +104,8 @@ object Diagnostics {
             }
             put("diagnostics.json", report.toString(1))
             put("problems.json", Problems.toJson().toString(1))
+            // the full event trace (≤ 5 MB / 14 days, owner 2026-10-22), streamed, not held in memory
+            z.putNextEntry(ZipEntry("events.log")); EventLog.copyTo(z); z.closeEntry()
             put("logcat.txt", logcat())
             if (styleJson != null) put("style-loaded.json", styleJson)
         }

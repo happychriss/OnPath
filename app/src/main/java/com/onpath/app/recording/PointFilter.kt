@@ -52,4 +52,29 @@ object PointFilter {
         val d = Geo.distance(prev.lat, prev.lon, p.lat, p.lon)
         return d / (dtMs / 1000.0) <= BRIDGE_MAX_SPEED_MS
     }
+
+    /**
+     * Why a GPS gap had no usable fix (field test 2026-10-22: weak fixes vs. none could not be told apart): counts
+     * the fixes dropped for accuracy since the last good one and the best accuracy among them. Not thread-safe
+     * (used on the location thread only).
+     */
+    class GapWatch {
+        var dropped = 0
+            private set
+        private var best = Float.NaN
+
+        fun onDropped(hasAccuracy: Boolean, accuracyM: Float) {
+            dropped++
+            if (hasAccuracy && accuracyM.isFinite() && (best.isNaN() || accuracyM < best)) best = accuracyM
+        }
+
+        /** A good fix came: start counting anew. */
+        fun reset() { dropped = 0; best = Float.NaN }
+
+        fun why(): String = when {
+            dropped == 0 -> "no GPS fix at all"
+            else -> "$dropped fix${if (dropped == 1) "" else "es"} dropped for accuracy, best " +
+                if (best.isNaN()) "unknown" else "${best.toInt()} m"
+        }
+    }
 }

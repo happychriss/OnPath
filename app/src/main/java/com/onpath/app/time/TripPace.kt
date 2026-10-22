@@ -14,13 +14,19 @@ import kotlin.math.roundToLong
  * - **What is learned:** while you are on the followed line and it moves forward, every ~50 m of progress adds
  *   (predicted seconds, real moving seconds) to the group of that piece (down / flat / up). Elevation comes from the
  *   line (DEM), never from GPS. Off-route stretches, jumps and implausible pieces are not learned.
- * - **Factors:** shrunk towards the plan (as if [TAU_S] of "normal" walking were already done), groups not walked yet
- *   take half of the trip factor ([RHO]); clamped to [MIN_F]…[MAX_F].
+ * - **Learning per tour only** (owner 2026-10-22): every tour starts from the pace setting ([prior]); nothing is kept
+ *   for the next tour. **Warm-up:** the setting alone until [WARMUP_S] of walking *and* [WARMUP_M] of progress were
+ *   compared (breaks never count), then the learned factors are blended in over the next [BLEND_S] (no jump).
+ * - **Factors:** shrunk towards the setting (as if [TAU_S] of "normal" walking were already done), groups not walked
+ *   yet take half of the trip factor ([RHO]); clamped to [MIN_F]…[MAX_F].
  * - **Calm display:** a new estimate is shown every 100 m of progress (not more often than every 10 s) and moves the
  *   arrival clock by at most 1 min + 2 % of the remaining time. Standing still, "to go" stays and the arrival only
- *   moves later as time passes (checked every 30 s). A new line or new settings reset that limit once.
+ *   moves later as time passes (checked every 30 s). A new setting resets that limit once. A **new line** (plan edit,
+ *   re-route) shows its own difference at once, but what the display had not shown yet (the calm lag) is kept as an
+ *   offset blended out over [OFFSET_BLEND_MS]; when the arrival moves by more than [NOTE_MIN_MS] that way, the
+ *   snapshot carries a [LineNote] ("New route: arrival 12:45, was 13:15") until the next line change.
  *
- * Predictions are `model (Normal) × prior`, where prior = pace setting × what was learned on earlier tours.
+ * Predictions are `model (Normal) × prior × factors()`, where prior = the pace setting (Relaxed / Normal / Fit).
  */
 class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = TimeEstimate.BREAK_ALLOWANCE) {
 
@@ -50,14 +56,41 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     private var lastFixS = 0.0
     /** Recent fixes (active s, lat, lon, along or NaN) over [STALE_S]: "moving but the estimate cannot follow". */
     private val history = ArrayDeque<DoubleArray>()
+    /** Progress compared so far (m), for the warm-up. */
+    private var obsM = 0.0
+    /** Compared moving seconds ([sumA]) when the warm-up ended; NaN = still in the warm-up. */
+    private var warmEndA = Double.NaN
+    // a new line: offset blended out, "why" note
+    /** Shown arrival − estimate at the last real update (ms): what the calm display had not shown yet. */
+    private var lagMs = 0L
+    private var lastWallMs = 0L
+    private var offsetMs = 0L
+    /** When the offset started to blend out (wall ms); null = not shown on the new line yet. */
+    private var offsetFromWall: Long? = null
+    /** Arrival shown before the line changed, until the first value on the new line is shown. */
+    private var noteWasMs: Long? = null
+    private var lineNote: LineNote? = null
 
     /**
-     * New line to follow (start, re-route, plan edit) or none. Learned sums stay; the display may jump once.
-     * [alongM] = where the user is on it; null = not known yet: "not on route" until a fix is matched (never "the whole
-     * line from its start").
+     * New line to follow (start, re-route, plan edit) or none. Learned sums stay. [alongM] = where the user is on it;
+     * null = not known yet: "not on route" until a fix is matched (never "the whole line from its start").
+     * The arrival moves at once by what the new line changes, not by what the calm display still held back (offset,
+     * blended out over [OFFSET_BLEND_MS]); a move of more than [NOTE_MIN_MS] is explained once ([LineNote]).
      */
     fun setLine(t: RouteTimes?, alongM: Double?) {
-        times = t?.takeIf { it.lengthM > 0 }
+        val next = t?.takeIf { it.lengthM > 0 }
+        val old = times
+        val shown = shownArrivalMs.takeIf { old != null && shownToGoS != null }
+        offsetMs = when {
+            shown == null -> 0L
+            // what the display holds back now: shown arrival − estimate on the old line from the last position
+            matched -> shown - TimeEstimate.arrivalMs(lastWallMs, rawToGoS() ?: 0.0, allowance)
+            else -> lagMs
+        }
+        offsetFromWall = null
+        if (next == null) { lineNote = null; noteWasMs = null }
+        else if (!sameLine(old, next)) { lineNote = null; noteWasMs = shown }
+        times = next
         along = (alongM ?: 0.0).coerceAtLeast(0.0)
         matched = alongM != null
         baseAlong = Double.NaN
@@ -66,7 +99,11 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         if (times == null || !matched) { shownArrivalMs = null; shownToGoS = null; showToGoS = null }
     }
 
-    /** Pace setting or stored factors changed. */
+    /** The same line sent again (e.g. the plan re-sent unchanged): the note stays. */
+    private fun sameLine(a: RouteTimes?, b: RouteTimes?): Boolean =
+        a != null && b != null && abs(a.lengthM - b.lengthM) < 1.0 && abs(a.total() - b.total()) < 1.0
+
+    /** Pace setting changed (Settings → Your pace, mid-tour): the new start value, what was measured stays. */
     fun setPrior(f: Factors) {
         if (f == prior) return
         // keep what was learned meaningful: observed "predicted" seconds are re-scaled to the new prior
@@ -125,16 +162,28 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         val ratio = a / sp
         if (ratio < MIN_RATIO || ratio > MAX_RATIO) return
         for (g in 0 until PaceModel.GROUPS) { sumA[g] += a * p[g] / sp; sumP[g] += p[g] }
+        obsM += d
+        if (warmEndA.isNaN() && sumA.sum() >= WARMUP_S && obsM >= WARMUP_M) warmEndA = sumA.sum()
     }
+
+    /** Still in the warm-up: the setting alone. */
+    fun inWarmUp(): Boolean = warmEndA.isNaN()
 
     /** Trip factor over all groups (relative to the prior). */
     fun tripFactor(): Double = ((TAU_S + sumA.sum()) / (TAU_S + sumP.sum())).coerceIn(MIN_F, MAX_F)
 
-    /** Learned factors per group (relative to the prior); 1 = as planned. */
+    /**
+     * Factors in use per group (relative to the prior); 1 = the setting. Exactly 1 in the warm-up, then the learned
+     * factors blended in over [BLEND_S] of compared walking.
+     */
     fun factors(): Factors {
+        if (warmEndA.isNaN()) return Factors.ONE
+        val w = ((sumA.sum() - warmEndA) / BLEND_S).coerceIn(0.0, 1.0)
         val all = tripFactor()
         val start = 1 + RHO * (all - 1)
-        return Factors.of(DoubleArray(PaceModel.GROUPS) { g -> ((TAU_G * start + sumA[g]) / (TAU_G + sumP[g])).coerceIn(MIN_F, MAX_F) })
+        return Factors.of(DoubleArray(PaceModel.GROUPS) { g ->
+            1 + w * (((TAU_G * start + sumA[g]) / (TAU_G + sumP[g])).coerceIn(MIN_F, MAX_F) - 1)
+        })
     }
 
     /** Predicted seconds already compared with real moving time (s). */
@@ -143,7 +192,17 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /** Raw moving time from the current progress to the end (s); null without a line. */
     fun rawToGoS(): Double? = times?.remainingFrom(along, prior * factors())
 
+    /** What is left of the offset of a line change at [wallMs] (blended out linearly from its first use). */
+    private fun offsetAt(wallMs: Long): Long {
+        if (offsetMs == 0L) return 0L
+        val from = offsetFromWall ?: wallMs.also { offsetFromWall = it }
+        val k = 1.0 - (wallMs - from).toDouble() / OFFSET_BLEND_MS
+        if (k <= 0) { offsetMs = 0L; return 0L }
+        return (offsetMs * k).roundToLong()
+    }
+
     private fun refresh(wallMs: Long) {
+        lastWallMs = wallMs
         val raw = rawToGoS() ?: run { shownArrivalMs = null; shownToGoS = null; showToGoS = null; return }
         if (!matched && shownToGoS == null) return // nothing known yet on this line: "not on route", no number
         val target = TimeEstimate.arrivalMs(wallMs, raw, allowance)
@@ -152,10 +211,17 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         val moved = along - lastShowAlong >= SHOW_EVERY_M || back
         if (matched && (resetCalm || shown == null || (moved && wallMs - lastShowWall >= MIN_SHOW_MS))) {
             // a real update: the arrival moves at most 1 min + 2 % of the time to go towards the new estimate;
-            // walking back along the route is no estimate noise – the time to go grows at once (owner rule 2)
-            val next = if (resetCalm || shown == null || back) target else {
+            // walking back along the route is no estimate noise – the time to go grows at once (owner rule 2).
+            // After a line change the estimate carries what the display still held back, blended out (no jump).
+            val goal = target + offsetAt(wallMs)
+            val next = if (resetCalm || shown == null || back) goal else {
                 val lim = ((CALM_S + CALM_SHARE * raw) * 1000).roundToLong()
-                shown + (target - shown).coerceIn(-lim, lim)
+                shown + (goal - shown).coerceIn(-lim, lim)
+            }
+            lagMs = next - target
+            noteWasMs?.let { was ->
+                if (abs(next - was) > NOTE_MIN_MS) lineNote = LineNote(was, next)
+                noteWasMs = null
             }
             shownArrivalMs = next
             shownToGoS = max(0.0, (next - wallMs) / 1000.0 / (1 + allowance))
@@ -191,13 +257,21 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return EstimateState.OK to null
     }
 
-    /** Moved at least [STUCK_MOVE_M] during the last [STALE_S] on the line, but the progress hardly changed. */
+    /**
+     * Moved at least [STUCK_MOVE_M] during the last [STALE_S] on the line, but the progress hardly changed. "Moved" =
+     * the mean position of the fixes in the first [STUCK_AVG_S] of the window vs. that of the last [STUCK_AVG_S] – GPS
+     * jitter and single wild fixes while standing are not movement (field 2026-10-22, lift top station).
+     */
     private fun stuck(): Boolean {
         if (history.size < 3) return false
         val o = history.first(); val n = history.last()
         if (n[0] - o[0] < STALE_S) return false
         if (history.any { it[3].isNaN() }) return false
-        if (com.onpath.app.data.Geo.distance(o[1], o[2], n[1], n[2]) < STUCK_MOVE_M) return false
+        val start = history.filter { it[0] <= o[0] + STUCK_AVG_S }
+        val end = history.filter { it[0] >= n[0] - STUCK_AVG_S }
+        val moved = com.onpath.app.data.Geo.distance(start.sumOf { it[1] } / start.size, start.sumOf { it[2] } / start.size,
+            end.sumOf { it[1] } / end.size, end.sumOf { it[2] } / end.size)
+        if (moved < STUCK_MOVE_M) return false
         return abs(n[3] - o[3]) < STUCK_ALONG_M
     }
 
@@ -208,8 +282,8 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return TripTime(
             movingS = movingS(), breakS = breaks.breakS(),
             toGoS = toGo?.let { TimeEstimate.round(it) }, arrivalMs = shownArrivalMs.takeIf { toGo != null },
-            learned = factors().takeIf { observedS() >= SHOW_LEARNED_S },
-            state = st, pausedBecause = why,
+            learned = factors().takeIf { observedS() >= SHOW_LEARNED_S && !inWarmUp() },
+            state = st, pausedBecause = why, lineNote = lineNote,
         )
     }
 
@@ -220,12 +294,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return TourTimes(max(0.0, elapsedS) - b, b, p.takeIf { it > 0 }, a.takeIf { p > 0 })
     }
 
-    /** For learning across tours: observed seconds per group (predicted with prior) and real moving seconds. */
-    fun observed(): Pair<DoubleArray, DoubleArray> = sumP.copyOf() to sumA.copyOf()
-
     fun toJson(): JSONObject = JSONObject()
         .put("prior", JSONArray(prior.toArray().toList()))
         .put("a", JSONArray(sumA.toList())).put("p", JSONArray(sumP.toList()))
+        .put("m", obsM).put("warmEnd", if (warmEndA.isNaN()) -1.0 else warmEndA)
         .put("active", activeS).put("along", along)
         .put("breaks", breaks.toJson())
 
@@ -259,8 +331,20 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val STALE_S = 120.0
         const val STUCK_MOVE_M = 60.0
         const val STUCK_ALONG_M = 20.0
+        /** Fixes averaged at each end of the window for "moved" (s). */
+        const val STUCK_AVG_S = 20.0
         /** The learned pace is shown after this much comparison (s). */
         const val SHOW_LEARNED_S = 1200.0
+        /** Warm-up (owner 2026-10-22): the setting alone until this much walking (s, breaks excluded) … */
+        const val WARMUP_S = 900.0
+        /** … and this much progress (m) were compared on the route. */
+        const val WARMUP_M = 1000.0
+        /** After the warm-up the learned factors are blended in over this much compared walking (s). */
+        const val BLEND_S = 900.0
+        /** A new line: what the display still held back is blended out over this time (ms). */
+        const val OFFSET_BLEND_MS = 600_000L
+        /** A new line moving the arrival by more than this (ms) is explained once ([LineNote]). */
+        const val NOTE_MIN_MS = 300_000L
 
         fun fromJson(o: JSONObject?, fallbackPrior: Factors = Factors.ONE): TripPace {
             if (o == null) return TripPace(fallbackPrior)
@@ -268,6 +352,9 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             val prior = arr("prior")?.takeIf { p -> p.all { it > 0 } }?.let { Factors.of(it) } ?: fallbackPrior
             val t = TripPace(prior)
             arr("a")?.copyInto(t.sumA); arr("p")?.copyInto(t.sumP)
+            // older files have no warm-up state: the warm-up runs again from here (smooth, see factors())
+            t.obsM = o.optDouble("m", 0.0).takeIf { !it.isNaN() && it >= 0 } ?: 0.0
+            t.warmEndA = o.optDouble("warmEnd", -1.0).takeIf { !it.isNaN() && it >= 0 } ?: Double.NaN
             t.activeS = o.optDouble("active", 0.0).takeIf { !it.isNaN() } ?: 0.0
             t.along = o.optDouble("along", 0.0).takeIf { !it.isNaN() } ?: 0.0
             t.lastFixS = t.activeS

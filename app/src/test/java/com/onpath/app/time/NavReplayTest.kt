@@ -43,6 +43,11 @@ class NavReplayTest {
         assertEquals(0, r.confirms)
         assertTrue(r.frozenMaxM() < 150)
         r.errors().forEach { assertTrue("error $it", it <= 0.30) }
+        // learning per tour only (owner 2026-10-22): the setting alone in the warm-up, the owner's pace after it
+        val warm = r.frames.filter { it.time.movingS < 10 * 60 }
+        assertTrue(warm.size > 50 && warm.all { it.factors == Factors.ONE })
+        assertTrue(r.frames.last().factors != Factors.ONE)
+        assertNull(r.frames.last().time.lineNote) // one line all along: nothing to explain
     }
 
     @Test fun ownerTour4BackOnTheRoundTripCountsDown() {
@@ -199,6 +204,11 @@ class NavReplayTest {
         // after Undo: A-B, walking towards A = backwards → warning after ~200 m
         assertEquals(1000.0, r.frames.first { it.walkedM > 3010 && it.alongM != null }.alongM!!, 40.0)
         assertTrue(r.firstPromptWalkedM!! in 3150.0..3300.0)
+        // the arrival moved by the round trip's extra way: said once, kept until the next change (Undo)
+        val roundTrip = r.at(1400.0).time.lineNote!!
+        assertTrue("$roundTrip", roundTrip.nowMs - roundTrip.wasMs > 15 * 60_000)
+        assertEquals(roundTrip, r.at(2900.0).time.lineNote)
+        assertTrue(r.frames.last().time.lineNote != roundTrip)
     }
 
     @Test fun movingWithoutProgressPausesTheEstimate() {

@@ -179,7 +179,7 @@ object Backups {
             val m = f.entry.meta
             try {
                 db.insertTour(m.kind, m.name, m.activity, m.sac, m.distanceM, m.ascentM, m.descentM, m.durationS,
-                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs)
+                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs, m.rides)
                 if (BackupRestore.isPlan(m.kind)) plans++ else tours++
                 if (adopt && f.fileName.indexOf('/') < 0) TourBackup(current, index!!).adopt(m.uuid, f.handle, f.fileName)
             } catch (e: Exception) { failed++; Problems.error("backup", "Restoring ${f.fileName} failed", e) }

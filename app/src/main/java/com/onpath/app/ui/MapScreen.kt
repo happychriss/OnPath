@@ -63,7 +63,6 @@ fun MapScreen(
     /** Visible map box (south, west, north, east; rounded ≈ 100 m) + 1 at z ≥ 10 / 0 below – "Overview only" hint, modal rule. */
     var hintKey by remember { mutableStateOf<List<Double>?>(null) }
     var showActivity by remember { mutableStateOf(false) }
-    var confirmEnd by remember { mutableStateOf(false) }
 
     val rec by vm.recState.collectAsState()
     val location by vm.tracker.location.collectAsState()
@@ -135,7 +134,7 @@ fun MapScreen(
 
         when (vm.mode) {
             AppMode.PLAN -> PlanMode(vm, rec, footer, onStartNavigation, onRequestLocation,
-                onActivity = { showActivity = true }, onEndTour = { confirmEnd = true },
+                onActivity = { showActivity = true }, onEndTour = { vm.askEndTour() },
                 onPanelHeight = { panelHeightPx = it })
             AppMode.NAVIGATE -> NavigateMode(vm, rec, location, bearing, footer)
         }
@@ -189,8 +188,12 @@ fun MapScreen(
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
-    if (confirmEnd) EndTourDialog(onSave = { confirmEnd = false; vm.endTour() },
-        onDelete = { confirmEnd = false; vm.endTourAndDelete() }, onDismiss = { confirmEnd = false })
+    when (val ask = vm.endAsk) {
+        EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
+        is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
+            onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
+        null -> {}
+    }
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = vm::endTour, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })
     vm.selectedPoi?.let { poi ->
@@ -312,7 +315,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
             points = rows,
-            routingSlow = vm.routingSlow),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -320,6 +323,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
+            onPlanAnyway = vm::planAnyway,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,
@@ -361,6 +365,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
         c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
+        val rides = vm.shown?.rides.orEmpty()
+        c.setTrack(MapController.SRC_RIDES, rides.filter { it.second == com.onpath.app.rides.RideKind.VEHICLE }.map { it.first })
+        c.setTrack(MapController.SRC_LIFTS, rides.filter { it.second == com.onpath.app.rides.RideKind.LIFT }.map { it.first })
     }
     // One blue line: the followed route is blue; while the plan is edited during a tour it turns thin grey
     // under the (blue) edited plan; a track that is only shown keeps its own colour.
