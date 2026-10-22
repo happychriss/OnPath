@@ -40,6 +40,25 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         defaultCc = db.rows("SELECT v FROM meta WHERE k = 'cc'").firstOrNull()?.get(0) as String?
     }
 
+    /** Villages, hamlets, districts of the file (every place in its area is stored, also in older files). */
+    private val smallPlaces: List<Town> = towns.values.filter { it.kind in VILLAGE_KINDS || it.kind in HAMLET_KINDS }
+
+    /**
+     * The village / fraction an address point lies in (owner 2026-10-22: "Völlan", not only the municipality "Lana"):
+     * the nearest place within [VILLAGE_M]; hamlets and city quarters count double the distance, so a village
+     * wins over a farm group next door. Null when none is near. Pure lookup in memory.
+     */
+    fun villageAt(lat: Double, lon: Double): Town? {
+        var best: Town? = null
+        var bd = VILLAGE_M
+        for (t in smallPlaces) {
+            if (kotlin.math.abs(t.lat - lat) > 0.03 || kotlin.math.abs(t.lon - lon) > 0.045) continue
+            val d = Geo.distance(lat, lon, t.lat, t.lon) * (if (t.kind in HAMLET_KINDS) 2.0 else 1.0)
+            if (d < bd) { best = t; bd = d }
+        }
+        return best
+    }
+
     override fun close() = db.close()
 
     /** Country of the nearest town within 30 km, or null. */
@@ -69,7 +88,8 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         val anchor = streetSets.withIndex().filter { it.value.isNotEmpty() }.minByOrNull { it.value.size } ?: return emptyList()
         val matched = words.indices.filter { streetSets[it].isNotEmpty() || townSets[it].isNotEmpty() }
         val streets = streetRows(anchor.value).filter { s ->
-            matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] }
+            val v = villageAt(s.lat, s.lon)?.id
+            matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }
         }
         val out = ArrayList<AddressHit>()
         for (s in streets) {
@@ -130,25 +150,33 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     }
 
     private fun place(s: Street, num: String?, lat: Double, lon: Double): Place {
-        val town = s.town?.let { towns[it] }
-        val loc = s.loc?.let { towns[it] }
+        val muni = s.town?.let { towns[it] }
+        // village of the address point itself (a long street can run through two); the extractor's street locality
+        // (2 km around the street's point) when none is near; the municipality when there is neither
+        val village = villageAt(lat, lon) ?: s.loc?.let { towns[it] }
         val label = listOfNotNull(s.name, num).joinToString(" ")
-        val townName = town?.name ?: loc?.name
+        val shown = village?.name ?: muni?.name
         val other = s.alt.firstOrNull()?.let { listOfNotNull(it, num).joinToString(" ") }
         return Place(
             id = "a:$key:${s.id}" + (num?.let { ":$it" } ?: ""),
-            name = listOfNotNull(label, townName).joinToString(" · "),
+            name = listOfNotNull(label, shown).joinToString(" · "),
             kind = if (num != null || s.pseudo == 1) "address" else "street",
             lat = lat, lon = lon,
-            address = listOfNotNull(other, loc?.name?.takeIf { it != townName }, s.pc).joinToString(" · ").ifEmpty { null },
+            address = listOfNotNull(other, s.pc).joinToString(" · ").ifEmpty { null },
             source = Place.Source.MAP,
             alt = listOfNotNull(label) + s.alt.map { listOfNotNull(it, num).joinToString(" ") },
-            cc = town?.cc ?: loc?.cc ?: defaultCc,
-            town = townName,
+            cc = muni?.cc ?: village?.cc ?: defaultCc,
+            town = muni?.name ?: village?.name,
+            village = shown,
         )
     }
 
     companion object {
+        /** A village / fraction further than this from an address is not named for it. */
+        const val VILLAGE_M = 2000.0
+        val VILLAGE_KINDS = setOf("city", "town", "village", "suburb")
+        val HAMLET_KINDS = setOf("hamlet", "quarter", "neighbourhood")
+
         private fun e5(v: Any?) = ((v as? Long) ?: 0L) / 1e5
         private fun split(v: Any?) = (v as? String)?.split('|')?.filter { it.isNotEmpty() } ?: emptyList()
 

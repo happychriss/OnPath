@@ -1681,7 +1681,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (hit != null) {
                         Problems.info("search", "Shared place found by its address (${hit.second.name.lowercase()} search)")
                         val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.first.name
-                        showSharedPlace(hit.first.copy(name = shownName))
+                        showSharedPlace(hit.first.copy(name = shownName,
+                            note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
                         return@launch
                     }
                     r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http).resolve(link) }
@@ -1691,6 +1692,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (!p.hasPoint) Problems.info("search", "Shared map link gave no position (${r.reason}); searching the address instead")
             }
             var lat = p.lat; var lon = p.lon
+            var addressWon = false
             // A point read from the downloaded Google page (the link itself had none) is checked against the address
             // in the link: the page can carry other places' markers (field test 2026-10-20: Gelateria Costantin in
             // Meran landed far away). More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
@@ -1704,6 +1706,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         Problems.warn("search", "Shared place: the map page pointed ${(off / 1000).toInt()} km away from the " +
                             "address – using the address (${byAddress.second.name.lowercase()} search)")
                         lat = byAddress.first.lat; lon = byAddress.first.lon
+                        addressWon = true
                     }
                 }
             }
@@ -1712,7 +1715,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (fromPage) "from the map page" else if (shared.hasPoint) "in the shared text / link" else "from the resolved link"))
                 // "Gelateria Costantin, Passeggiata …, Italien" (Google's place path) → the name only on the ring
                 val shownName = p.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: p.name
-                showSharedPlace(com.onpath.app.search.Place("shared:$lat,$lon", shownName, "other", lat, lon, address = p.address))
+                showSharedPlace(com.onpath.app.search.Place("shared:$lat,$lon", shownName, "other", lat, lon, address = p.address,
+                    note = com.onpath.app.search.SharedPosition.of(point = true, fromPage = fromPage, addressWon = addressWon).note))
                 return@launch
             }
             val found = search.findOne(p.searchTexts())
@@ -1720,7 +1724,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (found == null) { message = "Couldn't find this place – try again with internet"; return@launch }
             val (place, from) = found
             Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
-            showSharedPlace(place.copy(name = p.name ?: place.name))
+            showSharedPlace(place.copy(name = p.name ?: place.name,
+                note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
           } finally { sharedLookup = false }
         }
     }

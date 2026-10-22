@@ -71,8 +71,9 @@ data class SearchActions(
 )
 
 /**
- * Full-screen search (Plan mode only): text field, category chips, results ("Near your route" first,
- * then the offline map, then online results), and a last row that hands the query to Google Maps.
+ * Full-screen search (Plan mode only): text field, category chips, ONE mixed result list – offline places, POIs,
+ * trails, addresses and online results, best match first (owner 2026-10-22); each row keeps its kind icon and says
+ * "near your route" / "online" – and a last row that hands the query to Google Maps.
  */
 @Composable
 fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modifier, autoFocus: Boolean = true) {
@@ -139,25 +140,20 @@ private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
 }
 
 private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
-    val near = ui.hits.filter { it.nearRoute }
-    val rest = ui.hits.filter { !it.nearRoute }
-    if (near.isNotEmpty()) {
-        item { Header("Near your route") }
-        items(near) { ResultRow(it, actions.onPick) }
-    }
-    if (rest.isNotEmpty()) {
-        if (near.isNotEmpty() || ui.online.isNotEmpty()) item { Header("Offline map") }
-        items(rest) { ResultRow(it, actions.onPick) }
-    }
-    if (ui.hits.isEmpty() && !ui.indexing) {
+    val results = ui.results
+    // no item keys: two sources may carry the same id, and a duplicate key would crash the list
+    items(results) { ResultRow(it, actions.onPick) }
+    if (results.isEmpty() && !ui.indexing) {
         item {
             Hint(if (ui.query.isBlank()) "Nothing of this kind in the offline map."
             else "No match in the offline map – try online results or Google Maps.")
         }
     }
     if (ui.online.isNotEmpty()) {
-        item { Header("Online · Photon, © OpenStreetMap") }
-        items(ui.online) { ResultRow(it, actions.onPick) }
+        item {
+            Text("Online results: Photon · © OpenStreetMap", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+        }
     } else if (ui.onlineState == OnlineState.LOADING) {
         item {
             Text("Searching online…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -209,11 +205,14 @@ fun KindIcon(place: Place, size: Int = 36) {
     }
 }
 
-/** "Mountain hut · 2 325 m · 3.4 km" */
+/** "Mountain hut · 2 325 m · 3.4 km", "Address · Lana · 1.2 km" (municipality of a village address), "… · online". */
 fun resultSubtitle(h: SearchHit, german: Boolean = Poi.isGerman()): String = buildString {
     append(h.place.kindInfo.label(german))
     h.place.ele?.let { append(" · $it m") }
+    h.place.municipality?.let { append(" · ").append(it) }
     append(" · ").append(Format.distance(h.distanceM))
+    if (h.nearRoute) append(" · near your route")
+    if (h.place.source == Place.Source.ONLINE) append(" · online")
 }
 
 @Composable
