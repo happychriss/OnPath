@@ -23,9 +23,10 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  * "1.2 km pushing · steps · 2 sections above T2"; tap → the list of spots. Pure, unit tested (RouteWarningsTest).
  *
  * What counts (only what the route's way attributes – BRouter way tags per span – and its elevations reliably give):
- * - PUSH (bikes): footway / pedestrian (bicycle=designated is already a cycleway); touring / trekking / e-bike also
- *   paths of SAC ≥ T2 or mtb:scale ≥ S2; MTB / e-MTB only paths of SAC ≥ T4 or mtb:scale ≥ S4. Sections < [PUSH_MIN_M]
- *   (a crossing, a short connector) are not listed.
+ * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no; footway / pedestrian without bike
+ *   access; touring / trekking / e-bike also paths of SAC ≥ T2 or mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
+ *   or mtb:scale ≥ S4. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing. Sections
+ *   < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
  * - ABOVE_T (hike): SAC level above the chosen T level, sections ≥ [ABOVE_T_MIN_M].
  * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, MTB / e-MTB 20 %,
@@ -42,6 +43,9 @@ object RouteWarnings {
     const val MAX_ITEMS = 3
 
     fun isBike(a: Activity) = a != Activity.HIKE
+
+    /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
+    val BIKES_ALLOWED = setOf("yes", "designated", "permissive", "mtb")
 
     /** Grade (%) above which a section is "steep" for [a]. */
     fun steepPercent(a: Activity): Double = when (a) {
@@ -72,10 +76,14 @@ object RouteWarnings {
         val w = p.way ?: return false
         return when (kind) {
             SpotKind.STEPS -> isBike(a) && w.wayType == "steps"
-            SpotKind.PUSH -> isBike(a) && when (w.wayType) {
-                "footway" -> true
-                "path" -> if (a == Activity.MTB || a == Activity.EMTB) w.sac >= 4 || w.mtb >= 4 else w.sac >= 2 || w.mtb >= 2
-                else -> false
+            SpotKind.PUSH -> isBike(a) && w.wayType != "steps" && when {
+                w.bicycle == "dismount" -> true // signed: get off and push, on any way
+                w.wayType != "footway" && w.wayType != "path" -> false
+                w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
+                w.bicycle == "no" -> true
+                w.wayType == "footway" -> true
+                a == Activity.MTB || a == Activity.EMTB -> w.sac >= 4 || w.mtb >= 4
+                else -> w.sac >= 2 || w.mtb >= 2
             }
             SpotKind.ABOVE_T -> a == Activity.HIKE && w.sac > sac.coerceIn(1, 5)
             SpotKind.STEEP -> false
