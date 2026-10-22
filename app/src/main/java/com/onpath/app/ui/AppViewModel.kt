@@ -687,11 +687,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
         val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
         val sorted = installed.sortedBy { areaNames[it.id] ?: it.id.id }
-        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once
-        val routingBytes = try {
-            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { key ->
-                com.onpath.app.routing.Rd5Parts.Part.parse(key)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
-            }
+        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once.
+        // Computed once per change of the regions or the routing data – not on every progress tick (perf report 2026-10-22)
+        val key = sorted.map { it.id } to routingData.store.version
+        val routingBytes = routingBytesCache?.takeIf { it.first == key }?.second ?: try {
+            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { k ->
+                com.onpath.app.routing.Rd5Parts.Part.parse(k)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
+            }.also { routingBytesCache = key to it }
         } catch (e: Exception) {
             Problems.warn("routing", "Routing data sizes for Offline maps not readable; map sizes only", e); emptyMap()
         }
@@ -789,6 +791,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val routingArrivalGate = QuietGate(ARRIVAL_QUIET_MS, ARRIVAL_MAX_WAIT_MS, maxBusyMs = ARRIVAL_MAX_WAIT_MS)
     private var arrivalGateJob: kotlinx.coroutines.Job? = null
     private val arrivedNames = ArrayList<String>()
+    /** Settings → Offline maps: routing bytes per region for (regions, routing data version) – see [offlineMapsUi]. */
+    private var routingBytesCache: Pair<Pair<List<com.onpath.app.cells.CellId>, Int>, Map<com.onpath.app.cells.CellId, Long>>? = null
 
     // declared before init {}: init restores the saved plan and routes it at once (0.9.1 crashed at start – they were
     // declared below and still null then)

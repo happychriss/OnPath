@@ -116,6 +116,11 @@ class Rd5PartStore(
 
     private val remoteCache = HashMap<String, Pair<Long, RemoteTile>>()
 
+    private val changes = java.util.concurrent.atomic.AtomicInteger()
+
+    /** Changes with every install / removal of parts (caches of sizes key on it). */
+    val version: Int get() = changes.get()
+
     /**
      * Tiles being rewritten → their state before (array of one, null = no file). Between renaming the new rd5 into
      * place and writing its parts list, readers get this consistent old state instead of a "list does not match"
@@ -349,7 +354,7 @@ class Rd5PartStore(
             afterRd5Written()
             dest.setLastModified(fetchedAt)
             writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
-        } finally { stateCache.remove(p.tile); rewriting.remove(p.tile) }
+        } finally { stateCache.remove(p.tile); rewriting.remove(p.tile); changes.incrementAndGet() }
         for (i in p.fetch) staged(p.tile, r, i).delete()
         File(dir, ".${p.tile}.part").delete() // a half whole-file download from before parts (up to ~200 MB)
     }
@@ -372,7 +377,7 @@ class Rd5PartStore(
             val before = f.length()
             val left = st.parts - drop
             if (left.none { local.size(it) > 0 }) {
-                f.delete(); sidecar(tile).delete(); stateCache.remove(tile); freed += before; continue
+                f.delete(); sidecar(tile).delete(); stateCache.remove(tile); changes.incrementAndGet(); freed += before; continue
             }
             val tail = Rd5Parts.readTail(f, local)
             rewriting[tile] = arrayOf(st)
@@ -384,7 +389,7 @@ class Rd5PartStore(
                 val index = st.index?.raw ?: local.raw
                 val r = RemoteTile(Rd5Remote.Head(0, st.etag, st.lastModified, index), st.tail ?: tail)
                 writeSidecar(tile, left, r, st.fetchedAt, f.length())
-            } finally { stateCache.remove(tile); rewriting.remove(tile) }
+            } finally { stateCache.remove(tile); rewriting.remove(tile); changes.incrementAndGet() }
             freed += before - f.length()
         }
         return freed
