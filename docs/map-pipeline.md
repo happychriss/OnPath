@@ -124,7 +124,7 @@ Notes per step:
 - **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 6 tries with back-off). It does not depend on
   the OSM data, so the script only rebuilds it when the bbox, the script or the format changes. Tile ranges treat
   the bbox's east/south edge as exclusive (a bbox ending exactly on a tile edge – a z10 cell – takes no extra
-  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 12`), `--cell 10/543/361` (only the
+  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 13`; 12 until 2026-10-22), `--cell 10/543/361` (only the
   cell's own tiles z10–max), `--cache DIR` (keep the AWS PNGs; contours read the same folder). WebP needs Pillow
   with WebP support (the normal wheels have it).
 - **5 Overlays** do two passes over the PBF (relations, then ways with node locations, in memory –
@@ -177,7 +177,8 @@ draws differently; it does not list every surface.
 `tools/build_region.sh --format 2` (and later the cell builder, step 5 of the map rework) runs:
 
 ```
-python3 tools/extract_overlays.py region.osm.pbf OUT bbox… --no-geojson --tiles TILES --smooth   # *.ndjson per layer
+python3 tools/extract_overlays.py region.osm.pbf OUT bbox… --no-geojson --tiles TILES --smooth \
+  --wayclass tools/routing/wayclass/build/wayclass.jar --profiles app/src/main/assets/brouter   # *.ndjson per layer
 tools/build_overlays.sh TILES overlays.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra contours.pmtiles]
 java -jar planetiler.jar … --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de
 tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class path/track/minor/service lines at z>=13
@@ -197,9 +198,11 @@ once the style reads them from `overlays`.
 | `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" |
 | `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` 1 tunnel, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded), `mtb` 1–6 mtb:scale (number; since 2026-10-21, older packages lack it) |
 | `streets` | 13–14 | small streets (owner 2026-10-21), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
+| `paths`, `streets` | 13–14 | **router classes** (with `extract_overlays.py --wayclass`, cell schema 3; docs/map-style-notes.md "Router classes"): `ch` hike, `ct` trekking + e-bike, `cf` touring, `cm` MTB + e-MTB, each 0 good / 1 possible / 2 forbidden; `cr` 1 / −1 bikes may ride only along / against the line |
+| `barriers` | 14 | barrier nodes that block at least one activity (`--wayclass`): `b` mask 1 hike, 2 trekking, 4 touring, 8 MTB. Optional |
 | `trails` | 13–14 | as `trails.geojson` |
 | `ways` | 13–14 | as `ways.geojson` |
-| `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped) |
+| `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped); hiking pieces split by SAC grade: `sac` 1–6 where graded, `hx` 1 where the hiking profile forbids the way (`--wayclass`) – the app greys the band above the user's T level |
 | `trailnames` | 13–14 | as `trailnames.geojson` (the app's search reads them from here when the GeoJSON is missing) |
 | (`contour`) | 12–13 | later: the layer of `contours.pmtiles` |
 

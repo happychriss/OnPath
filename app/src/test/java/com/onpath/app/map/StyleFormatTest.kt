@@ -56,6 +56,38 @@ class StyleFormatTest {
         f2only.forEach { assertTrue(it, it in ids(f2).toSet()) }
     }
 
+    /**
+     * Router classes (owner decisions 2026-10-22 (3) / (4), docs/map-style-notes.md "Router classes"): format 2 colours
+     * green / forbidden per BRouter profile family from the class keys and keeps the tag rules for cells without them;
+     * one forbidden-way layer set and one barrier layer per family (MapController.setOverlay); the hiking band above
+     * the T level is its own layer (MapController.setSacLimit).
+     */
+    @Test fun format2RouterClassLayers() {
+        val layers = f2.getJSONArray("layers")
+        val byId = (0 until layers.length()).associate { layers.getJSONObject(it).let { l -> l.getString("id") to l } }
+        for ((mode, key) in listOf("foot" to "ch", "bike" to "ct", "touring" to "cf", "mtb" to "cm")) {
+            for (id in listOf("greenway-$mode", "access-no-tint-$mode", "access-no-dash-$mode", "access-no-sign-$mode",
+                    "access-no-tint-$mode-service", "access-no-dash-$mode-service", "access-no-sign-$mode-service")) {
+                val f = byId[id]?.optJSONArray("filter")?.toString()
+                assertTrue("$id exists", f != null)
+                assertTrue("$id reads $key", f!!.startsWith("[\"case\",[\"has\",\"$key\"]"))
+            }
+            assertTrue("barrier-blocked-$mode", byId["barrier-blocked-$mode"]?.optString("source-layer") == "barriers")
+            // excluded only for difficulty (class 3): a grey line, never the red forbidden look (owner 2026-10-22)
+            assertTrue("too-hard-$mode", byId["too-hard-$mode"]?.optJSONArray("filter")?.toString()?.contains("3") == true)
+            assertTrue("forbidden is class 2 only", byId.getValue("access-no-dash-$mode").optJSONArray("filter")!!
+                .toString().contains("[\"==\",[\"get\",\"$key\"],2]"))
+        }
+        // only the hiking layers are visible before the app switches the activity
+        assertEquals("visible", byId.getValue("access-no-tint-foot").getJSONObject("layout").getString("visibility"))
+        assertEquals("none", byId.getValue("access-no-tint-mtb").getJSONObject("layout").getString("visibility"))
+        for (s in listOf(f1, f2)) {
+            val ids = ids(s)
+            assertTrue("routes-hike-over", "routes-hike-over" in ids)
+            assertTrue("grey pieces above the band", ids.indexOf("routes-hike-over") > ids.indexOf("routes-hike"))
+        }
+    }
+
     /** Field test 2026-10-22: an inn vanished at some zooms – a route number ("40") above it won the collision. */
     @Test fun poisArePlacedBeforeTrailNumbers() {
         for (s in listOf(f1, f2)) {

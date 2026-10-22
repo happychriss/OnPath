@@ -1,5 +1,9 @@
 # Map rules vs. BRouter: audit (origin/main 3511f3c, 2026-10-21)
 
+> **Status 2026-10-22:** quick fixes A on main; approach 1 ("router decides") implemented on a branch for the owner's
+> render review – classifier `tools/routing/wayclass/`, details and thresholds in `docs/map-style-notes.md`
+> "Router classes".
+
 Read-only audit. Sources: `tools/make_style.py` (format 2), `tools/themes/classic.json`, `tools/extract_overlays.py`
 (`tile_attrs`, `street_attrs`), `MapController.setOverlay`, `BRouterEngine.profileFile/keyValues`,
 `assets/brouter/*.brf` + `lookups.dat`.

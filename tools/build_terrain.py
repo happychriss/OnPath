@@ -4,13 +4,14 @@ Copernicus and other open DEMs) for a bounding box and pack them into one PMTile
 
 Usage:
   python3 build_terrain.py OUT.pmtiles minlon minlat maxlon maxlat [maxzoom]      format 1: AWS PNG as is, z5-13
-  python3 build_terrain.py OUT.pmtiles minlon minlat maxlon maxlat --format 2     WebP lossless, 0.25 m, z5-12
-  python3 build_terrain.py OUT.pmtiles --cell 10/543/361 --format 2               only the cell's own z10-12 tiles
+  python3 build_terrain.py OUT.pmtiles minlon minlat maxlon maxlat --format 2     WebP lossless, 0.25 m, z5-13
+  python3 build_terrain.py OUT.pmtiles --cell 10/543/361 --format 2               only the cell's own z10-13 tiles
 
 Options:
-  --format 1|2     1 (default) = today's PNG z5-13; 2 = --webp --round 0.25 --maxzoom 12 (docs/design/map-data-size.md)
+  --format 1|2     1 (default) = today's PNG z5-13; 2 = --webp --round 0.25 --maxzoom 13 (docs/design/map-data-size.md;
+                   12 until 2026-10-22 – finer relief for the balanced hill shading, owner)
   --minzoom N      lowest zoom (default 5; with --cell at least 10, the cell's own tiles only)
-  --maxzoom N      highest zoom (default 13, format 2: 12); the positional maxzoom does the same
+  --maxzoom N      highest zoom (default 13, also format 2); the positional maxzoom does the same
   --webp           store tiles as WebP lossless (MapLibre Native Android decodes them with BitmapFactory)
   --round M        round heights to M metres (e.g. 0.25) – the Terrarium blue channel then compresses well
   --cell Z/X/Y     tiles of one map cell (docs/design/map-cells.md §2): every tile z >= max(10, minzoom) inside it
@@ -161,7 +162,7 @@ def parse_args(argv=None):
     if a.format == 2:
         a.webp = True
         a.round = a.round or 0.25
-        a.maxzoom = a.maxzoom or 12
+        a.maxzoom = a.maxzoom or 13
     if len(a.bbox) == 5:
         a.maxzoom = int(a.bbox.pop())
     a.maxzoom = a.maxzoom or 13
