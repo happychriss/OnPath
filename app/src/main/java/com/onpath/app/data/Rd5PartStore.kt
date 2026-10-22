@@ -100,6 +100,8 @@ class Rd5PartStore(
     private val dir: File,
     private val remote: Rd5Remote = HttpRd5Remote(),
     private val now: () -> Long = System::currentTimeMillis,
+    /** Tests: called after an install / removal put the new rd5 in place, before its parts list is written. */
+    private val afterRd5Written: () -> Unit = {},
 ) {
     /** What the server has for a tile: head + tail. */
     class RemoteTile(val head: Rd5Remote.Head, val tail: ByteArray) {
@@ -114,12 +116,24 @@ class Rd5PartStore(
 
     private val remoteCache = HashMap<String, Pair<Long, RemoteTile>>()
 
+    /**
+     * Tiles being rewritten → their state before (array of one, null = no file). Between renaming the new rd5 into
+     * place and writing its parts list, readers get this consistent old state instead of a "list does not match"
+     * (field 2026-10-21/22: 12 false warnings, one per added part) or a new partial file without list (= "complete").
+     */
+    private val rewriting = java.util.concurrent.ConcurrentHashMap<String, Array<State?>>()
+
     fun rd5(tile: String) = File(dir, tile)
     private fun sidecar(tile: String) = File(dir, tile.removeSuffix(".rd5") + ".parts.json")
     private fun staging() = File(dir, ".rd5parts")
 
     /** Local state of [tile]; null = no file. A list that does not match the file (crash between the two) is ignored. */
     fun state(tile: String): State? {
+        rewriting[tile]?.let { return it[0] }
+        return stateOnDisk(tile)
+    }
+
+    private fun stateOnDisk(tile: String): State? {
         val f = rd5(tile)
         if (!f.isFile || f.length() < Rd5Parts.INDEX_BYTES) return null
         val s = sidecar(tile)
@@ -298,11 +312,16 @@ class Rd5PartStore(
         val sources = HashMap<Int, Rd5Parts.PartSource>()
         for (i in p.keep) if (r.index.size(i) > 0) sources[i] = Rd5Parts.fromFile(dest, local ?: throw IOException("${p.tile} vanished"), i)
         for (i in p.fetch) sources[i] = Rd5Parts.fromPartFile(staged(p.tile, r, i))
-        Rd5Parts.write(dest, r.index, r.tail, sources)
-        val old = state(p.tile).takeIf { p.keep.isNotEmpty() }
-        val fetchedAt = old?.fetchedAt ?: now()
-        dest.setLastModified(fetchedAt)
-        writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
+        // the state before the rewrite: read now – after Rd5Parts.write the old list no longer matches the new file
+        val before = stateOnDisk(p.tile)
+        val fetchedAt = before?.takeIf { p.keep.isNotEmpty() }?.fetchedAt ?: now()
+        rewriting[p.tile] = arrayOf(before)
+        try {
+            Rd5Parts.write(dest, r.index, r.tail, sources)
+            afterRd5Written()
+            dest.setLastModified(fetchedAt)
+            writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
+        } finally { rewriting.remove(p.tile) }
         for (i in p.fetch) staged(p.tile, r, i).delete()
         File(dir, ".${p.tile}.part").delete() // a half whole-file download from before parts (up to ~200 MB)
     }
@@ -328,12 +347,16 @@ class Rd5PartStore(
                 f.delete(); sidecar(tile).delete(); freed += before; continue
             }
             val tail = Rd5Parts.readTail(f, local)
-            Rd5Parts.write(f, local, tail, left.filter { local.size(it) > 0 }.associateWith { Rd5Parts.fromFile(f, local, it) })
-            f.setLastModified(st.fetchedAt)
-            // sizes of parts not here: the stored remote index (a whole file: its own index)
-            val index = st.index?.raw ?: local.raw
-            val r = RemoteTile(Rd5Remote.Head(0, st.etag, st.lastModified, index), st.tail ?: tail)
-            writeSidecar(tile, left, r, st.fetchedAt, f.length())
+            rewriting[tile] = arrayOf(st)
+            try {
+                Rd5Parts.write(f, local, tail, left.filter { local.size(it) > 0 }.associateWith { Rd5Parts.fromFile(f, local, it) })
+                afterRd5Written()
+                f.setLastModified(st.fetchedAt)
+                // sizes of parts not here: the stored remote index (a whole file: its own index)
+                val index = st.index?.raw ?: local.raw
+                val r = RemoteTile(Rd5Remote.Head(0, st.etag, st.lastModified, index), st.tail ?: tail)
+                writeSidecar(tile, left, r, st.fetchedAt, f.length())
+            } finally { rewriting.remove(tile) }
             freed += before - f.length()
         }
         return freed
