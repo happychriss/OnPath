@@ -308,10 +308,13 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
-    // Planned line + markers only while the plan can be edited (Plan mode, no track shown).
+    // Planned line only while the plan can be edited (Plan mode, no track shown); markers also for a followed plan in Navigate.
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
-        snapshotFlow { PlanDrawing(vm.route, vm.canEditMap && !vm.planIsFollowed(), vm.canEditMap, vm.waypoints.toList()) }
+        // Navigate shows the followed plan's numbered points too (owner field test 2026-10-22: "a route without points");
+        // they are not tappable there (map taps edit only when canEditMap)
+        snapshotFlow { PlanDrawing(vm.route, vm.canEditMap && !vm.planIsFollowed(),
+            vm.canEditMap || (vm.mode == AppMode.NAVIGATE && vm.planIsFollowed()), vm.waypoints.toList()) }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
                 c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices())
