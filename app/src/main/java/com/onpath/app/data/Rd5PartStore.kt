@@ -116,6 +116,11 @@ class Rd5PartStore(
 
     private val remoteCache = HashMap<String, Pair<Long, RemoteTile>>()
 
+    private val changes = java.util.concurrent.atomic.AtomicInteger()
+
+    /** Changes with every install / removal of parts (caches of sizes key on it). */
+    val version: Int get() = changes.get()
+
     /**
      * Tiles being rewritten → their state before (array of one, null = no file). Between renaming the new rd5 into
      * place and writing its parts list, readers get this consistent old state instead of a "list does not match"
@@ -127,10 +132,38 @@ class Rd5PartStore(
     private fun sidecar(tile: String) = File(dir, tile.removeSuffix(".rd5") + ".parts.json")
     private fun staging() = File(dir, ".rd5parts")
 
+    /** [stateOnDisk] for the files as they were (length + modification time of the rd5 and its parts list). */
+    private class Cached(val key: List<Long>, val state: State?, @Volatile var index: Rd5Parts.Index? = null)
+
+    /**
+     * Tile → its last read state. [has] is asked per part after every route (perf report 2026-10-22: each call read and
+     * parsed the parts list); four file stats instead. Our own writes drop the entry; a file changed from outside
+     * (adb push) has another length / time.
+     */
+    private val stateCache = java.util.concurrent.ConcurrentHashMap<String, Cached>()
+
+    private fun fileKey(tile: String): List<Long> {
+        val f = rd5(tile); val s = sidecar(tile)
+        return listOf(f.length(), f.lastModified(), s.length(), s.lastModified())
+    }
+
+    private fun cached(tile: String): Cached {
+        val key = fileKey(tile)
+        stateCache[tile]?.let { if (it.key == key) return it }
+        return Cached(key, stateOnDisk(tile)).also { stateCache[tile] = it }
+    }
+
     /** Local state of [tile]; null = no file. A list that does not match the file (crash between the two) is ignored. */
     fun state(tile: String): State? {
         rewriting[tile]?.let { return it[0] }
-        return stateOnDisk(tile)
+        return cached(tile).state
+    }
+
+    /** The local rd5's own index (cached with the state). */
+    private fun localIndex(tile: String): Rd5Parts.Index? {
+        if (rewriting.containsKey(tile)) return Rd5Parts.readIndex(rd5(tile))
+        val c = cached(tile)
+        return c.index ?: Rd5Parts.readIndex(rd5(tile)).also { c.index = it }
     }
 
     private fun stateOnDisk(tile: String): State? {
@@ -171,7 +204,7 @@ class Rd5PartStore(
 
     /** Size of [part] on the phone (0 = not here or empty). */
     fun sizeOnPhone(part: Part): Long =
-        if (has(part)) Rd5Parts.readIndex(rd5(part.tile))?.size(part.index)?.coerceAtLeast(0L) ?: 0L else 0L
+        if (has(part)) localIndex(part.tile)?.size(part.index)?.coerceAtLeast(0L) ?: 0L else 0L
 
     /** Bytes of [part] already downloaded by a broken download (any version; resumed when it is the current one). */
     fun stagedBytes(part: Part): Long =
@@ -321,7 +354,7 @@ class Rd5PartStore(
             afterRd5Written()
             dest.setLastModified(fetchedAt)
             writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
-        } finally { rewriting.remove(p.tile) }
+        } finally { stateCache.remove(p.tile); rewriting.remove(p.tile); changes.incrementAndGet() }
         for (i in p.fetch) staged(p.tile, r, i).delete()
         File(dir, ".${p.tile}.part").delete() // a half whole-file download from before parts (up to ~200 MB)
     }
@@ -344,7 +377,7 @@ class Rd5PartStore(
             val before = f.length()
             val left = st.parts - drop
             if (left.none { local.size(it) > 0 }) {
-                f.delete(); sidecar(tile).delete(); freed += before; continue
+                f.delete(); sidecar(tile).delete(); stateCache.remove(tile); changes.incrementAndGet(); freed += before; continue
             }
             val tail = Rd5Parts.readTail(f, local)
             rewriting[tile] = arrayOf(st)
@@ -356,7 +389,7 @@ class Rd5PartStore(
                 val index = st.index?.raw ?: local.raw
                 val r = RemoteTile(Rd5Remote.Head(0, st.etag, st.lastModified, index), st.tail ?: tail)
                 writeSidecar(tile, left, r, st.fetchedAt, f.length())
-            } finally { rewriting.remove(tile) }
+            } finally { stateCache.remove(tile); rewriting.remove(tile); changes.incrementAndGet() }
             freed += before - f.length()
         }
         return freed

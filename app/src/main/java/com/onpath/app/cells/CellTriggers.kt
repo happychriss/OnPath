@@ -100,10 +100,17 @@ class CellTriggers(
         return pointSet(p, CellWhy.HERE)
     }
 
+    /**
+     * The corridor cells of [line] (~10 km) – pure geometry, may run off the main thread (perf report 2026-10-22: ~8 ms
+     * per call at 250 km on the laptop, called twice per route on the main thread); pass it to [routeComputed] and
+     * [freshenAlong].
+     */
+    fun corridorOf(line: List<GeoPoint>): List<CellId> = if (line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M)
+
     /** T4: a route was computed – every missing cell of the corridor (~10 km, F-OFF-02). Marks its cells used (T6). */
-    fun routeComputed(line: List<GeoPoint>): CellJob? {
+    fun routeComputed(line: List<GeoPoint>, corridorCells: List<CellId>? = null): CellJob? {
         if (line.size < 2) { planRoute(null); return null }
-        val corridor = cells.cellsAlong(line, CORRIDOR_M)
+        val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
         cells.keepCorridor(corridor) // the corridor of an older route goes (field bug 2026-10-22)
         cells.markUsed(corridor)
         val want = needed(corridor)
@@ -155,10 +162,10 @@ class CellTriggers(
      * while it loads); to be built → the old map stays until the new one is ready. Each cell at most every
      * [FRESH_CHECK_MS]. Quiet: no card. Returns the cells asked for.
      */
-    fun freshenAlong(line: List<GeoPoint>): List<CellId> {
+    fun freshenAlong(line: List<GeoPoint>, corridorCells: List<CellId>? = null): List<CellId> {
         if (!cells.downloadsAvailable || line.size < 2) return emptyList()
         val t = now()
-        val inst = cells.installedAmong(cells.cellsAlong(line, CORRIDOR_M))
+        val inst = cells.installedAmong(corridorCells ?: cells.cellsAlong(line, CORRIDOR_M))
             .filter { c -> lastFresh[c]?.let { t - it >= FRESH_CHECK_MS } ?: true }
         if (inst.isEmpty()) return emptyList()
         inst.forEach { lastFresh[it] = t }
