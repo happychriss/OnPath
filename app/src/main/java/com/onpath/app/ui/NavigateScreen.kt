@@ -171,7 +171,8 @@ fun NavigateOverlay(
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(top = 8.dp, start = 12.dp, end = 12.dp),
+            Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
+                .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // cards glide in and out instead of popping and pushing the status card (polish audit A3)
@@ -185,7 +186,7 @@ fun NavigateOverlay(
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
         }
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+        Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
             Appearing(ui.offRoute?.prompt as? NavPrompt.Question) { q ->
                 RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) },
