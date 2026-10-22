@@ -56,9 +56,27 @@ class OnlineSearchTest {
 
     @Test fun urlAndUserAgent() {
         val u = PhotonProvider("x").url("Meraner Hütte", 46.67, 11.16, 10)
-        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67000&lon=11.16000&zoom=12&location_bias_scale=0.3&limit=10&lang=de", u)
+        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67&lon=11.16&zoom=12&location_bias_scale=0.3&limit=10&lang=de", u)
         assertEquals("OnPath-Android/0.6.0 (github.com/happychriss/OnPath)", PhotonProvider.userAgent("0.6.0"))
         assertEquals("https://www.google.com/maps/search/?api=1&query=Spar%20Algund", GoogleSearchLink.url(" Spar Algund "))
+    }
+
+    @Test fun requestSendsOnlyARoughPosition() {
+        // owner 2026-10-22: never the exact GPS fix – at most 2 decimals (~1 km) in the request
+        val p = PhotonProvider("x")
+        val precise = Regex("""[?&](lat|lon)=(-?\d+)(?:\.(\d+))?""")
+        for ((lat, lon) in listOf(46.684213 to 11.144987, -33.868820 to 151.209290, 46.675 to 11.165, 0.0 to -0.004999, 89.999999 to 179.999999)) {
+            val u = p.url("Laurinstraße 5", lat, lon, 10)
+            val found = precise.findAll(u).toList()
+            assertEquals(2, found.size)
+            for (m in found) {
+                assertTrue("too precise: ${m.value}", (m.groupValues[3]).length <= 2)
+                val v = m.value.substringAfter('=').toDouble()
+                val exact = if (m.groupValues[1] == "lat") lat else lon
+                assertTrue("off by more than ~1 km: ${m.value}", kotlin.math.abs(v - exact) <= 0.005 + 1e-9)
+            }
+        }
+        assertTrue(!p.url("x", 46.684213, 11.144987, 10).contains("46.684"))
     }
 
     @Test fun deduplicatesOnlineAgainstOffline() {
