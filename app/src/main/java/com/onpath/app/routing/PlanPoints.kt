@@ -35,7 +35,7 @@ object PlanPoints {
     fun rows(plan: List<GeoPoint>, line: List<GeoPoint>?, name: (Int) -> String?): List<PlanPointRow> {
         if (plan.isEmpty()) return emptyList()
         val loop = PlanEdits.isRoundTrip(plan)
-        val legs = legs(plan, line)
+        val legs = legsCached(plan, line)
         val exact = legs != null
         val legM = legs ?: (listOf<Double?>(null) + (1 until plan.size).map { Geo.distance(plan[it - 1], plan[it]) })
         val count = if (loop) plan.size - 1 else plan.size
@@ -54,12 +54,38 @@ object PlanPoints {
         }
     }
 
+    private class LegsMemo(val plan: List<GeoPoint>, val line: List<GeoPoint>, val legs: List<Double?>?)
+    @Volatile private var memo: LegsMemo? = null
+    /** How often [legs] really ran along a line (tests). */
+    @Volatile internal var legsComputed = 0
+
+    /** Nothing to calculate along a line: [legs] is instant. */
+    private fun trivial(plan: List<GeoPoint>, line: List<GeoPoint>?) = line == null || line.size < 2 || plan.size < 2
+
+    /**
+     * [legs], remembered for the last plan + line (the line by identity: a new route is a new list). The sheet asks on
+     * every recomposition and the matching walks the whole line per point – owner field report 0.9.3 (the sheet
+     * stuttered with the points list). Thread-safe; computed off the main thread first (MapScreen), then a lookup.
+     */
+    fun legsCached(plan: List<GeoPoint>, line: List<GeoPoint>?): List<Double?>? {
+        if (trivial(plan, line)) return legs(plan, line)
+        memo?.let { if (it.line === line && it.plan == plan) return it.legs }
+        val r = legs(plan, line)
+        memo = LegsMemo(plan.toList(), line!!, r)
+        return r
+    }
+
+    /** [legsCached] answers without calculating. */
+    fun legsReady(plan: List<GeoPoint>, line: List<GeoPoint>?): Boolean =
+        trivial(plan, line) || memo?.let { it.line === line && it.plan == plan } == true
+
     /**
      * Distance along [line] from point i-1 to point i (index 0 = null), or null without a usable line. Each point is
      * matched to the line moving forward only, at the first pass within [PASS_SLACK_M] of its closest approach.
      */
     fun legs(plan: List<GeoPoint>, line: List<GeoPoint>?): List<Double?>? {
         if (line == null || line.size < 2 || plan.size < 2) return null
+        legsComputed++
         val cum = DoubleArray(line.size)
         for (k in 1 until line.size) cum[k] = cum[k - 1] + Geo.distance(line[k - 1], line[k])
         val at = IntArray(plan.size)
