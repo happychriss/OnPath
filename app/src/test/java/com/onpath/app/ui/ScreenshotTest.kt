@@ -395,6 +395,12 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi().copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
+    /** Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full. */
+    @Test fun planChipLongBikeTour() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(r = route.copy(distanceM = 112_480.0, durationS = 12.6 * 3600))
+            .copy(activity = Activity.BIKE_TOURING), PlanCallbacks()) }
+    }
+
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
