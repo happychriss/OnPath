@@ -10,8 +10,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## Next
 - **Bus / car / lift during a recording (owner 2026-10-22) – design `docs/design/vehicle-detection.md`:** nothing
-  during the ride (warnings + junction vibration stay on), summary with a choice at "End tour". Waiting for the owner's
-  answers (choices, raw points, limits); build after 0.9.0.
+  during the ride (warnings + junction vibration stay on), summary with a choice at "End tour". Owner agreed (four choices,
+  raw points kept); build after 0.9.0.
 - **Laptop → cloud handover 2026-10-22 (`docs/handover-2026-10-22-laptop.md` §3) – cloud status:** done on main:
   CI emulator gate fixed (Meran GPS, no loading window, points off the search pill), flaky CellDownloadTest (generation
   before "ready"), backup screenshot time zone; manifest `sources`; daily storage cleanup (map-hosting §7g; owner: run
