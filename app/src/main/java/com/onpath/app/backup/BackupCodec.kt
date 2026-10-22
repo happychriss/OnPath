@@ -8,6 +8,8 @@ import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.GpxWriter
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.rides.RideRecord
+import com.onpath.app.rides.RideView
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -41,6 +43,8 @@ data class BackupMeta(
     val deletedMs: Long? = null,
     /** When this backup was written (newest wins when the same uuid is found twice). */
     val savedMs: Long = 0L,
+    /** Recorded tour: rides found and the choice (rides/RideRecord); the file's track follows the choice. */
+    val rides: RideRecord? = null,
 ) {
     /** "tour" (recorded), "plan" (saved planned route) or "imported" – readable in the file. */
     val type: String get() = typeOf(kind)
@@ -52,7 +56,7 @@ data class BackupMeta(
         fun of(t: Tour, segments: List<List<TrackPoint>>, savedMs: Long = System.currentTimeMillis()): BackupMeta {
             val times = segments.flatten().mapNotNull { it.timeMs }
             return BackupMeta(t.uuid, t.kind, t.name, t.createdMs, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM,
-                t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs)
+                t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides)
         }
     }
 }
@@ -66,13 +70,54 @@ object BackupCodec {
     const val VERSION = 1
     private val recordRe = Regex("<onpath:backup\\b[^>]*>(.*?)</onpath:backup\\s*>", RegexOption.DOT_MATCHES_ALL)
 
+    /**
+     * [segments] = the points as stored. With rides ([BackupMeta.rides]) the track follows the user's choice
+     * ([RideView.layout]): a ride not counted is its own segment marked `<onpath:ride kind="…"/>`, and points dropped
+     * by "Save only until" / "Split" are not in the track but in `<onpath:dropped>` beside the record – other apps show
+     * the tour as chosen, a restore gets every recorded point back.
+     */
     fun encode(meta: BackupMeta, segments: List<List<TrackPoint>>): String {
         val json = toJson(meta).toString()
+        val layout = RideView.layout(segments, meta.rides)
+        val dropped = if (layout.dropped.isEmpty()) "" else buildString {
+            append("<onpath:dropped>")
+            for (seg in layout.dropped) {
+                append("<onpath:seg>")
+                for (p in seg) {
+                    append("<onpath:p lat=\"").append(p.lat).append("\" lon=\"").append(p.lon).append('"')
+                    p.ele?.let { append(" ele=\"").append(it).append('"') }
+                    p.timeMs?.let { append(" t=\"").append(it).append('"') }
+                    append("/>")
+                }
+                append("</onpath:seg>")
+            }
+            append("</onpath:dropped>")
+        }
         return GpxWriter.write(
-            meta.name, segments, meta.waypoints, timeMs = meta.savedMs.takeIf { it > 0 } ?: meta.createdMs,
-            extensions = "<onpath:backup version=\"$VERSION\">${GpxWriter.esc(json)}</onpath:backup>",
+            meta.name, layout.trk.map { it.first }, meta.waypoints, timeMs = meta.savedMs.takeIf { it > 0 } ?: meta.createdMs,
+            extensions = "<onpath:backup version=\"$VERSION\">${GpxWriter.esc(json)}</onpath:backup>$dropped",
             extensionNs = "xmlns:onpath=\"$NS\"",
+            segmentExtensions = layout.trk.map { (_, kind) -> kind?.let { "<onpath:ride kind=\"${it.name}\"/>" } }
+                .takeIf { l -> l.any { it != null } },
         )
+    }
+
+    private val droppedRe = Regex("<onpath:dropped>(.*?)</onpath:dropped>", RegexOption.DOT_MATCHES_ALL)
+    private val droppedSegRe = Regex("<onpath:seg>(.*?)</onpath:seg>", RegexOption.DOT_MATCHES_ALL)
+    private val droppedPtRe = Regex("<onpath:p\\b([^>]*?)/>")
+    private fun attr(attrs: String, name: String) = Regex("\\b$name=\"([^\"]*)\"").find(attrs)?.groupValues?.get(1)
+
+    /** The dropped points of a backup file (empty when none). */
+    fun droppedSegments(text: String): List<List<TrackPoint>> {
+        val block = droppedRe.find(text)?.groupValues?.get(1) ?: return emptyList()
+        return droppedSegRe.findAll(block).map { s ->
+            droppedPtRe.findAll(s.groupValues[1]).mapNotNull { m ->
+                val a = m.groupValues[1]
+                val lat = attr(a, "lat")?.toDoubleOrNull() ?: return@mapNotNull null
+                val lon = attr(a, "lon")?.toDoubleOrNull() ?: return@mapNotNull null
+                TrackPoint(lat, lon, attr(a, "ele")?.toDoubleOrNull(), attr(a, "t")?.toLongOrNull())
+            }.toList()
+        }.filter { it.isNotEmpty() }.toList()
     }
 
     /** True when [text] carries an OnPath backup record (other GPX files in the folder are left alone). */
@@ -87,7 +132,8 @@ object BackupCodec {
         val gpx: GpxData? = try { GpxParser.parse(text) } catch (e: Exception) {
             Problems.warn("backup", "Backup file $fileName: no track readable – restored without line", e); null
         }
-        return BackupEntry(meta, gpx?.allSegments ?: emptyList())
+        // the dropped tail follows the track: together every recorded point, in order
+        return BackupEntry(meta, (gpx?.allSegments ?: emptyList()) + droppedSegments(text))
     }
 
     fun toJson(m: BackupMeta): JSONObject = JSONObject().apply {
@@ -107,6 +153,7 @@ object BackupCodec {
         m.endMs?.let { put("end", it) }
         m.deletedMs?.let { put("deleted", it) }
         put("saved", m.savedMs)
+        m.rides?.let { put("rides", it.toJson()) }
     }
 
     fun fromJson(o: JSONObject): BackupMeta? {
@@ -129,6 +176,11 @@ object BackupCodec {
             waypoints = wpts, pinned = (0 until pa.length()).map { pa.getInt(it) }.toSet(),
             startMs = if (o.has("start")) o.getLong("start") else null, endMs = if (o.has("end")) o.getLong("end") else null,
             deletedMs = if (o.has("deleted")) o.getLong("deleted") else null, savedMs = o.optLong("saved", 0L),
+            rides = o.optJSONObject("rides")?.let { r ->
+                try { RideRecord.fromJson(r) } catch (e: Exception) {
+                    Problems.warn("backup", "Backup record: rides unreadable – the tour is restored as recorded", e); null
+                }
+            },
         )
     }
 
