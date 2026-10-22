@@ -161,6 +161,24 @@ fun TourControls(
  * A plan far longer than a day (owner 2026-10-22: a point in another country by mistake). Asked before anything is
  * routed or loaded. Cancel takes the last change back.
  */
+/**
+ * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour. Stays until
+ * answered (no outside tap / back dismiss – never self-dismissing).
+ */
+@Composable
+fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        icon = { Icon(Icons.Filled.Flag, null) },
+        title = { Text("Route back to the start?") },
+        text = { Text("The goal is deleted. Yes: the route leads from here back to the start. No: the tour keeps " +
+            "recording without a route. Undo brings the goal back either way.") },
+        confirmButton = { TextButton(onClick = onYes) { Text("Yes") } },
+        dismissButton = { TextButton(onClick = onNo) { Text("No") } },
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+    )
+}
+
 @Composable
 fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {
     val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
