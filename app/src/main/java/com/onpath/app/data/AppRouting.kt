@@ -22,6 +22,9 @@ object AppRouting {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var instance: RoutingDataLoader? = null
 
+    /** The loader when it was created already (health line), else null – never creates it. */
+    fun peek(): RoutingDataLoader? = instance
+
     fun get(context: Context): RoutingDataLoader = instance ?: synchronized(this) {
         instance ?: create(context.applicationContext).also { instance = it }
     }

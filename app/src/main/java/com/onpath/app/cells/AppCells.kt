@@ -15,6 +15,9 @@ import kotlinx.coroutines.SupervisorJob
 object AppCells {
     @Volatile private var instance: MapCells? = null
 
+    /** The instance when it was started already (health line), else null – never starts it. */
+    fun peek(): MapCells? = instance
+
     fun get(context: Context): MapCells = instance ?: synchronized(this) {
         instance ?: create(context.applicationContext).also { instance = it }
     }

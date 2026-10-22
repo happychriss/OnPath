@@ -97,7 +97,13 @@ fun MapHost(
             var fallbackUsed = false
             fun load(json: String) {
                 val loadedFrom = StyleLoader.lastMapDir
+                val t0 = android.os.SystemClock.elapsedRealtime()
+                val n = ++styleLoads
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
+                    // each load in the event log: native memory grew per reload (perf report 2026-10-22)
+                    com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
+                        "${android.os.SystemClock.elapsedRealtime() - t0} ms, native heap " +
+                        "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
                     vm.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)
@@ -271,6 +277,9 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
             topLeft = Offset(at.x - r, at.y - r), size = Size(2 * r, 2 * r), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
     }
 }
+
+/** Style loads in this process (for the event log). */
+private var styleLoads = 0
 
 /** Theme of the loaded style and a way to reload it (set once the map is ready). */
 private val loadedTheme = arrayOfNulls<String>(1)

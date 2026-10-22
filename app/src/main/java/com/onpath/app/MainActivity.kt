@@ -333,10 +333,12 @@ class MainActivity : ComponentActivity() {
         vm.tracker.start()
         vm.recheckData()
         vm.onAppStart() // owner: the app always opens at the current location (when nothing is running)
+        com.onpath.app.debug.Health.attach(window) // janky frames + main-thread watchdog while on screen
     }
 
     override fun onStop() {
         vm.onAppStop()
+        com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
         super.onStop()
     }

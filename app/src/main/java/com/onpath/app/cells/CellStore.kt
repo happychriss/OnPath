@@ -143,6 +143,7 @@ class CellStore(
      */
     @Synchronized
     fun apply(add: List<Download> = emptyList(), remove: Set<CellId> = emptySet(), now: Long = System.currentTimeMillis()): Generation {
+        val t0 = System.currentTimeMillis()
         val cur = current()
         val addIds = add.map { it.manifest.cell }.toSet()
         val kept = cur?.cells.orEmpty().filter { it.id !in remove && it.id !in addIds }
@@ -218,6 +219,9 @@ class CellStore(
             for (d in add) installAddresses(d)
             for (c in remove - addIds) deleteAddresses(c)
             prune(keep = setOfNotNull(number, cur?.number, inUse))
+            // the cost of each generation in the event log (perf report 2026-10-22: ~360 MB written per 7 MB region)
+            Problems.trace("cells", "Generation ${final.name}: +${add.size} −${(remove - addIds).size} cells (${cells.size} total), " +
+                "${files.values.sum() / MB} MB written in ${System.currentTimeMillis() - t0} ms (POIs ${(files[POIS] ?: 0L) / MB} MB)")
             return gen
         } catch (e: StoreException) {
             tmp.deleteRecursively(); throw e
