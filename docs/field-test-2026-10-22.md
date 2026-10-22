@@ -149,12 +149,14 @@ No crashes, no recording/DB write errors, no "GPS refused", no service restarts 
 ## 5. Done (after the analysis, 2026-10-22)
 
 - Gap trace says why: fixes dropped for accuracy and the best accuracy seen in the gap; accuracy is stored per point (DB).
-- Trace buffer 50 → 500 events.
+- Event trace on disk: append-only, 2 rotating files ≤ 5 MB / 14 days, fully in the diagnostics export (`events.log`); 200 recent in memory.
 - Plan traces: Undo, Redo, Clear route, add from the POI menu, plan restore at start, tour start / end.
-- Points list ✕: the list ignores taps for a short time after a delete (rows don't shift under the finger).
+- Points list ✕: the deleted row stays as a quiet "Deleted" placeholder for 1.2 s and the list ignores taps meanwhile (rows never shift under the finger).
 - Owner rule: what Plan shows = what Navigate follows. Deleting all points during a tour ends the route guidance (the
   tour keeps recording); Undo brings the points and the guidance back.
 - CellStore lists only complete generations (no false ERROR on a half-written `.tmp`).
-- rd5 parts list: see the commit "rd5 parts list" for the cause and fix.
+- rd5 parts list: the warning came from the app itself – `install()` read the tile state after renaming the new rd5
+  into place but before writing its parts list (once per part added to a tile that already had parts). The old state
+  is now read before the rewrite, and readers during a rewrite get the consistent old state.
 - "moving but no progress" needs real movement (not GPS jitter while standing).
 - "Following stopped: map gesture" / "Camera mode changed by the map" go to the trace only, not Problems.
