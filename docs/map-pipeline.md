@@ -124,7 +124,7 @@ Notes per step:
 - **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 6 tries with back-off). It does not depend on
   the OSM data, so the script only rebuilds it when the bbox, the script or the format changes. Tile ranges treat
   the bbox's east/south edge as exclusive (a bbox ending exactly on a tile edge – a z10 cell – takes no extra
-  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 12`), `--cell 10/543/361` (only the
+  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 13`; 12 until 2026-10-22), `--cell 10/543/361` (only the
   cell's own tiles z10–max), `--cache DIR` (keep the AWS PNGs; contours read the same folder). WebP needs Pillow
   with WebP support (the normal wheels have it).
 - **5 Overlays** do two passes over the PBF (relations, then ways with node locations, in memory –

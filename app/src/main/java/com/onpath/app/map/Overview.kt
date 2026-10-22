@@ -37,8 +37,12 @@ object Overview {
     const val COVER = "detail-cover"
     const val HILLSHADE_FILE = "hillshade.pmtiles"
     const val HILLSHADE_SOURCE = "overview-hillshade"
-    /** Paint of the pre-rendered hill shade (its look is baked into the images; tools/build_hillshade.py). */
-    private const val HILLSHADE_PAINT = """{"raster-resampling":"linear","raster-fade-duration":0}"""
+    /**
+     * Paint of the pre-rendered hill shade (its look is baked into the images; tools/build_hillshade.py); hill shading
+     * balanced (c), owner 2026-10-22: a little more contrast, highlights not pure white.
+     */
+    private const val HILLSHADE_PAINT =
+        """{"raster-resampling":"linear","raster-fade-duration":0,"raster-contrast":0.25,"raster-brightness-max":0.9}"""
     /** Full up to the split, then calmer: outside the downloaded areas it is only a magnified stand-in. */
     private const val RELIEF_OPACITY = """["interpolate",["linear"],["zoom"],10,1,12,0.6,14,0.45]"""
     /** Overview land cover (Natural Earth ice …) over the opaque relief tiles. */

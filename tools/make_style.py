@@ -105,7 +105,7 @@ def landcover():
                       ("sand", 9)):
         layer(id_=f"landcover-{cls}", type="fill", source="base", **{"source-layer": "landcover"},
               minzoom=minz, filter=["==", ["get", "class"], cls],
-              paint={"fill-color": T(f"{cls}.color"), "fill-antialias": False})
+              paint={"fill-color": Z(f"{cls}.color"), "fill-antialias": False})
     # Ground symbols (sprite "pattern-*", tools/make_sprite.py) only close in (GROUND_SYMBOLS_ZOOM, the last two zoom
     # steps before the app's max zoom 18 – owner 2026-10-20: below that plain landcover colour), very light.
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
@@ -148,9 +148,10 @@ def hillshade():
               paint={"hillshade-illumination-direction": T(k + ".direction"),
                      "hillshade-illumination-anchor": "map",
                      "hillshade-exaggeration": Z(k + ".exaggeration"),
-                     "hillshade-shadow-color": T(k + ".shadow"),
-                     "hillshade-highlight-color": T(k + ".highlight"),
-                     "hillshade-accent-color": T(k + ".accent")})
+                     # colours as zoom stops where the theme has them (balanced (c), owner 2026-10-22)
+                     "hillshade-shadow-color": Z(k + ".shadow"),
+                     "hillshade-highlight-color": Z(k + ".highlight"),
+                     "hillshade-accent-color": Z(k + ".accent")})
 
 
 def contours():

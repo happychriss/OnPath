@@ -25,7 +25,7 @@
 #                     map-data-size.md, docs/map-pipeline.md). 1 = what the app ships today: overlays as GeoJSON
 #                     files, terrain PNG z5-13. 2 = overlays as ONE overlays.pmtiles (tippecanoe + tile-join
 #                     needed, env TIPPECANOE / TILE_JOIN), smoothed paths, base map without unused layers /
-#                     languages and without path / track lines at z13-14, terrain WebP lossless (0.25 m) z5-12,
+#                     languages and without path / track lines at z13-14, terrain WebP lossless (0.25 m) z5-13,
 #                     contours from the cached AWS z12/z13 tiles. package.json / manifest say format 2 only then.
 #   --no-smooth       format 2 without path smoothing (extract_overlays.py --smooth is the format-2 default)
 #   --force           rebuild every step even if its output is up to date
@@ -36,7 +36,7 @@
 #   PLANETILER_JAR=/path/planetiler.jar  use this jar (default $WORK/planetiler-$PLANETILER_VERSION.jar)
 #   PLANETILER_VERSION=0.10.2            release downloaded from GitHub when no jar is given
 #   PLANETILER_SOURCES=DIR               Planetiler's water / Natural Earth downloads (~1.4 GB, cached)
-#   JAVA_XMX=6g  TERRAIN_MAXZOOM=13 (format 2: 12)  OSM_MAX_AGE_DAYS=6  SEGMENTS_MAX_AGE_DAYS=30
+#   JAVA_XMX=6g  TERRAIN_MAXZOOM=13  OSM_MAX_AGE_DAYS=6  SEGMENTS_MAX_AGE_DAYS=30
 #
 # Idempotent: every step is skipped when its output is newer than its inputs (OSM file, the tool
 # script) and the bbox did not change. Outputs are written to a temp name and renamed when complete.
@@ -104,7 +104,7 @@ PLANETILER_VERSION=${PLANETILER_VERSION:-0.10.2}
 PLANETILER_JAR=${PLANETILER_JAR:-$WORK/planetiler-$PLANETILER_VERSION.jar}
 PLANETILER_SOURCES=${PLANETILER_SOURCES:-$WORK/planetiler-sources}
 JAVA_XMX=${JAVA_XMX:-6g}
-if [ "$FORMAT" = 2 ]; then TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-12}; else TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}; fi
+TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}  # format 2 too since 2026-10-22 (was 12; balanced hill shading, owner)
 TERRAIN_ARGS=(); [ "$FORMAT" = 2 ] && TERRAIN_ARGS=(--format 2)
 TERRARIUM_CACHE="$WORK/terrarium"   # AWS Terrarium PNGs, shared by terrain (format 2) and contours (format 2)
 OSM_MAX_AGE_DAYS=${OSM_MAX_AGE_DAYS:-6}

@@ -46,7 +46,7 @@
 #   pois      tools/extract_pois.py on the buffered bbox (bus-stop merge on the buffered set), then owner rule
 #   addresses format 2: tools/extract_addresses.py --owner on the cut, bbox = cell -> addresses/10-X-Y.sqlite
 #   terrain   format 1: build_terrain.py for cell + one z12 tile ring (z5-13 PNG), own z10-13 tiles kept
-#             format 2: build_terrain.py --cell 10/X/Y --format 2 (WebP z10-12, own tiles only)
+#             format 2: build_terrain.py --cell 10/X/Y --format 2 (WebP z10-13, own tiles only)
 #   contours  format 1: build_contours.py from the ring terrain; format 2: build_contours.py aws (AWS z12/z13,
 #             one tile ring read); own tiles kept; format 2 keeps contours.pmtiles separate (same file as the region)
 #   clip      GeoJSON: lines cut exactly at the border, points by the half-open owner rule (tools/cells/cells.py)
@@ -219,7 +219,7 @@ sed 's/^/    /' "$TMP/logs/clip.log"
 
 # ------------------------------------------------------------------------------- terrain + contours
 if [ "$FORMAT" = 2 ]; then
-  # only the cell's own z10-12 tiles (WebP lossless, 0.25 m); the AWS PNGs stay in the cache for the contours
+  # only the cell's own z10-13 tiles (WebP lossless, 0.25 m); the AWS PNGs stay in the cache for the contours
   run terrain python3 "$TOOLS/build_terrain.py" "$TMP/out/terrain.pmtiles" --cell "$Z/$X/$Y" --format 2 \
     --cache "$TERRARIUM_CACHE"
   # 50 m lines at z12, 20 m at z13 from the original AWS tiles (+ one tile ring read, so lines meet the neighbour)
