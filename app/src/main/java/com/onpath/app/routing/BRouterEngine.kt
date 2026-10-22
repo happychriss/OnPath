@@ -60,7 +60,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         try {
             val start = System.currentTimeMillis()
             if (limits == null) LOCK.lock()
-            else if (!LOCK.tryLock(limits.timeoutMs, TimeUnit.MILLISECONDS)) throw RoutingException(BUSY)
+            else if (!LOCK.tryLock(limits.timeoutMs, TimeUnit.MILLISECONDS)) throw RoutingException(BUSY, timedOut = true)
+            lastLockWait.set(System.currentTimeMillis() - start)
             try {
                 val key = cacheKey(waypoints, activity, sacLimit)
                 cache[key] ?: run {
@@ -104,7 +105,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         if (waypoints.size < 2) throw RoutingException("Set a start point and a destination.")
         checkSegments(waypoints)
         ensureProfiles()
-        val timeoutMs = budgetMs?.coerceAtMost(timeoutFor(waypoints)) ?: timeoutFor(waypoints)
+        val limit = RouteTimeLimit.forRoute(waypoints, activity)
+        val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
         val rc = RoutingContext()
@@ -132,7 +134,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             try { engine.doRun(timeoutMs) } finally { cancel?.onCancel(null) }
             if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
             val err = engine.errorMessage
-            if (err != null) throw RoutingException(describeError(err, activity, sacLimit, timeoutMs))
+            if (err != null) throw RoutingException(describeError(err, activity, sacLimit, timeoutMs), timedOut = isTimeout(err))
             track = engine.foundTrack ?: throw RoutingException(describeError(null, activity, sacLimit, timeoutMs))
         } catch (e: RoutingException) {
             throw e
@@ -352,15 +354,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         }
     }
 
-    /**
-     * Search time budget: long routes may need the full [TIMEOUT_MS], short ones that are not found
-     * quickly are almost always unreachable (e.g. only via paths above the SAC limit), so give up sooner.
-     */
-    private fun timeoutFor(waypoints: List<GeoPoint>): Long {
-        var km = 0.0
-        for (i in 1 until waypoints.size) km += distM(waypoints[i - 1], waypoints[i]) / 1000.0
-        return (MIN_TIMEOUT_MS + km * TIMEOUT_MS_PER_KM).toLong().coerceIn(MIN_TIMEOUT_MS, TIMEOUT_MS)
-    }
+    private fun isTimeout(m: String) = m.contains("timeout") || m.contains("killed")
 
     private fun describeError(msg: String?, activity: Activity, sacLimit: Int, timeoutMs: Long): String {
         val m = msg ?: ""
@@ -374,7 +368,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 "${pointNameFromBRouter(who)} is more than ${MAX_SNAP_M.toInt()} m from any path or road " +
                     "usable for ${activity.label}. Move it closer to a path."
             }
-            m.contains("timeout") || m.contains("killed") ->
+            isTimeout(m) ->
                 if (activity == Activity.HIKE) {
                     "No route found within ${timeoutMs / 1000} s. The destination may only be reachable via " +
                         "paths harder than SAC T${sacLimit.coerceIn(1, 5)} - try a higher difficulty limit, " +
@@ -409,14 +403,16 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     companion object {
         /** One BRouter search at a time in this process (planning in the app, re-routing in the service). */
         private val LOCK = ReentrantLock()
+        /** How long the last request on this thread waited for [LOCK] (ms) – for the per-route log line. */
+        private val lastLockWait = ThreadLocal<Long>()
+
+        /** Ms the last limited request on the calling thread waited for another route to finish (0 = none / unknown). */
+        fun lastLockWaitMs(): Long = lastLockWait.get() ?: 0L
         const val CANCELLED = "Routing was cancelled."
         /** Plain text (no file name, no path); the plan shows RoutingDataNotice instead. */
         const val NO_DATA = "No routing data for this area."
         const val BUSY = "The router is busy - try again in a moment."
         private const val MIN_BUDGET_MS = 500L
-        private const val TIMEOUT_MS = 30_000L
-        private const val MIN_TIMEOUT_MS = 15_000L
-        private const val TIMEOUT_MS_PER_KM = 500.0
         private const val VIA_CORRECTION_M = 400.0
         private const val VIA_CORRECTION_HIKE_M = 50.0
         private const val CACHE_SIZE = 8

@@ -60,6 +60,9 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
   implementation (calls the plain `route`), so existing engines and fakes stay valid. `RouteLimits(timeoutMs, cancel)`:
   upper bound incl. waiting for another request, and a `RouteCancel` (BRouter `terminate()`). `BRouterEngine` uses a
   static `ReentrantLock` (`tryLock` within the budget). Used by `navigation/Rerouter` (8 s per request, 12 s per re-route).
+- `RoutingException(message, timedOut = false)` (2026-10-22): `timedOut` = the search budget ran out or the router stayed
+  busy; `Planner` then shows straight lines at once instead of retrying leg by leg. BRouter's own search limit per
+  request comes from `routing/RouteTimeLimit` (by straight-line km and profile, 15 s … 45 s hike / 90 s bike / 120 s MTB).
 
 ## Way attributes on the route line (time estimate P4, 2026-10-18)
 - `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys

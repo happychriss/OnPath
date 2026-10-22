@@ -40,10 +40,32 @@ class Planner(
     /** "Cancel" while a route is calculated (owner 2026-10-22): stops the router at once, no leg-by-leg fallback. */
     private val cancel: RouteCancel? = null,
 ) {
+    /** One engine request of this planner: points, time, outcome ("ok", "timeout", "failed"), wait for the engine lock. */
+    data class Try(val points: Int, val ms: Long, val outcome: String, val lockWaitMs: Long)
+
+    /** Every engine request so far (for the per-route log line, [describeTries]). One planner = one plan, one thread. */
+    val tries = ArrayList<Try>()
+
+    /** "whole 4 pts 34.2 s timeout (lock 0 ms); leg 2 pts 1.2 s ok" – short, for the event log. */
+    fun describeTries(): String = tries.joinToString("; ") { t ->
+        "${t.points} pts ${String.format(java.util.Locale.ROOT, "%.1f", t.ms / 1000.0)} s ${t.outcome}" +
+            if (t.lockWaitMs > 0) " (waited ${t.lockWaitMs} ms for the router)" else ""
+    }
+
     private fun route(pts: List<GeoPoint>, activity: Activity, sac: Int): RouteResult {
         if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED)
-        return if (cancel == null) engine.route(pts, activity, sac)
-        else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))
+        val t0 = System.currentTimeMillis()
+        var outcome = "failed"
+        try {
+            return (if (cancel == null) engine.route(pts, activity, sac)
+            else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))).also { outcome = "ok" }
+        } catch (e: RoutingException) {
+            outcome = if (e.timedOut) "timeout" else if (cancel?.isCancelled == true) "cancelled" else "failed"
+            throw e
+        } finally {
+            tries += Try(pts.size, System.currentTimeMillis() - t0, outcome,
+                if (engine is BRouterEngine) BRouterEngine.lastLockWaitMs() else 0L)
+        }
     }
 
     private fun stopIfCancelled() { if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED) }
@@ -94,6 +116,10 @@ class Planner(
                     Geo.estimateSeconds(d, 0.0, 0.0, activity),
                     "${e.message ?: "No route found."} Shown as a straight dashed line. Try moving the point or changing the activity.")
             }
+            // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
+            // plan up to 120 s) – straight lines at once, the user adds points or tries again.
+            if (e is RoutingException && e.timedOut) return straight(waypoints, activity,
+                "${e.message ?: "Route calculation took too long."} Shown as straight dashed lines.")
             // otherwise fall through to per-leg routing
         }
         var dist = 0.0; var up = 0.0; var down = 0.0; var time = 0.0
@@ -135,6 +161,12 @@ class Planner(
         }
         return PlannedRoute(legs, dist, up, down, time, firstError,
             RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
+    }
+
+    private fun straight(waypoints: List<GeoPoint>, activity: Activity, error: String): PlannedRoute {
+        val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
+        val d = (1 until waypoints.size).sumOf { Geo.distance(waypoints[it - 1], waypoints[it]) }
+        return PlannedRoute(legs, d, 0.0, 0.0, Geo.estimateSeconds(d, 0.0, 0.0, activity), error)
     }
 
     companion object {

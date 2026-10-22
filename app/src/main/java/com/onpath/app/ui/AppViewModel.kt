@@ -1796,11 +1796,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
+            var planner: Planner? = null
             val result = withContext(routingDispatcher) {
                 runCatching {
                     val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                         .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
-                    withModelTime(Planner(eng, cancel).plan(pts, act, level, pins), act, f)
+                    withModelTime(Planner(eng, cancel).also { planner = it }.plan(pts, act, level, pins), act, f)
                 }
             }
             slow.cancel()
@@ -1809,8 +1810,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
             }
+            // one line per route (perf report 2026-10-22): distance, size, profile, each try's time and outcome
+            val done = result.getOrNull()
             Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
-                " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points)")
+                " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
+                "${act.name}, ${"%.1f".format(Locale.ROOT, com.onpath.app.routing.RouteTimeLimit.straightKm(pts))} km straight" +
+                (done?.let { ", ${"%.1f".format(Locale.ROOT, it.distanceM / 1000)} km routed, ${it.points.size} line points, " +
+                    "${it.legs.count { l -> l.straight }} straight legs" } ?: "") +
+                (planner?.describeTries()?.takeIf { it.isNotEmpty() }?.let { "; tries: $it" } ?: ""))
             var baseline = false
             result.onSuccess {
                 baseline = adoptPlanBaseline
