@@ -16,6 +16,8 @@ object GpxWriter {
         extensions: String? = null,
         /** Namespace declarations for [extensions], e.g. `xmlns:onpath="…"`. */
         extensionNs: String? = null,
+        /** Extra XML per segment (`<trkseg><extensions>`, after its points), aligned with [segments]; null = none. */
+        segmentExtensions: List<String?>? = null,
     ): String {
         val sb = StringBuilder(64 + segments.sumOf { it.size } * 110)
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
@@ -34,7 +36,7 @@ object GpxWriter {
             sb.append("</wpt>\n")
         }
         sb.append("  <trk>\n    <name>").append(esc(name)).append("</name>\n")
-        for (seg in segments) {
+        for ((si, seg) in segments.withIndex()) {
             if (seg.isEmpty()) continue
             sb.append("    <trkseg>\n")
             for (p in seg) {
@@ -43,6 +45,7 @@ object GpxWriter {
                 p.timeMs?.let { sb.append("<time>").append(time(it)).append("</time>") }
                 sb.append("</trkpt>\n")
             }
+            segmentExtensions?.getOrNull(si)?.let { sb.append("      <extensions>").append(it).append("</extensions>\n") }
             sb.append("    </trkseg>\n")
         }
         sb.append("  </trk>\n</gpx>\n")

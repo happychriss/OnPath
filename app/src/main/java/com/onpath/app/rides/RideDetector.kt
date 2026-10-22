@@ -18,8 +18,10 @@ import kotlin.math.abs
  *   (straight distance ≥ 30 % of the path) – GPS wandering in a gorge does neither;
  * - on foot a minute at > 12 km/h is a run, not a bus: the fastest 30 s must also be above 20 km/h;
  * - on a bike > 50 km/h downhill (≤ −3 %) is a fast descent, not a car – unless above 80 km/h.
- * Lift: > 2 m/s vertical for ≥ 60 s and ≥ 100 m, on a nearly straight line (≥ 90 %), at least 20 % steep. Downhill on
- * a bike it must be even straighter (≥ 97 %) and steeper (≥ 35 %): a fast straight trail descent is not a lift.
+ * Lift: > 1 m/s vertical for ≥ 60 s and ≥ 100 m, on a nearly straight line (≥ 90 %), at least 20 % steep. The design
+ * said 2 m/s; the owner's Taser gondola (2026-10-22, no fix in the cabin) went 1500 → 907 m in 356 s = 1.67 m/s, and no
+ * hiker climbs or descends 1 m/s for minutes. Downhill on a bike (where 1–2 m/s is a normal trail descent) it takes
+ * > 2 m/s, even straighter (≥ 97 %) and steeper (≥ 35 %): a fast straight trail descent is not a lift.
  * Proposed start of a ride: the last point where the user still moved before it – the waiting at the stop (points
  * within 40 m of where the ride began) is cut off with the ride.
  */
@@ -36,7 +38,8 @@ object RideDetector {
     const val MIN_STRAIGHTNESS = 0.3
     const val MERGE_GAP_S = 180.0
     const val MERGE_GAP_M = 250.0
-    const val LIFT_VERTICAL_MS = 2.0
+    const val LIFT_VERTICAL_MS = 1.0
+    const val LIFT_BIKE_DOWN_VERTICAL_MS = 2.0
     const val LIFT_MIN_VERTICAL_M = 100.0
     const val LIFT_STRAIGHTNESS = 0.9
     const val LIFT_MIN_GRADE = 0.2
@@ -55,7 +58,8 @@ object RideDetector {
         val w = Work.of(flat)
         if (w.n < 3) return emptyList()
         val lifts = lifts(w, activity)
-        val vehicles = vehicles(w, activity).filter { v -> lifts.none { l -> v.first < l.second && l.first < v.second } }
+        // a lift is not also a bus: its pairs are left out before bus pieces are joined (Taser: gondola, 3 min, car)
+        val vehicles = vehicles(w, activity, lifts).filter { v -> lifts.none { l -> v.first < l.second && l.first < v.second } }
         val runs = (lifts.map { Triple(it.first, it.second, RideKind.LIFT) } + vehicles.map { Triple(it.first, it.second, RideKind.VEHICLE) })
             .sortedBy { it.first }
         val out = ArrayList<Ride>()
@@ -74,7 +78,7 @@ object RideDetector {
 
     // ---------------------------------------------------------------------------------------------- vehicles
 
-    private fun vehicles(w: Work, activity: Activity): List<Pair<Int, Int>> {
+    private fun vehicles(w: Work, activity: Activity, lifts: List<Pair<Int, Int>>): List<Pair<Int, Int>> {
         val foot = isFoot(activity)
         val limit = if (foot) FOOT_LIMIT_MS else BIKE_LIMIT_MS
         val minM = if (foot) FOOT_MIN_M else BIKE_MIN_M
@@ -87,6 +91,7 @@ object RideDetector {
             if (dt < MIN_S) break
             if ((w.p[j] - w.p[i]) / dt > limit) for (k in i until j) fast[k] = true
         }
+        for ((ls, le) in lifts) for (k in ls until le) fast[k] = false
         val runs = merge(runsOf(fast), w)
         return runs.mapNotNull { (s0, e0) ->
             var s = s0; var e = e0
@@ -159,6 +164,7 @@ object RideDetector {
             val minRatio = if (bikeDown) LIFT_BIKE_DOWN_STRAIGHTNESS else LIFT_STRAIGHTNESS
             val minGrade = if (bikeDown) LIFT_BIKE_DOWN_GRADE else LIFT_MIN_GRADE
             if (ratio < minRatio || grade < minGrade) return@mapNotNull null
+            if (bikeDown && abs(dz) / dur <= LIFT_BIKE_DOWN_VERTICAL_MS) return@mapNotNull null
             s to e
         }
     }
