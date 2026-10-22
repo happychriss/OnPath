@@ -118,10 +118,9 @@ data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Bool
 
 /**
  * Plan sheet sizes (owner 2026-10-21): MINI = summary only, COMPACT = summary + elevation profile (default),
- * FULL = the point editor: one line (time · distance) + the Points list (scrolls inside the sheet), then the
- * elevation profile with its gradient legend (owner 2026-10-21). Way types /
- * surfaces / difficulty are in the route details (tap the profile or the badge). The primary button stays at the
- * bottom in every size.
+ * FULL = the plan editor (owner 2026-10-22): one line (time · distance), then one scrolling area – elevation profile
+ * (finger slides the dot along the route), Points (+ Reverse / Round trip), way types & surfaces. The primary button
+ * stays at the bottom in every size.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -195,18 +194,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         // in the point editor the map card is one line: it must never squeeze the points away (CI 2026-10-22)
         ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini || full) }
         if (full) {
-            PointEditor(ui, cb, Modifier.weight(1f, fill = false))
-            // below the points (owner 2026-10-21): the profile at normal size with its gradient legend
-            if (route != null && !ui.routing) {
-                Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    Box(Modifier.fillMaxWidth()) {
-                        ElevationProfile(route.points, height = 96.dp, gradient = true)
-                        Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show route details",
-                            onClick = cb.onDetails).semantics { contentDescription = "Route details" })
-                    }
-                    GradientLegend()
-                }
-            }
+            PlanEditor(ui, cb, Modifier.weight(1f, fill = false))
         } else if (!mini && route != null && !ui.routing) {
             // Mini profile, always visible (Komoot-like) – tap for the route details.
             Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
@@ -223,21 +211,36 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
     }
 }
 
-/** Full sheet = the point editor (owner 2026-10-21): the Points list, scrolling between the summary and the button. */
+/**
+ * Full sheet (owner 2026-10-22): ONE scrolling area – elevation profile (slide a finger: the dot runs along the route
+ * on the map), the Points list (Reverse / Round trip only here), way types & surfaces. Title line above and the primary
+ * button below stay put, so 3 or 30 points work the same.
+ */
 @Composable
-private fun PointEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
+private fun PlanEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
     // the map stays visible above the sheet
-    val maxH = (LocalConfiguration.current.screenHeightDp * 0.45f).dp
+    val maxH = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
     val scroll = rememberScrollState()
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    val route = ui.route
     Column(modifier.heightIn(max = maxH).onGloballyPositioned { viewport = it }.verticalScroll(scroll)) {
+        if (route != null && !ui.routing) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Elevation profile" }) {
+                ElevationProfile(route.points, height = 96.dp, gradient = true,
+                    onHighlight = cb.onHighlight, onRelease = { cb.onHighlight(null) })
+                GradientLegend()
+            }
+        }
         PointsSection(
             ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
             onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
             onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 8.dp),
             scroll = scroll, viewport = { viewport },
         )
+        if (route != null && !ui.routing) {
+            RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
+        }
     }
 }
 
@@ -350,17 +353,14 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 /** The items of the sheet's ⋯ menu (also rendered on their own by the screenshot tests). */
 @Composable
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
-    val two = ui.pointCount >= 2
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    // Everything about this route in one place (owner): save / export, edits, clear.
+    // About this route: redo, save / export, time details, clear.
     MenuItem(Icons.AutoMirrored.Filled.Redo, "Redo", enabled = ui.canRedo, onClick = run(cb.onRedo))
     HorizontalDivider()
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
-    HorizontalDivider()
-    MenuItem(Icons.Outlined.SwapVert, "Reverse route", enabled = two, onClick = run(cb.onReverse))
-    MenuItem(Icons.Outlined.Loop, "Round trip (back to start)", enabled = two && !ui.roundTrip, onClick = run(cb.onRoundTrip))
+    // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
     HorizontalDivider()
     MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
         onClick = run(cb.onClear))

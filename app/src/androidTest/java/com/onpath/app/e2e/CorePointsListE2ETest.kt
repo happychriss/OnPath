@@ -56,10 +56,10 @@ class CorePointsListE2ETest : E2EBase() {
             var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
             throw AssertionError("Points section shown – tour running $rec – ${state()}")
         }
-        // owner 2026-10-21: the profile sits below the points (tap → route details)
-        val profile = desc("Route details").visibleBounds
-        val lastRow = desc("Move point 3 (hold and drag)").visibleBounds
-        assertTrue("profile below the points: $profile vs $lastRow", profile.top >= lastRow.bottom - 2)
+        // owner 2026-10-22: profile first, then the points (one scrolling area)
+        val profile = desc("Elevation profile").visibleBounds
+        val firstRow = desc("Move point 1 (hold and drag)").visibleBounds
+        assertTrue("profile above the points: $profile vs $firstRow", profile.bottom <= firstRow.top + 2)
     }
 
     private fun desc(text: String) = device.wait(Until.findObject(By.desc(text)), 5_000)

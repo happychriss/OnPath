@@ -81,9 +81,11 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         Thread.sleep(2_000)
+        assertPositionDotOnTop("navigate")
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.PLAN }
         Thread.sleep(2_000)
+        assertPositionDotOnTop("plan during a tour")
         holdOnWaypoint(1)
         assertNotNull(device.wait(Until.findObject(By.text("Delete")), 3_000))
         clickText("Delete")
