@@ -44,12 +44,26 @@ data class OfflineMapsUi(
     val wifiOnly: Boolean,
     /** Areas still being fetched (not installed yet). */
     val loading: Int = 0,
+    /** What waits to download (regions, routing parts); null = nothing. */
+    val waiting: WaitingDownloads? = null,
 )
+
+/** Everything still to download: map regions and routing data parts, about [bytes]. */
+data class WaitingDownloads(val regions: Int, val routingParts: Int, val bytes: Long) {
+    val any: Boolean get() = regions > 0 || routingParts > 0
+    /** "Waiting to download: 3 areas · about 85 MB" (routing data alone: "routing data"). */
+    val line: String get() {
+        val what = if (regions > 0) "$regions ${if (regions == 1) "area" else "areas"}" else "routing data"
+        return "Waiting to download: $what" + (if (bytes > 0) " · about ${mb(bytes)} MB" else "")
+    }
+}
 
 class OfflineMapsCallbacks(
     val onDelete: (String) -> Unit = {},
     val onWifiOnly: (Boolean) -> Unit = {},
     val onUpdateNow: () -> Unit = {},
+    /** Drops every waiting download (installed maps stay). */
+    val onCancelAll: () -> Unit = {},
 )
 
 /** Settings → Offline maps: installed areas, total size, delete (asked in the page), Wi-Fi only, update now. */
@@ -85,7 +99,17 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
                 Text("${ui.areas.size} ${if (ui.areas.size == 1) "area" else "areas"} · ${mbText(ui.areas.sumOf { it.bytes })} in total",
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
-            if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading – see the route sheet.",
+            val w = ui.waiting
+            if (w != null) {
+                HorizontalDivider(Modifier.padding(vertical = 2.dp))
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(w.line, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = cb.onCancelAll, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("Cancel all", color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Text("Cancel all stops these downloads; the maps you have stay.", fontSize = 12.sp, color = variant)
+            } else if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading – see the route sheet.",
                 fontSize = 13.sp, color = variant)
         }
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)

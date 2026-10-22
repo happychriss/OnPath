@@ -230,6 +230,7 @@ class MainActivity : ComponentActivity() {
                                 onDelete = vm::deleteMapArea,
                                 onWifiOnly = { on -> vm.updateSettings(vm.settings.copy(mapsWifiOnly = on)) },
                                 onUpdateNow = vm::updateMapsNow,
+                                onCancelAll = vm::cancelAllDownloads,
                             ),
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",

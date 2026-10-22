@@ -34,6 +34,13 @@ class CellTriggersTest {
         override fun refreshDue(ageDays: Int) = due
         override fun installedAmong(cells: List<CellId>) = cells.filter { it in installed }
         override fun markUsed(cells: Collection<CellId>) { used += cells.filter { it in installed } }
+        val kept = ArrayList<Set<CellId>>()
+        override fun keepCorridor(keep: Collection<CellId>): List<CellId> {
+            kept += keep.toSet()
+            val drop = queued.filter { (c, r) -> r.first == CellReason.CORRIDOR && c !in keep }.keys.toList()
+            drop.forEach { queued.remove(it) }
+            return drop
+        }
     }
 
     private val meran = CellId(543, 361)
@@ -199,5 +206,30 @@ class CellTriggersTest {
         // nothing installed along the route / no key: nothing
         assertEquals(emptyList<CellId>(), CellTriggers(FakeCells()).freshenAlong(line))
         assertEquals(emptyList<CellId>(), CellTriggers(FakeCells(installed = mutableSetOf(meran), downloadsAvailable = false)).freshenAlong(line))
+    }
+
+    /** Field bug 2026-10-22: the corridor belongs to the current plan – a new route drops the old corridor first. */
+    @Test fun t4NewRouteDropsTheOldCorridor() {
+        val f = FakeCells()
+        val t = CellTriggers(f)
+        val east2 = listOf(middle, GeoPoint(46.67, 11.70)) // Meran → two cells east
+        t.routeComputed(east2)!!
+        val far = CellId.alongLine(east2, CellTriggers.CORRIDOR_M) - CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), CellTriggers.CORRIDOR_M).toSet()
+        assertTrue(far.isNotEmpty() && far.all { it in f.queued })
+        // undo: the route is short again → the far cells go
+        t.routeComputed(listOf(middle, GeoPoint(46.67, 11.20)))
+        assertTrue(far.none { it in f.queued })
+    }
+
+    /** No route (cleared, long-route question, Cancel, not routed): no corridor, nothing requested. */
+    @Test fun planWithoutRouteKeepsNoCorridor() {
+        val f = FakeCells()
+        val t = CellTriggers(f)
+        t.routeComputed(listOf(middle, GeoPoint(46.67, 11.70)))
+        val before = f.requests.size
+        t.planRoute(null)
+        assertTrue(f.queued.isEmpty())
+        assertEquals(emptySet<CellId>(), f.kept.last())
+        assertEquals(before, f.requests.size)
     }
 }
