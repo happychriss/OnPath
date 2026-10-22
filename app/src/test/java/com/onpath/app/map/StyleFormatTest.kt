@@ -73,6 +73,10 @@ class StyleFormatTest {
                 assertTrue("$id reads $key", f!!.startsWith("[\"case\",[\"has\",\"$key\"]"))
             }
             assertTrue("barrier-blocked-$mode", byId["barrier-blocked-$mode"]?.optString("source-layer") == "barriers")
+            // excluded only for difficulty (class 3): a grey line, never the red forbidden look (owner 2026-10-22)
+            assertTrue("too-hard-$mode", byId["too-hard-$mode"]?.optJSONArray("filter")?.toString()?.contains("3") == true)
+            assertTrue("forbidden is class 2 only", byId.getValue("access-no-dash-$mode").optJSONArray("filter")!!
+                .toString().contains("[\"==\",[\"get\",\"$key\"],2]"))
         }
         // only the hiking layers are visible before the app switches the activity
         assertEquals("visible", byId.getValue("access-no-tint-foot").getJSONObject("layout").getString("visibility"))

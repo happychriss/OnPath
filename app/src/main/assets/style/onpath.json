@@ -2944,6 +2944,7 @@
    ],
    "layout": {
     "line-join": "round",
+    "line-cap": "round",
     "visibility": "visible"
    },
    "paint": {
@@ -2973,10 +2974,6 @@
      12,
      18,
      17
-    ],
-    "line-dasharray": [
-     0.9,
-     0.7
     ]
    }
   },

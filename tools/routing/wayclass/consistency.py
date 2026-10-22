@@ -211,7 +211,7 @@ def forbidden_ways(tiles, key, rng, bbox, n):
         tx, ty = tile_of(rng.uniform(bbox[0], bbox[2]), rng.uniform(bbox[1], bbox[3]))
         feats, _ = tiles.tile(tx, ty)
         cand = [(g, p, ln) for g, p, ln in feats
-                if ln != "base" and p.get(key) == 2 and g.length >= 50 and path_like(p, ln)]
+                if ln != "base" and p.get(key) in (2, 3) and g.length >= 50 and path_like(p, ln)]
         if not cand:
             continue
         g, p, ln = rng.choice(cand)
@@ -302,7 +302,7 @@ def main():
                 if not under or any(ln == "base" for _, ln in under):
                     s["no_overlay"] += 1
                     continue
-                if all(p.get(key) == 2 for p, _ in under):
+                if all(p.get(key) in (2, 3) for p, _ in under):
                     s["forbidden"] += 1
                     bad.append(f"{name}: route over forbidden {under[0][0]} at {lat:.5f},{lon:.5f}")
                 if gname == "hike" and all(p.get("sac", 0) > 3 for p, ln in under if ln == "paths") \
@@ -321,7 +321,7 @@ def main():
                 if mid.distance(Point(xy(lon, lat))) > TOL:
                     continue
                 under = tiles.under(lon, lat, hd)
-                if under and all(ln != "base" and p.get(key) == 2 for _, _, p, ln in under) \
+                if under and all(ln != "base" and p.get(key) in (2, 3) for _, _, p, ln in under) \
                         and any(gg.distance(mid) < 0.5 for _, gg, _, _ in under):
                     along += 2.0
             if along > 15:

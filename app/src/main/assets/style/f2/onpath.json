@@ -3201,6 +3201,7 @@
    ],
    "layout": {
     "line-join": "round",
+    "line-cap": "round",
     "visibility": "visible"
    },
    "paint": {
@@ -3230,10 +3231,6 @@
      12,
      18,
      17
-    ],
-    "line-dasharray": [
-     0.9,
-     0.7
     ]
    }
   },
@@ -10790,6 +10787,194 @@
     "line-dasharray": [
      2.2,
      1.2
+    ]
+   }
+  },
+  {
+   "id": "too-hard-foot",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "has",
+     "ch"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "ch"
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": "#8a8a8a",
+    "line-opacity": 0.75,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.4,
+     16,
+     2.6,
+     18,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "too-hard-bike",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "has",
+     "ct"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "ct"
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#8a8a8a",
+    "line-opacity": 0.75,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.4,
+     16,
+     2.6,
+     18,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "too-hard-touring",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "has",
+     "cf"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "cf"
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#8a8a8a",
+    "line-opacity": 0.75,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.4,
+     16,
+     2.6,
+     18,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "too-hard-mtb",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "has",
+     "cm"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "cm"
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#8a8a8a",
+    "line-opacity": 0.75,
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     1.4,
+     16,
+     2.6,
+     18,
+     4.0
     ]
    }
   },
