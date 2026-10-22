@@ -27,14 +27,25 @@ tools/build_overlays.sh, which turns them into ONE overlays.pmtiles. The tile "p
 copy at z11-12) and carries what the style needs to drop the base map's path / track lines (schema: see
 docs/map-pipeline.md "Overlays as vector tiles"). --no-geojson skips the format-1 files.
 
+Router classes (--wayclass JAR, format 2; docs/map-style-notes.md "Router classes", owner decisions 2026-10-22):
+tools/routing/wayclass (BRouter's own expression engine and OnPath's profiles, --profiles DIR) classifies every
+"paths" (z13-14) and "streets" feature per activity group: ch hike, ct trekking + e-bike, cf touring, cm MTB +
+e-MTB, each 0 good / 1 possible / 2 forbidden / 3 too hard (forbidden only by sac_scale / mtb:scale /
+trail_visibility or as a via ferrata: grey, not red); cr 1 / -1 = bikes may ride only along / against the line. Barrier
+nodes that block an activity go to the tile layer "barriers" (b = mask 1 hike, 2 trekking, 4 touring, 8 MTB). Hiking
+route pieces carry "sac" so the app can grey the band above the user's T level. The profile hash goes into
+DIR/wayclass.json (build_overlays.sh, package.json, cell manifest).
+
 Usage: python3 extract_overlays.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat [--tiles DIR] [--no-geojson]
-       [--smooth [--smooth-angle 15] [--smooth-dev 3]]
+       [--smooth [--smooth-angle 15] [--smooth-dev 3]] [--wayclass JAR --profiles DIR]
 """
 import argparse
 import json
 from array import array
 import math
+import os
 import re
+import subprocess
 import sys
 
 import osmium
@@ -53,7 +64,13 @@ _ap.add_argument("--smooth-angle", type=float, default=15.0, metavar="DEG",
                  help="--smooth: round bends that turn by at least this much (default 15)")
 _ap.add_argument("--smooth-dev", type=float, default=3.0, metavar="M",
                  help="--smooth: the curve stays within this many metres of the OSM line (default 3)")
+_ap.add_argument("--wayclass", metavar="JAR",
+                 help="format 2: router classes per way from tools/routing/wayclass (build.sh makes the jar)")
+_ap.add_argument("--profiles", metavar="DIR", help="--wayclass: lookups.dat + the .brf profiles the app routes with")
+_ap.add_argument("--java", default=os.environ.get("JAVA", "java"), help="--wayclass: java command (default $JAVA or java)")
 ARGS = _ap.parse_args()
+if ARGS.wayclass and not (ARGS.tiles and ARGS.profiles):
+    _ap.error("--wayclass needs --tiles and --profiles")
 pbf, out_dir = ARGS.pbf, ARGS.out_dir
 minlon, minlat, maxlon, maxlat = ARGS.bbox
 TILES = ARGS.tiles
@@ -97,6 +114,28 @@ UNPAVED = {"unpaved", "compacted", "dirt", "earth", "fine_gravel", "grass", "gra
            "ground", "ice", "mud", "pebblestone", "salt", "sand", "snow", "woodchips"}
 ONEWAY = {"yes": 1, "1": 1, "true": 1, "-1": -1, "reverse": -1}
 LOW_ZOOMS, HIGH_ZOOMS = (11, 12), (13, 14)  # tile "paths": coarse copy (former lowways) / exact ways
+
+# --- router classes (--wayclass) --------------------------------------------------------------------------------
+WAYCLASS = ARGS.wayclass is not None
+BARRIER_ZOOMS = (14, 14)
+# BRouter's map creator turns route relations into way pseudo-tags "route_<route>_<network>" = yes | proposed
+ROUTER_ROUTES = {"bicycle", "mtb", "hiking", "foot"}
+
+
+def lookup_keys(profiles_dir):
+    """Way and node tag keys BRouter knows (lookups.dat): only these reach the classifier (fewer distinct tag sets)."""
+    keys, ctx = {"way": set(), "node": set()}, None
+    with open(os.path.join(profiles_dir, "lookups.dat"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("---context:"):
+                ctx = line.strip().split(":", 1)[1]
+            elif ctx in keys and ";" in line and not line.startswith("-"):
+                keys[ctx].add(line.split(";", 1)[0])
+    return keys
+
+
+LOOKUP = lookup_keys(ARGS.profiles) if WAYCLASS else {"way": set(), "node": set()}
+NODE_KEYS = LOOKUP["node"] - {"highway"}  # a node only matters for blocking with one of these (barrier, access …)
 
 # --- smoothing (--smooth, owner 2026-10-20 / 21): OSM paths are polylines with hard corners; rounded bends read like
 # a real trail. Every bend of >= SMOOTH_ANGLE becomes a short curve that stays within SMOOTH_MAX_DEV of the OSM line.
@@ -257,6 +296,7 @@ class RelationPass(osmium.SimpleHandler):
         super().__init__()
         self.way_routes = {}  # way id -> list of (kind, ref, name)
         self.way_hikes = {}   # way id -> list of (ref, label, network) of hiking relations
+        self.way_rtags = {}   # --wayclass: way id -> {route pseudo-tag: yes | proposed}
         self.node_refs = array("q")  # --smooth: node ids of all highway ways (junctions = ids seen twice)
 
     def way(self, w):
@@ -273,6 +313,15 @@ class RelationPass(osmium.SimpleHandler):
     def relation(self, r):
         if r.tags.get("type") != "route":
             return
+        if WAYCLASS and r.tags.get("route") in ROUTER_ROUTES:
+            key = f"route_{r.tags.get('route')}_{r.tags.get('network', '')}"
+            if key in LOOKUP["way"]:
+                val = "proposed" if r.tags.get("state") == "proposed" else "yes"
+                for m in r.members:
+                    if m.type == "w":
+                        cur = self.way_rtags.setdefault(m.ref, {})
+                        if cur.get(key) != "yes":
+                            cur[key] = val
         kind = ROUTE_KIND.get(r.tags.get("route", ""))
         if not kind or r.tags.get("state") == "proposed":
             return
@@ -345,10 +394,14 @@ def length_m(line):
 
 
 class WayPass(osmium.SimpleHandler):
-    def __init__(self, way_routes, way_hikes=None):
+    def __init__(self, way_routes, way_hikes=None, way_rtags=None):
         super().__init__()
         self.way_routes = way_routes
         self.way_hikes = way_hikes or {}
+        self.way_rtags = way_rtags or {}
+        self.combos = {}      # --wayclass: router tag set -> combo id (one classifier request per distinct set)
+        self.barriers = {}    # --wayclass: node id -> [lon, lat, router tags, set of combo ids of the ways through it]
+        self._cid = None
         self.routes = []
         self.trails = []
         self.ways = []
@@ -436,8 +489,33 @@ class WayPass(osmium.SimpleHandler):
             return None
         return smooth_line(coords, ids)
 
+    def node(self, n):
+        if not WAYCLASS or not any(k in n.tags for k in ("barrier", "ford")):
+            return
+        tags = tuple(sorted((t.k, t.v) for t in n.tags if t.k in LOOKUP["node"]))
+        if not any(k in NODE_KEYS for k, _ in tags):
+            return
+        loc = n.location
+        if not loc.valid() or not (minlon <= loc.lon <= maxlon and minlat <= loc.lat <= maxlat):
+            return
+        self.barriers[n.id] = [round(loc.lon, 6), round(loc.lat, 6), tags, set()]
+
+    def combo(self, w):
+        """Combo id of the way's router tag set (BRouter lookup keys + route pseudo-tags); notes barrier nodes on it."""
+        tags = {t.k: t.v for t in w.tags if t.k in LOOKUP["way"]}
+        tags.update(self.way_rtags.get(w.id, {}))
+        key = tuple(sorted(tags.items()))
+        cid = self.combos.setdefault(key, len(self.combos))
+        if self.barriers:
+            for n in w.nodes:
+                b = self.barriers.get(n.ref)
+                if b is not None:
+                    b[3].add(cid)
+        return cid
+
     def way(self, w):
         self.collect_names(w)
+        self._cid = self.combo(w) if WAYCLASS and w.tags.get("highway") else None
         routes = self.way_routes.get(w.id)
         sac = SAC.get(w.tags.get("sac_scale", ""), 0)
         mtb = w.tags.get("mtb:scale", "")
@@ -470,8 +548,10 @@ class WayPass(osmium.SimpleHandler):
                 if cur is None or (rank, bool(name)) > (cur[2], bool(cur[1])):
                     best[kind] = (ref, name, rank)
             for kind, (ref, name, rank) in best.items():
-                self.routes.append({"type": "Feature", "geometry": g,
-                                    "properties": {"kind": kind, "ref": ref, "name": name, "net": rank}})
+                props = {"kind": kind, "ref": ref, "name": name, "net": rank}
+                if kind == "hike" and sac:
+                    props["sac"] = sac  # the app greys the band above the user's T level (MapController.setSacLimit)
+                self.routes.append({"type": "Feature", "geometry": g, "properties": props, "cid": self._cid})
         # Trails and way quality are drawn right over the base map's own path / track lines, so they keep a
         # near-exact geometry (~0.5 m); a 3 m simplification shows as a second line beside the path at z17+.
         if fine is None and (sac or mtb or faint or quality):
@@ -507,10 +587,11 @@ class WayPass(osmium.SimpleHandler):
             geom = fine or rounded(mapping(self.fine_geom(w, hw)))
             self.paths.append({"type": "Feature", "geometry": geom, "properties": pp})
             if TILES is not None:
-                self.tile_paths.append({"type": "Feature", "geometry": geom, "properties": {**pp, **tile_attrs(w.tags, hw)}})
+                self.tile_paths.append({"type": "Feature", "geometry": geom, "properties": {**pp, **tile_attrs(w.tags, hw)},
+                                        "cid": self._cid})
         elif extra:
             self.tile_paths.append({"type": "Feature", "geometry": fine or rounded(mapping(self.fine_geom(w, hw))),
-                                    "properties": {"k": "x", **tile_attrs(w.tags, hw)}})
+                                    "properties": {"k": "x", **tile_attrs(w.tags, hw)}, "cid": self._cid})
 
     def add_street(self, w, hw):
         line = self.fine_geom(w, hw)
@@ -518,7 +599,7 @@ class WayPass(osmium.SimpleHandler):
             return
         zooms = (14, 14) if hw == "service" and w.tags.get("service") in MINOR_SERVICE else HIGH_ZOOMS
         self.streets.append({"type": "Feature", "geometry": rounded(mapping(line), 6 if SMOOTH_STREETS else 5),
-                             "properties": street_attrs(w.tags, hw), "zooms": zooms})
+                             "properties": street_attrs(w.tags, hw), "zooms": zooms, "cid": self._cid})
 
     @staticmethod
     def quality(w):
@@ -552,11 +633,18 @@ def merged_routes(routes):
     "majoronly" copies for the pink highlight and the route name (make_style.py route_bands)."""
     out, by_kind = [], {}
     for f in routes:
-        by_kind.setdefault(f["properties"]["kind"], []).append(shape_of(f["geometry"]))
-    for kind, lines in by_kind.items():
-        m = linemerge(unary_union(lines))
+        # hiking pieces per SAC grade (where graded): the app greys the band above the user's T level
+        # (MapController.setSacLimit); a grade change is a seam (slightly darker where the transparent pieces meet)
+        # hx 1: the hiking profile excludes the way at any T level (via ferrata, trail_visibility=no, private …;
+        # --wayclass only) – greyed like a trail above the user's T level
+        key = (f["properties"]["kind"], f["properties"].get("sac", 0), f["properties"].get("hx", 0))
+        by_kind.setdefault(key, []).append(shape_of(f["geometry"]))
+    for (kind, sac, hx), lines in by_kind.items():
+        u = unary_union(lines)
+        m = linemerge(u) if u.geom_type == "MultiLineString" else u  # a single piece: nothing to merge
         for g in (m.geoms if hasattr(m, "geoms") else [m]):
-            out.append({"type": "Feature", "geometry": rounded(mapping(g)), "properties": {"kind": kind}})
+            props = {"kind": kind, **({"sac": sac} if sac else {}), **({"hx": 1} if hx else {})}
+            out.append({"type": "Feature", "geometry": rounded(mapping(g)), "properties": props})
     for f in routes:
         if f["properties"].get("net", 0) >= 2:
             out.append({"type": "Feature", "geometry": f["geometry"], "properties": {**f["properties"], "majoronly": 1}})
@@ -572,7 +660,57 @@ def compact(props):
     return {k: v for k, v in props.items() if v != ""}
 
 
-def write_tiles(tiles_dir, layers, low, tile_paths, streets):
+def classify(wp, tiles_dir):
+    """Run the router classifier (tools/routing/wayclass) once over every distinct tag set and barrier node; put the
+    classes on the "paths" / "streets" features and return the "barriers" features. Fails loudly: a format-2 package
+    without classes would silently show the old tag rules."""
+    req = []
+    for key, cid in wp.combos.items():
+        req.append("\t".join(["W", str(cid)] + [f"{k}={v}" for k, v in key]))
+    nodes = [(nid, b) for nid, b in wp.barriers.items() if b[3]]  # only nodes on a highway way
+    for nid, (lon, lat, tags, cids) in nodes:
+        req.append("\t".join(["N", str(nid), ",".join(map(str, sorted(cids)))] + [f"{k}={v}" for k, v in tags]))
+    text = "".join(r.replace("\r", " ").replace("\n", " ") + "\n" for r in req)
+    res = subprocess.run([ARGS.java, "-Xmx512m", "-jar", ARGS.wayclass, "--profiles", ARGS.profiles],
+                         input=text.encode("utf-8"), capture_output=True, check=False)
+    if res.returncode != 0:
+        sys.exit(f"wayclass failed ({res.returncode}): {res.stderr.decode('utf-8', 'replace')[-2000:]}")
+    classes, blocked, phash = {}, {}, None
+    for line in res.stdout.decode("utf-8").splitlines():
+        c = line.split("\t")
+        if c[0] == "H":
+            phash = c[1]
+        elif c[0] == "W":
+            classes[int(c[1])] = c[2:7]
+        elif c[0] == "N":
+            blocked[int(c[1])] = int(c[2])
+    missing = len(wp.combos) - len(classes)
+    if phash is None or missing:
+        sys.exit(f"wayclass answered incompletely (hash {phash}, {missing} tag sets without a class)")
+    for f in wp.routes:
+        cid = f.pop("cid", None)
+        if cid is not None and f["properties"]["kind"] == "hike" and classes[cid][0] in ("2", "3"):
+            f["properties"]["hx"] = 1
+    for feats in (wp.tile_paths, wp.streets):
+        for f in feats:
+            cid = f.pop("cid", None)
+            if cid is None:
+                continue
+            ch, ct, cf, cm, cr = classes[cid]
+            f["properties"].update({"ch": int(ch), "ct": int(ct), "cf": int(cf), "cm": int(cm)})
+            if cr != "0":
+                f["properties"]["cr"] = int(cr)
+    barriers = [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [b[0], b[1]]},
+                 "properties": {"b": blocked[nid]}} for nid, b in nodes if blocked.get(nid)]
+    with open(os.path.join(tiles_dir, "wayclass.json"), "w") as f:
+        json.dump({"profiles": phash, "tag_sets": len(classes), "barrier_nodes": len(nodes),
+                   "blocking_barriers": len(barriers)}, f)
+    print("wayclass: profiles", phash, "|", len(classes), "tag sets,", len(nodes), "barrier nodes,",
+          len(barriers), "blocking")
+    return barriers
+
+
+def write_tiles(tiles_dir, layers, low, tile_paths, streets, barriers=None):
     """Format 2: one line-delimited GeoJSON file per tile layer, input of tools/build_overlays.sh. "paths" holds the
     former lowways as a coarse copy for z11-12 and the exact ways for z13-14 (per-feature tippecanoe zoom range)."""
     import os
@@ -596,6 +734,10 @@ def write_tiles(tiles_dir, layers, low, tile_paths, streets):
     with open(f"{tiles_dir}/streets.ndjson", "w") as f:
         for feat in streets:
             dump(f, feat, feat["zooms"])
+    if barriers is not None:
+        with open(f"{tiles_dir}/barriers.ndjson", "w") as f:
+            for feat in barriers:
+                dump(f, feat, BARRIER_ZOOMS)
     print("tiles: paths", len(low), "+", len(tile_paths), ", streets", len(streets), "->", tiles_dir)
 
 
@@ -604,8 +746,14 @@ def main():
     rp.apply_file(pbf)
     JUNCTIONS.update(rp.junctions())
     rp.node_refs = None
-    wp = WayPass(rp.way_routes, rp.way_hikes)
+    wp = WayPass(rp.way_routes, rp.way_hikes, rp.way_rtags)
     wp.apply_file(pbf, locations=True)
+    barriers = None
+    if TILES is not None:
+        os.makedirs(TILES, exist_ok=True)
+        barriers = classify(wp, TILES) if WAYCLASS else None
+    for f in wp.routes:
+        f.pop("cid", None)
     layers = [("routes", merged_routes(wp.routes)), ("trails", wp.trails), ("ways", wp.ways),
               ("trailnames", wp.label_features())]
     if not ARGS.no_geojson:
@@ -614,7 +762,7 @@ def main():
                 json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
             print(name, len(feats))
     if TILES is not None:
-        write_tiles(TILES, layers, wp.low, wp.tile_paths, wp.streets)
+        write_tiles(TILES, layers, wp.low, wp.tile_paths, wp.streets, barriers)
 
 
 main()

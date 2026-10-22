@@ -224,3 +224,67 @@ Stuanbruch-Trail, steps at the Etsch / Meran, Weißlahn, Kassianspitz.
 Still open (audit): #4 trails over the user's SAC limit, #5 trail_visibility=no, #6 paved cycleways for MTB (still
 green), #11 / #16 bicycle=no / vehicle=no without `ac` (no tint), #12 foot=no (no tint for hiking), #17 barrier nodes;
 the full fix is the per-profile class from BRouter's own expression engine (audit "Router decides, map shows it").
+
+## Router classes – "the router decides, the map shows it" (2026-10-22, owner decisions (3) + (4), branch, renders first)
+Approach 1 of `docs/design/map-vs-router-audit.md`. The map's green / black / forbidden comes from OnPath's own BRouter
+profiles, evaluated per way with BRouter's expression engine – no tag rules of our own where the data has classes.
+- **Classifier** `tools/routing/wayclass/WayClass.java` (built by `build.sh` into one jar with the BRouter jars of
+  `app/libs`; `--selftest` checks known tag sets). Profile groups = `BRouterEngine.profileFile`: `ch` Hike
+  (hiking-mountain), `ct` Bike trekking + E-bike (trekking), `cf` Bike touring (fastbike-verylowtraffic), `cm` MTB +
+  MTB e-bike (mtb). Each way: costfactor of the better direction → **0 good** (≤ threshold), **1 possible**, **2
+  forbidden** (> 9998, BRouter's own limit, `OsmPath`). Thresholds (length-weighted costs of the test region; green is
+  drawn only on path-like ways, so a threshold only separates those): hike **1.40** (every path / footway / cycleway the
+  profile does not penalise; foot=no +4, bad visibility, informal, fords, steps 3.6 = possible), trekking **1.10**
+  (cycleways, bicycle=yes|designated paths 1.05; untagged paths 5.05 = pushing), touring **2.0** (cycleways 1.3,
+  bicycle=designated 2.0; bicycle=yes paths cost 100), MTB **7.0** (unpaved cycleways, bicycle=yes|designated paths
+  6.67, easy trails; plain paths 10, paved cycleways 9.6). Hike is evaluated **without sac_scale / mtb:scale** – the
+  user's T level is runtime, the app applies it. `cr` = bikes' one-way (1 along / −1 against the line) where one
+  direction is forbidden or costs ≥ 50 more (the profiles add +100; same in all bike profiles, selftest).
+  Barrier nodes: node `initialcost` ≥ 1e6 = blocked, unless every way through the node grants access
+  (`nodeaccessgranted`, hiking / cycle routes) → overlay layer `barriers`, `b` = mask 1 hike, 2 trekking, 4 touring,
+  8 MTB.
+- **Pipeline** `extract_overlays.py --wayclass JAR --profiles DIR` (build_region.sh format 2 and build_cell.sh pass
+  it): way tags limited to lookups.dat keys + BRouter's route pseudo-tags (`route_hiking_lwn=yes` …, like its map
+  creator) → one request per distinct tag set (53 000 in the test region's extract, < 10 s of Java). Classes go on
+  `paths` (z13–14) and `streets`; hiking route pieces get `sac` and `hx` 1 (hike forbids the way at any level: via
+  ferrata, trail_visibility=no, private). Profile hash (`wayclass.json`, overlay description
+  `onpath-wayclass:<hash>`, package.json / cell manifest `wayclass`). Cell content schema **3**.
+- **Style** (format 2): `greenway-<mode>` = class 0 on path-like ways (hiking: only ways built for walking – footway,
+  pedestrian, cycleway, foot=designated path; the profile costs a plain path like a footway and plain paths keep their
+  black / dotted difficulty look). Forbidden = class 2: the blocked tint (z14), **red dashes** (`access-no-dash-*`,
+  `forbidden.*` tokens, z13, owner (4)) and the sign (z15), on paths / tracks / via ferratas and minor / service streets
+  (not driveways), one layer set per profile group (`foot`, `bike`, `touring`, `mtb`). Everything else black ("avoid"
+  looks like possible). One-way arrows from `cr`. `barrier-blocked-<mode>`: the sign on blocking nodes (z15). Each
+  filter is `["case", ["has", key], <class rule>, <tag rule>]` – cells without classes keep the tag rules.
+- **Hiking band above the T level** (owner (3)): `routes-hike` only up to the level, `routes-hike-over` (grey dashes,
+  `route.over.*`) above it or where `hx`; `MapController.setSacLimit` sets both filters from Settings (style ships T3).
+- **Consistency** `tools/routing/wayclass/consistency.py PACKAGE SEGMENTS` (JVM routes through `BRouterEngine`):
+  random routes per group never run over a way the map shows as forbidden, and routes between points on forbidden
+  ways never run along them.
+- **Results (test region, OSM 17 Oct, rd5 17 Oct):** 53 352 tag sets, 4 552 barrier nodes of which 372 block an
+  activity. `overlays.pmtiles` 16.63 → 16.95 MB with classes (+0.32 MB, +1.9 %); extract ~2 min (was ~1¾). Consistency
+  (seed 1: 30 routes + 30 forbidden ways per group; seed 2: 25 + 25): 228 routes, 2 354 km, ~234 000 samples every
+  10 m – **0** on a forbidden way, 0 hiking samples above T3; 220 forbidden ways – **0** routed along (14 "no route").
+  Samples on base-map roads (tertiary+, no class) are counted apart (touring ~47 %). Renders (before / after per
+  activity at the audit's spots): `onpath-build/out-f2d/renders/`.
+- **Open:** the app does not yet compare the cells' `wayclass` hash with its own profiles (a profile change needs a
+  rebuild of all cells); tertiary and bigger roads have no class (base map); the cloud job image needs BuildKit
+  (`--build-context`, the GitHub runner has it).
+- **Owner after the renders (2026-10-22): difficulty is not "forbidden".** New class **3 = too hard**: forbidden only
+  because of `sac_scale` / `mtb:scale` / `trail_visibility`, or as a via ferrata (WayClass re-evaluates without them,
+  via ferrata as a path). Drawn as a plain grey line (`too-hard-<mode>`, `toohard.*` tokens) – no red, no sign; routing
+  unchanged. Red dashes + sign stay for real bans (access / foot / bicycle = no, private, locked gates, one-way). Owner later: steps for MTB are "too hard" too (grey), the via
+  ferrata keeps its dark-red tick symbol under the grey line. The hiking band above the T level (and over class 2 / 3 for hiking, `hx`) is a plain grey band, no dashes.
+  Consistency re-run with classes 2 + 3 as "not routable": still 0 / 0 (both seeds).
+
+## Hill shading "balanced (c)" + terrain z13 (2026-10-22, owner; ships with the s3 cell rebuild)
+Values from the hill-shading proposal, variant c: `hillshade-nw` exaggeration 0.8 / 0.8 / 0.75 / 0.75 / 0.8 (z5 / 9 / 11 /
+13 / 15), shadow rgba(38,56,42) 0.45 → 0.33 → 0.23 (z11 / 13 / 15), highlight rgba(255,255,245) 0.80 → 0.90 (z11 / 15),
+accent 0.06; `hillshade-w` exaggeration 0.4 / 0.4 / 0.35 / 0.35 (z8 / 10 / 13 / 15), shadow 0.12; lighter wood
+(#cde3b8 → #d8eac6, z12 / 15) and grass (#e3edd2 → #e9f1dc). Colour tokens may now be zoom stops (`Z()`,
+`<token>.z<N>` + `.base 1`). Overview raster (`Overview.kt`): raster-contrast 0.25, raster-brightness-max 0.9.
+Format-2 terrain goes to **z13** (was z12; `build_terrain.py --format 2`, cells z10–13, regions z5–13): per cell
+terrain 1.0 → 3.1 MB (Meran 10/543/361: 1.02 → 3.13 MB, 542/361 1.01 → 3.10, 544/362 0.95 → 2.93), i.e. a cell
+~9.3 → ~11.4 MB (+23 %); test region terrain 8.7 → 21.9 MB. Mean brightness of the map at Partschins (z11 / 13 / 15):
+−0.2 / +2.2 / +1.3 % against main. Cells of schema 2 (terrain z12) mixed with new ones show no relief at z13 tiles of
+the old cells until they are rebuilt (the s3 bump asks for all of them).

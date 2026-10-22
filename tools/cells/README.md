@@ -21,7 +21,7 @@ Design: `docs/design/map-cells.md` (cells = z10 tiles, owner rule, manifest). Me
 | --- | --- | --- |
 | `base.pmtiles` | Planetiler z10–14, own tiles | same, without `housenumber,poi,aeroway,aerodrome_label` and other languages (`--languages=de`), then `tools/trim_base.sh` (no path / track lines at z13–14) |
 | overlays | 6 GeoJSON files, lines cut at the border | **one `overlays.pmtiles`**: `extract_overlays.py --tiles --no-geojson --smooth` on the buffered cut → `build_overlays.sh --clip <buffered bbox>` (tippecanoe) → only the cell's own z ≥ 10 tiles (routes' z9 tiles are dropped: z < 10 is the overview's job) |
-| `terrain.pmtiles` | AWS PNG z10–13 | `build_terrain.py --cell 10/X/Y --format 2` (WebP lossless, 0.25 m, z10–12) |
+| `terrain.pmtiles` | AWS PNG z10–13 | `build_terrain.py --cell 10/X/Y --format 2` (WebP lossless, 0.25 m, z10–13) |
 | `contours.pmtiles` | from the ring terrain | `build_contours.py aws` (original AWS z12/z13, one tile ring read), own tiles; kept as its own file (not joined into overlays): same file and style source as the region package, can be left out on its own |
 | `pois.geojson` | owner rule | same |
 | `addresses/10-X-Y.sqlite` | – | `extract_addresses.py --owner` on the cut, bbox = cell: streets / places whose point lies in the cell (half-open rule), house numbers with them. The app reads `addresses.sqlite` + `addresses/*.sqlite` and merges streets of the same name within 2 km |

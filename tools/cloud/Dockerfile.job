@@ -4,17 +4,31 @@
 #
 #   docker build --network host -t onpath-cell-builder -f tools/cells/Dockerfile tools/cells
 #   docker build --network host --build-arg BASE=onpath-cell-builder --build-arg PIPELINE_REV=<short sha> \
+#     --build-context brouterlibs=app/libs --build-context brouter=app/src/main/assets/brouter \
 #     -t onpath-cell-job -f tools/cloud/Dockerfile.job tools
 #
 # tippecanoe 2.79.0 + tile-join (format 2 cells) are built from source in a builder stage of the base image
 # (tools/cells/Dockerfile); the RUN below fails the build on an old base image without them.
 # Build context = tools/ (Dockerfile.job.dockerignore keeps the Worker, Hetzner and icon folders out).
+# Router classes (extract_overlays.py --wayclass): the classifier is compiled in a JDK stage against the BRouter jars
+# the app routes with, and the app's profiles come along – two more build contexts from the app folder:
+#   --build-context brouterlibs=app/libs --build-context brouter=app/src/main/assets/brouter
+# (BuildKit; the base image only has a JRE).
 ARG BASE=onpath-cell-builder
+FROM eclipse-temurin:21-jdk-noble AS wayclass
+COPY routing/wayclass/WayClass.java routing/wayclass/build.sh /w/
+COPY --from=brouterlibs brouter-expressions-*.jar brouter-util-*.jar brouter-codec-*.jar /w/libs/
+COPY --from=brouter lookups.dat *.brf /w/brouter/
+RUN bash /w/build.sh /w/wayclass.jar /w/libs \
+ && java -jar /w/wayclass.jar --profiles /w/brouter --selftest
+
 FROM ${BASE}
 
 ARG PIPELINE_REV=unknown
 USER root
 COPY . /onpath/tools
+COPY --from=wayclass /w/wayclass.jar /opt/wayclass/wayclass.jar
+COPY --from=wayclass /w/brouter /opt/wayclass/brouter
 # build_cell.sh asks git for the pipeline revision (manifest "pipeline"); there is no .git in the image, so a
 # tiny shim answers with PIPELINE_REV (any other git call goes to the real git).
 RUN install -m 0755 /onpath/tools/cloud/git-shim.sh /usr/local/bin/git \
@@ -23,6 +37,7 @@ RUN install -m 0755 /onpath/tools/cloud/git-shim.sh /usr/local/bin/git \
  && tippecanoe --version && command -v tile-join \
  && python3 -c "import sys; sys.path.insert(0, '/onpath/tools/cloud'); import job_build"
 ENV PIPELINE_REV=${PIPELINE_REV} WORK=/tmp/onpath/work DATA_ROOT=/tmp/onpath/store SRC_DIR=/src \
+    WAYCLASS_JAR=/opt/wayclass/wayclass.jar BROUTER_PROFILES=/opt/wayclass/brouter \
     PYTHONUNBUFFERED=1
 USER builder
 WORKDIR /tmp

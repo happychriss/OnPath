@@ -169,9 +169,11 @@ class CellApi(
 
         /**
          * Content schema this app's style needs (tools/cells/cells.py CELL_SCHEMA): 2 = overlays layer "streets"
-         * (small streets at z13+). Installed cells of an older schema are requested again (MapCells.outdated).
+         * (small streets at z13+), 3 = router classes per way, blocking barriers, SAC on hiking route pieces
+         * (docs/map-style-notes.md "Router classes"). Installed cells of an older schema are requested again
+         * (MapCells.outdated); until then the style draws them with the tag rules.
          */
-        const val CELL_SCHEMA = 2
+        const val CELL_SCHEMA = 3
 
         /** "2026-10-20-s2" → 2; versions named by the OSM date alone are schema 1. */
         fun schemaOf(version: String?): Int = Regex("""-s(\d+)$""").find(version.orEmpty())?.groupValues?.get(1)?.toIntOrNull() ?: 1

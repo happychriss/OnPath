@@ -86,6 +86,9 @@ class OverviewTest {
         assertEquals("overview-hillshade", r.getString("source"))
         assertFalse(r.has("maxzoom"))
         assertEquals("interpolate", r.getJSONObject("paint").getJSONArray("raster-opacity").getString(0))
+        // hill shading balanced (c), owner 2026-10-22
+        assertEquals(0.25, r.getJSONObject("paint").getDouble("raster-contrast"), 1e-9)
+        assertEquals(0.9, r.getJSONObject("paint").getDouble("raster-brightness-max"), 1e-9)
         assertEquals(listOf("background", "hillshade~overview", "water~under", "rail~under", "detail-cover"), ids(out).take(5))
         assertFalse("hillshade~under" in ids(out))
         assertEquals("terrain", layer(out, "hillshade-nw").getString("source"))
