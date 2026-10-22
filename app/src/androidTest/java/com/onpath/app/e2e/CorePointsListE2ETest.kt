@@ -122,8 +122,8 @@ class CorePointsListE2ETest : E2EBase() {
         Thread.sleep(600)
         dragHandle((h * 0.2f).toInt())
         waitUntil("half sheet after a swipe down") { size() == PlanSize.COMPACT }
-        Thread.sleep(600)
-        assertNull("no points list in the half sheet", device.findObject(By.text("Points")))
+        // the list leaves with the sheet's animation: wait until it is gone (a single look found a stale node, CI 2026-10-22)
+        assertTrue("no points list in the half sheet", device.wait(Until.gone(By.text("Points")), 3_000))
     }
 
     @Test fun tapARowShowsThePointOnTheMap() {
