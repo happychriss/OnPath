@@ -77,8 +77,9 @@ object RoutingDataNotice {
  * planned where it is missing. On mobile data too, unless "Maps only on Wi-Fi" is set. The unit is a 1° part
  * ([RoutingTiles] keys, [Rd5PartStore]: HTTP range, resume, atomic rewrite, no mixed versions); a plain 5° file name
  * ("E10_N45.rd5") still works for an old caller and means the whole file. Failures go to Problems and are tried again
- * when the network changes ([retry]) or the next time the part is needed. One part at a time; the real sizes are read
- * from the server's index before the first part loads, so the modal can say "about X MB".
+ * when the network changes ([retry]) or the next time the part is needed. One 5° file at a time; the real sizes are read
+ * from the server's index before the first part loads, so the modal can say "about X MB". The wanted parts of one 5° file
+ * load together and are written into its rd5 once.
  *
  * [launch] runs a block in the background (tests: at once); [onInstalled] gets the keys that arrived (the plan is
  * computed again), [onChange] every status change (progress, offline …). Thread-safe.
@@ -92,7 +93,8 @@ class RoutingDataLoader(
     private val onChange: () -> Unit = {},
     /** The phone's routing data by part (one per folder; also used for the 35-day refresh and region deletes). */
     val store: Rd5PartStore = Rd5PartStore(segmentsDir),
-    private val download: (name: String, dir: File, onProgress: (Long, Long) -> Unit, cancelled: () -> Boolean) -> Unit =
+    /** Loads one batch: one key, or several parts of the same 5° file (one rd5 rewrite for all, [nextBatch]). */
+    private val download: (names: List<String>, dir: File, onProgress: (Long, Long) -> Unit, cancelled: () -> Boolean) -> Unit =
         { n, d, p, c -> fetch(store, n, d, p, c) },
     /** Size of [name] on the server (network; null = unknown). Asked once per key before loading. */
     private val remoteSize: (String) -> Long? = { n -> Rd5Parts.Part.parse(n)?.let { store.remoteSize(it) } },
@@ -209,11 +211,11 @@ class RoutingDataLoader(
     companion object {
         const val RETRY_AFTER_FAIL_MS = 60_000L
 
-        /** Default download: a part key through the part store, a whole file name as before. */
-        fun fetch(store: Rd5PartStore, name: String, dir: File, progress: (Long, Long) -> Unit, cancelled: () -> Boolean) {
-            val part = Rd5Parts.Part.parse(name)
-            if (part == null) SegmentDownloader.download(name, dir, progress, cancelled)
-            else store.download(listOf(part), progress, cancelled)
+        /** Default download: part keys through the part store (all at once), a whole file name as before. */
+        fun fetch(store: Rd5PartStore, names: List<String>, dir: File, progress: (Long, Long) -> Unit, cancelled: () -> Boolean) {
+            val parts = names.mapNotNull { Rd5Parts.Part.parse(it) }
+            if (parts.isNotEmpty()) store.download(parts, progress, cancelled)
+            names.filter { Rd5Parts.Part.parse(it) == null }.forEach { SegmentDownloader.download(it, dir, progress, cancelled) }
         }
     }
 
@@ -242,26 +244,41 @@ class RoutingDataLoader(
         if (go) launch { runQueue() }
     }
 
+    /**
+     * The next download: the first wanted key and, when it is a part, every other wanted part of the same 5° file –
+     * the local rd5 is rewritten once for all of them instead of once per part (perf report 2026-10-22: 20 parts one
+     * by one wrote 1.82 GB for 157 MB downloaded).
+     */
+    private fun nextBatch(): List<String>? = synchronized(lock) {
+        if (cancelled) return null
+        val first = wanted.firstOrNull() ?: return null
+        val tile = Rd5Parts.Part.parse(first)?.tile ?: return listOf(first)
+        wanted.filter { Rd5Parts.Part.parse(it)?.tile == tile }
+    }
+
     private fun runQueue() {
         val got = mutableListOf<String>()
         try {
             readSizes()
             while (true) {
-                val name = synchronized(lock) {
-                    if (cancelled) null else wanted.firstOrNull()
-                } ?: break
-                if (exists(name)) { synchronized(lock) { wanted.remove(name) }; got += name; continue }
+                val all = nextBatch() ?: break
+                val here = all.filter { exists(it) }
+                if (here.isNotEmpty()) { synchronized(lock) { wanted.removeAll(here.toSet()) }; got += here }
+                val batch = all - here.toSet()
+                if (batch.isEmpty()) continue
+                val name = batch.joinToString()
                 try {
-                    synchronized(lock) { rateAt = System.currentTimeMillis(); rateBytes = partSize(name); rate = null }
-                    val why = if (synchronized(lock) { name in corridorOnly }) "corridor" else "point"
-                    Problems.trace("routing", "Routing download start: $name ($why), ${sizeOf(name) / 1_048_576} MB" +
+                    synchronized(lock) { rateAt = System.currentTimeMillis(); rateBytes = batch.sumOf { partSize(it) }; rate = null }
+                    val why = if (synchronized(lock) { batch.all { it in corridorOnly } }) "corridor" else "point"
+                    val t0 = System.currentTimeMillis()
+                    Problems.trace("routing", "Routing download start: $name ($why), ${batch.sumOf { sizeOf(it) } / 1_048_576} MB" +
                         (if (network.unmetered()) "" else " on mobile data"))
                     // dropped meanwhile ([keepCorridor]) or Cancel: stops at once (the partial file stays)
-                    download(name, segmentsDir, { d, t -> progress(name, d, t) }, { cancelled || synchronized(lock) { name !in wanted } })
-                    synchronized(lock) { wanted.remove(name); done.remove(name); corridorOnly.remove(name) }
+                    download(batch, segmentsDir, { d, t -> progress(batch, d, t) }, { cancelled || synchronized(lock) { batch.any { it !in wanted } } })
+                    synchronized(lock) { wanted.removeAll(batch.toSet()); batch.forEach { done.remove(it); corridorOnly.remove(it) } }
                     Problems.info("routing", "Routing data $name installed in ${segmentsDir.absolutePath}")
-                    Problems.trace("routing", "Routing download finished: $name ($why)")
-                    got += name
+                    Problems.trace("routing", "Routing download finished: $name ($why) in ${System.currentTimeMillis() - t0} ms")
+                    got += batch
                     onChange()
                 } catch (e: SegmentDownloader.Cancelled) {
                     break // expected: the user stopped it (cancel() already cleared the queue)
@@ -288,10 +305,11 @@ class RoutingDataLoader(
         }
     }
 
-    private fun progress(name: String, d: Long, t: Long) {
+    /** [d] of [t] bytes over the whole [batch]: counted on its first key (the others 0) – the sum is what the modal shows. */
+    private fun progress(batch: List<String>, d: Long, t: Long) {
         synchronized(lock) {
-            done[name] = d
-            if (t > 0) sizes[name] = t
+            batch.forEachIndexed { i, n -> done[n] = if (i == 0) d else 0L }
+            if (t > 0 && batch.size == 1) sizes[batch[0]] = t
             val now = System.currentTimeMillis()
             val dt = (now - rateAt) / 1000.0
             if (dt >= 2 && d > rateBytes) rate = (d - rateBytes) / dt

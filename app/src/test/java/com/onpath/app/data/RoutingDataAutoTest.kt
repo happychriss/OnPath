@@ -115,10 +115,10 @@ class RoutingDataAutoTest {
     private fun loader(net: Net, wifiOnly: Boolean = false, installed: MutableList<String> = mutableListOf(),
                        fail: Boolean = false, calls: MutableList<String> = mutableListOf()) =
         RoutingDataLoader(dir, net, { wifiOnly }, launch = { it() }, onInstalled = { installed += it }, store = store,
-            download = { name, d, progress, cancelled ->
-                calls += name
-                if (fail) { server.breakAfter = 10; store.bytesToLoad(listOf(com.onpath.app.routing.Rd5Parts.Part.parse(name)!!)) }
-                RoutingDataLoader.fetch(store, name, d, progress, cancelled)
+            download = { names, d, progress, cancelled ->
+                calls += names.joinToString("+")
+                if (fail) { server.breakAfter = 10; store.bytesToLoad(names.map { com.onpath.app.routing.Rd5Parts.Part.parse(it)!! }) }
+                RoutingDataLoader.fetch(store, names, d, progress, cancelled)
             })
 
     @Test fun missingTileLoadsByItselfAndTheAppIsTold() {
@@ -206,6 +206,24 @@ class RoutingDataAutoTest {
         l.ensure(listOf(meran, "E10_N45.rd5:E10_N46"))
         val idx = com.onpath.app.routing.Rd5Parts.readIndex(server.file)!!
         assertEquals(listOf(idx.size(6) + idx.size(1)), sizes)
+    }
+
+    /** Perf report 2026-10-22: the wanted parts of one 5° file load in one batch – the local rd5 is written once. */
+    @Test fun partsOfOneFileLoadTogether() {
+        var rewrites = 0
+        val own = Rd5PartStore(Files.createTempDirectory("seg2").toFile(), server, afterRd5Written = { rewrites++ })
+        val got = mutableListOf<String>()
+        val other = "E10_N45.rd5:E10_N46"
+        val net = Net(online = false)
+        val l = RoutingDataLoader(own.rd5("x").parentFile, net, { false }, launch = { it() }, onInstalled = { got += it }, store = own)
+        l.ensure(listOf(meran))
+        l.ensure(listOf(other))
+        net.online = true
+        l.retry()
+        assertEquals(1, rewrites) // one rd5 rewrite for both parts
+        assertEquals(setOf(meran, other), got.toSet())
+        assertTrue(l.exists(meran) && l.exists(other))
+        assertNull(l.status)
     }
 
     /** Field bug 2026-10-22: routing parts loading for an older route's corridor are dropped; a point's part stays. */
