@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
-import com.onpath.app.time.Factors
 import com.onpath.app.time.PaceModel
 import com.onpath.app.time.TimeBreakdown
 import com.onpath.app.time.TimeEstimate
@@ -39,14 +38,11 @@ data class TimeDetailsUi(
     val result: TimeBreakdown.Result,
     val paceLabel: String,
     val paceFactor: Double,
-    /** Learned across tours for this activity (null = nothing learned yet) and how many tours it is based on. */
-    val learned: Factors?,
-    val learnedTours: Int,
 )
 
 /**
  * "Time details" (route sheet ⋯): a debug view of the time estimate – which slope bands the route has, how long each
- * takes at Normal pace, which factor (pace setting × learned) is applied, and the result. Read-only.
+ * takes at Normal pace, which factor (the pace setting) is applied, and the result. Read-only.
  */
 @Composable
 fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
@@ -64,16 +60,12 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                     TdKV("Moving time", Format.duration(r.finalS), bold = true)
                     TdKV("With breaks (+${(TimeEstimate.BREAK_ALLOWANCE * 100).toInt()} %)",
                         Format.duration(r.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)))
-                    TdKV("At Normal pace, nothing learned", Format.duration(r.baseS))
+                    TdKV("At Normal pace", Format.duration(r.baseS))
                     if (r.wayRows.isNotEmpty()) TdKV("From the slope alone (no way info)", Format.duration(r.slopeOnlyS))
                 }
                 TdSection("Factors") {
                     TdKV("Activity", r.activity.label)
                     TdKV("Pace setting", "${ui.paceLabel} × ${f2(ui.paceFactor)}")
-                    if (ui.learned != null) {
-                        TdKV("Learned (${ui.learnedTours} tours) ↓ / → / ↑",
-                            "× ${f2(ui.learned.down)} / ${f2(ui.learned.flat)} / ${f2(ui.learned.up)}")
-                    } else TdKV("Learned from tours", "nothing yet")
                     TdKV("Applied ↓ / → / ↑", "× ${f2(r.factors.down)} / ${f2(r.factors.flat)} / ${f2(r.factors.up)}", bold = true)
                 }
                 TdSection("By slope (${r.segments} pieces of ${r.segmentM.toInt()} m)") {

@@ -673,9 +673,9 @@ class RecordingService : Service() {
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
-                learnAcrossTours()
+                // learning per tour only (owner 2026-10-22): this tour's pace ends with it
                 File(filesDir, TRIP_FILE).delete()
-            } catch (e: Exception) { Problems.error("time", "Tour times / learned pace could not be saved at tour end", e) }
+            } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
             _finished.value = tourId
         }
         tourId = -1
@@ -758,30 +758,15 @@ class RecordingService : Service() {
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
 
-    /** Learning across tours (owner decision Q4): stores this tour's pace when it followed a route long enough. */
-    private fun learnAcrossTours() {
-        try {
-            val a = timeActivity()
-            val prefs = Prefs(this)
-            val store = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
-            val pace = com.onpath.app.time.TimeEstimate.pace(a, settings ?: prefs.settings).factor
-            val (p, obs) = trip.observed()
-            val t = tourTimes()
-            val next = store.update(a, trip.factors(), p, obs, trip.prior * (1 / pace), t.movingS, t.breakS)
-            if (next !== store) { prefs.paceStore = next.toJson(); Log.i("OnPath", "pace learned for $a: ${next.factors(a)}") }
-        } catch (e: Exception) { Problems.error("time", "Pace learning across tours failed; learned pace not updated", e) }
-    }
-
     private fun activityOf(name: String?) =
         runCatching { com.onpath.app.routing.Activity.valueOf(name!!) }.getOrDefault(com.onpath.app.routing.Activity.HIKE)
 
     /** Activity the times are computed for: the navigated session's, else the recording's. */
     private fun timeActivity() = navigator?.session?.activity ?: recActivity
 
-    /** Pace setting × learned factors for [a] (same as the plan sheet). */
+    /** The pace setting for [a] (same as the plan sheet; learning per tour only, nothing stored across tours). */
     private fun priorFor(a: com.onpath.app.routing.Activity): com.onpath.app.time.Factors = try {
-        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings,
-            com.onpath.app.time.PaceStore.fromJson(Prefs(this).paceStore).factors(a))
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings)
     } catch (e: Exception) {
         Problems.warn("time", "Pace factors could not be computed; using neutral pace", e)
         com.onpath.app.time.Factors.ONE
