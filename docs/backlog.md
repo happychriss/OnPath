@@ -23,6 +23,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   doesn't shift under the finger) + **deleting all points ends the route guidance** (tour keeps recording; route gone in
   Plan and Navigate; Undo restores) – what Plan shows = what Navigate follows; (13) **Navigate shows only the route
   line – no numbered plan points** (reverts 0.9.1 fix 4; Plan keeps the points).
+- **Owner decisions 2026-10-22 (laptop, later):** (1) pace: **5 levels** (Relaxed · Easy · Average · Fit · Very fit,
+  DIN 33466 descriptions), table B kept as the hiking model, e-bike / e-MTB flat speed capped at ~25 km/h; (2) far plan
+  points (≥150 m from the route) stay where placed + grey dashed gap to the route; (3) unreachable notice = red bold line
+  in the plan sheet (+ Show), no extra action; (4) map: difficulty = grey line (incl. via ferrata, MTB steps), red only
+  for access bans, via ferrata keeps its ticks; (5) hill shading "balanced" + format-2 terrain to z13; (6) Offline maps
+  gets **"Clean up"** (keeps plan, saved routes, running tour, current area; shows what is removed first) and a red
+  **"Clear all"** (second confirmation).
 - **[cloud → laptop] HANDOVER 2026-10-22 evening: `docs/handover-2026-10-22-cloud.md`** – 0.9.2 current (0.9.1 crashes
   at start – never use); laptop first: track-gap check with the phone's GPX + diagnostics, "route without points during
   a tour", confirm the new release smoke gate; then vehicle detection / approach 1.
@@ -74,6 +81,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
 
 ## Done (recent)
+- **2026-10-22 (laptop), merged into main:** (1) 5 pace levels around DIN 33466, e-bike cap ~25 km/h, old pace keys
+  migrated; (2) performance – style reload debounced (`ui/QuietGate.kt`), routing time limit by distance / profile and no
+  leg-by-leg retry after a timeout, one rd5 write per batch, corridor work off the main thread, Offline maps size cache,
+  elevation profile downsampled, health / watchdog logging (`debug/Health.kt`); (3) activity fix (keys `lastActivity` /
+  `lastSac`, stale `activity` key ignored) + unreachable plan point (`ui/PlanGaps.kt`, grey dashed `plan-gaps` layer,
+  hollow marker, red line in the sheet; old snackbar removed).
 - **2026-10-22 (laptop), merged into main:** (1) offline map downloads follow the plan – stale corridor / routing
   downloads dropped, queue revalidated at start, region joins batched (never while the map or plan sheet is dragged),
   blue background-download strip + Navigate chip, "Cancel all" (core feature C13, `NoStaleDownloadsTest`); (2) T level
