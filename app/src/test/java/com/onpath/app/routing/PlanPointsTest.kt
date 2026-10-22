@@ -31,6 +31,27 @@ class PlanPointsTest {
         assertFalse(r.any { it.loop })
     }
 
+    /**
+     * Owner field report 0.9.3 (the sheet stuttered with the points list): the leg matching walks the whole line per
+     * point; for the same plan + route it runs once, later rows are a lookup. A new route (new line) calculates again.
+     */
+    @Test fun legsAreCalculatedOncePerPlanAndRoute() {
+        val line = (0..400).map { GeoPoint(46.67 + it * 0.0002, 11.10 + it * 0.00025) }
+        val plan = listOf(line[0], line[150], line[400])
+        val n0 = PlanPoints.legsComputed
+        assertFalse(PlanPoints.legsReady(plan, line))
+        val first = PlanPoints.rows(plan, line) { null }
+        assertTrue(PlanPoints.legsReady(plan, line))
+        repeat(60) { assertEquals(first, PlanPoints.rows(plan.toList(), line) { null }) }
+        assertEquals("one calculation for 61 sheet recompositions", n0 + 1, PlanPoints.legsComputed)
+        assertFalse("rows along the line are exact", first.any { it.approx })
+        val newRoute = line.toList()
+        assertFalse(PlanPoints.legsReady(plan, newRoute))
+        PlanPoints.rows(plan, newRoute) { null }
+        assertEquals(n0 + 2, PlanPoints.legsComputed)
+        assertTrue("no line: nothing to calculate", PlanPoints.legsReady(plan, null))
+    }
+
     @Test fun oneAndTwoPoints() {
         assertEquals(listOf(PointRole.START), PlanPoints.rows(listOf(a), null) { null }.map { it.role })
         assertEquals(listOf(PointRole.START, PointRole.GOAL), PlanPoints.rows(listOf(a, b), null) { null }.map { it.role })

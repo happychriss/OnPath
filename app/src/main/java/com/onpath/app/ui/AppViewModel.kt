@@ -1398,7 +1398,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
         if (todo.isEmpty() || namesJob?.isActive == true) return
         namesJob = viewModelScope.launch {
-            val places = namePlaces ?: try { search.offlineIndex().entries.map { it.place }.also { namePlaces = it } }
+            // the index can be large: its places are copied off the main thread (owner field report 0.9.3, sheet stutter)
+            val places = namePlaces ?: try {
+                val index = search.offlineIndex()
+                withContext(Dispatchers.Default) { index.entries.map { it.place } }.also { namePlaces = it }
+            }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launch }
             val names = withContext(Dispatchers.Default) {
