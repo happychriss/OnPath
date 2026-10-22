@@ -88,7 +88,7 @@ Routing uses OSM tags (highway type, surface, smoothness, tracktype, sac\_scale,
 | Bike – e-bike | Same as trekking; accepts steeper climbs and longer days | Rough trails, steps, busy roads | Pedelec assist up to 25 km/h; climbs cost less time | Must |
 | MTB | Tracks and singletrails up to MTB scale S2 (option S3+) | Main roads, steps, no-bike paths | Terrain-dependent | Should |
 | MTB – e-bike | Same trails as MTB; steep uphill tracks acceptable | Main roads, steps, no-bike paths | Terrain-dependent, assisted climbs | Should |
-| Hike (T1–T5) | Footpaths, marked hiking routes, tracks; mountain paths up to the chosen Swiss SAC level (T1 easy hiking to T5 very demanding alpine; default T3) | Main roads, long asphalt stretches, paths above the chosen T level, glaciers | 4 km/h on flat, plus 1 h per 300 m up and 1 h per 500 m down (DIN 33466 style) | Must |
+| Hike (T1–T5) | Footpaths, marked hiking routes, tracks; mountain paths up to the chosen Swiss SAC level (T1 easy hiking to T5 very demanding alpine; default T2, chosen in the activity picker, last choice remembered) | Main roads, long asphalt stretches, paths above the chosen T level, glaciers | 4 km/h on flat, plus 1 h per 300 m up and 1 h per 500 m down (DIN 33466 style) | Must |
 
 These six profiles aim to cover about 70% of use cases. Road bike and gravel are left out of v1 and can be added later as extra profiles.
 

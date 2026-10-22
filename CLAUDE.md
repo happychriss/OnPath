@@ -124,7 +124,7 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   of a place the user shares from Google Maps (share sheet / link, `search/SharedPlace.kt`) may be used to place our own
   marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name.
 - **Activities** (exactly six): Bike touring, Bike trekking, E-bike, MTB, MTB e-bike, Hike (SAC T1–T5,
-  default T3). Mapping to BRouter profiles is in `BRouterEngine`.
+  default T2, chosen in the activity picker; the app remembers the last activity and T level). Mapping to BRouter profiles is in `BRouterEngine`.
 - **Git**: small commits with clear messages on `main` (single developer for now); never commit map data,
   APKs or `local.properties`.
 - **Requirements** live in `docs/requirements.md` (exported from the shared Claude doc); keep IDs stable,
