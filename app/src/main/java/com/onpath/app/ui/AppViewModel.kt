@@ -813,6 +813,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val requests = RouteRequests()
     /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
     private var followFromPlan = false
+    /** All plan points were deleted during the tour, which ended the guidance; points back → followed again (PlanGuidance). */
+    private var guidanceEndedByEmptyPlan = false
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
     /** "Continue navigation" re-plans: follow the next route result. */
@@ -822,6 +824,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         recalc()
+        // field test 2026-10-22: plan changes had to be guessed from route numbers – every one is traced now
+        Problems.trace("plan", "Plan restored at app start: ${waypoints.size} points" +
+            (followName?.let { ", following \"$it\" (${followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
         refreshTours() // "Load route" is enabled only when something is saved
         // Set directly (enter() touches properties declared below); the check after the DB read
         // calls enter() and so also tells a running service which mode we are in.
@@ -844,7 +849,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
         viewModelScope.launch {
             var saveFailedShown = false
+            var recordingSeen: Long? = null
             RecordingService.state.collect { st ->
+                if (st?.tourId != recordingSeen) {
+                    if (st != null) Problems.trace("tour", "Tour ${st.tourId} recording (plan ${waypoints.size} points, " +
+                        (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
+                    else { Problems.trace("tour", "Tour $recordingSeen recording ended"); guidanceEndedByEmptyPlan = false }
+                    recordingSeen = st?.tourId
+                }
                 if (st?.saveFailed == true && !saveFailedShown) {
                     saveFailedShown = true
                     message = "The track cannot be saved any more (storage full or database broken). Free up space – recording keeps trying."
@@ -1127,7 +1139,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
+        endGuidanceIfPlanEmpty()
         recalc()
+    }
+
+    /**
+     * Owner rule 2026-10-22 (PlanGuidance): what Plan shows = what Navigate follows. An empty plan during a tour ends the
+     * route guidance – no line, no off-route warning, no junction vibration, no arrival; the recording goes on. Undo
+     * (points back) follows the plan again ([followEditedPlan]).
+     */
+    private fun endGuidanceIfPlanEmpty() {
+        if (!PlanGuidance.endsGuidance(waypoints.size, recState.value != null, followLine != null, followIsTrack)) return
+        Problems.trace("plan", "All points deleted during the tour: route guidance ended, recording continues (Undo brings it back)")
+        clearFollow()
+        guidanceEndedByEmptyPlan = true
     }
 
     /** Forget pinned points that are neither planned nor reachable by undo/redo. */
@@ -1235,7 +1260,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         clearSearchMarkAt(poi.lat, poi.lon)
+        val before = waypoints.size
         addPoint(p, lineSnapM, onPoi = true)
+        Problems.trace("plan", "POI menu: \"${poi.name ?: poi.kind}\" added to the route (plan $before → ${waypoints.size} points)")
     }
 
     /** Point menu → "Make starting point" (not on the start). */
@@ -1579,16 +1606,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (w.size != waypoints.size) set(w) else if (waypoints.size >= 2) message = "The route already ends at the start."
     }
 
-    fun undoStep() = step(history.undo(waypoints))
-    fun redoStep() = step(history.redo(waypoints))
+    fun undoStep() = step(history.undo(waypoints), "Undo")
+    fun redoStep() = step(history.redo(waypoints), "Redo")
 
-    private fun step(prev: List<GeoPoint>?) {
-        prev ?: return
+    private fun step(prev: List<GeoPoint>?, what: String) {
+        if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
+        Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
+        endGuidanceIfPlanEmpty()
         recalc()
     }
 
@@ -1606,6 +1635,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun clearPlan() {
         confirmClear = false
+        Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (recState.value != null) " (tour running)" else "")
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
         closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
@@ -2296,10 +2326,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun switchToPlan() = enter(AppMode.PLAN)
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
-    fun endTour() { arrivalAsk = false; deleteFinished = false; stopRecording() }
+    fun endTour() { Problems.trace("tour", "End tour (save)"); arrivalAsk = false; deleteFinished = false; stopRecording() }
 
     /** End tour → Delete (owner 2026-10-22): stop, then the tour goes straight to the recycle bin, no summary. */
-    fun endTourAndDelete() { arrivalAsk = false; deleteFinished = true; stopRecording() }
+    fun endTourAndDelete() { Problems.trace("tour", "End tour (delete)"); arrivalAsk = false; deleteFinished = true; stopRecording() }
     private var deleteFinished = false
 
     /** Called with each fix in Navigate: asks when the end of the followed line is reached ([ArrivalGate]). */
@@ -2319,6 +2349,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun followEditedPlan() {
         val r = route ?: return
+        if (PlanGuidance.resumes(guidanceEndedByEmptyPlan, recState.value != null, followLine != null, r.points.size)) {
+            Problems.trace("plan", "Plan points back during the tour: following the plan again")
+            followPlanned(checkNow = true)
+            return
+        }
         if (recState.value == null || followLine == null || followIsTrack) return
         if (r.points.size < 2) return // nothing to follow (e.g. all points on one spot): keep the running line
         val orig = followOriginal
@@ -2347,6 +2382,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean, checkNow: Boolean = false,
                           stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
+        guidanceEndedByEmptyPlan = false
         val session = runCatching {
             NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
         }.onFailure { Problems.error("navigation", "Navigation session could not be started; following without it", it) }.getOrNull()
@@ -2365,6 +2401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearFollow() {
         followFromPlan = false
+        guidanceEndedByEmptyPlan = false
         followIsTrack = false; prefs.followIsTrack = false
         arrivalGate.reset()
         prefs.saveFollow("", null)
@@ -2377,6 +2414,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startRecording() {
+        Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
+            (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {
             putExtra(RecordingService.EXTRA_ACTIVITY, activity.name)
         }

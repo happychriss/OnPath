@@ -96,4 +96,51 @@ class CoreFieldE2ETest : E2EBase() {
         var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
         assertTrue("recording goes on in Plan (core feature C4)", rec)
     }
+
+    private fun mode(): AppMode? { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; return m }
+    /** The app draws a followed line and the service navigates one. */
+    private fun guided(): Boolean {
+        var g = false
+        scenario.onActivity { g = vm(it).followLine != null && vm(it).recState.value?.nav != null }
+        return g
+    }
+    private fun recording(): Boolean { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; return r }
+
+    /**
+     * Owner decision after field test 2026-10-22 (tour 5: all points deleted in Plan, the tour kept following the old
+     * route unseen): what Plan shows = what Navigate follows. Navigate → Plan → delete all points (✕ in the list) →
+     * Navigate: no route line, no guidance, the recording goes on. Undo → the points and the guidance are back.
+     */
+    @Test fun deletingAllPointsDuringATourEndsTheGuidanceUndoBringsItBack() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        scenario.onActivity { vm(it).deletePointFromList(1) }
+        waitUntil("one point left", 10_000) { waypointCount() == 1 }
+        Thread.sleep(1_500)
+        scenario.onActivity { vm(it).deletePointFromList(0) }
+        waitUntil("plan empty", 10_000) { waypointCount() == 0 }
+        scenario.onActivity { vm(it).continueNavigation() }
+        waitUntil("Navigate again", 10_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("no route followed any more", 15_000) { !guided() }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: one point back", 10_000) { waypointCount() == 1 }
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: two points back", 10_000) { waypointCount() == 2 }
+        waitUntil("the route is followed again", 30_000) { guided() }
+        assertTrue(recording())
+        // every step is in the event trace (field test 2026-10-22: Undo / Clear / tour start had to be guessed)
+        val trace = com.onpath.app.debug.Problems.events().map { it.message }
+        for (step in listOf("Tour start", "All points deleted during the tour", "Undo: plan 0 → 1 points",
+                "Undo: plan 1 → 2 points", "Plan points back during the tour")) {
+            assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
+        }
+    }
 }
