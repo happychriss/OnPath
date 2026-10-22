@@ -197,7 +197,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun navScrub(p: GeoPoint) {
         scrubEndJob?.cancel(); scrubEndJob = null
-        if (followMe) { scrubWasFollowing = true; followMe = false; Problems.info("map", "Following paused: finger on the elevation profile") }
+        if (followMe) { scrubWasFollowing = true; followMe = false; Problems.trace("map", "Following paused: finger on the elevation profile") }
         highlight = p
         events += UiEvent.PanTo(p)
     }
