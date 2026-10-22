@@ -32,7 +32,9 @@ class PhotonProvider(
 
     fun url(query: String, lat: Double, lon: Double, limit: Int): String {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
-        val f = { v: Double -> String.format(Locale.ROOT, "%.5f", v) }
+        // rough position only (privacy, owner 2026-10-22: Settings → Privacy says ~1 km): 2 decimals ≈ 1 km – enough for
+        // the zoom-12 bias below
+        val f = { v: Double -> String.format(Locale.ROOT, "%.2f", v) }
         // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
         // with higher importance win; a stronger bias dropped towns named in the query (tested 2026-10-19).
         return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
