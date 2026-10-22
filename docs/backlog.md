@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Release gate green: 2 failing CI emulator tests (CoreDeleteE2ETest) + flaky CellDownloadTest, then 0.9.0 – since 2026-10-22
 
 
 ## Next
