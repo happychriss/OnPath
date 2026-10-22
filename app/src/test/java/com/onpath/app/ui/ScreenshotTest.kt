@@ -440,6 +440,12 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
     }
 
+    /** Owner 2026-10-22: a point the route does not reach – one red bold line in the small sheet (no message box). */
+    @Test fun planGapSmall() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
+            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike"), PlanCallbacks()) }
+    }
+
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,

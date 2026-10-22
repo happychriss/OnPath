@@ -16,27 +16,27 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     private val followFile = File(filesDir, "follow.json")
 
     /**
-     * Last chosen activity (owner 2026-10-22: the app always starts with it; fresh install → Hike). Before that, Settings
-     * had a "Default activity" (key defaultActivity): used once when no activity was chosen yet ([LastActivity]).
+     * Last chosen activity (owner 2026-10-22: the app always starts with it; fresh install → Hike). Older installs:
+     * the activity the old app started with ([LastActivity] – Settings default before the stale key activity).
      */
     var activity: Activity
-        get() = LastActivity.activity(sp.contains("activity"), activityPref("activity"), sp.contains("defaultActivity"), activityPref("defaultActivity"))
-        set(v) = sp.edit().putString("activity", v.name).apply()
+        get() = LastActivity.activity(activityPref("lastActivity"), activityPref("defaultActivity"), activityPref("activity"))
+        set(v) = sp.edit().putString("lastActivity", v.name).apply()
 
-    /** Stored activity [key]; not set yet → Hike (expected), unknown value → Hike with a warning. */
-    private fun activityPref(key: String): Activity {
+    /** Stored activity [key]; not set → null (expected), unknown value → Hike with a warning. */
+    private fun activityPref(key: String): Activity? {
         val v = try { sp.getString(key, null) } catch (e: Exception) {
-            Problems.warn("settings", "Setting $key unreadable, using Hike", e); null
-        } ?: return Activity.HIKE
+            Problems.warn("settings", "Setting $key unreadable, using Hike", e); return Activity.HIKE
+        } ?: return null
         return try { Activity.valueOf(v) } catch (e: Exception) {
             Problems.warn("settings", "Setting $key has unknown activity '$v', using Hike", e); Activity.HIKE
         }
     }
 
-    /** Last chosen hiking difficulty (SAC T1–T5; fresh install T2, older installs keep their stored level, [LastActivity]). */
+    /** Last chosen hiking difficulty (SAC T1–T5; fresh install T2, older installs keep the level they started with). */
     var sac: Int
-        get() = LastActivity.sac(intPref("sac"), intPref("defaultSac"))
-        set(v) = sp.edit().putInt("sac", v.coerceIn(1, 5)).apply()
+        get() = LastActivity.sac(intPref("lastSac"), intPref("defaultSac"), intPref("sac"))
+        set(v) = sp.edit().putInt("lastSac", v.coerceIn(1, 5)).apply()
 
     private fun intPref(key: String): Int? = try { if (sp.contains(key)) sp.getInt(key, 0) else null } catch (e: Exception) {
         Problems.warn("settings", "Setting $key unreadable, using the default", e); null

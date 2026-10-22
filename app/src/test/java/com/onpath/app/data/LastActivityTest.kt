@@ -34,16 +34,36 @@ class LastActivityTest {
         val old = MapPrefs(mutableMapOf("defaultActivity" to "BIKE_TREKKING", "defaultSac" to 3))
         assertEquals(Activity.BIKE_TREKKING, Prefs(old, dir).activity)
         assertEquals(3, Prefs(old, dir).sac)
-        // a level / activity chosen later (key sac / activity) wins over the old Settings default
-        val both = MapPrefs(mutableMapOf("defaultActivity" to "BIKE_TREKKING", "activity" to "HIKE", "defaultSac" to 3, "sac" to 5))
-        assertEquals(Activity.HIKE, Prefs(both, dir).activity)
-        assertEquals(5, Prefs(both, dir).sac)
+        // still older installs (no Settings default yet) started with the key activity / sac
+        val older = MapPrefs(mutableMapOf("activity" to "MTB", "sac" to 4))
+        assertEquals(Activity.MTB, Prefs(older, dir).activity)
+        assertEquals(4, Prefs(older, dir).sac)
+    }
+
+    /**
+     * Field bug 2026-10-22 (owner's phone, 0.9.5): the old app wrote the key "activity" on every picker choice but
+     * started each session with the Settings default (defaultActivity). The owner hiked (default Hike, all tours Hike);
+     * a stale "activity" = BIKE_TREKKING from an earlier try then won after the update → the app came up with Bike
+     * trekking. The activity the old app started with must win; the new app remembers under its own keys.
+     */
+    @Test fun upgradeKeepsTheActivityTheOldAppStartedWith() {
+        val phone = MapPrefs(mutableMapOf("activity" to "BIKE_TREKKING", "defaultActivity" to "HIKE", "sac" to 4, "defaultSac" to 2))
+        assertEquals(Activity.HIKE, Prefs(phone, dir).activity)
+        assertEquals(2, Prefs(phone, dir).sac)
+        // after the update: a choice in the picker is remembered and wins over the old Settings default
+        Prefs(phone, dir).apply { activity = Activity.MTB; sac = 5 }
+        assertEquals(Activity.MTB, Prefs(phone, dir).activity)
+        assertEquals(5, Prefs(phone, dir).sac)
+        Prefs(phone, dir).activity = Activity.HIKE
+        assertEquals(Activity.HIKE, Prefs(phone, dir).activity)
     }
 
     @Test fun brokenValuesFallBackToDefaults() {
         assertEquals(5, LastActivity.sac(9, null))
         assertEquals(1, LastActivity.sac(0, 3))
-        assertEquals(Activity.HIKE, LastActivity.activity(false, Activity.MTB, false, Activity.EBIKE))
+        assertEquals(2, LastActivity.sac(null, null))
+        assertEquals(Activity.HIKE, LastActivity.activity(null, null))
+        assertEquals(Activity.EBIKE, LastActivity.activity(null, Activity.EBIKE, Activity.MTB))
     }
 
     @Test fun chipText() {

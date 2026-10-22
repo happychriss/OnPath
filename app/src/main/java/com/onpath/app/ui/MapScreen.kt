@@ -326,7 +326,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
             points = rows,
-            routingSlow = vm.routingSlow, notRouted = vm.notRouted),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText()),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -335,6 +335,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
+            onShowGap = vm::showPlanGap,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             cellCard = cellCb,
@@ -367,11 +368,14 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, vm.planIsFollowed())
-            PlanDrawing(vm.route, line, markers, vm.waypoints.toList())
+            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps)
         }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
-                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices())
+                // unreachable points: grey dashed missing piece + grey hollow marker (owner 2026-10-22)
+                val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
+                c.setPlanGaps(gaps)
+                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet())
             }
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
@@ -486,4 +490,5 @@ private data class PlanDrawing(
     val showLine: Boolean,
     val showMarkers: Boolean,
     val points: List<com.onpath.app.routing.GeoPoint>,
+    val gaps: List<PlanGap> = emptyList(),
 )
