@@ -35,6 +35,10 @@ import com.onpath.app.map.MapController
 import com.onpath.app.recording.GpsStatus
 import com.onpath.app.recording.RecState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.rememberUpdatedState
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
@@ -83,11 +87,14 @@ fun MapScreen(
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
     // (only with something route-like on the map), locate (always, with the GPS dot).
     val footer = @Composable {
+        // the points step leaves little map: only Undo + locate (owner 2026-10-22, the compass went over ☰)
+        val pointsOpen = vm.mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
         MapFooter(scale) {
             MapControls(
                 // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
-                compass = CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
-                showEye = vm.route != null || vm.shown != null || vm.followLine != null,
+                compass = if (pointsOpen) null
+                    else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
+                showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (vm.mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
@@ -215,16 +222,28 @@ private fun PlanMode(
             ),
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
         )
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-            val upd = vm.update
-            val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
-                ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
-            if (rec == null && updVersion != null && updVersion != vm.updateDismissed) {
-                UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
+        // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
+        val sheetHeight = remember { mutableIntStateOf(0) }
+        val panelHeight by rememberUpdatedState(onPanelHeight)
+        LaunchedEffect(Unit) {
+            snapshotFlow { sheetHeight.intValue }.collectLatest { delay(120); panelHeight(it) }
+        }
+        val density = LocalDensity.current
+        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
+        SheetWithFooter(topLimit, footer = {
+            Column(Modifier.fillMaxWidth()) {
+                val upd = vm.update
+                val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
+                    ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
+                if (rec == null && updVersion != null && updVersion != vm.updateDismissed) {
+                    UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                }
+                footer()
             }
-            footer()
-            Column(Modifier.onSizeChanged { onPanelHeight(it.height) }) {
+        }, sheet = {
+            Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) {
                 // The tour controls sit at the top of the plan sheet; a separate card only when the sheet is replaced
                 // (place card or shown track).
                 if (vm.cardPlace != null || vm.shown != null) rec?.let {
@@ -235,7 +254,7 @@ private fun PlanMode(
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
                 else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour, onRequestLocation)
             }
-        }
+        })
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
     }
 }
@@ -271,6 +290,20 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     val loadUi by produceState<MapLoadUi?>(null, cellStates, vm.cellJob, vm.mode) {
         while (true) { value = vm.mapLoadUi(cellStates, android.os.SystemClock.uptimeMillis()); delay(1000) }
     }
+    // Rows of the Points section, composed with the sheet in every step (StepSheet: it is only revealed). The distances
+    // along the route walk the whole line: done once per route off the main thread (PlanPoints.legsCached); until then
+    // the previous rows stay (owner field report 0.9.3).
+    val pts = vm.waypoints.toList()
+    val line = vm.route?.takeIf { !vm.routing }?.points
+    var legsReady by remember(pts, line) { mutableStateOf(com.onpath.app.routing.PlanPoints.legsReady(pts, line)) }
+    LaunchedEffect(pts, line) {
+        if (!legsReady) {
+            withContext(Dispatchers.Default) { com.onpath.app.routing.PlanPoints.legsCached(pts, line) }
+            legsReady = true
+        }
+    }
+    val lastRows = remember { arrayOfNulls<List<com.onpath.app.routing.PlanPointRow>>(1) }
+    val rows = lastRows[0]?.takeIf { !legsReady } ?: vm.planPointRows().also { lastRows[0] = it }
     MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
@@ -278,7 +311,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
-            points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList(),
+            points = rows,
             routingSlow = vm.routingSlow),
         PlanCallbacks(
             onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
@@ -293,8 +326,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )
-    // names for the Points section (offline place index), when it is shown and the points change
-    if (vm.planSize == PlanSize.FULL) LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
+    // names for the Points section (offline place index, off the main thread) whenever the points change – ready before
+    // the sheet is pulled up (owner field report 0.9.3: names arriving mid-pull rebuilt the list)
+    LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
 }
 
 /** Keeps the map layers in step with the app state. */

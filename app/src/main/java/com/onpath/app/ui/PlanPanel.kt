@@ -9,6 +9,10 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -119,10 +123,9 @@ class PlanCallbacks(
 data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
 
 /**
- * Plan sheet sizes (owner 2026-10-21): MINI = summary only, COMPACT = summary + elevation profile (default),
- * FULL = the plan editor (owner 2026-10-22): one line (time · distance), then one scrolling area – elevation profile
- * (finger slides the dot along the route), Points (+ Reverse / Round trip), way types & surfaces. The primary button
- * stays at the bottom in every size.
+ * Plan sheet steps (owner 2026-10-22): MINI = summary only (time, distance), COMPACT = + the large elevation profile
+ * with the finger ruler (default), FULL = + the Points list (Reverse / Round trip). The primary button stays at the
+ * bottom in every step. Way types & surfaces are in the route details only.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -131,6 +134,12 @@ enum class PlanSize {
     fun bigger() = if (this == MINI) COMPACT else FULL
     /** Handle tap: grow one step; on FULL go back to COMPACT. */
     fun tapped() = if (this == FULL) COMPACT else bigger()
+    /** Index in the sheet's steps, smallest first (StepSheet). */
+    val step: Int get() = when (this) { MINI -> 0; COMPACT -> 1; FULL -> 2 }
+
+    companion object {
+        fun ofStep(i: Int): PlanSize = when { i <= 0 -> MINI; i == 1 -> COMPACT; else -> FULL }
+    }
 }
 
 data class PlanUi(
@@ -164,114 +173,109 @@ data class PlanUi(
 }
 
 /**
- * The plan bottom sheet: status first (time, distance, ascent/descent, highest point, difficulty – read-only
- * text and a badge), then by size (PlanSize) the elevation profile (half) or the point editor (full),
- * and ONE filled primary button fixed at the bottom (only with a route, or "Continue navigation" while a tour runs).
- * Route edits (save, export, reverse, round trip, clear) are also in ⋯.
+ * The plan bottom sheet (owner 2026-10-22), three steps of ONE body (StepSheet: composed once, a step is only how much
+ * shows – dragging never rebuilds it): small = the summary line (activity · time + distance · ⋯); profile = + ascent /
+ * descent, difficulty badge (→ route details) and the large elevation profile (slide a finger: the dot runs along the
+ * route on the map); points = + the Points list (≡ drag, ✕ delete, tap → map; Reverse / Round trip). Way types and
+ * surfaces are in the route details only. The ONE filled primary button rides on the sheet's bottom edge in every step.
  */
 @Composable
-fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false) {
-    BottomPanel(
-        onSwipe = { down -> cb.onResize(if (down) ui.size.smaller() else ui.size.bigger()) },
+fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false, sheetState: StepSheetState? = null) {
+    val state = sheetState ?: rememberStepSheetState(PlanSize.entries.size, ui.size.step)
+    val scroll = rememberScrollState()
+    val full = ui.size == PlanSize.FULL
+    // leaving the points: the list goes back to its top, so the profile is what the smaller steps show
+    LaunchedEffect(full) { if (!full && scroll.value > 0) scroll.animateScrollTo(0) }
+    StepSheet(
+        step = ui.size.step,
+        onStep = { cb.onResize(PlanSize.ofStep(it)) },
         onHandleTap = { cb.onResize(ui.size.tapped()) },
+        state = state,
+        bottomBar = { PlanBar(ui, cb) },
     ) {
-        val full = ui.size == PlanSize.FULL
-        if (full) {
-            // owner 2026-10-22: the pulled-up sheet has ONE fixed height – deleting / adding / moving points (or the
-            // routing bar) never makes its top edge (and the profile) jump; the scrolling area takes what is left
-            val sheetH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp
-            Column(Modifier.fillMaxWidth().height(sheetH)) { PlanBody(ui, cb, menuInitiallyOpen) }
-        } else PlanBody(ui, cb, menuInitiallyOpen)
+        // the pulled-up sheet has ONE fixed height (owner 2026-10-22): deleting / adding / moving points (or the routing
+        // bar) never makes its top edge jump; the scrolling area takes what is left
+        val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - PRIMARY_BAR
+        val sheet = this
+        Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, menuInitiallyOpen, scroll) }
     }
 }
 
 /** Share of the screen height the pulled-up plan sheet always takes (below the grab handle). */
 internal const val FULL_SHEET_FRACTION = 0.62f
+/** Height of the primary button row at the sheet's bottom (12 dp gap + 56 dp button). */
+private val PRIMARY_BAR = 68.dp
 
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.PlanBody(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean) {
-        val route = ui.route
-        val mini = ui.size == PlanSize.MINI
-        // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
-        ui.tour?.let { t ->
-            TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour)
-            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
-        }
-        // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            ActivityButton(ui.activity, cb.onActivity)
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.weight(1f)) { Title(ui, route) }
-            SheetOverflow(ui, cb, menuInitiallyOpen)
-        }
-        val full = ui.size == PlanSize.FULL
-        if (!mini && !full) SubLine(ui, route, cb.onDetails)
-        if (!mini && !full && route != null) SavedLine(ui)
-        if (ui.routing && ui.routingSlow) {
-            // owner 2026-10-22: a long calculation can be stopped (the last change is taken back)
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Calculating the route…", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
-                }
-                androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text("Cancel") }
-            }
-        } else if (full) Box(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp)) {
-            // full: the routing bar has a fixed slot (no jump when it comes and goes)
-            if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
-        } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
-        ui.error?.let { ErrorBox(it) }
-        // in the point editor the map card is one line: it must never squeeze the points away (CI 2026-10-22)
-        ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini || full) }
-        if (full) {
-            PlanEditor(ui, cb, Modifier.weight(1f))
-        } else if (!mini && route != null && !ui.routing) {
-            // Mini profile, always visible (Komoot-like) – tap for the route details.
-            Box(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                ElevationProfile(route.points, height = 52.dp, gradient = true)
-                Box(Modifier.matchParentSize().clickable(role = Role.Button, onClickLabel = "Show route details",
-                    onClick = cb.onDetails).semantics { contentDescription = "Route details" })
-            }
-        }
-        // The one primary button – not during a tour (Continue is in the tour controls above).
-        if (ui.tour == null && !ui.tourRunning && ui.pointCount >= 2) {
-            Spacer(Modifier.height(12.dp))
-            PrimaryAction(ui, cb)
-        } else Spacer(Modifier.height(8.dp))
-}
-
-/**
- * Full sheet (owner 2026-10-22): ONE scrolling area – elevation profile (slide a finger: the dot runs along the route
- * on the map), the Points list (Reverse / Round trip only here), way types & surfaces. Title line above and the primary
- * button below stay put, so 3 or 30 points work the same.
- */
-@Composable
-private fun PlanEditor(ui: PlanUi, cb: PlanCallbacks, modifier: Modifier) {
-    val scroll = rememberScrollState()
-    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean, scroll: ScrollState) {
     val route = ui.route
-    Column(modifier.fillMaxWidth().onGloballyPositioned { viewport = it }.verticalScroll(scroll)) {
+    val full = ui.size == PlanSize.FULL
+    // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
+    ui.tour?.let { t ->
+        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour)
+        HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+    }
+    // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ActivityButton(ui.activity, cb.onActivity)
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f)) { Title(ui, route) }
+        SheetOverflow(ui, cb, menuInitiallyOpen)
+    }
+    if (ui.routing && ui.routingSlow) {
+        // owner 2026-10-22: a long calculation can be stopped (the last change is taken back)
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Calculating the route…", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
+            }
+            androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text("Cancel") }
+        }
+    } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
+    ui.error?.let { ErrorBox(it) }
+    // outside the profile step the map card is one line: it must never squeeze the points away (CI 2026-10-22)
+    ui.cellCard?.let { CellCard(it, cb.cellCard, compact = ui.size != PlanSize.COMPACT) }
+    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
+    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }
+        .verticalScroll(scroll, enabled = full)) {
+        SubLine(ui, route, cb.onDetails)
+        if (route != null) SavedLine(ui)
         if (route != null && !ui.routing) {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Elevation profile" }) {
-                ElevationProfile(route.points, height = 96.dp, gradient = true,
-                    onHighlight = cb.onHighlight, onRelease = { cb.onHighlight(null) })
+                // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
+                val highlight = cb.onHighlight
+                ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
+                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
                 GradientLegend()
             }
         }
-        PointsSection(
-            ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
-            onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
-            onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
-            modifier = Modifier.padding(top = 8.dp),
-            scroll = scroll, viewport = { viewport },
-        )
-        if (route != null && !ui.routing) {
-            RouteBreakdown(route.wayTypes, route.surfaces, Modifier.padding(top = 8.dp), initiallyExpanded = true)
+        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
+        // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
+        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
+            PointsSection(
+                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
+                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
+                onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
+                modifier = Modifier.padding(top = 4.dp),
+                scroll = scroll, viewport = { viewport },
+            )
         }
     }
 }
 
+/** The large profile of the profile step (owner 2026-10-22). */
+private val PROFILE_HEIGHT = 120.dp
+
+/** Bottom of the sheet: the one primary button – not during a tour (Continue is in the tour controls above). */
+@Composable
+private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
+    if (ui.tour == null && !ui.tourRunning && ui.pointCount >= 2) {
+        Spacer(Modifier.height(12.dp))
+        PrimaryAction(ui, cb)
+    } else Spacer(Modifier.height(8.dp))
+}
 /** Visible save state instead of a message: "Saved as “Name”", or that it changed since. */
 @Composable
 private fun SavedLine(ui: PlanUi) {

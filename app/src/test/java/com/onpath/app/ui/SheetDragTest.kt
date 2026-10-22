@@ -1,33 +1,42 @@
 package com.onpath.app.ui
 
-import com.onpath.app.ui.SheetDrag.Settle
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Field test 0.8.9 ("the swipe is jumping"): where the dragged plan sheet settles on release. */
+/** Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): where the dragged plan sheet settles. */
 class SheetDragTest {
-    private fun settle(shown: Float, v: Float = 0f) = SheetDrag.settle(shown, 500f, v, distancePx = 100f, flingPxS = 1000f)
+    // small 200, profile 500, points 900
+    private val steps = listOf(200f, 500f, 900f)
+    private fun target(shown: Float, v: Float = 0f) = SheetDrag.target(shown, steps, v, flingPxS = 1000f)
 
     @Test fun smallMovementGoesBack() {
-        assertEquals(Settle.SAME, settle(450f))
-        assertEquals(Settle.SAME, settle(560f))
+        assertEquals(1, target(450f))
+        assertEquals(1, target(560f))
     }
 
-    @Test fun pulledFarEnoughChangesSize() {
-        assertEquals(Settle.SMALLER, settle(380f))
-        assertEquals(Settle.BIGGER, settle(620f))
+    @Test fun settlesAtTheNearestStep() {
+        assertEquals(0, target(330f))
+        assertEquals(2, target(720f))
+        assertEquals(2, target(1000f))  // rubber band above the top step
+        assertEquals(0, target(120f))
     }
 
-    @Test fun aFlingDecidesEvenWhenShort() {
-        assertEquals(Settle.SMALLER, settle(490f, v = 2000f))
-        assertEquals(Settle.BIGGER, settle(510f, v = -2000f))
+    /** A long pull goes past a step: from the small sheet straight to the points. */
+    @Test fun aLongPullSkipsAStep() = assertEquals(2, target(850f))
+
+    @Test fun aFlingGoesToTheNextStepInItsDirection() {
+        assertEquals(2, target(510f, v = -2000f))
+        assertEquals(0, target(490f, v = 2000f))
+        assertEquals(1, target(300f, v = -2000f))
+        assertEquals(1, target(800f, v = 2000f))
     }
 
-    /** Pulled up a long way, then a flick down at the end: back to the same size, not a jump two ways. */
-    @Test fun aFlingAgainstALongPullCancels() {
-        assertEquals(Settle.SAME, settle(700f, v = 2000f))
-        assertEquals(Settle.SAME, settle(300f, v = -2000f))
+    @Test fun aFlingBeyondTheEndsStaysAtTheEnd() {
+        assertEquals(2, target(950f, v = -2000f))
+        assertEquals(0, target(150f, v = 2000f))
     }
+
+    @Test fun aSlowReleaseIsNoFling() = assertEquals(1, target(520f, v = -600f))
 
     @Test fun followsTheFingerWithRubberBandAtTheEnds() {
         assertEquals(400f, SheetDrag.follow(400f, 100f, 800f), 0f)
