@@ -162,12 +162,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         addPlannedLayers()
         addDirectionArrows()
         style.addSource(GeoJsonSource(SRC_HL))
-        style.addLayer(CircleLayer("highlight-dot", SRC_HL).withProperties(
+        addBelowPosition(CircleLayer("highlight-dot", SRC_HL).withProperties(
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
         // No ring for POI-pinned stops any more (owner): the only orange ring is the search mark.
-        style.addLayer(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
+        addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
         ))
@@ -178,11 +178,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     private fun addLine(id: String, color: String, width: Float, casing: Boolean) {
         style.addSource(GeoJsonSource(id))
-        if (casing) style.addLayer(LineLayer("$id-casing", id).withProperties(
+        if (casing) addBelowPosition(LineLayer("$id-casing", id).withProperties(
             PF.lineColor("#FFFFFF"), PF.lineWidth(width + 4f),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
-        style.addLayer(LineLayer(id, id).withProperties(
+        addBelowPosition(LineLayer(id, id).withProperties(
             PF.lineColor(color), PF.lineWidth(width),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
@@ -190,7 +190,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     private fun addNavOriginal() {
         style.addSource(GeoJsonSource(SRC_NAV_ORIGINAL))
-        style.addLayer(LineLayer(SRC_NAV_ORIGINAL, SRC_NAV_ORIGINAL).withProperties(
+        addBelowPosition(LineLayer(SRC_NAV_ORIGINAL, SRC_NAV_ORIGINAL).withProperties(
             PF.lineColor(NAV_ORIGINAL_COLOR), PF.lineWidth(3f), PF.lineOpacity(0.85f),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
@@ -198,12 +198,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     private fun addNavOverlays() {
         style.addSource(GeoJsonSource(SRC_NAV_PROPOSAL))
-        style.addLayer(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
+        addBelowPosition(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(5f), PF.lineDasharray(arrayOf(1.6f, 1.2f)),
             PF.lineJoin(Property.LINE_JOIN_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_NAV_GUIDE))
-        style.addLayer(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
+        addBelowPosition(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
             PF.lineColor("#C62828"), PF.lineWidth(3f), PF.lineDasharray(arrayOf(1f, 1.5f)), PF.lineOpacity(0.9f),
         ))
     }
@@ -241,18 +241,18 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addSource(GeoJsonSource(SRC_PLANNED))
         val routed = Expression.eq(Expression.get("straight"), Expression.literal(false))
         val straight = Expression.eq(Expression.get("straight"), Expression.literal(true))
-        style.addLayer(LineLayer("planned-route-casing", SRC_PLANNED).withFilter(routed).withProperties(
+        addBelowPosition(LineLayer("planned-route-casing", SRC_PLANNED).withFilter(routed).withProperties(
             PF.lineColor("#FFFFFF"), PF.lineWidth(10f),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
-        style.addLayer(LineLayer("planned-route", SRC_PLANNED).withFilter(routed).withProperties(
+        addBelowPosition(LineLayer("planned-route", SRC_PLANNED).withFilter(routed).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(6f),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
-        style.addLayer(LineLayer("planned-straight-casing", SRC_PLANNED).withFilter(straight).withProperties(
+        addBelowPosition(LineLayer("planned-straight-casing", SRC_PLANNED).withFilter(straight).withProperties(
             PF.lineColor("#FFFFFF"), PF.lineWidth(7f), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
-        style.addLayer(LineLayer("planned-straight", SRC_PLANNED).withFilter(straight).withProperties(
+        addBelowPosition(LineLayer("planned-straight", SRC_PLANNED).withFilter(straight).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(4f), PF.lineDasharray(arrayOf(1.5f, 1.5f)),
         ))
     }
@@ -280,7 +280,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
                 )
                 if (filter != null) l.setFilter(filter)
-                style.addLayer(l)
+                addBelowPosition(l)
             }
         } catch (e: Exception) {
             Problems.warn("map", "Direction arrows on the route not added", e)
@@ -487,7 +487,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private fun addTurnLayer() {
         style.addImage(IMG_TURN, turnArrow())
         style.addSource(GeoJsonSource(SRC_TURN))
-        style.addLayer(SymbolLayer(LAYER_TURN, SRC_TURN).withProperties(
+        addBelowPosition(SymbolLayer(LAYER_TURN, SRC_TURN).withProperties(
             PF.iconImage(IMG_TURN),
             PF.iconRotate(Expression.get("rot")),
             PF.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
@@ -604,7 +604,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun dpToPx(dp: Float) = dp * density
 
     /**
-     * Adds a layer created after the position dot (owner: the dot must never be under a line): directly below
+     * Adds every layer of the app (owner: the dot must never be under a line or a route point). On a style reload
+     * MapLibre puts its position layers back before this controller adds its own, so a plain addLayer landed above the
+     * dot (field test 2026-10-22: the dot vanished under the route points). Directly below
      * MapLibre's location layers ("mapbox-location-*", LocationComponentConstants), or on top if there are none.
      */
     private fun addBelowPosition(l: org.maplibre.android.style.layers.Layer) {

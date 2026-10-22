@@ -20,6 +20,7 @@ import com.onpath.app.ui.AppViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
@@ -64,6 +65,21 @@ class CorePlanE2ETest : E2EBase() {
         assertNotNull("point menu after a style reload", device.wait(Until.findObject(By.text("Delete")), 5_000))
         clickText("Delete")
         waitUntil("point deleted after reload") { waypointCount() == 1 }
+    }
+
+    /** Field test 2026-10-22: after a style reload the route points were drawn above the "I am here" dot. */
+    @Test fun positionDotStaysAboveRoutePointsAfterAReload() {
+        startPlanWithTwoPoints()
+        scenario.onActivity { vm(it).reloadMapStyleForTest() }
+        waitForMap(reloaded = true)
+        var ids = emptyList<String>()
+        onMap { m -> ids = m.style?.layers?.map { it.id } ?: emptyList() }
+        val dot = ids.indexOfFirst { it.startsWith(com.onpath.app.map.MapController.POSITION_LAYER_PREFIX) }
+        assertTrue("position layers present: $ids", dot >= 0)
+        for (own in listOf(com.onpath.app.map.MapController.LAYER_WPT, "planned-route", "recorded-track")) {
+            val i = ids.indexOf(own)
+            assertTrue("$own ($i) below the position dot ($dot)", i in 0 until dot)
+        }
     }
 
     /** C1 on a turned map (compass, hand rotation – the 0.7.19 bug class). */
