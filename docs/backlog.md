@@ -15,7 +15,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   CI emulator gate fixed (Meran GPS, no loading window, points off the search pill), flaky CellDownloadTest (generation
   before "ready"), backup screenshot time zone; manifest `sources`; daily storage cleanup (map-hosting §7g; owner: run
   the gsutil command there once); T5 in the background (service, areas joined after the tour); junction vibration +
-  lock-screen info (BRouter turn instructions). Next: release 0.9.0, then approach 1 "router decides" (owner reviews
+  lock-screen info (BRouter turn instructions); **0.9.0 released 2026-10-22** (manual run with skip_e2e – owner: phone test
+  cycle; E2E green again on 34cba51 after the swipe test looks afresh). Next: vehicle detection, then approach 1 "router decides" (owner reviews
   renders before main).
 - **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
