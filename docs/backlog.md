@@ -8,6 +8,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-22)
+- **[cloud → laptop] HANDOVER 2026-10-22 evening: `docs/handover-2026-10-22-cloud.md`** – 0.9.2 current (0.9.1 crashes
+  at start – never use); laptop first: track-gap check with the phone's GPX + diagnostics, "route without points during
+  a tour", confirm the new release smoke gate; then vehicle detection / approach 1.
 - **Bus / car / lift during a recording (owner 2026-10-22)** – design `docs/design/vehicle-detection.md`, owner agreed:
   nothing during the ride (warnings + junction vibration stay on), summary with four choices at "End tour", raw
   points kept. Build first.
@@ -58,11 +61,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
 
 ## Done (recent)
-- **0.9.1 (cloud, owner field test 2026-10-22):** POIs above trail numbers; GPS gaps ≤ 5 min bridged (+ Diagnostics
+- **0.9.1 → 0.9.2 (cloud, owner field test 2026-10-22; 0.9.1 crashed at start, fixed in 0.9.2):** POIs above trail numbers; GPS gaps ≤ 5 min bridged (+ Diagnostics
   trace per gap); position dot on top after a style reload (all app layers via `addBelowPosition`, source check
   `PositionDotOnTopTest` + e2e `assertPositionDotOnTop` in Plan / reload / highlight / Navigate); points in Navigate;
   End tour = Cancel · Delete (recycle bin) · Save, plan cleared after either; full plan sheet = one scrolling page
-  (profile with scrub → points + Reverse / Round trip → way types); E2E boots from a cached emulator snapshot.
+  (profile with scrub → points + Reverse / Round trip → way types), fixed height; > 24 h plans asked first; Cancel
+  routing (= undo); E2E boots from a cached emulator snapshot; release gate = StartSmokeE2ETest only.
   Open: owner's "route without points during a tour" (plan cleared while following?) – needs the diagnostics export.
 - **Checked 2026-10-22 and moved here from Next / Later:** 0.9.0 (tour backup, junction vibration + lock screen, map
   ahead on tour in the background, points editor, simple menus); re-routing P0–P4 incl. reroute back after off-route
