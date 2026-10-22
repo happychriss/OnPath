@@ -730,6 +730,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routeError by mutableStateOf<String?>(null)
         private set
     var highlight by mutableStateOf<GeoPoint?>(null)
+    /**
+     * Plan points the route does not reach (owner 2026-10-22, [PlanGaps]): grey dashed piece + hollow point on the map,
+     * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
+     */
+    val planGaps: List<PlanGap>
+        get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped) } ?: emptyList()
 
     // declared before init {}: init restores the saved plan and routes it at once (0.9.1 crashed at start – they were
     // declared below and still null then)
@@ -1932,8 +1938,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
         if (waypoints.toList() != routed) return
-        warnFarSnap(routed, r)
-        val keep = pins + routed.indices.filter { stopName(routed[it]) != null }
+        // a point the route does not reach keeps its place: the gap is shown (planGaps), not hidden by moving the point
+        val far = PlanGaps.farIndices(routed, r.snapped)
+        if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
+        val keep = pins + far + routed.indices.filter { stopName(routed[it]) != null }
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (!RouteRules.isUnsaved(routed, savedPoints)) setSaved(savedName, savedId, snapped)
@@ -1946,16 +1954,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The router reaches a point only by its nearest allowed way (up to 1 km away): a summit above the T level, a
-     * via ferrata, a point off any path. Say so, or the hiker trusts a line that stops short of where they want to go.
+     * via ferrata, a point off any path. The plan sheet says so in one red line (owner 2026-10-22: no message box), or
+     * the hiker trusts a line that stops short of where they want to go. Null = every point is reached.
      */
-    private fun warnFarSnap(routed: List<GeoPoint>, r: PlannedRoute) {
-        val far = routed.indices.mapNotNull { i ->
-            r.snapped.getOrNull(i)?.let { i to com.onpath.app.data.Geo.distance(routed[i], it) }
-        }.filter { it.second >= FAR_SNAP_M }.maxByOrNull { it.second } ?: return
-        val (i, d) = far
-        val what = when (i) { 0 -> "starts"; routed.lastIndex -> "ends"; else -> "passes" }
-        message = "The route $what ${com.onpath.app.data.Format.distance(Math.round(d / 10.0) * 10.0)} away from point ${i + 1}: " +
-            "the last part is too difficult for ${com.onpath.app.navigation.NavText.activityName(activity, sac)}, closed or has no path."
+    fun planGapText(gaps: List<PlanGap> = planGaps): String? {
+        if (gaps.isEmpty()) return null
+        val pts = waypoints.toList()
+        return PlanGaps.text(gaps, activity) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
+    }
+
+    /** "Show" of that line: stop following, then the map shows the missing piece of the first gap. */
+    fun showPlanGap() {
+        val g = planGaps.firstOrNull() ?: return
+        followMe = false
+        val (at, zoom) = PlanGaps.showTarget(g)
+        events += UiEvent.CenterOn(at, zoom)
     }
 
     /**
@@ -2963,8 +2976,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
-/** A plan point the router reached only this far away (m) gets a message. */
-private const val FAR_SNAP_M = 150.0
 
 /** Navigate profile scrubbing: how long the dot and the map stay at the spot after the finger leaves (ms). */
 private const val SCRUB_HOLD_MS = 4000L

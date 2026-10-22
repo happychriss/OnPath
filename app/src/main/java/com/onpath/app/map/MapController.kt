@@ -55,6 +55,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_WPT = "waypoints"
         const val SRC_HL = "highlight"
         const val LAYER_WPT = "waypoints-icons"
+        /** Unreachable plan points: grey dashed missing piece from the route's end to the point (owner 2026-10-22). */
+        const val SRC_GAPS = "plan-gaps"
+        private const val GAP_COLOR = "#8A8A8A"
         // --- Navigate: orientation + next-turn arrow (navigation agent) ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
@@ -77,7 +80,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
-            "planned-route-arrows", "$SRC_GPX-arrows",
+            "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS,
         )
         private const val ARROW_IMAGE = "route-arrow"
         private const val IMG_TURN = "nav-turn-arrow"
@@ -169,6 +172,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addSource(GeoJsonSource(SRC_HL))
         addBelowPosition(CircleLayer("highlight-dot", SRC_HL).withProperties(
             PF.circleRadius(7f), PF.circleColor("#FFFFFF"), PF.circleStrokeColor(ROUTE_COLOR), PF.circleStrokeWidth(4f),
+        ))
+        // the missing piece to an unreachable point: under the markers (its point is drawn grey and hollow, wp-g-N)
+        style.addSource(GeoJsonSource(SRC_GAPS))
+        addBelowPosition(LineLayer(SRC_GAPS, SRC_GAPS).withProperties(
+            PF.lineColor(GAP_COLOR), PF.lineWidth(4f), PF.lineDasharray(arrayOf(1.2f, 1.2f)),
+            PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
         // No ring for POI-pinned stops any more (owner): the only orange ring is the search mark.
@@ -602,11 +611,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
-    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet()) = guarded("waypoints") {
+    /** [unreached] = indices the route does not reach: drawn grey and hollow (see [setPlanGaps]). */
+    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet()) = guarded("waypoints") {
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
-            val kind = when { i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
+            val kind = when { i in unreached -> "g"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
                 addStringProperty("icon", "wp-$kind-${i + 1}")
                 addNumberProperty("idx", i)
@@ -615,6 +625,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
         shownWaypoints = points.toList() // what is drawn now
+    }
+
+    /** Grey dashed lines from where the route ends to each point it does not reach; empty = none. Never throws. */
+    fun setPlanGaps(gaps: List<com.onpath.app.ui.PlanGap>) = guarded("plan gaps") {
+        val src = source(SRC_GAPS) ?: return
+        src.setGeoJson(FeatureCollection.fromFeatures(gaps.map { g ->
+            Feature.fromGeometry(LineString.fromLngLats(listOf(
+                Point.fromLngLat(g.routeEnd.lon, g.routeEnd.lat), Point.fromLngLat(g.point.lon, g.point.lat))))
+        }))
     }
 
     /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */
@@ -729,11 +748,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             style.addImage("wp-s-$n", marker(n, "#2E7D32"))
             style.addImage("wp-v-$n", marker(n, ROUTE_COLOR))
             style.addImage("wp-e-$n", marker(n, "#C62828"))
+            style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
             markerImages++
         }
     }
 
-    private fun marker(n: Int, color: String): Bitmap {
+    /** A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach). */
+    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -744,7 +765,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         c.drawCircle(px / 2f, px / 2f, px / 2f, p)
         p.color = android.graphics.Color.parseColor(color)
         c.drawCircle(px / 2f, px / 2f, px / 2f - 3 * density, p)
-        p.color = android.graphics.Color.WHITE
+        if (hollow) {
+            p.color = android.graphics.Color.WHITE
+            c.drawCircle(px / 2f, px / 2f, px / 2f - 6 * density, p)
+        }
+        p.color = if (hollow) android.graphics.Color.parseColor(color) else android.graphics.Color.WHITE
         p.textSize = 14 * density
         p.typeface = Typeface.DEFAULT_BOLD
         p.textAlign = Paint.Align.CENTER
