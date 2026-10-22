@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 
@@ -125,42 +124,6 @@ fun SettingsScreen(
             }
             LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item {
-                    Section("Default activity") {
-                        Text("OnPath starts with this activity. The activity button in the route sheet only changes the current route.",
-                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                        androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            com.onpath.app.routing.Activity.entries.forEach { a ->
-                                FilterChip(selected = settings.defaultActivity == a, onClick = { onChange(settings.copy(defaultActivity = a)) },
-                                    label = { Text(a.label) }, modifier = Modifier.heightIn(min = 44.dp))
-                            }
-                        }
-                    }
-                }
-                item {
-                    Section("Hiking difficulty (SAC scale)") {
-                        Text("Hiking routes stay on paths up to this level.",
-                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                        SacScale.levels.forEach { l ->
-                            val sel = settings.defaultSac == l.level
-                            // One touch target and one screen-reader item per level (the radio only shows the state).
-                            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                                .selectable(selected = sel, role = Role.RadioButton) { onChange(settings.copy(defaultSac = l.level)) }
-                                .padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
-                                androidx.compose.material3.RadioButton(selected = sel, onClick = null,
-                                    modifier = Modifier.padding(12.dp))
-                                Column(Modifier.weight(1f).padding(top = 10.dp, end = 8.dp)) {
-                                    Text("T${l.level} · ${l.name}", fontSize = 15.sp,
-                                        fontWeight = if (sel) androidx.compose.ui.text.font.FontWeight.SemiBold else null)
-                                    Text(l.text, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-                }
                 item { PaceSection(settings, onChange) } // time estimate (PaceSettings.kt)
                 item {
                     Section("Points of interest") {

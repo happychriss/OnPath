@@ -149,10 +149,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
     // --- activity ---
-    // Every app start begins with the default activity from Settings (owner: no need to pick it each time).
-    var activity by mutableStateOf(prefs.settings.defaultActivity)
+    // Every app start begins with the last chosen activity and hiking level (owner 2026-10-22; fresh install Hike T2).
+    var activity by mutableStateOf(prefs.activity)
         private set
-    var sac by mutableStateOf(prefs.settings.defaultSac)
+    var sac by mutableStateOf(prefs.sac)
         private set
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
@@ -1196,20 +1196,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         activity = a; prefs.activity = a; recalc()
     }
 
+    /** T level from the activity picker (Hike): remembered, the route is planned again at once (owner 2026-10-22). */
     fun selectSac(level: Int) {
-        sac = level.coerceIn(1, 5); prefs.sac = sac; recalc()
+        val l = level.coerceIn(1, 5)
+        if (l == sac) return
+        sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
     }
 
     // ---------------- planning ----------------
 
     fun updateSettings(s: AppSettings) {
-        val sacChanged = s.defaultSac != sac
         val paceChanged = s.hikePace != settings.hikePace || s.bikePace != settings.bikePace
         settings = s; prefs.settings = s
         cells.wifiOnly = s.mapsWifiOnly
         if (paceChanged) retime()
-        // The SAC level is set in Settings only (owner) – it applies right away to the current hiking route.
-        if (sacChanged) { sac = s.defaultSac.coerceIn(1, 5); prefs.sac = sac; if (activity == Activity.HIKE) recalc() }
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SETTINGS)
     }
 

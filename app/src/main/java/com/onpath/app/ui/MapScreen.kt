@@ -180,6 +180,7 @@ fun MapScreen(
         vm.activity,
         onSelect = { vm.selectActivity(it) },
         onDismiss = { showActivity = false },
+        sac = vm.sac, onSac = vm::selectSac,
     )
     if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
@@ -288,7 +289,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
+            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             cellCard = cellCard,
             points = if (vm.planSize == PlanSize.FULL) vm.planPointRows() else emptyList(),
@@ -377,7 +378,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
     // Marked route networks always show (owner): the band of the current activity.
-    LaunchedEffect(c, vm.activity) { c.setOverlay(vm.activity, true) }
+    LaunchedEffect(c, vm.activity, vm.sac) { c.setOverlay(vm.activity, true, vm.sac) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it); vm.checkFreeLook(it.latitude, it.longitude) } }
     // App start / back to the app in Plan: centre on the position (first fix, else last known), unless the user
     // moved the map (StartCamera; restarted by vm.onAppStart).

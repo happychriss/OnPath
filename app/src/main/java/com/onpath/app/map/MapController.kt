@@ -537,7 +537,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         return bmp
     }
 
-    fun setOverlay(activity: Activity, enabled: Boolean) {
+    /**
+     * Hiking level (SAC T1–T5) the map was last set for: ways above it are marked for Hike (approach 1, other branch).
+     * One value, set with the activity in [setOverlay].
+     */
+    var sacLimit: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC
+        private set
+
+    fun setOverlay(activity: Activity, enabled: Boolean, sacLimit: Int = this.sacLimit) {
+        this.sacLimit = sacLimit.coerceIn(1, 5)
         // MTB / MTB e-bike show the cycle route band: mtb.brf ignores route=mtb and rewards cycle routes
         // (map vs router audit 2026-10-21, docs/map-style-notes.md)
         val want = if (activity == Activity.HIKE) "routes-hike" else "routes-bike"
