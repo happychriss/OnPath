@@ -207,4 +207,15 @@ class RoutingDataAutoTest {
         val idx = com.onpath.app.routing.Rd5Parts.readIndex(server.file)!!
         assertEquals(listOf(idx.size(6) + idx.size(1)), sizes)
     }
+
+    /** Field bug 2026-10-22: routing parts loading for an older route's corridor are dropped; a point's part stays. */
+    @Test fun corridorPartsFollowThePlan() {
+        val l = loader(Net(online = false))
+        val other = "E10_N45.rd5:E10_N46"
+        l.ensure(listOf(meran, other), corridor = true)
+        l.ensure(listOf(meran)) // also the user's point
+        assertEquals(listOf(other), l.keepCorridor(emptyList()))
+        assertEquals(listOf(meran), l.status?.names)
+        assertTrue(l.keepCorridor(emptyList()).isEmpty())
+    }
 }

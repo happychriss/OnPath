@@ -133,10 +133,12 @@ fun MapScreen(
         }
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
+        // hints below the search bar go below the background-download strip while it shows
+        val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN) 124.dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
-            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp),
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
             androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 shadowElevation = 3.dp, color = androidx.compose.material3.MaterialTheme.colorScheme.surface) {
@@ -162,15 +164,15 @@ fun MapScreen(
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
         if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
-            OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
+            OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
         // A newer version of an area the user has: small hint while the server builds it (the veil is under the panels).
         if (mapUpdate is MapUpdateUi.Preparing && !overviewOnly && !vm.searchOpen && !sharedLookup) {
-            MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp))
+            MapPreparingHint(mapUpdate, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
-            topPx = topInsetPx + with(density) { 80.dp.roundToPx() }, // below the search pill + ☰ row
+            topPx = topInsetPx + with(density) { (hintTop + 4.dp).roundToPx() }, // below the search pill + ☰ row (+ strip)
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
     }
 
@@ -218,6 +220,14 @@ private fun PlanMode(
             ),
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding(),
         )
+        // background downloads (corridor, refresh, routing data): thin blue strip below the search bar, after 10 s,
+        // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
+        val bg = rememberBackgroundDownload(vm)
+        val stripOn = bg != null && !vm.searchOpen
+        LaunchedEffect(stripOn) { vm.backgroundStripShown = stripOn }
+        if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true },
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
+        BackgroundDownloadDetails(vm, bg)
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             val upd = vm.update
             val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
