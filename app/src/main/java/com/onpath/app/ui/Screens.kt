@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -244,6 +245,8 @@ fun RoutesScreen(
     onExportAll: () -> Unit = {},
     /** ⋮ → Recycle bin. */
     onRecycleBin: () -> Unit = {},
+    /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
+    onEditRides: (Tour) -> Unit = {},
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -269,7 +272,8 @@ fun RoutesScreen(
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
                         TourCard(t, onOpen = if (openable) ({ onOpen(t) }) else null,
                             onRename = { rename = t }, onExport = { onExport(t) },
-                            onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }))
+                            onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
+                            onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
                     }
                 }
             }
@@ -315,6 +319,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 @Composable
 private fun TourCard(
     t: Tour, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    onEditRides: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -336,7 +341,7 @@ private fun TourCard(
                 if (onDelete == null) Text("Recording now", fontSize = 12.sp, color = OnPathColors.Rec)
                 else if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TourItemMenu(t, onRename, onExport, onDelete)
+            TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
         }
     }
 }
@@ -358,7 +363,7 @@ private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExp
 
 /** ⋮ per item in My routes: Rename, Export GPX, Delete (asks first; not for the tour being recorded). */
 @Composable
-private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?) {
+private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
@@ -370,6 +375,9 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
                 onClick = run(onRename), modifier = Modifier.heightIn(min = 48.dp))
             DropdownMenuItem(text = { Text("Export GPX") }, leadingIcon = { Icon(Icons.Filled.Share, null) },
                 onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
+            if (onEditRides != null) DropdownMenuItem(text = { Text("Edit rides") },
+                leadingIcon = { Icon(Icons.Filled.DirectionsBus, null) },
+                onClick = run(onEditRides), modifier = Modifier.heightIn(min = 48.dp))
             if (onDelete != null) DropdownMenuItem(text = { Text("Delete", color = OnPathColors.Bad) },
                 leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
                 onClick = run(onDelete), modifier = Modifier.heightIn(min = 48.dp))

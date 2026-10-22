@@ -167,7 +167,12 @@ class MainActivity : ComponentActivity() {
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
                                 onRecycleBin = { vm.openRecycleBin() },
+                                onEditRides = { vm.openEditRides(it) },
                             )
+                        }
+                        vm.editRides?.let { (t, s) ->
+                            com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.applyEditRides(t, it) }, onDelete = null,
+                                onDismiss = { vm.editRides = null }, title = "Rides in “${t.name}”", initial = t.rides?.choice)
                         }
                         vm.recycleBin?.let { bin ->
                             BackHandler { vm.recycleBin = null }
