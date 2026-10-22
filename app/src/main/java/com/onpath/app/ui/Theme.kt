@@ -21,6 +21,8 @@ object OnPathColors {
     val Rec = Color(0xFFEF6C00)
     val Good = Color(0xFF2E7D32)
     val Weak = Color(0xFFF9A825)
+    /** Amber text / icons on white (route warnings): darker than [Weak] so it reads in sunlight. */
+    val Amber = Color(0xFF9A5B00)
     val Bad = Color(0xFFC62828)
     val Grey = Color(0xFF6B6F6A)
 }
