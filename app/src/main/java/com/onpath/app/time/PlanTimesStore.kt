@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Normal-pace moving time per learning group (down / flat / up) of each saved planned route (`plan-times.json`, atomic
+ * Average-pace moving time per learning group (down / flat / up) of each saved planned route (`plan-times.json`, atomic
  * tmp + rename), written when a route is saved. Saved routes keep no way attributes ([com.onpath.app.routing.WayAttrs]),
  * so without this the route list would time them from the slope alone and disagree with the plan sheet (P4).
  * Entries are tied to the route's stored distance; a mismatch or a broken file = nothing known (time from the points).

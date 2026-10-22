@@ -111,6 +111,8 @@ fun SettingsScreen(
     /** Settings → "Backup" (tours and routes as GPX in Documents/OnPath); null = section hidden. */
     backup: BackupUi? = null,
     backupCb: BackupCallbacks = BackupCallbacks(),
+    /** Current activity: "Your pace" explains the cycling levels for this bike. */
+    activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
 ) {
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
@@ -124,7 +126,7 @@ fun SettingsScreen(
             }
             LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { PaceSection(settings, onChange) } // time estimate (PaceSettings.kt)
+                item { PaceSection(settings, onChange, activity) } // time estimate (PaceSettings.kt)
                 item {
                     Section("Points of interest") {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

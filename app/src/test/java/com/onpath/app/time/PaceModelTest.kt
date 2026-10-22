@@ -67,10 +67,10 @@ class PaceModelTest {
     }
 
     @Test fun paceAndFactors() {
-        assertEquals(1.25, Pace.RELAXED.factor, 0.0)
-        assertEquals(0.8, Pace.FIT.factor, 0.0)
-        assertEquals(Pace.NORMAL, Pace.of(null))
-        assertEquals(Pace.NORMAL, Pace.of("nonsense"))
+        assertEquals(1 / 0.75, Pace.RELAXED.factor, 1e-12)
+        assertEquals(1 / 1.15, Pace.FIT.factor, 1e-12)
+        assertEquals(Pace.AVERAGE, Pace.of(null))
+        assertEquals(Pace.AVERAGE, Pace.of("nonsense"))
         assertEquals(Pace.FIT, Pace.of("FIT"))
         val f = Factors(0.9, 1.0, 1.2) * 1.25
         assertEquals(1.5, f.up, 1e-9)

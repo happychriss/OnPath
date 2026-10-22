@@ -17,7 +17,7 @@ import com.onpath.app.routing.WayAttrs
  *   and faint trails ([hikeWayFactor]); bikes ride on the real surface, slower on bad smoothness / MTB scale and push
  *   where bikes are walked ([ride]). Unknown way (null) = exactly the times without attributes.
  *
- * All values are for the "Normal" pace; [Pace] and learned [Factors] multiply the result.
+ * All values are for the "Average" pace; [Pace] and learned [Factors] multiply the result.
  */
 object PaceModel {
     /** Length of one model segment (m); gradients are taken over it after light smoothing (see [RouteTimes]). */
@@ -201,7 +201,7 @@ object PaceModel {
 
     // ---- one segment -----------------------------------------------------------------------------------------
 
-    /** Seconds for [lenM] horizontal metres with height change [dz] on way [way] (Normal pace, no learned factors). */
+    /** Seconds for [lenM] horizontal metres with height change [dz] on way [way] (Average pace, no learned factors). */
     fun seconds(lenM: Double, dz: Double, activity: Activity, way: WayAttrs? = null): Double {
         if (lenM <= 0 || lenM.isNaN()) return 0.0
         val grade = if (dz.isNaN()) 0.0 else dz / lenM
@@ -212,14 +212,79 @@ object PaceModel {
     }
 }
 
-/** Pace choice in Settings (F-ROUTE-03): a factor on time only, the route stays the same. */
-enum class Pace(val label: String, val factor: Double) {
-    RELAXED("Relaxed", 1.25),
-    NORMAL("Normal", 1.0),
-    FIT("Fit", 0.8);
+/**
+ * Alpine standard hiking time rule DIN 33466 (DAV / AVS / SAC signposts): 4 km/h on the flat, 300 m up and 500 m down
+ * per hour; time = the larger of horizontal and vertical time + half of the smaller. It defines the "Average" pace level
+ * (shown in Settings) and is the quick estimate for straight lines and imported tracks ([com.onpath.app.data.Geo.estimateSeconds]).
+ * The per-segment model ([PaceModel.hikeMinPerKm], table B) is anchored on the same rule (docs/plan-time-estimate.md §3):
+ * 4 km/h on the flat, ~300–340 m/h on steady climbs, but not as slow on descents as the whole-route formula.
+ */
+object Din33466 {
+    const val FLAT_KMH = 4.0
+    const val UP_M_PER_H = 300.0
+    const val DOWN_M_PER_H = 500.0
+
+    /** Walking time (s) for [distanceM] with [ascentM] up and [descentM] down. */
+    fun seconds(distanceM: Double, ascentM: Double, descentM: Double): Double {
+        val h = distanceM / (FLAT_KMH * 1000)
+        val v = ascentM / UP_M_PER_H + descentM / DOWN_M_PER_H
+        return (maxOf(h, v) + minOf(h, v) / 2) * 3600
+    }
+}
+
+/**
+ * Pace level in Settings (F-ROUTE-03, owner 2026-10-22: five levels): a factor on time only, the route stays the same.
+ * [speed] is relative to "Average" (= [Din33466] for hiking, the power model for bikes), steps about 15 % apart;
+ * [factor] = 1 / [speed] multiplies the model's times. Every plan and every tour ([TripPace]) starts from it.
+ */
+enum class Pace(val label: String, val speed: Double) {
+    RELAXED("Relaxed", 0.75),
+    EASY("Easy", 0.875),
+    AVERAGE("Average", 1.0),
+    FIT("Fit", 1.15),
+    VERY_FIT("Very fit", 1.3);
+
+    /** Factor on time (1 = the model as it is). */
+    val factor: Double get() = 1.0 / speed
+
+    /**
+     * What the level means for [activity], in plain words for Settings: hiking "about 4 km/h · 300 m up per hour"
+     * ([Din33466] × [speed]); bikes the same from the power model: speed on the flat and height gained per hour on a
+     * steady [BIKE_CLIMB] climb, both on the activity's usual surface, × [speed].
+     */
+    fun meaning(activity: com.onpath.app.routing.Activity): String {
+        val (kmh, upMh) = if (activity == com.onpath.app.routing.Activity.HIKE) {
+            Din33466.FLAT_KMH * speed to Din33466.UP_M_PER_H * speed
+        } else {
+            PaceModel.bikeSpeedMs(0.0, activity) * 3.6 * speed to
+                PaceModel.bikeSpeedMs(BIKE_CLIMB, activity) * BIKE_CLIMB * 3600 * speed
+        }
+        val speedText = if (kmh < 10) {
+            val tenths = Math.round(kmh * 10)
+            if (tenths % 10 == 0L) "${tenths / 10}" else "${tenths / 10}.${tenths % 10}"
+        } else "${Math.round(kmh)}"
+        return "about $speedText km/h · ${Math.round(upMh / 10) * 10} m up per hour"
+    }
 
     companion object {
-        fun of(name: String?): Pace = entries.firstOrNull { it.name == name } ?: NORMAL
+        val DEFAULT = AVERAGE
+
+        /** Gradient of the "steady climb" in a bike level's [meaning] (6 %: a typical pass road). */
+        const val BIKE_CLIMB = 0.06
+
+        /** A stored level name ([name]); unknown or missing = [DEFAULT]. "NORMAL" (old middle level) = Average. */
+        fun of(name: String?): Pace = entries.firstOrNull { it.name == name } ?: if (name == "NORMAL") AVERAGE else DEFAULT
+
+        /**
+         * The old three levels (stored until 2026-10-22 under "hikePace" / "bikePace"): Relaxed ×1.25 time = 0.8 speed
+         * → Relaxed (0.75, the nearest), Normal → Average, Fit ×0.8 time = 1.25 speed → Very fit (1.3, the nearest).
+         * So existing users keep (almost) the same times.
+         */
+        fun fromOld(name: String?): Pace = when (name) {
+            "RELAXED" -> RELAXED
+            "FIT" -> VERY_FIT
+            else -> AVERAGE
+        }
     }
 }
 
