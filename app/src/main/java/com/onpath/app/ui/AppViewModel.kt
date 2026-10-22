@@ -667,6 +667,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var highlight by mutableStateOf<GeoPoint?>(null)
 
+    // declared before init {}: init restores the saved plan and routes it at once (0.9.1 crashed at start – they were
+    // declared below and still null then)
+    /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
+    private var routeCancel: com.onpath.app.routing.RouteCancel? = null
+    private val ROUTING_SLOW_MS = 2_500L
+    /** The route has been calculating for a while: the plan sheet offers Cancel. */
+    var routingSlow by mutableStateOf(false)
+        private set
+    /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
+    var longRouteAsk by mutableStateOf<Double?>(null)
+        private set
+    /** The very long plan the user said yes to (not asked again for the same points). */
+    private var longRouteOk: List<GeoPoint>? = null
+
+
     // --- saved state of the plan (menus / Manage routes) ---
     /** Name, tour id and points the plan was last saved or loaded as; the plan is unsaved when its points differ. */
     var savedName by mutableStateOf(prefs.planSavedName)
@@ -869,8 +884,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
-
-    private val ROUTING_SLOW_MS = 2_500L
 
     fun initialCamera(): Triple<Double, Double, Double> = prefs.camera ?: Triple(46.67, 11.16, 12.0)
     fun saveCamera(lat: Double, lon: Double, zoom: Double) { prefs.camera = Triple(lat, lon, zoom) }
@@ -1599,17 +1612,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
-
-    /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
-    private var routeCancel: com.onpath.app.routing.RouteCancel? = null
-    /** The route has been calculating for a while: the plan sheet offers Cancel. */
-    var routingSlow by mutableStateOf(false)
-        private set
-    /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
-    var longRouteAsk by mutableStateOf<Double?>(null)
-        private set
-    /** The very long plan the user said yes to (not asked again for the same points). */
-    private var longRouteOk: List<GeoPoint>? = null
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
