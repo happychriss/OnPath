@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Release 0.9.0 once the CI emulator run is green (owner tests the phone today; assumed OK) – since 2026-10-22
 
 
 ## Next
