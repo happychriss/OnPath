@@ -340,11 +340,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val netStatus by lazy { com.onpath.app.cells.AndroidNetworkStatus(getApplication()) }
     /** Loads missing routing data tiles from brouter.de (mobile data too unless "Maps only on Wi-Fi"). */
     private val routingData: com.onpath.app.data.RoutingDataLoader by lazy {
-        com.onpath.app.data.RoutingDataLoader(dataFiles.segmentsDir, netStatus, { settings.mapsWifiOnly },
-            launch = { block -> viewModelScope.launch(Dispatchers.IO) { block() } },
-            onInstalled = { names -> viewModelScope.launch(Dispatchers.Main) { routingDataArrived(names) } },
-            onChange = { viewModelScope.launch(Dispatchers.Main) { routingDataChanged() } },
-        ).also { loader -> netStatus.listen { loader.retry() } }
+        com.onpath.app.data.AppRouting.listen(routingListener)
+        com.onpath.app.data.AppRouting.get(getApplication())
+    }
+    /** The shared loader's events (also parts the recording service loaded on a tour) → the UI. */
+    private val routingListener = object : com.onpath.app.data.AppRouting.Listener {
+        override fun installed(names: List<String>) { viewModelScope.launch(Dispatchers.Main) { routingDataArrived(names) } }
+        override fun changed() { viewModelScope.launch(Dispatchers.Main) { routingDataChanged() } }
     }
     /** The loading modal waits for routing data too (point set, first start, search). */
     private var routingModal by mutableStateOf(false)
@@ -527,16 +529,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc)) }
             routingFor(listOf(p), wait = true)
         }
-        if (onTour) {
-            val last = t5LastAt
-            if (last == null || Geo.distance(last, p) >= T5_STEP_M) {
-                t5LastAt = p
-                safeCells("tour") {
-                    val asked = cellTriggers.onTour(p)
-                    if (asked.isNotEmpty()) Problems.info("cells", "On tour near the edge of the map: asked for ${asked.joinToString()}")
-                }
-            }
-        }
+        // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off (2026-10-22)
     }
 
     /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
@@ -2722,6 +2715,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        com.onpath.app.data.AppRouting.unlisten(routingListener)
         routingDispatcher.close()
         super.onCleared()
     }

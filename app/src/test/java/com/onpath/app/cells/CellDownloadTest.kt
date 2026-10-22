@@ -100,7 +100,7 @@ class CellDownloadTest {
     // ------------------------------------------------------------------------------------------- MapCells
 
     private fun cells(net: NetworkStatus, data: File = tmp.newFolder("data")) =
-        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }).also { it.start() }
+        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L).also { it.start() }
 
     @Test fun requestPollDownloadInstall() {
         server.publish(a, "2026-10-19"); server.buildPolls = 2
@@ -148,20 +148,40 @@ class CellDownloadTest {
     }
 
     /** A tour runs: the newer version of an installed area waits; back in Plan it loads (no switch mid-tour). */
-    @Test fun updatesHeldDuringTour() {
+    /**
+     * A tour runs (owner 2026-10-22): areas still download – a new one at the edge (T5) and the newer version of an
+     * installed one – but the map does not switch; both are joined after the tour.
+     */
+    @Test fun downloadsDuringATourAreJoinedAfterIt() {
         server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
         val mc = cells(Net())
         mc.request(listOf(a), CellReason.POINT)
         waitFor("installed") { mc.state(a) == CellState.Ready("v1") }
+        val gen = mc.generation.value
         mc.holdUpdates = true
         server.publish(a, "v2")
         mc.request(listOf(a), CellReason.REFRESH, ownPoint = false)
-        mc.request(listOf(b), CellReason.NEAR) // a NEW area still loads on tour (T5)
-        waitFor("new area on tour") { mc.state(b) == CellState.Ready("v1") }
-        Thread.sleep(300)
-        assertEquals("v1", mc.installed.value.first { it.id == a }.version)
+        mc.request(listOf(b), CellReason.NEAR) // T5: a new area at the edge
+        waitFor("new area downloaded during the tour") { mc.state(b) == CellState.Downloaded }
+        waitFor("update downloaded during the tour") { mc.state(a) == CellState.Downloaded }
+        assertEquals("the map does not switch during the tour", gen, mc.generation.value)
+        assertEquals(listOf(a), mc.installed.value.map { it.id })
         mc.holdUpdates = false
-        waitFor("update after the tour") { mc.state(a) == CellState.Ready("v2") }
+        waitFor("joined after the tour") { mc.state(a) == CellState.Ready("v2") && mc.state(b) == CellState.Ready("v1") }
+        assertTrue(mc.generation.value > gen)
+        assertEquals(setOf(a, b), mc.installed.value.map { it.id }.toSet())
+    }
+
+    /** The app is not on screen: only a tour (recording service) sends and polls requests. */
+    @Test fun inTheBackgroundOnlyATourAsks() {
+        server.publish(a, "v1"); server.buildPolls = 1
+        val mc = cells(Net())
+        mc.setForeground(false)
+        mc.request(listOf(a), CellReason.NEAR, ownPoint = true)
+        Thread.sleep(600)
+        assertFalse("no request without a tour", server.log.any { it.startsWith("POST /v1/cells/request") })
+        mc.tourInBackground = true
+        waitFor("built and loaded in the background") { mc.state(a) == CellState.Ready("v1") }
     }
 
     @Test fun wifiOnlyWaitsUntilWifi() {
