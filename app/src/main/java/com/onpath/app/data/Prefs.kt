@@ -9,12 +9,18 @@ import org.json.JSONArray
 import java.io.File
 
 /** Small persisted settings and the auto-saved current plan (R-08). */
-class Prefs(context: Context) {
-    private val sp = context.applicationContext.getSharedPreferences("onpath", Context.MODE_PRIVATE)
-    private val followFile = File(context.applicationContext.filesDir, "follow.json")
+class Prefs internal constructor(private val sp: android.content.SharedPreferences, filesDir: File) {
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences("onpath", Context.MODE_PRIVATE), context.applicationContext.filesDir)
 
+    private val followFile = File(filesDir, "follow.json")
+
+    /**
+     * Last chosen activity (owner 2026-10-22: the app always starts with it; fresh install → Hike). Before that, Settings
+     * had a "Default activity" (key defaultActivity): used once when no activity was chosen yet ([LastActivity]).
+     */
     var activity: Activity
-        get() = activityPref("activity")
+        get() = LastActivity.activity(sp.contains("activity"), activityPref("activity"), sp.contains("defaultActivity"), activityPref("defaultActivity"))
         set(v) = sp.edit().putString("activity", v.name).apply()
 
     /** Stored activity [key]; not set yet → Hike (expected), unknown value → Hike with a warning. */
@@ -27,9 +33,14 @@ class Prefs(context: Context) {
         }
     }
 
+    /** Last chosen hiking difficulty (SAC T1–T5; fresh install T2, older installs keep their stored level, [LastActivity]). */
     var sac: Int
-        get() = sp.getInt("sac", 3)
-        set(v) = sp.edit().putInt("sac", v).apply()
+        get() = LastActivity.sac(intPref("sac"), intPref("defaultSac"))
+        set(v) = sp.edit().putInt("sac", v.coerceIn(1, 5)).apply()
+
+    private fun intPref(key: String): Int? = try { if (sp.contains(key)) sp.getInt(key, 0) else null } catch (e: Exception) {
+        Problems.warn("settings", "Setting $key unreadable, using the default", e); null
+    }
 
     /** Last camera: lat, lon, zoom. */
     var camera: Triple<Double, Double, Double>?
@@ -56,8 +67,6 @@ class Prefs(context: Context) {
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
-            defaultActivity = activityPref("defaultActivity"),
-            defaultSac = sp.getInt("defaultSac", 3).coerceIn(1, 5),
             hikePace = com.onpath.app.time.Pace.of(sp.getString("hikePace", null)),
             bikePace = com.onpath.app.time.Pace.of(sp.getString("bikePace", null)),
             mapsWifiOnly = sp.getBoolean("mapsWifiOnly", false),
@@ -75,8 +84,6 @@ class Prefs(context: Context) {
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
-            .putString("defaultActivity", v.defaultActivity.name)
-            .putInt("defaultSac", v.defaultSac)
             .putString("hikePace", v.hikePace.name)
             .putString("bikePace", v.bikePace.name)
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)

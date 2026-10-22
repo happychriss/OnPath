@@ -50,6 +50,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -63,6 +64,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -176,14 +179,24 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 
 // ------------------------------------------------------------------ activity picker
 
+/**
+ * Activity picker (plan sheet chip). A bike activity applies and closes; Hike applies and stays open with the
+ * T1–T5 row (SAC level, owner 2026-10-22: moved here from Settings) and the selected level's description; a level
+ * applies at once (the route is planned again) and closes. Both are remembered across sessions.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityDialog(
     current: Activity,
     onSelect: (Activity) -> Unit, onDismiss: () -> Unit,
+    sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
+    onSac: (Int) -> Unit = {},
 ) {
+    val hike = current == Activity.HIKE
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {}, // picking an activity applies it and closes – no extra "Done"
+        // picking a bike activity applies it and closes; with Hike the dialog stays for the T level
+        confirmButton = { if (hike) TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Done") } },
         title = { Text("Activity") },
         text = {
             Column {
@@ -192,7 +205,7 @@ fun ActivityDialog(
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
+                            .clickable { onSelect(a); if (a != Activity.HIKE) onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -200,14 +213,33 @@ fun ActivityDialog(
                         Text(a.label, fontSize = 16.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
+                if (hike) {
+                    val level = SacScale.of(sac)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Hiking difficulty (SAC)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+                    androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        SacScale.levels.forEachIndexed { i, l ->
+                            SegmentedButton(
+                                selected = l.level == level.level,
+                                onClick = { onSac(l.level); onDismiss() },
+                                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
+                                icon = {}, // no check mark: five narrow segments
+                                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "T${l.level} · ${l.name}" },
+                            ) { Text("T${l.level}", fontSize = 14.sp) }
+                        }
+                    }
+                    Text("T${level.level} · ${level.name} – ${level.text}", fontSize = 12.sp, lineHeight = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                }
             }
         },
     )
 }
 
 /**
- * SAC hiking scale (Swiss Alpine Club), short official descriptions. Settings only (owner): the routing
- * avoids paths above the chosen level.
+ * SAC hiking scale (Swiss Alpine Club), short official descriptions. Chosen in the activity picker with Hike
+ * (owner 2026-10-22): the routing avoids paths above the chosen level.
  */
 internal object SacScale {
     data class Level(val level: Int, val name: String, val text: String)
@@ -218,6 +250,7 @@ internal object SacScale {
         Level(4, "Alpine hiking", "Path not always present; hands needed in places; exposed terrain, steep grass, scree, easy snow fields. Experience in exposed terrain."),
         Level(5, "Demanding alpine hiking", "Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed."),
     )
+    fun of(level: Int): Level = levels[level.coerceIn(1, 5) - 1]
 }
 
 // ------------------------------------------------------------------ manage routes
