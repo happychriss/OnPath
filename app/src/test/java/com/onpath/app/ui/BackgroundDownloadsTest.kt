@@ -1,0 +1,77 @@
+package com.onpath.app.ui
+
+import com.onpath.app.cells.CellId
+import com.onpath.app.cells.CellState
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** The background-download strip (owner 2026-10-22): what counts, progress, and when it shows / hides. */
+class BackgroundDownloadsTest {
+    private val a = CellId(543, 361)
+    private val b = CellId(544, 361)
+    private val c = CellId(545, 361)
+    private val mb = 1_048_576L
+
+    @Test fun onlyLoadingCellsOutsideTheModalCount() {
+        val states = mapOf(
+            a to CellState.Downloading(2 * mb, 10 * mb),
+            b to CellState.Building("base", 0.5, 60),
+            c to CellState.WaitingForWifi(5 * mb), // waits: nothing runs
+        )
+        val items = BackgroundProgress.cellItems(states, waitedFor = setOf(b)) { if (it == b) 8 * mb else null }
+        assertEquals(listOf("cell:${a.id}"), items.map { it.key })
+        assertEquals(BackgroundProgress.Item("cell:${a.id}", 2 * mb, 10 * mb), items.single())
+        assertTrue(BackgroundProgress.cellItems(mapOf(a to CellState.Ready("v1"), b to CellState.Failed("x")), emptySet()) { null }.isEmpty())
+    }
+
+    @Test fun progressCountsFinishedItemsAndNeverGoesBack() {
+        val p = BackgroundProgress()
+        val one = p.update(listOf(BackgroundProgress.Item("a", 5 * mb, 10 * mb), BackgroundProgress.Item("b", 0, 10 * mb)), 2, 0)!!
+        assertEquals(25, one.percent)
+        assertEquals(20 * mb, one.bytes)
+        // a finished (left the list): counted as done
+        val two = p.update(listOf(BackgroundProgress.Item("b", 5 * mb, 10 * mb)), 1, 0)!!
+        assertEquals(75, two.percent)
+        assertEquals("1 area · 10 MB · 75 %", two.line)
+        // a new item joins: the percentage does not drop
+        val three = p.update(listOf(BackgroundProgress.Item("b", 5 * mb, 10 * mb), BackgroundProgress.Item("c", 0, 100 * mb)), 2, 0)!!
+        assertEquals(75, three.percent)
+        // all done: the session ends, a new one starts at 0
+        assertNull(p.update(emptyList(), 0, 0))
+        assertEquals(0, p.update(listOf(BackgroundProgress.Item("d", 0, mb)), 1, 0)!!.percent)
+    }
+
+    @Test fun routingDataAloneIsSaidSo() {
+        assertEquals("routing data · 9 MB · 10 %", BackgroundDownloadUi(0, 1, 9 * mb, 10).line)
+    }
+
+    /** Owner: appears only after a background download ran > 10 s (2 s is too hectic), stays until all is done. */
+    @Test fun stripShowsAfterTenSecondsAndStaysUntilDone() {
+        val gate = backgroundGate()
+        val ui = BackgroundDownloadUi(2, 0, 20 * mb, 5)
+        assertNull(gate.update(ui, 0).shown)
+        assertNull(gate.update(ui.copy(percent = 20), 9_000).shown) // progress updates do not restart the wait
+        assertNotNull(gate.update(ui.copy(percent = 30), 10_000).shown)
+        assertEquals(60, gate.update(ui.copy(percent = 60), 60_000).shown?.percent) // progress shows at once, no timeout
+        assertNull(gate.update(null, 70_000).shown) // all done: goes
+    }
+
+    @Test fun shortBackgroundDownloadsNeverShow() {
+        val gate = backgroundGate()
+        val ui = BackgroundDownloadUi(1, 0, mb, 0)
+        assertNull(gate.update(ui, 0).shown)
+        assertNull(gate.update(null, 8_000).shown) // done after 8 s: never shown
+        assertNull(gate.update(ui, 9_000).shown) // a new one waits its own 10 s
+        assertNull(gate.update(ui, 18_000).shown)
+        assertNotNull(gate.update(ui, 19_000).shown)
+    }
+
+    @Test fun waitingLineInSettings() {
+        assertEquals("Waiting to download: 16 areas · about 380 MB", WaitingDownloads(16, 2, 380 * mb).line)
+        assertEquals("Waiting to download: routing data · about 9 MB", WaitingDownloads(0, 1, 9 * mb).line)
+        assertEquals(false, WaitingDownloads(0, 0, 0).any)
+    }
+}

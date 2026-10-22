@@ -160,6 +160,9 @@ fun NavigateOverlay(
     /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
     onProfileScrub: (GeoPoint) -> Unit = {},
     onProfileRelease: () -> Unit = {},
+    /** A background download runs (after 10 s): small "⬇ 40 %" chip under the status; tap → details. */
+    download: BackgroundDownloadUi? = null,
+    onDownload: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -175,6 +178,7 @@ fun NavigateOverlay(
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
+            download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
@@ -528,10 +532,13 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
+    val bg = rememberBackgroundDownload(vm)
     NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
         onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
-        onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd)
+        onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
+        download = bg, onDownload = { vm.downloadDetailsOpen = true })
+    BackgroundDownloadDetails(vm, bg)
 }
 
 /** Moving time from the position ([remainingM] before the end) to the end of the line, rounded for display. */

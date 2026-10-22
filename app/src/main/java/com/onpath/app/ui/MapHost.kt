@@ -111,12 +111,13 @@ fun MapHost(
             map.addOnCameraIdleListener {
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
+                vm.mapGesture(false)
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
-                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) vm.userMovedMap = true
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) { vm.userMovedMap = true; vm.mapGesture(true) }
             }
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can

@@ -17,6 +17,8 @@ interface CellSource {
     /** Installed cells built for an older style (content schema) – default none (test fakes). */
     fun outdated(): List<CellId> = emptyList()
     fun markUsed(cells: Collection<CellId>)
+    /** Corridor requests belong to the current plan: drop those outside [keep]; returns the dropped ones. */
+    fun keepCorridor(keep: Collection<CellId>): List<CellId> = emptyList()
     /** False when the build has no map server key. */
     val downloadsAvailable: Boolean
 }
@@ -100,8 +102,9 @@ class CellTriggers(
 
     /** T4: a route was computed – every missing cell of the corridor (~10 km, F-OFF-02). Marks its cells used (T6). */
     fun routeComputed(line: List<GeoPoint>): CellJob? {
-        if (line.size < 2) return null
+        if (line.size < 2) { planRoute(null); return null }
         val corridor = cells.cellsAlong(line, CORRIDOR_M)
+        cells.keepCorridor(corridor) // the corridor of an older route goes (field bug 2026-10-22)
         cells.markUsed(corridor)
         val want = needed(corridor)
         if (want.isEmpty()) return null
@@ -109,6 +112,14 @@ class CellTriggers(
         val added = cells.request(want, CellReason.CORRIDOR, ownPoint = false)
         return if (added.isEmpty()) null else CellJob(added, null, CellWhy.PLANNED)
     }
+
+    /**
+     * The plan's route settled without a corridor to load ([line] null: cleared, long-route question, Cancel, not
+     * routed, routing failed) or with [line]: corridor requests outside it are dropped – nothing new is requested.
+     * Returns the dropped cells.
+     */
+    fun planRoute(line: List<GeoPoint>?): List<CellId> =
+        cells.keepCorridor(if (line == null || line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M))
 
     /**
      * T5: on tour, the position [p] is within [AHEAD_M] of the edge of the detailed map → the next cells (NEAR, own-point
@@ -178,6 +189,12 @@ class CellTriggers(
             val old = before.toHashSet()
             return after.filter { it !in old }.distinct()
         }
+
+        /**
+         * A point / near request for [c] still belongs to one of [points] (planned points, the search mark, the
+         * position): [c] is among the cells T1 / T3 would ask for there.
+         */
+        fun nearAny(c: CellId, points: List<GeoPoint>): Boolean = points.any { c in CellId.near(it, NEAR_M) }
 
         const val NEAR_M = 5_000.0
         const val CORRIDOR_M = 10_000.0

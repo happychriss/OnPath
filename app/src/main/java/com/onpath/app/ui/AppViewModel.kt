@@ -363,7 +363,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
     private fun routingForLine(line: List<GeoPoint>) = safeRouting("route") {
-        routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line))
+        val keys = com.onpath.app.data.RoutingTiles.forLine(line)
+        routingData.keepCorridor(keys) // parts of an older route's corridor go (field bug 2026-10-22)
+        routingData.ensure(keys, corridor = true)
+    }
+
+    /**
+     * The plan's route settled without a corridor ([line] null: cleared, long-route question, Cancel, not routed, routing
+     * failed): corridor map regions and routing parts of older routes are dropped, nothing new loads (field bug
+     * 2026-10-22). A computed route does this through T4 ([routingForLine], CellTriggers.routeComputed).
+     */
+    private fun corridorFollowsPlan(line: List<GeoPoint>?) {
+        safeCells("corridor") { cellTriggers.planRoute(line) }
+        safeRouting("corridor") {
+            routingData.keepCorridor(if (line == null || line.size < 2) emptyList() else com.onpath.app.data.RoutingTiles.forLine(line))
+        }
     }
 
     /** Routing data under these map regions (a region load is a trigger too). */
@@ -546,6 +560,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         checkRoutingData(line)
     }
 
+    // ---------------- background downloads: visible and stoppable (owner 2026-10-22) ----------------
+
+    private val bgProgress = BackgroundProgress()
+    /** The strip / chip was tapped: what loads in the background, with "Cancel all". */
+    var downloadDetailsOpen by mutableStateOf(false)
+    /** The Plan strip is on screen (hints below the search bar move down). */
+    var backgroundStripShown by mutableStateOf(false)
+
+    /**
+     * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
+     * nothing, or the loading modal is open. Called about every second by the strip / chip.
+     */
+    fun backgroundDownloadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>): BackgroundDownloadUi? = try {
+        val modal = loadModalFor.isNotEmpty() || routingModal
+        val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), cells::knownSize)
+        val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
+        val items = cellItems + listOfNotNull(r?.let { BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes) })
+        bgProgress.update(items, cellItems.size, r?.names?.size ?: 0)
+    } catch (e: Exception) {
+        Problems.warn("cells", "Background download status unknown; strip hidden", e); null
+    }
+
+    /** Settings → Offline maps / the strip's details → "Cancel all": every waiting download goes; installed maps stay. */
+    fun cancelAllDownloads() {
+        safeCells("cancel all") { cells.cancelAll() }
+        safeRouting("cancel all") { routingData.cancel() }
+        loadModalFor = emptySet(); routingModal = false
+        cellJob = null
+        downloadDetailsOpen = false
+    }
+
+    /** The user drags the map (true) / the map came to rest (false): new map areas are not joined meanwhile. */
+    fun mapGesture(on: Boolean) { safeCells("gesture") { cells.userBusy = on } }
+
     /** Map cell triggers never break planning: a failure is logged, planning goes on. */
     private inline fun safeCells(what: String, block: () -> Unit) {
         try { block() } catch (e: Exception) { Problems.error("cells", "Map download trigger ($what) failed; planning goes on", e) }
@@ -595,7 +643,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val ids = installed.map { it.id }.toSet()
         val loading = states.count { (c, s) -> c !in ids && s !is com.onpath.app.cells.CellState.Failed && s != com.onpath.app.cells.CellState.None }
-        return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading)
+        // what still waits to download – visible and stoppable (owner 2026-10-22)
+        val w = try { cells.waiting() } catch (e: Exception) { Problems.warn("cells", "Waiting downloads unknown", e); null }
+        val r = try { routingData.status } catch (e: Exception) { Problems.warn("routing", "Routing downloads unknown", e); null }
+        val waiting = WaitingDownloads(w?.regions ?: 0, r?.names?.size ?: 0,
+            (w?.knownBytes ?: 0L) + (w?.unknownSize ?: 0) * BackgroundProgress.ESTIMATE_BYTES + (r?.let { it.totalBytes - it.doneBytes } ?: 0L))
+        return OfflineMapsUi(cells.downloadsAvailable, areas, settings.mapsWifiOnly, loading, waiting.takeIf { it.any })
     }
 
     private fun coordName(c: com.onpath.app.cells.CellId): String = c.center.let {
@@ -1649,6 +1702,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null
         followNextRoute = false; planEditPending = false
         notRouted = why
+        corridorFollowsPlan(null)
         Problems.info("routing", "Plan left without a route (${why.name.lowercase()}): ${waypoints.size} points")
     }
 
@@ -1671,7 +1725,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
         notRouted = null
-        if (pts.size < 2) { requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false; return }
+        if (pts.size < 2) {
+            requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false
+            corridorFollowsPlan(null); return
+        }
         val act = activity; val level = sac
         // owner 2026-10-22: a plan far beyond a day (a point in another country by mistake) is asked about first –
         // nothing is routed or loaded until the answer
@@ -1679,6 +1736,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             requests.invalidate(); route = null; routeError = null; routing = false
             longRouteAsk = com.onpath.app.routing.LongRoute.estimateS(pts, act)
             Problems.trace("routing", "Very long plan (${com.onpath.app.routing.LongRoute.describe(longRouteAsk!!)}) – asking first")
+            corridorFollowsPlan(null) // nothing loads for a plan that is not routed
             return
         }
         longRouteAsk = null
@@ -1723,7 +1781,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
-                .onFailure { Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: "Routing failed." }
+                .onFailure {
+                    Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: "Routing failed."
+                    corridorFollowsPlan(null)
+                }
             if (followNextRoute) {
                 followNextRoute = false
                 if (route != null) followPlanned(checkNow = true) else message = "Could not re-route – still following the previous line."
@@ -2761,6 +2822,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 / T5 on fixes
         cells.wifiOnly = settings.mapsWifiOnly
+        // asked right before each download (owner 2026-10-22): does a point request still belong to the user?
+        cells.relevance = object : com.onpath.app.cells.MapCells.Relevance {
+            override fun waiting(): Set<com.onpath.app.cells.CellId> =
+                loadModalFor + (cellJob?.takeIf { it.why == com.onpath.app.cells.CellWhy.TAPPED }?.cells ?: emptyList())
+            override fun stillNear(c: com.onpath.app.cells.CellId): Boolean {
+                if (recState.value != null || mode == AppMode.NAVIGATE) return true // on tour: the map ahead (T5)
+                val pts = waypoints.toList() + listOfNotNull(searchMark?.let { GeoPoint(it.lat, it.lon) },
+                    tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) })
+                return com.onpath.app.cells.CellTriggers.nearAny(c, pts)
+            }
+        }
         safeCells("start") {
             val inst = cells.installed.value.map { it.id }.toSet()
             val loading = cells.states.value.filter { (c, s) -> c !in inst && s != com.onpath.app.cells.CellState.None &&
@@ -2774,6 +2846,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         com.onpath.app.data.AppRouting.unlisten(routingListener)
+        cells.relevance = null // the screen's state is gone: only the age / corridor rules apply
         routingDispatcher.close()
         super.onCleared()
     }

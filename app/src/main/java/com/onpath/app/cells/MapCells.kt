@@ -104,6 +104,15 @@ class MapCells(
     /** Polling while the app is not on screen and a tour runs (tests shorten it). */
     private val backgroundPollMs: Long = BACKGROUND_POLL_MS,
     private val now: () -> Long = System::currentTimeMillis,
+    /**
+     * Generation churn (field bug 2026-10-22: 40 store generations for one long route): cells finished within this
+     * window are joined into the map in ONE generation – while other cells are still being built or downloaded, the
+     * worker waits up to this long after the last finished one (at most [maxBatchMs] after the first).
+     */
+    private val batchMs: Long = BATCH_MS,
+    private val maxBatchMs: Long = MAX_BATCH_MS,
+    /** A point request younger than this is never dropped (the trigger just asked; the card may not show it yet). */
+    private val freshMs: Long = FRESH_MS,
 ) : CellSource {
     // ------------------------------------------------------------------------------------------- public state
 
@@ -139,6 +148,25 @@ class MapCells(
      */
     @Volatile var tourInBackground: Boolean = false
         set(v) { field = v; if (v) wake() }
+
+    /**
+     * The user drags the map or the sheet: finished cells are not joined now (a generation switch reloads the style);
+     * they are joined as soon as this goes false.
+     */
+    @Volatile var userBusy: Boolean = false
+        set(v) { val was = field; field = v; if (was && !v) wake() }
+
+    /**
+     * What the app knows about the user right now, asked right before each download (owner 2026-10-22: never a stale or
+     * unexpected download). Null (no screen, e.g. only the recording service runs): point requests stay valid.
+     */
+    interface Relevance {
+        /** Cells the user waits for right now (the load modal / the open map card) – always valid. */
+        fun waiting(): Set<CellId>
+        /** A POINT / NEAR request for [c] still belongs to a planned point, the search mark, the position or a tour. */
+        fun stillNear(c: CellId): Boolean
+    }
+    @Volatile var relevance: Relevance? = null
 
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
@@ -184,7 +212,7 @@ class MapCells(
     /** Of [cells]: those neither installed nor already asked for (what a trigger should request). */
     override fun missing(cells: List<CellId>): List<CellId> {
         val inst = _installed.value.map { it.id }.toSet()
-        return cells.filter { it !in inst && it !in queue }
+        return cells.filter { it !in inst && !queued(it) && !isFinished(it) }
     }
 
     // ------------------------------------------------------------------------------------------- actions
@@ -198,14 +226,23 @@ class MapCells(
         val added = ArrayList<CellId>()
         synchronized(queue) {
             for (c in cells.distinct()) {
-                if (c in queue) { if (ownPoint) queue[c] = queue[c]!!.copy(ownPoint = true); continue }
+                if (c in queue) {
+                    val p = queue[c]!!
+                    // asked again (a point there, the corridor of the current plan): it belongs to what asked now – a
+                    // corridor request asked for by a point is no longer dropped with the corridor
+                    queue[c] = p.copy(ownPoint = p.ownPoint || ownPoint, confirmed = true,
+                        reason = if (p.reason == CellReason.CORRIDOR && (reason == CellReason.POINT || reason == CellReason.NEAR)) reason else p.reason)
+                    continue
+                }
                 if (c in inst && reason != CellReason.REFRESH && reason != CellReason.UPDATE) continue
+                if (isFinished(c) && reason != CellReason.REFRESH && reason != CellReason.UPDATE) continue
                 queue[c] = Pending(c, reason, ownPoint, now(), approvedMobile = false)
                 added += c
             }
             saveQueue()
         }
         if (added.isNotEmpty()) {
+            Problems.trace("cells", "Requested ${added.size} region(s) (${reason.name.lowercase()}): ${added.joinToString { it.id }}")
             // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
             update { m -> added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
@@ -224,6 +261,52 @@ class MapCells(
     fun waitingForMobileApproval(): List<Pair<CellId, Long?>> =
         _states.value.mapNotNull { (c, s) -> (s as? CellState.WaitingForWifi)?.let { c to it.bytes } }
 
+    /**
+     * T4 belongs to the current plan (field bug 2026-10-22: 16 corridor regions of a long route planned once kept
+     * downloading after every app start): [keep] = the corridor of the current plan's route, empty when the plan has no
+     * route (cleared, long-route question, Cancel, not routed, routing failed). Corridor requests outside it are dropped
+     * (a running download stops; installed cells stay); those inside belong to the plan again (after a restart they wait
+     * for this). Returns the dropped cells.
+     */
+    override fun keepCorridor(keep: Collection<CellId>): List<CellId> {
+        val k = keep.toSet()
+        planCorridor = k
+        val drop = ArrayList<CellId>()
+        synchronized(queue) {
+            for (p in queue.values.toList()) if (p.reason == CellReason.CORRIDOR) {
+                if (p.id in k) { if (!p.confirmed) queue[p.id] = p.copy(confirmed = true) } else { queue.remove(p.id); drop += p.id }
+            }
+            saveQueue()
+        }
+        if (drop.isNotEmpty()) {
+            update { m -> drop.forEach { c -> if (m[c] !is CellState.Ready) m.remove(c) } }
+            Problems.trace("cells", "Dropped ${drop.size} corridor regions – plan changed: ${drop.joinToString { it.id }}")
+        }
+        if (k.isNotEmpty()) wake()
+        return drop
+    }
+
+    /** What still waits to download (Settings → Offline maps): regions in the queue, bytes as far as the server told. */
+    data class Waiting(val regions: Int, val knownBytes: Long, val unknownSize: Int)
+
+    /** Size of [c] as the server told it, null = not known yet. */
+    fun knownSize(c: CellId): Long? = sizes[c]
+
+    fun waiting(): Waiting {
+        val ids = synchronized(queue) { queue.keys.toList() }
+        val s = ids.map { c -> sizes[c] ?: (state(c) as? CellState.WaitingForWifi)?.bytes }
+        return Waiting(ids.size, s.filterNotNull().sum(), s.count { it == null })
+    }
+
+    /** Settings → Offline maps → "Cancel all": the whole queue goes (installed maps stay). Returns the dropped cells. */
+    fun cancelAll(): List<CellId> {
+        val all = synchronized(queue) { queue.keys.toList() }
+        if (all.isEmpty()) return all
+        cancel(all)
+        Problems.trace("cells", "Dropped ${all.size} region request(s) – Cancel all in Settings: ${all.joinToString { it.id }}")
+        return all
+    }
+
     /** Drops cells from the queue (the user closed the card / does not want them). Installed cells stay. */
     fun cancel(cells: Collection<CellId>) {
         synchronized(queue) { cells.forEach { queue.remove(it) }; saveQueue() }
@@ -236,6 +319,7 @@ class MapCells(
         scope.launch {
             work.withLock {
                 try {
+                    synchronized(finished) { cells.forEach { finished.remove(it) } }
                     store.apply(remove = cells.toSet()).also { publish(it) }
                     cells.forEach { store.deleteDownloads(it); update { m -> m.remove(it) } }
                 } catch (e: Exception) {
@@ -308,7 +392,23 @@ class MapCells(
 
     // ------------------------------------------------------------------------------------------- internals
 
-    private data class Pending(val id: CellId, val reason: CellReason, val ownPoint: Boolean, val at: Long, val approvedMobile: Boolean)
+    /**
+     * [confirmed] false: a CORRIDOR request restored at start – it waits (not sent, not downloaded) until the restored
+     * plan's route says it still needs it ([keepCorridor]).
+     */
+    private data class Pending(val id: CellId, val reason: CellReason, val ownPoint: Boolean, val at: Long,
+                               val approvedMobile: Boolean, val confirmed: Boolean = true)
+
+    /** Corridor of the current plan's route as last told ([keepCorridor]); null = not told in this run. */
+    @Volatile private var planCorridor: Set<CellId>? = null
+    /** Sizes the server told (status answers, manifests) – "about X MB" in Settings, download traces. */
+    private val sizes = java.util.concurrent.ConcurrentHashMap<CellId, Long>()
+    /** Downloaded and verified, waiting to be joined with others in one generation ([joinIfDue]). */
+    private val finished = LinkedHashMap<CellId, CellStore.Download>()
+    private var firstFinishedAt = 0L
+    private var lastFinishedAt = 0L
+
+    private fun isFinished(c: CellId) = synchronized(finished) { c in finished }
 
     private val queue = LinkedHashMap<CellId, Pending>()
     private val usage = HashMap<CellId, Long>()
@@ -377,6 +477,7 @@ class MapCells(
             pending.filter { it !in toJoin }.forEach { store.deleteDownloads(it.manifest.cell) }
             if (toJoin.isEmpty()) return
             publish(store.apply(add = toJoin))
+            synchronized(finished) { toJoin.forEach { finished.remove(it.manifest.cell) } }
             toJoin.forEach { store.deleteDownloads(it.manifest.cell); set(it.manifest.cell, CellState.Ready(it.manifest.version)) }
             Problems.info("cells", "Map cells downloaded during the tour joined: ${toJoin.joinToString { it.manifest.cell.id }}")
         } catch (e: Exception) {
@@ -400,9 +501,99 @@ class MapCells(
         }
     }
 
-    /** One round: send requests, poll status, download one ready cell. Returns how long to wait before the next. */
+    /**
+     * One round: drop requests no longer valid, join finished cells when due, send requests, poll status, download one
+     * ready cell. Returns how long to wait before the next.
+     */
     private fun step(): Long {
-        val pending = synchronized(queue) { queue.values.toList() }
+        prune()
+        val joinWait = joinIfDue()
+        val w = stepQueue()
+        return if (joinWait == null) w else minOf(w, joinWait)
+    }
+
+    /**
+     * Why [p] is no longer wanted (null = still wanted) – checked right before each round of sending and downloading
+     * (owner 2026-10-22: never a stale or unexpected download).
+     */
+    private fun whyInvalid(p: Pending, rel: Relevance?, inst: Set<CellId>, t: Long): String? = when (p.reason) {
+        CellReason.CORRIDOR -> if (planCorridor?.let { p.id !in it } == true) "no longer on the plan's route" else null
+        CellReason.POINT, CellReason.NEAR ->
+            if (rel != null && t - p.at >= freshMs && !rel.stillNear(p.id)) "no longer near a planned point, the search or the position" else null
+        CellReason.REFRESH, CellReason.UPDATE -> if (p.id !in inst) "area no longer on the phone" else null
+    }
+
+    /** Drops requests no longer wanted ([whyInvalid]); the user's waited-for cells always stay. */
+    private fun prune() {
+        val pend = synchronized(queue) { queue.values.filter { it.confirmed } }
+        if (pend.isEmpty()) return
+        val rel = relevance
+        val (waiting, near) = try {
+            (rel?.waiting() ?: emptySet()) to rel
+        } catch (e: Exception) {
+            Problems.warn("cells", "Map request check failed; requests kept", e); return
+        }
+        val inst = _installed.value.map { it.id }.toSet()
+        val t = now()
+        val drop = pend.mapNotNull { p ->
+            if (p.id in waiting) null else try { whyInvalid(p, near, inst, t)?.let { p to it } } catch (e: Exception) {
+                Problems.warn("cells", "Map request check for ${p.id} failed; kept", e); null
+            }
+        }
+        if (drop.isEmpty()) return
+        synchronized(queue) { drop.forEach { queue.remove(it.first.id) }; saveQueue() }
+        update { m -> drop.forEach { (p, _) -> if (m[p.id] !is CellState.Ready) m.remove(p.id) } }
+        drop.groupBy { it.second }.forEach { (why, list) ->
+            Problems.trace("cells", "Dropped ${list.size} region request(s) before download – $why: " +
+                list.joinToString { "${it.first.id} (${it.first.reason.name.lowercase()})" })
+        }
+    }
+
+    /**
+     * Finished downloads are joined into the map together: when nothing more is about to download and either nothing is
+     * still being built or [batchMs] passed since the last one finished (at most [maxBatchMs] after the first), never
+     * while [userBusy]. Null = nothing waits to be joined; else ms until it should be checked again.
+     */
+    private fun joinIfDue(): Long? {
+        val done = synchronized(finished) { finished.values.toList() }
+        if (done.isEmpty()) return null
+        if (holdUpdates) {
+            // a tour started meanwhile: they stay on disk and are joined after the tour ([joinHeld])
+            synchronized(finished) { finished.clear() }
+            done.forEach { set(it.manifest.cell, CellState.Downloaded) }
+            return null
+        }
+        val t = now()
+        val pend = synchronized(queue) { queue.values.filter { it.confirmed } }
+        val more = pend.any { p -> state(p.id) is CellState.Downloading && allowed(p) }
+        val building = pend.any { p -> state(p.id).let { s -> s is CellState.Queued || s is CellState.Building || s == CellState.Requested } }
+        val quiet = t - lastFinishedAt
+        val due = t - firstFinishedAt >= maxBatchMs || (!more && (!building || quiet >= batchMs))
+        if (!due) return if (more) 0L else (batchMs - quiet).coerceAtLeast(1L)
+        if (userBusy) return BUSY_RECHECK_MS
+        join(done)
+        return null
+    }
+
+    private fun join(done: List<CellStore.Download>) {
+        val ids = done.map { it.manifest.cell }
+        try {
+            ids.forEach { set(it, CellState.Installing) }
+            val gen = store.apply(add = done)
+            ids.forEach { store.deleteDownloads(it) }
+            synchronized(finished) { ids.forEach { finished.remove(it) } }
+            publish(gen)
+            done.forEach { set(it.manifest.cell, CellState.Ready(it.manifest.version)) }
+            Problems.trace("cells", "Joined ${ids.size} region(s) into the map in one update (generation ${gen.number}): ${ids.joinToString { it.id }}")
+        } catch (e: Exception) {
+            synchronized(finished) { ids.forEach { finished.remove(it) } }
+            Problems.error("cells", "Map areas ${ids.joinToString { it.id }} could not be joined into the map", e)
+            ids.forEach { set(it, CellState.Failed((e as? CellStore.StoreException)?.message ?: "The map could not be saved.")) }
+        }
+    }
+
+    private fun stepQueue(): Long {
+        val pending = synchronized(queue) { queue.values.filter { it.confirmed } }
         if (pending.isEmpty()) return IDLE_MS
         if (api == null) {
             pending.forEach { set(it.id, CellState.Failed("This app version has no map server access (no app key).", retryable = false)) }
@@ -454,6 +645,7 @@ class MapCells(
             val c = CellId.parse(s.id) ?: continue
             val p = pending.firstOrNull { it.id == c } ?: continue
             if (!queued(c)) continue // cancelled while the server answered (modal → Cancel): no state for it any more
+            s.size?.let { sizes[c] = it }
             when (s.state) {
                 "ready" -> {
                     val have = inst[c]?.version
@@ -524,6 +716,9 @@ class MapCells(
                 Problems.warn("cells", "Not enough space for map cell $c (${need / 1_048_576} MB needed)")
                 dequeue(c); return
             }
+            sizes[c] = m.totalSize
+            Problems.trace("cells", "Download start: $c (${p.reason.name.lowercase()}${if (p.ownPoint) ", own" else ""}), ${mbOf(m.totalSize)}" +
+                (if (network.unmetered()) "" else " on mobile data"))
             val part = store.partDir(m)
             part.mkdirs()
             var before = 0L
@@ -553,14 +748,15 @@ class MapCells(
                 Problems.info("cells", "Map cell $c downloaded during a tour; shown after the tour")
                 return
             }
-            set(c, CellState.Installing)
-            val gen = store.apply(add = listOf(CellStore.Download(m, complete)))
-            store.deleteDownloads(c)
+            // joined with others finishing soon in one generation ([joinIfDue])
             dequeue(c); damaged -= c
-            publish(gen)
-            set(c, CellState.Ready(m.version))
+            set(c, CellState.Installing)
+            val t = now()
+            synchronized(finished) { if (finished.isEmpty()) firstFinishedAt = t; finished[c] = CellStore.Download(m, complete) }
+            lastFinishedAt = t
+            Problems.trace("cells", "Download finished: $c (${p.reason.name.lowercase()}), ${mbOf(m.totalSize)}")
         } catch (e: Cancelled) {
-            Problems.info("cells", "Map cell $c download stopped: cancelled by the user", e)
+            Problems.trace("cells", "Download stopped: $c (${p.reason.name.lowercase()}) – no longer wanted")
             update { it.remove(c) }
         } catch (e: CellApi.ChecksumException) {
             if (c in damaged) {
@@ -591,13 +787,25 @@ class MapCells(
         try {
             if (!queueFile.isFile) return@synchronized
             val a = JSONObject(queueFile.readText()).optJSONArray("cells") ?: JSONArray()
+            val t = now()
+            val stale = ArrayList<CellId>()
             for (i in 0 until a.length()) {
                 val o = a.getJSONObject(i)
                 val c = CellId.parse(o.optString("id")) ?: continue
                 val r = runCatching { CellReason.valueOf(o.optString("reason")) }.getOrNull() ?: CellReason.NEAR
-                queue[c] = Pending(c, r, o.optBoolean("own"), o.optLong("at"), o.optBoolean("mobileOk"))
+                val at = o.optLong("at")
+                // revalidated at start (field bug 2026-10-22): a point request from yesterday – nobody waits for it;
+                // a corridor waits until the restored plan's route says it still needs it ([keepCorridor])
+                if ((r == CellReason.POINT || r == CellReason.NEAR) && t - at > STALE_MS) { stale += c; continue }
+                queue[c] = Pending(c, r, o.optBoolean("own"), at, o.optBoolean("mobileOk"), confirmed = r != CellReason.CORRIDOR)
             }
-            update { m -> queue.keys.forEach { m[it] = CellState.Requested } }
+            if (stale.isNotEmpty()) {
+                saveQueue()
+                Problems.trace("cells", "Dropped ${stale.size} old point region request(s) at start: ${stale.joinToString { it.id }}")
+            }
+            val held = queue.values.count { !it.confirmed }
+            if (held > 0) Problems.trace("cells", "$held corridor region request(s) wait for the restored plan's route")
+            update { m -> queue.values.filter { it.confirmed }.forEach { m[it.id] = CellState.Requested } }
         } catch (e: Exception) { Problems.warn("cells", "Saved map requests unreadable; asked again when needed", e) }
     }
 
@@ -610,6 +818,8 @@ class MapCells(
             o.keys().forEach { k -> CellId.parse(k)?.let { usage[it] = o.getLong(k) } }
         } catch (e: Exception) { Problems.warn("cells", "Map area usage list unreadable; refresh dates restart", e) }
     }
+
+    private fun mbOf(bytes: Long) = "%.1f MB".format(java.util.Locale.ROOT, bytes / 1_048_576.0)
 
     private fun writeAtomic(f: File, text: String) {
         try {
@@ -641,6 +851,13 @@ class MapCells(
         /** Polling the build status while the app is not on screen (tour in the background). */
         const val BACKGROUND_POLL_MS = 30_000L
         private const val MAX_PER_CALL = 40
+        /** Finished cells wait this long for more before they are joined in one generation. */
+        const val BATCH_MS = 10_000L
+        const val MAX_BATCH_MS = 60_000L
+        const val FRESH_MS = 5_000L
+        private const val BUSY_RECHECK_MS = 1_000L
+        /** A point / near request older than this is dropped at app start (nobody waits for it any more). */
+        const val STALE_MS = 24L * 3600 * 1000
         private const val DAY = 24L * 3600 * 1000
     }
 }
