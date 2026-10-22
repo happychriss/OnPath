@@ -151,7 +151,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** The user moved the map: stop following; the reason goes to Diagnostics. */
     private fun dismissed(why: String) {
         val cb = onTrackingDismissed ?: return
-        Problems.info("map", "Following stopped: $why")
+        MapEvents.followingStopped(why)
         cb()
     }
 
@@ -338,7 +338,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 override fun onCameraTrackingChanged(currentMode: Int) {
                     // Only noted (field test 2026-10-20): a mode change alone is never taken as a gesture any more.
                     if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode && onTrackingDismissed != null)
-                        Problems.info("map", "Camera mode changed by the map to $currentMode (wanted $wantedCameraMode)")
+                        MapEvents.cameraModeChanged(currentMode, wantedCameraMode)
                 }
             })
             locationReady = true
