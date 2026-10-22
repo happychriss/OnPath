@@ -20,6 +20,13 @@ object LastActivity {
 
     fun sac(last: Int?, oldDefault: Int?): Int = (last ?: oldDefault ?: DEFAULT_SAC).coerceIn(1, 5)
 
-    /** The activity chip in the plan sheet: "Hike · T2"; bike activities by name only. */
-    fun chipText(a: Activity, sac: Int): String = if (a == Activity.HIKE) "${a.label} · T${sac.coerceIn(1, 5)}" else a.label
+    /** The activity chip in the plan sheet: "Hike · T2"; bike activities by a short name (owner 2026-10-22). */
+    fun chipText(a: Activity, sac: Int): String = when (a) {
+        Activity.HIKE -> "${a.label} · T${sac.coerceIn(1, 5)}"
+        Activity.BIKE_TOURING -> "Touring"
+        Activity.BIKE_TREKKING -> "Trekking"
+        Activity.EBIKE -> "E-bike"
+        Activity.MTB -> "MTB"
+        Activity.EMTB -> "E-MTB"
+    }
 }
