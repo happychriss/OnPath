@@ -51,7 +51,7 @@ New `by mutableStateOf` properties (`routingSlow`, `longRouteAsk`) were declared
 ## 2. CI / release flow (owner decisions today)
 - **Release (`release.yml`)**: gate = only `StartSmokeE2ETest` (opens empty + opens with a saved plan, position dot on
   top) via `e2e.yml` workflow_call (`tests` input), then unit tests, build, publish. The `skip_e2e` input is gone.
-  First run with the smoke gate: run 39821279831 (was in progress at handover – check it passed and how long it took).
+  First run with the smoke gate: run 39821279831 – passed, whole release run 6 min.
 - **Full E2E (`e2e.yml`)**: every push to main touching `app/**`, beside the release; red → fix at once.
   Concurrency group is now `e2e-<calling workflow>-<ref>` (the release's smoke run and the push run no longer cancel
   each other – that cost several runs today). Pending runs of the same queue still replace each other.
@@ -84,7 +84,7 @@ New `by mutableStateOf` properties (`routingSlow`, `longRouteAsk`) were declared
    "Show the followed route's points" / restore.
 3. **Phone test of 0.9.2** (owner): fixed sheet height, scrub on the profile in Plan, End tour Delete, long-route
    question, Cancel, points in Navigate, dot on top.
-4. **Smoke gate:** confirm run 39821279831 (Release) passed; its build step will skip (0.9.2 exists).
+4. **Smoke gate:** done – run 39821279831 passed (6 min).
 
 ## 5. Next (from the backlog, owner order)
 1. **Bus / car detection** (`docs/design/vehicle-detection.md`) – build next.
