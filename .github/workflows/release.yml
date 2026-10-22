@@ -31,9 +31,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Owner decision 2026-10-22: the release goes out first, the emulator tests (e2e.yml, core features) run beside it on
-  # every push to main – no gate here. A red E2E run is fixed right away. Unit tests still run below before the build.
+  # Owner decisions 2026-10-22: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
+  # the build only a short start test (the app opens, also with a saved plan – 0.9.1 crashed there). Unit tests below.
+  smoke:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      tests: com.onpath.app.e2e.StartSmokeE2ETest
+
   build:
+    needs: smoke
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: test

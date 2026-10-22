@@ -1,7 +1,8 @@
 # End-to-end tests of the core features (docs/core-features.md) on an Android emulator: the real app and map,
 # a finger held on the screen (app/src/androidTest). Owner 2026-10-21: "not good to find out during walking".
 #
-# Runs on every push to main that touches the app and by hand (owner 2026-10-22: beside releases, not as a gate).
+# Runs on every push to main that touches the app and by hand (owner 2026-10-22: beside releases, not as a gate);
+# release.yml calls it with only StartSmokeE2ETest as a short gate (the app opens – 0.9.1 crashed at start).
 name: E2E
 
 on:
@@ -17,9 +18,16 @@ on:
         required: false
         default: ""
   workflow_call:
+    inputs:
+      tests:
+        description: "Only these test classes (release.yml: the short start test)"
+        type: string
+        required: false
+        default: ""
 
 concurrency:
-  group: e2e-${{ github.ref }}
+  # own queue per caller: the release's short start test never cancels (or waits for) the full run beside it
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
