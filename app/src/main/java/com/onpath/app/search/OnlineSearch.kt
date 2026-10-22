@@ -32,7 +32,9 @@ class PhotonProvider(
 
     fun url(query: String, lat: Double, lon: Double, limit: Int): String {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
-        val f = { v: Double -> String.format(Locale.ROOT, "%.5f", v) }
+        // Owner 2026-10-22: the server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix;
+        // results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
+        val f = { v: Double -> coarse(v) }
         // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
         // with higher importance win; a stronger bias dropped towns named in the query (tested 2026-10-19).
         return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
@@ -54,6 +56,9 @@ class PhotonProvider(
 
     companion object {
         fun userAgent(version: String) = "OnPath-Android/$version (github.com/happychriss/OnPath)"
+
+        /** A coordinate rounded to 2 decimals (~1.1 km latitude) for the request; "46.68". */
+        fun coarse(v: Double): String = String.format(Locale.ROOT, "%.2f", Math.round(v * 100.0) / 100.0)
     }
 }
 

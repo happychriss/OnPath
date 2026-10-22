@@ -22,7 +22,10 @@ data class SearchQuery(
     val limit: Int = 60,
 )
 
-/** One ranked result. [tier]: 3 = whole name equals the query, 2 = name/words start with it, 1 = other match. */
+/**
+ * One ranked result. [tier]: 3 = whole name equals the query, 2 = name/words start with it, 1 = other match.
+ * [score]: text match, kind boost, minus distance (higher = better); see [SearchRanking.ORDER].
+ */
 data class SearchHit(val place: Place, val score: Double, val tier: Int, val distanceM: Double, val nearRoute: Boolean)
 
 /**
@@ -214,6 +217,20 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
 object SearchRanking {
     /** A result within this distance of the planned line is "near your route". */
     const val NEAR_ROUTE_M = 1000.0
+    /** Score points for "near your route" – as much as ~6 km less distance; never lifts a result over a better tier. */
+    const val NEAR_ROUTE_BONUS = 20.0
+    /** An online result ranks this much below an offline one that matches as well (the offline copy has more details). */
+    const val ONLINE_PENALTY = 5.0
+    /** Online results whose town is named in the query ("via Roma 3 Bolzano"), as in [OnlineRanking]. */
+    const val QUERY_TOWN_BONUS = 30.0
+
+    /**
+     * The one order of the mixed result list (owner 2026-10-22: one list, best first – no blocks per source):
+     * how well the text matches (tier), then the score (text, kind, distance to the position / map centre,
+     * near the route).
+     */
+    val ORDER: Comparator<SearchHit> = compareByDescending<SearchHit> { it.tier }
+        .thenByDescending { it.score + if (it.nearRoute) NEAR_ROUTE_BONUS else 0.0 }
 
     /** Text score 0..~1.35 and tier, or null when the entry does not match every query word. */
     fun textMatch(qTokens: List<String>, qFull: String, e: OfflineIndex.Entry,
@@ -279,9 +296,43 @@ object SearchRanking {
                 if (inBox && Geo.distanceToLine(p.lat, p.lon, line) <= NEAR_ROUTE_M) h.copy(nearRoute = true) else h
             }
         }
-        return withRoute.sortedWith(
-            compareByDescending<SearchHit> { it.nearRoute }.thenByDescending { it.tier }.thenByDescending { it.score }
-        ).take(q.limit)
+        return withRoute.sortedWith(ORDER).take(q.limit)
+    }
+
+    /**
+     * Online results (already deduplicated against the offline ones and in the provider's order) on the offline
+     * score scale, so both can be mixed into one list: the same text match over name, other names, town and address
+     * (Photon also matches words we cannot see: then tier 1), kind boost, distance, the provider's order as a small
+     * tie-break, [QUERY_TOWN_BONUS] for a town named in the query, minus [ONLINE_PENALTY].
+     */
+    fun onlineHits(places: List<Place>, q: SearchQuery, queryTowns: Set<String> = emptySet(),
+                   /** Where the online search was centred (a town named in the query), for the distance score. */
+                   centreLat: Double = q.refLat, centreLon: Double = q.refLon): List<SearchHit> {
+        val qTokens = SearchText.tokens(q.text)
+        val qFull = qTokens.joinToString(" ")
+        return places.mapIndexed { i, p ->
+            val e = OfflineIndex.Entry(p, (listOfNotNull(p.name, p.town, p.address) + p.alt)
+                .flatMap { SearchText.tokens(it) }.distinct().toTypedArray(),
+                (listOfNotNull(p.name) + p.alt).map { SearchText.normalize(it) }.filter { it.isNotEmpty() }.distinct().toTypedArray())
+            val (text, tier) = textMatch(qTokens, qFull, e) ?: (0.5 to 1)
+            val d = Geo.distance(q.refLat, q.refLon, p.lat, p.lon)
+            val dc = if (centreLat == q.refLat && centreLon == q.refLon) d else Geo.distance(centreLat, centreLon, p.lat, p.lon)
+            var score = 100.0 * text + SearchKinds.boost(p.kind, p.sub) - distancePenalty(dc) - 1.5 * i - ONLINE_PENALTY
+            if (p.town != null && SearchText.normalize(p.town) in queryTowns) score += QUERY_TOWN_BONUS
+            SearchHit(p, score, tier, d, false)
+        }
+    }
+
+    /**
+     * Offline and online hits as one list in [ORDER]. [keepShown]: the offline rows were already on screen when the
+     * online ones arrived – they stay exactly where they are and the online rows go below them, ranked among
+     * themselves (owner rule: rows never move under the finger; a field bug came from a shifted row). The next
+     * keystroke re-ranks everything.
+     */
+    fun mix(offline: List<SearchHit>, online: List<SearchHit>, keepShown: Boolean = false): List<SearchHit> = when {
+        online.isEmpty() -> offline
+        keepShown && offline.isNotEmpty() -> offline + online.sortedWith(ORDER)
+        else -> (offline + online).sortedWith(ORDER)
     }
 
     /** Every n-th point (plus the last), at most [max] points. */

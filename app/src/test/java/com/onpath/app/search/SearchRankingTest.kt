@@ -65,13 +65,74 @@ class SearchRankingTest {
         assertEquals(listOf("Bahnhof Algund"), names(index.search(q("", SearchKinds.Category.STATIONS))))
     }
 
-    @Test fun nearRouteComesFirst() {
-        // A route passing the Meraner Hütte; the town Meran is the better text match but far from it.
+    @Test fun nearRouteHelpsButExactNameStaysFirst() {
+        // owner 2026-10-22: one list by relevance – "Meran" (exact) stays first; among the prefix matches the hut on
+        // the route beats the trail that is nearer to the map centre but off the route.
         val route = listOf(GeoPoint(46.72, 11.08), GeoPoint(46.732, 11.0915), GeoPoint(46.74, 11.10))
         val hits = index.search(q("meran", route = route))
-        assertEquals("Meraner Hütte", hits.first().place.name)
-        assertTrue(hits.first().nearRoute)
-        assertFalse(hits.first { it.place.name == "Meran" }.nearRoute)
+        assertEquals("Meran", hits.first().place.name)
+        assertFalse(hits.first().nearRoute)
+        val hut = hits.first { it.place.name == "Meraner Hütte" }
+        assertTrue(hut.nearRoute)
+        assertTrue(hits.indexOf(hut) < hits.indexOfFirst { it.place.name == "Gasthaus Merana" })
+    }
+
+    @Test fun onlineResultsMixIntoOneList() {
+        val q = q("meran")
+        val offline = index.search(q)
+        val online = SearchRanking.onlineHits(listOf(
+            Place("o:1", "Meraner Straße 12", "address", 46.50, 11.35, address = "39100 Bozen", source = Place.Source.ONLINE, town = "Bozen"),
+            Place("o:2", "Meran 2000", "lift", 46.68, 11.22, source = Place.Source.ONLINE),
+            Place("o:3", "Hotel Aurora", "other", 46.67, 11.16, source = Place.Source.ONLINE), // Photon matched a hidden field
+        ), q)
+        val mixed = SearchRanking.mix(offline, online)
+        assertEquals(offline.size + 3, mixed.size)
+        assertEquals("Meran", mixed.first().place.name)          // exact offline match first
+        // the nearby online lift ("Meran 2000", prefix) ranks among the offline prefix matches, before the far trail
+        val lift = mixed.indexOfFirst { it.place.name == "Meran 2000" }
+        assertTrue(lift < mixed.indexOfFirst { it.place.name == "Gasthaus Merana" })
+        // an online hit that does not match the words we see goes to the end (tier 1)
+        assertEquals("Hotel Aurora", mixed.last().place.name)
+        assertEquals(1, mixed.last().tier)
+        // tiers never go up along the list
+        assertTrue(mixed.zipWithNext().all { (a, b) -> a.tier >= b.tier })
+    }
+
+    @Test fun lateOnlineResultsNeverMoveShownRows() {
+        // owner rule: rows must not move under the finger. Online results arriving after the offline rows were
+        // shown go below them (ranked among themselves); with nothing shown yet, or after typing, all is re-ranked.
+        val q = q("meran")
+        val offline = index.search(q)
+        val online = SearchRanking.onlineHits(listOf(
+            Place("o:far", "Meraner Straße 12", "address", 46.50, 11.35, source = Place.Source.ONLINE),
+            Place("o:2", "Meran 2000", "lift", 46.68, 11.22, source = Place.Source.ONLINE),
+        ), q)
+        val kept = SearchRanking.mix(offline, online, keepShown = true)
+        assertEquals(offline, kept.take(offline.size))
+        assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(kept.drop(offline.size)))
+        // the lift would rank among the offline rows when nothing was shown yet / after the next keystroke
+        val mixed = SearchRanking.mix(offline, online, keepShown = false)
+        assertTrue(mixed.indexOfFirst { it.place.name == "Meran 2000" } < offline.size)
+        // no offline rows shown: online only, best first
+        assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(SearchRanking.mix(emptyList(), online, keepShown = true)))
+        // SearchUi uses the flag
+        val ui = com.onpath.app.ui.search.SearchUi(query = "meran", hits = offline, online = online, onlineBelow = true)
+        assertEquals(kept, ui.results)
+    }
+
+    @Test fun onlineTieWithOfflineKeepsOfflineFirst() {
+        val p = place("Leiter Alm", "restaurant", 46.70, 11.10)
+        val off = index.search(q("leiter alm"))
+        val on = SearchRanking.onlineHits(listOf(p.copy(id = "o:9", source = Place.Source.ONLINE)), q("leiter alm"))
+        assertEquals(Place.Source.POI, SearchRanking.mix(off, on).first().place.source)
+    }
+
+    @Test fun townNamedInQueryLiftsOnlineResult() {
+        val q = q("via roma 3 bolzano")
+        val a = Place("o:a", "Via Roma 3", "address", 46.67, 11.16, source = Place.Source.ONLINE, town = "Meran")
+        val b = Place("o:b", "Via Roma 3", "address", 46.49, 11.35, source = Place.Source.ONLINE, town = "Bozen")
+        val hits = SearchRanking.onlineHits(listOf(a, b), q, setOf("bozen", "bolzano"), 46.498, 11.354)
+        assertEquals("o:b", SearchRanking.mix(emptyList(), hits).first().place.id)
     }
 
     @Test fun nearerWinsAmongEqualMatches() {

@@ -41,19 +41,21 @@ class SearchScreenshotTest {
     private val hut = Place("n1", "Meraner Hütte", "hut", 46.732, 11.091, ele = 1960,
         poi = Poi("n1", "hut", "Meraner Hütte", 46.732, 11.091, 1960, openingHours = "Jun-Oct Mo-Su 07:00-22:00"))
 
+    /** One mixed list (owner 2026-10-22): offline places, trails, an address with its village, an online result. */
     @Test fun searchResults() = paparazzi.snapshot {
         OnPathTheme {
             SearchScreen(SearchUi(
                 query = "meran",
                 hits = listOf(
-                    hit(hut, 2400.0, near = true),
-                    hit(Place("t1", "Meraner Höhenweg", "trail", 46.75, 11.05, source = Place.Source.TRAIL), 900.0, near = true),
-                    hit(Place("m1", "Meran", "place", 46.67, 11.16, sub = "town", source = Place.Source.MAP), 6100.0),
-                    hit(Place("n2", "Gasthaus Merana", "restaurant", 46.6, 11.2), 8300.0),
-                    hit(Place("m2", "Meraner Spitze", "peak", 46.8, 11.1, ele = 2812, source = Place.Source.MAP), 14200.0),
+                    SearchHit(Place("m1", "Meran", "place", 46.67, 11.16, sub = "town", source = Place.Source.MAP), 128.0, 3, 6100.0, false),
+                    SearchHit(hut, 98.0, 2, 2400.0, true),
+                    SearchHit(Place("t1", "Meraner Höhenweg", "trail", 46.75, 11.05, source = Place.Source.TRAIL), 96.0, 2, 900.0, true),
+                    SearchHit(Place("a:c:1:5", "Meraner Straße 5 · Völlan", "address", 46.61, 11.12, address = "Via Merano 5 · 39011",
+                        source = Place.Source.MAP, town = "Lana", village = "Völlan"), 80.0, 2, 4200.0, false),
+                    SearchHit(Place("n2", "Gasthaus Merana", "restaurant", 46.6, 11.2), 70.0, 2, 8300.0, false),
                 ),
-                online = listOf(hit(Place("o:N1", "Meraner Straße 12", "address", 46.5, 11.35, address = "39100 Bozen",
-                    source = Place.Source.ONLINE), 25300.0)),
+                online = listOf(SearchHit(Place("o:N1", "Meraner Straße 12", "address", 46.5, 11.35, address = "39100 Bozen",
+                    source = Place.Source.ONLINE), 75.0, 2, 25300.0, false)),
                 onlineState = OnlineState.DONE, hasRoute = true,
             ), SearchActions(), autoFocus = false)
         }
@@ -85,6 +87,10 @@ class SearchScreenshotTest {
                             com.onpath.app.ui.search.PlaceCardActions())
                         PlaceCard(PlaceCardUi(Place("o:N1", "Laubengasse 10", "address", 46.67, 11.16, address = "39012 Meran",
                             source = Place.Source.ONLINE), 2, 3, "is the destination"), com.onpath.app.ui.search.PlaceCardActions())
+                        // a shared place positioned from its address keeps the note (owner 2026-10-22)
+                        PlaceCard(PlaceCardUi(Place("shared:1", "Gelateria Costantin", "other", 46.67, 11.16,
+                            address = "Passeggiata Lungo Passirio 1, Meran", note = SharedPosition.NOTE)),
+                            com.onpath.app.ui.search.PlaceCardActions())
                     }
                 }
             }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -76,11 +77,20 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                 Column(Modifier.weight(1f)) {
                     Text(p.title(de), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(kind.label(de) + (p.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodyMedium,
+                    Text(kind.label(de) + (p.ele?.let { " · $it m" } ?: "") + (p.municipality?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium,
                         color = color, maxLines = 1)
                 }
                 IconButton(onClick = actions.onClose, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Filled.Close, contentDescription = "Close")
+                }
+            }
+            // owner 2026-10-22: stays on the card (never disappears by itself)
+            p.note?.let { n ->
+                Row(Modifier.padding(top = 4.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Info, contentDescription = null, Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(6.dp))
+                    Text(n, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             val details = listOfNotNull(p.address) + p.openingHoursLines.take(3).let { h ->
