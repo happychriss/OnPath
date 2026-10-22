@@ -72,8 +72,16 @@ data class ShownTrack(
     val ascentM: Double,
     val descentM: Double,
     val durationS: Double,
+    /** Rides not counted (vehicle detection): drawn grey dashed (bus / car) or purple dashed (lift) beside the track. */
+    val rides: List<Pair<List<GeoPoint>, com.onpath.app.rides.RideKind>> = emptyList(),
 ) {
     val points: List<GeoPoint> get() = segments.flatten()
+}
+
+/** What "End tour" asks: the short question, or the ride summary when a bus / car / lift was found. */
+sealed interface EndAsk {
+    data object Plain : EndAsk
+    data class Rides(val tourId: Long, val summary: com.onpath.app.rides.RideView.Summary) : EndAsk
 }
 
 /** One-off things the UI must do with an Activity context. */
@@ -871,6 +879,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                         finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
                         finishedTour?.let { nameRecordedTour(it) }
+                        // "Split into two tours": the parts after the rides get a place name too
+                        val parts = RecordingService.finishedParts; RecordingService.finishedParts = emptyList()
+                        parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }
                     }
                     reloadPace()
                     refreshTours()
@@ -1756,7 +1767,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
-        com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).get(t.id)
+        // rides taken out (vehicle detection): moving time / breaks of what is left, not the service's live summary
+        if (t.rides != null && t.rides.choice != com.onpath.app.rides.RideChoice.AS_RECORDED)
+            com.onpath.app.time.TourTimes.of(t.durationS, com.onpath.app.time.BreakDetector.breaksIn(
+                com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides)))
+        else com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).get(t.id)
             ?: com.onpath.app.time.TourTimes.of(t.durationS, com.onpath.app.time.BreakDetector.breaksIn(db.loadSegments(t.id)))
     } catch (e: Exception) {
         Problems.warn("time", "Times of a finished tour could not be computed; shown without", e)
@@ -2020,7 +2035,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val name = try {
                 val places = search.offlineIndex().entries.map { it.place }
                 withContext(Dispatchers.IO) {
-                    val line = db.loadSegments(t.id).flatten().map { GeoPoint(it.lat, it.lon) }
+                    // "Save only until …": named after the part that is the tour
+                    val line = com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides).flatten().map { GeoPoint(it.lat, it.lon) }
                     com.onpath.app.search.RouteNamer.name(line, places)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
@@ -2296,10 +2312,77 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun switchToPlan() = enter(AppMode.PLAN)
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
-    fun endTour() { arrivalAsk = false; deleteFinished = false; stopRecording() }
+    fun endTour() { endAsk = null; arrivalAsk = false; deleteFinished = false; stopRecording() }
+
+    /** What "End tour" shows now (null = nothing): see [askEndTour]. */
+    var endAsk by mutableStateOf<EndAsk?>(null)
+
+    /**
+     * "End tour" tapped: rides in the track so far (docs/design/vehicle-detection.md) → the summary with four choices,
+     * otherwise the short Cancel · Delete · Save question. Detection failing = the short question (reported).
+     */
+    fun askEndTour() {
+        val id = recState.value?.tourId ?: run { endAsk = EndAsk.Plain; return }
+        val navActivity = recState.value?.nav?.session?.activity
+        viewModelScope.launch {
+            val s = withContext(Dispatchers.IO) {
+                runCatching {
+                    val segs = db.loadSegments(id)
+                    // expected: unknown activity name → the current one
+                    val a = navActivity ?: db.getTour(id)?.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+                    com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
+                }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
+            }
+            if (recState.value?.tourId != id) return@launch // ended meanwhile (notification, arrival)
+            endAsk = s?.let { EndAsk.Rides(id, it) } ?: EndAsk.Plain
+        }
+    }
+
+    /** Save from the ride summary: the choice is stored on the tour first, the recording service applies it at the end. */
+    fun endTourWith(a: EndAsk.Rides, choice: com.onpath.app.rides.RideChoice) {
+        endAsk = null
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching { com.onpath.app.rides.RideApply.choose(com.onpath.app.rides.TourDbRides(db), a.tourId, a.summary.rides, choice) }
+                    .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
+            }
+            endTour()
+        }
+    }
+
+    /** My routes → ⋮ → Edit rides: the same summary for a saved tour (no split, no delete there). */
+    var editRides by mutableStateOf<Pair<Tour, com.onpath.app.rides.RideView.Summary>?>(null)
+
+    fun openEditRides(t: Tour) {
+        val rec = t.rides ?: return
+        viewModelScope.launch {
+            val s = withContext(Dispatchers.IO) {
+                runCatching {
+                    val onFoot = (t.activity ?: Activity.HIKE.name) == Activity.HIKE.name
+                    com.onpath.app.rides.RideView.summary(db.loadSegments(t.id), rec.rides, onFoot, allowSplit = false)
+                }.onFailure { Problems.warn("rides", "Rides of a tour could not be shown", it) }.getOrNull()
+            }
+            if (s == null) { message = "The rides of this tour could not be read."; return@launch }
+            editRides = t to s
+        }
+    }
+
+    fun applyEditRides(t: Tour, choice: com.onpath.app.rides.RideChoice) {
+        editRides = null
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { com.onpath.app.rides.RideApply.edit(com.onpath.app.rides.TourDbRides(db), t.id, choice) }
+                    .onFailure { Problems.error("rides", "Changing the rides of a tour failed; it stays as it was", it) }.isSuccess
+                    .also { if (it) Backups.tourChanged(getApplication(), t.id) }
+            }
+            if (!ok) message = "The rides could not be changed. Please try again."
+            refreshTours()
+            if (shown?.tourId == t.id) withContext(Dispatchers.IO) { db.getTour(t.id) }?.let { openTour(it) }
+        }
+    }
 
     /** End tour → Delete (owner 2026-10-22): stop, then the tour goes straight to the recycle bin, no summary. */
-    fun endTourAndDelete() { arrivalAsk = false; deleteFinished = true; stopRecording() }
+    fun endTourAndDelete() { endAsk = null; arrivalAsk = false; deleteFinished = true; stopRecording() }
     private var deleteFinished = false
 
     /** Called with each fix in Navigate: asks when the end of the followed line is reached ([ArrivalGate]). */
@@ -2434,8 +2517,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
-                showTrack(ShownTrack(t.id, t.name, segs.map { s -> s.map { it.toGeo() } }, t.waypoints,
-                    t.distanceM, t.ascentM, t.descentM, t.durationS))
+                // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
+                val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
+                val kept = lines.filter { it.part == com.onpath.app.rides.RideView.Part.KEPT }.map { l -> l.points.map { it.toGeo() } }
+                val rides = lines.filter { it.part != com.onpath.app.rides.RideView.Part.KEPT }.map { l ->
+                    l.points.map { it.toGeo() } to (if (l.part == com.onpath.app.rides.RideView.Part.LIFT) com.onpath.app.rides.RideKind.LIFT
+                        else com.onpath.app.rides.RideKind.VEHICLE)
+                }
+                showTrack(ShownTrack(t.id, t.name, kept, t.waypoints, t.distanceM, t.ascentM, t.descentM, t.durationS, rides))
             }
         }
     }
@@ -2581,7 +2670,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun exportTour(t: Tour) {
         viewModelScope.launch {
-            val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
+            // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
+            val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
             share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints)
         }
     }

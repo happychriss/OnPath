@@ -19,6 +19,11 @@ object RideView {
     const val CLIMB_THRESHOLD_M = 5.0
     /** Less than this after the last ride (m): the ride is "at the end" – "Save only until" is preselected. */
     const val AT_END_M = 300.0
+    /** A part split off must be a tour: at least this far or [SPLIT_MIN_S] long (not the minute between lift and bus). */
+    const val SPLIT_MIN_M = 100.0
+    const val SPLIT_MIN_S = 5 * 60.0
+    /** Slower than this between two points is standing (Ø speed of a timeline row counts moving time only). */
+    const val MOVING_MS = 0.5
 
     enum class Part { KEPT, VEHICLE, LIFT, DROPPED }
 
@@ -191,7 +196,8 @@ object RideView {
 
     /**
      * "Split": the tours after each ride – points from getting off to the next ride (or the end), as stored pieces.
-     * Parts with fewer than two points are left out. The first part stays the original tour (cut at the first ride).
+     * Parts shorter than [SPLIT_MIN_M] and [SPLIT_MIN_S] are left out. The first part stays the original tour (cut at the
+     * first ride).
      */
     fun splitParts(segments: List<List<TrackPoint>>, rides: List<Ride>): List<List<List<TrackPoint>>> {
         val f = Flat(segments)
@@ -199,6 +205,11 @@ object RideView {
         return rs.mapIndexedNotNull { k, r ->
             val end = rs.getOrNull(k + 1)?.from ?: (f.size - 1)
             if (end - r.to < 1) return@mapIndexedNotNull null
+            var d = 0.0
+            for (i in r.to until end) d += f.d(i, i + 1)
+            val t0 = f.pts[r.to].timeMs; val t1 = f.pts[end].timeMs
+            val longS = if (t0 != null && t1 != null) (t1 - t0) / 1000.0 else 0.0
+            if (d < SPLIT_MIN_M && longS < SPLIT_MIN_S) return@mapIndexedNotNull null
             val segs = ArrayList<MutableList<TrackPoint>>()
             for (i in r.to..end) {
                 if (i == r.to || f.seg[i] != f.seg[i - 1]) segs += ArrayList<TrackPoint>()
@@ -212,8 +223,9 @@ object RideView {
 
     enum class RowKind(val label: String) { ON_FOOT("On foot"), BY_BIKE("By bike"), VEHICLE("Bus / car"), LIFT("Lift") }
 
-    /** One line of the timeline: what, from – to, km, ascent, average speed (km/h; null when the time is unknown). */
-    data class Row(val kind: RowKind, val startMs: Long?, val endMs: Long?, val distanceM: Double, val ascentM: Double, val speedKmh: Double?)
+    /** One line of the timeline: what, from – to, km, ascent / descent, average speed while moving (km/h; null = unknown). */
+    data class Row(val kind: RowKind, val startMs: Long?, val endMs: Long?, val distanceM: Double, val ascentM: Double,
+                   val speedKmh: Double?, val descentM: Double = 0.0)
 
     data class Option(val choice: RideChoice, val title: String, val detail: String)
 
@@ -235,11 +247,16 @@ object RideView {
         fun row(kind: RowKind, a: Int, b: Int, acrossGaps: Boolean) {
             if (b <= a) return
             var d = 0.0
-            for (i in a until b) if (acrossGaps || f.seg[i] == f.seg[i + 1]) d += f.d(i, i + 1)
-            val (up, _) = Geo.climb((a..b).map { f.pts[it].ele }, CLIMB_THRESHOLD_M)
-            val t0 = f.pts[a].timeMs; val t1 = f.pts[b].timeMs
-            val speed = if (t0 != null && t1 != null && t1 > t0) d / ((t1 - t0) / 1000.0) * 3.6 else null
-            rows += Row(kind, t0, t1, d, up, speed)
+            var moving = 0.0
+            for (i in a until b) if (acrossGaps || f.seg[i] == f.seg[i + 1]) {
+                val di = f.d(i, i + 1)
+                d += di
+                val ta = f.pts[i].timeMs; val tb = f.pts[i + 1].timeMs
+                if (ta != null && tb != null && tb > ta && di / ((tb - ta) / 1000.0) >= MOVING_MS) moving += (tb - ta) / 1000.0
+            }
+            val (up, down) = Geo.climb((a..b).map { f.pts[it].ele }, CLIMB_THRESHOLD_M)
+            val speed = if (moving > 0) d / moving * 3.6 else null
+            rows += Row(kind, f.pts[a].timeMs, f.pts[b].timeMs, d, up, speed, down)
         }
         val own = if (onFoot) RowKind.ON_FOOT else RowKind.BY_BIKE
         var pos = 0
