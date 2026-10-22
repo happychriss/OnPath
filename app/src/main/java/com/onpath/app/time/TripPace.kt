@@ -26,7 +26,7 @@ import kotlin.math.roundToLong
  *   offset blended out over [OFFSET_BLEND_MS]; when the arrival moves by more than [NOTE_MIN_MS] that way, the
  *   snapshot carries a [LineNote] ("New route: arrival 12:45, was 13:15") until the next line change.
  *
- * Predictions are `model (Normal) × prior × factors()`, where prior = the pace setting (Relaxed / Normal / Fit).
+ * Predictions are `model (Average) × prior × factors()`, where prior = the pace setting (Relaxed · Easy · Average · Fit · Very fit).
  */
 class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = TimeEstimate.BREAK_ALLOWANCE) {
 

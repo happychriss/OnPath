@@ -87,14 +87,11 @@ class TimeScreenshotTest {
         }
     }
 
-    /** Settings → Your pace: chips for hiking and cycling (learning per tour only: nothing stored to show). */
+    /** Settings → Your pace: five levels for hiking and cycling, each with what it means (owner 2026-10-22). */
     @Test fun settingsPace() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize().padding(12.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PaceSection(AppSettings(hikePace = Pace.FIT), {})
-                    PaceSection(AppSettings(), {})
-                }
+                PaceSection(AppSettings(hikePace = Pace.FIT, bikePace = Pace.EASY), {}, Activity.EBIKE)
             }
         }
     }
