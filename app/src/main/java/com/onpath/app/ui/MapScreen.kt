@@ -361,6 +361,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     }
     // Marked route networks always show (owner): the band of the current activity.
     LaunchedEffect(c, vm.activity) { c.setOverlay(vm.activity, true) }
+    // hiking route band above the T level from Settings: grey dashes (the router forbids those trails)
+    LaunchedEffect(c, vm.sac) { c.setSacLimit(vm.sac) }
     LaunchedEffect(c, location) { location?.let { c.updateLocation(it); vm.checkFreeLook(it.latitude, it.longitude) } }
     // App start / back to the app in Plan: centre on the position (first fix, else last known), unless the user
     // moved the map (StartCamera; restarted by vm.onAppStart).

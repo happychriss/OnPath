@@ -5,7 +5,8 @@
 #   tools/build_overlays.sh IN_DIR OUT.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra LAYER_FILE.pmtiles ...]
 #
 #   IN_DIR   folder with paths/streets/trails/ways/routes/trailnames .ndjson (extract_overlays.py ... --tiles IN_DIR;
-#            streets.ndjson may be empty or missing, e.g. a cell without streets)
+#            streets.ndjson may be empty or missing, e.g. a cell without streets; barriers.ndjson + wayclass.json
+#            only with extract_overlays.py --wayclass)
 #   --clip   cut every feature at this bbox (tippecanoe --clip-bounding-box); a cell build passes its buffered bbox
 #            and keeps only its own tiles afterwards (tools/cells/cells.py tiles)
 #   --extra  more vector tile files joined in as they are (e.g. contours.pmtiles with layer "contour" later)
@@ -17,6 +18,8 @@
 #                       (per-feature zoom range from extract_overlays.py)
 #   streets     z13-14  small streets (OpenMapTiles minor / service), the base map has none there (trim_base.sh)
 #   trails      z13-14  ways       z13-14  trailnames z13-14  routes z9-14
+#   barriers    z14     barrier nodes that block an activity (--wayclass; optional)
+# With router classes (wayclass.json) the tile file's description says "onpath-wayclass:<profile hash>".
 # Coordinates: extent 4096 (z14 grid ~0.4 m here), no simplification at z14 (--simplify-only-low-zooms), no feature
 # dropping (-r1, no feature / tile size limit), small buffer (8 px of 256) for line joins and labels at tile edges.
 set -euo pipefail
@@ -53,8 +56,14 @@ layer trails 13 14
 layer ways 13 14
 layer trailnames 13 14
 layer routes 9 14
+BARRIERS=()
+if [ -s "$IN/barriers.ndjson" ]; then layer barriers 14 14; BARRIERS=("$TMP"/barriers.pmtiles); fi
+DESC=()
+if [ -s "$IN/wayclass.json" ]; then
+  DESC=(-N "onpath-wayclass:$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["profiles"])' "$IN/wayclass.json")")
+fi
 rm -f "$OUT.tmp.pmtiles"
-"$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" \
+"$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" "${DESC[@]}" \
   -o "$OUT.tmp.pmtiles" "$TMP"/paths.pmtiles "${STREETS[@]}" "$TMP"/trails.pmtiles "$TMP"/ways.pmtiles "$TMP"/trailnames.pmtiles \
-  "$TMP"/routes.pmtiles "${EXTRA[@]}"
+  "$TMP"/routes.pmtiles "${BARRIERS[@]}" "${EXTRA[@]}"
 mv -f "$OUT.tmp.pmtiles" "$OUT"

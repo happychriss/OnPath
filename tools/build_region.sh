@@ -268,17 +268,27 @@ done_step "$(size "$DATA/terrain.pmtiles")"
 
 # ---------------------------------------------------- 5. overlays: routes, trails, trail names
 if [ "$FORMAT" = 2 ]; then
-step "overlays.pmtiles (paths, trails, ways, routes, trailnames as vector tiles$([ "$SMOOTH" = 1 ] && echo ", smoothed"))"
-if up_to_date "$DATA/overlays.pmtiles" "$OSM" "$TOOLS/extract_overlays.py" "$TOOLS/build_overlays.sh"; then
+step "overlays.pmtiles (paths, trails, ways, routes, trailnames as vector tiles$([ "$SMOOTH" = 1 ] && echo ", smoothed"), router classes)"
+# router classes (docs/map-style-notes.md "Router classes"): BRouter's expression engine with the app's own profiles
+WAYCLASS_JAR=${WAYCLASS_JAR:-$TOOLS/routing/wayclass/build/wayclass.jar}
+BROUTER_PROFILES=${BROUTER_PROFILES:-$REPO/app/src/main/assets/brouter}
+if [ ! -s "$WAYCLASS_JAR" ] || [ "$TOOLS/routing/wayclass/WayClass.java" -nt "$WAYCLASS_JAR" ]; then
+  "$TOOLS/routing/wayclass/build.sh" "$WAYCLASS_JAR" >/dev/null || die "router classifier build failed (needs a JDK: tools/routing/wayclass/build.sh)"
+fi
+if up_to_date "$DATA/overlays.pmtiles" "$OSM" "$TOOLS/extract_overlays.py" "$TOOLS/build_overlays.sh" "$WAYCLASS_JAR" \
+   "$BROUTER_PROFILES"/lookups.dat "$BROUTER_PROFILES"/*.brf && [ -s "$DATA/.wayclass.json" ]; then
   log "    up to date"
 else
   rm -rf "$WORK/tmp/overlays"; mkdir -p "$WORK/tmp/overlays/tiles"
   python3 "$TOOLS/extract_overlays.py" "$OSM" "$WORK/tmp/overlays" "${BBOX_ARGS[@]}" --no-geojson \
-    --tiles "$WORK/tmp/overlays/tiles" $([ "$SMOOTH" = 1 ] && echo --smooth) 2>&1 \
+    --tiles "$WORK/tmp/overlays/tiles" $([ "$SMOOTH" = 1 ] && echo --smooth) \
+    --wayclass "$WAYCLASS_JAR" --profiles "$BROUTER_PROFILES" 2>&1 \
     | tee "$LOGS/overlays.log" | sed 's/^/    /'
+  [ "${PIPESTATUS[0]}" = 0 ] || die "extract_overlays.py failed (log: $LOGS/overlays.log)"
   "$TOOLS/build_overlays.sh" "$WORK/tmp/overlays/tiles" "$WORK/tmp/overlays.pmtiles" >> "$LOGS/overlays.log" 2>&1 \
     || { tail -5 "$LOGS/overlays.log" >&2; die "build_overlays.sh failed"; }
   mv -f "$WORK/tmp/overlays.pmtiles" "$DATA/overlays.pmtiles"
+  cp "$WORK/tmp/overlays/tiles/wayclass.json" "$DATA/.wayclass.json"  # hidden: not a package file, read for package.json
   rm -rf "$WORK/tmp/overlays"
 fi
 # a format-2 package carries no format-1 overlay files (the app would ignore them anyway)
@@ -437,6 +447,9 @@ files.sort(key=lambda r: (r.count("/"), r))
 built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 pkg = {"format": fmt, "region": region, "bbox": [float(v) for v in bbox.split(",")], "built": built,
        "osm_date": osm_date,
+       # hash of the BRouter profiles the router classes were made with (extract_overlays.py --wayclass)
+       **({"wayclass": json.load(open(os.path.join(data, ".wayclass.json")))["profiles"]}
+          if fmt == 2 and os.path.exists(os.path.join(data, ".wayclass.json")) else {}),
        "files": {r: os.path.getsize(os.path.join(data, r)) for r in files
                  if not r.startswith("segments/") and r != "package.json"}}  # not itself (left from a re-run)
 with open(os.path.join(data, "package.json"), "w") as f:

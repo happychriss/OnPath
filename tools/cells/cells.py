@@ -15,7 +15,7 @@ west <= lon < east, south < lat <= north (half-open: a point on a border has exa
                                              points kept by the owner rule; other files copied unchanged
   cells.py remap-ids IDX_DIR FILE.geojson    POI ids of a renumbered extract ("n12", "w3") back to OSM ids
                                              (IDX_DIR from `osmium renumber -i`)
-  cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX [--format N]
+  cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX [--format N] [--wayclass wayclass.json]
                                              write DIR/manifest.json (sizes + sha256 of every file in DIR and its
                                              sub folders, e.g. addresses/10-543-361.sqlite; format default 1)
   cells.py selftest                          checks the Meran example (10/543/361)
@@ -29,10 +29,11 @@ import time
 
 FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-cells.md §18)
 # Content schema of a cell: bump whenever the style needs data that older cells lack (2 = overlays layer "streets",
-# 2026-10-21). The version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the
+# 2026-10-21; 3 = router classes on paths / streets, barrier nodes, SAC on hiking route pieces – extract_overlays.py
+# --wayclass, 2026-10-22). The version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the
 # doorman rebuilds cells of an older schema when asked (wrangler.toml CELL_SCHEMA), the app re-requests its own
 # (cells/CellApi.CELL_SCHEMA). Keep the three in step.
-CELL_SCHEMA = 2
+CELL_SCHEMA = 3
 MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 
@@ -222,8 +223,9 @@ def version_name(osm_date, schema=CELL_SCHEMA):
     return f"{osm_date}-s{schema}"
 
 
-def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None):
-    """sources: [{id, date, url}] of the OSM extracts the cell was cut from (debugging aid; the app ignores it)."""
+def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None, wayclass=None):
+    """sources: [{id, date, url}] of the OSM extracts the cell was cut from (debugging aid; the app ignores it).
+    wayclass: hash of the BRouter profiles the router classes were made with (extract_overlays.py --wayclass)."""
     files = []
     for name in list_files(d):
         p = os.path.join(d, name)
@@ -235,6 +237,8 @@ def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, versio
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
     if sources:
         m["sources"] = [{k: s.get(k) for k in ("id", "date", "url")} for s in sources]
+    if wayclass:
+        m["wayclass"] = wayclass
     with open(os.path.join(d, "manifest.json.tmp"), "w") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
     os.replace(os.path.join(d, "manifest.json.tmp"), os.path.join(d, "manifest.json"))
@@ -294,7 +298,11 @@ def main(argv):
         if "--sources" in a:
             with open(a[a.index("--sources") + 1]) as f:
                 src = json.load(f)
-        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver, src)
+        wc = None
+        if "--wayclass" in a:
+            with open(a[a.index("--wayclass") + 1]) as f:
+                wc = json.load(f).get("profiles")
+        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver, src, wc)
         print(f"    manifest: {len(m['files'])} files, {m['total_size'] / 1e6:.1f} MB")
     else:
         print(__doc__)

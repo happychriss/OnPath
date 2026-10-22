@@ -36,6 +36,6 @@ export function config(env) {
     buildRev: env.BUILD_REV || "",
     // content schema the current pipeline builds (tools/cells/cells.py CELL_SCHEMA); older published cells are
     // rebuilt when someone asks for them
-    cellSchema: num(env.CELL_SCHEMA, 2),
+    cellSchema: num(env.CELL_SCHEMA, 3),
   };
 }

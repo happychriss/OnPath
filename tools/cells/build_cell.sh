@@ -15,6 +15,10 @@
 #   PLANETILER_JAR=/opt/planetiler.jar  PLANETILER_SOURCES=$WORK/planetiler-sources  JAVA_XMX=2g
 #   TERRARIUM_CACHE=$WORK/terrarium   AWS Terrarium PNGs (format 2: terrain + contours read the same tiles)
 #   TIPPECANOE=tippecanoe TILE_JOIN=tile-join   (format 2)
+#   WAYCLASS_JAR=/opt/wayclass/wayclass.jar      (format 2) router classifier (tools/routing/wayclass/build.sh; the job
+#                            image builds it); default: that path, else tools/routing/wayclass/build/wayclass.jar
+#   BROUTER_PROFILES         lookups.dat + .brf the app routes with: app/src/main/assets/brouter in a checkout, else
+#                            /opt/wayclass/brouter (job image)
 #   BUFFER_KM=5              osmium cut buffer (complete features at the edge)
 #   KEEP_WORK=1              keep the temp folder (raw unclipped files, for the seam check)
 #
@@ -36,7 +40,8 @@
 #   base      Planetiler z10-14, --bounds = cell; only the cell's own tiles are kept
 #             format 2: --exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de, then trim_base.sh
 #   overlays  format 1: tools/extract_overlays.py on the buffered bbox (attributes from whole features), then clipped
-#             format 2: extract_overlays.py --tiles --no-geojson --smooth on the buffered bbox -> build_overlays.sh
+#             format 2: extract_overlays.py --tiles --no-geojson --smooth --wayclass on the buffered bbox (router
+#                       classes per way, barrier nodes, docs/map-style-notes.md "Router classes") -> build_overlays.sh
 #                       (tippecanoe on the buffered data, --clip = buffered bbox) -> only the cell's own z>=10 tiles
 #   pois      tools/extract_pois.py on the buffered bbox (bus-stop merge on the buffered set), then owner rule
 #   addresses format 2: tools/extract_addresses.py --owner on the cut, bbox = cell -> addresses/10-X-Y.sqlite
@@ -96,6 +101,14 @@ command -v osmium >/dev/null || die "osmium-tool missing"
 if [ "$FORMAT" = 2 ]; then
   command -v "$TIPPECANOE" >/dev/null && command -v "$TILE_JOIN" >/dev/null \
     || die "format 2 needs tippecanoe + tile-join (in the image since tools/cells/Dockerfile builds them)"
+  WAYCLASS_JAR=${WAYCLASS_JAR:-/opt/wayclass/wayclass.jar}
+  [ -s "$WAYCLASS_JAR" ] || WAYCLASS_JAR="$TOOLS/routing/wayclass/build/wayclass.jar"
+  [ -s "$WAYCLASS_JAR" ] || die "router classifier missing: build it with tools/routing/wayclass/build.sh (or set WAYCLASS_JAR)"
+  if [ -z "${BROUTER_PROFILES:-}" ]; then
+    BROUTER_PROFILES="$REPO/app/src/main/assets/brouter"
+    [ -s "$BROUTER_PROFILES/lookups.dat" ] || BROUTER_PROFILES=/opt/wayclass/brouter
+  fi
+  [ -s "$BROUTER_PROFILES/lookups.dat" ] || die "BRouter profiles missing: $BROUTER_PROFILES (set BROUTER_PROFILES)"
 fi
 
 CELL_BBOX=$($PY bbox "$Z" "$X" "$Y")                              # exact (for --bounds and clipping)
@@ -184,7 +197,8 @@ fi
 if [ "$FORMAT" = 2 ]; then
   mkdir -p "$TMP/raw/otiles" "$TMP/raw/pois"
   run overlays python3 "$TOOLS/extract_overlays.py" "$TMP/cell.osm.pbf" "$TMP/raw/otiles" "${BUF_ARGS[@]}" \
-    --tiles "$TMP/raw/otiles" --no-geojson --smooth
+    --tiles "$TMP/raw/otiles" --no-geojson --smooth --wayclass "$WAYCLASS_JAR" --profiles "$BROUTER_PROFILES"
+  cp "$TMP/raw/otiles/wayclass.json" "$TMP/wayclass.json"
   run overlays-tiles "$TOOLS/build_overlays.sh" "$TMP/raw/otiles" "$TMP/raw/overlays.pmtiles" --clip "$BUF_BBOX"
   run overlays-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/overlays.pmtiles" "$TMP/out/overlays.pmtiles"
   run pois python3 "$TOOLS/extract_pois.py" "$TMP/cell.osm.pbf" "$TMP/raw/pois" "${BUF_ARGS[@]}"
@@ -245,8 +259,10 @@ for i, p in enumerate(files):
                 "url": m.get("url") or None})
 json.dump(res, open(out, "w"))
 PY
+WC_ARGS=()
+[ -s "$TMP/wayclass.json" ] && WC_ARGS=(--wayclass "$TMP/wayclass.json")
 run manifest $PY manifest "$Z" "$X" "$Y" "$TMP/out" "$OSM_DATE" "$GIT_REV" "cells/f$FORMAT/$Z/$X/$Y/$VERSION" \
-  --format "$FORMAT" --version "$VERSION" --sources "$TMP/sources.json"
+  --format "$FORMAT" --version "$VERSION" --sources "$TMP/sources.json" "${WC_ARGS[@]}"
 
 # build.json: timings + sizes (diagnostics only, not listed in the manifest)
 python3 - "$STEPS" "$TMP/out" "$TMP/cell.osm.pbf" "$ID" "$(( $(date +%s) - T0 ))" "$FORMAT" > "$TMP/build.json" <<'PY'
