@@ -18,7 +18,8 @@ import org.junit.runner.RunWith
 /**
  * CORE FEATURE C9 (owner 2026-10-21): the full plan sheet is the point editor – opened only by the sheet's handle /
  * a swipe up; delete with ✕, reorder by holding ≡ and dragging, tap a row → the map shows the point, Undo on the map
- * brings the old plan back. No profile / way types in it (those are in the route details).
+ * brings the old plan back. Owner 2026-10-22: small → profile → points (the points are the sheet's last step, below the
+ * profile); way types are in the route details only.
  */
 @RunWith(AndroidJUnit4::class)
 class CorePointsListE2ETest : E2EBase() {
@@ -104,7 +105,10 @@ class CorePointsListE2ETest : E2EBase() {
             com.onpath.app.data.Geo.distance(points()[0], before[0]) < 1_000 }
     }
 
-    /** Field test 0.8.9 ("the swipe is jumping"): the sheet follows a slow drag of its handle, half → full → half. */
+    /**
+     * Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): the sheet follows a slow drag of its
+     * handle and settles at the nearest step – small → profile (first swipe) → points (second swipe) → profile.
+     */
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
         settle()
@@ -118,8 +122,18 @@ class CorePointsListE2ETest : E2EBase() {
             repeat(4) { path += Point(c.x, c.y + dy) }  // stop before letting go: no fling, the distance decides
             device.swipe(path.toTypedArray(), 6)
         }
-        dragHandle(-(h * 0.35f).toInt())
-        waitUntil("full sheet after a swipe up") { size() == PlanSize.FULL }
+        dragHandle((h * 0.2f).toInt())
+        waitUntil("small sheet after a swipe down") { size() == PlanSize.MINI }
+        Thread.sleep(600)
+        // first swipe up: the profile, not yet the points
+        dragHandle(-(h * 0.2f).toInt())
+        waitUntil("profile step after the first swipe up") { size() == PlanSize.COMPACT }
+        assertNotNull("profile shown", device.wait(Until.findObject(By.desc("Elevation profile")), 5_000))
+        assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
+        Thread.sleep(600)
+        // second swipe up: the points
+        dragHandle(-(h * 0.25f).toInt())
+        waitUntil("full sheet after the second swipe up") { size() == PlanSize.FULL }
         assertNotNull("points shown", device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000))
         Thread.sleep(600)
         dragHandle((h * 0.2f).toInt())

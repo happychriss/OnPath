@@ -1,7 +1,9 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -39,8 +41,12 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.RouteSummary
 
 /**
- * Simple elevation profile. Touching/dragging shows a cursor and reports the point so the
- * map can show a marker there; releasing clears it.
+ * Simple elevation profile. Touching / sliding a finger sideways shows a cursor and reports the point so the map can
+ * show a marker there; releasing clears it. A vertical drag is left to the sheet around it (owner 2026-10-22: the
+ * profile step is pulled up and down over the profile too).
+ *
+ * Drawn from a cache (owner field report 0.9.3, the sheet stuttered): the line, area and steepness paths are built once
+ * per route and size, the canvas has its own layer – moving the sheet or the cursor does not rebuild them.
  */
 @Composable
 fun ElevationProfile(
@@ -54,6 +60,7 @@ fun ElevationProfile(
     /** The finger left the profile (drag end / tap release). */
     onRelease: () -> Unit = {},
 ) {
+    RecomposeProbe.hit("profile")
     val data = remember(points) { profileData(points) }
     if (data == null) {
         Box(modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.CenterStart) {
@@ -63,6 +70,7 @@ fun ElevationProfile(
         return
     }
     val steep = remember(data, gradient) { if (gradient) RouteSummary.steepness(data.dist, data.ele) else null }
+    val cache = remember(data, steep, color) { ProfileCache(data, steep, color) }
     var cursor by remember { mutableStateOf<Int?>(null) }
     // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag – polish audit A6)
     val cur by androidx.compose.runtime.rememberUpdatedState(data)
@@ -70,8 +78,7 @@ fun ElevationProfile(
     val highlight by androidx.compose.runtime.rememberUpdatedState(onHighlight)
     val release by androidx.compose.runtime.rememberUpdatedState(onRelease)
     val measurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(fontSize = 11.sp, color = Color(0xFF555A55))
-    val gridColor = Color(0x22000000)
+    val labelStyle = remember { TextStyle(fontSize = 11.sp, color = Color(0xFF555A55)) }
 
     fun indexAt(x: Float, width: Float, left: Float): Int {
         val d = cur
@@ -86,67 +93,50 @@ fun ElevationProfile(
         modifier
             .fillMaxWidth()
             .height(height)
+            .graphicsLayer()
             .pointerInput(Unit) {
-                detectDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart = { o -> show(indexAt(o.x, size.width.toFloat(), 40.dp.toPx())) },
-                    onDragEnd = { release() },
-                    onDragCancel = { release() },
-                    onDrag = { change, _ -> show(indexAt(change.position.x, size.width.toFloat(), 40.dp.toPx())) },
+                    onDragEnd = { cursor = null; release() },
+                    onDragCancel = { cursor = null; release() },
+                    onHorizontalDrag = { change, _ -> change.consume(); show(indexAt(change.position.x, size.width.toFloat(), 40.dp.toPx())) },
                 )
             }
             .pointerInput(Unit) {
                 detectTapGestures(onPress = { o ->
                     show(indexAt(o.x, size.width.toFloat(), 40.dp.toPx()))
                     tryAwaitRelease()
+                    cursor = null
                     release()
                 })
             }
     ) {
+        RecomposeProbe.hit("profile-draw")
         val left = 40.dp.toPx()
         val bottom = size.height - 16.dp.toPx()
         val top = 6.dp.toPx()
         // While the sheet opens / closes the profile is briefly only a few pixels high or narrow: draw nothing then
         // (field crash 2026-10-21: label range "0 .. negative" → IllegalArgumentException in coerceIn).
         if (bottom - top < 12.dp.toPx() || size.width - left < 24.dp.toPx()) return@Canvas
-        val w = size.width - left
-        val range = (data.max - data.min).coerceAtLeast(20.0)
-        val minE = data.min - range * 0.08
-        val maxE = data.max + range * 0.08
-        fun x(d: Double) = left + (d / data.total * w).toFloat()
-        fun y(e: Double) = (bottom - (e - minE) / (maxE - minE) * (bottom - top)).toFloat()
+        val g = cache.geometry(size.width, left, top, bottom, 2.dp.toPx(), 2.5.dp.toPx())
 
         // grid + labels
         for (e in listOf(data.min, data.max)) {
-            drawLine(gridColor, Offset(left, y(e)), Offset(size.width, y(e)), 1f)
+            drawLine(GRID, Offset(left, g.y(e)), Offset(size.width, g.y(e)), 1f)
             val t = measurer.measure("${e.toInt()} m", labelStyle)
-            drawText(t, topLeft = Offset(0f, (y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
+            drawText(t, topLeft = Offset(0f, (g.y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
         }
         val endLabel = measurer.measure(Format.distance(data.total), labelStyle)
         drawText(endLabel, topLeft = Offset(size.width - endLabel.size.width, bottom + 1.dp.toPx()))
         drawText(measurer.measure("0", labelStyle), topLeft = Offset(left, bottom + 1.dp.toPx()))
 
-        // area + line
-        val line = Path()
-        data.dist.indices.forEach { i ->
-            val px = x(data.dist[i]); val py = y(data.ele[i])
-            if (i == 0) line.moveTo(px, py) else line.lineTo(px, py)
-        }
-        val area = Path().apply {
-            addPath(line)
-            lineTo(x(data.total), bottom); lineTo(left, bottom); close()
-        }
-        drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.05f)), top, bottom))
-        if (steep == null) drawPath(line, color, style = Stroke(width = 2.dp.toPx()))
-        else {
-            val w2 = 2.5.dp.toPx()
-            for (i in steep.indices) {
-                drawLine(steepColor(steep[i], color), Offset(x(data.dist[i]), y(data.ele[i])),
-                    Offset(x(data.dist[i + 1]), y(data.ele[i + 1])), w2, cap = StrokeCap.Round)
-            }
-        }
+        // area + line (cached paths)
+        drawPath(g.area, g.areaBrush)
+        if (g.byClass == null) drawPath(g.line, color, style = g.lineStroke)
+        else g.byClass.forEachIndexed { k, p -> if (!p.isEmpty) drawPath(p, steepColor(STEEP_ORDER[k], color), style = g.lineStroke) }
 
         cursor?.let { i ->
-            val cx = x(data.dist[i]); val cy = y(data.ele[i])
+            val cx = g.x(data.dist[i]); val cy = g.y(data.ele[i])
             drawLine(Color(0xFF333333), Offset(cx, top), Offset(cx, bottom), 1.5f)
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
@@ -155,6 +145,68 @@ fun ElevationProfile(
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
         }
+    }
+}
+
+private val GRID = Color(0x22000000)
+private val STEEP_ORDER = RouteSummary.Steepness.entries
+
+/**
+ * The profile's paths for one route, built once per drawing size (owner field report 0.9.3). Unit tested
+ * (ProfileCacheTest): asking again for the same size returns the same geometry.
+ */
+internal class ProfileCache(private val data: Profile, private val steep: List<RouteSummary.Steepness>?, private val color: Color) {
+    class Geometry(
+        val x: (Double) -> Float, val y: (Double) -> Float,
+        val line: Path, val area: Path, val areaBrush: Brush,
+        /** Steepness classes (FLAT, MODERATE, STEEP, VERY_STEEP) as one path each; null = one colour. */
+        val byClass: List<Path>?, val lineStroke: Stroke,
+    )
+    private var key: List<Float>? = null
+    private var geometry: Geometry? = null
+    /** How often the paths were really built (tests). */
+    var builds = 0
+        private set
+
+    fun geometry(width: Float, left: Float, top: Float, bottom: Float, lineW: Float, steepW: Float): Geometry {
+        val k = listOf(width, left, top, bottom, lineW, steepW)
+        geometry?.let { if (k == key) return it }
+        builds++
+        val w = width - left
+        val range = (data.max - data.min).coerceAtLeast(20.0)
+        val minE = data.min - range * 0.08
+        val maxE = data.max + range * 0.08
+        val x = { d: Double -> left + (d / data.total * w).toFloat() }
+        val y = { e: Double -> (bottom - (e - minE) / (maxE - minE) * (bottom - top)).toFloat() }
+        val line = Path()
+        for (i in data.dist.indices) {
+            val px = x(data.dist[i]); val py = y(data.ele[i])
+            if (i == 0) line.moveTo(px, py) else line.lineTo(px, py)
+        }
+        val area = Path().apply {
+            addPath(line)
+            lineTo(x(data.total), bottom); lineTo(left, bottom); close()
+        }
+        // one path per steepness class: 4 draws instead of one per segment (thousands on a long route)
+        val byClass = steep?.let { s ->
+            val paths = List(STEEP_ORDER.size) { Path() }
+            val lastEnd = IntArray(STEEP_ORDER.size) { -1 }
+            for (i in s.indices) {
+                val k = s[i].ordinal
+                val p = paths[k]
+                if (lastEnd[k] != i) p.moveTo(x(data.dist[i]), y(data.ele[i]))
+                p.lineTo(x(data.dist[i + 1]), y(data.ele[i + 1]))
+                lastEnd[k] = i + 1
+            }
+            paths
+        }
+        val g = Geometry(x, y, line, area,
+            Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.05f)), top, bottom),
+            byClass,
+            if (byClass == null) Stroke(width = lineW) else Stroke(width = steepW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        key = k
+        geometry = g
+        return g
     }
 }
 
@@ -182,10 +234,10 @@ fun GradientLegend(flat: Color = OnPathColors.Route) {
     }
 }
 
-private class Profile(val dist: DoubleArray, val ele: DoubleArray, val idx: IntArray, val min: Double, val max: Double, val total: Double)
+internal class Profile(val dist: DoubleArray, val ele: DoubleArray, val idx: IntArray, val min: Double, val max: Double, val total: Double)
 
 /** Keeps only points with elevation; null if there is not enough data. */
-private fun profileData(points: List<GeoPoint>): Profile? {
+internal fun profileData(points: List<GeoPoint>): Profile? {
     if (points.size < 2) return null
     val cum = Geo.cumulative(points)
     val keep = points.indices.filter { points[it].ele != null }
