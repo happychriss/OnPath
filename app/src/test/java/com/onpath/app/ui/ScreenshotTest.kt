@@ -545,7 +545,7 @@ class ScreenshotTest {
     }
 
     /** Settings → Backup: folder, last backup, count, last failure; another folder chosen. */
-    @Test fun settingsBackup() = withTimeZone("Europe/Rome") { settingsBackupShot() } // the date is shown in local time
+    @Test fun settingsBackup() = withTimeZone("UTC") { settingsBackupShot() } // owner: tests in UTC (he works from changing places)
 
     private fun withTimeZone(id: String, block: () -> Unit) {
         val old = java.util.TimeZone.getDefault()
