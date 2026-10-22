@@ -1,7 +1,7 @@
 # End-to-end tests of the core features (docs/core-features.md) on an Android emulator: the real app and map,
 # a finger held on the screen (app/src/androidTest). Owner 2026-10-21: "not good to find out during walking".
 #
-# Runs on every push to main that touches the app, by hand, and as a gate inside release.yml (workflow_call).
+# Runs on every push to main that touches the app and by hand (owner 2026-10-22: beside releases, not as a gate).
 name: E2E
 
 on:
