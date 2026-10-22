@@ -371,13 +371,24 @@ BRouter's `durationS` stays in the `RouteResult` contract but is no longer shown
 
 ### 4.1 Settings (simple)
 
-Settings → "Your pace", two rows (hiking, cycling), three chips each:
+Settings → "Your pace", hiking and cycling, **five levels** each (owner 2026-10-22; until then three: Relaxed ×1.25 /
+Normal / Fit ×0.8). Speeds about 15 % apart around **Average = DIN 33466** (4 km/h, 300 m up and 500 m down per hour;
+`time/Din33466`, also the quick estimate in `Geo.estimateSeconds`; table B is anchored on it). Time factor = 1 / speed.
+Each level shows what it means for the activity (`Pace.meaning`): hiking from DIN, bikes from the power model of the
+current bike (flat speed, height per hour on a 6 % climb), both × speed. Table B stays the main hiking model (owner
+2026-10-22). **E-bikes / e-MTBs** (owner 2026-10-22): the flat speed is capped at about 25 km/h at every level (the
+assist limit; `Pace.factors`: flat factor ≥ model flat speed / 25), so Fit / Very fit are only faster uphill (and down).
 
-| Choice | Factor on time | Hiking flat speed / climb |
-| --- | --- | --- |
-| Relaxed | ×1.25 | 3.2 km/h, ~260 m/h |
-| **Normal** (default) | ×1.0 | 4 km/h, ~320 m/h |
-| Fit | ×0.8 | 5 km/h, ~400 m/h |
+| Level | Speed | Time factor | Hiking |
+| --- | --- | --- | --- |
+| Relaxed | ×0.75 | ×1.33 | about 3 km/h · 230 m up per hour |
+| Easy | ×0.875 | ×1.14 | about 3.5 km/h · 260 m up per hour |
+| **Average** (default) | ×1.0 | ×1.0 | about 4 km/h · 300 m up per hour |
+| Fit | ×1.15 | ×0.87 | about 4.6 km/h · 350 m up per hour |
+| Very fit | ×1.3 | ×0.77 | about 5.2 km/h · 390 m up per hour |
+
+Migration (`Prefs`, new keys `hikePaceLevel` / `bikePaceLevel`): old Relaxed → Relaxed, Normal → Average, Fit → Very fit
+(the nearest new factor each).
 
 Komoot has a similar fitness setting (it changes only the time, not the route); Hiiker and Locus let you type speeds.
 Own speeds (km/h, m/h up, m/h down) are **not** offered in v1 – the learning does this better and needs no input.

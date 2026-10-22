@@ -42,7 +42,7 @@ data class TimeDetailsUi(
 
 /**
  * "Time details" (route sheet ⋯): a debug view of the time estimate – which slope bands the route has, how long each
- * takes at Normal pace, which factor (the pace setting) is applied, and the result. Read-only.
+ * takes at Average pace, which factor (the pace setting) is applied, and the result. Read-only.
  */
 @Composable
 fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
@@ -60,7 +60,7 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                     TdKV("Moving time", Format.duration(r.finalS), bold = true)
                     TdKV("With breaks (+${(TimeEstimate.BREAK_ALLOWANCE * 100).toInt()} %)",
                         Format.duration(r.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)))
-                    TdKV("At Normal pace", Format.duration(r.baseS))
+                    TdKV("At Average pace", Format.duration(r.baseS))
                     if (r.wayRows.isNotEmpty()) TdKV("From the slope alone (no way info)", Format.duration(r.slopeOnlyS))
                 }
                 TdSection("Factors") {
@@ -90,7 +90,7 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                         }
                     }
                 }
-                if (r.wayRows.isNotEmpty()) TdSection("By way type / difficulty (Normal pace)") {
+                if (r.wayRows.isNotEmpty()) TdSection("By way type / difficulty (Average pace)") {
                     Row(Modifier.fillMaxWidth()) {
                         TdCell("Way", 2f, header = true); TdCell("Dist.", 1f, header = true)
                         TdCell("Slope only", 1.1f, header = true); TdCell("×", 0.7f, header = true)

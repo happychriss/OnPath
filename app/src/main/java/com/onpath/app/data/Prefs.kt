@@ -42,6 +42,18 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         Problems.warn("settings", "Setting $key unreadable, using the default", e); null
     }
 
+    /**
+     * Pace level (five levels since 2026-10-22) under [key]; not set yet → the old three-level value under [oldKey]
+     * mapped onto the five ([com.onpath.app.time.Pace.fromOld]), so existing users keep their pace. New keys because the
+     * old "FIT" (×0.8) is now "Very fit", not the new "Fit".
+     */
+    private fun pace(key: String, oldKey: String): com.onpath.app.time.Pace = try {
+        if (sp.contains(key)) com.onpath.app.time.Pace.of(sp.getString(key, null))
+        else com.onpath.app.time.Pace.fromOld(sp.getString(oldKey, null))
+    } catch (e: Exception) {
+        Problems.warn("settings", "Setting $key unreadable, using Average pace", e); com.onpath.app.time.Pace.DEFAULT
+    }
+
     /** Last camera: lat, lon, zoom. */
     var camera: Triple<Double, Double, Double>?
         get() = if (!sp.contains("camLat")) null else Triple(
@@ -67,8 +79,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
-            hikePace = com.onpath.app.time.Pace.of(sp.getString("hikePace", null)),
-            bikePace = com.onpath.app.time.Pace.of(sp.getString("bikePace", null)),
+            hikePace = pace("hikePaceLevel", "hikePace"),
+            bikePace = pace("bikePaceLevel", "bikePace"),
             mapsWifiOnly = sp.getBoolean("mapsWifiOnly", false),
         )
         set(v) = sp.edit()
@@ -84,8 +96,9 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
-            .putString("hikePace", v.hikePace.name)
-            .putString("bikePace", v.bikePace.name)
+            .putString("hikePaceLevel", v.hikePace.name)
+            .putString("bikePaceLevel", v.bikePace.name)
+            .remove("hikePace").remove("bikePace") // the old three-level keys, migrated by [pace]
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
             .apply()
 

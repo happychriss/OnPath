@@ -25,8 +25,8 @@ data class AppSettings(
     /** Navigate: map turns so the walking direction points up (true, default) or stays north-up (false). */
     val navHeadingUp: Boolean = true,
     // --- time estimate (docs/plan-time-estimate.md): pace factor on time only, never on the route ---
-    val hikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,
-    val bikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.NORMAL,
+    val hikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.DEFAULT,
+    val bikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.DEFAULT,
     /** Settings → Offline maps: map areas download only on Wi-Fi, not even the own area on mobile data (F-OFF-03). */
     val mapsWifiOnly: Boolean = false,
 ) {

@@ -6,7 +6,7 @@ import com.onpath.app.routing.WayAttrs
 
 /**
  * "Time details" (owner: a debug view to understand the estimate): the route's 50 m model segments grouped into
- * slope bands with distance, height, base time (Normal pace), the factor applied and the final time, and grouped by
+ * slope bands with distance, height, base time (Average pace), the factor applied and the final time, and grouped by
  * way type / difficulty with the time from the slope alone, the way factor and the time on that way. Pure, tested.
  */
 object TimeBreakdown {
@@ -26,7 +26,7 @@ object TimeBreakdown {
         val kmh: Double get() = if (finalS > 0) distanceM / finalS * 3.6 else 0.0
     }
 
-    /** One way class: [slopeS] = time from the slope alone, [wayS] = with the way (both Normal pace, nothing learned). */
+    /** One way class: [slopeS] = time from the slope alone, [wayS] = with the way (both Average pace, nothing learned). */
     data class WayRow(val label: String, val distanceM: Double, val slopeS: Double, val wayS: Double) {
         val factor: Double get() = if (slopeS > 0) wayS / slopeS else 1.0
     }
@@ -35,7 +35,7 @@ object TimeBreakdown {
                       val factors: Factors, val segmentM: Double, val segments: Int,
                       /** By way type / difficulty, longest first; empty when the line has no way attributes. */
                       val wayRows: List<WayRow> = emptyList(),
-                      /** Normal pace from the slope alone (= [baseS] without way attributes). */
+                      /** Average pace from the slope alone (= [baseS] without way attributes). */
                       val slopeOnlyS: Double = baseS)
 
     fun of(points: List<GeoPoint>, activity: Activity, factors: Factors): Result {
