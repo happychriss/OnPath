@@ -5,11 +5,16 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Release gate green: 2 failing CI emulator tests (CoreDeleteE2ETest) + flaky CellDownloadTest, then 0.9.0 – since 2026-10-22
+- [cloud] Release 0.9.0 once the CI emulator run is green (owner tests the phone today; assumed OK) – since 2026-10-22
 
 
 ## Next
-- **Laptop → cloud handover 2026-10-22: read `docs/handover-2026-10-22-laptop.md` §3 – open tasks in order (manifest sources, cloud cleanup, T5 in background, flaky test, junction vibration + lock-screen info, approach 1 router-decides, world map in release APKs, release 0.9.0).**
+- **Laptop → cloud handover 2026-10-22 (`docs/handover-2026-10-22-laptop.md` §3) – cloud status:** done on main:
+  CI emulator gate fixed (Meran GPS, no loading window, points off the search pill), flaky CellDownloadTest (generation
+  before "ready"), backup screenshot time zone; manifest `sources`; daily storage cleanup (map-hosting §7g; owner: run
+  the gsutil command there once); T5 in the background (service, areas joined after the tour); junction vibration +
+  lock-screen info (BRouter turn instructions). Next: release 0.9.0, then approach 1 "router decides" (owner reviews
+  renders before main).
 - **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
   `/v1` API documented as an open spec; two ways to host: (A) all-in-one Docker Compose (doorman + builder + local
