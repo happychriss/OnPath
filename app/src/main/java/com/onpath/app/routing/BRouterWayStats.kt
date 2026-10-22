@@ -71,6 +71,7 @@ object BRouterWayStats {
         smoothness = tags["smoothness"],
         visibility = tags["trail_visibility"],
         rough = tags["surface"]?.takeIf { it in ROUGH },
+        bicycle = tags["bicycle"]?.trim()?.ifEmpty { null },
     )
 
     /**

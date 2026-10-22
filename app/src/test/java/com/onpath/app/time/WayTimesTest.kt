@@ -113,6 +113,10 @@ class WayTimesTest {
         assertEquals(w, WayAttrs.parse(w.code()))
         assertEquals(WayAttrs("track", "gravel"), WayAttrs.parse(WayAttrs("track", "gravel").code()))
         assertEquals(null, WayAttrs.parse("garbage"))
+        // bike access (2026-10-22): round trip, and older 7-field codes read as unknown
+        val bike = w.copy(bicycle = "dismount")
+        assertEquals("dismount", WayAttrs.parse(bike.code())?.bicycle)
+        assertEquals(null, WayAttrs.parse("path|natural_trail|3|-1||bad|")?.bicycle)
         assertEquals(null, WayAttrs.parse(null))
         assertNotEquals(w, WayAttrs.parse(w.copy(sac = 4).code()))
     }

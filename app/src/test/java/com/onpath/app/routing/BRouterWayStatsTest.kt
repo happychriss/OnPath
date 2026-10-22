@@ -12,6 +12,12 @@ class BRouterWayStatsTest {
     /** BRouter message line: lon lat ele dist cost elev turn node init wayTags nodeTags time energy. */
     private fun msg(dist: Int, tags: String) = "11300000\t46600000\t300\t$dist\t1000\t0\t0\t0\t0\t$tags\t\t10\t100"
 
+    @Test fun bikeAccessFromWayTags() {
+        assertEquals("yes", BRouterWayStats.attrs(BRouterWayStats.parseTags("highway=footway bicycle=yes surface=paved")).bicycle)
+        assertEquals("dismount", BRouterWayStats.attrs(BRouterWayStats.parseTags("highway=path bicycle=dismount")).bicycle)
+        assertEquals(null, BRouterWayStats.attrs(BRouterWayStats.parseTags("highway=path sac_scale=hiking")).bicycle)
+    }
+
     @Test fun wayTypes() {
         assertEquals("cycleway", way("highway=cycleway surface=asphalt"))
         assertEquals("cycleway", way("highway=path bicycle=designated"))

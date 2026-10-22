@@ -79,6 +79,28 @@ class RouteWarningsTest {
         assertTrue(RouteWarnings.detect(bare.take(1), Activity.HIKE, 3).isEmpty())
     }
 
+    @Test fun bikeAccessDecidesPushing() {
+        val open = listOf("yes", "designated", "permissive").map { WayAttrs("footway", "paved", bicycle = it) } +
+            WayAttrs("path", "natural_trail", 3, bicycle = "yes")
+        for (w in open) {
+            val r = route(p(road, 300), p(w, 300), p(road, 300))
+            assertTrue("${w.wayType} bicycle=${w.bicycle}", RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3).isEmpty())
+        }
+        // dismount: pushing on any way, also a plain road / track
+        for (w in listOf(WayAttrs("footway", "paved", bicycle = "dismount"), WayAttrs("quiet_road", "paved", bicycle = "dismount"))) {
+            val r = route(p(road, 300), p(w, 300), p(road, 300))
+            val s = RouteWarnings.detect(r, Activity.MTB, 3).single()
+            assertEquals(SpotKind.PUSH, s.kind)
+            assertEquals(300.0, s.lengthM, 1.0)
+        }
+        // bicycle=no on an easy path: pushing even for an MTB
+        val no = route(p(road, 300), p(WayAttrs("path", "ground", bicycle = "no"), 200), p(road, 300))
+        assertEquals(SpotKind.PUSH, RouteWarnings.detect(no, Activity.MTB, 3).single().kind)
+        // hikers: bike access is not their business
+        val hike = route(p(road, 300), p(WayAttrs("footway", "paved", bicycle = "dismount"), 300), p(road, 300))
+        assertTrue(RouteWarnings.detect(hike, Activity.HIKE, 3).isEmpty())
+    }
+
     @Test fun gapsBelowThirtyMetresJoin() {
         val r = route(p(road, 300), p(footway, 100), p(road, 20), p(footway, 100), p(road, 300))
         val s = RouteWarnings.detect(r, Activity.EBIKE, 3).single()
