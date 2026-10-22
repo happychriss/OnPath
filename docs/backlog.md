@@ -58,6 +58,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
 
 ## Done (recent)
+- **0.9.1 (cloud, owner field test 2026-10-22):** POIs above trail numbers; GPS gaps ≤ 5 min bridged (+ Diagnostics
+  trace per gap); position dot on top after a style reload (all app layers via `addBelowPosition`, source check
+  `PositionDotOnTopTest` + e2e `assertPositionDotOnTop` in Plan / reload / highlight / Navigate); points in Navigate;
+  End tour = Cancel · Delete (recycle bin) · Save, plan cleared after either; full plan sheet = one scrolling page
+  (profile with scrub → points + Reverse / Round trip → way types); E2E boots from a cached emulator snapshot.
+  Open: owner's "route without points during a tour" (plan cleared while following?) – needs the diagnostics export.
 - **Checked 2026-10-22 and moved here from Next / Later:** 0.9.0 (tour backup, junction vibration + lock screen, map
   ahead on tour in the background, points editor, simple menus); re-routing P0–P4 incl. reroute back after off-route
   (43923b2); grid cells + cloud hosting (doorman, Cloud Run, any area via Geofabrik, sha256 checks), per-cell size work
