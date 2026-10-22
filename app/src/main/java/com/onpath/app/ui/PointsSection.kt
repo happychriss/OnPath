@@ -100,6 +100,7 @@ fun PointsSection(
     /** That container's visible part (for the auto-scroll edges). */
     viewport: () -> LayoutCoordinates? = { null },
 ) {
+    RecomposeProbe.hit("points")
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Points", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,

@@ -57,19 +57,22 @@ class ScreenshotTest {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large)
         }
 
-    /** Plan mode: search bar + ☰ menu, footer, then [bottom]. Top padding stands in for the status bar. */
+    /**
+     * Plan mode: search bar + ☰ menu, footer on the sheet's top edge (SheetWithFooter: never above the top bar), then
+     * [bottom]. Top padding stands in for the status bar.
+     */
     @Composable
-    private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {}, bottom: @Composable () -> Unit) {
+    private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
+                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
+                      bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
-                    Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                        aboveFooter()
-                        Footer(gps, compass = CompassSpec(null, 0f) {}) // Plan: compass always shown
-                        bottom()
-                    }
+                    SheetWithFooter(TOP_BAR_BOTTOM, footer = {
+                        Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
+                    }, sheet = bottom)
                 }
             }
         }
@@ -158,12 +161,36 @@ class ScreenshotTest {
                                r: PlannedRoute? = route, routing: Boolean = false, roundTrip: Boolean = false) =
         planUi(n = rows.size, r = r, routing = routing, size = size).copy(points = rows, roundTrip = roundTrip)
 
+    /** Owner 2026-10-22, step "small": the summary line only (+ the primary button). */
     @Test fun planPointsSmall() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.MINI), PlanCallbacks()) } }
 
+    /** Step 1: summary + the large elevation profile (finger ruler); details via the difficulty badge. */
     @Test fun planPointsHalf() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT), PlanCallbacks()) } }
 
-    /** Full = the point editor: one summary line, then Points (≡ marker name +distance ✕); no profile / way types. */
+    /** Step 2 = the point editor: summary, profile, then Points (≡ marker name +distance ✕); no way types. */
     @Test fun planPointsFull() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) } }
+
+    /**
+     * Owner screenshot 2026-10-22: with the points open, all four map controls (compass, eye, undo, locate) do not fit
+     * between the top bar and the sheet – they stay below the top bar and fade under the sheet instead of covering ☰.
+     */
+    @Test fun planPointsFullControlsNeverOverTheTopBar() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                    onLocate = {}, onUndo = {})
+            }
+        }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
+    }
+
+    /** What the app shows with the points open: the controls collapse to Undo + locate (MapScreen), below the sheet's edge. */
+    @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {})
+            }
+        }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
+    }
 
     /** A map card (here: no downloads in this build) never squeezes the points away in the point editor (CI 2026-10-22). */
     @Test fun planPointsFullWithMapCard() = paparazzi.snapshot {
