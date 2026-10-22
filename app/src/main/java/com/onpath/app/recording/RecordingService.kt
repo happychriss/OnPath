@@ -256,6 +256,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
         }
         acquireWakeLock()
+        restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
         tracker.onFix = { onFix(it) }
         tracker.start()
         startTicker()
@@ -314,7 +315,27 @@ class RecordingService : Service() {
         }
     }
 
-    private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > 8_000
+    private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
+
+    /** Slower GPS while standing still (owner decision 10, battery); the paused rate is [PauseWatch]'s. */
+    private val restWatch = RestWatch()
+
+    /** Feeds [restWatch] with a usable fix of a running tour and applies the rate change; never costs the track. */
+    private fun restRate(loc: Location) {
+        try {
+            val change = restWatch.onFix(loc.elapsedRealtimeNanos / 1_000_000L, loc.latitude, loc.longitude, loc.accuracy,
+                if (loc.hasSpeed()) loc.speed else null) ?: return
+            tracker.setInterval(restWatch.intervalMs)
+            Problems.trace("gps", when (change) {
+                RestWatch.Change.REST -> "Standing still for ${RestWatch.REST_AFTER_MS / 1000} s: GPS every ${RestWatch.REST_MS / 1000} s"
+                RestWatch.Change.MOVING -> "Moving again: GPS every second"
+            })
+        } catch (e: Exception) {
+            Problems.warn("gps", "GPS rate for standing still not changed; back to every second", e)
+            restWatch.reset()
+            tracker.setInterval(RestWatch.NORMAL_MS)
+        }
+    }
 
     private fun onFix(loc: Location) {
         if (tourId >= 0 && paused) {
@@ -326,6 +347,8 @@ class RecordingService : Service() {
         if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
+        // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
+        restRate(loc)
 
         val nowEl = SystemClock.elapsedRealtime()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
@@ -647,12 +670,13 @@ class RecordingService : Service() {
         // Battery: a pause records nothing – GPS runs slowly (never off: owner 2026-10-20, walking on with the pause
         // still on is noticed by PauseWatch), the wake lock rests until Resume.
         pauseWatch.reset()
+        restWatch.reset() // the pause has its own rate; after Resume the standing-still minute starts anew
         nm().cancel(PAUSE_ALERT_ID)
         if (p) {
             tracker.setInterval(PauseWatch.GPS_MS)
             try { wakeLock?.let { if (it.isHeld) it.release() } } catch (e: Exception) { Problems.warn("recording", "Wake lock not released on pause", e) }
         } else {
-            tracker.setInterval(1000L)
+            tracker.setInterval(RestWatch.NORMAL_MS)
             acquireWakeLock()
         }
         trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
@@ -687,7 +711,8 @@ class RecordingService : Service() {
         }
         tourId = -1
         tracker.stop()
-        tracker.setInterval(1000L) // a tour ended while paused must not start the next one at the pause rate
+        restWatch.reset()
+        tracker.setInterval(RestWatch.NORMAL_MS) // a tour ended while paused / resting must not start the next one slowly
         cancelReroute()
         scope.cancel()
         nm().cancel(ALERT_ID)
