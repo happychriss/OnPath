@@ -16,6 +16,10 @@ object PointFilter {
     const val MAX_ACCURACY_M = 50f
     const val MAX_SPEED_MS = 35.0       // ~126 km/h: anything faster is a GPS jump
     const val STILL_WINDOW_S = 30.0
+    /** A GPS gap up to this long is bridged (owner field test 2026-10-22: the drawn track broke under forest). */
+    const val BRIDGE_MAX_MS = 5 * 60_000L
+    /** … when the straight line across it is no faster than this (~54 km/h: a fast bike downhill, not a train). */
+    const val BRIDGE_MAX_SPEED_MS = 15.0
 
     enum class Verdict { ACCEPT, BAD_ACCURACY, JUMP, STANDING_STILL }
 
@@ -35,5 +39,17 @@ object PointFilter {
         if (dt > 0 && d / dt > MAX_SPEED_MS) return Verdict.JUMP to 0.0
         if (d < minMoveM(accuracyM) && dt < STILL_WINDOW_S) return Verdict.STANDING_STILL to 0.0
         return Verdict.ACCEPT to d
+    }
+
+    /**
+     * After a GPS gap: does [p] continue [prev]'s track piece? Yes for a short gap crossed at a plausible speed – the
+     * line stays connected and the straight distance counts (the walker did cover it). A long gap or a fast one (bus,
+     * train, a wrong fix) starts a new piece, as before.
+     */
+    fun bridgesGap(prev: TrackPoint, p: TrackPoint): Boolean {
+        val dtMs = (p.timeMs ?: return false) - (prev.timeMs ?: return false)
+        if (dtMs <= 0 || dtMs > BRIDGE_MAX_MS) return false
+        val d = Geo.distance(prev.lat, prev.lon, p.lat, p.lon)
+        return d / (dtMs / 1000.0) <= BRIDGE_MAX_SPEED_MS
     }
 }
