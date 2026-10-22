@@ -114,4 +114,38 @@ class StyleFormatTest {
                 assertTrue(l.getString("id"), l.optDouble("maxzoom", 24.0) <= 13.0)
         }
     }
+
+    /**
+     * Phone log 2026-10-22 (0.10.0): "[ParseStyle]: [4]: Expected array<color> but found string instead." MapLibre Native
+     * 13.x types hillshade-shadow-color / -highlight-color as array<color> and cannot interpolate or step it – an
+     * expression there is dropped and the layer draws opaque black / white. Only plain colour strings (or arrays of
+     * them) are allowed; zoom-dependent shading uses zoom-band layers (make_style.py hillshade()). The bands of one
+     * light must tile the zoom range without gaps or overlaps.
+     */
+    @Test fun hillshadeColoursAreConstantsNativeAccepts() {
+        for (s in listOf(f1, f2)) {
+            val layers = s.getJSONArray("layers")
+            val hs = (0 until layers.length()).map { layers.getJSONObject(it) }.filter { it.optString("type") == "hillshade" }
+            assertTrue(hs.isNotEmpty())
+            for (l in hs) {
+                val p = l.getJSONObject("paint")
+                for (prop in listOf("hillshade-shadow-color", "hillshade-highlight-color")) {
+                    val v = p.opt(prop) ?: continue
+                    val ok = v is String || (v is org.json.JSONArray && v.length() > 0 &&
+                        (0 until v.length()).all { v.get(it) is String } && v.getString(0) !in EXPRESSION_OPS)
+                    assertTrue("${l.getString("id")} $prop must be a constant colour, got $v", ok)
+                }
+            }
+            for (light in listOf("hillshade-nw", "hillshade-w")) {
+                val bands = hs.filter { it.getString("id") == light || it.getString("id").startsWith("$light-z") }
+                    .map { it.optDouble("minzoom", 0.0) to it.optDouble("maxzoom", 24.0) }.sortedBy { it.first }
+                assertEquals(light, 0.0, bands.first().first, 0.0)
+                bands.zipWithNext().forEach { (a, b) -> assertEquals("$light bands touch", a.second, b.first, 0.0) }
+            }
+        }
+    }
+
+    private companion object {
+        val EXPRESSION_OPS = setOf("interpolate", "step", "match", "case", "literal", "coalesce", "get", "to-color", "rgba", "rgb")
+    }
 }
