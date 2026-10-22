@@ -1,6 +1,5 @@
 package com.onpath.app.ui.search
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -125,7 +124,8 @@ class SearchSession(
         ui = ui.copy(indexing = true)
         val built = withContext(Dispatchers.IO) {
             val t0 = System.currentTimeMillis()
-            OfflineIndex.load(dir, cacheDir, sig).also { Log.i("OnPath", "search index: ${it.entries.size} entries in ${System.currentTimeMillis() - t0} ms") }
+            // in the event log (perf report 2026-10-22: the index is rebuilt after every map store generation)
+            OfflineIndex.load(dir, cacheDir, sig).also { com.onpath.app.debug.Problems.trace("search", "Search index ${dir.name}: ${it.entries.size} entries in ${System.currentTimeMillis() - t0} ms") }
         }
         index = built; cached = built
         ui = ui.copy(indexing = false)

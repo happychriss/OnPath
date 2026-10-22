@@ -373,10 +373,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
-    private fun routingForLine(line: List<GeoPoint>) = safeRouting("route") {
-        val keys = com.onpath.app.data.RoutingTiles.forLine(line)
+    private fun routingForLine(keys: List<String>) = safeRouting("route") {
         routingData.keepCorridor(keys) // parts of an older route's corridor go (field bug 2026-10-22)
         routingData.ensure(keys, corridor = true)
+    }
+
+    /**
+     * What a computed route needs for its corridor – pure geometry and file checks, computed off the main thread (perf
+     * report 2026-10-22: 3–4 corridor walks per result on the main thread, a hitch after every long route). Null parts
+     * = that check failed (reported); the route stays.
+     */
+    private class PostRoute(val routingKeys: List<String>?, val tilesMissing: Boolean, val cells: List<com.onpath.app.cells.CellId>?)
+
+    private fun postRoute(r: com.onpath.app.routing.PlannedRoute, pts: List<GeoPoint>): PostRoute {
+        val line = if (r.points.size >= 2) r.points else pts
+        val keys = try { com.onpath.app.data.RoutingTiles.forLine(line) } catch (e: Exception) {
+            Problems.error("routing", "Routing data corridor of the route unknown; nothing loads for it", e); null
+        }
+        val missing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts, 0.0)).isNotEmpty() } catch (e: Exception) {
+            Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
+        }
+        val corridor = try { cellTriggers.corridorOf(r.points) } catch (e: Exception) {
+            Problems.error("cells", "Map corridor of the route unknown; computed on the main thread", e); null
+        }
+        return PostRoute(keys, missing, corridor)
     }
 
     /**
@@ -431,7 +451,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
         recheckData()
         engine = null // a new engine reads the new tile
-        if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) recalc()
+        // once after the batch (perf report 2026-10-22: one recalc per arriving part, each up to a minute on a long plan)
+        arrivedNames += names
+        arrivalGateJob = gated(routingArrivalGate, arrivalGateJob, busy = { routingData.loading }) {
+            val n = arrivedNames.size; arrivedNames.clear()
+            if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) {
+                Problems.trace("routing", "Plan computed again after $n routing part(s) arrived")
+                recalc()
+            }
+        }
+    }
+
+    /**
+     * [gate] got a change: a coroutine waits until it is due ([QuietGate]) and runs [action] once (main thread). An
+     * already waiting coroutine ([running]) picks the change up. Returns the waiting coroutine.
+     */
+    private fun gated(gate: QuietGate, running: kotlinx.coroutines.Job?, busy: () -> Boolean, action: () -> Unit): kotlinx.coroutines.Job {
+        gate.changed(android.os.SystemClock.elapsedRealtime())
+        if (running?.isActive == true) return running
+        return viewModelScope.launch {
+            while (true) {
+                val w = try { gate.waitMs(android.os.SystemClock.elapsedRealtime(), busy()) } catch (e: Exception) {
+                    Problems.warn("ui", "Busy check failed; acting now", e); 0L
+                } ?: break
+                if (w == 0L) {
+                    gate.reset()
+                    try { action() } catch (e: Exception) { Problems.error("ui", "Delayed update failed", e) }
+                    break
+                }
+                delay(w)
+            }
+        }
     }
 
     /**
@@ -563,9 +613,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * updated while the app is idle): newer versions of the installed map areas along it (quiet; the map is veiled for
      * the seconds a ready one loads) and newer routing data (then the plan is computed again).
      */
-    private fun freshenAfterRoute(line: List<GeoPoint>) {
+    private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?) {
         safeCells("fresh") {
-            val asked = cellTriggers.freshenAlong(line)
+            val asked = cellTriggers.freshenAlong(line, corridor)
             if (asked.isNotEmpty()) Problems.info("cells", "Checking ${asked.size} map area(s) along the route for a newer version")
         }
         checkRoutingData(line)
@@ -637,11 +687,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
         val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
         val sorted = installed.sortedBy { areaNames[it.id] ?: it.id.id }
-        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once
-        val routingBytes = try {
-            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { key ->
-                com.onpath.app.routing.Rd5Parts.Part.parse(key)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
-            }
+        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once.
+        // Computed once per change of the regions or the routing data – not on every progress tick (perf report 2026-10-22)
+        val key = sorted.map { it.id } to routingData.store.version
+        val routingBytes = routingBytesCache?.takeIf { it.first == key }?.second ?: try {
+            com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { k ->
+                com.onpath.app.routing.Rd5Parts.Part.parse(k)?.let { routingData.store.sizeOnPhone(it) } ?: 0L
+            }.also { routingBytesCache = key to it }
         } catch (e: Exception) {
             Problems.warn("routing", "Routing data sizes for Offline maps not readable; map sizes only", e); emptyMap()
         }
@@ -730,6 +782,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routeError by mutableStateOf<String?>(null)
         private set
     var highlight by mutableStateOf<GeoPoint?>(null)
+
+    // Bursts → one action (perf report 2026-10-22); declared before init {} (ViewModelInitOrderTest).
+    /** Map style reload after new map store generations: once per quiet period, never while the user drags. */
+    private val styleGate = QuietGate(STYLE_QUIET_MS, STYLE_MAX_WAIT_MS)
+    private var styleGateJob: kotlinx.coroutines.Job? = null
+    /** The plan recomputed after routing data arrived: once after a batch, not per part. */
+    private val routingArrivalGate = QuietGate(ARRIVAL_QUIET_MS, ARRIVAL_MAX_WAIT_MS, maxBusyMs = ARRIVAL_MAX_WAIT_MS)
+    private var arrivalGateJob: kotlinx.coroutines.Job? = null
+    private val arrivedNames = ArrayList<String>()
+    /** Settings → Offline maps: routing bytes per region for (regions, routing data version) – see [offlineMapsUi]. */
+    private var routingBytesCache: Pair<Pair<List<com.onpath.app.cells.CellId>, Int>, Map<com.onpath.app.cells.CellId, Long>>? = null
 
     // declared before init {}: init restores the saved plan and routes it at once (0.9.1 crashed at start – they were
     // declared below and still null then)
@@ -1796,34 +1859,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
+            var planner: Planner? = null
             val result = withContext(routingDispatcher) {
                 runCatching {
                     val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                         .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
-                    withModelTime(Planner(eng, cancel).plan(pts, act, level, pins), act, f)
+                    withModelTime(Planner(eng, cancel).also { planner = it }.plan(pts, act, level, pins), act, f)
                 }
             }
             slow.cancel()
+            // the corridor work of a result off the main thread (perf report 2026-10-22)
+            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r, pts) } }
             if (requests.isCurrent(gen)) routingSlow = false
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
             }
+            // one line per route (perf report 2026-10-22): distance, size, profile, each try's time and outcome
+            val done = result.getOrNull()
             Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
-                " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points)")
+                " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
+                "${act.name}, ${"%.1f".format(Locale.ROOT, com.onpath.app.routing.RouteTimeLimit.straightKm(pts))} km straight" +
+                (done?.let { ", ${"%.1f".format(Locale.ROOT, it.distanceM / 1000)} km routed, ${it.points.size} line points, " +
+                    "${it.legs.count { l -> l.straight }} straight legs" } ?: "") +
+                (planner?.describeTries()?.takeIf { it.isNotEmpty() }?.let { "; tries: $it" } ?: ""))
             var baseline = false
             result.onSuccess {
                 baseline = adoptPlanBaseline
                 route = it; snapToRoute(pts, pins, it)
                 // routing data missing in the route's corridor (~10 km): it loads now; the notice (plain words, no path)
                 // only when a part under a planned point is missing – those make the straight line
-                routingForLine(if (it.points.size >= 2) it.points else pts)
-                val tilesMissing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts, 0.0)).isNotEmpty() } catch (e: Exception) {
-                    Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
-                }
-                routeError = RoutingDataNotice.forRoute(it.error, tilesMissing, routingData.loading)
-                safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points)) } // T4: the corridor
-                if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points)
+                post?.routingKeys?.let { k -> routingForLine(k) }
+                routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, routingData.loading)
+                safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points, post?.cells)) } // T4: the corridor
+                if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells)
                 if (viaData) routingDataRouteChanged(it)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
@@ -2928,7 +2997,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             cells.generation.collect {
                 val onMap = com.onpath.app.map.StyleLoader.lastMapDir
                 if (onMap == null) recheckData() // no map shown yet (missing-data screen): the first cell may complete the data
-                else if (dataFiles.mapDir() != onMap) { recheckData(); styleVersion++ }
+                else if (dataFiles.mapDir() != onMap) {
+                    // once per burst, never while the map / sheet is dragged (perf report 2026-10-22: one reload per
+                    // region, native memory grew with each); the camera and location tracking stay as they are
+                    styleGateJob = gated(styleGate, styleGateJob, busy = { cells.userBusy }) {
+                        if (dataFiles.mapDir() != com.onpath.app.map.StyleLoader.lastMapDir) { recheckData(); styleVersion++ }
+                    }
+                }
             }
         }
         // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 / T5 on fixes
@@ -2962,6 +3037,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         super.onCleared()
     }
 }
+
+/** Map style reload after a new map store generation: this quiet, at most this long after the first (ms). */
+private const val STYLE_QUIET_MS = 2_000L
+private const val STYLE_MAX_WAIT_MS = 15_000L
+/** Plan recomputed after routing data arrived: this quiet (and the queue empty), at most this long (ms). */
+private const val ARRIVAL_QUIET_MS = 1_500L
+private const val ARRIVAL_MAX_WAIT_MS = 20_000L
 
 /** A plan point the router reached only this far away (m) gets a message. */
 private const val FAR_SNAP_M = 150.0

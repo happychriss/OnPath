@@ -88,7 +88,11 @@ data class RouteResult(
  */
 data class Share(val key: String, val meters: Double)
 
-class RoutingException(message: String) : Exception(message)
+/**
+ * [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the
+ * same or shorter budget (leg by leg) would time out too, so the planner does not retry (perf report 2026-10-22).
+ */
+class RoutingException(message: String, val timedOut: Boolean = false) : Exception(message)
 
 /**
  * Cancel signal for one routing request (re-routing while navigating: a newer request supersedes an older one).
