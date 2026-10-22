@@ -110,7 +110,9 @@ class RecordingService : Service() {
     private var elapsedS = 0L
     private var last: TrackPoint? = null
     private var lastGoodFixElapsed = 0L
-    private val track = mutableListOf<MutableList<GeoPoint>>()
+    /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix (field 2026-10-22). */
+    private val gapWatch = PointFilter.GapWatch()
+    private val track =mutableListOf<MutableList<GeoPoint>>()
     private var trackSeg = -1
     /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
     private var trackSnapshot: List<List<GeoPoint>> = emptyList()
@@ -323,12 +325,14 @@ class RecordingService : Service() {
         }
         if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
-        if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) return
+        if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
 
         val nowEl = SystemClock.elapsedRealtime()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
         val lostSinceElapsed = lastGoodFixElapsed
         lastGoodFixElapsed = nowEl
+        val gapWhy = gapWatch.why()
+        gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
@@ -350,7 +354,8 @@ class RecordingService : Service() {
         val prev = last
         // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
-        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s; " +
+        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s " +
+            "($gapWhy); " +
             "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " +
             if (bridged) "line kept connected" else "new track piece")
         val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
@@ -364,7 +369,7 @@ class RecordingService : Service() {
             else if (r - e >= 5) { descent += r - e; eleRef = e }
         }
         // The point goes to SQLite first (R-07). seq advances only when it is really stored.
-        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p) }) {
+        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p, loc.accuracy) }) {
             seq++
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }

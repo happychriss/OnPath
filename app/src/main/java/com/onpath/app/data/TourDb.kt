@@ -41,8 +41,8 @@ data class Tour(
  * All user data in one SQLite database with write-ahead logging.
  * Recording writes every accepted point immediately (R-07).
  */
-class TourDb private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, VERSION, KeepCorruptFile()) {
+class TourDb internal constructor(context: Context, name: String = "onpath.db") :
+    SQLiteOpenHelper(context.applicationContext, name, null, VERSION, KeepCorruptFile()) {
 
     init { setWriteAheadLoggingEnabled(true) }
 
@@ -87,7 +87,7 @@ class TourDb private constructor(context: Context) :
         db.execSQL(
             """CREATE TABLE points(
                 tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
-                lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER)"""
+                lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER, acc REAL)"""
         )
         db.execSQL("CREATE INDEX points_tour ON points(tour_id, seq)")
     }
@@ -95,6 +95,8 @@ class TourDb private constructor(context: Context) :
     /**
      * 1 → 2 (backup, 2026-10-21): uuid (backup files, restore dedupe), pinned stops, recycle bin (deleted_at).
      * Every existing tour gets its uuid here. A column already there is fine.
+     * 2 → 3 (field test 2026-10-22): GPS accuracy per recorded point (`points.acc`, metres, null = unknown / imported),
+     * so a later analysis can tell weak fixes from no fix.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -104,6 +106,11 @@ class TourDb private constructor(context: Context) :
                 }
             }
             db.execSQL("CREATE INDEX IF NOT EXISTS tours_uuid ON tours(uuid)")
+        }
+        if (oldVersion < 3) {
+            try { db.execSQL("ALTER TABLE points ADD COLUMN acc REAL") } catch (e: Exception) {
+                Problems.info("db", "Column acc already there", e)
+            }
         }
         assignMissingUuids(db)
     }
@@ -264,7 +271,14 @@ class TourDb private constructor(context: Context) :
 
     // ---- recording ----
 
-    fun appendPoint(tourId: Long, seq: Int, seg: Int, p: TrackPoint) = insertPoint(writableDatabase, tourId, seq, seg, p)
+    /** [accuracyM] = the fix's horizontal accuracy (stored for later analysis, not shown). */
+    fun appendPoint(tourId: Long, seq: Int, seg: Int, p: TrackPoint, accuracyM: Float? = null) =
+        insertPoint(writableDatabase, tourId, seq, seg, p, accuracyM)
+
+    /** Stored accuracy per point of [tourId] in order (null = unknown) – diagnostics and tests. */
+    fun pointAccuracies(tourId: Long): List<Double?> = readableDatabase.rawQuery(
+        "SELECT acc FROM points WHERE tour_id=? ORDER BY seq", arrayOf(tourId.toString())
+    ).use { c -> buildList { while (c.moveToNext()) add(if (c.isNull(0)) null else c.getDouble(0)) } }
 
     /** The activity switched during a recording (Navigate → activity check). */
     fun updateActivity(tourId: Long, activity: String, sac: Int) {
@@ -287,11 +301,12 @@ class TourDb private constructor(context: Context) :
     }
 
     /** Throws on failure (disk full, corrupt DB): a silent `insert()` returning -1 would lose the track unnoticed. */
-    private fun insertPoint(db: SQLiteDatabase, id: Long, seq: Int, seg: Int, p: TrackPoint) {
+    private fun insertPoint(db: SQLiteDatabase, id: Long, seq: Int, seg: Int, p: TrackPoint, accuracyM: Float? = null) {
         db.insertOrThrow("points", null, ContentValues().apply {
             put("tour_id", id); put("seq", seq); put("seg", seg); put("lat", p.lat); put("lon", p.lon)
             if (p.ele != null) put("ele", p.ele) else putNull("ele")
             if (p.timeMs != null) put("time", p.timeMs) else putNull("time")
+            if (accuracyM != null && accuracyM.isFinite()) put("acc", accuracyM.toDouble())
         })
     }
 
@@ -320,7 +335,7 @@ class TourDb private constructor(context: Context) :
     private fun opt(c: android.database.Cursor, n: String): Int? = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         @Volatile private var instance: TourDb? = null
 
         fun newUuid(): String = java.util.UUID.randomUUID().toString()
