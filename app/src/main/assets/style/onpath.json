@@ -503,6 +503,171 @@
    "id": "hillshade-nw",
    "type": "hillshade",
    "source": "terrain",
+   "maxzoom": 11,
+   "paint": {
+    "hillshade-illumination-direction": 315,
+    "hillshade-illumination-anchor": "map",
+    "hillshade-exaggeration": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     5,
+     0.8,
+     9,
+     0.8,
+     11,
+     0.75,
+     13,
+     0.75,
+     15,
+     0.8
+    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.45)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.80)",
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
+   }
+  },
+  {
+   "id": "hillshade-nw-z11",
+   "type": "hillshade",
+   "source": "terrain",
+   "minzoom": 11,
+   "maxzoom": 12,
+   "paint": {
+    "hillshade-illumination-direction": 315,
+    "hillshade-illumination-anchor": "map",
+    "hillshade-exaggeration": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     5,
+     0.8,
+     9,
+     0.8,
+     11,
+     0.75,
+     13,
+     0.75,
+     15,
+     0.8
+    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.42)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.81)",
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
+   }
+  },
+  {
+   "id": "hillshade-nw-z12",
+   "type": "hillshade",
+   "source": "terrain",
+   "minzoom": 12,
+   "maxzoom": 13,
+   "paint": {
+    "hillshade-illumination-direction": 315,
+    "hillshade-illumination-anchor": "map",
+    "hillshade-exaggeration": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     5,
+     0.8,
+     9,
+     0.8,
+     11,
+     0.75,
+     13,
+     0.75,
+     15,
+     0.8
+    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.36)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.84)",
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
+   }
+  },
+  {
+   "id": "hillshade-nw-z13",
+   "type": "hillshade",
+   "source": "terrain",
+   "minzoom": 13,
+   "maxzoom": 14,
+   "paint": {
+    "hillshade-illumination-direction": 315,
+    "hillshade-illumination-anchor": "map",
+    "hillshade-exaggeration": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     5,
+     0.8,
+     9,
+     0.8,
+     11,
+     0.75,
+     13,
+     0.75,
+     15,
+     0.8
+    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.30)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.86)",
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
+   }
+  },
+  {
+   "id": "hillshade-nw-z14",
+   "type": "hillshade",
+   "source": "terrain",
+   "minzoom": 14,
+   "maxzoom": 15,
+   "paint": {
+    "hillshade-illumination-direction": 315,
+    "hillshade-illumination-anchor": "map",
+    "hillshade-exaggeration": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     5,
+     0.8,
+     9,
+     0.8,
+     11,
+     0.75,
+     13,
+     0.75,
+     15,
+     0.8
+    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.26)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.89)",
+    "hillshade-accent-color": "rgba(50,58,84,0.06)"
+   }
+  },
+  {
+   "id": "hillshade-nw-z15",
+   "type": "hillshade",
+   "source": "terrain",
+   "minzoom": 15,
    "maxzoom": 17,
    "paint": {
     "hillshade-illumination-direction": 315,
@@ -526,34 +691,8 @@
      15,
      0.8
     ],
-    "hillshade-shadow-color": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     "rgba(38,56,42,0.45)",
-     13,
-     "rgba(38,56,42,0.33)",
-     15,
-     "rgba(38,56,42,0.23)"
-    ],
-    "hillshade-highlight-color": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     "rgba(255,255,245,0.80)",
-     15,
-     "rgba(255,255,245,0.90)"
-    ],
+    "hillshade-shadow-color": "rgba(38,56,42,0.23)",
+    "hillshade-highlight-color": "rgba(255,255,245,0.90)",
     "hillshade-accent-color": "rgba(50,58,84,0.06)"
    }
   },

@@ -282,7 +282,7 @@ Values from the hill-shading proposal, variant c: `hillshade-nw` exaggeration 0.
 13 / 15), shadow rgba(38,56,42) 0.45 → 0.33 → 0.23 (z11 / 13 / 15), highlight rgba(255,255,245) 0.80 → 0.90 (z11 / 15),
 accent 0.06; `hillshade-w` exaggeration 0.4 / 0.4 / 0.35 / 0.35 (z8 / 10 / 13 / 15), shadow 0.12; lighter wood
 (#cde3b8 → #d8eac6, z12 / 15) and grass (#e3edd2 → #e9f1dc). Colour tokens may now be zoom stops (`Z()`,
-`<token>.z<N>` + `.base 1`). Overview raster (`Overview.kt`): raster-contrast 0.25, raster-brightness-max 0.9.
+`<token>.z<N>` + `.base 1`) – **except hillshade shadow / highlight** (fix after the 0.10.0 phone test: MapLibre Native 13.x types them array<color> and cannot interpolate that, so 0.10.0 dropped both on `hillshade-nw` with "Expected array<color> but found string" and drew opaque black shadows / white highlights – much harsher than the maplibre-gl JS renders; now one `hillshade-nw-z<N>` layer per whole zoom z11–15 with the colour at the band's middle, guard `StyleFormatTest`). Overview raster (`Overview.kt`): raster-contrast 0.25, raster-brightness-max 0.9.
 Format-2 terrain goes to **z13** (was z12; `build_terrain.py --format 2`, cells z10–13, regions z5–13): per cell
 terrain 1.0 → 3.1 MB (Meran 10/543/361: 1.02 → 3.13 MB, 542/361 1.01 → 3.10, 544/362 0.95 → 2.93), i.e. a cell
 ~9.3 → ~11.4 MB (+23 %); test region terrain 8.7 → 21.9 MB. Mean brightness of the map at Partschins (z11 / 13 / 15):

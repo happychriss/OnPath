@@ -140,18 +140,59 @@ def landcover():
                  "line-dasharray": [6, 3]})
 
 
+def _rgba(c):
+    """'rgba(r,g,b,a)' / 'rgb(r,g,b)' / '#rrggbb[aa]' -> [r, g, b, a]."""
+    c = c.strip()
+    if c.startswith("#"):
+        h = c[1:]
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)] + [int(h[6:8], 16) / 255 if len(h) == 8 else 1.0]
+    v = [float(x) for x in c[c.index("(") + 1:c.rindex(")")].split(",")]
+    return v + [1.0] if len(v) == 3 else v
+
+
+def _color_at(key, z):
+    """Theme colour '<key>' at zoom z: linear between its .z<N> stops (clamped), or the scalar token."""
+    st = style_theme.stops(key)
+    if not st:
+        return T(key)
+    if z <= st[0][0]:
+        return st[0][1]
+    if z >= st[-1][0]:
+        return st[-1][1]
+    for (z0, c0), (z1, c1) in zip(st, st[1:]):
+        if z0 <= z <= z1:
+            a, b, t = _rgba(c0), _rgba(c1), (z - z0) / (z1 - z0)
+            r, g, bl, al = (a[i] + (b[i] - a[i]) * t for i in range(4))
+            return f"rgba({round(r)},{round(g)},{round(bl)},{al:.2f})"
+    return st[-1][1]
+
+
+HILLSHADE_MAXZOOM = 17
+
+
 def hillshade():
     # Two light sources: a broad one (default NW) and a weaker fill light (default W) for multi-directional modelling.
+    # MapLibre Native (android-sdk 13.x) types hillshade-shadow-color / -highlight-color as array<color> (multi-light
+    # hillshade) and can neither interpolate nor step that type: a zoom expression there is dropped ("Expected
+    # array<color> but found string instead") and the layer falls back to opaque black / white. So shadow / highlight
+    # are constants per layer; colours with zoom stops (balanced (c), owner 2026-10-22) become zoom bands: one layer per
+    # whole zoom between the first and last stop, coloured at the band's middle (the bands share the DEM textures,
+    # only one draws at a time). The first band keeps the plain id (hillshade-nw), the others are hillshade-nw-z<N>.
     for lid, key in (("hillshade-nw", "main"), ("hillshade-w", "fill")):
         k = f"hillshade.{key}"
-        layer(id_=lid, type="hillshade", source="terrain", maxzoom=17,
-              paint={"hillshade-illumination-direction": T(k + ".direction"),
-                     "hillshade-illumination-anchor": "map",
-                     "hillshade-exaggeration": Z(k + ".exaggeration"),
-                     # colours as zoom stops where the theme has them (balanced (c), owner 2026-10-22)
-                     "hillshade-shadow-color": Z(k + ".shadow"),
-                     "hillshade-highlight-color": Z(k + ".highlight"),
-                     "hillshade-accent-color": Z(k + ".accent")})
+        zs = sorted({z for c in ("shadow", "highlight") for z, _ in style_theme.stops(f"{k}.{c}")})
+        cuts = list(range(int(zs[0]), int(zs[-1]) + 1)) if zs else []
+        bands = ([(None, cuts[0])] + list(zip(cuts, cuts[1:])) + [(cuts[-1], None)]) if cuts else [(None, None)]
+        for lo, hi in bands:
+            mid = 0 if lo is None and hi is None else lo if hi is None else hi if lo is None else (lo + hi) / 2
+            zoom_range = ({"minzoom": lo} if lo is not None else {}) | {"maxzoom": HILLSHADE_MAXZOOM if hi is None else hi}
+            layer(id_=lid if lo is None else f"{lid}-z{lo}", type="hillshade", source="terrain", **zoom_range,
+                  paint={"hillshade-illumination-direction": T(k + ".direction"),
+                         "hillshade-illumination-anchor": "map",
+                         "hillshade-exaggeration": Z(k + ".exaggeration"),
+                         "hillshade-shadow-color": _color_at(k + ".shadow", mid),
+                         "hillshade-highlight-color": _color_at(k + ".highlight", mid),
+                         "hillshade-accent-color": Z(k + ".accent")})
 
 
 def contours():
