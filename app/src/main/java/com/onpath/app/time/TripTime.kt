@@ -16,7 +16,14 @@ data class TripTime(
     val state: EstimateState = EstimateState.OK,
     /** Why the estimate is paused ([EstimateState.PAUSED]). */
     val pausedBecause: PauseReason? = null,
+    /** The followed line changed and moved the arrival by more than 5 min: said once, kept until the next change. */
+    val lineNote: LineNote? = null,
 )
+
+/** "New route: arrival 12:45, was 13:15" (backlog: arrival forecast after plan edits). */
+data class LineNote(val wasMs: Long, val nowMs: Long) {
+    fun text(): String = "New route: arrival ${TimeEstimate.clock(nowMs)}, was ${TimeEstimate.clock(wasMs)}"
+}
 
 enum class EstimateState {
     OK,

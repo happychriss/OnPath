@@ -21,7 +21,10 @@ import kotlin.math.roundToLong
  *   yet take half of the trip factor ([RHO]); clamped to [MIN_F]…[MAX_F].
  * - **Calm display:** a new estimate is shown every 100 m of progress (not more often than every 10 s) and moves the
  *   arrival clock by at most 1 min + 2 % of the remaining time. Standing still, "to go" stays and the arrival only
- *   moves later as time passes (checked every 30 s). A new line or new settings reset that limit once.
+ *   moves later as time passes (checked every 30 s). A new setting resets that limit once. A **new line** (plan edit,
+ *   re-route) shows its own difference at once, but what the display had not shown yet (the calm lag) is kept as an
+ *   offset blended out over [OFFSET_BLEND_MS]; when the arrival moves by more than [NOTE_MIN_MS] that way, the
+ *   snapshot carries a [LineNote] ("New route: arrival 12:45, was 13:15") until the next line change.
  *
  * Predictions are `model (Normal) × prior × factors()`, where prior = the pace setting (Relaxed / Normal / Fit).
  */
@@ -57,14 +60,37 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     private var obsM = 0.0
     /** Compared moving seconds ([sumA]) when the warm-up ended; NaN = still in the warm-up. */
     private var warmEndA = Double.NaN
+    // a new line: offset blended out, "why" note
+    /** Shown arrival − estimate at the last real update (ms): what the calm display had not shown yet. */
+    private var lagMs = 0L
+    private var lastWallMs = 0L
+    private var offsetMs = 0L
+    /** When the offset started to blend out (wall ms); null = not shown on the new line yet. */
+    private var offsetFromWall: Long? = null
+    /** Arrival shown before the line changed, until the first value on the new line is shown. */
+    private var noteWasMs: Long? = null
+    private var lineNote: LineNote? = null
 
     /**
-     * New line to follow (start, re-route, plan edit) or none. Learned sums stay; the display may jump once.
-     * [alongM] = where the user is on it; null = not known yet: "not on route" until a fix is matched (never "the whole
-     * line from its start").
+     * New line to follow (start, re-route, plan edit) or none. Learned sums stay. [alongM] = where the user is on it;
+     * null = not known yet: "not on route" until a fix is matched (never "the whole line from its start").
+     * The arrival moves at once by what the new line changes, not by what the calm display still held back (offset,
+     * blended out over [OFFSET_BLEND_MS]); a move of more than [NOTE_MIN_MS] is explained once ([LineNote]).
      */
     fun setLine(t: RouteTimes?, alongM: Double?) {
-        times = t?.takeIf { it.lengthM > 0 }
+        val next = t?.takeIf { it.lengthM > 0 }
+        val old = times
+        val shown = shownArrivalMs.takeIf { old != null && shownToGoS != null }
+        offsetMs = when {
+            shown == null -> 0L
+            // what the display holds back now: shown arrival − estimate on the old line from the last position
+            matched -> shown - TimeEstimate.arrivalMs(lastWallMs, rawToGoS() ?: 0.0, allowance)
+            else -> lagMs
+        }
+        offsetFromWall = null
+        if (next == null) { lineNote = null; noteWasMs = null }
+        else if (!sameLine(old, next)) { lineNote = null; noteWasMs = shown }
+        times = next
         along = (alongM ?: 0.0).coerceAtLeast(0.0)
         matched = alongM != null
         baseAlong = Double.NaN
@@ -72,6 +98,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         history.clear()
         if (times == null || !matched) { shownArrivalMs = null; shownToGoS = null; showToGoS = null }
     }
+
+    /** The same line sent again (e.g. the plan re-sent unchanged): the note stays. */
+    private fun sameLine(a: RouteTimes?, b: RouteTimes?): Boolean =
+        a != null && b != null && abs(a.lengthM - b.lengthM) < 1.0 && abs(a.total() - b.total()) < 1.0
 
     /** Pace setting changed (Settings → Your pace, mid-tour): the new start value, what was measured stays. */
     fun setPrior(f: Factors) {
@@ -162,7 +192,17 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /** Raw moving time from the current progress to the end (s); null without a line. */
     fun rawToGoS(): Double? = times?.remainingFrom(along, prior * factors())
 
+    /** What is left of the offset of a line change at [wallMs] (blended out linearly from its first use). */
+    private fun offsetAt(wallMs: Long): Long {
+        if (offsetMs == 0L) return 0L
+        val from = offsetFromWall ?: wallMs.also { offsetFromWall = it }
+        val k = 1.0 - (wallMs - from).toDouble() / OFFSET_BLEND_MS
+        if (k <= 0) { offsetMs = 0L; return 0L }
+        return (offsetMs * k).roundToLong()
+    }
+
     private fun refresh(wallMs: Long) {
+        lastWallMs = wallMs
         val raw = rawToGoS() ?: run { shownArrivalMs = null; shownToGoS = null; showToGoS = null; return }
         if (!matched && shownToGoS == null) return // nothing known yet on this line: "not on route", no number
         val target = TimeEstimate.arrivalMs(wallMs, raw, allowance)
@@ -171,10 +211,17 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         val moved = along - lastShowAlong >= SHOW_EVERY_M || back
         if (matched && (resetCalm || shown == null || (moved && wallMs - lastShowWall >= MIN_SHOW_MS))) {
             // a real update: the arrival moves at most 1 min + 2 % of the time to go towards the new estimate;
-            // walking back along the route is no estimate noise – the time to go grows at once (owner rule 2)
-            val next = if (resetCalm || shown == null || back) target else {
+            // walking back along the route is no estimate noise – the time to go grows at once (owner rule 2).
+            // After a line change the estimate carries what the display still held back, blended out (no jump).
+            val goal = target + offsetAt(wallMs)
+            val next = if (resetCalm || shown == null || back) goal else {
                 val lim = ((CALM_S + CALM_SHARE * raw) * 1000).roundToLong()
-                shown + (target - shown).coerceIn(-lim, lim)
+                shown + (goal - shown).coerceIn(-lim, lim)
+            }
+            lagMs = next - target
+            noteWasMs?.let { was ->
+                if (abs(next - was) > NOTE_MIN_MS) lineNote = LineNote(was, next)
+                noteWasMs = null
             }
             shownArrivalMs = next
             shownToGoS = max(0.0, (next - wallMs) / 1000.0 / (1 + allowance))
@@ -228,7 +275,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             movingS = movingS(), breakS = breaks.breakS(),
             toGoS = toGo?.let { TimeEstimate.round(it) }, arrivalMs = shownArrivalMs.takeIf { toGo != null },
             learned = factors().takeIf { observedS() >= SHOW_LEARNED_S && !inWarmUp() },
-            state = st, pausedBecause = why,
+            state = st, pausedBecause = why, lineNote = lineNote,
         )
     }
 
@@ -284,6 +331,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val WARMUP_M = 1000.0
         /** After the warm-up the learned factors are blended in over this much compared walking (s). */
         const val BLEND_S = 900.0
+        /** A new line: what the display still held back is blended out over this time (ms). */
+        const val OFFSET_BLEND_MS = 600_000L
+        /** A new line moving the arrival by more than this (ms) is explained once ([LineNote]). */
+        const val NOTE_MIN_MS = 300_000L
 
         fun fromJson(o: JSONObject?, fallbackPrior: Factors = Factors.ONE): TripPace {
             if (o == null) return TripPace(fallbackPrior)
