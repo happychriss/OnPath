@@ -383,12 +383,25 @@ Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback
 - Fixed after the proof: a cell the builder had published but the pump not yet recorded showed "starting" again
   for up to a minute; now `upload`, progress 1, ~30 s.
 
+## 7g. Storage cleanup and manifest sources (2026-10-22, cloud)
+
+- **Daily cleanup** (Worker cron, 03:17 UTC, `tools/cloud/worker/src/cleanup.js`): format-1 cells are deleted for good
+  (`cells/f1/…`, `status/f1/…`, D1 rows `format = 1` – the app reads format 2 only); a format-2 cell keeps its current
+  version (`current.json`) and the previous one, older versions go once their newest object is older than 7 days
+  (an app that read the old manifest just before can finish its download). At most 1000 objects per run, the rest the
+  next day. Logged as `{"ev":"cleanup", f1Objects, f1Rows, oldVersions, oldObjects}`.
+- **Unused Trentino extract** in the source bucket (since the Geofabrik choice, 2026-10-21) – the Worker cannot reach
+  GCS; delete once by hand (Cloud Shell, owner):
+  `gsutil rm gs://onpath-maps-onpath-sources/osm/trentino_alto_adige.osm.pbf` (bucket = `<project>-onpath-sources`, see
+  gcp-setup.sh; `gsutil ls gs://onpath-maps-onpath-sources/osm/` first).
+- **Manifest `sources`**: `[{id, date, url}]` of the OSM extracts the cell was cut from (job → `SRC_META` →
+  build_cell.sh → `cells.py manifest --sources`); debugging aid, the app ignores it.
+
 ## 8. Open points
 
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other
   workflows, so "deploy production on release" would need a PAT or `workflow_run`; for now production is by hand.
-- Old version folders (map-cells.md §6: delete 7 days after `current.json` moved) and cells unused for 12 months are
-  **not cleaned up yet** – storage is cheap; add to the Worker cron later.
+- Cells unused for 12 months are not removed (old versions are, §7g).
 - Format 1 cells built before the switch (test: 10/543/361 under `cells/f1/…`, D1 rows with format 1) are no
   longer served; they can be deleted from the bucket by hand.
 - Not verified against the real services (no accounts used while writing): `gcloud run jobs replace` of `job.yaml`
