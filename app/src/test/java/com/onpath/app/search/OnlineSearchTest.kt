@@ -55,8 +55,8 @@ class OnlineSearchTest {
     }
 
     @Test fun urlAndUserAgent() {
-        val u = PhotonProvider("x").url("Meraner Hütte", 46.67, 11.16, 10)
-        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67000&lon=11.16000&zoom=12&location_bias_scale=0.3&limit=10&lang=de", u)
+        val u = PhotonProvider("x").url("Meraner Hütte", 46.67312, 11.15771, 10)
+        assertEquals("https://photon.komoot.io/api/?q=Meraner+H%C3%BCtte&lat=46.67&lon=11.16&zoom=12&location_bias_scale=0.3&limit=10&lang=de", u)
         assertEquals("OnPath-Android/0.6.0 (github.com/happychriss/OnPath)", PhotonProvider.userAgent("0.6.0"))
         assertEquals("https://www.google.com/maps/search/?api=1&query=Spar%20Algund", GoogleSearchLink.url(" Spar Algund "))
     }
