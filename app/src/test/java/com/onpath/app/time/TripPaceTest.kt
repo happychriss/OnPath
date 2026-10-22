@@ -1,9 +1,11 @@
 package com.onpath.app.time
 
+import com.onpath.app.data.AppSettings
 import com.onpath.app.navigation.NavLine
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -192,5 +194,108 @@ class TripPaceTest {
         for (k in 1..600 step 5) trip2.onFix(s2 + k, 1_000_000L + ((s2 + k) * 1000).toLong(), p.lat, p.lon, times.lengthM * 0.2, true)
         assertEquals(EstimateState.OK, trip2.snapshot().state)
         assertEquals(toGo, trip2.snapshot().toGoS)
+    }
+
+    // ---- learning per tour only (owner decision 2026-10-22) ----------------------------------------------------
+
+    private fun wall(s: Double) = 1_000_000L + (s * 1000).toLong()
+
+    @Test fun everyTourStartsFromTheSettingPace() {
+        val fit = Factors.ONE * Pace.FIT.factor
+        val trip = TripPace(fit); trip.setLine(times, 0.0)
+        trip.tick(1.0, wall(1.0))
+        assertEquals(Factors.ONE, trip.factors())
+        assertEquals(TimeEstimate.round(times.total(fit)), trip.snapshot().toGoS!!, 1.0)
+        // the plan sheet uses the same number: the setting alone
+        assertEquals(fit, TimeEstimate.planFactors(Activity.HIKE, AppSettings(hikePace = Pace.FIT)))
+    }
+
+    @Test fun warmUpUsesTheSettingFor15MinAnd1Km() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        var left: Pair<Double, Double>? = null // (moving s, progress m) when the factors first leave the setting
+        var firstAfter: Factors? = null
+        walk(trip, Factors(0.7, 0.7, 0.7), 0.6) { _, a ->
+            val f = trip.factors()
+            if (left == null && f != Factors.ONE) { left = trip.movingS() to a; firstAfter = f }
+            if (left == null) assertEquals(times.remainingFrom(a), trip.rawToGoS()!!, 1e-6)
+        }
+        val (s, a) = left!!
+        assertTrue("left the setting after $s s", s >= TripPace.WARMUP_S)
+        assertTrue("left the setting after $a m", a >= TripPace.WARMUP_M)
+        // ends when both are reached, not much later
+        assertTrue("$s s / $a m", s < TripPace.WARMUP_S + 90 || a < TripPace.WARMUP_M + 100)
+        // and no jump when it ends
+        assertEquals(1.0, firstAfter!!.up, 0.02)
+        assertFalse(trip.inWarmUp())
+    }
+
+    @Test fun afterTheWarmUpTheFactorsMoveGraduallyPerClass() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val me = Factors(down = 1.4, flat = 1.0, up = 0.75) // strong climber, bad knees
+        var prev = Factors.ONE
+        var maxStep = 0.0
+        val ups = ArrayList<Double>()
+        val s = walk(trip, me, 0.5) { _, _ ->
+            val f = trip.factors()
+            maxStep = maxOf(maxStep, abs(f.up - prev.up), abs(f.down - prev.down), abs(f.flat - prev.flat))
+            prev = f; ups += f.up
+        }
+        assertTrue("largest step of a factor per fix $maxStep", maxStep < 0.015)
+        // only towards the walker, never back and forth
+        assertTrue(ups.zipWithNext().all { (x, y) -> y <= x + 1e-9 })
+        val f = trip.factors()
+        assertTrue("$f", f.up < 0.9)
+        // the descent is not walked yet: part of the trip factor, not the climb's
+        assertTrue("$f", f.down > f.up && f.down < 1.0)
+        walk(trip, me, 1.0, startS = s, startAlong = times.lengthM / 2)
+        assertTrue("${trip.factors()}", trip.factors().down > 1.15)
+    }
+
+    @Test fun breaksDoNotCountForTheWarmUp() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val at = times.lengthM * 0.2
+        val s = walk(trip, Factors(0.4, 0.4, 0.4), 0.2) // > 1 km, but < 15 min of walking
+        assertTrue(trip.movingS() < TripPace.WARMUP_S)
+        val p = line.pointAt(at)
+        for (k in 1..360) trip.onFix(s + k * 5.0, wall(s + k * 5.0), p.lat, p.lon, at, true) // 30 min at a hut
+        assertTrue(trip.snapshot().breakS > 25 * 60)
+        assertTrue(trip.inWarmUp())
+        assertEquals(Factors.ONE, trip.factors())
+    }
+
+    @Test fun changingTheSettingMidTourRebasesTheStartValue() {
+        // in the warm-up: the new setting at once, also on the screen
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.1)
+        val a = times.lengthM * 0.1
+        val fit = Factors.ONE * Pace.FIT.factor
+        trip.setPrior(fit)
+        trip.tick(s + 1, wall(s + 1))
+        assertEquals(times.remainingFrom(a, fit), trip.rawToGoS()!!, 30.0)
+        assertEquals(TimeEstimate.round(times.remainingFrom(a, fit)), trip.snapshot().toGoS!!, 60.0)
+        // after the warm-up: what was measured stays, the setting is the new start value
+        val relaxed = Factors.ONE * Pace.RELAXED.factor
+        val t2 = TripPace(relaxed); t2.setLine(times, 0.0)
+        walk(t2, Factors.ONE, 0.5) // walks "Normal" with Relaxed set
+        val truth = times.remainingFrom(times.lengthM / 2)
+        val before = t2.rawToGoS()!!
+        t2.setPrior(Factors.ONE)
+        val after = t2.rawToGoS()!!
+        assertTrue("$before -> $after", after < before)
+        assertTrue("$before -> $after (truth $truth)", abs(after / truth - 1) < abs(before / truth - 1))
+        assertFalse(t2.inWarmUp())
+    }
+
+    @Test fun nothingCarriesOverToTheNextTour() {
+        val settings = AppSettings()
+        val tour1 = TripPace(TimeEstimate.planFactors(Activity.HIKE, settings)); tour1.setLine(times, 0.0)
+        walk(tour1, Factors(0.6, 0.6, 0.6))
+        assertTrue("${tour1.factors()}", tour1.factors().up < 0.85)
+        // the next tour: a fresh trip from the setting alone (nothing is stored across tours)
+        val tour2 = TripPace(TimeEstimate.planFactors(Activity.HIKE, settings)); tour2.setLine(times, 0.0)
+        tour2.tick(1.0, wall(1.0))
+        assertEquals(Factors.ONE, tour2.prior)
+        assertEquals(Factors.ONE, tour2.factors())
+        assertEquals(TimeEstimate.round(times.total()), tour2.snapshot().toGoS!!, 1.0)
     }
 }

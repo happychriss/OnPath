@@ -14,13 +14,16 @@ import kotlin.math.roundToLong
  * - **What is learned:** while you are on the followed line and it moves forward, every ~50 m of progress adds
  *   (predicted seconds, real moving seconds) to the group of that piece (down / flat / up). Elevation comes from the
  *   line (DEM), never from GPS. Off-route stretches, jumps and implausible pieces are not learned.
- * - **Factors:** shrunk towards the plan (as if [TAU_S] of "normal" walking were already done), groups not walked yet
- *   take half of the trip factor ([RHO]); clamped to [MIN_F]…[MAX_F].
+ * - **Learning per tour only** (owner 2026-10-22): every tour starts from the pace setting ([prior]); nothing is kept
+ *   for the next tour. **Warm-up:** the setting alone until [WARMUP_S] of walking *and* [WARMUP_M] of progress were
+ *   compared (breaks never count), then the learned factors are blended in over the next [BLEND_S] (no jump).
+ * - **Factors:** shrunk towards the setting (as if [TAU_S] of "normal" walking were already done), groups not walked
+ *   yet take half of the trip factor ([RHO]); clamped to [MIN_F]…[MAX_F].
  * - **Calm display:** a new estimate is shown every 100 m of progress (not more often than every 10 s) and moves the
  *   arrival clock by at most 1 min + 2 % of the remaining time. Standing still, "to go" stays and the arrival only
  *   moves later as time passes (checked every 30 s). A new line or new settings reset that limit once.
  *
- * Predictions are `model (Normal) × prior`, where prior = pace setting × what was learned on earlier tours.
+ * Predictions are `model (Normal) × prior × factors()`, where prior = the pace setting (Relaxed / Normal / Fit).
  */
 class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = TimeEstimate.BREAK_ALLOWANCE) {
 
@@ -50,6 +53,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     private var lastFixS = 0.0
     /** Recent fixes (active s, lat, lon, along or NaN) over [STALE_S]: "moving but the estimate cannot follow". */
     private val history = ArrayDeque<DoubleArray>()
+    /** Progress compared so far (m), for the warm-up. */
+    private var obsM = 0.0
+    /** Compared moving seconds ([sumA]) when the warm-up ended; NaN = still in the warm-up. */
+    private var warmEndA = Double.NaN
 
     /**
      * New line to follow (start, re-route, plan edit) or none. Learned sums stay; the display may jump once.
@@ -66,7 +73,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         if (times == null || !matched) { shownArrivalMs = null; shownToGoS = null; showToGoS = null }
     }
 
-    /** Pace setting or stored factors changed. */
+    /** Pace setting changed (Settings → Your pace, mid-tour): the new start value, what was measured stays. */
     fun setPrior(f: Factors) {
         if (f == prior) return
         // keep what was learned meaningful: observed "predicted" seconds are re-scaled to the new prior
@@ -125,16 +132,28 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         val ratio = a / sp
         if (ratio < MIN_RATIO || ratio > MAX_RATIO) return
         for (g in 0 until PaceModel.GROUPS) { sumA[g] += a * p[g] / sp; sumP[g] += p[g] }
+        obsM += d
+        if (warmEndA.isNaN() && sumA.sum() >= WARMUP_S && obsM >= WARMUP_M) warmEndA = sumA.sum()
     }
+
+    /** Still in the warm-up: the setting alone. */
+    fun inWarmUp(): Boolean = warmEndA.isNaN()
 
     /** Trip factor over all groups (relative to the prior). */
     fun tripFactor(): Double = ((TAU_S + sumA.sum()) / (TAU_S + sumP.sum())).coerceIn(MIN_F, MAX_F)
 
-    /** Learned factors per group (relative to the prior); 1 = as planned. */
+    /**
+     * Factors in use per group (relative to the prior); 1 = the setting. Exactly 1 in the warm-up, then the learned
+     * factors blended in over [BLEND_S] of compared walking.
+     */
     fun factors(): Factors {
+        if (warmEndA.isNaN()) return Factors.ONE
+        val w = ((sumA.sum() - warmEndA) / BLEND_S).coerceIn(0.0, 1.0)
         val all = tripFactor()
         val start = 1 + RHO * (all - 1)
-        return Factors.of(DoubleArray(PaceModel.GROUPS) { g -> ((TAU_G * start + sumA[g]) / (TAU_G + sumP[g])).coerceIn(MIN_F, MAX_F) })
+        return Factors.of(DoubleArray(PaceModel.GROUPS) { g ->
+            1 + w * (((TAU_G * start + sumA[g]) / (TAU_G + sumP[g])).coerceIn(MIN_F, MAX_F) - 1)
+        })
     }
 
     /** Predicted seconds already compared with real moving time (s). */
@@ -208,7 +227,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return TripTime(
             movingS = movingS(), breakS = breaks.breakS(),
             toGoS = toGo?.let { TimeEstimate.round(it) }, arrivalMs = shownArrivalMs.takeIf { toGo != null },
-            learned = factors().takeIf { observedS() >= SHOW_LEARNED_S },
+            learned = factors().takeIf { observedS() >= SHOW_LEARNED_S && !inWarmUp() },
             state = st, pausedBecause = why,
         )
     }
@@ -220,12 +239,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return TourTimes(max(0.0, elapsedS) - b, b, p.takeIf { it > 0 }, a.takeIf { p > 0 })
     }
 
-    /** For learning across tours: observed seconds per group (predicted with prior) and real moving seconds. */
-    fun observed(): Pair<DoubleArray, DoubleArray> = sumP.copyOf() to sumA.copyOf()
-
     fun toJson(): JSONObject = JSONObject()
         .put("prior", JSONArray(prior.toArray().toList()))
         .put("a", JSONArray(sumA.toList())).put("p", JSONArray(sumP.toList()))
+        .put("m", obsM).put("warmEnd", if (warmEndA.isNaN()) -1.0 else warmEndA)
         .put("active", activeS).put("along", along)
         .put("breaks", breaks.toJson())
 
@@ -261,6 +278,12 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val STUCK_ALONG_M = 20.0
         /** The learned pace is shown after this much comparison (s). */
         const val SHOW_LEARNED_S = 1200.0
+        /** Warm-up (owner 2026-10-22): the setting alone until this much walking (s, breaks excluded) … */
+        const val WARMUP_S = 900.0
+        /** … and this much progress (m) were compared on the route. */
+        const val WARMUP_M = 1000.0
+        /** After the warm-up the learned factors are blended in over this much compared walking (s). */
+        const val BLEND_S = 900.0
 
         fun fromJson(o: JSONObject?, fallbackPrior: Factors = Factors.ONE): TripPace {
             if (o == null) return TripPace(fallbackPrior)
@@ -268,6 +291,9 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             val prior = arr("prior")?.takeIf { p -> p.all { it > 0 } }?.let { Factors.of(it) } ?: fallbackPrior
             val t = TripPace(prior)
             arr("a")?.copyInto(t.sumA); arr("p")?.copyInto(t.sumP)
+            // older files have no warm-up state: the warm-up runs again from here (smooth, see factors())
+            t.obsM = o.optDouble("m", 0.0).takeIf { !it.isNaN() && it >= 0 } ?: 0.0
+            t.warmEndA = o.optDouble("warmEnd", -1.0).takeIf { !it.isNaN() && it >= 0 } ?: Double.NaN
             t.activeS = o.optDouble("active", 0.0).takeIf { !it.isNaN() } ?: 0.0
             t.along = o.optDouble("along", 0.0).takeIf { !it.isNaN() } ?: 0.0
             t.lastFixS = t.activeS
