@@ -6264,6 +6264,313 @@
    }
   },
   {
+   "id": "trail-ref",
+   "type": "symbol",
+   "source": "trailnames",
+   "minzoom": 14,
+   "filter": [
+    "==",
+    [
+     "get",
+     "t"
+    ],
+    "r"
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     220,
+     17,
+     320
+    ],
+    "text-field": [
+     "get",
+     "ref"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10,
+     17,
+     11.5
+    ],
+    "text-rotation-alignment": "viewport",
+    "text-padding": 8
+   },
+   "paint": {
+    "text-color": "#b0281c",
+    "text-halo-color": "#ffffff",
+    "text-halo-width": 2.2
+   }
+  },
+  {
+   "id": "trail-name-t3",
+   "type": "symbol",
+   "source": "trailnames",
+   "minzoom": 15,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "t"
+     ],
+     "n"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "tier"
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     200,
+     16,
+     320
+    ],
+    "symbol-sort-key": [
+     "-",
+     0,
+     [
+      "get",
+      "len"
+     ]
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Italic"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     15,
+     10.5,
+     18,
+     12.5
+    ],
+    "text-letter-spacing": 0.04,
+    "text-max-angle": 45,
+    "text-padding": 3,
+    "text-offset": [
+     0,
+     -0.75
+    ]
+   },
+   "paint": {
+    "text-color": "#6a4f38",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.7,
+    "text-halo-blur": 0.3
+   }
+  },
+  {
+   "id": "trail-name-t2",
+   "type": "symbol",
+   "source": "trailnames",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "t"
+     ],
+     "n"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "tier"
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     200,
+     16,
+     320
+    ],
+    "symbol-sort-key": [
+     "-",
+     0,
+     [
+      "get",
+      "len"
+     ]
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Italic"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     16,
+     12,
+     18,
+     13
+    ],
+    "text-letter-spacing": 0.04,
+    "text-max-angle": 45,
+    "text-padding": 3,
+    "text-offset": [
+     0,
+     -0.75
+    ]
+   },
+   "paint": {
+    "text-color": "#6a4f38",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.7,
+    "text-halo-blur": 0.3
+   }
+  },
+  {
+   "id": "trail-name-t1",
+   "type": "symbol",
+   "source": "trailnames",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "t"
+     ],
+     "n"
+    ],
+    [
+     "==",
+     [
+      "get",
+      "tier"
+     ],
+     1
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     200,
+     16,
+     320
+    ],
+    "symbol-sort-key": [
+     "-",
+     0,
+     [
+      "get",
+      "len"
+     ]
+    ],
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     11,
+     15,
+     12.5,
+     17,
+     14
+    ],
+    "text-letter-spacing": 0.04,
+    "text-max-angle": 45,
+    "text-padding": 3,
+    "text-offset": [
+     0,
+     -0.75
+    ]
+   },
+   "paint": {
+    "text-color": "#5a3a1e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.7,
+    "text-halo-blur": 0.3
+   }
+  },
+  {
    "id": "poi-bus-detail",
    "type": "symbol",
    "source": "pois",
@@ -7303,313 +7610,6 @@
     "text-color": "#1e2a3a",
     "text-halo-color": "rgba(255,255,255,0.92)",
     "text-halo-width": 1.5
-   }
-  },
-  {
-   "id": "trail-ref",
-   "type": "symbol",
-   "source": "trailnames",
-   "minzoom": 14,
-   "filter": [
-    "==",
-    [
-     "get",
-     "t"
-    ],
-    "r"
-   ],
-   "layout": {
-    "symbol-placement": "line",
-    "symbol-spacing": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     220,
-     17,
-     320
-    ],
-    "text-field": [
-     "get",
-     "ref"
-    ],
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10,
-     17,
-     11.5
-    ],
-    "text-rotation-alignment": "viewport",
-    "text-padding": 8
-   },
-   "paint": {
-    "text-color": "#b0281c",
-    "text-halo-color": "#ffffff",
-    "text-halo-width": 2.2
-   }
-  },
-  {
-   "id": "trail-name-t3",
-   "type": "symbol",
-   "source": "trailnames",
-   "minzoom": 15,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "t"
-     ],
-     "n"
-    ],
-    [
-     "==",
-     [
-      "get",
-      "tier"
-     ],
-     3
-    ]
-   ],
-   "layout": {
-    "symbol-placement": "line",
-    "symbol-spacing": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     200,
-     16,
-     320
-    ],
-    "symbol-sort-key": [
-     "-",
-     0,
-     [
-      "get",
-      "len"
-     ]
-    ],
-    "text-field": [
-     "get",
-     "name"
-    ],
-    "text-font": [
-     "Noto Sans Italic"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     15,
-     10.5,
-     18,
-     12.5
-    ],
-    "text-letter-spacing": 0.04,
-    "text-max-angle": 45,
-    "text-padding": 3,
-    "text-offset": [
-     0,
-     -0.75
-    ]
-   },
-   "paint": {
-    "text-color": "#6a4f38",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.7,
-    "text-halo-blur": 0.3
-   }
-  },
-  {
-   "id": "trail-name-t2",
-   "type": "symbol",
-   "source": "trailnames",
-   "minzoom": 14,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "t"
-     ],
-     "n"
-    ],
-    [
-     "==",
-     [
-      "get",
-      "tier"
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "symbol-placement": "line",
-    "symbol-spacing": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     200,
-     16,
-     320
-    ],
-    "symbol-sort-key": [
-     "-",
-     0,
-     [
-      "get",
-      "len"
-     ]
-    ],
-    "text-field": [
-     "get",
-     "name"
-    ],
-    "text-font": [
-     "Noto Sans Italic"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     16,
-     12,
-     18,
-     13
-    ],
-    "text-letter-spacing": 0.04,
-    "text-max-angle": 45,
-    "text-padding": 3,
-    "text-offset": [
-     0,
-     -0.75
-    ]
-   },
-   "paint": {
-    "text-color": "#6a4f38",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.7,
-    "text-halo-blur": 0.3
-   }
-  },
-  {
-   "id": "trail-name-t1",
-   "type": "symbol",
-   "source": "trailnames",
-   "minzoom": 13,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "t"
-     ],
-     "n"
-    ],
-    [
-     "==",
-     [
-      "get",
-      "tier"
-     ],
-     1
-    ]
-   ],
-   "layout": {
-    "symbol-placement": "line",
-    "symbol-spacing": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     200,
-     16,
-     320
-    ],
-    "symbol-sort-key": [
-     "-",
-     0,
-     [
-      "get",
-      "len"
-     ]
-    ],
-    "text-field": [
-     "get",
-     "name"
-    ],
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13,
-     11,
-     15,
-     12.5,
-     17,
-     14
-    ],
-    "text-letter-spacing": 0.04,
-    "text-max-angle": 45,
-    "text-padding": 3,
-    "text-offset": [
-     0,
-     -0.75
-    ]
-   },
-   "paint": {
-    "text-color": "#5a3a1e",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.7,
-    "text-halo-blur": 0.3
    }
   },
   {

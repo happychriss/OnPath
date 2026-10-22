@@ -916,9 +916,12 @@ def build(theme=DEFAULT_THEME, fmt=1):
     trails(); surface_loose(); access_restrictions()
     if FMT == 2:
         via_ferrata(); bike_map()
-    bridges(); boundaries(); pois(); stations()
+    bridges(); boundaries()
     # Trail / route name labels live in their own module (owned separately from colours).
     L.extend(style_trail_names.layers())
+    # POIs above the trail names: MapLibre places the upper layer's symbols first, so a route number ("40") that repeats
+    # along its line must give way to a POI – before, the inn vanished at some zooms (owner field test 2026-10-22).
+    pois(); stations()
     labels()
     if FMT == 2:
         # GeoJSON overlay sources -> source-layers of the one vector source "overlays"
