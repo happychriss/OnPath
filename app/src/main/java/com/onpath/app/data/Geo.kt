@@ -80,12 +80,7 @@ object Geo {
     /** Rough time estimate used for straight-line fallbacks and imported tracks. */
     fun estimateSeconds(distanceM: Double, ascentM: Double, descentM: Double, activity: Activity): Double {
         return when (activity) {
-            Activity.HIKE -> {
-                // DIN 33466 style: 4 km/h flat, 300 m/h up, 500 m/h down; max(h,v) + min/2
-                val h = distanceM / 4000.0
-                val v = ascentM / 300.0 + descentM / 500.0
-                (max(h, v) + min(h, v) / 2) * 3600
-            }
+            Activity.HIKE -> com.onpath.app.time.Din33466.seconds(distanceM, ascentM, descentM)
             Activity.BIKE_TOURING -> distanceM / (20 / 3.6) + ascentM * 6
             Activity.BIKE_TREKKING -> distanceM / (16 / 3.6) + ascentM * 7
             Activity.EBIKE -> distanceM / (20 / 3.6) + ascentM * 2.5

@@ -37,7 +37,7 @@ class RouteTimes private constructor(
     /** Way covering most of each segment (null = unknown). */
     private val ways: Array<WayAttrs?> = arrayOfNulls(seconds.size),
 ) {
-    /** One model segment for [TimeBreakdown]: slope, height change, seconds (Normal pace), seconds from the slope alone. */
+    /** One model segment for [TimeBreakdown]: slope, height change, seconds (Average pace), seconds from the slope alone. */
     data class Piece(val grade: Double, val dz: Double, val seconds: Double, val slopeOnlyS: Double, val way: WayAttrs?)
 
     fun pieces(): List<Piece> = seconds.indices.map { Piece(grades[it], dzs[it], seconds[it], plain[it], ways[it]) }
@@ -45,11 +45,11 @@ class RouteTimes private constructor(
     /** True when at least one segment had way attributes. */
     val hasWays: Boolean get() = ways.any { it != null }
 
-    /** Per segment: (gradient, height change m, seconds at Normal pace) – for [TimeBreakdown]. */
+    /** Per segment: (gradient, height change m, seconds at Average pace) – for [TimeBreakdown]. */
     fun segments(): List<Triple<Double, Double, Double>> = seconds.indices.map { Triple(grades[it], dzs[it], seconds[it]) }
     val segmentLengthM: Double get() = step
 
-    /** cum[g][k] = seconds of group g in segments 0 until k (Normal pace, no factors). */
+    /** cum[g][k] = seconds of group g in segments 0 until k (Average pace, no factors). */
     private val cum: Array<DoubleArray> = Array(PaceModel.GROUPS) { g ->
         val c = DoubleArray(seconds.size + 1)
         for (k in seconds.indices) c[k + 1] = c[k] + if (groups[k] == g) seconds[k] else 0.0
@@ -58,7 +58,7 @@ class RouteTimes private constructor(
 
     val segmentCount: Int get() = seconds.size
 
-    /** Seconds per group for the whole line (Normal pace). */
+    /** Seconds per group for the whole line (Average pace). */
     fun groupTotals(): DoubleArray = DoubleArray(PaceModel.GROUPS) { cum[it].last() }
 
     /** Whole line, with [f] (pace × learned factors). */
@@ -70,7 +70,7 @@ class RouteTimes private constructor(
         return (0 until PaceModel.GROUPS).sumOf { f[it] * (cum[it].last() - at[it]) }
     }
 
-    /** Seconds per group between two along positions (Normal pace); empty range = zeros. */
+    /** Seconds per group between two along positions (Average pace); empty range = zeros. */
     fun between(fromM: Double, toM: Double): DoubleArray {
         val a = upTo(fromM); val b = upTo(max(fromM, toM))
         return DoubleArray(PaceModel.GROUPS) { max(0.0, b[it] - a[it]) }

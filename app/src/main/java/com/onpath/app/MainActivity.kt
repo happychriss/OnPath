@@ -198,6 +198,7 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             settings = vm.settings,
                             onChange = vm::updateSettings,
+                            activity = vm.activity,
                             onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
