@@ -64,13 +64,52 @@ class ProblemsTest {
         assertTrue("traces are not problems", Problems.snapshot().isEmpty())
     }
 
-    @Test fun traceKeepsTheLast50WithTheirOwnTime() {
-        repeat(70) { Problems.trace("map", "event $it") }
+    @Test fun traceKeepsTheLastFewInMemoryWithTheirOwnTime() {
+        repeat(Problems.MAX_EVENTS + 20) { Problems.trace("map", "event $it") }
         val ev = Problems.events()
         assertEquals(Problems.MAX_EVENTS, ev.size)
-        assertEquals("event 69", ev.first().message)
+        assertEquals("event ${Problems.MAX_EVENTS + 19}", ev.first().message)
         assertEquals("event 20", ev.last().message)
         assertTrue(ev.all { it.time > 0 })
+    }
+
+    /**
+     * Field 2026-10-22: 50 events covered only 14:35–19:18. Owner: keep far more, by size and age. 50 000 events are
+     * cheap for the caller (queued, written off-thread), the files stay ≤ 5 MB, and the export has the newest ones.
+     */
+    @Test fun fiftyThousandEventsAreCheapCappedAndExported() {
+        val text = "y".repeat(200)
+        val t0 = System.nanoTime()
+        repeat(50_000) { Problems.trace("gps", "event $it $text") }
+        val callerMs = (System.nanoTime() - t0) / 1_000_000
+        assertTrue("50 000 trace calls took $callerMs ms on the calling thread", callerMs < 3_000)
+        Problems.flushForTest()
+        val total = EventLog.files().sumOf { it.length() }
+        assertTrue("event files are $total bytes", total in 1..EventLog.DEFAULT_MAX_BYTES + 128 * 1024)
+        assertEquals(2, EventLog.files().size) // rotated into two files
+        val out = java.io.ByteArrayOutputStream()
+        EventLog.copyTo(out)
+        val lines = out.toString().lines().filter { it.isNotEmpty() }
+        assertTrue(lines.last().contains("event 49999 "))
+        assertTrue("export has ${lines.size} lines", lines.size > 15_000)
+        assertEquals("event 49999 $text", EventLog.parse(lines.last())!!.message)
+    }
+
+    @Test fun eventTextRoundTripsTabsAndLineBreaks() {
+        Problems.trace("plan", "a\tb\nc\\d")
+        Problems.trace("plan", "two\nlines\twith tab")
+        Problems.flushForTest()
+        Problems.init(dir)
+        assertEquals("two\nlines\twith tab", Problems.events().first().message)
+        assertEquals("a\tb\nc\\d", Problems.events()[1].message)
+    }
+
+    @Test fun eventFilesOlderThan14DaysAreDropped() {
+        Problems.trace("map", "old")
+        Problems.flushForTest()
+        File(dir, EventLog.CURRENT).setLastModified(System.currentTimeMillis() - 15L * 24 * 3600 * 1000)
+        Problems.init(dir)
+        assertTrue(EventLog.files().isEmpty())
     }
 
     @Test fun traceIsExportedAndSurvivesARestart() {
