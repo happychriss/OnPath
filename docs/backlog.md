@@ -7,165 +7,69 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 
 
-## Next
-- **Bus / car / lift during a recording (owner 2026-10-22) – design `docs/design/vehicle-detection.md`:** nothing
-  during the ride (warnings + junction vibration stay on), summary with a choice at "End tour". Owner agreed (four choices,
-  raw points kept); build after 0.9.0.
-- **Laptop → cloud handover 2026-10-22 (`docs/handover-2026-10-22-laptop.md` §3) – cloud status:** done on main:
-  CI emulator gate fixed (Meran GPS, no loading window, points off the search pill), flaky CellDownloadTest (generation
-  before "ready"), backup screenshot time zone; manifest `sources`; daily storage cleanup (map-hosting §7g; owner: run
-  the gsutil command there once); T5 in the background (service, areas joined after the tour); junction vibration +
-  lock-screen info (BRouter turn instructions); **0.9.0 released 2026-10-22** (manual run with skip_e2e – owner: phone test
-  cycle; E2E green again on 34cba51 after the swipe test looks afresh). Next: vehicle detection, then approach 1 "router decides" (owner reviews
-  renders before main).
-- **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
-  (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
-  `/v1` API documented as an open spec; two ways to host: (A) all-in-one Docker Compose (doorman + builder + local
-  storage, no cloud account, ~8 GB RAM – the zo variant tidied up), (B) the cloud setup (Cloudflare Worker + R2 +
-  Cloud Run) with gcp-setup.sh; same builder image published on ghcr.io. Pricing stays on the owner's server (free entry
-  + regions / year pass via Play Billing, payment code active only when the server asks for it; self-hosted = free).
-  Notes: name/icon not for forks (README, trademark later); F-Droid build without Play Billing; routing data source
-  configurable too. Effort: app setting + QR ½ day, compose package + image + docs 1–2 days. Not before Play launch.
-- **Next release after the map-loading release (owner 2026-10-21):** (4) tour backup – recorded tours copied automatically to a phone folder that survives uninstall + export all as GPX; (6) vibration cues at junctions during navigation; (7) lock-screen info (time to go, arrival, next junction). Also noted for later: sunset warning, emergency screen (position, 112, SMS), battery check at start, weather along the route, outdoor mode, way back on own track, hut info, tour suggestions, first-start intro.
-- **[laptop] HANDOVER 2026-10-21: `docs/handover-2026-10-21-cloud.md`** – (1) core bug C1 hold a point → new point
-  (owner, 0.8.5): reproduce with the phone on USB (`adb logcat -s OnPath | grep Hold:`), test first, then fix;
-  (2) done: 0.8.6 (Points… delete list, hold log, 6/6 emulator tests green); (3) fresh-install test procedure (owner);
-  (4) **world overview map, no Alps special case (owner)** – R2 + release.yml fetch, not in git.
-- **Map / routing freshness (owner 2026-10-21) – done in 0.8.3:** check after routing, veil / hint, mobile data by
-  default, no switch during a tour, routing data refresh + reroute (`docs/design/map-updates-ux.md`). Open: field test;
-  "Update maps now" in Settings could go (owner); route band style change of 0.8.2 to be checked on the phone.
-- **Cells / map hosting now owned by the cloud (owner 2026-10-21: "Laptop wird nicht benutzt, kannst du übernehmen?").**
-  0.8.1 (cloud): release APKs carry the test map key (from GitHub environment `test`), modal loading overlay with
-  Cancel + Wi-Fi/mobile question, outdated (schema 1) areas update by themselves, Settings → Diagnostics → Reset maps
-  (like a fresh install). Details: `docs/design/map-hosting.md` §7c–7d. Owner to test on the phone: update, Reset
-  maps, set a point → overlay. Production environment still not deployed.
-- **Small streets missing at z13+ (owner field report 2026-10-21) – fixed by the cloud:** content schema for cells
-  (`docs/design/map-hosting.md` §7c): builder versions `<osm_date>-s2`, doorman rebuilds older-schema cells when
-  asked, app re-requests outdated cells at start. Owner with the current phone app: delete the 2 areas in
-  Settings → Offline maps once the deploy is through; they are rebuilt (~5–8 min) and loaded again.
-- **Field diagnostics 2026-10-21 (owner, phone 0.8.0 debug from the laptop) – cloud looked at it:**
-  (1) **Crash fixed on main (not released – main carries the cells work):** `ElevationProfile` crashed while the sheet
-  animates (profile only a few px high → `coerceIn(0, negative)`); guard + `ProfileTinyTest` (fails without the fix).
-  (2) **For the laptop (cells):** at one start MapLibre could not open `onpath/base.pmtiles` and `onpath/terrain.pmtiles`
-  ("path not found") – the style pointed at the old flat package paths while the map now lives in
-  `cells/store/g000003`; later the style loaded fine. Check the first-start / migration order (style built before
-  the cell store dir is known?).
-- **Owner map decisions 2026-10-20 (laptop, part of the map rework):** path smoothing in the pipeline (bends ≥ 20°,
-  ≤ ~1.5 m off, junctions exact, route bands smoothed the same way; owner sends 2–3 example spots); planned (blue)
-  route NOT smoothed; bike map (oneway arrows, "bikes both ways", cycle lanes beside streets – bike activities only)
-  = laptop; via ferrata gets its own warning look; route band offset at z16+ fixed; contours always visible from z12;
-  trail numbers abroad come with cells.
-- **Owner answers to the cloud's owner list (2026-10-20 evening, via laptop) – cloud:**
-  - 7: **Plan orientation is always the same as the Navigate view** (one compass setting for both; with walking
-    direction up, Plan turns too). Supersedes the 2026-10-19 "Plan north/hand-turned" note.
-  - 8: values OK – pause reminder 150 m, free look back 25 m, route look-ahead 40 m.
-  - 9: **yes – "End tour…" button in the recording notification**; it only opens the app on the question "End tour? Save / Continue" (never ends directly).
-  - 10: keep "Allow all the time"; Play declaration + video when publishing.
-  - 11: yes – one-time "battery unrestricted" hint for Samsung/Xiaomi-type phones at the first tour (persistent
-    notice with OK; owner cannot test it).
-  - 12: polish audit next: real draggable sheet (B4) and smooth Plan ⇄ Navigate transition (B2).
-  - 13: **do battery batch 2 now** (slower GPS when standing / screen off with scaling thresholds – never lose a
-    point; frozen track + tail; battery %/h in the tour summary); owner field-tests this week.
-- **Handoff 2026-10-20 (cloud → laptop):** field-test list + owner questions in `docs/owner-list-2026-10-20.md`;
-  requirements review `docs/requirements-review-2026-10-20.md`. To check: routing JVM test "unreachable: hike T1 to
-  the Ifinger summit" fails (finds a 7.2 km route) – expectation from before the 0.6.8 profiles or a real gap?
-- **Bike map: oneways, cycle lanes, green cycleways (owner 2026-10-20, Komoot comparison in Meran – important for
-  cycling; map work → agree with the laptop):** measured in Meran centre (OSM 2026-10-19): 53 `highway=cycleway`
-  (drawn today, but thin blue `#2f74a8` – lost next to the Passer), ~30 roads with `cycleway:left/right=lane|track`
-  (not in the base map → not drawn), ~15 footways/pedestrian with `bicycle=yes|designated`, ~170 oneway pieces, 30 of
-  them `oneway:bicycle=no` / `cycleway=opposite*`. Routing: done in 0.7.16 (wrong way ×100 in all bike profiles). Proposal: (1) oneway
-  arrows on streets from z15, "bikes both ways" marked; (2) cycleways green and a bit stronger, arrows when oneway;
-  (3) cycle lanes as a thin green line beside the street (bike activities only?); (4) pipeline: extract
-  oneway/oneway:bicycle and cycleway:* into an overlay (or the planned vector PMTiles). Owner to decide details tonight.
-- **Battery (owner, 2026-10-20, Navigate first):** batch 1 done in 0.7.3 (see `docs/design/battery-audit.md` status). Next: batch 2 (adaptive GPS rate etc.) – owner to field-test 0.7.3 first (pocket screen-off, pause), ideally with `dumpsys batterystats` before/after.
-- **Grid-cell map packages – design ready (`docs/design/map-cells.md`), owner decided Q1–Q11 "all as recommended" (2026-10-19)**; needs the cloud session's agreement (pipeline/server side). zo setup with the owner planned for 2026-10-20.
-- **Map data size per cell (proposal, waiting for the owner; needs the cloud session's agreement as pipeline owner):**
-  `docs/design/map-data-size.md` – measured: ~38 → ~10 MB per z10 cell (terrain z12 + 0.25 m + WebP −95 %, overlays
-  as one vector PMTiles −75 %, base trims −27 %), routing by 1° rd5 part 199 → 8–31 MB; joining cells via MBTiles
-  (spike) or PMTiles rewrite.
-- **Map packages from the Hetzner server – design talk (owner, 2026-10-19, not decided yet):** owner leans to
-  *grid cells built on demand* (~40 × 27 km zoom-10 cells, server only runs while building, ~5–8 min for a new cell,
-  cached for everyone after; phone joins cells without seams). Also discussed: monthly big build + phone cuts its own
-  area; future payment by region and month (downloaded maps keep working after the month). Agreed UX so far:
-  - Overview map shipped in the app → never a blank screen in a new place.
-  - **Trigger (updated by the owner 2026-10-20, full list `docs/design/map-cells.md` §9 "Trigger"):** setting a
-    point, opening the app in Plan mode at a new place (own position), the route corridor, own position near the
-    edge of the loaded cells while on tour, monthly refresh. Searching (orange ring) and scrolling never download. The detailed map for an area is fetched when the user *sets a point there* (hold on the
-    map / hold on the ring → Start here / Go here) – same gestures as today, one rule: "the map comes where you plan".
-    The route corridor's cells follow once the route is calculated.
-  - Persistent card in the plan sheet (no self-dismissing messages): "Preparing map for this area – about 6 min",
-    progress per cell, own cell first; straight-line route until routing data is there, then it recalculates.
-  - **Explain it to the user (owner: "we need to explain it later"):** the overview map shows a hint where no
-    detailed map exists ("Overview only – set a point and the detailed map follows"); first-run / help page text;
-    the card says *why* it is downloading ("because you planned here").
-- **Arrival forecast jumps after plan edits during a tour (owner, 2026-10-19 – to think through, then build):**
-  owner navigated, arrival crept 12:45 → 13:15 (ok: slower / standing), then in Plan: round trip, Undo, back to
-  Navigate → 12:45 again. Code today: every change of the followed line (Continue navigation with an edited plan,
-  re-route taken, activity switch) makes the service build a new `Navigator` (`RecordingService.loadFollow`) whose
-  detector starts with unknown progress (0), and `TripPace.setLine` resets the calm limit – the arrival is recomputed
-  in one step. Also: a plan that only *looks* edited (round trip + Undo re-routes to an equal but not identical line)
-  counts as a new route (`planFollowed` compares lists exactly). Proposal: (1) same route = line within ~10 m and
-  ±1 % length → keep the session, nothing restarts; (2) on a real new line keep the time already lost (shown arrival −
-  model arrival) as an offset and blend it out over ~10 min instead of resetting; (3) apply the new line's time only
-  after the detector has matched the position (never "whole route from 0"); (4) when it still moves by > 5 min, say
-  why once ("New route: arrival 12:45, was 13:15"). Touches `time/TripPace`, `RecordingService.timeLine/loadFollow`,
-  `AppViewModel.planFollowed` (laptop built the time model – agree who does it).
-- **Small open findings (2026-10-19):** (a) via ferratas mapped as `highway=path` are only caught by their
-  sac_scale – mark them in the pipeline (no via_ferrata key in BRouter lookups); (b) route band sits ~3 m beside the
-  path at z16+ (routes use 3 m simplification, paths 0.5 m); (c) "Waiting for GPS · last fix N min ago" may be cut
-  in the narrow Navigate card – check on the phone; (d) `classic.json` still has unused tokens from the old path /
-  track drawing (track.edge.*, track.fill.*, track.cover.*, trail.casing gone) – tidy up; (e) owner may delete
-  branches `wip-0.6`, `wip-no-silent-errors`.
-- **Overlays as PMTiles (follow-up of 0.7.0):** paths.geojson (19 MB), routes, trails, ways, lowways, trailnames are
-  GeoJSON read fully into memory (~50 MB together). Pack them into one vector PMTiles (tippecanoe or Planetiler
-  custom profile) – several times smaller, faster start. Then lowways can go (paths covers low zooms).
-- **(done 0.7.0) One map style, fine and high-contrast (owner, 2026-10-19 – waiting for the owner's pick):** green routes and black
-  paths must be clear at every zoom; one style instead of classic + high contrast. Variants A/B/C in
-  `tools/themes-proposals/` (README has the adoption steps), comparison page https://claude.ai/artifact/S46QZFW8BpfDYCVjAxpa9a.
-  `make_style.py` already takes the new tokens (`route.band.width`, `route.band.edge.*`, `lowways.*.width`).
-  Owner feedback: **no edges on the route band, ever** (too many lines) – only a slightly transparent band whose green
-  contrasts with the ground. Colour matrix (every ground × 10 greens, ΔE per cell): https://claude.ai/artifact/EZPjuSSjivcLNjfdBASb8W
-  – today's light green #c9f29b is ΔE 12 on forest (weakest); yellow-green #d6f25a / fresh #8fd94a ≈ 30–38.
-  **Owner pick:** band #168403 at 40 %, lighter ground, greenish hill shadow, no white, track variant A, symbols V1
-  (none for forest/meadow). Full analysis + steps to ship: `docs/design/map-colour-analysis.md`; renders
-  https://claude.ai/artifact/Ya7yRACjBEY6TtWePbqmJD
-- **Map todo (owner, 2026-10-19 – start only when the owner says so):** (1) always show a little contour detail
-  (every zoom, also with hillshade); (2) more contrast between the green land types + Komoot-like shrub
-  ("Sträucher") symbols; (3) trail numbers like the AVS numbers in South Tyrol must also appear in other
-  countries / regions (route-relation `ref`, `osmc:symbol`, network-specific refs) – `tools/make_style.py`,
-  `tools/themes/*.json`, `tools/extract_overlays.py`.
-- **Safety audit (cloud, 2026-10-18):** https://claude.ai/artifact/3KJ4LidPD9uxi1QngAmPNr – four batches A–D
-  (profiles say no; one amber warning line in the plan sheet; Navigate tweaks; pipeline: via ferrata, trail
-  visibility, cliffs, fords, bus stops, manifest date/bbox). Owner picks the batch.
-- **Unverified paths (owner: keep as todo):** OSM ways with no tags (or only fixme/note) that connect two paths/tracks
-  at both ends, ≤ 300 m, drawn as a grey dashed "unverified path" + point-menu hint; never used for routing (rd5 comes
-  from brouter.de). Example: way 330547188 near Algund (46.6913, 11.1015), `fixme=tags?` between two dirt paths.
-- **Attribution (owner question pending):** short "© OpenStreetMap" on the map, full credits on tap / in About.
-- **EN + DE strings** for all UI texts (owner approved, start when no big UI work runs in parallel).
-- **EN + DE strings** (owner approved): move all UI texts to strings.xml (EN + DE) in one go – start after the time
-  estimate (feat/time-estimate) is merged, it touches most screens.
-- **Re-routing while navigating:** design in `docs/plan-auto-reroute.md`, **owner decisions taken** (ask every time with
-  vibration, grey original line, skip passed stops) – phases P0–P4 there (P0/P1 suggested for cloud as routing owner).
-  Owner UX rule: no self-dismissing messages anywhere.
-- Google Play internal test track: create app in Play Console, secret release key in GitHub secrets
-  (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`,
-  `PLAY_SERVICE_ACCOUNT_JSON`), upload from the release workflow. Removes Play Protect warnings. **(owner has a
-  developer account)**
+## Next (open, checked against the code 2026-10-22)
+- **Bus / car / lift during a recording (owner 2026-10-22)** – design `docs/design/vehicle-detection.md`, owner agreed:
+  nothing during the ride (warnings + junction vibration stay on), summary with four choices at "End tour", raw
+  points kept. Build first.
+- **Approach 1 "the router decides, the map shows it"** (~3 days) – `docs/design/map-vs-router-audit.md`, plan in
+  `docs/handover-2026-10-22-laptop.md` §3.6. Owner reviews renders before main.
+- **Battery batch 2** (owner answer 13, `docs/design/battery-audit.md`): slower GPS when standing / screen off (never
+  lose a point), frozen track + tail, battery %/h in the tour summary. Only batch 1 (0.7.3) + 10 s GPS while paused exist.
+- **Arrival forecast after plan edits – rest:** same route keeps the session and no "whole route from 0" are done;
+  open: keep time already lost as an offset blended over ~10 min (`TripPace.setLine` still resets the calm limit),
+  say why once when arrival moves > 5 min.
+- **Safety audit batch B:** one amber warning line in the plan sheet (https://claude.ai/artifact/3KJ4LidPD9uxi1QngAmPNr);
+  with it the "route warnings list" (steep, push bike, steps, terrain above T level). Batch D rest: cliffs, fords on the map.
+- **Track safety review leftovers:** raw exception texts in messages (update / import / export, `BRouterEngine`
+  "Routing failed: …"); Photon gets the exact GPS position (needs an online-search switch + coarse position); total
+  planning budget + cancel in `Planner`; CI: `verifyPaparazziDebug` + lint on push; compass accuracy gating;
+  DEM-based ascent (today GPS altitude with 5 m hysteresis).
+- **Smooth Plan ⇄ Navigate transition (B2)** – `MapScreen` switches with a plain `when`.
+- **EN + DE strings** (owner approved): all UI texts to `strings.xml` (EN + DE) in one go, when no big UI work runs.
+- **Small:** Navigate "Waiting for GPS · last fix …" line can be cut (`NavigateScreen.recordingLine`, maxLines 1 –
+  check on the phone); unused theme tokens `track.edge/fill/cover.*` in `classic.json`; unused `batteryHintShown`;
+  Ifinger T1 JVM test (`RerouterJvmTest.kt:90`, expects "unreachable", BRouter found 7.2 km – expectation or gap?);
+  deleting the target of a 2-point plan does not route home; unnamed Navigate target shows no name; zip import checks
+  only sizes (cell downloads check sha256).
+
+## Waiting for the owner
+- **Attribution:** full line on the map today, full credits in Settings → About. Short "© OpenStreetMap" + tap = credits?
+- **"Update maps now"** in Settings → Offline maps (owner 2026-10-21: "could go") – remove?
+- **Address search:** mix online results into one list? municipality vs village as town? "Position from the address
+  (offline)" note for shared places not built.
+- **Delete remote branches** (sessions cannot): `downloads`, `e2e`, `fix/arrival-estimate`, `wip-build2`,
+  `wip-map-style`, `wip-0.6`, `wip-no-silent-errors`. GCS: `gsutil rm` of the Trentino source (map-hosting §7g).
+- **Google Play internal test track:** create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
+  secrets, upload from release.yml (today: fixed test key). Removes Play Protect warnings.
+- **Field tests:** 0.9.0 (routing data loading itself on the phone, junction vibration, lock screen, map ahead on tour),
+  re-routing P0–P4, map freshness (0.8.3), arrival / time estimate.
 
 ## Later
-- In-app region download from the map server (`tools/hetzner/`, done as a web page): app asks the server for the
-  map around the planned route / current view, shows build progress, imports the zip and the routing tile itself.
-- Worldwide use outside prepared regions: stream OpenFreeMap + AWS terrain, auto-download BRouter tiles.
-- Reroute back to the route after an off-route warning (offline).
-- Keep pinned POI stops when a saved tour is reopened.
-- German UI strings (`strings.xml`, EN + DE).
+- **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
+  (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
+  `/v1` API as an open spec; (A) all-in-one Docker Compose, (B) the cloud setup with gcp-setup.sh; builder image on
+  ghcr.io. Pricing stays on the owner's server; self-hosted = free; F-Droid build without Play Billing. Not before Play launch.
+- **Ideas (owner 2026-10-21):** sunset warning, emergency screen (position, 112, SMS), battery check at start, weather
+  along the route, outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help page.
+- **Map wishes (start only when the owner says so):** shrub ("Sträucher") symbols; trail numbers abroad beyond numeric
+  refs (letters like E5 / GR20, `osmc:symbol`); contours below z12 (owner chose "from z12" on 2026-10-20).
+- **Unverified paths (owner: keep):** untagged OSM ways joining two paths, ≤ 300 m, grey dashed + point-menu hint,
+  never routed. Example way 330547188 near Algund.
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
-- Route warnings list (steep, push bike, steps, terrain above T level).
-- Reorder route points in a list.
-- Verify data package checksums on import (manifest.json).
-- Delete the temporary `downloads` branch on GitHub **(owner – sessions cannot delete branches)**.
 
 ## Done (recent)
+- **Checked 2026-10-22 and moved here from Next / Later:** 0.9.0 (tour backup, junction vibration + lock screen, map
+  ahead on tour in the background, points editor, simple menus); re-routing P0–P4 incl. reroute back after off-route
+  (43923b2); grid cells + cloud hosting (doorman, Cloud Run, any area via Geofabrik, sha256 checks), per-cell size work
+  (WebP terrain, overlays as one vector PMTiles = format 2, routing data by 1° part), world overview in the APK,
+  "overview only" hint, plan-sheet map card; bike map (oneway arrows, both ways, green cycleways, cycle lanes – format 2);
+  path smoothing, via ferrata look + profiles, route band offset, contours from z12, trail visibility, bus stops,
+  manifest date/bbox; draggable sheet (B4); reorder points in a list; pinned POI stops kept on reopen; Save =
+  overwrite / Save as new + Rename; one compass setting Plan + Navigate; distances 150 / 25 / 40 m; backup rules
+  exclude map data; routing data download checks HTTP 206 + structure; BRouter terminate on cancel; style without
+  missing files at first start (ecacf8c); no self-dismissing messages anywhere. Superseded: Hetzner packages (→ cells),
+  OpenFreeMap streaming (→ cells), "End tour" in the notification (owner: no notification button ends a tour), first-tour
+  battery pop-up (→ quiet hint in Settings), dropping background location (owner keeps "Allow all the time").
 - `downloads` zips rebuilt (laptop, 2026-10-20, downloads 0e7db5e): paths.geojson + addresses.sqlite, same two-zip scheme; importer now accepts addresses.sqlite / addresses/*.sqlite.
 - Grid cells phase 1 on zo (laptop): `tools/cells/` builder image + build_cell.sh, 2 neighbouring cells in ~2.7 min each, no seams; results in map-cells.md §17. Next: doorman container, then Cloudflare hostname (owner), then format 2.
 - Share a place into OnPath (laptop, owner): Google Maps share text/short+full links (coordinate from the link, owner decision 2026-10-20, see CLAUDE.md), geo: URIs → Plan mode, fly there, orange ring; fallback address search. Open: "Position from the address (offline)" note not built.
