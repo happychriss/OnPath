@@ -8,6 +8,18 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-22)
+- **Owner decisions 2026-10-22 (laptop Q&A):** (1) attribution: short "© OpenStreetMap" on the map, tap → full credits;
+  (2) keep "Update maps now"; (3) approach 1: route-band sections above the user's T level dashed/greyed; (4) approach 1:
+  three levels per activity – green = good, black = possible, red/dashed = forbidden ("avoid" looks like black);
+  (5) search: one mixed list (best first, duplicates removed); (6) addresses show the village ("Völlan"), municipality
+  small on line 2; (7) shared place positioned from the address → small persistent note "Position from the address";
+  (8) **pace model changes: learning per tour only** – every plan and tour starts from the Settings pace (Relaxed /
+  Normal / Fit), during the tour the arrival adapts gradually after ~15 min / 1 km (down / flat / up separately, breaks
+  excluded), nothing carried to the next tour, cross-tour learning (PaceStore) dropped, no "change your setting"
+  suggestions; (9) deleting the goal of a 2-point plan during a tour → persistent question "Route back to the start?"
+  (Yes = route from position to start, No = plain recording); (10) battery: slower GPS when standing still (never lose a
+  point), NO battery % in the tour summary; (11) Play internal test track later (after vehicle detection + approach 1);
+  (12) "empty plan during a tour" – decide after the diagnostics check (cause unknown).
 - **[cloud → laptop] HANDOVER 2026-10-22 evening: `docs/handover-2026-10-22-cloud.md`** – 0.9.2 current (0.9.1 crashes
   at start – never use); laptop first: track-gap check with the phone's GPX + diagnostics, "route without points during
   a tour", confirm the new release smoke gate; then vehicle detection / approach 1.
@@ -36,8 +48,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
-- **Attribution:** full line on the map today, full credits in Settings → About. Short "© OpenStreetMap" + tap = credits?
-- **"Update maps now"** in Settings → Offline maps (owner 2026-10-21: "could go") – remove?
 - **Address search:** mix online results into one list? municipality vs village as town? "Position from the address
   (offline)" note for shared places not built.
 - **Delete remote branches** (sessions cannot): `downloads`, `e2e`, `fix/arrival-estimate`, `wip-build2`,
