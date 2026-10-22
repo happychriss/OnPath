@@ -224,8 +224,29 @@ else REQ="base.pmtiles terrain.pmtiles routes.geojson trails.geojson"; fi
 for f in $REQ; do
   [ -s "$TMP/out/$f" ] || die "required file $f missing or empty"
 done
+# the OSM extracts this cell was cut from (debugging aid in the manifest): id + url from the cloud job (SRC_META, JSON
+# list in SRC_PBF order), else the file name; date from each file's header
+python3 - "$TMP/sources.json" "${SRCS[@]}" <<'PY'
+import json, os, sys, time, osmium
+out, files = sys.argv[1], sys.argv[2:]
+try:
+    meta = json.loads(os.environ.get("SRC_META") or "[]")
+except ValueError:
+    meta = []
+res = []
+for i, p in enumerate(files):
+    r = osmium.io.Reader(p, osmium.osm.osm_entity_bits.NOTHING)
+    h = r.header()
+    d = (h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")[:10]
+    r.close()
+    m = meta[i] if i < len(meta) and isinstance(meta[i], dict) else {}
+    res.append({"id": m.get("id") or os.path.basename(p).replace(".osm.pbf", ""),
+                "date": d or time.strftime("%Y-%m-%d", time.gmtime(os.path.getmtime(p))),
+                "url": m.get("url") or None})
+json.dump(res, open(out, "w"))
+PY
 run manifest $PY manifest "$Z" "$X" "$Y" "$TMP/out" "$OSM_DATE" "$GIT_REV" "cells/f$FORMAT/$Z/$X/$Y/$VERSION" \
-  --format "$FORMAT" --version "$VERSION"
+  --format "$FORMAT" --version "$VERSION" --sources "$TMP/sources.json"
 
 # build.json: timings + sizes (diagnostics only, not listed in the manifest)
 python3 - "$STEPS" "$TMP/out" "$TMP/cell.osm.pbf" "$ID" "$(( $(date +%s) - T0 ))" "$FORMAT" > "$TMP/build.json" <<'PY'
