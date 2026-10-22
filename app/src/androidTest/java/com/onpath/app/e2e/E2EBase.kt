@@ -55,6 +55,7 @@ abstract class E2EBase {
         val dir = dataDir
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)
+        gpsAt(MERAN_LAT, MERAN_LON) // the CI emulator sits in California: the app would load that area first (modal)
         beforeLaunch()
         wakeScreen()
         dismissSystemDialogs()
@@ -62,6 +63,27 @@ abstract class E2EBase {
         showOverLockScreen()
         waitForMap()
         dismissSystemDialogs()
+        waitNoLoadModal()
+    }
+
+    /** A GPS fix from a test provider (shell `cmd location`, Android 12+). */
+    protected fun gpsAt(lat: Double, lon: Double) {
+        device.executeShellCommand("appops set com.android.shell android:mock_location allow")
+        device.executeShellCommand("cmd location providers add-test-provider gps")
+        device.executeShellCommand("cmd location providers set-test-provider-enabled gps true")
+        device.executeShellCommand("cmd location providers set-test-provider-location gps --location $lat,$lon --accuracy 4")
+    }
+
+    /**
+     * The loading modal ("Loading the map for your area") lies over the map and takes every touch – on a fresh app it
+     * opens for the own position (correct in the field). Tests that are not about loading wait until it is gone.
+     */
+    protected fun waitNoLoadModal(timeoutMs: Long = 90_000) {
+        waitUntil("no loading window over the map", timeoutMs) {
+            var none = false
+            scenario.onActivity { a -> val vm = vm(a); none = vm.mapLoadUi(vm.cells.states.value, android.os.SystemClock.uptimeMillis()) == null }
+            none
+        }
     }
 
     /**
@@ -96,6 +118,7 @@ abstract class E2EBase {
 
     @After fun closeApp() {
         if (::scenario.isInitialized) scenario.close()
+        device.executeShellCommand("cmd location providers remove-test-provider gps")
         device.executeShellCommand("svc power stayon false") // the phone's normal screen timeout again
     }
 
@@ -112,6 +135,7 @@ abstract class E2EBase {
     }
 
     protected fun holdOnWaypoint(index: Int) {
+        ensureOnOpenMap(index)
         val p = waypointOnScreen(index)
         shot("before-hold-${index + 1}")
         hold(p.first, p.second)
@@ -119,6 +143,20 @@ abstract class E2EBase {
             shot("after-hold-${index + 1}")
             fail("hold on point ${index + 1} at (${p.first.toInt()}, ${p.second.toInt()}) did not open its menu – ${state()}")
         }
+    }
+
+    /**
+     * Points snapped onto ways can end up under the search pill (top) or the plan sheet (bottom) – a finger there never
+     * reaches the map (CI 2026-10-22: point 3 at y 361). Centre the map on the point first, like a user would.
+     */
+    protected fun ensureOnOpenMap(index: Int) {
+        val (_, h) = mapSize()
+        val (_, y) = waypointOnScreen(index)
+        if (y in h * 0.25f..h * 0.55f) return
+        var p: LatLng? = null
+        scenario.onActivity { a -> vm(a).followMe = false; vm(a).waypoints[index].let { p = LatLng(it.lat, it.lon) } }
+        onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(p!!)) }
+        Thread.sleep(600)
     }
 
     /** Screenshot into /sdcard/e2e (pulled by the workflow as an artifact). */
@@ -253,5 +291,10 @@ abstract class E2EBase {
         }
         if (!rd5.isFile || rd5.length() < 1_000_000) rd5.writeBytes(ByteArray(1024))
         realRouting = rd5.length() > 1_000_000
+    }
+
+    companion object {
+        const val MERAN_LAT = 46.6714
+        const val MERAN_LON = 11.1700
     }
 }

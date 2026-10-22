@@ -315,18 +315,22 @@ class MapCells(
 
     private fun set(c: CellId, s: CellState) = update { it[c] = s }
 
-    private fun refreshInstalled() {
+    /**
+     * Installed list → generation → states, in this order: whoever sees a cell "ready" also sees the map generation that
+     * contains it (CI flake 2026-10-21: Ready was visible while the generation still had the old number).
+     */
+    private fun refreshInstalled(gen: Int? = null) {
         val inst = store.installed()
         _installed.value = inst
+        _generation.value = gen ?: store.current()?.number ?: 0
         update { m ->
             m.entries.removeAll { (c, s) -> s is CellState.Ready && inst.none { it.id == c } }
             inst.forEach { if (it.id !in queue || m[it.id] == null) m[it.id] = CellState.Ready(it.version) }
         }
-        _generation.value = store.current()?.number ?: 0
     }
 
     private fun publish(gen: CellStore.Generation) {
-        refreshInstalled()
+        refreshInstalled(gen.number)
         _generation.value = gen.number
     }
 

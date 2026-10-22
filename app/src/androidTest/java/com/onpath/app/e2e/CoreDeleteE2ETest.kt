@@ -51,7 +51,7 @@ class CoreDeleteE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         settle()
         val (w, h) = mapSize()
-        hold(w * 0.5f, h * 0.22f)
+        hold(w * 0.5f, h * 0.30f)
         waitUntil("third point by a hold") { waypointCount() == 3 }
     }
 
