@@ -165,6 +165,11 @@ class ScreenshotTest {
     /** Full = the point editor: one summary line, then Points (≡ marker name +distance ✕); no profile / way types. */
     @Test fun planPointsFull() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) } }
 
+    /** A map card (here: no downloads in this build) never squeezes the points away in the point editor (CI 2026-10-22). */
+    @Test fun planPointsFullWithMapCard() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL).copy(cellCard = CellCardUi.NotAvailable), PlanCallbacks()) }
+    }
+
     /** Full while the route is calculated: the Points list right away, straight-line distances (~). */
     @Test fun planPointsFullRouting() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }

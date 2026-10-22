@@ -11,6 +11,11 @@ on:
       - "app/**"
       - ".github/workflows/e2e.yml"
   workflow_dispatch:
+    inputs:
+      tests:
+        description: "Only these test classes (comma-separated, e.g. com.onpath.app.e2e.CorePointsListE2ETest); empty = all"
+        required: false
+        default: ""
   workflow_call:
 
 concurrency:
@@ -71,7 +76,7 @@ jobs:
           script: |
             adb logcat -c || true
             adb push rd5/E10_N45.rd5 /data/local/tmp/E10_N45.rd5 && adb shell chmod 644 /data/local/tmp/E10_N45.rd5 || true
-            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true || (mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d > e2e-out/logcat.txt || true; exit 1)
+            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true ${{ inputs.tests != '' && format('-Pandroid.testInstrumentationRunnerArguments.class={0}', inputs.tests) || '' }} || (mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d > e2e-out/logcat.txt || true; exit 1)
 
       - name: Test report
         if: always()
