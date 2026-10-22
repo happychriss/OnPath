@@ -20,7 +20,9 @@ enum class Activity(val label: String) {
  * [WayAttrs]). Equality ignores [way] (two points at the same place are the same point), so lines with and without way
  * attributes compare as before.
  */
-data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null) {
+/** [way]: way attributes from here on (time model); [turn]: a junction instruction at this point (navigation). */
+data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null,
+                    val turn: JunctionCue? = null) {
     override fun equals(other: Any?): Boolean =
         this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
 

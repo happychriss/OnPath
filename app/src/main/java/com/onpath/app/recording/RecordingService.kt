@@ -121,6 +121,8 @@ class RecordingService : Service() {
     private var follow: Pair<String, List<GeoPoint>>? = null
     /** Navigation session + off-route flow; null for free recording. */
     private var navigator: Navigator? = null
+    /** Vibration before junctions of the followed line + the next junction for the lock screen (owner 2026-10-22). */
+    private val junctions = com.onpath.app.navigation.JunctionCues()
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
     private val routeExec = Executors.newSingleThreadExecutor()
     private val routeDispatcher = routeExec.asCoroutineDispatcher()
@@ -328,6 +330,9 @@ class RecordingService : Service() {
         try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
+        try { junctionCue() } catch (e: Exception) {
+            Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
+        }
         try {
             // position on the line (null = not on the route) and whether it may be learned (forwards, on the line)
             val det = navigator?.detector
@@ -498,12 +503,25 @@ class RecordingService : Service() {
         rerouteJob?.cancel(); rerouteJob = null
     }
 
-    private fun vibrate() {
+    /** Before a junction of the followed line: 2 short pulses = left, 3 = right ([JunctionCues]). */
+    private fun junctionCue() {
+        val st = navigator?.state ?: return
+        junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
+            com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
+        val onRoute = st.prompt == null && st.shownAlongM != null
+        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
+        if ((settings ?: Prefs(this).settings).junctionVibrate) {
+            vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
+            Problems.trace("navigation", "Junction cue: ${cue.text}")
+        }
+    }
+
+    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert") {
         try {
             val vib = if (Build.VERSION.SDK_INT >= 31) {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            val effect = VibrationEffect.createWaveform(OFF_ROUTE_VIBRATION, -1)
+            val effect = VibrationEffect.createWaveform(pattern, -1)
             // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
             // pocket – field test 2026-10-20: the warning only blinked). Alarm vibrations also pass the touch setting.
             if (Build.VERSION.SDK_INT >= 33) {
@@ -514,7 +532,7 @@ class RecordingService : Service() {
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             }
         } catch (e: Exception) {
-            Problems.warn("sensor", "Vibration failed; alert given without vibration", e)
+            Problems.warn("sensor", "Vibration failed ($what); given without vibration", e)
         }
     }
 
@@ -663,8 +681,11 @@ class RecordingService : Service() {
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
         val now = SystemClock.elapsedRealtime()
-        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "")
-        if (force || (now - lastNotify > 5000 && key != lastNotifyKey) || now - lastNotify > 60_000) {
+        navText = navNotification()
+        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "")
+        // following: what the lock screen shows (next junction, time to go) changes often – at most every 10 s
+        val minGap = if (navText != null) 10_000 else 5000
+        if (force || (now - lastNotify > minGap && key != lastNotifyKey) || now - lastNotify > 60_000) {
             lastNotify = now
             lastNotifyKey = key
             try { nm().notify(NOTIF_ID, buildNotification()) } catch (e: SecurityException) {
@@ -783,6 +804,26 @@ class RecordingService : Service() {
     )
 
     private var lastNotifyKey = ""
+    /** Lock-screen text while a route is followed; null = plain recording notification. */
+    private var navText: com.onpath.app.navigation.NavNotification.Text? = null
+
+    private fun navNotification(): com.onpath.app.navigation.NavNotification.Text? = try {
+        val st = navigator?.state
+        if (st == null || st.line.size < 2) null else {
+            val along = st.shownAlongM
+            val toGo = along?.let { (com.onpath.app.data.Geo.length(st.line) - it).coerceAtLeast(0.0) }
+            val t = _state.value?.time
+            val ok = t?.state == com.onpath.app.time.EstimateState.OK
+            com.onpath.app.navigation.NavNotification.of(notifStatus(),
+                junctions.nextAhead(st.line, st.version, along), toGo,
+                t?.toGoS?.takeIf { ok }, t?.arrivalMs?.takeIf { ok },
+                distance = { Format.distance(it) }, duration = { Format.duration(it) },
+                clock = { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) })
+        }
+    } catch (e: Exception) {
+        Problems.warn("recording", "Lock-screen route info not built; plain recording notification", e)
+        null
+    }
 
     private fun notifStatus() = when {
         paused -> "Paused"
@@ -801,12 +842,20 @@ class RecordingService : Service() {
             .setUsesChronometer(!paused)
             .setWhen(System.currentTimeMillis() - elapsedS * 1000)
             .setContentText(status + (follow?.let { " · following ${it.first}" } ?: ""))
+            // readable on the lock screen (owner 2026-10-22); no button here ends a tour
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openAppIntent())
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        navText?.let { n ->
+            // following a route: next junction / distance to go as the title, time to go · arrival · distance below
+            b.setContentTitle(n.title).setContentText(n.text).setUsesChronometer(false).setShowWhen(false)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(n.text + "\nRecorded " + Format.distance(distance) +
+                    " · " + Format.clock(elapsedS)))
+        }
         if (paused) b.addAction(0, "Resume", actionIntent(ACTION_RESUME, 2))
         else b.addAction(0, "Pause", actionIntent(ACTION_PAUSE, 1))
         // No "Stop & save" here (owner 2026-10-20: ending a tour must be deliberate) – one tap on the lock screen or

@@ -222,6 +222,9 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             emptyList()
         }
         if (ways.size == points.size) for (i in points.indices) points[i] = points[i].copy(way = ways[i])
+        try { JunctionCue.apply(points, btools.router.OnPathHints.of(track)) } catch (e: Exception) {
+            Problems.warn("routing", "Junction instructions not read; navigation gives no junction vibration on this route", e)
+        }
 
         val distanceM = track.distance.toDouble()
         // breakdown is a nice-to-have: never fail a route because of it
@@ -295,7 +298,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
     private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
-        kv["turnInstructionMode"] = "0" // no voice hints needed
+        // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner 2026-10-22).
+        // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
+        // only changes output formats we do not use. 4 = comment style.
+        kv["turnInstructionMode"] = "4"
         // remove out-and-back spikes at via points (BRouter reads these as global profile variables)
         kv["correctMisplacedViaPoints"] = "1"
         kv["correctMisplacedViaPointsDistance"] = viaCorrectionM(activity).toInt().toString()
