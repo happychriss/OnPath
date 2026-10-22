@@ -74,6 +74,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
 
 ## Done (recent)
+- **2026-10-22 (laptop), merged into main:** (1) offline map downloads follow the plan – stale corridor / routing
+  downloads dropped, queue revalidated at start, region joins batched (never while the map or plan sheet is dragged),
+  blue background-download strip + Navigate chip, "Cancel all" (core feature C13, `NoStaleDownloadsTest`); (2) T level
+  (T1–T5) in the activity picker, fresh install Hike · T2, last activity + level remembered (`data/LastActivity.kt`),
+  Settings "Default activity" / "Hiking difficulty" removed; activity chip with short names (Touring, Trekking, E-bike,
+  MTB, E-MTB, Hike · T2); (3) smooth three-step plan sheet (`ui/StepSheet.kt`, `ui/SheetWithFooter.kt`), frame jank
+  meter (`debug/FrameJank.kt`), leg distances cached, footer controls never over the top bar.
 - **0.9.1 → 0.9.2 (cloud, owner field test 2026-10-22; 0.9.1 crashed at start, fixed in 0.9.2):** POIs above trail numbers; GPS gaps ≤ 5 min bridged (+ Diagnostics
   trace per gap); position dot on top after a style reload (all app layers via `addBelowPosition`, source check
   `PositionDotOnTopTest` + e2e `assertPositionDotOnTop` in Plan / reload / highlight / Navigate); points in Navigate;
