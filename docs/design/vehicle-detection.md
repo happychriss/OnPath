@@ -26,10 +26,9 @@ purple), then one choice:
 4. **Save as recorded.**
 Raw points are kept; "Edit rides" in the tour shows the same sheet again later.
 
-## Open (owner)
-- Are the four choices and the preselection right (or drop "split")?
-- Keep raw points always (re-decide days later)?
-- Limits 12 km/h (foot) / 50 km/h (bike), ≥ 1 min – OK?
+## Also decided (owner "Ja", 2026-10-22)
+- The four choices with the preselection above; raw points are always kept.
+- Limits 12 km/h (foot) / 50 km/h (bike), ≥ 1 min (adjust after field tests).
 
 ## Tests (core feature C4 – never lose a track)
 JVM: real tours with an inserted bus ride, lift, GPS gap, fast descent – detection, proposed end, no false alarms.
