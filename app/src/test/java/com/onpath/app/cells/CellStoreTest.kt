@@ -112,6 +112,25 @@ class CellStoreTest {
         assertEquals(setOf(a, b), g.cellIds)
     }
 
+    /**
+     * Field test 2026-10-22: while a routing install wrote g000013.tmp, a reader listed it as a generation and raised
+     * the false ERROR "Map store generation g000013.tmp unreadable". Half-written (.tmp) and set-aside (.bad) folders
+     * are not generations – but still count for numbering.
+     */
+    @Test fun halfWrittenGenerationIsNotReadAndRaisesNoError() {
+        com.onpath.app.debug.Problems.clear()
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        File(store.storeDir, "g000005.tmp").apply { mkdirs(); File(this, "store.json").writeText("{half") }
+        File(store.storeDir, "g000006.bad").mkdirs()
+        assertEquals(g1.number, store.current()!!.number)
+        assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.area == "cells" && it.message.contains("unreadable") })
+        // numbering stays above the leftovers
+        val g = store.apply(add = listOf(download(store, b, "v1")))
+        assertTrue("new generation ${g.number} above the leftovers", g.number > 6)
+    }
+
     @Test fun lowStorageChangesNothing() {
         val data = tmp.newFolder("data")
         var free = Long.MAX_VALUE
