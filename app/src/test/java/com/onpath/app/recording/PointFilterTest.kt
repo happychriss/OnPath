@@ -50,4 +50,17 @@ class PointFilterTest {
         assertEquals(15.0, PointFilter.minMoveM(30.0), 0.0)
         assertEquals(25.0, PointFilter.minMoveM(80.0), 0.0)
     }
+
+    /** Field test 2026-10-22: a 30 s+ gap under forest broke the drawn track and lost its distance. */
+    @Test fun shortGpsGapAtWalkingSpeedIsBridged() {
+        // 0.002° lon ≈ 153 m in 90 s ≈ 1.7 m/s
+        assertTrue(PointFilter.bridgesGap(p(0.0, 0), p(0.002, 90_000)))
+    }
+
+    @Test fun longOrFastGapStartsANewPiece() {
+        assertFalse("over 5 min", PointFilter.bridgesGap(p(0.0, 0), p(0.002, 6 * 60_000L)))
+        // 0.05° ≈ 3.8 km in 60 s ≈ 64 m/s: a bus or a wrong fix
+        assertFalse("too fast", PointFilter.bridgesGap(p(0.0, 0), p(0.05, 60_000)))
+        assertFalse("no time", PointFilter.bridgesGap(TrackPoint(46.67, 11.1, null, null), p(0.001, 60_000)))
+    }
 }

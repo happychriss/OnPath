@@ -327,6 +327,7 @@ class RecordingService : Service() {
 
         val nowEl = SystemClock.elapsedRealtime()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
+        val lostSinceElapsed = lastGoodFixElapsed
         lastGoodFixElapsed = nowEl
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
@@ -347,10 +348,15 @@ class RecordingService : Service() {
         } catch (e: Exception) { Problems.error("time", "Trip pace update on a GPS fix failed; times shown may be wrong", e) }
 
         val prev = last
-        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost)
+        // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
+        val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
+        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s; " +
+            "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " +
+            if (bridged) "line kept connected" else "new track piece")
+        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
         if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
         distance += moved
-        if (wasLost && prev != null) seg++                            // GPS gap: new segment
+        if (wasLost && prev != null && !bridged) seg++                // long GPS gap: new segment
         p.ele?.let { e ->
             val r = eleRef
             if (r == null) eleRef = e
