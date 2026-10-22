@@ -49,17 +49,23 @@ data class WayAttrs(
     val visibility: String? = null,
     /** Raw OSM surface for rough ground (rock, stone, scree), null otherwise. */
     val rough: String? = null,
+    /**
+     * Bike access as BRouter reports the OSM `bicycle` tag (yes, designated, permissive, no, dismount, ...; BRouter's
+     * lookups fold synonyms, e.g. allowed → yes), null = not tagged / unknown. Added 2026-10-22 (route warnings).
+     */
+    val bicycle: String? = null,
 ) {
-    /** Compact text form for files ("path|natural_trail|3|-1||bad|"); [parse] reads it back. */
+    /** Compact text form for files ("path|natural_trail|3|-1||bad||yes"); [parse] reads it back (older codes: no bike access). */
     fun code(): String = listOf(wayType, surface, sac.toString(), mtb.toString(), smoothness.orEmpty(), visibility.orEmpty(),
-        rough.orEmpty()).joinToString("|")
+        rough.orEmpty(), bicycle.orEmpty()).joinToString("|")
 
     companion object {
         fun parse(code: String?): WayAttrs? = try {
             val c = code?.split('|')
             if (c == null || c.size < 4 || c[0].isEmpty()) null
             else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
-                c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null })
+                c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null },
+                c.getOrNull(7)?.ifEmpty { null })
         } catch (_: Exception) { null } // expected: an unknown / old code = no attributes
     }
 }

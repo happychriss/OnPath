@@ -789,6 +789,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val planGaps: List<PlanGap>
         get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped) } ?: emptyList()
 
+    // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
+    /**
+     * "Route changed for trekking bike – please check": the activity / T level changed and the new route differs
+     * noticeably ([RouteWarnings.changedNoticeably]). Stays until the amber line is tapped or the plan changes – never
+     * dismissed by time.
+     */
+    var routeChangedNotice by mutableStateOf<String?>(null)
+        private set
+    /** The route before the activity / T level change whose result is still pending (null = none). */
+    private var activityBefore: PlannedRoute? = null
+    /** The next [recalc] runs for an activity / T level change. */
+    private var activityRecalc = false
+    /** The list of spots (tap on the amber line) is open. */
+    var spotsOpen by mutableStateOf(false)
+        private set
+    /** The piece of route of the spot tapped in that list, drawn amber on the map; null = none. */
+    var spotLine by mutableStateOf<List<GeoPoint>?>(null)
+        private set
+    private var spotsMemo: Pair<Triple<List<GeoPoint>, Activity, Int>, List<RouteSpot>>? = null
+
     // Bursts → one action (perf report 2026-10-22); declared before init {} (ViewModelInitOrderTest).
     /** Map style reload after new map store generations: once per quiet period, never while the user drags. */
     private val styleGate = QuietGate(STYLE_QUIET_MS, STYLE_MAX_WAIT_MS)
@@ -1262,6 +1282,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- activity ----------------
 
     fun selectActivity(a: Activity) {
+        noteActivityChange()
         activity = a; prefs.activity = a; recalc()
     }
 
@@ -1269,6 +1290,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
+        if (activity == Activity.HIKE) noteActivityChange()
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
     }
 
@@ -1299,6 +1321,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planEditPending = true
         routeBackAsk = RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
         if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
+        planChanged()
         endGuidanceIfPlanEmpty()
         recalc()
     }
@@ -1815,6 +1838,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
+        planChanged()
         endGuidanceIfPlanEmpty()
         recalc()
     }
@@ -1884,7 +1908,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun recalc() {
         routeJob?.cancel(); routeJob = null
         val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
-        highlight = null
+        highlight = null; spotLine = null; spotsOpen = false
+        // the route before an activity / T level change, compared with this run's result ("Route changed for …")
+        val changeBefore = activityBefore.takeIf { activityRecalc }; activityRecalc = false
         val pts = waypoints.toList()
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
@@ -1941,6 +1967,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess {
                 baseline = adoptPlanBaseline
                 route = it; snapToRoute(pts, pins, it)
+                if (changeBefore != null) {
+                    activityBefore = null
+                    if (RouteWarnings.changedNoticeably(changeBefore.points, changeBefore.distanceM, changeBefore.ascentM,
+                            it.points, it.distanceM, it.ascentM)) routeChangedNotice = RouteWarnings.changedText(act, level)
+                }
                 // routing data missing in the route's corridor (~10 km): it loads now; the notice (plain words, no path)
                 // only when a part under a planned point is missing – those make the straight line
                 post?.routingKeys?.let { k -> routingForLine(k) }
@@ -2078,6 +2109,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (gaps.isEmpty()) return null
         val pts = waypoints.toList()
         return PlanGaps.text(gaps, activity) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
+    }
+
+    // ---------------- route warnings (safety audit batch B, owner 2026-10-22) ----------------
+
+
+    private fun noteActivityChange() {
+        routeChangedNotice = null
+        if (activityBefore == null) activityBefore = route?.takeIf { !routing }
+        activityRecalc = activityBefore != null
+    }
+
+    /** A plan edit (points changed): the "route changed" notice and its pending comparison go. */
+    private fun planChanged() {
+        routeChangedNotice = null; activityBefore = null; activityRecalc = false
+    }
+
+    /** Spots worth knowing on the current route ([RouteWarnings.detect]); none while it is being calculated. */
+    val routeSpots: List<RouteSpot>
+        get() {
+            val r = route?.takeIf { !routing } ?: return emptyList()
+            val key = Triple(r.points, activity, sac)
+            spotsMemo?.let { (k, v) -> if (k.first === key.first && k.second == key.second && k.third == key.third) return v }
+            val v = try { RouteWarnings.detect(r.points, activity, sac) } catch (e: Exception) {
+                Problems.warn("routing", "Route warnings could not be worked out; none shown", e); emptyList()
+            }
+            spotsMemo = key to v
+            return v
+        }
+
+    /** The amber line of the plan sheet: the "route changed" notice first, else the spots; null = nothing to know. */
+    fun warningLineText(): String? = routeChangedNotice ?: RouteWarnings.text(routeSpots, sac)
+
+    /** Tap on the amber line: the notice goes; the list of spots opens (none: the map shows the whole route). */
+    fun tapWarningLine() {
+        routeChangedNotice = null
+        if (routeSpots.isNotEmpty()) { spotsOpen = true; return }
+        val r = route ?: return
+        followMe = false
+        events += UiEvent.Fit(r.points)
+    }
+
+    fun closeSpots() { spotsOpen = false }
+
+    /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
+    fun showSpot(s: RouteSpot) {
+        spotsOpen = false
+        val pts = route?.points ?: return
+        val piece = RouteWarnings.showPoints(pts, s)
+        followMe = false
+        spotLine = piece
+        val c = RouteWarnings.centerFor(pts, s)
+        events += if (c != null) UiEvent.CenterOn(c.first, c.second) else UiEvent.Fit(piece)
     }
 
     /** "Show" of that line: stop following, then the map shows the missing piece of the first gap. */

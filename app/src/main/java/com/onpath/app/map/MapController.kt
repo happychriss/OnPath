@@ -54,6 +54,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_REC = "recorded-track"
         const val SRC_WPT = "waypoints"
         const val SRC_HL = "highlight"
+        /** Route warnings: the spot shown from the list (amber). */
+        const val SRC_SPOT = "route-spot"
+        const val SPOT_COLOR = "#F2A000"
         const val LAYER_WPT = "waypoints-icons"
         /** Unreachable plan points: grey dashed missing piece from the route's end to the point (owner 2026-10-22). */
         const val SRC_GAPS = "plan-gaps"
@@ -80,7 +83,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
-            "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS,
+            "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS, SRC_SPOT,
         )
         private const val ARROW_IMAGE = "route-arrow"
         private const val IMG_TURN = "nav-turn-arrow"
@@ -699,6 +702,21 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val src = source(SRC_MARK) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("name", name ?: "") })
+    }
+
+    /** The spot tapped in the route warnings list: its piece of route drawn wide amber under the markers; null = none. */
+    fun setSpotLine(points: List<GeoPoint>?) = guarded("spot line") {
+        if (style.getSource(SRC_SPOT) == null) {
+            style.addSource(GeoJsonSource(SRC_SPOT))
+            val below = style.layers.firstOrNull { it.id == LAYER_WPT }?.id
+            val l = LineLayer(SRC_SPOT, SRC_SPOT).withProperties(PF.lineColor(SPOT_COLOR), PF.lineWidth(10f),
+                PF.lineOpacity(0.75f), PF.lineCap(Property.LINE_CAP_ROUND), PF.lineJoin(Property.LINE_JOIN_ROUND))
+            if (below != null) style.addLayerBelow(l, below) else addBelowPosition(l)
+            applyRouteOverlaysVisibility() // the eye button hides it too
+        }
+        val src = source(SRC_SPOT) ?: return
+        if (points == null || points.size < 2) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        else src.setGeoJson(Feature.fromGeometry(LineString.fromLngLats(points.map { Point.fromLngLat(it.lon, it.lat) })))
     }
 
     fun setHighlight(p: GeoPoint?) = guarded("highlight") {
