@@ -163,6 +163,10 @@ abstract class E2EBase {
     protected fun shot(name: String) {
         device.executeShellCommand("mkdir -p /sdcard/e2e")
         device.executeShellCommand("screencap -p /sdcard/e2e/${javaClass.simpleName}-${testName.methodName}-$name.png")
+        // what UiAutomator sees (accessibility tree) – a text on screen it cannot find shows up here
+        try { device.dumpWindowHierarchy(java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
+            "${javaClass.simpleName}-${testName.methodName}-$name.xml")) } catch (_: Exception) {} // expected: diagnostics only
+        device.executeShellCommand("sh -c 'cp /sdcard/Android/data/com.onpath.app/files/*.xml /sdcard/e2e/ 2>/dev/null'")
     }
 
     /** What the app thinks right now (failure messages). */
