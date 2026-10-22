@@ -56,6 +56,17 @@ class StyleFormatTest {
         f2only.forEach { assertTrue(it, it in ids(f2).toSet()) }
     }
 
+    /** Field test 2026-10-22: an inn vanished at some zooms – a route number ("40") above it won the collision. */
+    @Test fun poisArePlacedBeforeTrailNumbers() {
+        for (s in listOf(f1, f2)) {
+            val ids = ids(s)
+            val lastTrailLabel = ids.indexOfLast { it.startsWith("trail-") && (it.contains("name") || it.contains("ref")) }
+            val firstPoi = ids.indexOfFirst { it.startsWith("poi-") }
+            assertTrue("trail labels found", lastTrailLabel >= 0)
+            assertTrue("POIs above trail names/numbers: $firstPoi > $lastTrailLabel", firstPoi > lastTrailLabel)
+        }
+    }
+
     /** Format 2: small streets come from overlays "streets" from z13 – the trimmed base map has none there. */
     @Test fun format2StreetsFromOverlayFromZ13() {
         val layers = f2.getJSONArray("layers")
