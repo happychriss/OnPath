@@ -37,6 +37,10 @@ the same after a map style reload and on a turned map. Runs in `.github/workflow
 and **before every release** (release.yml `needs: e2e` – no release when it fails). On failure the run keeps
 screenshots, the app state and logcat as the artifact "e2e-report".
 
+Navigate draws only the route line, no numbered plan points (owner 2026-10-22, reverting 0.9.1); Plan draws them,
+also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`
+checks none in Navigate, back in Plan).
+
 To add next: Navigate → Plan with a followed plan (markers back), recording survives Plan mode, map update with a
 real cell generation.
 

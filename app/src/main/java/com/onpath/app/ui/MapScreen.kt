@@ -313,13 +313,13 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
-    // Planned line only while the plan can be edited (Plan mode, no track shown); markers also for a followed plan in Navigate.
+    // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
-        // Navigate shows the followed plan's numbered points too (owner field test 2026-10-22: "a route without points");
-        // they are not tappable there (map taps edit only when canEditMap)
-        snapshotFlow { PlanDrawing(vm.route, vm.canEditMap && !vm.planIsFollowed(),
-            vm.canEditMap || (vm.mode == AppMode.NAVIGATE && vm.planIsFollowed()), vm.waypoints.toList()) }
+        snapshotFlow {
+            val (line, markers) = planLayers(vm.canEditMap, vm.planIsFollowed())
+            PlanDrawing(vm.route, line, markers, vm.waypoints.toList())
+        }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
                 c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices())
@@ -419,6 +419,14 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Fl
 
 /** Farther from the followed line than this, heading-up uses the compass / GPS bearing instead of the route. */
 private const val ROUTE_UP_MAX_OFF_M = 30.0
+
+/**
+ * Which parts of the plan the map draws: (planned line, numbered point markers). Both only while the plan can be
+ * edited (Plan mode, no track shown); the line not while the plan is followed (the followed line is drawn instead).
+ * Navigate shows only the route line, no numbered points (owner 2026-10-22, reverting 0.9.1's markers in Navigate).
+ */
+internal fun planLayers(canEditMap: Boolean, planFollowed: Boolean): Pair<Boolean, Boolean> =
+    (canEditMap && !planFollowed) to canEditMap
 
 /** What the plan drawing on the map depends on (MapSync). */
 private data class PlanDrawing(

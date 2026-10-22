@@ -198,6 +198,16 @@ abstract class E2EBase {
         if (above.isNotEmpty()) { shot("dot-covered-$where"); throw AssertionError("$where: above the position dot: $above") }
     }
 
+    /** Numbered plan points drawn on the map (features in the waypoints source). */
+    protected fun drawnMarkers(): Int {
+        var n = -1
+        onMap { m ->
+            n = m.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(com.onpath.app.map.MapController.SRC_WPT)
+                ?.querySourceFeatures(null)?.size ?: -1
+        }
+        return n
+    }
+
     /** What the app thinks right now (failure messages). */
     protected fun state(): String {
         var s = ""
