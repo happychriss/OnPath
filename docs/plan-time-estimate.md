@@ -375,7 +375,9 @@ Settings → "Your pace", hiking and cycling, **five levels** each (owner 2026-1
 Normal / Fit ×0.8). Speeds about 15 % apart around **Average = DIN 33466** (4 km/h, 300 m up and 500 m down per hour;
 `time/Din33466`, also the quick estimate in `Geo.estimateSeconds`; table B is anchored on it). Time factor = 1 / speed.
 Each level shows what it means for the activity (`Pace.meaning`): hiking from DIN, bikes from the power model of the
-current bike (flat speed, height per hour on a 6 % climb), both × speed.
+current bike (flat speed, height per hour on a 6 % climb), both × speed. Table B stays the main hiking model (owner
+2026-10-22). **E-bikes / e-MTBs** (owner 2026-10-22): the flat speed is capped at about 25 km/h at every level (the
+assist limit; `Pace.factors`: flat factor ≥ model flat speed / 25), so Fit / Very fit are only faster uphill (and down).
 
 | Level | Speed | Time factor | Hiking |
 | --- | --- | --- | --- |
