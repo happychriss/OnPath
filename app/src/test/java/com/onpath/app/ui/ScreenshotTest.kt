@@ -136,7 +136,7 @@ class ScreenshotTest {
                         else -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 3, visibility = "bad")
                     })
                 }, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
-                "Normal", 1.0, com.onpath.app.time.Factors(0.95, 1.0, 1.1), 3), onBack = {})
+                "Normal", 1.0), onBack = {})
         }
     }
 

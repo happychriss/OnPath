@@ -105,10 +105,15 @@ class Prefs(context: Context) {
         get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()
         set(v) = sp.edit().putString("planPinned", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
 
-    /** Learned pace per activity (time/PaceStore JSON); null = nothing learned yet. */
-    var paceStore: String?
-        get() = sp.getString("paceStore", null)
-        set(v) = sp.edit().putString("paceStore", v).apply()
+    /**
+     * Pace learned across tours was dropped (owner 2026-10-22: learning per tour only): removes the old stored value
+     * ("paceStore") once. Returns true when there was one.
+     */
+    fun dropOldLearnedPace(): Boolean {
+        if (!sp.contains("paceStore")) return false
+        sp.edit().remove("paceStore").apply()
+        return true
+    }
 
     /** "Allow all the time" was offered once (first tour); never nag again – Settings has the way back. */
     var backgroundAsked: Boolean

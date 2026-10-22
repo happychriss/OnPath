@@ -18,8 +18,11 @@ object TimeEstimate {
 
     fun pace(a: Activity, s: AppSettings): Pace = if (isBike(a)) s.bikePace else s.hikePace
 
-    /** Factors for planning: pace setting × what was learned on earlier tours (null = nothing learned). */
-    fun planFactors(a: Activity, s: AppSettings, learned: Factors?): Factors = (learned ?: Factors.ONE) * pace(a, s).factor
+    /**
+     * Factors for planning and for the start of every tour: the pace setting alone (owner 2026-10-22: learning per
+     * tour only, nothing is carried from one tour to the next).
+     */
+    fun planFactors(a: Activity, s: AppSettings): Factors = Factors.ONE * pace(a, s).factor
 
     /** Moving time of a whole line with [f], rounded like everywhere else ([round]). */
     fun planSeconds(points: List<GeoPoint>, a: Activity, f: Factors): Double = round(RouteTimes.of(points, a).total(f))

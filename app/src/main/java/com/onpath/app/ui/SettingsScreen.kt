@@ -93,9 +93,6 @@ fun SettingsScreen(
     update: AppViewModel.UpdateState? = null,
     onCheckUpdate: () -> Unit = {},
     onInstallUpdate: () -> Unit = {},
-    /** Pace learned from earlier tours, one entry per activity with data (time estimate). */
-    learnedPace: List<LearnedPace> = emptyList(),
-    onResetPace: (com.onpath.app.routing.Activity) -> Unit = {},
     /** Installed map package (package.json) and files from another package – shown in About. */
     mapPackage: DataFiles.PackageCheck? = null,
     /** Diagnostics export (debug): switch + export button; null = section hidden. */
@@ -164,7 +161,7 @@ fun SettingsScreen(
                         }
                     }
                 }
-                item { PaceSection(settings, onChange, learnedPace, onResetPace) } // time estimate (PaceSettings.kt)
+                item { PaceSection(settings, onChange) } // time estimate (PaceSettings.kt)
                 item {
                     Section("Points of interest") {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
