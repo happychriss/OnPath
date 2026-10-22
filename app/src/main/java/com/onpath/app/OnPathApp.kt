@@ -19,6 +19,7 @@ class OnPathApp : Application() {
         // Must happen before any MapView is created. No API key / network needed.
         MapLibre.getInstance(this)
         RecordingService.createChannels(this)
+        com.onpath.app.debug.Health.start() // a health line every 10 min in the event log (perf report 2026-10-22)
     }
 
     /** A crash is written to the problem log (synchronously) before Android ends the app – shown at the next start. */
