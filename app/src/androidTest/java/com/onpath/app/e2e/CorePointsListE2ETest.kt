@@ -49,7 +49,11 @@ class CorePointsListE2ETest : E2EBase() {
             desc("Resize panel").click(); Thread.sleep(500)
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
-        assertNotNull("Points section shown – ${state()}", device.wait(Until.findObject(By.text("Points")), 5_000))
+        if (device.wait(Until.findObject(By.text("Points")), 5_000) == null) {
+            shot("no-points-section")
+            var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
+            throw AssertionError("Points section shown – tour running $rec – ${state()}")
+        }
         // owner 2026-10-21: the profile sits below the points (tap → route details)
         val profile = desc("Route details").visibleBounds
         val lastRow = desc("Move point 3 (hold and drag)").visibleBounds

@@ -192,7 +192,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false)
         if (!mini && !full && route != null) SavedLine(ui)
         if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
         ui.error?.let { ErrorBox(it) }
-        ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini) }
+        // in the point editor the map card is one line: it must never squeeze the points away (CI 2026-10-22)
+        ui.cellCard?.let { CellCard(it, cb.cellCard, compact = mini || full) }
         if (full) {
             PointEditor(ui, cb, Modifier.weight(1f, fill = false))
             // below the points (owner 2026-10-21): the profile at normal size with its gradient legend
