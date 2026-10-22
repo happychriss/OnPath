@@ -540,7 +540,15 @@ class ScreenshotTest {
     }
 
     /** Settings → Backup: folder, last backup, count, last failure; another folder chosen. */
-    @Test fun settingsBackup() = paparazzi.snapshot {
+    @Test fun settingsBackup() = withTimeZone("Europe/Rome") { settingsBackupShot() } // the date is shown in local time
+
+    private fun withTimeZone(id: String, block: () -> Unit) {
+        val old = java.util.TimeZone.getDefault()
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(id))
+        try { block() } finally { java.util.TimeZone.setDefault(old) }
+    }
+
+    private fun settingsBackupShot() = paparazzi.snapshot {
         OnPathTheme {
             androidx.compose.material3.Surface(Modifier.fillMaxSize(), color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
               androidx.compose.foundation.layout.Box(Modifier.padding(12.dp)) {
