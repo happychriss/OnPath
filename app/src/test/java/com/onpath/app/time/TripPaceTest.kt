@@ -179,6 +179,25 @@ class TripPaceTest {
         assertNotNull(trip.snapshot().toGoS) // the last value stays (shown greyed)
     }
 
+    /**
+     * Field 2026-10-22 15:49: standing at the Taser lift top station (stored points 0.03–0.1 m/s) gave "moving for
+     * 2 min but no progress". GPS jitter (and one wild fix) is not movement: the positions around the start and the
+     * end of the window are compared, not two single fixes.
+     */
+    @Test fun gpsJitterWhileStandingIsNotMoving() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.2)
+        val a = times.lengthM * 0.2
+        val p = line.pointAt(a)
+        val m = 1.0 / 111_000 // ~1 m in degrees of latitude
+        for (k in 1..200) {
+            // ±18 m jitter around the spot; every 50th fix (and the last) 70 m off
+            val off = if (k % 50 == 0 || k == 200) 70.0 else ((k * 7) % 37 - 18).toDouble()
+            trip.onFix(s + k, 1_000_000L + ((s + k) * 1000).toLong(), p.lat + off * m, p.lon + ((k * 13) % 11 - 5) * m, a, true)
+            assertTrue("fix $k: ${trip.snapshot().pausedBecause}", trip.snapshot().pausedBecause != PauseReason.NO_PROGRESS)
+        }
+    }
+
     @Test fun noGpsPausesButABreakDoesNot() {
         val trip = TripPace(); trip.setLine(times, 0.0)
         val s = walk(trip, Factors.ONE, 0.2)
