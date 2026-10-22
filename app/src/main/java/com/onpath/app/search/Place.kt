@@ -31,12 +31,23 @@ data class Place(
     val cc: String? = null,
     /** Town / municipality (online results, offline addresses). */
     val town: String? = null,
+    /**
+     * Offline addresses: the village / fraction shown after the street ("Hauptstraße 5 · Völlan"); [town] is then
+     * the municipality ("Lana"), shown small on line 2 (owner 2026-10-22). Null for everything else.
+     */
+    val village: String? = null,
+    /** A small note that stays on the place card, e.g. "Position from the address" for a shared place. */
+    val note: String? = null,
 ) {
     enum class Source { POI, MAP, TRAIL, ONLINE }
 
     val kindInfo: PoiKind get() = SearchKinds.of(kind, sub)
 
     fun title(german: Boolean = Poi.isGerman()): String = name ?: kindInfo.label(german)
+
+    /** The municipality for line 2 of an address, when it differs from the village in the name; else null. */
+    val municipality: String?
+        get() = town?.takeIf { village != null && SearchText.normalize(it) != SearchText.normalize(village) }
 
     val openingHoursLines: List<String> get() = poi?.openingHoursLines ?: emptyList()
 

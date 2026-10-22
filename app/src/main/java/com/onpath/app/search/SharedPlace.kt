@@ -360,3 +360,31 @@ class ShortLinkResolver(
         }
     }
 }
+
+/**
+ * Where the position of a shared place came from. Owner 2026-10-22: a place positioned by searching its address
+ * (not a coordinate in the link / text / map page) gets a small note on its card that stays ("Position from the
+ * address") – the address search may land on the street rather than the door, or on a namesake.
+ */
+enum class SharedPosition {
+    /** A coordinate in the shared text or link (also after following a short link). */
+    LINK,
+    /** A coordinate read from the downloaded map page, confirmed (or not checkable) by the address. */
+    PAGE,
+    /** Found by searching the address / name (offline or online), or the address overruled the page's point. */
+    ADDRESS;
+
+    /** The persistent note for the place card, or null. */
+    val note: String? get() = if (this == ADDRESS) NOTE else null
+
+    companion object {
+        const val NOTE = "Position from the address"
+
+        /** [point]: the shown point came from the link / page; [addressWon]: the address search replaced it. */
+        fun of(point: Boolean, fromPage: Boolean, addressWon: Boolean): SharedPosition = when {
+            !point || addressWon -> ADDRESS
+            fromPage -> PAGE
+            else -> LINK
+        }
+    }
+}
