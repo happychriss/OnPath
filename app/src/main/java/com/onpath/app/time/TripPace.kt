@@ -191,13 +191,21 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         return EstimateState.OK to null
     }
 
-    /** Moved at least [STUCK_MOVE_M] during the last [STALE_S] on the line, but the progress hardly changed. */
+    /**
+     * Moved at least [STUCK_MOVE_M] during the last [STALE_S] on the line, but the progress hardly changed. "Moved" =
+     * the mean position of the fixes in the first [STUCK_AVG_S] of the window vs. that of the last [STUCK_AVG_S] – GPS
+     * jitter and single wild fixes while standing are not movement (field 2026-10-22, lift top station).
+     */
     private fun stuck(): Boolean {
         if (history.size < 3) return false
         val o = history.first(); val n = history.last()
         if (n[0] - o[0] < STALE_S) return false
         if (history.any { it[3].isNaN() }) return false
-        if (com.onpath.app.data.Geo.distance(o[1], o[2], n[1], n[2]) < STUCK_MOVE_M) return false
+        val start = history.filter { it[0] <= o[0] + STUCK_AVG_S }
+        val end = history.filter { it[0] >= n[0] - STUCK_AVG_S }
+        val moved = com.onpath.app.data.Geo.distance(start.sumOf { it[1] } / start.size, start.sumOf { it[2] } / start.size,
+            end.sumOf { it[1] } / end.size, end.sumOf { it[2] } / end.size)
+        if (moved < STUCK_MOVE_M) return false
         return abs(n[3] - o[3]) < STUCK_ALONG_M
     }
 
@@ -259,6 +267,8 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val STALE_S = 120.0
         const val STUCK_MOVE_M = 60.0
         const val STUCK_ALONG_M = 20.0
+        /** Fixes averaged at each end of the window for "moved" (s). */
+        const val STUCK_AVG_S = 20.0
         /** The learned pace is shown after this much comparison (s). */
         const val SHOW_LEARNED_S = 1200.0
 
