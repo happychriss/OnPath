@@ -110,7 +110,9 @@ class RecordingService : Service() {
     private var elapsedS = 0L
     private var last: TrackPoint? = null
     private var lastGoodFixElapsed = 0L
-    private val track = mutableListOf<MutableList<GeoPoint>>()
+    /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix (field 2026-10-22). */
+    private val gapWatch = PointFilter.GapWatch()
+    private val track =mutableListOf<MutableList<GeoPoint>>()
     private var trackSeg = -1
     /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
     private var trackSnapshot: List<List<GeoPoint>> = emptyList()
@@ -323,12 +325,14 @@ class RecordingService : Service() {
         }
         if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
-        if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) return
+        if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
 
         val nowEl = SystemClock.elapsedRealtime()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
         val lostSinceElapsed = lastGoodFixElapsed
         lastGoodFixElapsed = nowEl
+        val gapWhy = gapWatch.why()
+        gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
@@ -350,7 +354,8 @@ class RecordingService : Service() {
         val prev = last
         // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
-        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s; " +
+        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s " +
+            "($gapWhy); " +
             "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " +
             if (bridged) "line kept connected" else "new track piece")
         val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
@@ -364,7 +369,7 @@ class RecordingService : Service() {
             else if (r - e >= 5) { descent += r - e; eleRef = e }
         }
         // The point goes to SQLite first (R-07). seq advances only when it is really stored.
-        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p) }) {
+        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p, loc.accuracy) }) {
             seq++
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }
@@ -663,14 +668,21 @@ class RecordingService : Service() {
         }
         if (tourId >= 0) {
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
+            // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
+            // rides are only marked. The points stay as recorded; never throws (failures reported, tour as recorded).
+            val parts = com.onpath.app.rides.RideApply.finish(com.onpath.app.rides.TourDbRides(db), tourId,
+                com.onpath.app.rides.TourStats(distance, ascent, descent, elapsedS.toDouble()), System.currentTimeMillis(),
+                timeActivity())
+            finishedParts = parts
             // GPX copy in Documents/OnPath (backup/Backups): on its own thread, never holds up the end of the tour
             com.onpath.app.backup.Backups.tourChanged(this, tourId)
+            parts.forEach { com.onpath.app.backup.Backups.tourChanged(this, it) }
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
-                learnAcrossTours()
+                // learning per tour only (owner 2026-10-22): this tour's pace ends with it
                 File(filesDir, TRIP_FILE).delete()
-            } catch (e: Exception) { Problems.error("time", "Tour times / learned pace could not be saved at tour end", e) }
+            } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
             _finished.value = tourId
         }
         tourId = -1
@@ -753,30 +765,15 @@ class RecordingService : Service() {
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
 
-    /** Learning across tours (owner decision Q4): stores this tour's pace when it followed a route long enough. */
-    private fun learnAcrossTours() {
-        try {
-            val a = timeActivity()
-            val prefs = Prefs(this)
-            val store = com.onpath.app.time.PaceStore.fromJson(prefs.paceStore)
-            val pace = com.onpath.app.time.TimeEstimate.pace(a, settings ?: prefs.settings).factor
-            val (p, obs) = trip.observed()
-            val t = tourTimes()
-            val next = store.update(a, trip.factors(), p, obs, trip.prior * (1 / pace), t.movingS, t.breakS)
-            if (next !== store) { prefs.paceStore = next.toJson(); Log.i("OnPath", "pace learned for $a: ${next.factors(a)}") }
-        } catch (e: Exception) { Problems.error("time", "Pace learning across tours failed; learned pace not updated", e) }
-    }
-
     private fun activityOf(name: String?) =
         runCatching { com.onpath.app.routing.Activity.valueOf(name!!) }.getOrDefault(com.onpath.app.routing.Activity.HIKE)
 
     /** Activity the times are computed for: the navigated session's, else the recording's. */
     private fun timeActivity() = navigator?.session?.activity ?: recActivity
 
-    /** Pace setting × learned factors for [a] (same as the plan sheet). */
+    /** The pace setting for [a] (same as the plan sheet; learning per tour only, nothing stored across tours). */
     private fun priorFor(a: com.onpath.app.routing.Activity): com.onpath.app.time.Factors = try {
-        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings,
-            com.onpath.app.time.PaceStore.fromJson(Prefs(this).paceStore).factors(a))
+        com.onpath.app.time.TimeEstimate.planFactors(a, settings ?: Prefs(this).settings)
     } catch (e: Exception) {
         Problems.warn("time", "Pace factors could not be computed; using neutral pace", e)
         com.onpath.app.time.Factors.ONE
@@ -946,6 +943,8 @@ class RecordingService : Service() {
         private val _finished = MutableStateFlow<Long?>(null)
         /** Id of the last tour stopped (UI shows a summary, then clears it). */
         val finished: MutableStateFlow<Long?> = _finished
+        /** Tours split off the last stopped tour ("Split into two tours"); set before [finished]. */
+        @Volatile var finishedParts: List<Long> = emptyList()
         private val _startFailed = MutableStateFlow<String?>(null)
         /** Why the service stopped by itself (plain text; the app shows it and clears it). */
         val startFailed: MutableStateFlow<String?> = _startFailed

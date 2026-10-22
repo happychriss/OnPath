@@ -42,8 +42,11 @@ object Problems {
      */
     data class Event(val time: Long, val area: String, val message: String)
 
-    /** How many [trace] events are kept (the most recent). */
-    const val MAX_EVENTS = 50
+    /**
+     * How many [trace] events are kept in memory (the most recent). The full trace (≤ 5 MB / 14 days) is on disk in
+     * [EventLog] and goes into the diagnostics export (field 2026-10-22: 50 events lasted only ~5 h).
+     */
+    const val MAX_EVENTS = 200
 
     private const val FILE = "problems.json"
     private const val MAX_ENTRIES = 300
@@ -82,14 +85,21 @@ object Problems {
                     }
                     val ev = JSONObject(f.readText()).optJSONArray("events") ?: JSONArray()
                     events.clear()
-                    for (i in ev.length() - 1 downTo 0) { // stored newest first
+                    for (i in ev.length() - 1 downTo 0) { // stored newest first (before 0.9.3; kept for the export)
                         val o = ev.getJSONObject(i)
                         events.addLast(Event(o.optLong("time"), o.optString("area"), o.optString("message")))
                     }
-                    while (events.size > MAX_EVENTS) events.removeFirst()
                 }
             } catch (e: Exception) {
                 log(Level.WARN, "problems.json unreadable, starting empty: $e", null)
+            }
+            try {
+                EventLog.init(filesDir)
+                val fromLog = EventLog.tail(MAX_EVENTS)
+                if (fromLog.isNotEmpty()) { events.clear(); events.addAll(fromLog) }
+                while (events.size > MAX_EVENTS) events.removeFirst()
+            } catch (e: Exception) {
+                log(Level.WARN, "event log unreadable: $e", null)
             }
             _count.value = entries.size
         }
@@ -123,7 +133,7 @@ object Problems {
                 if (level >= Level.ERROR && announced.add(key)) _newSerious.value = entry
             }
             if (entry.count == 1 || entry.count % 100 == 0) log(level, "[$area] $message", t)
-            if (level == Level.CRASH) writeNow() else scheduleWrite()
+            if (level == Level.CRASH) { writeNow(); EventLog.flush(1_000) } else scheduleWrite()
         } catch (_: Throwable) {
             // the problem log itself must never break the app
         }
@@ -131,8 +141,9 @@ object Problems {
 
     /**
      * Records one event of a sequence that matters step by step (map holds, point menu opened / Delete / closed):
-     * every call is its own line with its own time – never merged like [report] – the last [MAX_EVENTS] are kept,
-     * written to logcat (tag OnPath) and into the diagnostics export (problems.json "events"). Never throws.
+     * every call is its own line with its own time – never merged like [report]. All go to [EventLog] (on disk,
+     * append-only, written off this thread); the last [MAX_EVENTS] stay in memory. Also to logcat (tag OnPath) and
+     * into the diagnostics export. Cheap on the UI thread; never throws.
      */
     fun trace(area: String, message: String) {
         try {
@@ -141,8 +152,8 @@ object Problems {
                 events.addLast(e)
                 while (events.size > MAX_EVENTS) events.removeFirst()
             }
+            EventLog.append(e.time, e.area, e.message)
             log(Level.INFO, "[$area] $message", null)
-            scheduleWrite()
         } catch (_: Throwable) {
             // the event log itself must never break the app
         }
@@ -151,8 +162,8 @@ object Problems {
     /** Recent [trace] events, most recent first. */
     fun events(): List<Event> = synchronized(lock) { events.reversed() }
 
-    /** Tests: write the file now. */
-    internal fun flushForTest() = writeNow()
+    /** Tests: write the files now. */
+    internal fun flushForTest() { writeNow(); EventLog.flush() }
 
     fun announcedSerious() { _newSerious.value = null }
 
@@ -161,6 +172,7 @@ object Problems {
 
     fun clear() {
         synchronized(lock) { entries.clear(); events.clear(); announced.clear(); _count.value = 0; _newSerious.value = null }
+        EventLog.clear()
         scheduleWrite()
     }
 

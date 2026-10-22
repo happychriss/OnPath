@@ -139,7 +139,7 @@ class ScreenshotTest {
                         else -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 3, visibility = "bad")
                     })
                 }, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
-                "Normal", 1.0, com.onpath.app.time.Factors(0.95, 1.0, 1.1), 3), onBack = {})
+                "Normal", 1.0), onBack = {})
         }
     }
 
@@ -213,6 +213,14 @@ class ScreenshotTest {
             Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
             LongRouteDialog(29 * 24 * 3600.0, com.onpath.app.routing.Activity.HIKE, {}, {})
         }
+    }
+
+    /**
+     * Field bug 0.9.3: Cancel at the long-route question for a plan restored at start left "Calculating the route…"
+     * forever. Now: the points stay, a plain notice says the route is not calculated, with "Plan anyway".
+     */
+    @Test fun planNotRoutedLong() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(n = 2, r = null).copy(notRouted = NotRouted.LONG), PlanCallbacks()) }
     }
 
     /** Round trip: start = goal shown once with ↺ and the way back; Round trip greyed out. */

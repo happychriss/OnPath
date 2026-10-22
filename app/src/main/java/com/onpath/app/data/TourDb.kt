@@ -35,14 +35,16 @@ data class Tour(
     val pinned: Set<Int> = emptySet(),
     /** In the recycle bin since (ms); null = in My routes. */
     val deletedMs: Long? = null,
+    /** Recorded: bus / car / lift rides found and what the user chose (rides/); null = none, read as recorded. */
+    val rides: com.onpath.app.rides.RideRecord? = null,
 )
 
 /**
  * All user data in one SQLite database with write-ahead logging.
  * Recording writes every accepted point immediately (R-07).
  */
-class TourDb private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "onpath.db", null, VERSION, KeepCorruptFile()) {
+class TourDb internal constructor(context: Context, name: String = "onpath.db") :
+    SQLiteOpenHelper(context.applicationContext, name, null, VERSION, KeepCorruptFile()) {
 
     init { setWriteAheadLoggingEnabled(true) }
 
@@ -73,28 +75,15 @@ class TourDb private constructor(context: Context) :
     override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
 
     override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL(
-            """CREATE TABLE tours(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kind TEXT NOT NULL, name TEXT NOT NULL, created INTEGER NOT NULL,
-                activity TEXT, sac INTEGER NOT NULL DEFAULT 3,
-                distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
-                descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
-                uuid TEXT, pinned TEXT, deleted_at INTEGER)"""
-        )
-        db.execSQL("CREATE INDEX tours_uuid ON tours(uuid)")
-        db.execSQL(
-            """CREATE TABLE points(
-                tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
-                lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER)"""
-        )
-        db.execSQL("CREATE INDEX points_tour ON points(tour_id, seq)")
+        TourSchema.CREATE.forEach { db.execSQL(it) }
     }
 
     /**
      * 1 → 2 (backup, 2026-10-21): uuid (backup files, restore dedupe), pinned stops, recycle bin (deleted_at).
      * Every existing tour gets its uuid here. A column already there is fine.
+     * 2 → 3 (field test 2026-10-22): GPS accuracy per recorded point (`points.acc`, metres, null = unknown / imported),
+     * so a later analysis can tell weak fixes from no fix.
+     * 3 → 4 (vehicle detection, 2026-10-22): `tours.rides` (JSON, [com.onpath.app.rides.RideRecord]); points untouched.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -104,6 +93,13 @@ class TourDb private constructor(context: Context) :
                 }
             }
             db.execSQL("CREATE INDEX IF NOT EXISTS tours_uuid ON tours(uuid)")
+        }
+        for (step in TourSchema.stepsFrom(oldVersion)) {
+            val have = db.rawQuery("PRAGMA table_info(${step.table})", null).use { c ->
+                buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
+            }
+            if (step.column in have) { Problems.info("db", "Column ${step.column} already there"); continue }
+            try { db.execSQL(step.sql) } catch (e: Exception) { Problems.error("db", "Column ${step.column} could not be added", e) }
         }
         assignMissingUuids(db)
     }
@@ -132,12 +128,14 @@ class TourDb private constructor(context: Context) :
         /** Restore: the backup's id and date; otherwise new. */
         uuid: String = newUuid(),
         createdMs: Long = System.currentTimeMillis(),
+        rides: com.onpath.app.rides.RideRecord? = null,
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
         try {
             val id = db.insertOrThrow("tours", null, ContentValues().apply {
                 put("kind", kind.name); put("name", name); put("created", createdMs)
+                if (rides != null) put("rides", rides.toJson().toString())
                 put("uuid", uuid); put("pinned", pinnedToJson(pinned))
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("state", state)
@@ -264,7 +262,14 @@ class TourDb private constructor(context: Context) :
 
     // ---- recording ----
 
-    fun appendPoint(tourId: Long, seq: Int, seg: Int, p: TrackPoint) = insertPoint(writableDatabase, tourId, seq, seg, p)
+    /** [accuracyM] = the fix's horizontal accuracy (stored for later analysis, not shown). */
+    fun appendPoint(tourId: Long, seq: Int, seg: Int, p: TrackPoint, accuracyM: Float? = null) =
+        insertPoint(writableDatabase, tourId, seq, seg, p, accuracyM)
+
+    /** Stored accuracy per point of [tourId] in order (null = unknown) – diagnostics and tests. */
+    fun pointAccuracies(tourId: Long): List<Double?> = readableDatabase.rawQuery(
+        "SELECT acc FROM points WHERE tour_id=? ORDER BY seq", arrayOf(tourId.toString())
+    ).use { c -> buildList { while (c.moveToNext()) add(if (c.isNull(0)) null else c.getDouble(0)) } }
 
     /** The activity switched during a recording (Navigate → activity check). */
     fun updateActivity(tourId: Long, activity: String, sac: Int) {
@@ -279,6 +284,16 @@ class TourDb private constructor(context: Context) :
         }, "id=?", arrayOf(tourId.toString()))
     }
 
+    /**
+     * The rides of a tour and its stats under the chosen reading (rides/RideApply) in one step. The points are never
+     * touched: [rides] only says how to read them. False when the tour is gone.
+     */
+    fun setRides(tourId: Long, rides: com.onpath.app.rides.RideRecord?, distance: Double, ascent: Double, descent: Double, duration: Double): Boolean =
+        writableDatabase.update("tours", ContentValues().apply {
+            if (rides == null) putNull("rides") else put("rides", rides.toJson().toString())
+            put("distance", distance); put("ascent", ascent); put("descent", descent); put("duration", duration)
+        }, "id=?", arrayOf(tourId.toString())) > 0
+
     /** Returns (next seq, last seg) so a recording can continue after a restart. */
     fun recordingCursor(tourId: Long): Pair<Int, Int> = readableDatabase.rawQuery(
         "SELECT MAX(seq), MAX(seg) FROM points WHERE tour_id=?", arrayOf(tourId.toString())
@@ -287,11 +302,12 @@ class TourDb private constructor(context: Context) :
     }
 
     /** Throws on failure (disk full, corrupt DB): a silent `insert()` returning -1 would lose the track unnoticed. */
-    private fun insertPoint(db: SQLiteDatabase, id: Long, seq: Int, seg: Int, p: TrackPoint) {
+    private fun insertPoint(db: SQLiteDatabase, id: Long, seq: Int, seg: Int, p: TrackPoint, accuracyM: Float? = null) {
         db.insertOrThrow("points", null, ContentValues().apply {
             put("tour_id", id); put("seq", seq); put("seg", seg); put("lat", p.lat); put("lon", p.lon)
             if (p.ele != null) put("ele", p.ele) else putNull("ele")
             if (p.timeMs != null) put("time", p.timeMs) else putNull("time")
+            if (accuracyM != null && accuracyM.isFinite()) put("acc", accuracyM.toDouble())
         })
     }
 
@@ -313,6 +329,7 @@ class TourDb private constructor(context: Context) :
             uuid = opt(c, "uuid")?.let { c.getString(it) } ?: "",
             pinned = opt(c, "pinned")?.let { jsonToPinned(c.getString(it)) } ?: emptySet(),
             deletedMs = opt(c, "deleted_at")?.let { c.getLong(it) },
+            rides = opt(c, "rides")?.let { com.onpath.app.rides.RideRecord.fromJson(c.getString(it)) },
         )
     }
 
@@ -320,7 +337,7 @@ class TourDb private constructor(context: Context) :
     private fun opt(c: android.database.Cursor, n: String): Int? = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = TourSchema.VERSION
         @Volatile private var instance: TourDb? = null
 
         fun newUuid(): String = java.util.UUID.randomUUID().toString()
@@ -360,5 +377,45 @@ class TourDb private constructor(context: Context) :
                 }
             } catch (e: Exception) { Problems.warn("db", "Stored waypoint list unreadable, waypoints dropped", e); emptyList() }
         }
+    }
+}
+
+/** The tour database's tables (kept apart so the migration is JVM tested: TourSchemaTest with sqlite-jdbc). */
+object TourSchema {
+    /** 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection). */
+    const val VERSION = 4
+
+    val CREATE = listOf(
+        """CREATE TABLE tours(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL, name TEXT NOT NULL, created INTEGER NOT NULL,
+            activity TEXT, sac INTEGER NOT NULL DEFAULT 3,
+            distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
+            descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
+            state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
+            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT)""",
+        "CREATE INDEX tours_uuid ON tours(uuid)",
+        """CREATE TABLE points(
+            tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
+            lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER, acc REAL)""",
+        "CREATE INDEX points_tour ON points(tour_id, seq)",
+    )
+
+    /** 2 → 3: GPS accuracy per recorded point (metres, null = unknown / imported). */
+    const val ADD_ACC = "ALTER TABLE points ADD COLUMN acc REAL"
+
+    /** 3 → 4: how to read the rides of a recorded tour (bus / car / lift); every point stays as it is. */
+    const val ADD_RIDES = "ALTER TABLE tours ADD COLUMN rides TEXT"
+
+    class Step(val table: String, val column: String, val sql: String)
+
+    /**
+     * Columns to add for an upgrade from [old] (1 → 2 is done before in [TourDb.onUpgrade]), in order; the caller skips
+     * a column already there. From 3 both are listed: a test build of the ride branch wrote version 3 with `rides` but
+     * without `acc` (2026-10-22), and without `acc` every new point would fail to insert.
+     */
+    fun stepsFrom(old: Int): List<Step> = buildList {
+        if (old < 4) add(Step("points", "acc", ADD_ACC))
+        if (old < 4) add(Step("tours", "rides", ADD_RIDES))
     }
 }

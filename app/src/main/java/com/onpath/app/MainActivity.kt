@@ -167,7 +167,12 @@ class MainActivity : ComponentActivity() {
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
                                 onRecycleBin = { vm.openRecycleBin() },
+                                onEditRides = { vm.openEditRides(it) },
                             )
+                        }
+                        vm.editRides?.let { (t, s) ->
+                            com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.applyEditRides(t, it) }, onDelete = null,
+                                onDismiss = { vm.editRides = null }, title = "Rides in “${t.name}”", initial = t.rides?.choice)
                         }
                         vm.recycleBin?.let { bin ->
                             BackHandler { vm.recycleBin = null }
@@ -236,8 +241,6 @@ class MainActivity : ComponentActivity() {
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
                             onInstallUpdate = { vm.installUpdate() },
-                            learnedPace = vm.learnedPace,
-                            onResetPace = vm::resetLearnedPace,
                             backup = run {
                                 val b by com.onpath.app.backup.Backups.status.collectAsState()
                                 com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,

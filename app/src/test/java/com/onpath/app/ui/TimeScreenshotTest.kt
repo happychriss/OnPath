@@ -74,16 +74,26 @@ class TimeScreenshotTest {
         }
     }
 
-    /** Settings → Your pace: chips for hiking and cycling, learned pace with Reset. */
+    /** Navigate after a plan edit / re-route that moved the arrival > 5 min: the reason stays in the card. */
+    @Test fun navigateNewRouteNote() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Column(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NavStatusCard(ui.copy(arriveAt = "12:45", routeNote = "New route: arrival 12:45, was 13:15"), onResume = {})
+                    NavStatusCard(ui.copy(arriveAt = "12:45", routeNote = "New route: arrival 12:45, was 13:15"), onResume = {}, profileOpen = true)
+                }
+            }
+        }
+    }
+
+    /** Settings → Your pace: chips for hiking and cycling (learning per tour only: nothing stored to show). */
     @Test fun settingsPace() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize().padding(12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PaceSection(AppSettings(hikePace = Pace.FIT), {}, listOf(
-                        LearnedPace(Activity.HIKE, 4, Factors(down = 1.05, flat = 0.97, up = 0.88)),
-                        LearnedPace(Activity.EBIKE, 1, Factors(1.0, 1.0, 1.0)),
-                    ), {})
-                    PaceSection(AppSettings(), {}, emptyList(), {})
+                    PaceSection(AppSettings(hikePace = Pace.FIT), {})
+                    PaceSection(AppSettings(), {})
                 }
             }
         }
