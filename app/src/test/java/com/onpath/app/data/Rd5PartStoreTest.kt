@@ -214,4 +214,32 @@ class Rd5PartStoreTest {
         side.writeText(side.readText().replace("\"fileLength\":", "\"fileLength\":1"))
         assertTrue(store.has(meran)); assertFalse(store.has(ulten))
     }
+
+    /**
+     * Field 2026-10-21/22: "Parts list of E10_N45.rd5 does not match the file" 12× – once per part added to a tile
+     * that already had parts. install() read the state between renaming the new rd5 into place and writing its list,
+     * so it met its own half-done install. Adding parts (and readers during an install) must not warn.
+     */
+    @Test fun addingPartsDoesNotReportAStaleList() {
+        val (_, _, store) = setup()
+        com.onpath.app.debug.Problems.clear()
+        store.download(listOf(meran))
+        store.download(listOf(ulten))
+        assertTrue(store.has(meran) && store.has(ulten))
+        assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.message.contains("does not match") })
+    }
+
+    @Test fun readerDuringAnInstallDoesNotWarn() {
+        val (seg, remote, _) = setup()
+        val seen = mutableListOf<Boolean>()
+        lateinit var store: Rd5PartStore
+        // a reader asks while the second install's rd5 is in place but its list is not written yet
+        val reading = object : Rd5Remote by remote {}
+        store = Rd5PartStore(seg, reading, now = { 5_000L }, afterRd5Written = { seen += store.has(meran) })
+        com.onpath.app.debug.Problems.clear()
+        store.download(listOf(meran))
+        store.download(listOf(ulten))
+        assertEquals(listOf(false, true), seen) // first install: no file before; second: meran kept
+        assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.message.contains("does not match") })
+    }
 }
