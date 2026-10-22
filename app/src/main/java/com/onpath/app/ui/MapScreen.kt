@@ -89,7 +89,7 @@ fun MapScreen(
     val footer = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (owner 2026-10-22, the compass went over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
-        MapFooter(scale) {
+        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }) {
             MapControls(
                 // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
                 compass = if (pointsOpen) null
@@ -226,7 +226,7 @@ private fun PlanMode(
                 onManage = { vm.openRoutes() },
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
-                onSettings = { vm.showSettings = true },
+                onSettings = { vm.openSettings() },
                 onOpened = vm::refreshTours,
                 // owner 2026-10-20: no "Check for updates" in the ☰ menu – Settings has the Updates section
                 onUpdates = null,

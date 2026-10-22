@@ -248,7 +248,7 @@ class CellDownloadTest {
 
     /**
      * Fresh-install simulation (owner 2026-10-21): empty phone → own point → the server builds → download over mobile
-     * data (own point) → map installed; "Reset maps" deletes everything → asked again → installed again, same version.
+     * data (own point) → map installed; "Clear all" deletes everything → asked again → installed again, same version.
      */
     @Test fun freshInstallAndResetLoadTheMapAgain() {
         server.publish(a, "2026-10-21-s3"); server.buildPolls = 2
@@ -258,8 +258,8 @@ class CellDownloadTest {
         waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s3") }
         assertTrue(File(mc.mapDir()!!, "base.pmtiles").isFile)
         assertEquals(emptyList<CellId>(), mc.outdated())
-        // Settings → Diagnostics → Reset maps
-        mc.cancel(mc.states.value.keys.toList()); mc.delete(listOf(a))
+        // Settings → Offline maps → Clear all (replaced Diagnostics → Reset maps, owner 2026-10-22)
+        assertEquals(listOf(a), mc.clearAll())
         waitFor("deleted") { mc.installed.value.isEmpty() }
         assertEquals(listOf(a), mc.missing(listOf(a)))
         mc.request(listOf(a), CellReason.POINT)
@@ -315,5 +315,47 @@ class CellDownloadTest {
         waitFor("deleted") { mc.installed.value.isEmpty() }
         assertEquals(CellState.None, mc.state(a))
         assertEquals(null, mc.mapDir())
+    }
+
+    /**
+     * Clean up / Clear all (owner 2026-10-22): removal goes through the store generation path – batched into one
+     * generation, not while the map is dragged, not during a tour (the map does not switch under the user's feet).
+     */
+    @Test fun removalWaitsForTheTourAndTheGestureAndIsBatched() {
+        server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
+        val mc = cells(Net())
+        mc.request(listOf(a, b), CellReason.POINT)
+        waitFor("both installed") { mc.installed.value.size == 2 }
+        val gen = mc.generation.value
+        mc.holdUpdates = true
+        mc.delete(listOf(a), "clean up")
+        Thread.sleep(300)
+        assertEquals("nothing removed during the tour", gen, mc.generation.value)
+        assertEquals(setOf(a), mc.removing())
+        mc.userBusy = true
+        mc.delete(listOf(b), "clean up")
+        mc.holdUpdates = false
+        Thread.sleep(300)
+        assertEquals("nothing removed while dragging", gen, mc.generation.value)
+        mc.userBusy = false
+        waitFor("removed") { mc.installed.value.isEmpty() }
+        assertEquals("one generation for both", gen + 1, mc.generation.value)
+        assertEquals(emptySet<CellId>(), mc.removing())
+    }
+
+    @Test fun clearAllRemovesEveryAreaAndEveryRequest() {
+        server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
+        val mc = cells(Net())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("installed") { mc.installed.value.size == 1 }
+        server.buildPolls = 1_000_000
+        mc.request(listOf(b), CellReason.NEAR)
+        waitFor("b asked") { mc.state(b) != CellState.None }
+        assertEquals(listOf(a), mc.clearAll())
+        waitFor("cleared") { mc.installed.value.isEmpty() }
+        assertEquals(CellState.None, mc.state(a)); assertEquals(CellState.None, mc.state(b))
+        assertEquals(0, mc.waiting().regions)
+        assertEquals(null, mc.mapDir())
+        assertEquals(listOf(a), mc.missing(listOf(a))) // loads again when needed
     }
 }

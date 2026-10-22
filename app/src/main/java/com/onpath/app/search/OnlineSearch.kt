@@ -32,7 +32,8 @@ class PhotonProvider(
 
     fun url(query: String, lat: Double, lon: Double, limit: Int): String {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
-        // Owner 2026-10-22: the server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix;
+        // Owner 2026-10-22: the server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix
+        // (Settings → Privacy says ~1 km);
         // results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
         val f = { v: Double -> coarse(v) }
         // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
