@@ -30,12 +30,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   5. ~~Sights and viewpoints on by default~~ **done (laptop 2026-10-23):** churches and chapels left `defaultHidden`
      (viewpoints, castles, ruins, caves, museums were on already); a stored set equal to an old default is upgraded
      once (`PoiKinds.upgradeHidden`, `poiDefaultsVer`), a set the user changed stays (`PoiDefaultsTest`).
-  6. **Restaurant POIs change while zooming (owner, Bad Waldsee, 0.10.1).** Likely cause: `make_style.pois()` sort key =
-     rank × 2 + (named ? 0 : 1) – all restaurants tie, so between two close ones the winner depends on the feature order
-     in each (overzoomed) tile and changes per zoom. Fix idea: a fixed per-POI priority from the pipeline
-     (`extract_pois.py`: e.g. property `pr` 0–999 from importance – tag count, wikidata, opening_hours – then id), sort
-     key = rank × 2000 + named × 1000 + pr; needs a cell rebuild (schema bump) – old cells keep today's look. Check on the
-     Pixel at Bad Waldsee (zoom 13 → 17) before / after.
+  6. ~~Restaurant POIs change while zooming (owner, Bad Waldsee, 0.10.1).~~ **Done (laptop 2026-10-23), needs the map
+     rebuild after the next release:** every POI gets a fixed priority `pr` (`extract_pois.priority()`: tag importance –
+     wikipedia/wikidata, website, opening hours, phone, tag count – plus a position hash as tie-break), sort key =
+     rank × 100000 + unnamed × 50000 + (49999 − pr) (StyleFormatTest, `tools/test_extract_pois.py`). Cell schema 4
+     (builder + doorman; app stays 3, s3 cells keep today's order and are served while rebuilt at refresh priority).
+     Headless maplibre-gl check (Meran Laubengasse, Bozen Lauben, z13 → 17): POIs vanishing while zooming in 10 → 5 and
+     9 → 7; the rest comes from labels appearing at the label zoom (z14 / z15) and variable label anchors – not ties.
+     Still to check on the Pixel at Bad Waldsee once the s4 cells are there.
 - **Text + UX review 2026-10-23 (cloud, in progress)** – reports `docs/review-texts-2026-10-23.md`,
   `docs/review-ux-2026-10-23.md`. Owner answers so far: texts Q1 languages: keep as is (EN + DE come at the end);
   Q2 last point = "Destination" (English standard; round trip keeps "Start & finish here"); Q3 middle points = "Stop"

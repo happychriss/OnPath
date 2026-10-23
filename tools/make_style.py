@@ -975,6 +975,8 @@ BUS_DETAIL_ZOOM = 16
 POI_PRIO_EXTRA = ["bus"]
 POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_PRIO_EXTRA
 POI_KINDS = set(POI_PRIO)
+POI_SORT_UNNAMED = 50000    # > every "pr" (extract_pois.PR_LEVELS * PR_TIE)
+POI_SORT_RANK_STEP = 2 * POI_SORT_UNNAMED  # one kind rank = named + unnamed band
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
 GROUND_SYMBOLS_ZOOM = 16  # ground symbol patterns only from here (app max zoom 18: the last two zoom steps)
@@ -991,8 +993,13 @@ def _match(values, fallback):
 def pois():
     kind = ["get", "kind"]
     rank = _match([(k, i) for i, k in enumerate(POI_PRIO)], 99)
-    # lower = placed first; named POIs before unnamed ones of the same kind
-    sort_key = ["+", ["*", rank, 2], ["case", ["has", "name"], 0, 1]]
+    # lower = placed first: kind rank, then named before unnamed, then the POI's fixed priority "pr" (0..49999,
+    # extract_pois.priority(): importance + position tie-break) – without it POIs of one kind tie and the feature order
+    # of each tile decides, so close restaurants swapped while zooming (0.10.1). Cells before schema 4 have no "pr":
+    # coalesce → today's order. Integers < 2^24, exact as MapLibre's float sort key.
+    pr = ["coalesce", ["to-number", ["get", "pr"]], 0]
+    sort_key = ["+", ["*", rank, POI_SORT_RANK_STEP], ["case", ["has", "name"], 0, POI_SORT_UNNAMED],
+                ["-", POI_SORT_UNNAMED - 1, ["max", 0, ["min", POI_SORT_UNNAMED - 1, pr]]]]
     badge = ["concat", "poi-", kind]
     name = ["coalesce", ["get", "name"], ""]
     # Bottom-most layer = least important tier; MapLibre places symbols of upper layers first.

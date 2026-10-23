@@ -86,8 +86,10 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
       writes.push(retry ? queue(r.version ? Math.max(prio, PRIORITY.refresh) : prio) : touch(prio));
     } else if (r.version && schemaOf(r.version) < cfg.cellSchema) {
       // built for an older style (e.g. without the "streets" layer – the map misses streets): rebuild with the asked
-      // priority; the old version is served until the new one is ready
-      writes.push(queue(prio));
+      // priority. From cellSchemaServe on the old version still works and is served meanwhile (statusFor): a
+      // low-priority refresh like an OSM-old cell (e.g. s3 → s4 = POI priority only)
+      const servable = schemaOf(r.version) >= Math.min(cfg.cellSchemaServe, cfg.cellSchema);
+      writes.push(queue(servable ? Math.max(prio, PRIORITY.refresh) : prio));
     } else if (r.version && isStale(r.osm_date, cfg, now)) writes.push(queue(PRIORITY.refresh)); // old: refresh, low
     else if (r.version) writes.push(touch(PRIORITY.refresh));
     else writes.push(queue(prio));
@@ -126,9 +128,9 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
     const r = rows.get(id);
     if (!r) {
       out.push({ id, state: "none" });
-    } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < cfg.cellSchema)) {
+    } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < Math.min(cfg.cellSchemaServe, cfg.cellSchema))) {
       // a published version is served at once; "updating" = a newer one is being built (the app keeps asking).
-      // Not while a cell of an older content schema is rebuilt: that map lacks data the style needs (streets).
+      // Not while a cell below cellSchemaServe is rebuilt: that map lacks data the style needs (streets).
       out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version,
         ...(rebuilding(r) ? { updating: true } : {}) });
     } else if (r.job === "building" || r.job === "queued") {
