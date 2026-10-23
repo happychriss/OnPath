@@ -59,12 +59,12 @@ import com.onpath.app.data.Format
 @Composable
 fun TourRunningBar(
     distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
-    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {},
+    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {}, activity: com.onpath.app.routing.Activity? = null,
 ) {
     Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
-            TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd)
+            TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd, activity)
         }
     }
 }
@@ -121,14 +121,20 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
     EndTourDialog(onSave, onDelete, onKeepGoing, title = "You have arrived – end tour?", cancelLabel = "Keep going")
 
 
+/** "Continue · Trekking bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
+internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
+    if (activity == null) "Continue" else "Continue · ${activity.navName}"
+
 /**
- * Status line + the three tour buttons in one row: Continue (filled; also resumes), Pause / Resume (tonal), End
- * (outlined red, asks first). Used at the top of the plan sheet during a tour and in the stand-alone tour card.
+ * Status line + the three tour buttons: Continue (filled, full width, names the activity; also resumes), then Pause /
+ * Resume (tonal) and End (outlined red, asks first) side by side. Used at the top of the plan sheet during a tour and in
+ * the stand-alone tour card.
  */
 @Composable
 fun TourControls(
     distanceM: Double, elapsedS: Long, paused: Boolean,
     onPause: (Boolean) -> Unit, onContinue: () -> Unit, onEnd: () -> Unit,
+    activity: com.onpath.app.routing.Activity? = null,
 ) {
     val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
     Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
@@ -137,12 +143,13 @@ fun TourControls(
         Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
     }
     Spacer(Modifier.height(8.dp))
+    Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp)) {
+        Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+        Text(continueLabel(activity), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+    Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.weight(1.3f).heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text("Continue", maxLines = 1)
-        }
         FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
             Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))

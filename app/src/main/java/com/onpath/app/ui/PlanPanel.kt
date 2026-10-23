@@ -225,7 +225,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val full = ui.size == PlanSize.FULL
     // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
     ui.tour?.let { t ->
-        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour)
+        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
     // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
