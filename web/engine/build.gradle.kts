@@ -11,7 +11,8 @@ val stubs = root.resolve("tools/routing/jvm-test/stubs")
 val appFiles = listOf(
     "routing/RoutingContract.kt", "routing/Rd5Parts.kt", "routing/BRouterWayStats.kt", "routing/WaypointSnap.kt",
     "routing/BRouterEngine.kt", "routing/StraightLineEngine.kt", "routing/RouteTimeLimit.kt", "routing/TurnDetector.kt",
-    "routing/Junctions.kt", "navigation/JunctionCues.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
+    "routing/Junctions.kt", "routing/Planner.kt", "routing/WaypointInsertion.kt", "routing/PlanEdits.kt",
+    "routing/RouteSummary.kt", "navigation/JunctionCues.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
 )
 
 sourceSets {
