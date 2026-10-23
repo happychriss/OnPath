@@ -99,6 +99,26 @@ class StyleFormatTest {
         }
     }
 
+    /**
+     * Field report 0.10.1 (Bad Waldsee): restaurants swapped while zooming – all POIs of one kind had the same sort key,
+     * so each tile's feature order decided. The key now ends in the POI's fixed priority "pr" (extract_pois.priority,
+     * < 50000), below the named/unnamed band, and old data without "pr" still works (coalesce).
+     */
+    @Test fun poiSortKeyUsesFixedPriority() {
+        for (s in listOf(f1, f2)) {
+            val a = s.getJSONArray("layers")
+            val pois = (0 until a.length()).map { a.getJSONObject(it) }
+                .filter { it.getString("id").startsWith("poi-") && it.getString("id") != "poi-station" }
+            assertTrue("POI layers found", pois.size >= 4)
+            for (l in pois) {
+                val key = l.getJSONObject("layout").get("symbol-sort-key").toString().replace(" ", "")
+                assertTrue("${l.getString("id")}: pr in $key", key.contains("""["coalesce",["to-number",["get","pr"]],0]"""))
+                assertTrue("${l.getString("id")}: unnamed band above pr", key.contains("""["case",["has","name"],0,50000]"""))
+                assertTrue("${l.getString("id")}: one kind rank spans both bands", key.contains("100000"))
+            }
+        }
+    }
+
     /** Format 2: small streets come from overlays "streets" from z13 – the trimmed base map has none there. */
     @Test fun format2StreetsFromOverlayFromZ13() {
         val layers = f2.getJSONArray("layers")

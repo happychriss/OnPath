@@ -3,20 +3,22 @@
 
 Output: OUT_DIR/pois.geojson, one Point per POI (nodes as is; ways and multipolygons as centroid).
 Properties (only when present): id ("n123"/"w123"/"r123"), kind, name, ele, opening_hours, phone,
-website, wikipedia, cuisine.
+website, wikipedia, cuisine; always "pr" (placement priority on the map, see priority()).
 
 Usage: python3 extract_pois.py input.osm.pbf OUT_DIR minlon minlat maxlon maxlat
+Tests: cd tools && python3 -m unittest -v test_extract_pois
 """
 import json
 import math
 import sys
+import zlib
 from collections import Counter, defaultdict
 
 import osmium
 from shapely.geometry import LineString, Polygon
 
-pbf, out_dir = sys.argv[1], sys.argv[2]
-minlon, minlat, maxlon, maxlat = map(float, sys.argv[3:7])
+pbf = out_dir = None
+minlon = minlat = maxlon = maxlat = 0.0  # set by main() from the command line
 
 YES = ("yes", "true", "1")
 
@@ -96,6 +98,48 @@ def ele(v):
         return None
 
 
+PR_LEVELS = 50  # importance levels; pr = level * PR_TIE + tie, so 0 <= pr < 50000
+PR_TIE = 1000
+
+
+def importance(t):
+    """0..PR_LEVELS-1: how notable a POI is by its OSM tags (a well-mapped place with a Wikipedia article and opening
+    hours before a bare node). Orders POIs of the same kind only – the kind rank comes first in the style."""
+    g = t.get
+    s = 0
+    if g("wikipedia") or g("wikidata"):
+        s += 12
+    if g("website") or g("contact:website") or g("url"):
+        s += 4
+    if g("opening_hours"):
+        s += 4
+    if g("phone") or g("contact:phone") or g("contact:mobile"):
+        s += 2
+    if g("cuisine"):
+        s += 1
+    s += min(sum(1 for _ in t), 40) // 4  # more tags = better mapped (0..10)
+    return min(s, PR_LEVELS - 1)
+
+
+def priority(imp, lon, lat):
+    """Placement priority "pr" (higher = placed first where symbols collide; make_style.pois() sort key). Fixed per
+    POI, so the same POI wins at every zoom and in every tile (field report 0.10.1, Bad Waldsee: restaurants swapped
+    while zooming – all of a kind had one sort key and the feature order of each tile decided). Equal importance is
+    broken by a hash of the rounded position: deterministic and, unlike the id, the same in a cell build (renumbered
+    extract) and a region build."""
+    tie = zlib.crc32(f"{lon:.5f},{lat:.5f}".encode()) % PR_TIE
+    return int(imp) * PR_TIE + tie
+
+
+def add_priorities(feats):
+    """props() stores the importance level in "pr"; the position tie-break is added once positions are final (after
+    the bus-stop merge)."""
+    for f in feats:
+        lon, lat = f["geometry"]["coordinates"]
+        f["properties"]["pr"] = priority(f["properties"].get("pr", 0), lon, lat)
+    return feats
+
+
 def props(prefix, oid, kind, t):
     p = {"id": f"{prefix}{oid}", "kind": kind}
     name = clean(t.get("name:de")) or clean(t.get("name"))
@@ -112,6 +156,7 @@ def props(prefix, oid, kind, t):
             if v:
                 p[key] = v
                 break
+    p["pr"] = importance(t)  # level only; add_priorities() makes it the final "pr"
     return p
 
 
@@ -224,9 +269,13 @@ def merge_duplicates(feats):
 
 
 def main():
+    global pbf, out_dir, minlon, minlat, maxlon, maxlat
+    pbf, out_dir = sys.argv[1], sys.argv[2]
+    minlon, minlat, maxlon, maxlat = map(float, sys.argv[3:7])
     h = Handler()
     h.apply_file(pbf, locations=True)
     h.feats, merged = merge_duplicates(h.feats)
+    add_priorities(h.feats)
     print("merged duplicates", merged)
     # stable order: important kinds first (helps symbol placement priority ties)
     h.feats.sort(key=lambda f: f["properties"]["id"])
@@ -237,4 +286,5 @@ def main():
     print("pois", len(h.feats), dict(sorted(c.items(), key=lambda kv: -kv[1])))
 
 
-main()
+if __name__ == "__main__":
+    main()

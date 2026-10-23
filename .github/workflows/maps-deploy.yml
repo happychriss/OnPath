@@ -65,6 +65,7 @@ jobs:
         run: |
           python3 tools/cells/cells.py selftest
           (cd tools/cloud && python3 -m unittest -v test_cloud)
+          (cd tools && python3 -m unittest -v test_extract_pois)
           bash -n tools/cloud/gcp-setup.sh tools/cloud/worker/smoke.sh tools/cells/build_cell.sh
 
   setup-pending:

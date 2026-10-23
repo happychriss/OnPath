@@ -265,6 +265,10 @@ same OSM date would have had the same (immutable, cached) name. Now:
 - **Bump all three** whenever the style needs data older cells lack. Old apps (before this) still work: delete the
   area in Settings → Offline maps and it is loaded again (the doorman rebuilds it first). The app shows the
   rebuild as `CellWhy.UPDATE` ("Updating the map for the new map style").
+- **Schema 4 (2026-10-23, POI priority `pr` in `pois.geojson`) is a look-only bump:** builder and doorman go to 4, the
+  app stays at 3 (s3 cells work, same-kind POIs just tie). Doorman `CELL_SCHEMA_SERVE` = 3: a published cell of schema
+  ≥ 3 stays `ready` (+ `updating`) while its s4 rebuild runs, queued at refresh priority; below 3 as before (not
+  served, asked priority). Phones get s4 through the normal refresh / after-routing check.
 
 ## 7d. Released APKs, loading overlay, fresh-install reset (2026-10-21, cloud)
 

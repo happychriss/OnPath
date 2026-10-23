@@ -30,10 +30,12 @@ import time
 FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-cells.md §18)
 # Content schema of a cell: bump whenever the style needs data that older cells lack (2 = overlays layer "streets",
 # 2026-10-21; 3 = router classes on paths / streets, barrier nodes, SAC on hiking route pieces – extract_overlays.py
-# --wayclass, 2026-10-22). The version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the
-# doorman rebuilds cells of an older schema when asked (wrangler.toml CELL_SCHEMA), the app re-requests its own
-# (cells/CellApi.CELL_SCHEMA). Keep the three in step.
-CELL_SCHEMA = 3
+# --wayclass, 2026-10-22; 4 = POI placement priority "pr" in pois.geojson – extract_pois.priority(), 2026-10-23). The
+# version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the doorman rebuilds
+# cells of an older schema when asked (wrangler.toml CELL_SCHEMA; older cells from CELL_SCHEMA_SERVE on are served while
+# rebuilt), the app re-requests installed cells below the schema its style needs (cells/CellApi.CELL_SCHEMA – stays 3
+# for schema 4: s3 cells just place same-kind POIs in tile order). Keep builder and doorman in step.
+CELL_SCHEMA = 4
 MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 

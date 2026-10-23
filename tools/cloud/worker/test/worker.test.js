@@ -394,10 +394,25 @@ test("cell of an older content schema: rebuilt with the asked priority, not serv
   const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();
   assert.deepEqual({ ...row }, { job: "queued", priority: 0 });
   // a current-schema cell is just touched
-  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s3', job = NULL WHERE id = ?").bind(MERAN).run();
+  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s4', job = NULL WHERE id = ?").bind(MERAN).run();
   const k = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-21"));
   assert.equal(k.cells[0].state, "ready");
   assert.equal(k.cells[0].updating, undefined);
+});
+
+test("cell of an older but servable schema (s3, no POI priority): rebuilt, served as ready meanwhile", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  assert.equal(cfg.cellSchema, 4);
+  assert.equal(cfg.cellSchemaServe, 3);
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES (?, 2, '2026-10-19-s3', '2026-10-19', 5, 3, 1)`).bind(MERAN).run();
+  const j = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-21"));
+  assert.equal(j.cells[0].state, "ready");
+  assert.equal(j.cells[0].version, "2026-10-19-s3");
+  assert.equal(j.cells[0].updating, true);
+  const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();
+  assert.deepEqual({ ...row }, { job: "queued", priority: 3 }); // a refresh: the old map works meanwhile
 });
 
 test("scheduled handler runs the pump", async () => {
