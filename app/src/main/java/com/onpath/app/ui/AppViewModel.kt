@@ -1538,7 +1538,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the hold's vibration and
-     * the new line confirm it; a wrong guess is fixed in the point menu ("End route here") or with Undo.
+     * the new line confirm it; a wrong guess is fixed with Undo or by dragging ≡ in the Points list.
      * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
      */
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
@@ -1637,16 +1637,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "POI menu: \"${poi.name ?: poi.kind}\" added to the route (plan $before → ${waypoints.size} points)")
     }
 
-    /** Point menu → "Make starting point" (not on the start). */
     /** Point menu → "Start here" (drops earlier points) / round trip "Start & finish here" (rotates the loop). */
     fun makeStartFromMenu() {
         val index = menuAction("Start here") ?: return
-        set(if (isRoundTrip()) PlanEdits.rotateLoop(waypoints, index) else PlanEdits.startAt(waypoints, index))
+        startAtPoint(index)
+    }
+
+    /**
+     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner Q3
+     * 2026-10-23: the same word does the same, [PlanEdits.startHere]); one Undo step brings the plan back.
+     */
+    private fun startAtPoint(index: Int) {
+        val w = waypoints.toList()
+        val next = PlanEdits.startHere(w, index)
+        if (next != w) set(next)
     }
 
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
-
-    /** Point menu → "End route here" (middle points only): that point becomes the destination. */
 
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
@@ -1821,7 +1828,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePlaceCard()
         rememberPlaceName(p, name)
         if (idx != null) {
-            when (role) { PlaceRole.START -> makeStart(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
+            // "As start" = the point menu's "Start here" (owner Q3 2026-10-23); "As destination" moves it to the end
+            when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
             return
         }
         pinned += p; prefs.planPinned = pinned
@@ -1965,7 +1973,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     // ---------------- end shared places ----------------
 
-    fun makeStart(index: Int) { if (index > 0 && index in waypoints.indices) set(PlanEdits.move(waypoints, index, 0)) }
     fun makeDestination(index: Int) {
         if (index in waypoints.indices && index != waypoints.lastIndex) set(PlanEdits.move(waypoints, index, waypoints.size - 1))
     }
