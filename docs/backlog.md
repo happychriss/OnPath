@@ -8,6 +8,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **[for the cloud – owner 2026-10-23, start 2026-10-24] Web planner, as one codebase where possible.** Handover and
+  proposal: `docs/design/web-planner.md` (Kotlin Multiplatform: shared logic + Compose for Web; BRouter compiled to
+  Wasm with TeaVM so routes are computed in the browser – no routing server; link/QR hands the plan to the phone).
+  First ask the owner the purpose (A: plan at home, send to phone – recommended; B: full planner for non-Android),
+  then two spikes on a separate branch (BRouter in the browser; Compose web + maplibre-gl), report with numbers
+  before any change to the app's code.
 - **[for the laptop – owner 2026-10-23 evening, phone test 0.10.1] TODO:**
   1. **New map areas never showed until an app restart (bug).** Hilden areas 10-531-341/342 were downloaded and joined
      (generations 49–53, 20:52–21:21) – the map stayed blank beige at Hilden; force-closing the app fixed it. Diagnostics
