@@ -751,6 +751,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
+    /** Height of that strip in dp (measured); the message bar goes below it ([MessagePlacement]). */
+    var backgroundStripHeightDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =

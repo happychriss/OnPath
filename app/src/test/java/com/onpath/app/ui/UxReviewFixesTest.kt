@@ -37,4 +37,16 @@ class UxReviewFixesTest {
         assertTrue(main.contains("RestoreOfferRule.show(vm.restoreOffer"))
         assertTrue(main.contains("vm.locationAsking = true; permissionLauncher.launch"))
     }
+
+    /** Problem 11: the message bar (stays until OK) never covers the blue strip – it goes below it. */
+    @Test fun messageBarGoesBelowTheStrip() {
+        assertTrue(MessagePlacement.topDp(stripShown = false, stripHeightDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
+        val stripHeight = 96
+        val top = MessagePlacement.topDp(stripShown = true, stripHeightDp = stripHeight)
+        assertTrue("$top", top >= MessagePlacement.STRIP_TOP_DP + stripHeight)
+        // not measured yet: as before
+        assertTrue(MessagePlacement.topDp(stripShown = true, stripHeightDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
+        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
+        assertTrue(main.contains("MessagePlacement.topDp(vm.backgroundStripShown"))
+    }
 }

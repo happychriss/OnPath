@@ -281,7 +281,10 @@ class MainActivity : ComponentActivity() {
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
                         Snackbar(
-                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp, start = 12.dp, end = 12.dp),
+                            // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
+                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
+                                top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
+                                    vm.backgroundStripHeightDp).dp),
                             action = { TextButton(onClick = { vm.message = null }) { Text("OK") } },
                         ) { Text(msg) }
                     }

@@ -291,7 +291,10 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     // otherwise the background progress; no second map card in the plan sheet
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
-    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp)
+    val density = LocalDensity.current
+    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
+        .padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)
+        .onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
     val stripOn = bg != null && !vm.searchOpen && notice == null
     LaunchedEffect(stripOn, notice != null) { vm.backgroundStripShown = stripOn || (notice != null && !vm.searchOpen) }
     if (notice != null && !vm.searchOpen) MapNoticeStrip(notice, cellCb, place)
