@@ -1,9 +1,15 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
+Last update: 2026-10-23 – current release **0.10.0** (0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1).
+Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
+  colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
+  up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers
+  (`docs/handover-2026-10-2*.md`) are done; every open item is in `docs/backlog.md` "Next". Only `main` exists on GitHub.
+  Entries below are history.
 - **laptop, 2026-10-21/22:** see `docs/handover-2026-10-22-laptop.md` (map loading modal, world overview, routing data in 1° parts, points editor, haptics, tour backup, cloud any-area + priority; 0.9.0 on the owner's phone for testing, not released).
 - **cloud, 2026-10-21 evening – HANDOVER to the laptop: read `docs/handover-2026-10-21-cloud.md`.** Releases 0.8.1–0.8.5
   (map-loading UX, route bands over streets, check after routing, mobile data default, routing data refresh, update
@@ -227,7 +233,7 @@ Last update: 2026-10-19 (release 0.6.2 – POIs; map package incl. Ultental).
 - **cloud, 2026-10-18:** released 0.4.0 (in-app updates + release workflow); wrote `docs/working-agreement.md`
   and `docs/backlog.md`.
 
-## Where we are
+## Where we are (history: builds 1–2, 0.5.0 – for today see "Last session" and the backlog)
 
 Note (build 2): the way types & surfaces breakdown in the planning panel is collapsed by default to a one-line summary so the panel leaves enough map to tap on.
 
@@ -317,7 +323,7 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 - Back in Navigate leaves the app (recording goes on); only the slide switch goes to Plan.
 - A GPX opened from another app while navigating switches to Plan to show it (recording goes on).
 
-## Decisions (from the planning discussion)
+## Decisions (from the planning discussion, 2026-10-17/18 – later changes: backlog and CLAUDE.md)
 | Topic | Decision |
 | --- | --- |
 | Platform | Android first (Kotlin, Compose), iOS later |
@@ -331,13 +337,13 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
 | Route overlays | Hiking, cycling, MTB route relations as soft bands (Komoot style), auto-selected by activity |
 | Voice | Not needed in v1; off-route warning (vibration + notification) is enough |
 | Komoot GPX | Must import correctly (F-GPX-08) |
-| Offline corridor | Always download ~10 km around saved/imported routes (F-OFF-02, Must) – not built yet |
-| Place search | Hybrid: offline OSM index + optional online provider (Google Places or Photon/Pelias) behind one interface; cost decided later |
+| Offline corridor | Always download ~10 km around saved/imported routes (F-OFF-02, Must) – built: corridor map areas + routing parts follow the plan (C10, C13) |
+| Place search | Hybrid: offline OSM index + optional online provider (Google Places or Photon/Pelias) behind one interface – built with Photon (0.6.0; rough position only, 0.10.0); no Google Places |
 | POIs | From OSM, offline; "Open in Google Maps" link-out for reviews/photos/tips; never store Google data |
 | Building data on the phone | Rejected: raw data bigger than result, too heavy; phone renders, routes, records |
 | Test data delivery | `adb push` into `Android/data/com.onpath.app/files/onpath/` |
 
-## Proposed next steps
+## Proposed next steps (history, 2026-10-18 – mostly done; today: backlog "Next")
 1. **Field test feedback** on build 1 → fix crashes and layout issues (user sends `adb exec-out screencap`
    screenshots and `adb logcat` output).
 2. ~~Build 1.1: integrate POIs~~ (done).
@@ -362,8 +368,8 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
   Not reachable: download.geofabrik.de, overpass-api.de.
 
 ## Planned: updates directly on the phone (decided 2026-10-18)
-1. GitHub Actions workflow builds every tagged version (`v*`) and publishes a GitHub Release with the APK
-   (cloud sessions may not create releases themselves, but they may push tags).
+1. GitHub Actions workflow (`release.yml`) runs on a push to `main` with a new version: it builds, tags `vX.Y.Z` and
+   publishes the GitHub Release with the APK (cloud sessions push neither tags nor releases – done, see CLAUDE.md).
 2. In-app "Check for updates" (Settings → About, plus a quiet daily check when online) reads the latest
    release, shows the notes and installs the APK in place via the Android installer (requirement F-OFF-06).
 3. Later: Google Play Console developer registration + secret release key to avoid Play Protect warnings.
