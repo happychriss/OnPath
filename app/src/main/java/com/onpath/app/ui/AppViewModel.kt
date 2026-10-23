@@ -1092,6 +1092,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var guidanceEndedByEmptyPlan = false
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
+    /** The plan's points when a track was taken to follow ([PlanGuidance.planReplacesTrack]); null = no track / unknown. */
+    private var planAtTrackFollow: List<GeoPoint>? = null
     /** "Continue navigation" re-plans: follow the next route result. */
     private var followNextRoute = false
     /** The plan's points were edited (add, delete, round trip, reverse, undo …): a running tour follows the result. */
@@ -2584,7 +2586,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var straightAsk by mutableStateOf(false)
 
     private fun planHasStraightLegs(): Boolean =
-        !followIsTrack && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
+        (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
+
+    /** A followed track and a plan edited since: Continue follows the plan, the track is drawn grey (owner Q7). */
+    private fun planReplacesTrack(): Boolean = PlanGuidance.planReplacesTrack(followIsTrack, waypoints.toList(), planAtTrackFollow)
 
     /** The user wants to navigate the plan although parts of it are straight lines. */
     fun straightConfirmed() { straightAsk = false; startNavigation(force = true) }
@@ -2596,7 +2601,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
      */
     fun continueNavigation(force: Boolean = false) {
-        if (!followIsTrack && waypoints.size >= 2) {
+        if ((!followIsTrack || planReplacesTrack()) && waypoints.size >= 2) {
             val planLine = if (routing) null else route?.points
             // an edited plan with straight legs would become the navigated line: ask first (same as Start)
             if (!force && planLine != null && !planFollowed(planLine) && planHasStraightLegs()) { straightAsk = true; return }
@@ -2621,7 +2626,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val planLine = route?.points
         return when {
             shown != null -> com.onpath.app.map.MapController.TrackLook.TRACK
-            mode == AppMode.PLAN && !followIsTrack && waypoints.size >= 2 && planLine != null && !planFollowed(planLine) ->
+            mode == AppMode.PLAN && (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && planLine != null &&
+                !planFollowed(planLine) ->
                 com.onpath.app.map.MapController.TrackLook.FOLLOW_BEHIND
             else -> com.onpath.app.map.MapController.TrackLook.FOLLOW
         }
@@ -2907,6 +2913,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val s = shown ?: return
         setFollow(s.name, s.points, isTrack = true)
         followFromPlan = false
+        planAtTrackFollow = waypoints.toList()
     }
 
     /**
@@ -2926,6 +2933,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followOriginal = points
         planBaseline = null
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
+        planAtTrackFollow = null
         arrivalGate.reset()
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
             putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
@@ -2936,6 +2944,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followFromPlan = false
         guidanceEndedByEmptyPlan = false
         followIsTrack = false; prefs.followIsTrack = false
+        planAtTrackFollow = null
         arrivalGate.reset()
         prefs.saveFollow("", null)
         navStore.save(null)

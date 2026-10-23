@@ -67,4 +67,25 @@ class PlanGuidanceTest {
         // a free recording that never followed anything does not start following by itself
         assertFalse(PlanGuidance.resumes(endedByEmptyPlan = false, recording = true, following = false, routePoints = 50))
     }
+
+    /**
+     * UX review 2026-10-23, problem 4 (owner Q7): a track was taken to follow during the tour; afterwards "Continue"
+     * never went back to the plan. Now an edited plan wins (Continue follows it, the track is drawn grey); the plan as it
+     * was when the track was taken (also by Undo) keeps the track.
+     */
+    @Test fun anEditedPlanReplacesAFollowedTrack() {
+        val atFollow = listOf(a, b)
+        assertFalse("unedited plan: the track stays", PlanGuidance.planReplacesTrack(true, listOf(a, b), atFollow))
+        assertTrue("edited plan: Continue follows it", PlanGuidance.planReplacesTrack(true, listOf(a, b, c), atFollow))
+        assertFalse("no plan to follow", PlanGuidance.planReplacesTrack(true, listOf(c), atFollow))
+        assertFalse("unknown (app restart): the track stays", PlanGuidance.planReplacesTrack(true, listOf(a, c), null))
+        assertFalse("no track followed", PlanGuidance.planReplacesTrack(false, listOf(a, b, c), atFollow))
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val cont = vm.substringAfter("fun continueNavigation(").substringBefore("\n    }")
+        assertTrue(cont, cont.contains("(!followIsTrack || planReplacesTrack())"))
+        val look = vm.substringAfter("fun trackLook(").substringBefore("\n    }")
+        assertTrue(look, look.contains("planReplacesTrack()") && look.contains("FOLLOW_BEHIND"))
+        val shown = vm.substringAfter("fun followShown(").substringBefore("\n    }")
+        assertTrue(shown, shown.contains("planAtTrackFollow = waypoints.toList()"))
+    }
 }
