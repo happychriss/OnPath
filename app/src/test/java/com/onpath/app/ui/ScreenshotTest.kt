@@ -656,6 +656,14 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
     }
 
+    /** Interrupted recording at start: Continue · Delete · Save like End tour (UX review 2026-10-23, problem 2). */
+    @Test fun unfinishedTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+            UnfinishedDialog(tourList[1], {}, {}, {})
+        }
+    }
+
     /** After End tour → "Tour saved" → Delete: asks first, stays until answered. */
     @Test fun finishedTourDeleteAsk() = paparazzi.snapshot {
         OnPathTheme {
