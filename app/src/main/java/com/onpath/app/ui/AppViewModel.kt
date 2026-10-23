@@ -237,17 +237,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The app is on screen again (e.g. taken out of the pocket): in Navigate jump back to the own position (owner). */
     fun onReturnToApp() {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
+        appVisible = true
         cells.setForeground(true)
         if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
     }
 
-    /** The app left the screen: map cell status is not polled in the background (map-cells.md §8). */
-    fun onLeaveApp() = cells.setForeground(false)
+    /**
+     * The app left the screen. Map areas still on their way keep loading through MapLoadService (owner 2026-10-23),
+     * started when they began; otherwise nothing is polled in the background (map-cells.md §8).
+     */
+    fun onLeaveApp() { appVisible = false; cells.setForeground(false) }
+
+    /** The app is on screen (Android allows starting the map loading service only then). */
+    private var appVisible = true
 
     // ---------------- map cells (docs/design/map-cells.md §9, §19) ----------------
 
     /** Downloaded map cells: requests, states, installed list (UI: card, Settings list – see map-cells.md §19). */
     val cells: com.onpath.app.cells.MapCells by lazy { com.onpath.app.cells.AppCells.get(getApplication()) }
+
+    init {
+        // map areas start loading → MapLoadService keeps it going with the screen off / app left (owner 2026-10-23)
+        viewModelScope.launch {
+            var wasLoading = false
+            cells.states.collect { st ->
+                val loading = st.values.any(com.onpath.app.cells.MapLoadService::loading)
+                if (loading && !wasLoading && appVisible) com.onpath.app.cells.MapLoadService.ensure(getApplication())
+                wasLoading = loading
+            }
+        }
+    }
 
     /** The map style loaded from [dir]: when it is a cell store generation, older generations can go (R-16). */
     fun onMapStyleLoaded(dir: java.io.File?) {

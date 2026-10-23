@@ -149,6 +149,10 @@ class MapCells(
     @Volatile var tourInBackground: Boolean = false
         set(v) { field = v; if (v) wake() }
 
+    /** MapLoadService runs (owner 2026-10-23): areas being loaded keep going with the screen off / app in the background. */
+    @Volatile var loadInBackground: Boolean = false
+        set(v) { field = v; if (v) wake() }
+
     /**
      * The user drags the map or the sheet: finished cells are not joined now (a generation switch reloads the style);
      * they are joined as soon as this goes false.
@@ -347,7 +351,7 @@ class MapCells(
     /** Connectivity changed (Wi-Fi came back …): check at once instead of waiting for the next round. */
     fun networkChanged() = wake()
 
-    /** The app came to the foreground (true) or left it (false). Polling only runs in the foreground. */
+    /** The app came to the foreground (true) or left it (false). Polling runs in the foreground, on a tour, or while MapLoadService runs. */
     fun setForeground(on: Boolean) { foreground = on; if (on) wake() }
 
     /** The style loaded generation [number] fine: the previous generation can go (R-16). */
@@ -650,7 +654,7 @@ class MapCells(
             val inst = _installed.value.map { it.id }.toSet()
             val next = ready.filter { allowed(it) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
             if (next != null) { downloadAndInstall(next); backoff = 0; return 0 }
-            if (!foreground && !tourInBackground) return IDLE_MS
+            if (!foreground && !tourInBackground && !loadInBackground) return IDLE_MS
             // 2. send requests not sent in this run (grouped by reason), else poll status
             val unsent = pending.filter { it.id !in sent }
             val answer = if (unsent.isNotEmpty()) {
@@ -670,7 +674,7 @@ class MapCells(
             if (anyReadyAllowed) return 0
             val stillBuilding = pending.any { state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
             return if (!stillBuilding) IDLE_MS
-                else if (foreground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
+                else if (foreground || loadInBackground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
         } catch (e: CellApi.ApiException) {
             return failed(e, pending)
         }
