@@ -1,0 +1,6 @@
+node_modules/
+dist/
+public/engine/
+public/brouter/
+public/segments
+public/map/
