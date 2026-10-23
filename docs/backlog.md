@@ -27,6 +27,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   4. Point names: "Unterstand" (shelter – fine?) and "intensiū" (odd, broken name?) – check the name lookup for points.
   5. **Owner wish: all sights and viewpoints (POI kinds "sight"/"viewpoint" or what they are called in `poi/PoiKinds`)
      shown by default** (not in `defaultHidden`).
+  6. **Restaurant POIs change while zooming (owner, Bad Waldsee, 0.10.1).** Likely cause: `make_style.pois()` sort key =
+     rank × 2 + (named ? 0 : 1) – all restaurants tie, so between two close ones the winner depends on the feature order
+     in each (overzoomed) tile and changes per zoom. Fix idea: a fixed per-POI priority from the pipeline
+     (`extract_pois.py`: e.g. property `pr` 0–999 from importance – tag count, wikidata, opening_hours – then id), sort
+     key = rank × 2000 + named × 1000 + pr; needs a cell rebuild (schema bump) – old cells keep today's look. Check on the
+     Pixel at Bad Waldsee (zoom 13 → 17) before / after.
 - **Text + UX review 2026-10-23 (cloud, in progress)** – reports `docs/review-texts-2026-10-23.md`,
   `docs/review-ux-2026-10-23.md`. Owner answers so far: texts Q1 languages: keep as is (EN + DE come at the end);
   Q2 last point = "Destination" (English standard; round trip keeps "Start & finish here"); Q3 middle points = "Stop"
