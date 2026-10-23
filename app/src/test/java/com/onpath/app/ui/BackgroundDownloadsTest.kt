@@ -44,6 +44,21 @@ class BackgroundDownloadsTest {
         assertEquals(0, p.update(listOf(BackgroundProgress.Item("d", 0, mb)), 1, 0)!!.percent)
     }
 
+    /** Owner 2026-10-23: a small named chip under ☰ instead of the full-width strip; the names ride along with the progress. */
+    @Test fun namesRideAlongAndThePlanShowsAChip() {
+        val groups = LoadNames.groups(listOf(LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 10 * mb)))
+        val p = BackgroundProgress()
+        val ui = p.update(listOf(BackgroundProgress.Item("a", 3 * mb, 10 * mb)), 1, 0, groups = groups)!!
+        assertEquals("Bad Waldsee · 30 %", ui.chipText)
+        assertEquals(listOf("Around Bad Waldsee · 10 MB · loading"), ui.groups.map { it.line })
+        // a name change does not restart the 10 s wait nor hide the chip (the gate keys on nothing but presence)
+        val gate = backgroundGate()
+        gate.update(ui, 0)
+        assertNotNull(gate.update(ui.copy(groups = emptyList()), 10_000).shown)
+        val src = java.io.File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue("Plan shows the chip under ☰", "BackgroundDownloadChip(" in src && "BackgroundDownloadStrip" !in src)
+    }
+
     @Test fun routingDataAloneIsNotNamed() {
         assertEquals("9 MB · 10 %", BackgroundDownloadUi(0, 1, 9 * mb, 10).line)
     }

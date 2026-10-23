@@ -564,7 +564,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun answerLoadAsk(load: Boolean) {
         val a = loadAsk ?: return
         loadAsk = null
-        if (load) safeCells("tap") { showCellJob(cellTriggers.pointSet(a.at, com.onpath.app.cells.CellWhy.TAPPED)) }
+        if (load) safeCells("tap") { showCellJob(cellTriggers.pointSet(a.at, com.onpath.app.cells.CellWhy.TAPPED).tagged(LoadTag(LoadWhy.POINT, a.at))) }
     }
 
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
@@ -572,7 +572,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
         if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
-        for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
+        for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p).tagged(LoadTag(LoadWhy.POINT, p))) }
     }
 
     /**
@@ -737,7 +737,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val onTour = recState.value != null || mode == AppMode.NAVIGATE
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
-            safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc)) }
+            safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc).tagged(LoadTag(LoadWhy.POINT))) }
             routingFor(listOf(p), wait = true)
         }
         // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off (2026-10-22)
@@ -752,6 +752,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?) {
         safeCells("fresh") {
             val asked = cellTriggers.freshenAlong(line, corridor)
+            tagLoads(asked, LoadTag(LoadWhy.REFRESH))
             if (asked.isNotEmpty()) Problems.info("cells", "Checking ${asked.size} map area(s) along the route for a newer version")
         }
         checkRoutingData(line)
@@ -780,9 +781,64 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val installed = if (modal) emptySet() else cells.installed.value.map { it.id }.toSet()
         val newer = if (modal) 0 else states.count { (c, s) -> c in installed && BackgroundProgress.loading(s) }
         val eta = (MapUpdates.of(states, installed) as? MapUpdateUi.Preparing)?.minutes
-        bgProgress.update(items, cellItems.size, r?.names?.size ?: 0, newer, eta)
+        val groups = if (modal) emptyList() else loadGroups(states, cellItems, installed, r)
+        bgProgress.update(items, cellItems.size, r?.names?.size ?: 0, newer, eta, groups)
     } catch (e: Exception) {
         Problems.warn("cells", "Background download status unknown; strip hidden", e); null
+    }
+
+    // ---- names of what loads (owner 2026-10-23: "⬇ Bad Waldsee · 34 %"; map areas only have grid ids) ----
+
+    /** Why each map area was asked for, set where the app asks (point, search, route, newer map); main thread only. */
+    private val loadTags = HashMap<com.onpath.app.cells.CellId, LoadTag>()
+    /** Larger towns of the world overview (read once off the main thread; null = not read yet). */
+    @Volatile private var overviewTowns: List<com.onpath.app.map.OverviewTowns.Town>? = null
+    private var overviewTownsAsked = false
+    /** Nearest town per area ("" = none near). */
+    private val townOfCell = HashMap<com.onpath.app.cells.CellId, String>()
+
+    /** Remembers why [cells] load; a more important reason (route > point > newer) is kept. */
+    private fun tagLoads(cells: Collection<com.onpath.app.cells.CellId>, tag: LoadTag) {
+        val t = tag.copy(sinceMs = android.os.SystemClock.uptimeMillis())
+        for (c in cells) { val old = loadTags[c]; if (old == null || t.why.ordinal <= old.why.ordinal) loadTags[c] = t }
+    }
+
+    private fun com.onpath.app.cells.CellJob?.tagged(tag: LoadTag): com.onpath.app.cells.CellJob? = also { j -> j?.let { tagLoads(it.cells, tag) } }
+
+    /** The overview town nearest to [c]'s centre; null while the towns are read or none is near. */
+    private fun townNear(c: com.onpath.app.cells.CellId): String? {
+        val towns = overviewTowns
+        if (towns == null) {
+            if (!overviewTownsAsked) {
+                overviewTownsAsked = true
+                viewModelScope.launch(Dispatchers.IO) {
+                    overviewTowns = try { com.onpath.app.map.OverviewTowns.load(getApplication()) } catch (e: Exception) {
+                        Problems.warn("cells", "Town names of the world overview not readable; loading areas named \"map area\"", e); emptyList()
+                    }
+                }
+            }
+            return null
+        }
+        return townOfCell.getOrPut(c) { com.onpath.app.map.OverviewTowns.nearest(towns, c.center)?.name.orEmpty() }.ifEmpty { null }
+    }
+
+    /** What loads, by name: the reason the app knows ([loadTags]), else the nearest overview town. */
+    private fun loadGroups(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, items: List<BackgroundProgress.Item>,
+                           installed: Set<com.onpath.app.cells.CellId>, paths: com.onpath.app.data.RoutingDataLoader.Status?): List<LoadGroup> {
+        val bytes = items.associate { it.key to it.total }
+        val now = android.os.SystemClock.uptimeMillis()
+        // reasons of areas no longer loading go (a moment of grace: a fresh request may not show as loading yet)
+        loadTags.entries.removeAll { (c, t) -> !(states[c]?.let(BackgroundProgress::loading) ?: false) && now - t.sinceMs > 10_000 }
+        val job = cellJob?.takeIf { it.own != null }
+        val touring = recState.value != null
+        val entries = states.filter { (c, s) -> "cell:${c.id}" in bytes && BackgroundProgress.loading(s) }.map { (c, s) ->
+            val tag = loadTags[c]
+            val why = tag?.why ?: when { c in installed -> LoadWhy.REFRESH; touring -> LoadWhy.AHEAD; else -> null }
+            val name = tag?.name ?: tag?.at?.let { stopName(it) ?: nearbyNames[it] }
+            LoadEntry(why, name, townNear(c), waiting = job != null && c in job.cells, bytes = bytes["cell:${c.id}"] ?: 0L,
+                phase = LoadNames.phaseOf(s))
+        }
+        return LoadNames.groups(entries + listOfNotNull(paths?.let { LoadEntry(null, paths = true, bytes = it.totalBytes) }))
     }
 
     /** Settings → Offline maps / the strip's details → "Cancel all": every waiting download goes; installed maps stay. */
@@ -1811,7 +1867,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
-        if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) safeCells("search") {
+            showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)
+                .tagged(LoadTag(LoadWhy.POINT, GeoPoint(p.lat, p.lon), p.title())))
+        }
         if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
@@ -1985,7 +2044,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
-        if (mode == AppMode.PLAN) safeCells("search") { showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)) }
+        if (mode == AppMode.PLAN) safeCells("search") {
+            showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)
+                .tagged(LoadTag(LoadWhy.POINT, GeoPoint(p.lat, p.lon), p.title())))
+        }
         if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
     }
 
@@ -2181,7 +2243,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // only when a part under a planned point is missing – those make the straight line
                 post?.routingKeys?.let { k -> routingForLine(k) }
                 routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, routingData.loading)
-                safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points, post?.cells)) } // T4: the corridor
+                // T4: the corridor – named after the plan's destination (round trip: its start) in the loading chip
+                val dest = if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull()
+                safeCells("route") { showCellJob(cellTriggers.routeComputed(it.points, post?.cells).tagged(LoadTag(LoadWhy.ROUTE, dest))) }
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells)
                 if (viaData) routingDataRouteChanged(it)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)

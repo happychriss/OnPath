@@ -165,7 +165,7 @@ fun NavigateOverlay(
     /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
     onProfileScrub: (GeoPoint) -> Unit = {},
     onProfileRelease: () -> Unit = {},
-    /** A background download runs (after 10 s): small "⬇ 40 %" chip under the status; tap → details. */
+    /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
 ) {
