@@ -1022,6 +1022,7 @@ def pois():
                       "icon-allow-overlap": False, "icon-padding": 1,
                       "symbol-sort-key": sort_key, "symbol-z-order": "auto",
                       "text-field": ["step", ["zoom"], "", label_z, name],
+                      # owner 2026-10-23: the icon stays when its name has no room; icons still collide
                       "text-optional": True,
                       "text-font": T("font.medium") if tier == 1 else T("font.minor-label"),
                       "text-size": interp(14, 10.5, 17, 12.5, base=1),

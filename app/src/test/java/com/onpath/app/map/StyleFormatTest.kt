@@ -119,6 +119,32 @@ class StyleFormatTest {
         }
     }
 
+    /**
+     * Owner 2026-10-23: a POI icon stays on the map when its name has no room – the name shows only where it fits.
+     * So every POI layer (icon + name) has text-optional, never icon-optional, and neither part may overlap
+     * (icon collision stays on – no pile-ups).
+     */
+    @Test fun poiIconStaysWhenNameHasNoRoom() {
+        for (s in listOf(f1, f2)) {
+            val a = s.getJSONArray("layers")
+            val pois = (0 until a.length()).map { a.getJSONObject(it) }
+                .filter { it.getString("id").startsWith("poi-") && it.getString("type") == "symbol" }
+            assertTrue("POI layers found", pois.size >= 5)
+            for (l in pois) {
+                val id = l.getString("id")
+                val lo = l.getJSONObject("layout")
+                assertTrue("$id: has icon and name", lo.has("icon-image") && lo.has("text-field"))
+                assertEquals("$id: text-optional", true, lo.optBoolean("text-optional", false))
+                assertEquals("$id: icon not optional", false, lo.optBoolean("icon-optional", false))
+                assertEquals("$id: icons collide", false, lo.optBoolean("icon-allow-overlap", false))
+                assertEquals("$id: names collide", false, lo.optBoolean("text-allow-overlap", false))
+                assertEquals("$id: icons block others", false, lo.optBoolean("icon-ignore-placement", false))
+                assertEquals("$id: names block others", false, lo.optBoolean("text-ignore-placement", false))
+                assertTrue("$id: variable anchors", lo.has("text-variable-anchor"))
+            }
+        }
+    }
+
     /** Format 2: small streets come from overlays "streets" from z13 – the trimmed base map has none there. */
     @Test fun format2StreetsFromOverlayFromZ13() {
         val layers = f2.getJSONArray("layers")
