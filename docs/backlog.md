@@ -108,7 +108,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
   `/v1` API as an open spec; (A) all-in-one Docker Compose, (B) the cloud setup with gcp-setup.sh; builder image on
   ghcr.io. Pricing stays on the owner's server; self-hosted = free; F-Droid build without Play Billing. Not before Play launch.
-- **EN + DE strings:** all UI texts to `strings.xml` – not needed for now (owner B11).
+- **Bilingual app EN + DE – coming soon (owner 2026-10-23, replaces B11 "not needed"):** all UI texts to
+  `strings.xml` in one go, following the phone's language. Until then don't change single texts' language (e.g. the
+  German search chips "Hütten, Gipfel, Wasser, Orte, Stationen" stay as they are) – fix mixed EN/DE in that pass.
 - **Ideas (owner 2026-10-21):** outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help
   page. Dropped (owner B12, "focus on the core"): sunset warning, emergency screen, battery check at start, weather.
 - **Map wishes (start only when the owner says so):** shrub ("Sträucher") symbols; trail numbers abroad beyond numeric
