@@ -132,7 +132,8 @@ fun MapScreen(
         ModeSwitch(vm.mode,
             plan = {
                 PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation,
-                    onActivity = { showActivity = true }, onEndTour = { vm.askEndTour() },
+                    // during a tour the same check-and-switch sheet as Navigate (owner Q1 2026-10-23): Take new route / Keep
+                    onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
             },
             navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
@@ -176,6 +177,11 @@ fun MapScreen(
         MapOverlayHost(vm, controller, cameraTick,
             topPx = topInsetPx + with(density) { (hintTop + 4.dp).roundToPx() }, // below the search pill + ☰ row (+ strip)
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
+        // Plan during a tour: the activity check-and-switch sheet over the plan sheet (Navigate draws its own)
+        if (vm.mode == AppMode.PLAN) vm.activityCheck?.let {
+            androidx.activity.compose.BackHandler { vm.closeActivityCheck() }
+            ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck, Modifier.align(Alignment.BottomCenter))
+        }
     }
 
     if (showActivity) ActivityDialog(
