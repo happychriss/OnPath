@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
     private var askedThisSession = false
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        vm.locationAsking = false
         vm.tracker.start()
         if (vm.tracker.hasPermission()) afterPermission?.invoke()
         else vm.message = "Without location permission the map works, but position and recording do not."
@@ -179,7 +180,9 @@ class MainActivity : ComponentActivity() {
                             com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recycleBin = null },
                                 onRestore = { vm.restoreFromBin(it) }, onDeleteForever = { vm.deleteForever(it) })
                         }
-                        if (vm.restoreOffer && vm.recState.collectAsState().value == null) {
+                        // one dialog after the other on a first start: location first, then the map, then this
+                        if (com.onpath.app.ui.RestoreOfferRule.show(vm.restoreOffer, vm.recState.collectAsState().value != null,
+                                vm.locationAsking, vm.loadModalOpen)) {
                             com.onpath.app.ui.RestoreOfferDialog(
                                 onRestore = { vm.restoreOfferAnswered(); launchTreePicker(pickRestoreFolder) },
                                 onNotNow = { vm.restoreOfferAnswered() })
@@ -488,7 +491,8 @@ class MainActivity : ComponentActivity() {
         if (permanentlyDenied) { openAppSettings(); return }
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.POST_NOTIFICATIONS
-        try { permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
+        try { vm.locationAsking = true; permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
+            vm.locationAsking = false
             com.onpath.app.debug.Problems.error("gps", "Location permission request could not be shown", e)
         }
     }

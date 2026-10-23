@@ -168,6 +168,16 @@ fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
 // ------------------------------------------------------------------ restore offer + progress
 
 /** First start with no tours: offer the restore once (a reinstalled app may read the old folder only after the picker). */
+/**
+ * First start (UX review 2026-10-23, problem 10): the location request, "Restore your tours?" and the loading modal came
+ * up together and covered each other. One after the other now: the restore offer waits for the location answer and
+ * for the loading modal to close (and never during a tour). Pure, unit-tested.
+ */
+object RestoreOfferRule {
+    fun show(offer: Boolean, recording: Boolean, locationAsking: Boolean, loadModalOpen: Boolean): Boolean =
+        offer && !recording && !locationAsking && !loadModalOpen
+}
+
 @Composable
 fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
     AlertDialog(

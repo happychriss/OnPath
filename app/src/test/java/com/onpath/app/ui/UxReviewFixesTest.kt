@@ -25,4 +25,16 @@ class UxReviewFixesTest {
         assertTrue(choose, choose.contains("if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)"))
         assertFalse(choose, choose.contains("selectActivity(a)\n"))
     }
+
+    /** Problem 10: on a first start the restore offer waits for the location answer and the loading modal. */
+    @Test fun firstStartDialogsComeOneAfterTheOther() {
+        assertTrue(RestoreOfferRule.show(offer = true, recording = false, locationAsking = false, loadModalOpen = false))
+        assertFalse("location request open", RestoreOfferRule.show(true, recording = false, locationAsking = true, loadModalOpen = false))
+        assertFalse("loading modal open", RestoreOfferRule.show(true, recording = false, locationAsking = false, loadModalOpen = true))
+        assertFalse("during a tour", RestoreOfferRule.show(true, recording = true, locationAsking = false, loadModalOpen = false))
+        assertFalse("nothing to offer", RestoreOfferRule.show(false, recording = false, locationAsking = false, loadModalOpen = false))
+        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
+        assertTrue(main.contains("RestoreOfferRule.show(vm.restoreOffer"))
+        assertTrue(main.contains("vm.locationAsking = true; permissionLauncher.launch"))
+    }
 }
