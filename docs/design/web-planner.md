@@ -2,7 +2,8 @@
 
 Status: **idea + proposal, nothing built.** Owner hands this to the cloud session (start 2026-10-24).
 Owner's wish: a web version for planning a route online, built **with as much of one codebase as possible**.
-Not decided yet: the purpose (§2) – ask the owner first, one question at a time.
+Purpose: asked 2026-10-23, owner had no preference → **A** (plan at home, send to phone), built so B can grow.
+**Architecture rethought 2026-10-23 (owner: "rethink – consistency, low risk, low complexity, elegance, modern") → §6.**
 
 ## 1. Why one codebase is realistic
 
@@ -75,3 +76,33 @@ in OnPath. Nothing stored on a server.
 - Public texts factual (see laptop memory "public text tone": like telling a friend, no marketing).
 - Ask the owner one question at a time (AskUserQuestion), with a recommendation.
 - Laptop load / builds: cloud session builds in its own environment.
+
+## 6. Rethink (cloud, 2026-10-23) – "same bytecode" instead of KMP + Compose web
+
+Owner asked, before anything is built: is there a way with more code consistency, less risk, less complexity?
+
+**Facts found:** the app's Android-free Kotlin is large already – routing 16 of 18 files, time 9/9, gpx 3/3,
+navigation 9/9 have no Android import (~7,000 lines). BRouter touches files in only 3 classes
+(`OsmFile`, `PhysicalFile`, `NodesCache` – `RandomAccessFile`), threads in 2, reflection in 2. The phone already
+builds its own rd5 from 1° parts (`Rd5Parts`).
+
+**What must be identical between phone and web:** routes (engine + profiles + data), distance / ascent / time /
+warnings, the plan link format. **What need not be identical:** the UI – a desktop side panel is a different layout
+from the phone sheet anyway.
+
+| | 1. Handover plan: KMP + Compose web + TeaVM BRouter | **2. Same bytecode (new proposal)** | 3. BRouter server |
+|---|---|---|---|
+| How | Move logic + UI into a KMP module (Kotlin/Wasm), BRouter via TeaVM | **TeaVM compiles the existing JVM classes – BRouter jars + the app's Android-free Kotlin, unchanged – into one Wasm module in a Web Worker.** Small TypeScript page + maplibre-gl JS on top (same style, same PMTiles). | Routing on Cloud Run, page asks it |
+| Consistency | high (same source) | **highest: the very same compiled classes from the same commit; CI compares golden routes JVM ⇄ browser** | routes yes, logic duplicated in JS |
+| Change to the app | large (KMP refactor of main, Compose UI split) | **none** (web build reads `app/src/main/java/...` files; app untouched) | none |
+| Toolchains | Kotlin/Wasm + Compose web + TeaVM (two Wasm compilers) | **one: TeaVM** (+ plain TS / Vite) | server + JS |
+| Risk | Compose web young (canvas UI: text, accessibility, several MB), KMP move | TeaVM support of the JDK / Kotlin-stdlib calls used → found in a 1-day spike; gaps get small shims | cost, abuse protection, no offline, not "on your device" |
+| Modern | yes | yes: Wasm GC, Web Worker, OPFS cache, PWA offline | – |
+
+**Recommendation: 2.** One spike instead of two: (a) TeaVM → Wasm for BRouter + `Planner` / `RouteSummary` /
+time / GPX / plan link, a range-reader that fills an in-memory rd5 like `Rd5Parts`; (b) 15–20 routes of
+`tools/routing/jvm-test` in headless Chromium vs the JVM (same line, same length); (c) measure Wasm size, load time,
+route time; (d) a tiny TS + maplibre-gl page (click points → route + profile). Fallback if TeaVM cannot take the
+Kotlin parts: BRouter via TeaVM only, logic via KMP later (option 1's logic half). Option 1's KMP module stays
+possible later (e.g. for iOS) – nothing in option 2 blocks it. GraalVM Web Image (JVM → Wasm) is the newer
+alternative to TeaVM but still experimental – watch, not use.
