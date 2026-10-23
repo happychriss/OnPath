@@ -37,7 +37,8 @@ object GpxParser {
         if (bytes.isEmpty()) throw GpxException("The file is empty or not a GPX file.")
 
         val handler = Handler()
-        var saxError: String? = null
+        // the parser's own error text is technical: it goes to the problem log only, the user gets the plain warning below
+        var broken = false
         try {
             val factory = SAXParserFactory.newInstance()
             factory.isNamespaceAware = false
@@ -47,16 +48,16 @@ object GpxParser {
             trySetFeature(factory, "http://xml.org/sax/features/external-parameter-entities", false)
             factory.newSAXParser().parse(ByteArrayInputStream(bytes), handler)
         } catch (e: SAXException) {
-            saxError = e.message ?: "invalid XML"
+            broken = true
             Problems.warn("gpx", "GPX file is not valid XML – imported the readable / recovered part", e)
         } catch (e: Exception) {
-            saxError = e.message ?: e.javaClass.simpleName
+            broken = true
             Problems.warn("gpx", "GPX file could not be read fully – imported the readable / recovered part", e)
         }
         var result = handler.result()
         val warnings = handler.warnings.toMutableList()
 
-        if (saxError != null) {
+        if (broken) {
             val recovered = RegexRecovery.parse(String(bytes, Charsets.UTF_8))
             if (recovered.pointCount + recovered.waypoints.size > result.pointCount + result.waypoints.size) {
                 warnings += "The file is not valid XML; recovered ${recovered.pointCount} points by scanning it."
