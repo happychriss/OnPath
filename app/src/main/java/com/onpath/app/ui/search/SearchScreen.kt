@@ -151,7 +151,7 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
     }
     if (ui.online.isNotEmpty()) {
         item {
-            Text("Online results: Photon · © OpenStreetMap", style = MaterialTheme.typography.bodySmall,
+            Text("Online results © OpenStreetMap", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
         }
     } else if (ui.onlineState == OnlineState.LOADING) {

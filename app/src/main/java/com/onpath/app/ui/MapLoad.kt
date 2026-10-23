@@ -74,13 +74,13 @@ data class MapLoadUi(
 
     val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI
 
-    /** "3 regions · about 27 MB" (routing data included, not named); only routing data missing: "about 10 MB". */
+    /** "3 map areas · about 27 MB" (routing data included, not named); only routing data missing: "about 10 MB". */
     val totals: String get() = if (regions == 0) bytes?.let { "about ${mb(it)} MB" } ?: ""
-        else "$regions ${if (regions == 1) "region" else "regions"}" + (bytes?.let { " · about ${mb(it)} MB" } ?: "")
+        else "$regions ${if (regions == 1) "map area" else "map areas"}" + (bytes?.let { " · about ${mb(it)} MB" } ?: "")
 
     companion object {
         const val OFFLINE_TEXT = "No internet connection – the map will load as soon as you're online."
-        const val WIFI_TEXT = "The map will load when you're on Wi-Fi (Settings: maps only on Wi-Fi)."
+        const val WIFI_TEXT = "The map will load when you're on Wi-Fi (Settings: “Download maps only on Wi-Fi”)."
 
         fun timeLeft(s: Int): String = when {
             s < 60 -> "Less than a minute left"
@@ -162,7 +162,7 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
  */
 object MapLoads {
     /** "2 regions · ≈ 18 MB" (the tap question). */
-    fun askText(regions: Int, bytes: Long): String = "$regions ${if (regions == 1) "region" else "regions"} · ≈ ${mb(bytes)} MB"
+    fun askText(regions: Int, bytes: Long): String = "$regions ${if (regions == 1) "map area" else "map areas"} · ≈ ${mb(bytes)} MB"
 
     /** Size of a region when the server has not said it yet. */
     const val ESTIMATED_REGION_BYTES = 9L * 1_048_576
@@ -279,7 +279,7 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
                     LinearProgressIndicator(progress = { ui.percent / 100f },
                         color = if (ui.paused) variant else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f).clip(CircleShape))
-                    Text("${ui.percent}%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                    Text("${ui.percent} %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = 12.dp))
                 }
             }

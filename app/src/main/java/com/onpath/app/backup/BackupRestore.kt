@@ -24,8 +24,8 @@ object BackupRestore {
     fun summary(r: Result): String {
         fun n(k: Int, one: String, many: String) = "$k ${if (k == 1) one else many}"
         val main = when {
-            r.tours == 0 && r.plans == 0 -> "No tours or plans restored"
-            else -> "${n(r.tours, "tour", "tours")} and ${n(r.plans, "plan", "plans")} restored"
+            r.tours == 0 && r.plans == 0 -> "No tracks or routes restored"
+            else -> "${n(r.tours, "track", "tracks")} and ${n(r.plans, "route", "routes")} restored"
         }
         val extra = buildList {
             if (r.skipped > 0) add("${r.skipped} already on this phone")

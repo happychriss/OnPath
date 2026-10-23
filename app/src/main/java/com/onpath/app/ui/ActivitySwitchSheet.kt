@@ -92,7 +92,7 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
                 Text("Switch to", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (!free) Text("rest of the route", style = MaterialTheme.typography.bodySmall,
+                if (!free) Text("for the rest of the route", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             ui.note?.let {

@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.message = "Without storage access OnPath cannot copy tours to Documents/OnPath. Choose another folder in Settings → Backup."
+        else vm.message = "Without storage access OnPath cannot copy tracks and routes to Documents/OnPath. Choose another folder in Settings → Backup."
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
@@ -256,7 +256,7 @@ class MainActivity : ComponentActivity() {
                             },
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
-                                    vm.message = "Backing up all tours and routes…"
+                                    vm.message = "Backing up all tracks and routes…"
                                     com.onpath.app.backup.Backups.backupAll(this@MainActivity) { n ->
                                         // a failure says itself (Backups.failure); only success here
                                         runOnUiThread { if (n >= 0) vm.message = "Backup done: $n ${if (n == 1) "file" else "files"} written." else if (vm.message?.startsWith("Backing up") == true) vm.message = null }

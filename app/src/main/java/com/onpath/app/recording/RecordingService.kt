@@ -204,7 +204,7 @@ class RecordingService : Service() {
         val existing = try {
             if (continueId >= 0) db.getTour(continueId) else if (intent == null) db.findActiveRecording() else null
         } catch (e: Exception) {
-            failLoud("Recording could not start: the tour database cannot be read.", e)
+            failLoud("Recording could not start: your saved tracks cannot be read.", e)
             return START_NOT_STICKY
         }
         if (intent == null && existing == null) { stopSelf(); return START_NOT_STICKY }
@@ -216,7 +216,7 @@ class RecordingService : Service() {
         }
         if (!tracker.hasGps()) { failLoud("Recording stopped: this device has no GPS."); return START_NOT_STICKY }
         if (!goForeground()) {
-            failLoud("Recording could not start (Android did not allow the background service). Open OnPath and try again.")
+            failLoud("Recording could not start – Android blocked it. Open OnPath and try again.")
             return START_NOT_STICKY
         }
 
@@ -244,7 +244,7 @@ class RecordingService : Service() {
             }
         } catch (e: Exception) {
             tourId = -1
-            failLoud("Recording could not start: the tour cannot be saved (storage full or database broken).", e)
+            failLoud("Recording could not start: the track cannot be saved (phone storage full or damaged).", e)
             return START_NOT_STICKY
         }
         snapshotDirty = true
@@ -417,7 +417,7 @@ class RecordingService : Service() {
 
     private fun notifySaveFailed() {
         try {
-            val text = "The track cannot be saved any more (storage full or database broken). Free up space; recording keeps trying."
+            val text = "The track cannot be saved any more (phone storage full or damaged). Free up space; recording keeps trying."
             nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Recording cannot be saved")

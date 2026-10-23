@@ -129,8 +129,8 @@ class ActivityCheckTest {
         nav.proposeSwitch(proposal(600.0 to 0.0), 1800.0)
         val q = nav.prompt as NavPrompt.Question
         assertNotNull(q.switch)
-        assertEquals("New route for Bike – trekking", NavText.title(q))
-        assertTrue(NavText.question(q), NavText.question(q).startsWith("Rest of the tour"))
+        assertEquals("New route for Trekking bike", NavText.title(q))
+        assertTrue(NavText.question(q), NavText.question(q).startsWith("Rest of the route"))
         // walking on along the route (on route!) does not clear it – nothing disappears by itself
         walk(600.0 to 0.0, 700.0 to 0.0, t0Ms = 1_000_000).forEach { nav.onFix(it) }
         assertEquals(q, nav.prompt)

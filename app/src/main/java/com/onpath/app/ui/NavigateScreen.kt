@@ -284,7 +284,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route
-                        Text("— not on route", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text("Not on the route", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         val off = g.offM
                         if (off != null && off > 0) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -294,7 +294,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         Text("${Format.duration(g.timeS)} · ${Format.distance(g.distanceM)}", style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
-                        if (paused) Text("estimate paused · ${g.pausedBecause ?: "no position"}", style = MaterialTheme.typography.bodyMedium,
+                        if (paused) Text("time paused · ${g.pausedBecause ?: "no position"}", style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
                             style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -403,7 +403,7 @@ private fun PositionLine(text: String, copy: String?) {
  * Without moving time: the elapsed clock as before.
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double): String {
-    val age = ui.fixAgeS?.takeIf { it >= 60 }?.let { " · last fix ${it / 60} min ago" }.orEmpty()
+    val age = ui.fixAgeS?.takeIf { it >= 60 }?.let { " · position ${it / 60} min old" }.orEmpty()
     val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS$age"; else -> "Recording" }
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
     val parts = mutableListOf<String>()

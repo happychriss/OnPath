@@ -83,10 +83,10 @@ data class CleanupPreview(
 /** Everything still to download: map regions and routing data parts, about [bytes]. */
 data class WaitingDownloads(val regions: Int, val routingParts: Int, val bytes: Long) {
     val any: Boolean get() = regions > 0 || routingParts > 0
-    /** "Waiting to download: 3 areas · about 85 MB" (routing data alone: "routing data"). */
+    /** "Waiting to download: 3 areas · about 85 MB" (route planning data alone is not named: "Waiting to download · about 10 MB"). */
     val line: String get() {
-        val what = if (regions > 0) "$regions ${if (regions == 1) "area" else "areas"}" else "routing data"
-        return "Waiting to download: $what" + (if (bytes > 0) " · about ${mb(bytes)} MB" else "")
+        val what = if (regions > 0) ": $regions ${if (regions == 1) "area" else "areas"}" else ""
+        return "Waiting to download$what" + (if (bytes > 0) " · about ${mb(bytes)} MB" else "")
     }
 }
 
@@ -150,7 +150,7 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
                     }
                 }
                 Text("Cancel all stops these downloads; the maps you have stay.", fontSize = 12.sp, color = variant)
-            } else if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading – see the route sheet.",
+            } else if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading – see the blue bar on the map.",
                 fontSize = 13.sp, color = variant)
         }
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
@@ -158,14 +158,14 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Download maps only on Wi-Fi", fontSize = 16.sp)
-                Text(if (ui.wifiOnly) "Nothing loads over mobile data, not even your own area"
-                    else "Your own area loads on mobile data; more areas ask first", fontSize = 12.sp, color = variant)
+                Text(if (ui.wifiOnly) "Nothing loads on mobile data, not even where you are"
+                    else "Where you are loads on mobile data; other areas ask first", fontSize = 12.sp, color = variant)
             }
             Switch(checked = ui.wifiOnly, onCheckedChange = null)
         }
         if (ui.available && ui.areas.isNotEmpty()) Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
             OutlinedButton(onClick = cb.onUpdateNow, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Update maps now") }
-            Text("Newer maps download on Wi-Fi; the current ones keep working until then. Used areas also update monthly by themselves.",
+            Text("Newer maps download on Wi-Fi; the current ones keep working until then. Map areas you use update once a month on their own.",
                 fontSize = 12.sp, color = variant)
         }
         if (ui.areas.isNotEmpty()) Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -206,8 +206,8 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             title = { Text("Clear all map areas?") },
             text = {
                 Text("All ${ui.areas.size} downloaded ${if (ui.areas.size == 1) "area" else "areas"} (${mbText(total)}) are removed, " +
-                    "also those of your plan and saved routes. The world overview stays; areas load again when needed. " +
-                    "Tours and routes are kept.")
+                    "also those of your current route and saved routes. The world overview stays; areas load again when needed. " +
+                    "Tracks and routes are kept.")
             },
             confirmButton = {
                 TextButton(onClick = { askClearAll = false; cb.onClearAll() }, modifier = Modifier.heightIn(min = 48.dp)) {

@@ -155,9 +155,9 @@ private fun GroupDivider() =
 @Composable
 private fun CompassControl(c: CompassSpec, size: Dp) {
     val what = when {
-        c.headingUp == true -> "Map turns with your walking direction. Tap for north up"
+        c.headingUp == true -> "Map turns with your direction of travel. Tap for north up"
         kotlin.math.abs(c.bearing) > 1f -> "Map is turned. Tap for north up"
-        else -> "Map is north up. Tap to turn it with your walking direction"
+        else -> "Map is north up. Tap to turn it with your direction of travel"
     }
     Box(
         Modifier.size(size).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },

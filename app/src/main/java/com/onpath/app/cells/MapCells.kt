@@ -59,12 +59,12 @@ sealed interface CellState {
 /** Short plain-language line for a state ("building – base 40 %", "downloading 60 %") – debug list, card rows. */
 fun CellState.label(): String = when (this) {
     CellState.None -> "not on the phone"
-    CellState.Requested -> "requested"
-    is CellState.Queued -> "waiting" + (position?.let { " (#$it)" } ?: "") + (etaS?.let { " – about ${(it + 59) / 60} min" } ?: "")
-    is CellState.Building -> "building – $step ${(progress * 100).toInt()} %" + (etaS?.let { ", about ${(it + 59) / 60} min" } ?: "")
-    is CellState.WaitingForWifi -> "ready – waits for Wi-Fi" + (bytes?.let { " (${it / 1_048_576} MB)" } ?: "")
-    is CellState.Downloading -> if (totalBytes <= 0) "ready – downloading" else "downloading $percent %"
-    CellState.Installing -> "adding to the map"
+    CellState.Requested -> "waiting"
+    is CellState.Queued -> "waiting" + (etaS?.let { " – about ${(it + 59) / 60} min" } ?: "")
+    is CellState.Building -> "being prepared – ${(progress * 100).toInt()} %" + (etaS?.let { ", about ${(it + 59) / 60} min" } ?: "")
+    is CellState.WaitingForWifi -> "waits for Wi-Fi" + (bytes?.let { " (${it / 1_048_576} MB)" } ?: "")
+    is CellState.Downloading -> if (totalBytes <= 0) "downloading" else "downloading $percent %"
+    CellState.Installing -> "almost ready"
     CellState.Downloaded -> "on the phone – shows after the tour"
     is CellState.Ready -> "ready ($version)"
     is CellState.Offline -> message
@@ -641,7 +641,7 @@ class MapCells(
         val pending = synchronized(queue) { queue.values.filter { it.confirmed } }
         if (pending.isEmpty()) return IDLE_MS
         if (api == null) {
-            pending.forEach { set(it.id, CellState.Failed("This app version has no map server access (no app key).", retryable = false)) }
+            pending.forEach { set(it.id, CellState.Failed("This app version cannot download maps. Please install the latest version.", retryable = false)) }
             return IDLE_MS
         }
         if (!network.connected()) {
@@ -706,7 +706,7 @@ class MapCells(
                 "queued" -> set(c, CellState.Queued(s.position, s.etaS))
                 "building" -> set(c, CellState.Building(s.step ?: "starting", s.progress ?: 0.0, s.etaS))
                 "failed" -> {
-                    val msg = "This area could not be prepared (${s.reason ?: "unknown reason"}). Planning still works with a straight line."
+                    val msg = "This map area could not be prepared. Routes there are straight lines for now."
                     Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
                     // dropped from the queue: the next trigger for this place asks again (the server retries up to 3×)

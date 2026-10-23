@@ -44,8 +44,8 @@ class BackgroundDownloadsTest {
         assertEquals(0, p.update(listOf(BackgroundProgress.Item("d", 0, mb)), 1, 0)!!.percent)
     }
 
-    @Test fun routingDataAloneIsSaidSo() {
-        assertEquals("routing data · 9 MB · 10 %", BackgroundDownloadUi(0, 1, 9 * mb, 10).line)
+    @Test fun routingDataAloneIsNotNamed() {
+        assertEquals("9 MB · 10 %", BackgroundDownloadUi(0, 1, 9 * mb, 10).line)
     }
 
     /** Owner: appears only after a background download ran > 10 s (2 s is too hectic), stays until all is done. */
@@ -71,7 +71,7 @@ class BackgroundDownloadsTest {
 
     @Test fun waitingLineInSettings() {
         assertEquals("Waiting to download: 16 areas · about 380 MB", WaitingDownloads(16, 2, 380 * mb).line)
-        assertEquals("Waiting to download: routing data · about 9 MB", WaitingDownloads(0, 1, 9 * mb).line)
+        assertEquals("Waiting to download · about 9 MB", WaitingDownloads(0, 1, 9 * mb).line)
         assertEquals(false, WaitingDownloads(0, 0, 0).any)
     }
 
@@ -79,7 +79,7 @@ class BackgroundDownloadsTest {
     @Test fun newerMapIsToldByTheStrip() {
         val onlyNewer = BackgroundProgress().update(listOf(BackgroundProgress.Item("cell:${a.id}", 0, 10 * mb)), 1, 0, newer = 1, newerEtaMin = 6)!!
         assertEquals("Loading newer map", onlyNewer.title)
-        assertEquals("Newer version of 1 area you have – it replaces the current map when loaded (being prepared, about 6 min)", onlyNewer.newerLine)
+        assertEquals("Newer map for 1 of your areas – replaces the old one when loaded (being prepared, about 6 min)", onlyNewer.newerLine)
         val mixed = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 0, percent = 10, newer = 1)
         assertEquals("Loading map", mixed.title)
         assertNull(BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 0, percent = 10).newerLine)
