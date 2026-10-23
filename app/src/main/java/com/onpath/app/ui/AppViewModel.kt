@@ -562,11 +562,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
     }
 
-    /** Card → "Yes" to mobile data: the waiting cells of this card load now. */
+    /**
+     * Strip → "Load now over mobile data" (owner Q6 2026-10-23): the waiting cells of this card load now, once – the
+     * "Maps only on Wi-Fi" setting stays.
+     */
     fun cellCardMobileYes() {
         val job = cellJob ?: return
         val waiting = cells.waitingForMobileApproval().map { it.first }.filter { it in job.cells }
-        cells.approveMobile(waiting)
+        Problems.trace("cells", "Load now over mobile data: ${waiting.size} waiting region(s) of the card")
+        safeCells("mobile") { cells.approveMobile(waiting) }
+    }
+
+    /**
+     * Loading modal → "Load now over mobile data" (owner Q6 2026-10-23): what the modal waits for (map regions and
+     * routing data) loads once over mobile data; the setting stays.
+     */
+    fun loadModalOnMobile() {
+        val waiting = cells.waitingForMobileApproval().map { it.first }.filter { it in loadModalFor }
+        Problems.trace("cells", "Load now over mobile data: ${waiting.size} waiting region(s) of the loading modal" +
+            if (routingModal) " + routing data" else "")
+        if (waiting.isNotEmpty()) safeCells("mobile") { cells.approveMobile(waiting) }
+        if (routingModal) safeRouting("mobile") { routingData.loadOnMobileOnce() }
     }
 
     /** Card → "Only on Wi-Fi": the question goes, the card says the areas wait for Wi-Fi. */

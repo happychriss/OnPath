@@ -33,6 +33,14 @@ class MapLoadOverlayTest {
     @Test fun loading() = shot(preparing, loading)
     @Test fun offlineAndFailed() = shot(offline, failed)
 
+    /** "Maps only on Wi-Fi": the modal offers "Load now over mobile data" once (owner Q6 2026-10-23); setting unchanged. */
+    @Test fun waitingForWifi() {
+        val wifi = MapLoadUi(MapLoadUi.Kind.WIFI, 0, null, regions = 2, bytes = 17L * 1_048_576)
+        assertTrue(wifi.paused)
+        assertTrue(wifi.line == MapLoadUi.WIFI_TEXT)
+        shot(wifi)
+    }
+
     /** Fresh install (field test 2026-10-21): map + routing data in one modal; only routing data missing. */
     @Test fun withRoutingData() {
         val mb = 1_048_576L
