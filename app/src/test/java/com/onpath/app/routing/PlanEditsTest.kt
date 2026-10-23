@@ -61,4 +61,21 @@ class PlanEditsTest {
     @Test fun rotateLoopNoOpOnNormalRouteOrStart() {
         assertEquals(r, PlanEdits.rotateLoop(r, 2)); assertEquals(loop, PlanEdits.rotateLoop(loop, 0))
     }
+
+    /**
+     * UX review 2026-10-23, problem 8 (owner Q3): the search card's "As start" moved a planned place to the front and
+     * kept all points, the map's "Start here" dropped the points before it. Now both are [PlanEdits.startHere].
+     */
+    @Test fun asStartIsStartHere() {
+        val p = GeoPoint(46.60, 11.10); val q = GeoPoint(46.62, 11.12); val r = GeoPoint(46.64, 11.14); val d = GeoPoint(46.66, 11.16)
+        assertEquals("a middle point drops the points before it", listOf(r, d), PlanEdits.startHere(listOf(p, q, r, d), 2))
+        assertEquals("the destination moves to the front", listOf(d, p, q, r), PlanEdits.startHere(listOf(p, q, r, d), 3))
+        assertEquals("the start stays", listOf(p, q, r), PlanEdits.startHere(listOf(p, q, r), 0))
+        assertEquals("a round trip rotates", listOf(q, r, p, q), PlanEdits.startHere(listOf(p, q, r, p), 1))
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val add = vm.substringAfter("fun addPlace(").substringBefore("\n    }")
+        assertTrue(add, add.contains("PlaceRole.START -> startAtPoint(idx)"))
+        val menu = vm.substringAfter("fun makeStartFromMenu(").substringBefore("\n    }")
+        assertTrue(menu, menu.contains("startAtPoint(index)"))
+    }
 }

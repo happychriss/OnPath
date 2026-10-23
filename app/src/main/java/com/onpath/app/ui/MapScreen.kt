@@ -98,6 +98,8 @@ fun MapScreen(
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
+                // Undo and Redo side by side as map buttons (owner Q8 2026-10-23); Redo only when there is something to redo
+                onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
                 large = mode == AppMode.NAVIGATE,
             )
         }
@@ -132,7 +134,8 @@ fun MapScreen(
         ModeSwitch(vm.mode,
             plan = {
                 PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation,
-                    onActivity = { showActivity = true }, onEndTour = { vm.askEndTour() },
+                    // during a tour the same check-and-switch sheet as Navigate (owner Q1 2026-10-23): Take new route / Keep
+                    onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
             },
             navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
@@ -176,6 +179,11 @@ fun MapScreen(
         MapOverlayHost(vm, controller, cameraTick,
             topPx = topInsetPx + with(density) { (hintTop + 4.dp).roundToPx() }, // below the search pill + ☰ row (+ strip)
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
+        // Plan during a tour: the activity check-and-switch sheet over the plan sheet (Navigate draws its own)
+        if (vm.mode == AppMode.PLAN) vm.activityCheck?.let {
+            androidx.activity.compose.BackHandler { vm.closeActivityCheck() }
+            ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck, Modifier.align(Alignment.BottomCenter))
+        }
     }
 
     if (showActivity) ActivityDialog(
@@ -193,7 +201,8 @@ fun MapScreen(
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
         null -> {}
     }
-    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = vm::endTour, onDelete = vm::endTourAndDelete,
+    // arrival Save goes the End tour way: a bus / car / lift found → the ride summary (UX review 2026-10-23, problem 2)
+    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })
     vm.selectedPoi?.let { poi ->
         // Read-only details (Navigate, or a shown track): no "add to route" here.
@@ -254,7 +263,7 @@ private fun PlanMode(
                 // (place card or shown track).
                 if (vm.cardPlace != null || vm.shown != null) rec?.let {
                     TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording,
-                        onContinue = vm::continueNavigation)
+                        onContinue = vm::continueNavigation, activity = vm.activity)
                 }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
@@ -284,7 +293,10 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     // otherwise the background progress; no second map card in the plan sheet
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
-    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp)
+    val density = LocalDensity.current
+    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
+        .padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)
+        .onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
     val stripOn = bg != null && !vm.searchOpen && notice == null
     LaunchedEffect(stripOn, notice != null) { vm.backgroundStripShown = stripOn || (notice != null && !vm.searchOpen) }
     if (notice != null && !vm.searchOpen) MapNoticeStrip(notice, cellCb, place)
@@ -299,7 +311,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
-            shown, isFollowed = vm.followName == shown.name, recording = rec != null,
+            shown, isFollowed = vm.followName == shown.name, recording = rec != null, activity = vm.activity,
             onFollow = {
                 if (rec == null) onStartNavigation()
                 else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }
@@ -330,7 +342,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     val lastRows = remember { arrayOfNulls<List<com.onpath.app.routing.PlanPointRow>>(1) }
     val rows = lastRows[0]?.takeIf { !legsReady } ?: vm.planPointRows().also { lastRows[0] = it }
-    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal))
+    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal,
+        onLoadOnMobile = vm::loadModalOnMobile))
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
@@ -339,7 +352,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText()),
         PlanCallbacks(
-            onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onRedo = vm::redoStep, onClear = vm::requestClear,
+            onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },

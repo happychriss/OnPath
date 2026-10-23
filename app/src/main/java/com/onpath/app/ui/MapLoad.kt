@@ -81,6 +81,8 @@ data class MapLoadUi(
     companion object {
         const val OFFLINE_TEXT = "No internet connection – the map will load as soon as you're online."
         const val WIFI_TEXT = "The map will load when you're on Wi-Fi (Settings: “Download maps only on Wi-Fi”)."
+        /** One-time load over mobile data while "Maps only on Wi-Fi" waits (modal and blue strip; setting unchanged). */
+        const val LOAD_ON_MOBILE = "Load now over mobile data"
 
         fun timeLeft(s: Int): String = when {
             s < 60 -> "Less than a minute left"
@@ -239,7 +241,11 @@ object MapLoadCancel {
     }
 }
 
-class MapLoadCallbacks(val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {})
+class MapLoadCallbacks(
+    val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {},
+    /** "Load now over mobile data" while it waits for Wi-Fi (once; the setting stays – owner Q6 2026-10-23). */
+    val onLoadOnMobile: () -> Unit = {},
+)
 
 /**
  * The modal over the map. [ui] null = nothing to wait for. No flash (owner rule): it appears only when the wait lasts
@@ -255,7 +261,7 @@ fun MapLoadModal(ui: MapLoadUi?, cb: MapLoadCallbacks) {
     fun acted(f: () -> Unit): () -> Unit = { gate.userActed(android.os.SystemClock.uptimeMillis()); f() }
     androidx.compose.ui.window.Dialog(onDismissRequest = {},
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
-        MapLoadPanel(shown, MapLoadCallbacks(acted(cb.onCancel), acted(cb.onRetry), acted(cb.onClose)))
+        MapLoadPanel(shown, MapLoadCallbacks(acted(cb.onCancel), acted(cb.onRetry), acted(cb.onClose), acted(cb.onLoadOnMobile)))
     }
 }
 
@@ -290,6 +296,9 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
                     if (ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Try again") }
                 } else {
                     TextButton(onClick = cb.onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+                    if (ui.kind == MapLoadUi.Kind.WIFI) TextButton(onClick = cb.onLoadOnMobile, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(MapLoadUi.LOAD_ON_MOBILE)
+                    }
                 }
             }
         }

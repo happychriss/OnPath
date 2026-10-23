@@ -138,6 +138,8 @@ fun TrackPanel(
     track: ShownTrack,
     isFollowed: Boolean,
     recording: Boolean,
+    /** The activity the track is navigated with (named on the button, UX review 2026-10-23 problem 5). */
+    activity: com.onpath.app.routing.Activity,
     onFollow: () -> Unit,
     onExport: () -> Unit,
     onClose: () -> Unit,
@@ -166,11 +168,15 @@ fun TrackPanel(
             }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-                Text(if (recording) "Navigate this track" else "Start navigation", maxLines = 1)
+                Text(trackFollowLabel(recording, activity), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
+
+/** "Start navigation · Hike" / "Navigate this track · MTB": the button names the activity it navigates with. */
+internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity): String =
+    (if (recording) "Navigate this track" else "Start navigation") + " · " + activity.navName
 
 /** Placeholder for previews/screenshot tests where MapLibre cannot render. */
 @Composable

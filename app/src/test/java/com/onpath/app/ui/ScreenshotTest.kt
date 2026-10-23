@@ -128,7 +128,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Route sheet ⋯ → Time details: slope bands, factors, result. */
+    /** Settings → Diagnostics → Developer tools → time estimate: slope bands, factors, result, formulas (owner 2026-10-23). */
     @Test fun timeDetails() = paparazzi.snapshot {
         OnPathTheme {
             TimeDetailsScreen(TimeDetailsUi(
@@ -141,7 +141,15 @@ class ScreenshotTest {
                         else -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 3, visibility = "bad")
                     })
                 }, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
-                "Average", 1.0), onBack = {})
+                "Average", 1.0, technical = true), onBack = {})
+        }
+    }
+
+    /** Route sheet ⋯ → Time details: only plain lines – moving time, with breaks, pace level (owner 2026-10-23). */
+    @Test fun timeDetailsPlain() = paparazzi.snapshot {
+        OnPathTheme {
+            TimeDetailsScreen(TimeDetailsUi(com.onpath.app.time.TimeBreakdown.of(routePts, Activity.HIKE,
+                com.onpath.app.time.Factors(1.0, 1.0, 1.0)), "Average", 1.0), onBack = {})
         }
     }
 
@@ -189,7 +197,7 @@ class ScreenshotTest {
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {})
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {})
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
@@ -284,7 +292,7 @@ class ScreenshotTest {
     /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
-            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
+            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
             PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
     }
@@ -308,7 +316,7 @@ class ScreenshotTest {
     @Test fun endTourConfirm() = paparazzi.snapshot {
         OnPathTheme {
             Frame {
-                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
+                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
             EndTourDialog({}, {}, {})
@@ -578,7 +586,7 @@ class ScreenshotTest {
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
-                isFollowed = false, recording = false, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
         }
     }
 
@@ -656,6 +664,14 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
     }
 
+    /** Interrupted recording at start: Continue · Delete · Save like End tour (UX review 2026-10-23, problem 2). */
+    @Test fun unfinishedTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+            UnfinishedDialog(tourList[1], {}, {}, {})
+        }
+    }
+
     /** After End tour → "Tour saved" → Delete: asks first, stays until answered. */
     @Test fun finishedTourDeleteAsk() = paparazzi.snapshot {
         OnPathTheme {
@@ -708,8 +724,9 @@ class ScreenshotTest {
         com.onpath.app.cells.CellWhy.PLANNED)
     private val mbB = 1_048_576L
     private fun cellCard(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, sizes: Map<com.onpath.app.cells.CellId, Long> = emptyMap(),
-                         job: com.onpath.app.cells.CellJob = cJob, declined: Boolean = false, available: Boolean = true) =
-        CellCards.build(job, states, sizes, available, wifiOnly = false, mobileDeclined = declined)
+                         job: com.onpath.app.cells.CellJob = cJob, declined: Boolean = false, available: Boolean = true,
+                         wifiOnly: Boolean = false) =
+        CellCards.build(job, states, sizes, available, wifiOnly = wifiOnly, mobileDeclined = declined)
 
     private fun planWithCard(n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) = planUi(n = n, r = r, size = size)
 
@@ -741,6 +758,14 @@ class ScreenshotTest {
         CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
                 cEast to com.onpath.app.cells.CellState.WaitingForWifi(9 * mbB), cNorth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB),
                 cSouth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)), sizes = mapOf(cOwn to 10 * mbB), job = job), planWithCard(n = 0), gps = GpsStatus.GOOD)
+    }
+
+    /** "Maps only on Wi-Fi" on: the strip says the areas wait and offers to load them once over mobile data (owner Q6). */
+    @Test fun cellCardWifiOnlyWaiting() = paparazzi.snapshot {
+        val job = com.onpath.app.cells.CellJob(listOf(cOwn, cEast, cNorth), cOwn, com.onpath.app.cells.CellWhy.HERE)
+        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
+                cEast to com.onpath.app.cells.CellState.WaitingForWifi(9 * mbB), cNorth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)),
+                sizes = mapOf(cOwn to 10 * mbB), job = job, wifiOnly = true), planWithCard(n = 0))
     }
 
     @Test fun cellCardOffline() = paparazzi.snapshot {

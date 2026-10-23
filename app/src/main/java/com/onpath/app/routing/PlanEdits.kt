@@ -26,6 +26,18 @@ object PlanEdits {
     fun isRoundTrip(w: List<GeoPoint>, sameM: Double = 15.0): Boolean =
         w.size >= 3 && Geo.distance(w.first(), w.last()) <= sameM
 
+    /**
+     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner Q3
+     * 2026-10-23): a middle point drops the points before it ([startAt]), a round trip rotates the loop ([rotateLoop]),
+     * the destination (not in the point menu) moves to the front. The start itself: unchanged.
+     */
+    fun startHere(w: List<GeoPoint>, index: Int): List<GeoPoint> = when {
+        index !in w.indices || index == 0 -> w
+        isRoundTrip(w) -> rotateLoop(w, index)
+        index < w.lastIndex -> startAt(w, index)
+        else -> move(w, index, 0)
+    }
+
     /** "Start here": drop the points before [index]; the rest of the route stays as it is. */
     fun startAt(w: List<GeoPoint>, index: Int): List<GeoPoint> =
         if (index <= 0 || index >= w.lastIndex) w else w.subList(index, w.size).toList()

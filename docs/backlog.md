@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] text + UX review fixes (owner answers 2026-10-23, see Next) – since 2026-10-23
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -23,7 +22,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (Undo only); Q5 ride summary also on arrival Save and on the interrupted-tour Save (when a ride was found); Q6 Wi-Fi
   only: a one-time "Load now over mobile data" in the strip / loading window; Q7 after following a track, an edited plan
   makes "Continue" follow the plan (track drawn grey); Q8 Undo and Redo both as map buttons (Redo only when possible).
-  All answered – being built (cloud).
+  Built and merged 2026-10-23 (cloud) – see Done.
 - **Battery batch 2 – rest** (`docs/design/battery-audit.md`): slower GPS at rest is done (0.10.0, `RestWatch`); open:
   slower GPS with the screen off, frozen track + tail. The GPS slow-down rules are under discussion with the owner
   (2026-10-23). No battery % in the tour summary (owner decision A10).
@@ -91,6 +90,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Text + UX review fixes (cloud, 2026-10-23, not released yet):** owner naming (Destination, Stop, Track, activity
+  names, Direction of travel, End tour; routing data never named), plain words, 5 small text bugs; Cancel undoes only
+  what started the routing run (`PlanStatus.Cause`); ride summary on every tour end, Unfinished tour = Continue ·
+  Delete · Save; activity change in Plan during a tour = check sheet; edited plan replaces a followed track; Clear route
+  during a tour; search "As start" = map "Start here"; Wi-Fi only → one-time "Load now over mobile data"; message bar
+  below the blue strip; Undo + Redo map buttons; "Continue · <activity>" (full width, Pause / End tour below); Time
+  details plain, formulas in Diagnostics → Developer tools; loading window % follows the time (`LoadSmoother`).
 - **After 0.10.0 (cloud, 2026-10-23, not released yet):** no technical error texts in the app (`debug/UserText`, source
   scan `UserTextRuleTest`; details only in Settings → Diagnostics); map loading goes on with the screen off / app left
   (`cells/MapLoadService`, quiet progress notification, ends by itself; `MapCells.loadInBackground`); one blue strip at

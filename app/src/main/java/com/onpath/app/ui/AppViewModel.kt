@@ -571,11 +571,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p)) }
     }
 
-    /** Card → "Yes" to mobile data: the waiting cells of this card load now. */
+    /**
+     * Strip → "Load now over mobile data" (owner Q6 2026-10-23): the waiting cells of this card load now, once – the
+     * "Maps only on Wi-Fi" setting stays.
+     */
     fun cellCardMobileYes() {
         val job = cellJob ?: return
         val waiting = cells.waitingForMobileApproval().map { it.first }.filter { it in job.cells }
-        cells.approveMobile(waiting)
+        Problems.trace("cells", "Load now over mobile data: ${waiting.size} waiting region(s) of the card")
+        safeCells("mobile") { cells.approveMobile(waiting) }
+    }
+
+    /**
+     * Loading modal → "Load now over mobile data" (owner Q6 2026-10-23): what the modal waits for (map regions and
+     * routing data) loads once over mobile data; the setting stays.
+     */
+    fun loadModalOnMobile() {
+        val waiting = cells.waitingForMobileApproval().map { it.first }.filter { it in loadModalFor }
+        Problems.trace("cells", "Load now over mobile data: ${waiting.size} waiting region(s) of the loading modal" +
+            if (routingModal) " + routing data" else "")
+        if (waiting.isNotEmpty()) safeCells("mobile") { cells.approveMobile(waiting) }
+        if (routingModal) safeRouting("mobile") { routingData.loadOnMobileOnce() }
     }
 
     /** Card → "Only on Wi-Fi": the question goes, the card says the areas wait for Wi-Fi. */
@@ -744,6 +760,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
+    /** Height of that strip in dp (measured); the message bar goes below it ([MessagePlacement]). */
+    var backgroundStripHeightDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
@@ -960,6 +978,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
     var notRouted by mutableStateOf<NotRouted?>(null)
         private set
+    /** What the next [recalc] is for (set just before it; UX review 2026-10-23, problem 1): Cancel undoes only that. */
+    private var nextCause: PlanStatus.Cause = PlanStatus.Cause.Other
+    /** What the current / last routing run (or long-route question) was started by. */
+    private var runCause: PlanStatus.Cause = PlanStatus.Cause.Other
 
 
     // --- saved state of the plan (menus / Manage routes) ---
@@ -1097,6 +1119,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var guidanceEndedByEmptyPlan = false
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
+    /** The plan's points when a track was taken to follow ([PlanGuidance.planReplacesTrack]); null = no track / unknown. */
+    private var planAtTrackFollow: List<GeoPoint>? = null
     /** "Continue navigation" re-plans: follow the next route result. */
     private var followNextRoute = false
     /** The plan's points were edited (add, delete, round trip, reverse, undo …): a running tour follows the result. */
@@ -1405,16 +1429,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- activity ----------------
 
-    fun selectActivity(a: Activity) {
+    /**
+     * The activity chosen in the picker: the route is planned again; Cancel while it is calculated puts the previous
+     * activity back. [userChange] false: taken over from elsewhere (the service switched, the switch sheet) – Cancel
+     * then only stops.
+     */
+    fun selectActivity(a: Activity, userChange: Boolean = true) {
         noteActivityChange()
+        nextCause = if (userChange) activityCause() else PlanStatus.Cause.Other
         activity = a; prefs.activity = a; recalc()
     }
+
+    /** Cause of an activity / T level change; a change still being calculated keeps the activity from before it. */
+    private fun activityCause(): PlanStatus.Cause =
+        (runCause as? PlanStatus.Cause.ActivityChange)?.takeIf { routing || longRouteAsk != null }
+            ?: PlanStatus.Cause.ActivityChange(activity, sac)
 
     /** T level from the activity picker (Hike): remembered, the route is planned again at once (owner 2026-10-22). */
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
-        if (activity == Activity.HIKE) noteActivityChange()
+        if (activity == Activity.HIKE) { noteActivityChange(); nextCause = activityCause() }
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
     }
 
@@ -1447,6 +1482,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
         planChanged()
         endGuidanceIfPlanEmpty()
+        nextCause = PlanStatus.Cause.PointEdit
         recalc()
     }
 
@@ -1513,7 +1549,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Adds a held point where it most likely belongs (WaypointInsertion, F-PLAN-13), silently: the hold's vibration and
-     * the new line confirm it; a wrong guess is fixed in the point menu ("End route here") or with Undo.
+     * the new line confirm it; a wrong guess is fixed with Undo or by dragging ≡ in the Points list.
      * @param lineSnapM "on the line" distance, ~24 dp in metres at the current zoom.
      */
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
@@ -1612,16 +1648,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "POI menu: \"${poi.name ?: poi.kind}\" added to the route (plan $before → ${waypoints.size} points)")
     }
 
-    /** Point menu → "Make starting point" (not on the start). */
     /** Point menu → "Start here" (drops earlier points) / round trip "Start & finish here" (rotates the loop). */
     fun makeStartFromMenu() {
         val index = menuAction("Start here") ?: return
-        set(if (isRoundTrip()) PlanEdits.rotateLoop(waypoints, index) else PlanEdits.startAt(waypoints, index))
+        startAtPoint(index)
+    }
+
+    /**
+     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner Q3
+     * 2026-10-23: the same word does the same, [PlanEdits.startHere]); one Undo step brings the plan back.
+     */
+    private fun startAtPoint(index: Int) {
+        val w = waypoints.toList()
+        val next = PlanEdits.startHere(w, index)
+        if (next != w) set(next)
     }
 
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
-
-    /** Point menu → "End route here" (middle points only): that point becomes the destination. */
 
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
@@ -1796,7 +1839,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePlaceCard()
         rememberPlaceName(p, name)
         if (idx != null) {
-            when (role) { PlaceRole.START -> makeStart(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
+            // "As start" = the point menu's "Start here" (owner Q3 2026-10-23); "As destination" moves it to the end
+            when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
             return
         }
         pinned += p; prefs.planPinned = pinned
@@ -1940,7 +1984,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     // ---------------- end shared places ----------------
 
-    fun makeStart(index: Int) { if (index > 0 && index in waypoints.indices) set(PlanEdits.move(waypoints, index, 0)) }
     fun makeDestination(index: Int) {
         if (index in waypoints.indices && index != waypoints.lastIndex) set(PlanEdits.move(waypoints, index, waypoints.size - 1))
     }
@@ -1964,6 +2007,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planEditPending = true
         planChanged()
         endGuidanceIfPlanEmpty()
+        nextCause = if (what == "Undo") PlanStatus.Cause.Undo else PlanStatus.Cause.Redo
         recalc()
     }
 
@@ -1991,13 +2035,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
-        if (plan) { longRouteOk = waypoints.toList(); recalc(); return }
-        // the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan restored
-        // at start or loaded): the points stay without a route – never "Calculating…" with nothing running (0.9.3 bug)
-        when (PlanStatus.onCancel(canUndo)) {
+        if (plan) { longRouteOk = waypoints.toList(); nextCause = runCause; recalc(); return }
+        // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
+        // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
+        // with nothing running (0.9.3 bug)
+        cancelRun(NotRouted.LONG)
+    }
+
+    /**
+     * Cancel of the long-route question or of a running calculation (UX review 2026-10-23, problem 1): a point edit is
+     * undone (Undo / Redo the other way), an activity / T level change gets the previous activity back, anything else
+     * just stops and leaves the points unrouted.
+     */
+    private fun cancelRun(why: NotRouted) {
+        val cause = runCause
+        runCause = PlanStatus.Cause.Other
+        val what = PlanStatus.onCancel(cause, canUndo, canRedo)
+        Problems.trace("routing", "Cancel ($why) of a run for ${cause::class.simpleName}: ${what.name.lowercase()}")
+        leaveUnrouted(why)
+        when (what) {
             PlanStatus.OnCancel.UNDO -> undoStep()
-            PlanStatus.OnCancel.KEEP_POINTS -> leaveUnrouted(NotRouted.LONG)
+            PlanStatus.OnCancel.REDO -> redoStep()
+            PlanStatus.OnCancel.RESTORE_ACTIVITY -> (cause as? PlanStatus.Cause.ActivityChange)?.let { restoreActivity(it) }
+            PlanStatus.OnCancel.KEEP_POINTS -> Unit
         }
+    }
+
+    /** The activity and T level from before the cancelled change; the route is planned for them again (no undo step). */
+    private fun restoreActivity(c: PlanStatus.Cause.ActivityChange) {
+        activity = c.activity; prefs.activity = c.activity
+        sac = c.sac; prefs.sac = c.sac
+        routeChangedNotice = null; activityBefore = null; activityRecalc = false
+        nextCause = PlanStatus.Cause.Other
+        recalc()
     }
 
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
@@ -2019,17 +2089,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Cancel while a route is calculated (owner 2026-10-22): the router stops at once and the last change is taken back
-     * – the plan is as before (Redo brings the change again). Nothing to take back: the points stay, without a route.
+     * Cancel while a route is calculated (owner 2026-10-22, 2026-10-23): the router stops at once and the change that
+     * started this calculation is taken back ([cancelRun]). Nothing to take back: the points stay, without a route.
      */
     fun cancelRouting() {
         if (!routing) return
         Problems.info("routing", "Route calculation cancelled by the user")
-        leaveUnrouted(NotRouted.STOPPED)
-        if (PlanStatus.onCancel(canUndo) == PlanStatus.OnCancel.UNDO) undoStep()
+        cancelRun(NotRouted.STOPPED)
     }
 
     private fun recalc() {
+        runCause = nextCause; nextCause = PlanStatus.Cause.Other
         routeJob?.cancel(); routeJob = null
         val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
         highlight = null; spotLine = null; spotsOpen = false
@@ -2131,12 +2201,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
     var timeDetails by mutableStateOf<TimeDetailsUi?>(null)
 
-    fun openTimeDetails() {
+    /** [technical]: Settings → Diagnostics → Developer tools (formulas, tables); else the plain lines of sheet ⋯. */
+    fun openTimeDetails(technical: Boolean = false) {
         val r = route ?: return
         val pace = com.onpath.app.time.TimeEstimate.pace(activity, settings)
         timeDetails = TimeDetailsUi(
             com.onpath.app.time.TimeBreakdown.of(r.points, activity, planFactors()),
-            pace.label, pace.factor,
+            pace.label, pace.factor, technical,
         )
     }
 
@@ -2550,7 +2621,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var straightAsk by mutableStateOf(false)
 
     private fun planHasStraightLegs(): Boolean =
-        !followIsTrack && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
+        (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
+
+    /** A followed track and a plan edited since: Continue follows the plan, the track is drawn grey (owner Q7). */
+    private fun planReplacesTrack(): Boolean = PlanGuidance.planReplacesTrack(followIsTrack, waypoints.toList(), planAtTrackFollow)
 
     /** The user wants to navigate the plan although parts of it are straight lines. */
     fun straightConfirmed() { straightAsk = false; startNavigation(force = true) }
@@ -2562,7 +2636,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
      */
     fun continueNavigation(force: Boolean = false) {
-        if (!followIsTrack && waypoints.size >= 2) {
+        if ((!followIsTrack || planReplacesTrack()) && waypoints.size >= 2) {
             val planLine = if (routing) null else route?.points
             // an edited plan with straight legs would become the navigated line: ask first (same as Start)
             if (!force && planLine != null && !planFollowed(planLine) && planHasStraightLegs()) { straightAsk = true; return }
@@ -2587,7 +2661,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val planLine = route?.points
         return when {
             shown != null -> com.onpath.app.map.MapController.TrackLook.TRACK
-            mode == AppMode.PLAN && !followIsTrack && waypoints.size >= 2 && planLine != null && !planFollowed(planLine) ->
+            mode == AppMode.PLAN && (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && planLine != null &&
+                !planFollowed(planLine) ->
                 com.onpath.app.map.MapController.TrackLook.FOLLOW_BEHIND
             else -> com.onpath.app.map.MapController.TrackLook.FOLLOW
         }
@@ -2705,7 +2780,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rest = checkRest
         closeActivityCheck()
         if (st == ActivityRowState.Plain || session == null) {
-            selectActivity(a)
+            selectActivity(a, userChange = false)
             recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
                 runCatching { db.updateActivity(id, a.name, sacFor(a)) }
                     .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
@@ -2724,6 +2799,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         NavSessionStore(File(app.filesDir, com.onpath.app.navigation.ActivityCheck.PROPOSAL_FILE)).save(proposed)
         RecordingService.send(app, RecordingService.ACTION_PROPOSE_SWITCH) { putExtra(RecordingService.EXTRA_TIME_S, fit.timeS) }
+        // chosen in Plan during the tour: the Take new route / Keep question is asked in Navigate
+        if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)
     }
 
     /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
@@ -2741,7 +2818,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (a != activity) {
             followOriginal = s.original
             adoptPlanBaseline = true
-            selectActivity(a)
+            selectActivity(a, userChange = false)
         }
     }
 
@@ -2757,9 +2834,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * "End tour" tapped: rides in the track so far (docs/design/vehicle-detection.md) → the summary with four choices,
      * otherwise the short Cancel · Delete · Save question. Detection failing = the short question (reported).
+     * [saveIfNoRides]: Save was already chosen ("You have arrived" → Save, UX review 2026-10-23 problem 2) – with
+     * rides the summary shows, without them the tour is saved at once.
      */
-    fun askEndTour() {
-        val id = recState.value?.tourId ?: run { endAsk = EndAsk.Plain; return }
+    fun askEndTour(saveIfNoRides: Boolean = false) {
+        arrivalAsk = false
+        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else endAsk = EndAsk.Plain; return }
         val navActivity = recState.value?.nav?.session?.activity
         viewModelScope.launch {
             val s = withContext(Dispatchers.IO) {
@@ -2771,7 +2851,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
             }
             if (recState.value?.tourId != id) return@launch // ended meanwhile (notification, arrival)
-            endAsk = s?.let { EndAsk.Rides(id, it) } ?: EndAsk.Plain
+            when {
+                s != null -> endAsk = EndAsk.Rides(id, s)
+                saveIfNoRides -> endTour()
+                else -> endAsk = EndAsk.Plain
+            }
         }
     }
 
@@ -2864,6 +2948,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val s = shown ?: return
         setFollow(s.name, s.points, isTrack = true)
         followFromPlan = false
+        planAtTrackFollow = waypoints.toList()
     }
 
     /**
@@ -2883,6 +2968,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followOriginal = points
         planBaseline = null
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
+        planAtTrackFollow = null
         arrivalGate.reset()
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
             putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
@@ -2893,6 +2979,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followFromPlan = false
         guidanceEndedByEmptyPlan = false
         followIsTrack = false; prefs.followIsTrack = false
+        planAtTrackFollow = null
         arrivalGate.reset()
         prefs.saveFollow("", null)
         navStore.save(null)
@@ -2919,15 +3006,75 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun saveUnfinished(t: Tour) {
+    /** "Unfinished tour" → Save with a bus / car / lift found: the ride summary for it (null = none). */
+    var unfinishedRides by mutableStateOf<Pair<Tour, com.onpath.app.rides.RideView.Summary>?>(null)
+
+    /**
+     * "Unfinished tour" → Save (UX review 2026-10-23, problem 2): like End tour – rides found → the summary with the four
+     * choices ([unfinishedRides]), else saved at once. Detection failing = saved as recorded (reported).
+     */
+    fun askSaveUnfinished(t: Tour) {
         unfinished = null
+        if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
+        viewModelScope.launch {
+            val s = withContext(Dispatchers.IO) {
+                runCatching {
+                    val segs = db.loadSegments(t.id)
+                    // expected: unknown activity name → the current one
+                    val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+                    com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
+                }.onFailure { Problems.warn("rides", "Ride check of the unfinished tour failed – saved without it", it) }.getOrNull()
+            }
+            if (s != null) unfinishedRides = t to s else saveUnfinished(t)
+        }
+    }
+
+    /** Ride summary of the unfinished tour → Cancel: back to its question (Continue · Delete · Save). */
+    fun backToUnfinished() { unfinishedRides?.let { unfinished = it.first }; unfinishedRides = null }
+
+    /**
+     * Saves the interrupted tour; [choice] from the ride summary is applied like at the end of a recording
+     * (RideApply.finish – without a choice the rides are only marked, Edit rides can change it later).
+     */
+    fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
+        val rides = unfinishedRides?.second?.rides
+        unfinished = null; unfinishedRides = null
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+            val store = com.onpath.app.rides.TourDbRides(db)
+            if (choice != null && rides != null) runCatching { com.onpath.app.rides.RideApply.choose(store, t.id, rides, choice) }
+                .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
+            // expected: unknown activity name → the current one
+            val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+            val parts = com.onpath.app.rides.RideApply.finish(store, t.id,
+                com.onpath.app.rides.TourStats(t.distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
             Backups.tourChanged(getApplication(), t.id)
-            withContext(Dispatchers.Main) { message = "Track saved to My routes." }
+            parts.forEach { Backups.tourChanged(getApplication(), it) }
+            withContext(Dispatchers.Main) { message = "Track saved to My routes."; refreshTours() }
+        }
+    }
+
+    /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
+    fun deleteUnfinished(t: Tour) {
+        unfinished = null; unfinishedRides = null
+        if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
+        Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")
+        enter(AppMode.PLAN)
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                // "done" first: restored from the recycle bin it is a normal tour, never "unfinished" again
+                db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+                db.setDeleted(t.id, System.currentTimeMillis())
+            }.onFailure { Problems.error("db", "The unfinished tour could not be moved to the recycle bin", it) }.getOrDefault(false)
+            if (ok) Backups.tourChanged(getApplication(), t.id)
+            withContext(Dispatchers.Main) {
+                message = if (ok) "Track moved to the recycle bin (My routes → ⋮ → Recycle bin)."
+                    else "The track could not be deleted – it is in My routes, delete it there."
+                refreshTours()
+            }
         }
     }
 
@@ -2966,6 +3113,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
+                // a recorded tour brings its activity (UX review 2026-10-23, problem 5) – not during a tour (the
+                // followed route keeps its activity); not stored: the current one stays
+                // expected: unknown/old activity name keeps the current activity
+                val tourActivity = t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull() }
+                if (recState.value == null && t.kind == com.onpath.app.data.TourKind.RECORDED && tourActivity != null &&
+                    (tourActivity != activity || (tourActivity == Activity.HIKE && t.sac != sac))) {
+                    if (tourActivity == Activity.HIKE) { sac = t.sac.coerceIn(1, 5); prefs.sac = sac }
+                    selectActivity(tourActivity, userChange = false)
+                }
                 // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
                 val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
                 val kept = lines.filter { it.part == com.onpath.app.rides.RideView.Part.KEPT }.map { l -> l.points.map { it.toGeo() } }
@@ -3070,6 +3226,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** First start with an empty database: "Earlier tours found? Restore from Documents/OnPath" (asked once). */
     var restoreOffer by mutableStateOf(false)
+    /** The system's location permission request is open (MainActivity); the restore offer waits ([RestoreOfferRule]). */
+    var locationAsking by mutableStateOf(false)
+    /** The loading modal waits for the map / routing data of the user's area. */
+    val loadModalOpen: Boolean get() = loadModalFor.isNotEmpty() || routingModal
     /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
     var restoreProgress by mutableStateOf<String?>(null)
         private set

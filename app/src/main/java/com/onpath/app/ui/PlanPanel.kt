@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
@@ -85,7 +84,6 @@ import com.onpath.app.routing.RouteSummary
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
 class PlanCallbacks(
     val onUndo: () -> Unit = {},
-    val onRedo: () -> Unit = {},
     val onClear: () -> Unit = {},
     /** Primary action: follow the route (free recording is in the ⋮ menu). */
     val onStartNavigation: () -> Unit = {},
@@ -159,7 +157,7 @@ data class PlanUi(
     val size: PlanSize = PlanSize.COMPACT,
     /** Hiking level (SAC T1–T5): the activity chip shows "Hike · T2". */
     val sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
-    /** A tour records: the primary action is "Continue navigation" instead of Start; Clear is disabled. */
+    /** A tour records: the primary action is "Continue navigation" instead of Start; Clear ends the route guidance. */
     val tourRunning: Boolean = false,
     /** Name the plan was last saved or loaded as (null = never). */
     val savedName: String? = null,
@@ -225,10 +223,10 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val full = ui.size == PlanSize.FULL
     // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
     ui.tour?.let { t ->
-        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour)
+        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
-    // Line 1: activity · time + distance · ⋯ (Undo is with the map buttons, Redo in ⋯).
+    // Line 1: activity · time + distance · ⋯ (Undo and Redo are map buttons, owner Q8 2026-10-23).
     Row(verticalAlignment = Alignment.CenterVertically) {
         ActivityButton(ui.activity, ui.sac, cb.onActivity)
         Spacer(Modifier.width(8.dp))
@@ -440,15 +438,13 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 @Composable
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    // About this route: redo, save / export, time details, clear.
-    MenuItem(Icons.AutoMirrored.Filled.Redo, "Redo", enabled = ui.canRedo, onClick = run(cb.onRedo))
-    HorizontalDivider()
+    // About this route: save / export, time details, clear.
     MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
     MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
     HorizontalDivider()
-    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
+    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount),
         onClick = run(cb.onClear))
 }
 

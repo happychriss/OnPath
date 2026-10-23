@@ -59,12 +59,12 @@ import com.onpath.app.data.Format
 @Composable
 fun TourRunningBar(
     distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
-    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {},
+    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {}, activity: com.onpath.app.routing.Activity? = null,
 ) {
     Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
-            TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd)
+            TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd, activity)
         }
     }
 }
@@ -121,14 +121,20 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
     EndTourDialog(onSave, onDelete, onKeepGoing, title = "You have arrived – end tour?", cancelLabel = "Keep going")
 
 
+/** "Continue · Trekking bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
+internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
+    if (activity == null) "Continue" else "Continue · ${activity.navName}"
+
 /**
- * Status line + the three tour buttons in one row: Continue (filled; also resumes), Pause / Resume (tonal, icon only),
- * End tour (outlined red, asks first). Used at the top of the plan sheet during a tour and in the stand-alone tour card.
+ * Status line + the three tour buttons: Continue (filled, full width, names the activity; also resumes), then Pause /
+ * Resume (tonal) and End (outlined red, asks first) side by side. Used at the top of the plan sheet during a tour and in
+ * the stand-alone tour card.
  */
 @Composable
 fun TourControls(
     distanceM: Double, elapsedS: Long, paused: Boolean,
     onPause: (Boolean) -> Unit, onContinue: () -> Unit, onEnd: () -> Unit,
+    activity: com.onpath.app.routing.Activity? = null,
 ) {
     val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
     Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
@@ -137,18 +143,19 @@ fun TourControls(
         Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
     }
     Spacer(Modifier.height(8.dp))
+    Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp)) {
+        Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+        Text(continueLabel(activity), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+    Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.weight(1.3f).heightIn(min = 48.dp),
+        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text("Continue", maxLines = 1)
+            Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+            Text(if (paused) "Resume" else "Pause", maxLines = 1)
         }
-        // Pause is icon-only (owner Q10, 2026-10-23) so "End tour" fits beside it at phone width
-        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(0.6f).heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, if (paused) "Resume" else "Pause", Modifier.size(20.dp))
-        }
-        OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1.3f).heightIn(min = 48.dp),
+        OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
             Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
             Text("End tour", color = MaterialTheme.colorScheme.error, maxLines = 1)
@@ -157,10 +164,6 @@ fun TourControls(
 }
 
 
-/**
- * A plan far longer than a day (owner 2026-10-22: a point in another country by mistake). Asked before anything is
- * routed or loaded. Cancel takes the last change back.
- */
 /**
  * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour. Stays until
  * answered (no outside tap / back dismiss – never self-dismissing).
@@ -179,16 +182,22 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
     )
 }
 
+/**
+ * A plan far longer than a day (owner 2026-10-22: a point in another country by mistake). Asked before anything is
+ * routed or loaded. Cancel takes back the change that made it so long (AppViewModel.cancelRun). Stays until a button
+ * is tapped (UX review 2026-10-23, problem 9): an outside tap or Back must not undo anything.
+ */
 @Composable
 fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {
     val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
     AlertDialog(
-        onDismissRequest = onCancel,
+        onDismissRequest = {},
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text("This route is very long") },
         text = { Text("It would take ${com.onpath.app.routing.LongRoute.describe(seconds)} $how. Calculating it and " +
             "loading its maps takes long. Plan it anyway?") },
         confirmButton = { TextButton(onClick = onPlan) { Text("Plan anyway") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )
 }

@@ -198,6 +198,15 @@ class RoutingDataLoader(
         return drop
     }
 
+    /**
+     * "Load now over mobile data" while "Maps only on Wi-Fi" holds the download (owner Q6 2026-10-23): the tiles wanted
+     * now load once over mobile data; the setting stays (the override ends when the queue is empty or cancelled).
+     */
+    fun loadOnMobileOnce() {
+        wifiOverride = true
+        retry(force = true)
+    }
+
     /** Network back / "Try again": continue the wanted tiles. */
     fun retry(force: Boolean = false, now: Long = System.currentTimeMillis()) {
         // a failure (server, storage) is tried again on a network change at most every RETRY_AFTER_FAIL_MS –
