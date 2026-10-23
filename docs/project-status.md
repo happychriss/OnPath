@@ -5,8 +5,31 @@ Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-feat
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
-- **laptop, 2026-10-23 late:** two activities at start investigated (`36bb950`: relevance fix + screen lifecycle trace).
-  Root trigger not proven yet – next step and options in `docs/backlog.md` "Next" (first item).
+- **laptop, 2026-10-23 evening/late – handover to the cloud (start 2026-10-24).** All on `main`, **not released**
+  (latest release 0.10.1). Owner's Pixel has a debug build of `a5132f1` (installed 22:51, no wipe); the 5 test map
+  areas from the reload investigation (Würzburg, Kassel, Fulda) may still be on it – owner cleans up.
+  - **Laptop TODO 1–6 from the 0.10.1 field test – done:** (1) new map areas only after a restart: two screens at
+    start cleared each other's reload refs → per-host state (`ui/MapReload.kt`, `a5132f1`); leaving the app ends a
+    stuck gesture; (2) "0 %" strip = server still preparing → time-based % (`a5132f1`); (3) old route name on a new
+    plan → `RouteRules.linkedToSaved` (`f969c9a`); (4) "intensiū" is a real OSM name, "Unterstand" = shelter label – no
+    bug; (5) churches/chapels shown by default, others were already (`f969c9a`); (6) POIs swapping while zooming →
+    fixed priority `pr` from `extract_pois.py`, cell schema 4 (server serves s3 while rebuilding, `73f2de4`) and icon
+    / name in separate layers, all icons placed first (`4af985a`).
+  - **Loading chip** under ☰ with place names ("⬇ Bad Waldsee +1 · 34 %", `ui/LoadNames.kt`, `map/OverviewTowns.kt`,
+    `79fb952`); routing data never named, its MB join the map line (`096e08c`).
+  - **Two screens at start** (`36bb950`, `95c7be8`): only on the first start after an install; relevance fix +
+    screen lifecycle trace. Next step: backlog "Next" (read "Screen #" lines after the next install, then a guard).
+  - **README rewritten** (factual, usability first, fair dated Komoot comparison, call for testers);
+    **Discussions on**, tester thread https://github.com/happychriss/OnPath/discussions/1 (owner pins it).
+  - **Design notes:** `docs/design/map-access.md` (map server access without registration – decide before public
+    launch); `docs/design/web-planner.md` (**cloud TODO, start 2026-10-24**, see backlog "Next").
+  - **Bilingual EN + DE coming soon** (owner) – no single-text language changes until then (backlog).
+  - **In progress on the laptop when this was written:** offline search index per map area + old index answers while
+    rebuilding (field: 129k entries rebuilt in 59 s after each map change, no local results meanwhile). The laptop
+    agent pushes to `main` when green and adds a Done line to the backlog – check `git log` / backlog first.
+  - **Next for the cloud:** web planner (ask the owner the purpose first, then the two spikes); a release 0.10.2 with
+    the above once the search index work is in (owner wants the reload + POI fixes on the phone; release flow in
+    CLAUDE.md); after it, check the "Screen #" trace on the phone and the POI look at Bad Waldsee.
 - **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
   colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
   up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers
