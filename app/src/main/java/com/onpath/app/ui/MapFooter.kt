@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -114,6 +115,8 @@ fun MapControls(
     peeking: Boolean = false,
     /** Plan: undo the last edit (shown only when there is something to undo). */
     onUndo: (() -> Unit)? = null,
+    /** Plan: redo the last undone edit – shown only when there is something to redo (owner Q8 2026-10-23). */
+    onRedo: (() -> Unit)? = null,
     large: Boolean = false,
 ) {
     val size = if (large) MAP_FAB_LARGE else MAP_FAB
@@ -124,6 +127,12 @@ fun MapControls(
             Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = "Undo" },
                 contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+            }
+        }
+        if (onRedo != null) add {
+            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onRedo).semantics { contentDescription = "Redo" },
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Filled.Redo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
             }
         }
         add { LocateControl(gps, following, onLocate, size) }
