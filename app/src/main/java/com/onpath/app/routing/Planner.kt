@@ -2,6 +2,7 @@ package com.onpath.app.routing
 
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
+import com.onpath.app.debug.UserText
 
 /** One leg of a planned route; [straight] = routing failed, drawn dashed (R-12/R-13). */
 data class PlannedLeg(val points: List<GeoPoint>, val straight: Boolean)
@@ -114,12 +115,12 @@ class Planner(
                 val d = Geo.distance(waypoints[0], waypoints[1])
                 return PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
                     Geo.estimateSeconds(d, 0.0, 0.0, activity),
-                    "${e.message ?: "No route found."} Shown as a straight dashed line. Try moving the point or changing the activity.")
+                    "${UserText.of(e, "No route found.")} Shown as a straight dashed line. Try moving the point or changing the activity.")
             }
             // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
             // plan up to 120 s) – straight lines at once, the user adds points or tries again.
             if (e is RoutingException && e.timedOut) return straight(waypoints, activity,
-                "${e.message ?: "Route calculation took too long."} Shown as straight dashed lines.")
+                "${UserText.of(e, "Route calculation took too long.")} Shown as straight dashed lines.")
             // otherwise fall through to per-leg routing
         }
         var dist = 0.0; var up = 0.0; var down = 0.0; var time = 0.0
@@ -144,7 +145,7 @@ class Planner(
                 stopIfCancelled()
                 // expected: RoutingException = no route for this leg (shown as a straight dashed line)
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
-                if (firstError == null) firstError = (e.message ?: "No route found.") .let {
+                if (firstError == null) firstError = UserText.of(e, "No route found.").let {
                     "Leg ${i + offset}→${i + offset + 1}: $it Shown as a straight dashed line. Try moving the point or changing the activity."
                 }
             }

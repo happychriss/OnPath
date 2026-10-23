@@ -90,7 +90,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             } catch (e: Exception) {
                 // expected: RoutingException = no way to this candidate; anything else is an engine bug
                 if (e !is RoutingException) Problems.error("routing", "Re-route candidate request threw unexpectedly", e)
-                val msg = e.message ?: "No route found"
+                val msg = com.onpath.app.debug.UserText.of(e, "No route found")
                 if (firstError == null) firstError = msg
                 if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, msg, clock() - t0)
                 // the position itself has no data / no way nearby: the other candidates fail the same way

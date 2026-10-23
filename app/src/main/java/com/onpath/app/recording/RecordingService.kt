@@ -527,7 +527,7 @@ class RecordingService : Service() {
                     Rerouter(eng).reroute(job.request, cancel)
                 } catch (t: Throwable) {
                     Problems.error("navigation", "Re-route threw unexpectedly; reported as unavailable", t)
-                    Rerouter.Failed(Rerouter.Reason.UNAVAILABLE, t.message ?: t.javaClass.simpleName, 0)
+                    Rerouter.Failed(Rerouter.Reason.UNAVAILABLE, "Re-route failed unexpectedly (details in the problem log)", 0)
                 }
             }
             Log.i("OnPath", "reroute #${job.id}: " + when (out) {

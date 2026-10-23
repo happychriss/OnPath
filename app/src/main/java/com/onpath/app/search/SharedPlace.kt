@@ -326,7 +326,7 @@ class ShortLinkResolver(
             return Result(lastInfo, "too many redirects")
         } catch (e: Exception) {
             Problems.info("search", "Shared map link could not be opened (offline?)", e)
-            return Result(lastInfo, "network: ${e.javaClass.simpleName}")
+            return Result(lastInfo, "network error (see the problem log)")
         }
     }
 

@@ -88,7 +88,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException("Routing engine could not be loaded.")
         } catch (e: Exception) {
             Problems.error("routing", "Routing threw unexpectedly", e)
-            throw RoutingException("Routing failed: ${e.message ?: e.javaClass.simpleName}")
+            throw RoutingException(UNEXPECTED)
         }
 
     private fun cacheKey(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): CacheKey {
@@ -143,7 +143,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: Exception) {
             Problems.warn("routing", "BRouter threw an exception; shown to the user as a routing error", e)
-            throw RoutingException(describeError(e.message ?: e.toString(), activity, sacLimit, timeoutMs))
+            throw RoutingException(describeError(e.toString(), activity, sacLimit, timeoutMs))
         }
 
         return toResult(track, waypoints, activity, matchedPoints(track, nodes))
@@ -276,7 +276,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw e
         } catch (e: Exception) {
             Problems.error("routing", "Routing profiles could not be installed", e)
-            throw RoutingException("Cannot install routing profiles: ${e.message}")
+            throw RoutingException("Routing profiles could not be installed – the phone's storage may be full. Restart OnPath to try again.")
         }
         profilesReady = true
     }
@@ -383,7 +383,11 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 "Route too long for on-phone routing. Add via points or choose closer points."
             m.contains("no track found") || m.isBlank() ->
                 "No route found between these points for ${activity.label}."
-            else -> "Routing failed: $m"
+            else -> {
+                // BRouter's own wording is technical: the details go to the problem log, the user gets a plain sentence
+                Problems.warn("routing", "BRouter error not recognised: $m")
+                "No route found between these points for ${activity.label}. Try moving a point or adding a via point."
+            }
         }
     }
 
@@ -412,6 +416,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         /** Plain text (no file name, no path); the plan shows RoutingDataNotice instead. */
         const val NO_DATA = "No routing data for this area."
         const val BUSY = "The router is busy - try again in a moment."
+        /** An engine bug (details in the problem log): plain text, no exception message. */
+        const val UNEXPECTED = "Routing failed unexpectedly. Try again; if it keeps happening, send the diagnostics (Settings → Diagnostics)."
         private const val MIN_BUDGET_MS = 500L
         private const val VIA_CORRECTION_M = 400.0
         private const val VIA_CORRECTION_HIKE_M = 50.0
