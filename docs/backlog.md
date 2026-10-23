@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] plain-language error messages (no technical texts); map loading goes on with the screen off / app in the background – since 2026-10-23
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -15,8 +14,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **Router classes – open:** the app does not compare the cells' `wayclass` hash with its own profiles (a profile
   change needs a rebuild of all cells); tertiary and bigger roads have no class (`docs/map-style-notes.md`).
 - **Safety audit batch D – rest:** cliffs and fords on the map.
-- **Technical error texts shown to users** (update / import / export, `BRouterEngine` "Routing failed: …") – cloud is on
-  it (see In progress).
 - **CI:** `verifyPaparazziDebug` and lint do not run in CI.
 - **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Navigate "Waiting for GPS · last fix …" line may be cut (`NavigateScreen.recordingLine`, maxLines 1 – check
@@ -78,6 +75,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **After 0.10.0 (cloud, 2026-10-23, not released yet):** no technical error texts in the app (`debug/UserText`, source
+  scan `UserTextRuleTest`; details only in Settings → Diagnostics); map loading goes on with the screen off / app left
+  (`cells/MapLoadService`, quiet progress notification, ends by itself; `MapCells.loadInBackground`).
 - **0.10.0 (released 2026-10-22; laptop work merged into main):** (1) map colours from the router classes
   (`tools/routing/wayclass/WayClass.java`, classes 0 good / 1 possible / 2 forbidden / 3 too hard = grey line, red only
   for access bans, via ferrata ticks kept, MTB steps grey; cell schema `-s3`; hiking band above the T level grey via
