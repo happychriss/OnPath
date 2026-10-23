@@ -101,10 +101,10 @@ class CellApi(
             } finally { conn.disconnect() }
         }
         val len = part.length()
-        if (len < f.size) throw ApiException(Failure.UNREACHABLE, "Download of ${f.name} stopped at ${len * 100 / maxOf(1, f.size)} % – continues when connected.")
+        if (len < f.size) throw ApiException(Failure.UNREACHABLE, "Map download stopped at ${len * 100 / maxOf(1, f.size)} % – continues when connected.")
         if (len != f.size || sha256(part) != f.sha256) {
             part.delete()
-            throw ChecksumException("Download damaged (${f.name}) – loading again.")
+            throw ChecksumException("Map download damaged – loading again.")
         }
         onBytes(len)
     }

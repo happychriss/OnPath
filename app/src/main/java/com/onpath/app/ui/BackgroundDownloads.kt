@@ -62,14 +62,14 @@ data class BackgroundDownloadUi(
 
     /** Details line about the newer versions, null when none loads. */
     val newerLine: String? get() = if (newer <= 0) null else
-        "Newer version of ${if (newer == 1) "1 area" else "$newer areas"} you have – it replaces the current map when loaded" +
+        "Newer map for ${if (newer == 1) "1 of your areas" else "$newer of your areas"} – replaces the old one when loaded" +
             (newerEtaMin?.let { " (being prepared, about $it min)" } ?: "")
 
-    /** "3 areas · 24 MB · 40 %" (the strip), "routing data" when only that loads. */
+    /** "3 areas · 24 MB · 40 %" (the strip); "24 MB · 40 %" when only the route planning part of the map loads (never named). */
     val line: String get() {
         val what = when {
             regions > 0 -> "$regions ${if (regions == 1) "area" else "areas"}"
-            else -> "routing data"
+            else -> null
         }
         return listOfNotNull(what, if (bytes > 0) "${mb(bytes)} MB" else null, "$percent %").joinToString(" · ")
     }
@@ -170,7 +170,7 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
                 val fresh = ui.regions - ui.newer
                 if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
                 ui.newerLine?.let { Text(it) }
-                if (ui.routingParts > 0) Text("Routing data: ${ui.routingParts} ${if (ui.routingParts == 1) "part" else "parts"}")
+                if (fresh <= 0 && ui.newer <= 0 && ui.routingParts > 0) Text("Map: the paths for route planning")
                 Text(listOfNotNull(if (ui.bytes > 0) "About ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "))
                 Text("Cancel stops it. The maps you have stay; an area loads again when you plan there.", fontSize = 13.sp)
             }

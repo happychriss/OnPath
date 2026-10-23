@@ -21,7 +21,7 @@ class RoutingLoadsTest {
         val map = MapLoadUi(MapLoadUi.Kind.LOADING, 50, 60, regions = 4, bytes = 30 * mb)
         val ui = RoutingLoads.combine(map, routing(0, 10 * mb))!!
         assertEquals("Loading the map for your area", ui.title)
-        assertEquals("4 regions · about 40 MB", ui.totals) // routing data included, not named
+        assertEquals("4 map areas · about 40 MB", ui.totals) // routing data included, not named
         // by bytes: 50 % of 30 MB + 0 % of 10 MB = 15/40
         assertEquals(37, ui.percent)
     }
@@ -58,7 +58,7 @@ class RoutingLoadsTest {
     @Test fun bothThereClosesIt() {
         assertNull(RoutingLoads.combine(null, null))
         val map = MapLoadUi(MapLoadUi.Kind.LOADING, 50, 60, regions = 2, bytes = 20 * mb)
-        assertEquals("2 regions · about 20 MB", RoutingLoads.combine(map, null)!!.totals)
+        assertEquals("2 map areas · about 20 MB", RoutingLoads.combine(map, null)!!.totals)
     }
 
     @Test fun planIsRecalculatedWhenRoutingDataArrives() {

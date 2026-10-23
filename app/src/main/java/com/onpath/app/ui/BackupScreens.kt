@@ -68,7 +68,7 @@ fun RecycleBinScreen(
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 Text("Recycle bin", style = MaterialTheme.typography.titleLarge)
             }
-            Text("Deleted tours and routes stay here for ${RecycleBin.DAYS} days, then they are removed.",
+            Text("Deleted tracks and routes stay here for ${RecycleBin.DAYS} days, then they are removed.",
                 fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
             if (deleted.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -144,7 +144,7 @@ data class BackupCallbacks(
 fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
     Section("Backup") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Every finished tour and saved route is also saved as a GPX file – it stays when OnPath is removed and " +
+            Text("Every recorded track and saved route is also saved as a GPX file – it stays when OnPath is removed and " +
                 "can be restored on a new phone.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Folder: ${b.folder}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             val last = if (b.lastMs > 0) SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(b.lastMs)) else "not yet"
@@ -160,7 +160,7 @@ fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
             if (b.custom) TextButton(onClick = cb.onUseDocuments, Modifier.heightIn(min = 48.dp)) { Text("Use Documents/OnPath again") }
             if (b.restoring != null) Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(b.restoring, fontSize = 13.sp)
-            } else OutlinedButton(onClick = cb.onRestore, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Restore tours from backup") }
+            } else OutlinedButton(onClick = cb.onRestore, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Restore tracks and routes") }
         }
     }
 }
@@ -174,8 +174,8 @@ fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
         onDismissRequest = onNotNow,
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Restore, null) },
-        title = { Text("Earlier tours?") },
-        text = { Text("If you used OnPath before, your tours and routes may be in Documents/OnPath. Restore them? " +
+        title = { Text("Earlier tracks and routes?") },
+        text = { Text("If you used OnPath before, your tracks and routes may be in Documents/OnPath. Restore them? " +
             "Android then shows the folder – tap “Use this folder” and “Allow”.\n\nLater: Settings → Backup → Restore.") },
         confirmButton = { TextButton(onClick = onRestore, modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore") } },
         dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },
@@ -188,7 +188,7 @@ fun RestoreProgressDialog(line: String) {
     AlertDialog(
         onDismissRequest = {},
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = false),
-        title = { Text("Restoring tours") },
+        title = { Text("Restoring tracks and routes") },
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp); Spacer(Modifier.width(12.dp)); Text(line)

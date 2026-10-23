@@ -45,7 +45,7 @@ fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit,
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("OnPath $version is available", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Text(if (percent != null) "Downloading… $percent %" else "Your routes, tours and map data are kept.",
+                    Text(if (percent != null) "Downloading… $percent %" else "Your routes, tracks and maps are kept.",
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -94,7 +94,7 @@ fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: ()
                 Text("Check for updates")
             }
         }
-        Text("Updates come from GitHub Releases. Android asks you to confirm every install.",
+        Text("Updates come from the OnPath page on GitHub. Android asks you to confirm every install.",
             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

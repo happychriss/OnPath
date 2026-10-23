@@ -14,15 +14,15 @@ object NavText {
         NavPrompt.Searching -> "Off route – finding a way back…"
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: "Off route – new route found"
         is NavPrompt.NoWay -> when (p.reason) {
-            Rerouter.Reason.NO_DATA -> "Off route – no routing data here"
-            Rerouter.Reason.UNAVAILABLE -> "Off route – routing not available"
+            Rerouter.Reason.NO_DATA -> "Off route – no map here to find a way back"
+            Rerouter.Reason.UNAVAILABLE -> "Off route – can't search a way back right now"
             else -> "Off route – no way back found"
         }
         NavPrompt.Kept -> "Off route – original route kept"
     }
 
     /** "+350 m · rejoins in 600 m" / "350 m shorter · rejoins in 600 m" (+ "nearest way 300 m away"). */
-    /** "New route for Bike – trekking" / "New route for Hike (T3)". */
+    /** "New route for Trekking bike" / "New route for Hike (T3)". */
     fun switchTitle(sw: ActivitySwitch): String = "New route for " + activityName(sw.activity, sw.sac)
 
     /** "Hike (T3)" / "MTB". */
@@ -30,8 +30,8 @@ object NavText {
 
     fun question(q: NavPrompt.Question): String = buildString {
         q.switch?.let { sw ->
-            // "Rest of the tour 9.3 km (+1.2 km) · 3 h 10 min"
-            append("Rest of the tour ").append(Format.distance(round10(q.legM)))
+            // "Rest of the route 9.3 km (+1.2 km) · 3 h 10 min"
+            append("Rest of the route ").append(Format.distance(round10(q.legM)))
             val e = round10(abs(q.extraM))
             if (e >= 100) append(" (").append(if (q.extraM > 0) "+" else "−").append(Format.distance(e)).append(")")
             append(" · ").append(Format.duration(sw.timeS))
@@ -64,7 +64,7 @@ object NavText {
         append("%.5f %s %.5f %s".format(java.util.Locale.ROOT, abs(lat), if (lat >= 0) "N" else "S", abs(lon), if (lon >= 0) "E" else "W"))
         accuracyM?.let { append(" · ±").append(it.roundToInt()).append(" m") }
         altitudeM?.let { append(" · ").append(it.roundToInt()).append(" m") }
-        if (ageS >= 60) append(" · fix ").append(ageS / 60).append(" min old")
+        if (ageS >= 60) append(" · position ").append(ageS / 60).append(" min old")
     }
 
     /** "46.54120, 10.90320" – what is copied (pastes into any map app or message). */

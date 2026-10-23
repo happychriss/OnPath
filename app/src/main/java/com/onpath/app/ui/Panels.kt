@@ -166,7 +166,7 @@ fun TrackPanel(
             }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-                Text(if (recording) "Follow this track" else "Start navigation", maxLines = 1)
+                Text(if (recording) "Navigate this track" else "Start navigation", maxLines = 1)
             }
         }
     }

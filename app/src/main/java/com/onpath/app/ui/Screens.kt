@@ -164,7 +164,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
                 modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Download routing data for this area (≈ 10 MB)")
+                Text("Download paths for route planning (≈ 10 MB)")
             }
         }
         if (busy != null) {
@@ -342,7 +342,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Filled.Route, null) },
-        title = { Text("Replace current plan?") },
+        title = { Text("Replace current route?") },
         text = { Text("Your current route is not saved. Save it first, or replace it with the route you picked.") },
         confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text("Replace") } },
         dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save first") } },
@@ -466,7 +466,7 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                    onClearRoute: (() -> Unit)? = null) {
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("Tour saved") },
+        title = { Text("Track saved") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(t.name, fontWeight = FontWeight.SemiBold)

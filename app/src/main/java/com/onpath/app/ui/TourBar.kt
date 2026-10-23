@@ -103,7 +103,7 @@ fun EndTourDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
-        text = { Text("Save keeps the tour in My routes. Delete throws it away.") },
+        text = { Text("Save keeps the track in My routes. Delete throws it away.") },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = {
             Row {
@@ -122,8 +122,8 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
 
 
 /**
- * Status line + the three tour buttons in one row: Continue (filled; also resumes), Pause / Resume (tonal), End
- * (outlined red, asks first). Used at the top of the plan sheet during a tour and in the stand-alone tour card.
+ * Status line + the three tour buttons in one row: Continue (filled; also resumes), Pause / Resume (tonal, icon only),
+ * End tour (outlined red, asks first). Used at the top of the plan sheet during a tour and in the stand-alone tour card.
  */
 @Composable
 fun TourControls(
@@ -143,15 +143,15 @@ fun TourControls(
             Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
             Text("Continue", maxLines = 1)
         }
-        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+        // Pause is icon-only (owner Q10, 2026-10-23) so "End tour" fits beside it at phone width
+        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(0.6f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(if (paused) "Resume" else "Pause", maxLines = 1)
+            Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, if (paused) "Resume" else "Pause", Modifier.size(20.dp))
         }
-        OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+        OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1.3f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
             Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
-            Text("End", color = MaterialTheme.colorScheme.error, maxLines = 1)
+            Text("End tour", color = MaterialTheme.colorScheme.error, maxLines = 1)
         }
     }
 }
@@ -171,8 +171,8 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
         onDismissRequest = {},
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text("Route back to the start?") },
-        text = { Text("The goal is deleted. Yes: the route leads from here back to the start. No: the tour keeps " +
-            "recording without a route. Undo brings the goal back either way.") },
+        text = { Text("You deleted the destination. Yes: go back to the start from here. No: keep " +
+            "recording without a route. Undo brings the destination back.") },
         confirmButton = { TextButton(onClick = onYes) { Text("Yes") } },
         dismissButton = { TextButton(onClick = onNo) { Text("No") } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
@@ -187,7 +187,7 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text("This route is very long") },
         text = { Text("It would take ${com.onpath.app.routing.LongRoute.describe(seconds)} $how. Calculating it and " +
-            "loading the maps along it takes a long time. Plan it anyway?") },
+            "loading its maps takes long. Plan it anyway?") },
         confirmButton = { TextButton(onClick = onPlan) { Text("Plan anyway") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
