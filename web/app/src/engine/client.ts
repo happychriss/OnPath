@@ -24,7 +24,7 @@ export class EngineClient {
   }
 
   /** [base] = where engine/ and brouter/ are served; [segments] = rd5 files with HTTP range support. */
-  configure(base: string, segments: string) { return this.ask({ type: 'config', base, segments }); }
+  configure(base: string, segments: string, packed = false) { return this.ask({ type: 'config', base, segments, packed }); }
 
   route(points: [number, number][], activity: Activity, sac: number) {
     return this.ask({ type: 'route', points: enc(points), activity, sac });
