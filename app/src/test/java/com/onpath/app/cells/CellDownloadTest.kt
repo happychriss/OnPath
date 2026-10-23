@@ -91,7 +91,7 @@ class CellDownloadTest {
         val f = m.files.first { it.name == "overlays.pmtiles" }
         val part = File(tmp.newFolder("dl"), "x.part")
         server.corruptNext = true
-        try { api().download(f, part); fail() } catch (e: CellApi.ChecksumException) { assertTrue(e.message!!.startsWith("Download damaged")) }
+        try { api().download(f, part); fail() } catch (e: CellApi.ChecksumException) { assertTrue(e.message!!.startsWith("Map download damaged")) }
         assertFalse(part.exists())
         api().download(f, part)
         assertEquals(f.sha256, CellApi.sha256(part))
@@ -222,7 +222,9 @@ class CellDownloadTest {
         val mc = cells(Net())
         mc.request(listOf(a), CellReason.POINT)
         waitFor("failed") { mc.state(a) is CellState.Failed }
-        assertTrue((mc.state(a) as CellState.Failed).message.contains("Source data not available"))
+        // the server's reason goes to Diagnostics only; the user reads one plain sentence (text review 2026-10-23)
+        assertEquals("This map area could not be prepared. Routes there are straight lines for now.",
+            (mc.state(a) as CellState.Failed).message)
     }
 
     /** A refresh downloads only a newer version and replaces the cell. */

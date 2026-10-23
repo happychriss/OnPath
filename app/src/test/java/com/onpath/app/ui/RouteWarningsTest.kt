@@ -131,8 +131,8 @@ class RouteWarningsTest {
     }
 
     @Test fun changedTextNamesTheActivity() {
-        assertEquals("Route changed for trekking bike – please check", RouteWarnings.changedText(Activity.BIKE_TREKKING, 3))
-        assertEquals("Route changed for hike T4 – please check", RouteWarnings.changedText(Activity.HIKE, 4))
+        assertEquals("Route changed for Trekking bike – please check it", RouteWarnings.changedText(Activity.BIKE_TREKKING, 3))
+        assertEquals("Route changed for Hike T4 – please check it", RouteWarnings.changedText(Activity.HIKE, 4))
     }
 
     // ---------------- "route changed" ----------------

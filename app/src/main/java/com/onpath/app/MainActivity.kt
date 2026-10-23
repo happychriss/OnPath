@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.message = "Without storage access OnPath cannot copy tours to Documents/OnPath. Choose another folder in Settings → Backup."
+        else vm.message = "Without storage access OnPath cannot copy tracks and routes to Documents/OnPath. Choose another folder in Settings → Backup."
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
@@ -120,9 +120,9 @@ class MainActivity : ComponentActivity() {
             val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
             LaunchedEffect(serious, vm.message == null) {
-                val p = serious ?: return@LaunchedEffect
+                if (serious == null) return@LaunchedEffect
                 if (vm.message != null) return@LaunchedEffect // wait until the current message is gone
-                vm.message = "Problem (${p.area}): ${p.message.take(160)}. Details: Settings → Diagnostics."
+                vm.message = "Something went wrong. It was noted in Settings → Diagnostics."
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
@@ -256,7 +256,7 @@ class MainActivity : ComponentActivity() {
                             },
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
-                                    vm.message = "Backing up all tours and routes…"
+                                    vm.message = "Backing up all tracks and routes…"
                                     com.onpath.app.backup.Backups.backupAll(this@MainActivity) { n ->
                                         // a failure says itself (Backups.failure); only success here
                                         runOnUiThread { if (n >= 0) vm.message = "Backup done: $n ${if (n == 1) "file" else "files"} written." else if (vm.message?.startsWith("Backing up") == true) vm.message = null }
@@ -291,7 +291,7 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest = { vm.backgroundAnswered() },
                         title = { Text("Keep recording after a restart?") },
                         text = { Text("If the phone restarts or OnPath is updated during a tour, OnPath can continue recording " +
-                            "by itself. For that Android needs location access \"Allow all the time\". OnPath uses it only " +
+                            "by itself. For that Android needs location access “Allow all the time”. OnPath uses it only " +
                             "while a tour is recording. Without it, OnPath asks you to tap Continue.") },
                         confirmButton = { TextButton(onClick = {
                             vm.backgroundAnswered()
@@ -428,8 +428,8 @@ class MainActivity : ComponentActivity() {
         val shown = sp.getLong("crashShownUntil", 0)
         val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
         sp.edit().putLong("crashShownUntil", crash.last).apply()
-        if (vm.message == null) vm.message = "OnPath stopped unexpectedly last time (${crash.message}). " +
-            "Details: Settings → Diagnostics → Export diagnostics."
+        if (vm.message == null) vm.message = "OnPath stopped unexpectedly last time. " +
+            "Details: Settings → Diagnostics."
     }
 
     /**
@@ -455,7 +455,7 @@ class MainActivity : ComponentActivity() {
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     try { startActivity(Intent.createChooser(send, "Send diagnostics")) } catch (e: Exception) {
                         com.onpath.app.debug.Problems.warn("ui", "No app to share the diagnostics file", e)
-                        vm.message = "No app to share with. The file is in the app's cache: ${f.name}"
+                        vm.message = "No app found to send the file with."
                     }
                 }.onFailure {
                     com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)

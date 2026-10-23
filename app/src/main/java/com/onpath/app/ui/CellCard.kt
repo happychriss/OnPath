@@ -54,7 +54,7 @@ sealed interface CellCardUi {
 
     data object NotAvailable : CellCardUi {
         override val title = "Map downloads not available in this build"
-        const val BODY = "Planning works on the overview map; routes without routing data are straight lines."
+        const val BODY = "You can still plan on the overview map; routes there are straight lines."
     }
 
     data class Working(
@@ -81,8 +81,8 @@ sealed interface CellCardUi {
     data class NeedPosition(val permission: Boolean) : CellCardUi {
         override val title get() = if (permission) WAITING else ALLOW
         companion object {
-            const val ALLOW = "Allow location to get the detailed map for your area – or set a point on the map"
-            const val WAITING = "Waiting for your position to get the detailed map for your area – or set a point on the map"
+            const val ALLOW = "Allow location to get the detailed map – or hold the map where you want to go"
+            const val WAITING = "Waiting for GPS to get the detailed map – or hold the map where you want to go"
             const val BODY = "Hold the map where you want to go. Until then the overview map is shown."
         }
     }
@@ -180,7 +180,7 @@ object CellCards {
             "${rest.size} more ${if (rest.size == 1) "area" else "areas"}" + if (restReady == rest.size) " · ready" else if (restReady > 0) " · $restReady ready" else " · waiting"
         }
         val waitNote = if (waiting.isEmpty()) null else "${waiting.size} ${if (waiting.size == 1) "area waits" else "areas wait"} for Wi-Fi" +
-            (waitBytes?.let { " (≈ ${mb(it)} MB)" } ?: "") + if (wifiOnly) " – Settings: maps only on Wi-Fi" else ""
+            (waitBytes?.let { " (≈ ${mb(it)} MB)" } ?: "") + if (wifiOnly) " – Settings: “Download maps only on Wi-Fi”" else ""
         val question = if (waiting.isNotEmpty() && !wifiOnly && !mobileDeclined) MobileQuestion(waiting.size, waitBytes) else null
         return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null)
     }
@@ -246,7 +246,7 @@ fun OverviewHint(modifier: Modifier = Modifier) {
     }
 }
 
-const val OVERVIEW_HINT = "Overview only – set a point and the detailed map follows"
+const val OVERVIEW_HINT = "Overview only – hold the map here to get the detailed map"
 
 /**
  * When the "Overview only" hint shows (Plan, z ≥ [MIN_ZOOM]): when a large part of the visible map has no detailed

@@ -278,8 +278,8 @@ object RideView {
                 else "The ride and everything after it dropped"))
             add(Option(RideChoice.NOT_COUNTED, "Save all, rides not counted", "Rides grey on the map, not in km, time or pace"))
             if (allowSplit && parts >= 2 && rides.first().from >= 1) add(Option(RideChoice.SPLIT,
-                if (parts == 2) "Split into two tours" else "Split into $parts tours",
-                if (parts == 2) "Before and after the ride" else "One tour between rides"))
+                if (parts == 2) "Split into two tracks" else "Split into $parts tracks",
+                if (parts == 2) "Before and after the ride" else "One track between rides"))
             add(Option(RideChoice.AS_RECORDED, "Save as recorded", "Everything counts, the rides too"))
         }
         var after = 0.0

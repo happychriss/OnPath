@@ -205,7 +205,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // make MapLibre drop the following again (it ends tracking on every app camera move).
                 if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
             }
-            !hasFix -> message = "No position yet – the map can turn with your walking direction once GPS has a fix."
+            !hasFix -> message = "No position yet – the map can turn with your direction of travel once GPS has found your position."
             else -> { setHeadingUp(true); followMe = true; recentreTick++ }
         }
     }
@@ -847,7 +847,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val asked = cells.request(all, com.onpath.app.cells.CellReason.REFRESH, ownPoint = false)
         message = if (asked.isEmpty()) "The map areas are already being checked."
             else "Checking ${asked.size} map ${if (asked.size == 1) "area" else "areas"} for a newer version." +
-                if (settings.mapsWifiOnly) " Settings: maps only on Wi-Fi." else ""
+                if (settings.mapsWifiOnly) " Settings: “Download maps only on Wi-Fi”." else ""
     }
 
     fun deleteMapArea(id: String) {
@@ -1159,7 +1159,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (st?.saveFailed == true && !saveFailedShown) {
                     saveFailedShown = true
-                    message = "The track cannot be saved any more (storage full or database broken). Free up space – recording keeps trying."
+                    message = "The track cannot be saved any more (phone storage full or damaged). Free up space – recording keeps trying."
                 } else if (st?.saveFailed == false) saveFailedShown = false
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
@@ -1178,7 +1178,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                                 .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
                         }
                         finishedTour = null; finishedTimes = null
-                        if (!ok) message = "The tour could not be deleted – it is in My routes, delete it there."
+                        if (!ok) message = "The track could not be deleted here. You can delete it in My routes."
                     } else {
                         finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                         finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
@@ -1484,7 +1484,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             recalc()
             return
         }
-        if (yes) message = "No GPS position yet, so no route back. The tour keeps recording; set a new goal any time."
+        if (yes) message = "No GPS position yet, so no route back. The tour keeps recording; set a new destination any time."
         Problems.trace("plan", "Route back to the start: " + (if (yes) "yes, but no position" else "no") +
             " – route guidance ended, recording continues (Undo brings it back)")
         if (followLine != null && !followIsTrack) { clearFollow(); guidanceEndedByEmptyPlan = true }
@@ -1910,7 +1910,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             val found = search.findOne(p.searchTexts())
             // Stays until OK (owner rule: no message disappears by itself).
-            if (found == null) { message = "Couldn't find this place – try again with internet"; return@launch }
+            if (found == null) { message = "Couldn't find this place. Try again when you have internet."; return@launch }
             val (place, from) = found
             Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
             showSharedPlace(place.copy(name = p.name ?: place.name,
@@ -2112,7 +2112,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             if (followNextRoute) {
                 followNextRoute = false
-                if (route != null) followPlanned(checkNow = true) else message = "Could not re-route – still following the previous line."
+                if (route != null) followPlanned(checkNow = true) else message = "No new route found – still following the old one."
             } else if (planEditPending && result.isSuccess) {
                 // an edit of the plan during a tour: the tour follows the new plan (owner rule 2026-10-19, no question)
                 planEditPending = false
@@ -2318,7 +2318,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     ).also { storePlanTimes(it, r, act) }
                 }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
             }
-            if (id == null) { routesProblem = "The route could not be saved. Your plan is still here – please try again."; return@launch }
+            if (id == null) { routesProblem = "The route could not be saved. Your route is still here – please try again."; return@launch }
             Backups.tourChanged(getApplication(), id)
             setSaved(title, id, pts)
             refreshTours()
@@ -2369,7 +2369,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
                 Problems.error("db", "Overwriting a saved route failed", it)
-                routesProblem = "The route could not be saved. Your plan is still here – please try again."
+                routesProblem = "The route could not be saved. Your route is still here – please try again."
             }
         }
     }
@@ -2526,7 +2526,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
             if (started) { enter(AppMode.NAVIGATE); maybeAskBackground() }
-            else if (message == null) message = "Recording did not start. Check the location permission (precise) and notifications, then try again."
+            else if (message == null) message = "Recording did not start. Allow precise location and notifications for OnPath, then try again."
         }
     }
 
@@ -2669,7 +2669,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
                             .also { if (EngineProvider.isRealRouter) engine = it }
                         if (eng is com.onpath.app.routing.StraightLineEngine) {
-                            ActivityRowState.Failed("Offline routing not available")
+                            ActivityRowState.Failed("Can't check routes right now")
                         } else {
                             val r = eng.route(rest.waypoints, a, sacFor(a),
                                 com.onpath.app.routing.RouteLimits(com.onpath.app.navigation.ActivityCheck.TIMEOUT_MS, cancel))
@@ -2799,7 +2799,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.rides.RideView.summary(db.loadSegments(t.id), rec.rides, onFoot, allowSplit = false)
                 }.onFailure { Problems.warn("rides", "Rides of a tour could not be shown", it) }.getOrNull()
             }
-            if (s == null) { message = "The rides of this tour could not be read."; return@launch }
+            if (s == null) { message = "The rides of this track could not be read."; return@launch }
             editRides = t to s
         }
     }
@@ -2927,7 +2927,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
             Backups.tourChanged(getApplication(), t.id)
-            withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
+            withContext(Dispatchers.Main) { message = "Track saved to My routes." }
         }
     }
 
@@ -2989,7 +2989,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
-        if (recState.value?.tourId == t.id) { message = "This tour is being recorded – end it first."; return }
+        if (recState.value?.tourId == t.id) { message = "This track is being recorded – end the tour first."; return }
         viewModelScope.launch(Dispatchers.IO) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
@@ -3058,12 +3058,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     putExtra(Intent.EXTRA_SUBJECT, uri.second)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                events += UiEvent.Share(Intent.createChooser(send, "Export all tours"))
+                events += UiEvent.Share(Intent.createChooser(send, "Export all"))
             } catch (e: com.onpath.app.backup.BackupException) {
                 Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
-                message = "Export failed – the phone's storage may be full. Your tours are unchanged."
+                message = "Export failed – the phone's storage may be full. Your tracks and routes are unchanged."
             }
         }
     }
@@ -3093,7 +3093,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
                 while (message != null) delay(500) // after the current message
-                message = "$text. Your tours are still on this phone – see Settings → Backup."
+                message = "$text. Your tracks and routes are still on this phone – see Settings → Backup."
                 Backups.failureSeen(getApplication())
             }
         }
@@ -3156,7 +3156,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             events += UiEvent.Share(Intent.createChooser(send, "Export GPX"))
         } catch (e: Exception) {
             Problems.error("gpx", "GPX export failed", e)
-            message = "Export failed – the phone's storage may be full. Your routes and tours are unchanged."
+            message = "Export failed – the phone's storage may be full. Your tracks and routes are unchanged."
         }
     }
 
@@ -3260,7 +3260,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingDataRouteChanged(r: com.onpath.app.routing.PlannedRoute) {
         val before = routingDataBefore ?: return
         routingDataBefore = null
-        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = "Route updated – newer way data."
+        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = "Route updated with newer map data – please check it."
     }
 
     // Last in the class: every property it touches is initialised by now.

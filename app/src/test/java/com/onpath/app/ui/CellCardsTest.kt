@@ -54,7 +54,7 @@ class CellCardsTest {
         assertEquals("2 areas wait for Wi-Fi (≈ 25 MB)", answered.wifiNote)
         val wifiOnly = card(st, sizes = mapOf(own to 9 * MB), wifiOnly = true) as CellCardUi.Working
         assertNull(wifiOnly.question)
-        assertTrue(wifiOnly.wifiNote!!.endsWith("Settings: maps only on Wi-Fi"))
+        assertTrue(wifiOnly.wifiNote!!.endsWith("Settings: “Download maps only on Wi-Fi”"))
     }
 
     @Test fun offlineOneLine() {

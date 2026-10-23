@@ -394,13 +394,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private fun pointName(i: Int, n: Int): String = when (i) {
         0 -> "Start point"
         n - 1 -> "Destination"
-        else -> "Via point $i"
+        else -> "Stop ${i + 1}"
     }
 
     private fun pointNameFromBRouter(who: String): String = when {
         who == "from" -> "Start point"
         who == "to" -> "Destination"
-        who.startsWith("via") -> "Via point ${who.removePrefix("via")}"
+        who.startsWith("via") -> who.removePrefix("via").toIntOrNull()?.let { "Stop ${it + 1}" } ?: "A stop"
         else -> "A route point"
     }
 

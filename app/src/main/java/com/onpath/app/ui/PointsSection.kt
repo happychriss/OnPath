@@ -308,12 +308,13 @@ private fun PointMarker(r: PlanPointRow, count: Int) {
     }
 }
 
+/** The role under the name; not repeated when an unnamed point is already called by it ("Start", "Destination"). */
 private fun roleText(r: PlanPointRow): String? = when {
-    r.loop -> "Start & goal"
+    r.loop -> "Start & finish"
     r.role == PointRole.START -> "Start"
-    r.role == PointRole.GOAL -> "Goal"
+    r.role == PointRole.GOAL -> "Destination"
     else -> null
-}
+}?.takeIf { it != r.name }
 
 /** "+2.3 km" from the previous point, "~" when straight; a round trip's start shows the way back ("↺ 1.2 km"). */
 private fun legText(r: PlanPointRow): String? {

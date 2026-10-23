@@ -31,8 +31,8 @@ class SettingsSummaryTest {
     }
 
     @Test fun map() {
-        assertEquals("Contours on · Hill shading on · Walking direction", SettingsSummary.map(AppSettings()).text)
-        assertEquals("Contours off · Hill shading on · North up", SettingsSummary.map(AppSettings(contours = false, navHeadingUp = false)).text)
+        assertEquals("Contour lines on · Hill shading on · Direction of travel", SettingsSummary.map(AppSettings()).text)
+        assertEquals("Contour lines off · Hill shading on · North up", SettingsSummary.map(AppSettings(contours = false, navHeadingUp = false)).text)
     }
 
     @Test fun navigation() {

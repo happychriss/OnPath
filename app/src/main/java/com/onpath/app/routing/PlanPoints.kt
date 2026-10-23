@@ -47,7 +47,12 @@ object PlanPoints {
             }
             PlanPointRow(
                 planIndex = i, role = role,
-                name = name(i)?.trim()?.takeIf { it.isNotEmpty() } ?: "Point ${i + 1}",
+                // unnamed: the same words as the map labels (owner 2026-10-23: Start / Stop 2 / Destination)
+                name = name(i)?.trim()?.takeIf { it.isNotEmpty() } ?: when (role) {
+                    PointRole.START -> "Start"
+                    PointRole.GOAL -> "Destination"
+                    PointRole.STOP -> "Stop ${i + 1}"
+                },
                 legM = if (loop && i == 0) legM[plan.lastIndex] else legM[i],
                 approx = !exact, loop = loop && i == 0,
             )

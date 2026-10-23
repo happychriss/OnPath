@@ -24,22 +24,22 @@ class PlanGapsTest {
         assertEquals(1, gaps.size)
         assertEquals(1, gaps[0].index)
         assertEquals(b, gaps[0].routeEnd)
-        assertEquals("Last 180 m to \"Taser Alm\" not possible by trekking bike",
+        assertEquals("Last 180 m to “Taser Alm”: no way for Trekking bike",
             PlanGaps.text(gaps, Activity.BIKE_TREKKING) { if (it == 1) "Taser Alm" else null })
     }
 
     @Test fun withoutNameThePointNumber() {
         val pts = List(18) { GeoPoint(46.60 + it * 0.002, 11.10) } + bFar
         val snapped: List<GeoPoint?> = pts.dropLast(1) + b
-        assertEquals("Last 180 m to point 19 not possible by hike", PlanGaps.text(PlanGaps.of(pts, snapped), Activity.HIKE) { null })
-        assertEquals("Last 180 m to point 19 not possible by hike", PlanGaps.text(PlanGaps.of(pts, snapped), Activity.HIKE) { "  " })
+        assertEquals("Last 180 m to point 19: no way for Hike", PlanGaps.text(PlanGaps.of(pts, snapped), Activity.HIKE) { null })
+        assertEquals("Last 180 m to point 19: no way for Hike", PlanGaps.text(PlanGaps.of(pts, snapped), Activity.HIKE) { "  " })
     }
 
     @Test fun startAndSeveralGaps() {
         val start = GeoPoint(46.6700, 11.1500); val startOn = GeoPoint(46.6700, 11.1530) // ~230 m
         val gaps = PlanGaps.of(listOf(start, a, bFar), listOf(startOn, a, b))
         assertEquals(listOf(0, 2), gaps.map { it.index })
-        assertEquals("First 230 m from point 1 not possible by MTB (+1 more)", PlanGaps.text(gaps, Activity.MTB) { null })
+        assertEquals("First 230 m from point 1: no way for MTB (+1 more)", PlanGaps.text(gaps, Activity.MTB) { null })
     }
 
     @Test fun nearPointsAndUnknownPositionsAreNoGap() {
@@ -52,7 +52,7 @@ class PlanGapsTest {
     }
 
     @Test fun plainActivityNames() {
-        assertEquals(listOf("touring bike", "trekking bike", "e-bike", "MTB", "e-MTB", "hike"),
+        assertEquals(listOf("Touring bike", "Trekking bike", "E-bike", "MTB", "E-MTB", "Hike"),
             Activity.entries.map { PlanGaps.activityWords(it) })
     }
 

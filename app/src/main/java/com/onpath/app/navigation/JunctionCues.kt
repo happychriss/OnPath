@@ -87,15 +87,17 @@ object NavNotification {
     fun of(status: String, junction: Pair<JunctionCue, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
            distance: (Double) -> String, duration: (Double) -> String, clock: (Long) -> String): Text? {
         if (toGoM == null) return null
+        val distanceInTitle = status == "Recording" && !(junction != null && junction.second <= JUNCTION_TITLE_M)
         val title = when {
             status != "Recording" -> status
-            junction != null && junction.second <= JUNCTION_TITLE_M -> "${junction.first.text} in ${distance(roundDist(junction.second))}"
+            !distanceInTitle -> "${junction!!.first.text} in ${distance(roundDist(junction.second))}"
             else -> "${distance(toGoM)} to go"
         }
+        // The distance is said once: in the title ("8.2 km to go") or, when the title is a status / junction, here.
         val parts = buildList {
-            if (toGoS != null) add("${duration(toGoS)} to go")
+            if (toGoS != null) add(if (distanceInTitle) duration(toGoS) else "${duration(toGoS)} to go")
             if (arrivalMs != null) add("arrival ${clock(arrivalMs)}")
-            add("${distance(toGoM)} left")
+            if (!distanceInTitle) add("${distance(toGoM)} left")
         }
         return Text(title, parts.joinToString(" · "))
     }

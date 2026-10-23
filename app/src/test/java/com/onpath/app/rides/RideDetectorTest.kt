@@ -51,7 +51,7 @@ class RideDetectorTest {
         assertTrue(rec.time(rides[0].to) <= b.marks["off"]!! + 5_000)
         val s = RideView.summary(rec.segments, rides, onFoot = true)!!
         assertEquals(RideChoice.NOT_COUNTED, s.preselected)
-        assertTrue(s.options.any { it.choice == RideChoice.SPLIT && it.title == "Split into two tours" })
+        assertTrue(s.options.any { it.choice == RideChoice.SPLIT && it.title == "Split into two tracks" })
     }
 
     @Test fun carOnAPassRoadWhileHiking() {

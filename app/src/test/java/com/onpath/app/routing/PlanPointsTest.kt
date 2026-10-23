@@ -24,7 +24,7 @@ class PlanPointsTest {
         val r = PlanPoints.rows(listOf(a, b, c), null, ::names)
         assertEquals(listOf(PointRole.START, PointRole.STOP, PointRole.GOAL), r.map { it.role })
         assertEquals(listOf(0, 1, 2), r.map { it.planIndex })
-        assertEquals(listOf("Point 1", "Leiter Alm", "Point 3"), r.map { it.name })
+        assertEquals(listOf("Start", "Leiter Alm", "Destination"), r.map { it.name })
         assertNull("the start has no previous point", r[0].legM)
         assertEquals(Geo.distance(a, b), r[1].legM!!, 1.0)
         assertTrue("no route line: straight-line distances are approximate", r.all { it.approx })

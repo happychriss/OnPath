@@ -205,7 +205,7 @@ class ScreenshotTest {
      */
     @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(
-            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
@@ -455,13 +455,13 @@ class ScreenshotTest {
     /** Owner 2026-10-22: a point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike"), PlanCallbacks()) }
+            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike"), PlanCallbacks()) }
     }
 
     /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
     @Test fun planWarningsWithGap() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
@@ -732,7 +732,7 @@ class ScreenshotTest {
                 cSouth to com.onpath.app.cells.CellState.Queued(1, 120), com.onpath.app.cells.CellId(544, 360) to com.onpath.app.cells.CellState.Queued(2, 180)),
                 sizes = mapOf(cOwn to 10 * mbB)), planWithCard(n = 2,
                 r = route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList())
-                ).copy(error = "Offline router could not start (routing data missing?) – straight lines shown."))
+                ).copy(error = "Routes can't be calculated right now – straight lines shown."))
     }
 
     /** Mobile data: own area loaded, the others ask once with their size – stays until answered. T3 (own position). */
