@@ -728,16 +728,16 @@ class MapCells(
         when (e.failure) {
             CellApi.Failure.REFUSED -> {
                 Problems.error("cells", "Map server refused the app key", e)
-                pending.forEach { set(it.id, CellState.Failed(e.message ?: "Map server refused the request – update the app.", retryable = false)) }
+                pending.forEach { set(it.id, CellState.Failed(com.onpath.app.debug.UserText.of(e, "Map server refused the request – update the app."), retryable = false)) }
                 return IDLE_MS
             }
             CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY -> {
                 Problems.info("cells", "Map server not reachable (${e.failure}); retrying", e)
-                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(e.message ?: "Map server not reachable – trying again.")) }
+                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Map server not reachable – trying again."))) }
             }
             else -> {
                 Problems.warn("cells", "Map server answer not usable; retrying", e)
-                pending.forEach { set(it.id, CellState.Offline(e.message ?: "Map server not reachable – trying again.")) }
+                pending.forEach { set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Map server not reachable – trying again."))) }
             }
         }
         return wait
@@ -810,15 +810,15 @@ class MapCells(
             } else { damaged += c; Problems.info("cells", "Map cell $c download damaged; loading again", e); set(c, READY_ON_SERVER) }
         } catch (e: CellApi.ApiException) {
             if (e.failure == CellApi.Failure.NOT_READY) { sent -= c; set(c, CellState.Requested); return }
-            set(c, CellState.Offline(e.message ?: "Download stopped – continues when connected."))
+            set(c, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Download stopped – continues when connected.")))
             Problems.info("cells", "Map cell $c download stopped (${e.failure})", e)
             throw e
         } catch (e: CellStore.StoreException) {
             Problems.error("cells", "Map cell $c could not be joined into the map", e)
-            set(c, CellState.Failed(e.message ?: "The map could not be saved.")); dequeue(c)
+            set(c, CellState.Failed(com.onpath.app.debug.UserText.of(e, "The map could not be saved."))); dequeue(c)
         } catch (e: Exception) {
             Problems.error("cells", "Map cell $c download failed", e)
-            set(c, CellState.Failed("Download failed (${e.message ?: e.javaClass.simpleName}). Please try again later.")); dequeue(c)
+            set(c, CellState.Failed("Download failed. Please try again later.")); dequeue(c)
         }
     }
 

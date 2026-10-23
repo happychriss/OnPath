@@ -147,12 +147,15 @@ class CellApi(
         val retry = conn.getHeaderField("Retry-After")?.trim()?.toIntOrNull()
         return when {
             code == 401 || code == 403 -> ApiException(Failure.REFUSED, "Map server refused the request – update the app.")
-            code == 429 -> ApiException(Failure.BUSY, detail?.takeIf { it.isNotBlank() && it != "too many requests" } ?: "The map server is busy – trying again later.", retry ?: 60)
+            code == 429 -> ApiException(Failure.BUSY, "The map server is busy – trying again later.", retry ?: 60, technical(code, detail))
             code == 404 && detail == "not ready" -> ApiException(Failure.NOT_READY, "The map for this area is not ready yet.")
             code >= 500 -> ApiException(Failure.SERVER, "Map server not reachable – trying again.", retry)
-            else -> ApiException(Failure.BAD_ANSWER, "The map server answered $code${detail?.let { " ($it)" } ?: ""}.")
+            else -> ApiException(Failure.BAD_ANSWER, "The map server sent an unexpected answer – trying again later.", cause = technical(code, detail))
         }
     }
+
+    /** The server's code and error text: for the problem log (the cause of an [ApiException]), never shown to the user. */
+    private fun technical(code: Int, detail: String?) = IOException("HTTP $code${detail?.let { ": $it" } ?: ""}")
 
     /** Network exceptions → [ApiException] (offline / unreachable). */
     private inline fun <T> guard(block: () -> T): T = try { block() } catch (e: ApiException) { throw e } catch (e: ChecksumException) { throw e } catch (e: IOException) {
