@@ -65,9 +65,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
                 .putFloat("camZoom", v.third.toFloat()).apply()
         }
 
+    /** Hidden POI kinds; a set stored under older defaults is upgraded once ([com.onpath.app.poi.PoiKinds.upgradeHidden]). */
+    private fun hiddenPoiKinds(): Set<String> {
+        val kinds = com.onpath.app.poi.PoiKinds
+        val stored = sp.getStringSet("poiHidden", null)?.toSet() ?: return kinds.defaultHidden
+        if (sp.getInt("poiDefaultsVer", 0) >= kinds.DEFAULTS_VERSION) return stored
+        val now = kinds.upgradeHidden(stored)
+        sp.edit().putStringSet("poiHidden", HashSet(now)).putInt("poiDefaultsVer", kinds.DEFAULTS_VERSION).apply()
+        return now
+    }
+
     var settings: AppSettings
         get() = AppSettings(
-            hiddenPoiKinds = sp.getStringSet("poiHidden", null)?.toSet() ?: com.onpath.app.poi.PoiKinds.defaultHidden,
+            hiddenPoiKinds = hiddenPoiKinds(),
             routeOverlay = sp.getBoolean("overlay", true),
             contours = sp.getBoolean("contours", true),
             hillshade = sp.getBoolean("hillshade", true),
@@ -85,6 +95,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
+            .putInt("poiDefaultsVer", com.onpath.app.poi.PoiKinds.DEFAULTS_VERSION)
             .putBoolean("overlay", v.routeOverlay)
             .putBoolean("contours", v.contours)
             .putBoolean("hillshade", v.hillshade)

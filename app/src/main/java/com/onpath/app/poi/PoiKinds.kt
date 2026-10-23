@@ -53,13 +53,30 @@ object PoiKinds {
 
     /**
      * Kinds hidden until the user turns them on: keep the map calm like Komoot, which shows only
-     * highlights by default. On by default: huts, shelters, camping, viewpoints, water, waterfalls,
-     * castles/ruins/caves/museums, all food (restaurants, cafés, bars, snack bars), bus stops (where a hike
-     * starts or ends – owner), train and lift stations. Parking stays off (owner).
+     * highlights by default. On by default: huts, shelters, camping, water, waterfalls, all sights (viewpoints,
+     * castles, ruins, churches, chapels, caves, museums – owner 2026-10-23), all food (restaurants, cafés, bars,
+     * snack bars), bus stops (where a hike starts or ends – owner), train and lift stations. Parking stays off (owner).
      */
     val defaultHidden: Set<String> = setOf(
-        "shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging", "church", "chapel",
+        "shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
     )
+
+    /** Bumped whenever [defaultHidden] changes; stored next to the user's hidden kinds ([upgradeHidden]). */
+    const val DEFAULTS_VERSION = 2
+
+    /** Earlier [defaultHidden] sets (0.1–0.6.1, 0.6.2–0.10.1): a stored set equal to one was never changed by the user. */
+    private val oldDefaults: List<Set<String>> = listOf(
+        setOf("bar", "fast_food", "shop", "bus", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
+            "church", "chapel"),
+        setOf("shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging", "church", "chapel"),
+    )
+
+    /**
+     * Hidden kinds stored by an app before [DEFAULTS_VERSION]: the app saves the whole set with every settings change,
+     * so a set equal to an old default means the user never chose – they get today's default (e.g. sights on). A set
+     * the user changed is kept as it is.
+     */
+    fun upgradeHidden(stored: Set<String>): Set<String> = if (stored in oldDefaults) defaultHidden else stored
 
     fun inGroup(g: PoiGroup): List<PoiKind> = list.filter { it.group == g }
 

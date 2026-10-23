@@ -21,12 +21,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
      notification), come back – does the map switch? Then find the root cause.
   2. After the restart the blue bar showed "Loading map · 2 areas · 0 %" for areas that were already there – check why
      (refresh / corridor re-request?) and whether the 0 % stays.
-  3. Plan sheet showed the saved name "Gasthof Taser Alm → Gasthof Greitererhof · changed, not saved" on a plan in
-     Hilden – a new plan in a far place should not carry the old route's name (start a new plan when all points are
-     replaced / the first point is set after Clear?).
-  4. Point names: "Unterstand" (shelter – fine?) and "intensiū" (odd, broken name?) – check the name lookup for points.
-  5. **Owner wish: all sights and viewpoints (POI kinds "sight"/"viewpoint" or what they are called in `poi/PoiKinds`)
-     shown by default** (not in `defaultHidden`).
+  3. ~~Saved name on a plan in Hilden~~ **done (laptop 2026-10-23):** `RouteRules.linkedToSaved` – the plan belongs to the
+     saved / loaded route while at least one of its points is one of that route's points; after Clear or with every
+     point replaced: no saved name, Save asks for a new name; Undo back restores the link (`PlanLinkTest`).
+  4. ~~Point names~~ **checked (laptop 2026-10-23), no bug:** "intensiū" is a genuine OSM name (restaurant, Hilden,
+     Poststraße 42, node 10736819730); "Unterstand" is the German kind label of an unnamed shelter added as a point
+     (`Place.title()`).
+  5. ~~Sights and viewpoints on by default~~ **done (laptop 2026-10-23):** churches and chapels left `defaultHidden`
+     (viewpoints, castles, ruins, caves, museums were on already); a stored set equal to an old default is upgraded
+     once (`PoiKinds.upgradeHidden`, `poiDefaultsVer`), a set the user changed stays (`PoiDefaultsTest`).
   6. **Restaurant POIs change while zooming (owner, Bad Waldsee, 0.10.1).** Likely cause: `make_style.pois()` sort key =
      rank × 2 + (named ? 0 : 1) – all restaurants tie, so between two close ones the winner depends on the feature order
      in each (overzoomed) tile and changes per zoom. Fix idea: a fixed per-POI priority from the pipeline
