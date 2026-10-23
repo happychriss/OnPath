@@ -70,6 +70,6 @@ class BackupQueue(
     private inline fun guarded(block: () -> Unit): Boolean = try { block(); true } catch (e: BackupException) {
         listener.failed(e.reason, e); false
     } catch (e: Exception) {
-        listener.failed(e.message ?: e.javaClass.simpleName, e); false
+        listener.failed("the backup could not be written", e); false
     }
 }
