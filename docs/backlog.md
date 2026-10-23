@@ -16,7 +16,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   E-MTB, Hike everywhere (chip may shorten); Q7 Time details formulas → Settings → Diagnostics, ⋯ keeps moving time,
   with breaks, pace level; Q8 "Direction of travel" instead of "Walking direction" (North up / Turned by hand stay);
   Q9 new-problem pop-up = fixed sentence "Something went wrong. It was noted in Settings → Diagnostics."; Q10 tour bar
-  button "End tour". Pending: UX questions 1–8, then build.
+  button "End tour". UX Q1 activity change in Plan during a tour opens the same check sheet as Navigate (Take / Keep);
+  Q2 "Clear route" allowed during a tour (= delete all points: guidance ends, recording goes on, Undo); Q3 search
+  "As start" behaves like the map's "Start here" (drops the points before). Pending: UX questions 4–8, then build.
 - **Battery batch 2 – rest** (`docs/design/battery-audit.md`): slower GPS at rest is done (0.10.0, `RestWatch`); open:
   slower GPS with the screen off, frozen track + tail. The GPS slow-down rules are under discussion with the owner
   (2026-10-23). No battery % in the tour summary (owner decision A10).
