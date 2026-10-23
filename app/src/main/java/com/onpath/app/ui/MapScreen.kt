@@ -261,7 +261,7 @@ private fun PlanMode(
                 // (place card or shown track).
                 if (vm.cardPlace != null || vm.shown != null) rec?.let {
                     TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording,
-                        onContinue = vm::continueNavigation)
+                        onContinue = vm::continueNavigation, activity = vm.activity)
                 }
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
                 if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
@@ -306,7 +306,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     val shown = vm.shown
     if (shown != null) {
         TrackPanel(
-            shown, isFollowed = vm.followName == shown.name, recording = rec != null,
+            shown, isFollowed = vm.followName == shown.name, recording = rec != null, activity = vm.activity,
             onFollow = {
                 if (rec == null) onStartNavigation()
                 else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }

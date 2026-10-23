@@ -3078,6 +3078,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
+                // a recorded tour brings its activity (UX review 2026-10-23, problem 5) – not during a tour (the
+                // followed route keeps its activity); not stored: the current one stays
+                // expected: unknown/old activity name keeps the current activity
+                val tourActivity = t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull() }
+                if (recState.value == null && t.kind == com.onpath.app.data.TourKind.RECORDED && tourActivity != null &&
+                    (tourActivity != activity || (tourActivity == Activity.HIKE && t.sac != sac))) {
+                    if (tourActivity == Activity.HIKE) { sac = t.sac.coerceIn(1, 5); prefs.sac = sac }
+                    selectActivity(tourActivity, userChange = false)
+                }
                 // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
                 val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
                 val kept = lines.filter { it.part == com.onpath.app.rides.RideView.Part.KEPT }.map { l -> l.points.map { it.toGeo() } }

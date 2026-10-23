@@ -14,6 +14,18 @@ class ActivityLabelsTest {
         assertEquals("Continue navigation · Trekking bike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
     }
 
+    /** UX review 2026-10-23, problem 14: the tour's Continue names the activity, like the primary button did. */
+    @Test fun tourContinueNamesTheActivity() {
+        assertEquals("Continue · Trekking bike", continueLabel(Activity.BIKE_TREKKING))
+        assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
+    }
+
+    /** Problem 5: the track panel's button names the activity it navigates with. */
+    @Test fun trackButtonNamesTheActivity() {
+        assertEquals("Start navigation · Hike", trackFollowLabel(recording = false, Activity.HIKE))
+        assertEquals("Follow this track · MTB", trackFollowLabel(recording = true, Activity.MTB))
+    }
+
     @Test fun rowStatusTexts() {
         val fits = ActivityFit(Activity.MTB, 3, emptyList(), 7_000.0, 2_280.0, 40.0, emptyList())
         assertEquals("✓ fits", activityRowStatus(ActivityRowState.Ready(fits)))

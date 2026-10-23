@@ -284,7 +284,7 @@ class ScreenshotTest {
     /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
-            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
+            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
             PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
     }
@@ -308,7 +308,7 @@ class ScreenshotTest {
     @Test fun endTourConfirm() = paparazzi.snapshot {
         OnPathTheme {
             Frame {
-                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {})
+                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
             EndTourDialog({}, {}, {})
@@ -578,7 +578,7 @@ class ScreenshotTest {
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
-                isFollowed = false, recording = false, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
         }
     }
 
