@@ -1,0 +1,22 @@
+[
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "BIKE_TOURING", "sac": 3},
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "BIKE_TREKKING", "sac": 3},
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "EBIKE", "sac": 3},
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "MTB", "sac": 3},
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "EMTB", "sac": 3},
+  {"name": "Bozen->Meran", "points": "46.4970,11.3580;46.6717,11.1500", "activity": "HIKE", "sac": 3},
+  {"name": "Algund->Vellau", "points": "46.6830,11.1300;46.6860,11.1090", "activity": "HIKE", "sac": 3},
+  {"name": "Meran2000->Ifinger hut T2", "points": "46.6870,11.2350;46.6995,11.2430", "activity": "HIKE", "sac": 2},
+  {"name": "Meran2000->Ifinger hut T5", "points": "46.6870,11.2350;46.6995,11.2430", "activity": "HIKE", "sac": 5},
+  {"name": "Meran2000->Ifinger summit T2", "points": "46.6870,11.2350;46.7006,11.2585", "activity": "HIKE", "sac": 2},
+  {"name": "Meran2000->Ifinger summit T3", "points": "46.6870,11.2350;46.7006,11.2585", "activity": "HIKE", "sac": 3},
+  {"name": "Meran2000->Ifinger summit T5", "points": "46.6870,11.2350;46.7006,11.2585", "activity": "HIKE", "sac": 5},
+  {"name": "Bozen-via Terlan->Meran", "points": "46.4970,11.3580;46.5300,11.2480;46.6717,11.1500", "activity": "BIKE_TREKKING", "sac": 3},
+  {"name": "Bozen-via Terlan->Meran", "points": "46.4970,11.3580;46.5300,11.2480;46.6717,11.1500", "activity": "EBIKE", "sac": 3},
+  {"name": "Ultental Zoggler Stausee round", "points": "46.5560,11.0040;46.5360,10.9590;46.5560,11.0040", "activity": "HIKE", "sac": 3},
+  {"name": "Lana->Ulten (crosses 11°E)", "points": "46.6160,11.1590;46.5480,10.9690", "activity": "MTB", "sac": 3},
+  {"name": "ERR no data (Vienna)", "points": "48.2000,16.3700;48.2100,16.3800", "activity": "HIKE", "sac": 3},
+  {"name": "Lake Garda (ferry)", "points": "45.5750,10.7050;45.5600,10.6200", "activity": "HIKE", "sac": 3},
+  {"name": "ERR far from path (Adriatic sea)", "points": "45.6800,13.3900;45.5000,13.1500", "activity": "BIKE_TOURING", "sac": 3},
+  {"name": "ERR single point", "points": "46.4970,11.3580", "activity": "HIKE", "sac": 3}
+]
