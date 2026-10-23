@@ -21,6 +21,7 @@ declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngin
 let engine: WasmEngine | null = null;
 let base = '';
 let segments = '';
+let packed = false; // preview host: rd5 published as <name>.b64.txt (see packed.ts)
 const loadMs = { engine: 0 };
 const missingTiles = new Set<string>();
 const layouts = new Map<string, number[]>();
@@ -49,6 +50,15 @@ const whole = new Map<string, Uint8Array>();
  */
 async function range(url: string, from: number, to: number): Promise<{ bytes: Uint8Array; total: number } | null> {
   let all = whole.get(url);
+  if (!all && packed) {
+    const r = await fetch(url + '.b64.txt');
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+    const bin = atob((await r.text()).replace(/\s+/g, ''));
+    all = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) all[i] = bin.charCodeAt(i);
+    whole.set(url, all);
+  }
   if (!all) {
     const r = await fetch(url, { headers: { Range: `bytes=${from}-${to}` } });
     if (r.status === 404) return null;
@@ -104,7 +114,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
   try {
     if (req.type === 'config') {
-      base = req.base; segments = req.segments;
+      base = req.base; segments = req.segments; packed = !!req.packed;
       const e = await getEngine();
       reply({ id: req.id, ok: true, stats: { engineLoadMs: loadMs.engine } as RouteStats, problems: JSON.parse(e.problems()) });
       return;

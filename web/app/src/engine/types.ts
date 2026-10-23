@@ -1,7 +1,7 @@
 export type Activity = 'BIKE_TOURING' | 'BIKE_TREKKING' | 'EBIKE' | 'MTB' | 'EMTB' | 'HIKE';
 
 export type EngineRequest =
-  | { id: number; type: 'config'; base: string; segments: string }
+  | { id: number; type: 'config'; base: string; segments: string; packed?: boolean }
   | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number }
   | { id: number; type: 'insert'; points: string; lat: number; lon: number; lineSnapM: number };
 

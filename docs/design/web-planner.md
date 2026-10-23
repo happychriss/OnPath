@@ -147,3 +147,13 @@ alternative to TeaVM but still experimental – watch, not use.
    the web planner is built for real, move such helpers to pure files so both use them.
 4. Not done in the spike: plan link / QR to the phone (needs a link format the app opens), search, POIs, saving.
 5. Compose for web was not tried (option 1 dropped by the owner's choice) – the TS page is ~250 lines.
+
+**Preview (private claude.ai artifact, 2026-10-23):** https://claude.ai/artifact/QTG6zEiwfTpA5BRpP4beKm – Meran cell
+10/543/361 (format 2, built in the cloud container with `tools/cells/build_cell.sh`) + the E11_N46 rd5 part only
+(Meran, Algund, Schenna, Lana; Bozen is outside the map cell but routable). The preview host serves only common web
+types, so binaries are published as base64 text and decoded in the browser (`VITE_PACKED=1` build, `src/packed.ts`);
+the normal build reads the files directly. Not tested inside the claude.ai frame by the cloud (only headless).
+
+**Next (if the owner says yes):** move the pure helpers out of UI files, the reflection-free matched points
+(finding 2), a plan link / QR the app opens, rd5 + areas for the web on R2 with CORS (needs the map-access decision),
+then a minimal planner for purpose A.

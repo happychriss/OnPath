@@ -10,6 +10,7 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { EngineClient } from './engine/client';
 import type { Activity, PlanResult } from './engine/types';
 import { profileSvg } from './profile';
+import { PACKED, usePacked, packedGlyphs } from './packed';
 import './style.css';
 
 const ACTIVITIES: [Activity, string][] = [
@@ -48,7 +49,8 @@ actSel.value = state.activity; sacSel.value = String(state.sac);
 
 // ---- map ----
 maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's module worker; tell it where
-maplibregl.addProtocol('pmtiles', new Protocol().tile);
+const pmtiles = new Protocol();
+maplibregl.addProtocol('pmtiles', pmtiles.tile);
 const map = new maplibregl.Map({
   container: 'map', style: await loadStyle(), center: [11.16, 46.67], zoom: 12, attributionControl: false,
 });
@@ -73,7 +75,7 @@ async function loadStyle(): Promise<StyleSpecification> {
   const s: StyleSpecification = await (await fetch(base + 'style/onpath.json')).json();
   const data = params.get('data') ?? base + 'map/';
   const fix = (u: string) => u.replace('pmtiles://file://{DATA_DIR}/', 'pmtiles://' + data).replace('file://{DATA_DIR}/', data);
-  s.glyphs = base + 'fonts/{fontstack}/{range}.pbf';
+  s.glyphs = PACKED ? packedGlyphs(base) : base + 'fonts/{fontstack}/{range}.pbf';
   s.sprite = base + 'sprites/onpath';
   const missing = new Set<string>();
   await Promise.all(Object.entries(s.sources).map(async ([id, src]) => {
@@ -81,7 +83,8 @@ async function loadStyle(): Promise<StyleSpecification> {
     if (typeof x.url === 'string') x.url = fix(x.url);
     if (typeof x.data === 'string') x.data = fix(x.data);
     const file = (x.url ?? (x.data as string)).replace('pmtiles://', '');
-    const ok = await fetch(file, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+    const ok = PACKED && file.endsWith('.pmtiles') ? await usePacked(pmtiles, file)
+      : await fetch(file, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
     if (!ok) missing.add(id);
   }));
   for (const id of missing) delete s.sources[id];
@@ -120,7 +123,7 @@ function drawMarkers() {
 // ---- planning ----
 const engine = new EngineClient();
 status('Loading the routing engine…');
-engine.configure(base, params.get('segments') ?? base + 'segments/').then((r) =>
+engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) =>
   status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`));
 
 async function changed() {
