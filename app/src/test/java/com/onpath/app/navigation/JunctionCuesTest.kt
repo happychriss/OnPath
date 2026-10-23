@@ -92,7 +92,10 @@ class JunctionCuesTest {
             distance = { if (it < 1000) "${it.toInt()} m" else "%.1f km".format(java.util.Locale.ROOT, it / 1000) },
             duration = { "1:25 h" }, clock = { "15:40" })!!
         assertEquals("Left in 120 m", t("Recording", JunctionCue.LEFT to 117.0).title)
-        assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Recording", null).text)
+        assertEquals("4.2 km to go", t("Recording", null).title)
+        assertEquals("distance only once", "1:25 h · arrival 15:40", t("Recording", null).text)
+        assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Recording", JunctionCue.LEFT to 117.0).text)
+        assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Off route", null).text)
         assertEquals("4.2 km to go", t("Recording", JunctionCue.LEFT to 800.0).title)
         assertEquals("Off route", t("Off route", JunctionCue.LEFT to 50.0).title)
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
