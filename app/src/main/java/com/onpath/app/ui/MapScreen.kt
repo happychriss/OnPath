@@ -193,7 +193,8 @@ fun MapScreen(
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
         null -> {}
     }
-    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = vm::endTour, onDelete = vm::endTourAndDelete,
+    // arrival Save goes the End tour way: a bus / car / lift found → the ride summary (UX review 2026-10-23, problem 2)
+    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })
     vm.selectedPoi?.let { poi ->
         // Read-only details (Navigate, or a shown track): no "add to route" here.

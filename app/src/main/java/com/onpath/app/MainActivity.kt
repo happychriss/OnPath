@@ -314,7 +314,12 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 vm.unfinished?.let { t ->
-                    UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.saveUnfinished(t) })
+                    UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
+                        onDelete = { vm.deleteUnfinished(t) })
+                }
+                vm.unfinishedRides?.let { (t, s) ->
+                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
+                        onDismiss = { vm.backToUnfinished() }, title = "Save the unfinished tour?")
                 }
                 vm.finishedTour?.let { t ->
                     FinishedTourDialogs(t,

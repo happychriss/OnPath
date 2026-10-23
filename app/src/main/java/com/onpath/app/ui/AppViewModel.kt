@@ -2791,9 +2791,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * "End tour" tapped: rides in the track so far (docs/design/vehicle-detection.md) → the summary with four choices,
      * otherwise the short Cancel · Delete · Save question. Detection failing = the short question (reported).
+     * [saveIfNoRides]: Save was already chosen ("You have arrived" → Save, UX review 2026-10-23 problem 2) – with
+     * rides the summary shows, without them the tour is saved at once.
      */
-    fun askEndTour() {
-        val id = recState.value?.tourId ?: run { endAsk = EndAsk.Plain; return }
+    fun askEndTour(saveIfNoRides: Boolean = false) {
+        arrivalAsk = false
+        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else endAsk = EndAsk.Plain; return }
         val navActivity = recState.value?.nav?.session?.activity
         viewModelScope.launch {
             val s = withContext(Dispatchers.IO) {
@@ -2805,7 +2808,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
             }
             if (recState.value?.tourId != id) return@launch // ended meanwhile (notification, arrival)
-            endAsk = s?.let { EndAsk.Rides(id, it) } ?: EndAsk.Plain
+            when {
+                s != null -> endAsk = EndAsk.Rides(id, s)
+                saveIfNoRides -> endTour()
+                else -> endAsk = EndAsk.Plain
+            }
         }
     }
 
@@ -2953,15 +2960,75 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun saveUnfinished(t: Tour) {
+    /** "Unfinished tour" → Save with a bus / car / lift found: the ride summary for it (null = none). */
+    var unfinishedRides by mutableStateOf<Pair<Tour, com.onpath.app.rides.RideView.Summary>?>(null)
+
+    /**
+     * "Unfinished tour" → Save (UX review 2026-10-23, problem 2): like End tour – rides found → the summary with the four
+     * choices ([unfinishedRides]), else saved at once. Detection failing = saved as recorded (reported).
+     */
+    fun askSaveUnfinished(t: Tour) {
         unfinished = null
+        if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
+        viewModelScope.launch {
+            val s = withContext(Dispatchers.IO) {
+                runCatching {
+                    val segs = db.loadSegments(t.id)
+                    // expected: unknown activity name → the current one
+                    val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+                    com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
+                }.onFailure { Problems.warn("rides", "Ride check of the unfinished tour failed – saved without it", it) }.getOrNull()
+            }
+            if (s != null) unfinishedRides = t to s else saveUnfinished(t)
+        }
+    }
+
+    /** Ride summary of the unfinished tour → Cancel: back to its question (Continue · Delete · Save). */
+    fun backToUnfinished() { unfinishedRides?.let { unfinished = it.first }; unfinishedRides = null }
+
+    /**
+     * Saves the interrupted tour; [choice] from the ride summary is applied like at the end of a recording
+     * (RideApply.finish – without a choice the rides are only marked, Edit rides can change it later).
+     */
+    fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
+        val rides = unfinishedRides?.second?.rides
+        unfinished = null; unfinishedRides = null
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         enter(AppMode.PLAN)
         viewModelScope.launch(Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+            val store = com.onpath.app.rides.TourDbRides(db)
+            if (choice != null && rides != null) runCatching { com.onpath.app.rides.RideApply.choose(store, t.id, rides, choice) }
+                .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
+            // expected: unknown activity name → the current one
+            val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+            val parts = com.onpath.app.rides.RideApply.finish(store, t.id,
+                com.onpath.app.rides.TourStats(t.distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
             Backups.tourChanged(getApplication(), t.id)
-            withContext(Dispatchers.Main) { message = "Tour saved to My routes." }
+            parts.forEach { Backups.tourChanged(getApplication(), it) }
+            withContext(Dispatchers.Main) { message = "Tour saved to My routes."; refreshTours() }
+        }
+    }
+
+    /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
+    fun deleteUnfinished(t: Tour) {
+        unfinished = null; unfinishedRides = null
+        if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
+        Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")
+        enter(AppMode.PLAN)
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                // "done" first: restored from the recycle bin it is a normal tour, never "unfinished" again
+                db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+                db.setDeleted(t.id, System.currentTimeMillis())
+            }.onFailure { Problems.error("db", "The unfinished tour could not be moved to the recycle bin", it) }.getOrDefault(false)
+            if (ok) Backups.tourChanged(getApplication(), t.id)
+            withContext(Dispatchers.Main) {
+                message = if (ok) "Tour moved to the recycle bin (My routes → ⋮ → Recycle bin)."
+                    else "The tour could not be deleted – it is in My routes, delete it there."
+                refreshTours()
+            }
         }
     }
 
