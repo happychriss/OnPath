@@ -990,10 +990,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- saved state of the plan (menus / Manage routes) ---
     /** Name, tour id and points the plan was last saved or loaded as; the plan is unsaved when its points differ. */
-    var savedName by mutableStateOf(prefs.planSavedName)
-        private set
-    private var savedId = prefs.planSavedId
+    private var linkName by mutableStateOf(prefs.planSavedName)
+    private var linkId = prefs.planSavedId
     private var savedPoints by mutableStateOf(prefs.planSavedPoints)
+    /**
+     * The plan still belongs to that saved route (RouteRules.linkedToSaved): after Clear or with every point replaced
+     * it is a new plan – no saved name, Save asks for a new name; Undo back to the old points restores the link.
+     */
+    private val planLinked: Boolean get() = RouteRules.linkedToSaved(waypoints, savedPoints)
+    /** Name the plan was saved / loaded as, while it still belongs to that route. */
+    val savedName: String? get() = linkName.takeIf { planLinked }
+    private val savedId: Long get() = if (planLinked) linkId else -1L
     /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
     val planUnsaved: Boolean get() = RouteRules.isUnsaved(waypoints, savedPoints)
     /** "Save route" name dialog is open (always a new entry). */
@@ -2291,7 +2298,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val keep = pins + far + routed.indices.filter { stopName(routed[it]) != null }
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
-        if (!RouteRules.isUnsaved(routed, savedPoints)) setSaved(savedName, savedId, snapped)
+        if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         val moves = WaypointSnap.moves(routed, snapped)
         history.replacePoints(moves)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
@@ -2466,14 +2473,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = "The route could not be renamed. Please try again."; return@launch }
             Backups.tourChanged(getApplication(), t.id)
-            if (savedId == t.id) setSaved(name, savedId, savedPoints)
+            if (linkId == t.id) setSaved(name, linkId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
             refreshTours()
         }
     }
 
     private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
-        savedName = name; savedId = id; savedPoints = points
+        linkName = name; linkId = id; savedPoints = points
         prefs.planSavedName = name; prefs.planSavedId = id; prefs.planSavedPoints = points
     }
 
@@ -3158,7 +3165,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) {
                 if (!ok) { routesProblem = "“${t.name}” could not be deleted. Please try again."; return@withContext }
                 if (shown?.tourId == t.id) shown = null
-                if (savedId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
+                if (linkId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
                 if (finishedTour?.id == t.id) finishedTour = null
                 refreshTours()
             }

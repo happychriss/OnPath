@@ -65,6 +65,19 @@ object RouteRules {
         points.size >= 2 && (saved == null || points.size != saved.size ||
             points.indices.any { points[it].lat != saved[it].lat || points[it].lon != saved[it].lon }) // elevation does not count
 
+    /**
+     * The plan still belongs to the route it was last saved or loaded as ([saved], null = never): at least one of its
+     * points is one of that route's points (lat/lon; owner 2026-10-23, Hilden field test). Real edits of a loaded route –
+     * moving, adding, deleting some points – keep the link ("· changed, not saved", Save offers overwrite). After Clear,
+     * or when every point was replaced (a new plan somewhere else), the link is gone: no saved name, Save asks for a new
+     * name. The link itself is kept, so Undo back to the old points brings it back.
+     */
+    fun linkedToSaved(points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean {
+        if (saved.isNullOrEmpty()) return false
+        val keys = saved.mapTo(HashSet()) { it.lat to it.lon }
+        return points.any { (it.lat to it.lon) in keys }
+    }
+
     /** Ask "Replace current plan?" before loading this item. */
     fun askBeforeLoading(kind: TourKind, waypointCount: Int, points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean =
         replacesPlan(kind, waypointCount) && isUnsaved(points, saved)
