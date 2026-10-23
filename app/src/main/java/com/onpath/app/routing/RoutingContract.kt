@@ -7,11 +7,11 @@ import com.onpath.app.debug.Problems
  * Do not change without updating docs/architecture-contract.md.
  */
 enum class Activity(val label: String) {
-    BIKE_TOURING("Bike – touring"),
-    BIKE_TREKKING("Bike – trekking"),
-    EBIKE("Bike – e-bike"),
+    BIKE_TOURING("Touring bike"),
+    BIKE_TREKKING("Trekking bike"),
+    EBIKE("E-bike"),
     MTB("MTB"),
-    EMTB("MTB – e-bike"),
+    EMTB("E-MTB"),
     HIKE("Hike"),
 }
 
