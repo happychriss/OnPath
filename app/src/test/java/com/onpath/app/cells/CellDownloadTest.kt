@@ -184,6 +184,18 @@ class CellDownloadTest {
         waitFor("built and loaded in the background") { mc.state(a) == CellState.Ready("v1") }
     }
 
+    /** Owner 2026-10-23: phone put aside while the map loads – MapLoadService keeps the polling going. */
+    @Test fun loadingServiceKeepsItGoingInTheBackground() {
+        server.publish(a, "v1"); server.buildPolls = 1
+        val mc = cells(Net())
+        mc.setForeground(false)
+        mc.request(listOf(a), CellReason.POINT, ownPoint = true)
+        Thread.sleep(600)
+        assertFalse("nothing asked while the app is away", server.log.any { it.startsWith("POST /v1/cells/request") })
+        mc.loadInBackground = true
+        waitFor("built and loaded with the screen off") { mc.state(a) == CellState.Ready("v1") }
+    }
+
     @Test fun wifiOnlyWaitsUntilWifi() {
         server.publish(a, "v1"); server.buildPolls = 0
         val net = Net(unmetered = false)
