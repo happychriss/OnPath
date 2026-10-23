@@ -91,11 +91,4 @@ val Activity.shortLabel: String
 
 /** Name on the primary button: "Start navigation · Trekking bike". */
 val Activity.navName: String
-    get() = when (this) {
-        Activity.BIKE_TOURING -> "Touring bike"
-        Activity.BIKE_TREKKING -> "Trekking bike"
-        Activity.EBIKE -> "E-bike"
-        Activity.MTB -> "MTB"
-        Activity.EMTB -> "E-MTB"
-        Activity.HIKE -> "Hike"
-    }
+    get() = label

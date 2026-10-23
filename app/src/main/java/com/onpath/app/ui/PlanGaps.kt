@@ -36,14 +36,7 @@ object PlanGaps {
     fun farIndices(waypoints: List<GeoPoint>, snapped: List<GeoPoint?>): Set<Int> = of(waypoints, snapped).map { it.index }.toSet()
 
     /** Plain activity name inside a sentence ("by trekking bike"). */
-    fun activityWords(a: Activity): String = when (a) {
-        Activity.HIKE -> "hike"
-        Activity.BIKE_TOURING -> "touring bike"
-        Activity.BIKE_TREKKING -> "trekking bike"
-        Activity.EBIKE -> "e-bike"
-        Activity.MTB -> "MTB"
-        Activity.EMTB -> "e-MTB"
-    }
+    fun activityWords(a: Activity): String = a.label
 
     /**
      * The sheet line for the first gap, or null without gaps: `Last 180 m to "Taser Alm" not possible by trekking bike`;
@@ -52,10 +45,10 @@ object PlanGaps {
     fun text(gaps: List<PlanGap>, activity: Activity, nameOf: (Int) -> String?): String? {
         val g = gaps.firstOrNull() ?: return null
         val d = Format.distance(Math.round(g.distanceM / 10.0) * 10.0)
-        val target = nameOf(g.index)?.trim()?.takeIf { it.isNotEmpty() }?.let { "\"$it\"" } ?: "point ${g.index + 1}"
+        val target = nameOf(g.index)?.trim()?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: "point ${g.index + 1}"
         val piece = if (g.index == 0) "First $d from $target" else "Last $d to $target"
         val more = if (gaps.size > 1) " (+${gaps.size - 1} more)" else ""
-        return "$piece not possible by ${activityWords(activity)}$more"
+        return "$piece: no way for ${activityWords(activity)}$more"
     }
 
     /** Where "Show" moves the map: the middle of the missing piece, close enough to see both ends. */
