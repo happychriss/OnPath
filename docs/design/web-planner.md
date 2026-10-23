@@ -106,3 +106,44 @@ route time; (d) a tiny TS + maplibre-gl page (click points → route + profile).
 Kotlin parts: BRouter via TeaVM only, logic via KMP later (option 1's logic half). Option 1's KMP module stays
 possible later (e.g. for iOS) – nothing in option 2 blocks it. GraalVM Web Image (JVM → Wasm) is the newer
 alternative to TeaVM but still experimental – watch, not use.
+
+## 7. Spike result (cloud, 2026-10-23) – owner approved option 2, built on `web-spike`
+
+**What exists** (`web/`, nothing in `app/` changed):
+- `web/engine/` – separate Gradle build. Compiles, straight from `app/src/main/java` (no copy): `BRouterEngine`,
+  `Rd5Parts`, `Planner`, `WaypointInsertion`, `PlanEdits`, `RouteSummary`, `RouteTimes`, `PaceModel`, `Geo`,
+  turn/junction helpers + the BRouter jars of `app/libs`. TeaVM 0.16 → one Wasm GC module. `WebApi.kt` is the
+  only API (init, putLayout/putPart for rd5 1° parts, route, plan, insertIndex). Web-only stand-ins: `Problems`,
+  `UserText` (routing part), and three tiny class replacements: single-thread `ReentrantLock`,
+  `java.lang.Package` manifest getters (BRouter's GPX header version), no-op BRouter debug `StackSampler`.
+- `web/app/` – Vite + TypeScript + maplibre-gl 6 + pmtiles. Engine in a Web Worker; fetches profiles and the rd5
+  parts the plan needs (part choice = the phone's `Rd5Parts.forCorridor`) by HTTP range (falls back to a whole file
+  on hosts without ranges). Planner page: click → point (WaypointInsertion), drag / click to move / delete,
+  activity + T level, route (failed legs dashed), km / ↑ / ↓ / time / difficulty, profile coloured by
+  `RouteSummary.steepness`. Map = the app's format-2 style, fonts and sprite unchanged.
+- Tests: `web/test/cases.json` (20 cases: Bozen–Meran × 6 activities, Algund, Meran 2000 T2/T3/T5, via Terlan,
+  Ultental loop, Lana–Ulten across 11°E, ferry, 3 error cases). `./gradlew -p web/engine runJvm` (same Engine on
+  the JVM, full rd5) vs `web/app/test/browser-compare.mjs` (headless Chromium, partial rd5 by range).
+  `web/app/test/ui-smoke.mjs` clicks two points. `.github/workflows/web-spike.yml` runs all on the branch.
+
+**Numbers** (cloud container; CI green):
+
+| | |
+|---|---|
+| Same result browser ⇄ JVM | **20/20** – same line (max deviation 0.00 m, same point count), length, ascent, descent, time, error texts |
+| Engine size | Wasm 1.52 MB, **~0.48 MB gzip**; TeaVM runtime JS 17 KB |
+| Page (maplibre + UI) | 1.08 MB JS, 294 KB gzip |
+| Engine start | ~130–160 ms (compile + profiles) |
+| Route time | like the JVM: 30 km bike 0.2–0.9 s, hikes 30–50 ms |
+| Routing data | per 1° part 5–13 MB, once per area (Meran part 9.7 MB, ~0.15 s locally) |
+
+**Findings / open points**
+1. brouter.de sends no CORS header → the web needs our own copy of the rd5 files (R2 via the Worker, with CORS +
+   Range) – fits map-hosting; access without the app key: map-access.md (decide with the owner before public).
+2. `BRouterEngine.matchedPoints` reads BRouter's protected field by reflection – not available in TeaVM, so the web
+   gets "no snapped points" (route itself identical). Small app change later: read it in `OnPathHints.java`
+   (package `btools.router`) like the turn hints – no reflection on the phone either.
+3. Small pure helpers live in UI files (e.g. `ui/ElevationProfile.profileData`) – the web mirrors 8 lines. When
+   the web planner is built for real, move such helpers to pure files so both use them.
+4. Not done in the spike: plan link / QR to the phone (needs a link format the app opens), search, POIs, saving.
+5. Compose for web was not tried (option 1 dropped by the owner's choice) – the TS page is ~250 lines.
