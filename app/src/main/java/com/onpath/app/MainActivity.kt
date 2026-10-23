@@ -459,7 +459,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }.onFailure {
                     com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)
-                    vm.message = "Diagnostics could not be created: ${it.message ?: it.javaClass.simpleName}"
+                    vm.message = "Diagnostics could not be created – the phone's storage may be full. Please try again."
                 }
             }
         }.start()

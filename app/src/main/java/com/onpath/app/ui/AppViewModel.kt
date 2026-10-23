@@ -1280,7 +1280,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: Exception) {
                 // Offline or GitHub unreachable: no user message for the automatic check, only the problem log.
                 Problems.info("update", "Update check failed (offline or GitHub unreachable)", e)
-                if (manual) UpdateState.Failed("Could not check for updates (${e.message ?: "no connection"}).") else UpdateState.Idle
+                if (manual) UpdateState.Failed("Could not check for updates. Check the internet connection and try again.") else UpdateState.Idle
             }
             withContext(Dispatchers.Main) { update = result }
         }
@@ -1316,7 +1316,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.warn("update", "Update download or installer start failed; current version kept", e)
                 withContext(Dispatchers.Main) {
                     update = UpdateState.Available(rel)
-                    message = "Update download failed: ${e.message ?: "no connection"}. Your current version keeps working."
+                    message = "Update download failed – check the internet connection and tap Install again. Your current version keeps working."
                 }
             }
         }
@@ -1359,10 +1359,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (newTiles && recState.value != null) " Restart OnPath after the tour to see the new map." else ""
             } catch (e: com.onpath.app.data.DataImporter.ImportException) {
                 Problems.warn("data", "Map data import rejected", e)
-                e.message ?: "Import failed."
+                com.onpath.app.debug.UserText.of(e, "Import failed. Your existing map data is unchanged.")
             } catch (e: Exception) {
                 Problems.error("data", "Map data import failed; existing data kept", e)
-                "Import failed: ${e.message ?: e.javaClass.simpleName}. Your existing map data is unchanged."
+                "Import failed – the file may be damaged or the phone's storage full. Your existing map data is unchanged."
             }
             withContext(Dispatchers.Main) { dataBusy = null; message = msg }
         }
@@ -2669,7 +2669,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     } catch (e: Exception) {
                         Problems.warn("routing", "Activity check: routing for another activity failed", e)
-                        ActivityRowState.Failed(e.message?.takeIf { it.length < 90 } ?: "No route found for it")
+                        ActivityRowState.Failed(com.onpath.app.debug.UserText.of(e, "No route found for it").takeIf { it.length < 90 } ?: "No route found for it")
                     }
                 }
                 if (!isActive || cancel.isCancelled) return@launch
@@ -3054,7 +3054,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
-                message = "Export failed: ${e.message ?: e.javaClass.simpleName}"
+                message = "Export failed – the phone's storage may be full. Your tours are unchanged."
             }
         }
     }
@@ -3147,7 +3147,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             events += UiEvent.Share(Intent.createChooser(send, "Export GPX"))
         } catch (e: Exception) {
             Problems.error("gpx", "GPX export failed", e)
-            message = "Export failed: ${e.message}"
+            message = "Export failed – the phone's storage may be full. Your routes and tours are unchanged."
         }
     }
 
@@ -3194,7 +3194,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: Exception) {
                 Problems.error("gpx", "GPX import failed", e)
-                message = "Could not import this file: ${e.message ?: "unknown error"}"
+                // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
+                val own = com.onpath.app.debug.UserText.of(e, "")
+                message = if (own.isNotEmpty()) "Could not import this file: $own"
+                    else "Could not import this file – it could not be opened or read."
             }
         }
     }
