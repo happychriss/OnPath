@@ -1,6 +1,7 @@
 # Map hosting: Cloudflare doorman + R2, Google Cloud Run Jobs builder
 
-Status: **owner decision 2026-10-20**, code ready, **not deployed yet** (needs the owner setup below).
+Status: **owner decision 2026-10-20.** Test environment deployed and used by the app since 0.8.x (`maps-test…`, auto
+deploy on push to `main`); **production not deployed yet** (owner: later).
 Replaces the Hetzner plan of `docs/design/map-cells.md` §5 / §11 / §12 phase 3 (`tools/hetzner/` is superseded).
 The cell format, the build steps, the `/v1` API and the app side stay exactly as in map-cells.md.
 zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.

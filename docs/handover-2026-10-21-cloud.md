@@ -1,5 +1,7 @@
 # Handover cloud → laptop (2026-10-21, evening)
 
+> Historical – all items done or moved to `docs/backlog.md` (checked 2026-10-23).
+
 Owner: "write a full handover to the laptop … will continue from laptop." Read this, then `docs/backlog.md` "Next"
 and `docs/core-features.md`. All work is on GitHub; nothing is only in the cloud container.
 
