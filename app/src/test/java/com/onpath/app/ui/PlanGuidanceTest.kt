@@ -52,7 +52,13 @@ class PlanGuidanceTest {
         assertEquals(listOf(a, c), t.plan)
     }
 
+    /** Owner Q2 2026-10-23: sheet ⋯ → Clear route is allowed during a tour and goes through the same plan change. */
     @Test fun clearRouteDuringATourEndsTheGuidanceToo() {
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val clear = vm.substringAfter("fun clearPlan() {").substringBefore("\n    }")
+        assertTrue(clear, clear.contains("change { clear() }"))
+        val change = vm.substringAfter("private fun change(").substringBefore("\n    }")
+        assertTrue(change, change.contains("endGuidanceIfPlanEmpty()"))
         val t = Tour(listOf(a, b))
         t.edit(emptyList())
         assertFalse(t.following)
