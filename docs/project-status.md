@@ -5,6 +5,8 @@ Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-feat
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+- **laptop, 2026-10-23 late:** two activities at start investigated (`36bb950`: relevance fix + screen lifecycle trace).
+  Root trigger not proven yet – next step and options in `docs/backlog.md` "Next" (first item).
 - **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
   colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
   up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers

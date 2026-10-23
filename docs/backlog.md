@@ -8,6 +8,19 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **[for the laptop – 2026-10-23 late] Two MainActivity instances at start – find the trigger, then guard.** Seen only on
+  the first start after an install (10-22 22:50 + 22:51 after `adb install -r && monkey -p com.onpath.app 1`; 10-23
+  20:45 = 0.10.1 start): one process, two activities, each its own ViewModel; the first ViewModel is cleared ~1–2 s later
+  while routing. Read in code: singleTask, no `recreate()` / `finish()` / CLEAR_TASK at start, notification
+  PendingIntents SINGLE_TOP/NEW_TASK – so the trigger is in the launch path (system / launcher / installer), not in our
+  code; not proven. Done in `36bb950`: the older ViewModel no longer clears the newer one's `MapCells.relevance`
+  (`releaseRelevance`, CellDownloadTest), and the event log now has "Screen #n created (task, root, restored, intent
+  action/flags, referrer)" / "Screen #n destroyed (finished / configuration change / by the system)"; a second live
+  screen is a WARN in Diagnostics (`debug/ScreenLifecycle.kt`). **Next:** after the next install on the Pixel read
+  `scratchpad/a.sh ev 40` → the "Screen #" lines name the second launch. If it is a plain MAIN/LAUNCHER start while #1
+  lives: guard in `onCreate` (another screen alive + launcher intent → `finish()` the new one). Bigger, more robust
+  option (owner OK first): one app-wide state holder instead of a ViewModel per activity. Still doubled while it
+  happens: plan restore + route, search index, style load (+70–150 MB native), location tracker, cell requests.
 - **[for the cloud – owner 2026-10-23, start 2026-10-24] Web planner, as one codebase where possible.** Handover and
   proposal: `docs/design/web-planner.md` (Kotlin Multiplatform: shared logic + Compose for Web; BRouter compiled to
   Wasm with TeaVM so routes are computed in the browser – no routing server; link/QR hands the plan to the phone).
