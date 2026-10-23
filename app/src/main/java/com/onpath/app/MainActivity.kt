@@ -46,6 +46,7 @@ import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.RouteDialogs
 import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
+import com.onpath.app.debug.ScreenLifecycle
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -110,6 +111,7 @@ class MainActivity : ComponentActivity() {
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        traceCreated(savedInstanceState != null)
         if (savedInstanceState == null) handleIntent(intent)
 
         diagnosticsOn = com.onpath.app.debug.Diagnostics.enabled(this)
@@ -343,8 +345,30 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
         handleIntent(intent)
     }
+
+    override fun onDestroy() {
+        val others = ScreenLifecycle.destroyed(screenNo)
+        com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.destroyedLine(screenNo, isFinishing, isChangingConfigurations, others))
+        super.onDestroy()
+    }
+
+    /** Number of this screen in the process (event log: field 0.10.1 had two at once at start – [ScreenLifecycle]). */
+    private var screenNo = 0
+
+    private fun traceCreated(restored: Boolean) {
+        val (n, others) = ScreenLifecycle.created()
+        screenNo = n
+        val line = ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
+        // a second screen at once is not normal: noted in Diagnostics (WARN is not announced on screen)
+        if (others > 0) com.onpath.app.debug.Problems.warn("app", line) else com.onpath.app.debug.Problems.trace("app", line)
+    }
+
+    private fun describe(i: Intent?): String = if (i == null) "no intent" else ScreenLifecycle.intentText(
+        i.action, i.data?.scheme, i.type, i.categories, i.flags, i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0,
+        try { referrer?.host } catch (e: Exception) { null }) // expected: referrer is best effort (event log only)
 
     override fun onStart() {
         super.onStart()
