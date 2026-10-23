@@ -54,8 +54,12 @@ fun MapHost(
     val density = LocalDensity.current.density
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { MapView(context).apply { onCreate(null) } }
-    /** This host's own reload (the global [reloadRef] may point at another host). */
-    val myReload = remember { arrayOfNulls<() -> Unit>(1) }
+    /** This host's own map state: what it shows, its reload (another activity's host may live at the same time). */
+    val host = remember { MapHostView() }
+    /** This host's controller (touch handling never uses another host's). */
+    val myCtrl = remember { arrayOfNulls<MapController>(1) }
+    /** Theme of this host's loaded style. */
+    val myTheme = remember { arrayOfNulls<String>(1) }
     // No frame-rate cap (owner 2026-10-20): the map runs at the display's full rate while you look at it.
     // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
@@ -100,6 +104,7 @@ fun MapHost(
             var fallbackUsed = false
             fun load(json: String) {
                 val loadedFrom = StyleLoader.lastMapDir
+                host.loading(loadedFrom ?: vm.dataFiles.dir)
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val n = ++styleLoads
                 // asked and done are both in the event log (field test 0.10.1: new map areas never showed until restart)
@@ -112,7 +117,8 @@ fun MapHost(
                     vm.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)
-                        ctrlRef[0] = c
+                        myCtrl[0] = c
+                        ctrlRef.set(host, c)
                         onReady(c)
                     } catch (e: Exception) {
                         com.onpath.app.debug.Problems.error("map", "Map setup failed after the style loaded (app layers missing)", e)
@@ -135,7 +141,7 @@ fun MapHost(
             // move the map – field test 2026-10-20: holding a point added a new one instead of opening its menu).
             var downMarker = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
-                val c = ctrlRef[0]
+                val c = myCtrl[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
                     com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
                 }
@@ -200,7 +206,7 @@ fun MapHost(
                     // Decide once per press what an armed hold feels like: 2× on a route point, 1× elsewhere.
                     val at = PointF(hold.downX, hold.downY)
                     val edit = vm.canEditMap && !vm.routePeek
-                    val marker = if (edit) ctrlRef[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
+                    val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
                     val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
@@ -216,39 +222,38 @@ fun MapHost(
                     load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
-            loadedTheme[0] = vm.settings.mapTheme
-            myReload[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
-            reloadRef[0] = myReload[0]
+            myTheme[0] = vm.settings.mapTheme
+            // this host's own reload (MapReload: two activities' hosts may live at once – field test 0.10.1)
+            host.ready { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
             load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
         }
-        // only clear what is ours: another (short-lived) map host must never switch off this one's reload (0.10.1)
+        // only clear what is ours: another (short-lived) map host must never switch off this one (0.10.1)
         onDispose {
-            if (reloadRef[0] === myReload[0]) { reloadRef[0] = null; ctrlRef[0] = null }
+            host.disposed()
+            ctrlRef.clear(host)
         }
     }
 
-    // The map shows an older map store than the one on the phone (new areas joined while the reload could not run,
-    // e.g. app in the background): load it now – on every return to the app and on every new generation (0.10.1 fix).
+    // This host's map shows an older map store than the one on the phone (new areas joined while the reload could not
+    // run): load it now – on every return to the app and on every new generation (0.10.1 fix). Per host: another
+    // activity's map having loaded the new data says nothing about this one.
     val generation = vm.cells.generation.collectAsState().value
     LaunchedEffect(generation, vm.appOnScreen) {
-        val shown = StyleLoader.lastMapDir ?: return@LaunchedEffect
-        if (!vm.appOnScreen || vm.dataFiles.mapDir() == shown) return@LaunchedEffect
+        if (!vm.appOnScreen || !host.behind(vm.dataFiles.mapDir())) return@LaunchedEffect
         kotlinx.coroutines.delay(MAP_CATCH_UP_MS) // the normal path (styleVersion, quiet gate) usually comes first
-        if (vm.dataFiles.mapDir() == StyleLoader.lastMapDir) return@LaunchedEffect
-        val r = myReload[0]
-        if (r == null) { Problems.warn("map", "Newer map data could not be shown yet (map not ready); shown when the map opens next"); return@LaunchedEffect }
-        Problems.info("map", "Map was behind the data on the phone (${shown.name} → ${vm.dataFiles.mapDir().name}); loading it now")
-        r()
+        val shown = host.shown
+        if (!host.behind(vm.dataFiles.mapDir())) return@LaunchedEffect
+        Problems.info("map", "Map was behind the data on the phone (${shown?.name} → ${vm.dataFiles.mapDir().name}); loading it now")
+        host.reload()
     }
 
     // Switching the map theme in Settings reloads the style; the app layers are re-added in onReady.
-    // An imported style file (Settings → Map data) bumps styleVersion and reloads too.
+    // An imported style file (Settings → Map data) or a new map store generation bumps styleVersion and reloads too.
     LaunchedEffect(vm.settings.mapTheme, vm.styleVersion) {
-        if (loadedTheme[0] != null && (loadedTheme[0] != vm.settings.mapTheme || vm.styleVersion > 0)) {
-            loadedTheme[0] = vm.settings.mapTheme
-            val r = myReload[0] ?: reloadRef[0]
-            if (r == null) Problems.warn("map", "Map style reload skipped: the map was not ready (version ${vm.styleVersion})")
-            r?.invoke()
+        // null: this host's map is not ready yet – its first load takes the current theme and data
+        if (myTheme[0] != null && (myTheme[0] != vm.settings.mapTheme || vm.styleVersion > 0)) {
+            myTheme[0] = vm.settings.mapTheme
+            if (!host.reload()) Problems.warn("map", "Map style reload skipped: the map was not ready (version ${vm.styleVersion})")
         }
     }
 
@@ -309,9 +314,5 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
 /** Style loads in this process (for the event log). */
 private var styleLoads = 0
 
-/** Theme of the loaded style and a way to reload it (set once the map is ready). */
-private val loadedTheme = arrayOfNulls<String>(1)
-private val reloadRef = arrayOfNulls<() -> Unit>(1)
-
-/** Latest controller for listeners created before it existed. */
-internal val ctrlRef = arrayOfNulls<MapController>(1)
+/** Latest host's controller (Diagnostics export); cleared only by the host that set it ([OwnedRef]). */
+internal val ctrlRef = OwnedRef<MapController>()

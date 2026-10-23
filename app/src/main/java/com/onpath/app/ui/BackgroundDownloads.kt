@@ -120,13 +120,29 @@ class BackgroundProgress {
         fun loading(s: CellState): Boolean = s == CellState.Requested || s is CellState.Queued || s is CellState.Building ||
             s is CellState.Downloading || s == CellState.Installing
 
-        /** The background items of the cell [states] (those in [waitedFor] are the modal's, not the strip's). */
-        fun cellItems(states: Map<CellId, CellState>, waitedFor: Set<CellId>, size: (CellId) -> Long?): List<Item> =
-            states.filter { (c, s) -> c !in waitedFor && loading(s) }.map { (c, s) ->
+        /**
+         * The background items of the cell [states] (those in [waitedFor] are the modal's, not the strip's). An
+         * [installed] area only asked for a newer version ([CellState.Requested]: the server has not answered) is no
+         * loading yet. With [progress] (one [MapLoadProgress] per cell, kept by the caller; [now] uptime ms) the
+         * server's preparing time counts too, as in the loading window (field test 0.10.1: the strip stood at 0 % for
+         * the ~10 minutes the server prepared two areas); without it only downloaded bytes count.
+         */
+        fun cellItems(
+            states: Map<CellId, CellState>, waitedFor: Set<CellId>, installed: Set<CellId> = emptySet(),
+            progress: MutableMap<CellId, MapLoadProgress>? = null, now: Long = 0L, size: (CellId) -> Long?,
+        ): List<Item> {
+            val items = states.filter { (c, s) -> c !in waitedFor && loading(s) && !(c in installed && s == CellState.Requested) }
+            progress?.keys?.retainAll(items.keys)
+            return items.map { (c, s) ->
                 val d = s as? CellState.Downloading
                 val total = d?.totalBytes?.takeIf { it > 0 } ?: size(c) ?: 0L
-                Item("cell:${c.id}", d?.doneBytes ?: 0L, total)
+                val done = if (progress == null) d?.doneBytes ?: 0L else {
+                    val pct = progress.getOrPut(c) { MapLoadProgress() }.update(s, now).percent
+                    (if (total > 0) total else ESTIMATE_BYTES) * pct / 100
+                }
+                Item("cell:${c.id}", done, total)
             }
+        }
     }
 }
 

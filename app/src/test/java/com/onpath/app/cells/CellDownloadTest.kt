@@ -357,6 +357,25 @@ class CellDownloadTest {
         assertEquals(emptySet<CellId>(), mc.removing())
     }
 
+    /**
+     * Phone check 2026-10-23 (laptop, Pixel): a place opened from a link flew the camera (MapLibre reports app camera
+     * moves like a gesture → userBusy), the app was left before the camera came to rest – no "camera idle" ever came, so
+     * two downloaded areas waited 4 min unjoined until the app was opened again. Nobody drags a map that is not on screen.
+     */
+    @Test fun leavingTheAppEndsAStuckGesture() {
+        server.publish(a, "v1"); server.buildPolls = 0
+        val mc = cells(Net())
+        val gen = mc.generation.value
+        mc.userBusy = true
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("downloaded") { mc.state(a) == CellState.Installing }
+        Thread.sleep(300)
+        assertEquals("not joined while dragging", gen, mc.generation.value)
+        mc.setForeground(false)
+        assertEquals(false, mc.userBusy)
+        waitFor("joined after the app was left") { mc.installed.value.size == 1 }
+    }
+
     @Test fun clearAllRemovesEveryAreaAndEveryRequest() {
         server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
         val mc = cells(Net())
