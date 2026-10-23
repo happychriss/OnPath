@@ -40,7 +40,7 @@ class MapLoadOverlayTest {
             com.onpath.app.data.RoutingDataLoader.Phase.LOADING, 3 * mb, 10 * mb, 2.5 * mb)
         val both = RoutingLoads.combine(MapLoadUi(MapLoadUi.Kind.LOADING, 40, 30, regions = 4, bytes = 30 * mb), status)!!
         val only = RoutingLoads.combine(null, status)!!
-        assertTrue(both.totals, both.totals == "4 regions · about 40 MB")
+        assertTrue(both.totals, both.totals == "4 map areas · about 40 MB")
         assertTrue(only.title == "Loading the map for your area" && only.totals == "about 10 MB")
         shot(both, only)
     }

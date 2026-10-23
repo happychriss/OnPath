@@ -89,7 +89,7 @@ class RideViewTest {
         assertEquals(listOf(RideView.RowKind.ON_FOOT, RideView.RowKind.VEHICLE, RideView.RowKind.ON_FOOT), s.rows.map { it.kind })
         assertEquals(60.0, s.rows[1].speedKmh!!, 0.5)
         assertEquals(5000.0, s.rows[1].distanceM, 2.0)
-        assertEquals(listOf("Save only until 08:10", "Save all, rides not counted", "Split into two tours", "Save as recorded"),
+        assertEquals(listOf("Save only until 08:10", "Save all, rides not counted", "Split into two tracks", "Save as recorded"),
             s.options.map { it.title })
         // the hike goes on after the ride: not counted is preselected
         assertEquals(RideChoice.NOT_COUNTED, s.preselected)

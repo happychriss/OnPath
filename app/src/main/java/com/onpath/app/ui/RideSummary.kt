@@ -74,9 +74,9 @@ fun RideSummaryDialog(
         AlertDialog(
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete this tour?") },
-            text = { Text("Recording stops and the tour is not kept. You can still get it back from the recycle bin " +
-                "for 30 days (My routes → ⋮ → Recycle bin).") },
+            title = { Text("Delete this track?") },
+            text = { Text("Recording stops and the track is not kept. You can still get it back from the recycle bin " +
+                "for ${com.onpath.app.backup.RecycleBin.DAYS} days (My routes → ⋮ → Recycle bin).") },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
             dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },

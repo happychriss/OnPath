@@ -137,7 +137,7 @@ internal class LegacyBackupStore(private val context: Context) : BackupStore {
             throw BackupException("storage access not allowed – Settings → Backup → Allow")
         if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) throw BackupException("storage not available")
         val d = File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "OnPath"), if (deleted) "Deleted" else "")
-        if (!d.isDirectory && !d.mkdirs()) throw BackupException("folder ${d.path} cannot be created")
+        if (!d.isDirectory && !d.mkdirs()) throw BackupException("the backup folder cannot be created")
         return d
     }
 

@@ -101,10 +101,10 @@ class MapLoadProgressTest {
             emptyMap(), progress, 0, 0)!!
         assertEquals(2, ui.regions)
         assertEquals(12 * mb + MapLoads.ESTIMATED_REGION_BYTES, ui.bytes)
-        assertEquals("2 regions · about 21 MB", ui.totals)
+        assertEquals("2 map areas · about 21 MB", ui.totals)
         assertEquals(MapLoadUi.Kind.LOADING, ui.kind)       // something is downloading
         assertEquals(40, ui.percent)                         // (80 + 0) / 2
-        assertEquals("1 region · ≈ 9 MB", MapLoads.askText(1, MapLoads.ESTIMATED_REGION_BYTES))
+        assertEquals("1 map area · ≈ 9 MB", MapLoads.askText(1, MapLoads.ESTIMATED_REGION_BYTES))
     }
 
     @Test fun oneRegionThereCountsAsHundredAndAllThereEndsIt() {

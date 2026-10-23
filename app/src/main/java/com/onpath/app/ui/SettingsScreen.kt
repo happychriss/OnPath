@@ -308,10 +308,10 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
             }
         }
         SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
-        SwitchRow("Hillshade (relief)", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
+        SwitchRow("Hill shading", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
         Text("Map direction (Plan and Navigate)", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(true to "Walking direction", false to "North up").forEach { (up, label) ->
+            listOf(true to "Direction of travel", false to "North up").forEach { (up, label) ->
                 FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
                     label = { Text(label) }, modifier = Modifier.heightIn(min = 44.dp))
             }
@@ -319,7 +319,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         Text("Planning", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
-        SwitchRow("Vibrate when planning", "When you hold the map: 1× (map, line, place), 2× on a route point",
+        SwitchRow("Vibrate when planning", "Short buzz when you hold the map, two buzzes on a route point",
             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
     }
 }
@@ -361,7 +361,7 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (bg) "A tour continues by itself after a restart or update (location: Allow all the time)."
-                    else "After a restart or update you tap Continue. To continue by itself: location → “Allow all the time”.",
+                    else "After a phone restart or app update, tap Continue to go on recording. To make this automatic, set location to “Allow all the time”.",
                     fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f))
                 if (!bg) TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
@@ -377,7 +377,7 @@ private fun DiagnosticsSection(on: Boolean, onDiagnostics: (Boolean) -> Unit, on
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Diagnostics export", modifier = Modifier.weight(1f))
+                Text("Show export button", modifier = Modifier.weight(1f))
                 Switch(checked = on, onCheckedChange = onDiagnostics)
             }
             Text("Creates a file with the app version, map files, the loaded map style, what the map shows " +
@@ -503,7 +503,7 @@ private fun PrivacySection() {
     Section("Privacy") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Nothing is tracked. No account, no analytics, no ads.", fontWeight = FontWeight.SemiBold)
-            Text("Your tours, plans and your track never leave the phone – only to your own backup folder.", fontSize = 14.sp)
+            Text("Your tracks and routes never leave the phone – only to your own backup folder.", fontSize = 14.sp)
             HorizontalDivider()
             Text("What leaves your phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             PRIVACY_FLOWS.forEach { f ->
@@ -523,8 +523,8 @@ data class PrivacyFlow(val what: String, val to: String, val whenText: String)
 val PRIVACY_FLOWS = listOf(
     PrivacyFlow("Which map area you need (an area of about 30 × 40 km, not your position)", "OnPath map server",
         "when maps load"),
-    PrivacyFlow("Which part of the routing data you need (an area of about 1° × 1°)", "brouter.de", "when maps load"),
-    PrivacyFlow("Your search text and a rough position (about 1 km)", "Photon (komoot, Germany)", "only for online search"),
+    PrivacyFlow("Which map area you need for route planning (an area of about 80 × 110 km)", "brouter.de", "when maps load"),
+    PrivacyFlow("Your search text and a rough position (about 1 km)", "komoot (Germany)", "only for online search"),
     PrivacyFlow("A request for the newest app version (no personal data)", "GitHub",
         "update check, once a day and when you tap Check"),
     PrivacyFlow("A Google Maps link you share into OnPath", "Google", "only to find the place of a short link"),

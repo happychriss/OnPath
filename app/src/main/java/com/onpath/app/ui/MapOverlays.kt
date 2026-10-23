@@ -212,9 +212,9 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
         for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip)) when (a) {
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start here",
-                supporting = "Removes ${points(index)} before") { onAction(a) }
+                supporting = "Removes the ${points(index)} before it") { onAction(a) }
             PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start & finish here",
-                supporting = "Same loop, starts here") { onAction(a) }
+                supporting = "Same round trip, starts here") { onAction(a) }
             PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
             PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
         }

@@ -60,7 +60,7 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
                     TdKV("Moving time", Format.duration(r.finalS), bold = true)
                     TdKV("With breaks (+${(TimeEstimate.BREAK_ALLOWANCE * 100).toInt()} %)",
                         Format.duration(r.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)))
-                    TdKV("At Average pace", Format.duration(r.baseS))
+                    TdKV("At average pace", Format.duration(r.baseS))
                     if (r.wayRows.isNotEmpty()) TdKV("From the slope alone (no way info)", Format.duration(r.slopeOnlyS))
                 }
                 TdSection("Factors") {

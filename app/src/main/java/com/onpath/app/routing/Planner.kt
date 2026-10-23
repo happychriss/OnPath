@@ -97,7 +97,7 @@ class Planner(
             val r = engine.route(waypoints, activity, sac)
             val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
             return PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS,
-                "Offline router could not start (routing data missing?) – straight lines shown.")
+                "Routes can't be calculated right now – straight lines shown.")
         }
         try {
             val r = route(waypoints, activity, sac)

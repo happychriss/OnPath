@@ -155,9 +155,9 @@ object RouteWarnings {
         return items.take(MAX_ITEMS).joinToString(" · ") + if (more > 0) " +$more" else ""
     }
 
-    /** "Route changed for trekking bike – please check" (hike with its level: "for hike T4"). */
+    /** "Route changed for Trekking bike – please check it" (hike with its level: "for Hike T4"). */
     fun changedText(a: Activity, sac: Int): String =
-        "Route changed for ${PlanGaps.activityWords(a)}${if (a == Activity.HIKE) " T$sac" else ""} – please check"
+        "Route changed for ${PlanGaps.activityWords(a)}${if (a == Activity.HIKE) " T$sac" else ""} – please check it"
 
     /** Kind of one list row in plain words: "Pushing", "Steps", "T4 – above your T2", "Steep, up to 28 %". */
     fun rowTitle(s: RouteSpot, sac: Int): String = when (s.kind) {

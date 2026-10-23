@@ -11,7 +11,7 @@ import java.util.TimeZone
 
 /** The topics of Settings (owner 2026-10-22: a list of topics, each opens its own page), in list order. */
 enum class SettingsPage(val title: String) {
-    PACE("Pace & time"),
+    PACE("Your pace"),
     POI("Points of interest"),
     MAP("Map"),
     NAVIGATION("Navigation"),
@@ -47,7 +47,7 @@ object SettingsSummary {
     }
 
     fun map(s: AppSettings): Summary = Summary(
-        "Contours ${onOff(s.contours)} · Hill shading ${onOff(s.hillshade)} · ${if (s.navHeadingUp) "Walking direction" else "North up"}")
+        "Contour lines ${onOff(s.contours)} · Hill shading ${onOff(s.hillshade)} · ${if (s.navHeadingUp) "Direction of travel" else "North up"}")
 
     fun navigation(s: AppSettings): Summary = Summary(
         if (!s.offRouteWarning) "Off-route warning off · junction vibration ${onOff(s.junctionVibrate)}"
