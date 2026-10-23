@@ -159,7 +159,7 @@ data class PlanUi(
     val size: PlanSize = PlanSize.COMPACT,
     /** Hiking level (SAC T1–T5): the activity chip shows "Hike · T2". */
     val sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
-    /** A tour records: the primary action is "Continue navigation" instead of Start; Clear is disabled. */
+    /** A tour records: the primary action is "Continue navigation" instead of Start; Clear ends the route guidance. */
     val tourRunning: Boolean = false,
     /** Name the plan was last saved or loaded as (null = never). */
     val savedName: String? = null,
@@ -448,7 +448,7 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
     HorizontalDivider()
-    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount, ui.tourRunning),
+    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount),
         onClick = run(cb.onClear))
 }
 
