@@ -3214,6 +3214,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** First start with an empty database: "Earlier tours found? Restore from Documents/OnPath" (asked once). */
     var restoreOffer by mutableStateOf(false)
+    /** The system's location permission request is open (MainActivity); the restore offer waits ([RestoreOfferRule]). */
+    var locationAsking by mutableStateOf(false)
+    /** The loading modal waits for the map / routing data of the user's area. */
+    val loadModalOpen: Boolean get() = loadModalFor.isNotEmpty() || routingModal
     /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
     var restoreProgress by mutableStateOf<String?>(null)
         private set
