@@ -237,7 +237,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The app is on screen again (e.g. taken out of the pocket): in Navigate jump back to the own position (owner). */
     fun onReturnToApp() {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
-        appVisible = true
+        appVisible = true; appOnScreen = true
         cells.setForeground(true)
         if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
     }
@@ -246,7 +246,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The app left the screen. Map areas still on their way keep loading through MapLoadService (owner 2026-10-23),
      * started when they began; otherwise nothing is polled in the background (map-cells.md §8).
      */
-    fun onLeaveApp() { appVisible = false; cells.setForeground(false) }
+    fun onLeaveApp() { appVisible = false; appOnScreen = false; cells.setForeground(false) }
+
+    /** The app is on screen (Compose state: MapHost catches up with newer map data on return). */
+    var appOnScreen by mutableStateOf(true)
+        private set
 
     /** The app is on screen (Android allows starting the map loading service only then). */
     private var appVisible = true
@@ -3435,7 +3439,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // once per burst, never while the map / sheet is dragged (perf report 2026-10-22: one reload per
                     // region, native memory grew with each); the camera and location tracking stay as they are
                     styleGateJob = gated(styleGate, styleGateJob, busy = { cells.userBusy }) {
-                        if (dataFiles.mapDir() != com.onpath.app.map.StyleLoader.lastMapDir) { recheckData(); styleVersion++ }
+                        if (dataFiles.mapDir() != com.onpath.app.map.StyleLoader.lastMapDir) {
+                            Problems.trace("map", "Map style reload asked for ${dataFiles.mapDir().name} (version ${styleVersion + 1})")
+                            recheckData(); styleVersion++
+                        }
                     }
                 }
             }

@@ -17,6 +17,7 @@ import kotlin.math.hypot
 import android.graphics.PointF
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -53,6 +54,8 @@ fun MapHost(
     val density = LocalDensity.current.density
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { MapView(context).apply { onCreate(null) } }
+    /** This host's own reload (the global [reloadRef] may point at another host). */
+    val myReload = remember { arrayOfNulls<() -> Unit>(1) }
     // No frame-rate cap (owner 2026-10-20): the map runs at the display's full rate while you look at it.
     // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
@@ -99,6 +102,8 @@ fun MapHost(
                 val loadedFrom = StyleLoader.lastMapDir
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val n = ++styleLoads
+                // asked and done are both in the event log (field test 0.10.1: new map areas never showed until restart)
+                com.onpath.app.debug.Problems.trace("map", "Style load #$n asked (${loadedFrom?.name ?: "data folder"})")
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
                     // each load in the event log: native memory grew per reload (perf report 2026-10-22)
                     com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
@@ -212,10 +217,28 @@ fun MapHost(
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             loadedTheme[0] = vm.settings.mapTheme
-            reloadRef[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
+            myReload[0] = { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
+            reloadRef[0] = myReload[0]
             load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
         }
-        onDispose { ctrlRef[0] = null; reloadRef[0] = null }
+        // only clear what is ours: another (short-lived) map host must never switch off this one's reload (0.10.1)
+        onDispose {
+            if (reloadRef[0] === myReload[0]) { reloadRef[0] = null; ctrlRef[0] = null }
+        }
+    }
+
+    // The map shows an older map store than the one on the phone (new areas joined while the reload could not run,
+    // e.g. app in the background): load it now – on every return to the app and on every new generation (0.10.1 fix).
+    val generation = vm.cells.generation.collectAsState().value
+    LaunchedEffect(generation, vm.appOnScreen) {
+        val shown = StyleLoader.lastMapDir ?: return@LaunchedEffect
+        if (!vm.appOnScreen || vm.dataFiles.mapDir() == shown) return@LaunchedEffect
+        kotlinx.coroutines.delay(MAP_CATCH_UP_MS) // the normal path (styleVersion, quiet gate) usually comes first
+        if (vm.dataFiles.mapDir() == StyleLoader.lastMapDir) return@LaunchedEffect
+        val r = myReload[0]
+        if (r == null) { Problems.warn("map", "Newer map data could not be shown yet (map not ready); shown when the map opens next"); return@LaunchedEffect }
+        Problems.info("map", "Map was behind the data on the phone (${shown.name} → ${vm.dataFiles.mapDir().name}); loading it now")
+        r()
     }
 
     // Switching the map theme in Settings reloads the style; the app layers are re-added in onReady.
@@ -223,7 +246,9 @@ fun MapHost(
     LaunchedEffect(vm.settings.mapTheme, vm.styleVersion) {
         if (loadedTheme[0] != null && (loadedTheme[0] != vm.settings.mapTheme || vm.styleVersion > 0)) {
             loadedTheme[0] = vm.settings.mapTheme
-            reloadRef[0]?.invoke()
+            val r = myReload[0] ?: reloadRef[0]
+            if (r == null) Problems.warn("map", "Map style reload skipped: the map was not ready (version ${vm.styleVersion})")
+            r?.invoke()
         }
     }
 
@@ -232,6 +257,9 @@ fun MapHost(
         HoldRing(holdAt.value, onArmed = { Haptics.play(mapView.context, holdBuzz.value, vm.settings.planVibrate) })
     }
 }
+
+/** The catch-up reload waits this long for the normal reload path first. */
+private const val MAP_CATCH_UP_MS = 20_000L
 
 /** How long a press must last in plan mode before it does anything. */
 const val HOLD_MS = 300L

@@ -8,6 +8,25 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **[for the laptop – owner 2026-10-23 evening, phone test 0.10.1] TODO:**
+  1. **New map areas never showed until an app restart (bug).** Hilden areas 10-531-341/342 were downloaded and joined
+     (generations 49–53, 20:52–21:21) – the map stayed blank beige at Hilden; force-closing the app fixed it. Diagnostics
+     (exported 21:36): `styleVersion` 5 (the reload was asked 5×) but NO "Style load #n" trace after 20:45 (0.10.1 start);
+     `map: not ready` in the export (ctrlRef null; the export runs with Settings open). Health: "no frames drawn".
+     Not found by reading the code (MapHost single instance; QuietGate ok). Cloud added (not released yet): a trace on
+     every reload ask ("Map style reload asked …") and every load ("Style load #n asked / done"), MapHost only clears the
+     global refs it owns, a warning when a reload is skipped (map not ready), and a catch-up reload 20 s after the app is
+     back on screen / a new generation when the map still shows an older store. Please reproduce on the Pixel (adb
+     logcat -s OnPath): plan in a new area, let areas load (screen off / app left for some minutes, MapLoadService
+     notification), come back – does the map switch? Then find the root cause.
+  2. After the restart the blue bar showed "Loading map · 2 areas · 0 %" for areas that were already there – check why
+     (refresh / corridor re-request?) and whether the 0 % stays.
+  3. Plan sheet showed the saved name "Gasthof Taser Alm → Gasthof Greitererhof · changed, not saved" on a plan in
+     Hilden – a new plan in a far place should not carry the old route's name (start a new plan when all points are
+     replaced / the first point is set after Clear?).
+  4. Point names: "Unterstand" (shelter – fine?) and "intensiū" (odd, broken name?) – check the name lookup for points.
+  5. **Owner wish: all sights and viewpoints (POI kinds "sight"/"viewpoint" or what they are called in `poi/PoiKinds`)
+     shown by default** (not in `defaultHidden`).
 - **Text + UX review 2026-10-23 (cloud, in progress)** – reports `docs/review-texts-2026-10-23.md`,
   `docs/review-ux-2026-10-23.md`. Owner answers so far: texts Q1 languages: keep as is (EN + DE come at the end);
   Q2 last point = "Destination" (English standard; round trip keeps "Start & finish here"); Q3 middle points = "Stop"
