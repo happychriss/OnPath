@@ -55,6 +55,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -436,34 +437,57 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
     )
 }
 
+/**
+ * A recording was interrupted (app or phone restarted without the service): Continue · Delete · Save, like End tour
+ * (UX review 2026-10-23, problem 2). Delete asks once more, then the tour goes to the recycle bin. Stays until answered.
+ */
 @Composable
-fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit) {
+fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDelete: () -> Unit) {
+    var askDelete by remember(t.id) { mutableStateOf(false) }
+    if (askDelete) {
+        AlertDialog(
+            onDismissRequest = { askDelete = false },
+            icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete this tour?") },
+            text = { Text("The tour is not kept. You can still get it back from the recycle bin for 30 days " +
+                "(My routes → ⋮ → Recycle bin).") },
+            confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Unfinished tour") },
         text = { Text("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
-        confirmButton = { TextButton(onClick = onContinue) { Text("Continue tour") } },
-        dismissButton = { TextButton(onClick = onSave) { Text("Save tour") } },
+        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onContinue) { Text("Continue") }
+                TextButton(onClick = { askDelete = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+            }
+        },
     )
 }
 
 /**
  * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
- * back to "Tour saved", nothing is lost by a slip of the finger.
+ * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (owner
+ * 2026-10-22, Undo brings it back) – so no "Clear route from map" here (UX review 2026-10-23, problem 12: it never showed).
  */
 @Composable
 fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,
-                        times: com.onpath.app.time.TourTimes? = null, onClearRoute: (() -> Unit)? = null) {
+                        times: com.onpath.app.time.TourTimes? = null) {
     var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
     if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
-    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times, onClearRoute)
+    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times)
 }
 
 @Composable
 fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit,
-                   times: com.onpath.app.time.TourTimes? = null,
-                   /** A planned route is still on the map (not saved, so it was not cleared automatically): offer to clear it. */
-                   onClearRoute: (() -> Unit)? = null) {
+                   times: com.onpath.app.time.TourTimes? = null) {
     AlertDialog(
         onDismissRequest = onDone,
         title = { Text("Track saved") },
@@ -472,11 +496,6 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                 Text(t.name, fontWeight = FontWeight.SemiBold)
                 StatsRow(t.distanceM, t.ascentM, t.descentM, t.durationS)
                 times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
-                onClearRoute?.let { clear ->
-                    TextButton(onClick = clear, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Icon(Icons.Outlined.DeleteSweep, null); Spacer(Modifier.width(6.dp)); Text("Clear route from map")
-                    }
-                }
             }
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },

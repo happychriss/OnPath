@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
     private var askedThisSession = false
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        vm.locationAsking = false
         vm.tracker.start()
         if (vm.tracker.hasPermission()) afterPermission?.invoke()
         else vm.message = "Without location permission the map works, but position and recording do not."
@@ -179,7 +180,9 @@ class MainActivity : ComponentActivity() {
                             com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recycleBin = null },
                                 onRestore = { vm.restoreFromBin(it) }, onDeleteForever = { vm.deleteForever(it) })
                         }
-                        if (vm.restoreOffer && vm.recState.collectAsState().value == null) {
+                        // one dialog after the other on a first start: location first, then the map, then this
+                        if (com.onpath.app.ui.RestoreOfferRule.show(vm.restoreOffer, vm.recState.collectAsState().value != null,
+                                vm.locationAsking, vm.loadModalOpen)) {
                             com.onpath.app.ui.RestoreOfferDialog(
                                 onRestore = { vm.restoreOfferAnswered(); launchTreePicker(pickRestoreFolder) },
                                 onNotNow = { vm.restoreOfferAnswered() })
@@ -188,10 +191,6 @@ class MainActivity : ComponentActivity() {
                     vm.route?.takeIf { vm.routeDetailsOpen }?.let { r ->
                         BackHandler { vm.routeDetailsOpen = false }
                         com.onpath.app.ui.RouteDetailsScreen(r, vm.activity, onBack = { vm.routeDetailsOpen = false })
-                    }
-                    vm.timeDetails?.let { td ->
-                        BackHandler { vm.timeDetails = null }
-                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
                     }
                     if (vm.showSettings) {
                         BackHandler { vm.settingsBack() }
@@ -245,6 +244,7 @@ class MainActivity : ComponentActivity() {
                             themes = remember(vm.styleVersion) { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
                             onImportData = { openData.launch(arrayOf("*/*")) },
                             onDownloadRouting = { vm.downloadRoutingData() },
+                            onTimeFormulas = if (vm.route != null) ({ vm.openTimeDetails(technical = true) }) else null,
                             dataBusy = vm.dataBusy,
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
@@ -269,6 +269,11 @@ class MainActivity : ComponentActivity() {
                             ),
                         )
                     }
+                    // over Settings too: Diagnostics → Developer tools opens the technical view
+                    vm.timeDetails?.let { td ->
+                        BackHandler { vm.timeDetails = null }
+                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
+                    }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
                     BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
                         (vm.shown != null || vm.mapOverlayOpen)) {
@@ -278,7 +283,10 @@ class MainActivity : ComponentActivity() {
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
                         Snackbar(
-                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp, start = 12.dp, end = 12.dp),
+                            // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
+                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
+                                top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
+                                    vm.backgroundStripHeightDp).dp),
                             action = { TextButton(onClick = { vm.message = null }) { Text("OK") } },
                         ) { Text(msg) }
                     }
@@ -314,16 +322,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 vm.unfinished?.let { t ->
-                    UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.saveUnfinished(t) })
+                    UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
+                        onDelete = { vm.deleteUnfinished(t) })
+                }
+                vm.unfinishedRides?.let { (t, s) ->
+                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
+                        onDismiss = { vm.backToUnfinished() }, title = "Save the unfinished tour?")
                 }
                 vm.finishedTour?.let { t ->
                     FinishedTourDialogs(t,
                         times = vm.finishedTimes,
                         onExport = { vm.exportTour(t) },
                         onDelete = { vm.deleteTour(t); vm.finishedTour = null },
-                        onDone = { vm.finishedTour = null },
-                        // a saved plan already left the map (0.6.9); an unsaved one can go here with one tap (Undo brings it back)
-                        onClearRoute = if (vm.waypoints.size >= 2) ({ vm.clearPlan() }) else null)
+                        onDone = { vm.finishedTour = null })
                 }
             }
         }
@@ -483,7 +494,8 @@ class MainActivity : ComponentActivity() {
         if (permanentlyDenied) { openAppSettings(); return }
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.POST_NOTIFICATIONS
-        try { permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
+        try { vm.locationAsking = true; permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
+            vm.locationAsking = false
             com.onpath.app.debug.Problems.error("gps", "Location permission request could not be shown", e)
         }
     }

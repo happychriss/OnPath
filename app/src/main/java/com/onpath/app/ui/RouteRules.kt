@@ -44,8 +44,11 @@ object RouteRules {
     /** A new name from the rename / save dialog: trimmed; blank keeps [old]. */
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 
-    /** Clear in the sheet's ⋯: something to clear, and not while navigating (the tour follows this plan). */
-    fun canClear(pointCount: Int, navigating: Boolean): Boolean = pointCount > 0 && !navigating
+    /**
+     * Clear in the sheet's ⋯: something to clear – also during a tour (owner Q2 2026-10-23): like deleting every point,
+     * the route guidance ends and the recording goes on; Undo brings plan and guidance back (PlanGuidance).
+     */
+    fun canClear(pointCount: Int): Boolean = pointCount > 0
 
     /** Opening this item puts its points into the plan (else it is only shown as a track). */
     fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
