@@ -18,7 +18,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   Q9 new-problem pop-up = fixed sentence "Something went wrong. It was noted in Settings → Diagnostics."; Q10 tour bar
   button "End tour". UX Q1 activity change in Plan during a tour opens the same check sheet as Navigate (Take / Keep);
   Q2 "Clear route" allowed during a tour (= delete all points: guidance ends, recording goes on, Undo); Q3 search
-  "As start" behaves like the map's "Start here" (drops the points before). Pending: UX questions 4–8, then build.
+  "As start" behaves like the map's "Start here" (drops the points before); Q4 unsaved plan at End tour: keep as is
+  (Undo only); Q5 ride summary also on arrival Save and on the interrupted-tour Save (when a ride was found); Q6 Wi-Fi
+  only: a one-time "Load now over mobile data" in the strip / loading window. Pending: UX questions 7–8, then build.
 - **Battery batch 2 – rest** (`docs/design/battery-audit.md`): slower GPS at rest is done (0.10.0, `RestWatch`); open:
   slower GPS with the screen off, frozen track + tail. The GPS slow-down rules are under discussion with the owner
   (2026-10-23). No battery % in the tour summary (owner decision A10).
