@@ -44,7 +44,8 @@ class StyleFormatTest {
         val used = listOf("routes-hike", "routes-bike", "routes-hike-major", "routes-bike-major-label",
             "access-no-tint-foot", "access-no-sign-foot", "access-no-tint-bike", "access-no-sign-bike",
             "trails-sac-label", "trails-mtb-label", "surface-loose-track", "surface-loose-path",
-            "greenway-foot", "greenway-bike", "greenway-touring", "greenway-mtb", "poi-station", "poi-tier1")
+            "greenway-foot", "greenway-bike", "greenway-touring", "greenway-mtb", "poi-station", "poi-tier1",
+            "poi-station-name", "poi-tier1-name")
         for (s in listOf(f1, f2)) { val have = ids(s).toSet(); used.forEach { assertTrue(it, it in have) } }
         // no MTB route band: mtb.brf ignores route=mtb, MTB shows the cycle band (map vs router audit #7)
         for (s in listOf(f1, f2)) assertTrue(ids(s).none { it.startsWith("routes-mtb") })
@@ -108,7 +109,7 @@ class StyleFormatTest {
         for (s in listOf(f1, f2)) {
             val a = s.getJSONArray("layers")
             val pois = (0 until a.length()).map { a.getJSONObject(it) }
-                .filter { it.getString("id").startsWith("poi-") && it.getString("id") != "poi-station" }
+                .filter { it.getString("id").startsWith("poi-") && !it.getString("id").startsWith("poi-station") }
             assertTrue("POI layers found", pois.size >= 4)
             for (l in pois) {
                 val key = l.getJSONObject("layout").get("symbol-sort-key").toString().replace(" ", "")
@@ -120,27 +121,45 @@ class StyleFormatTest {
     }
 
     /**
-     * Owner 2026-10-23: a POI icon stays on the map when its name has no room – the name shows only where it fits.
-     * So every POI layer (icon + name) has text-optional, never icon-optional, and neither part may overlap
-     * (icon collision stays on – no pile-ups).
+     * Owner 2026-10-23: names can never push out icons. Each POI layer is split into an icon layer "poi-<x>" (icon, no
+     * text) and a name layer "poi-<x>-name" (text, no icon) with the same filter, sort key and zooms. MapLibre Native
+     * places symbols from the TOP layer down, so every icon layer lies above every name layer – all icons are placed
+     * before any name; a name without room simply does not show. Icons still collide (no pile-ups), names collide
+     * with icons and each other, nothing ignores placement.
      */
-    @Test fun poiIconStaysWhenNameHasNoRoom() {
+    @Test fun poiIconsArePlacedBeforeNames() {
         for (s in listOf(f1, f2)) {
             val a = s.getJSONArray("layers")
-            val pois = (0 until a.length()).map { a.getJSONObject(it) }
-                .filter { it.getString("id").startsWith("poi-") && it.getString("type") == "symbol" }
-            assertTrue("POI layers found", pois.size >= 5)
+            val all = (0 until a.length()).map { a.getJSONObject(it) }
+            val idx = all.withIndex().associate { (i, l) -> l.getString("id") to i }
+            val pois = all.filter { it.getString("id").startsWith("poi-") }
+            val (names, icons) = pois.partition { it.getString("id").endsWith("-name") }
+            assertTrue("POI icon layers found", icons.size >= 6)
+            assertEquals("one name layer per icon layer", icons.map { it.getString("id") + "-name" }.toSet(),
+                names.map { it.getString("id") }.toSet())
+            assertTrue("every icon layer above (= placed before) every name layer",
+                icons.minOf { idx.getValue(it.getString("id")) } > names.maxOf { idx.getValue(it.getString("id")) })
             for (l in pois) {
                 val id = l.getString("id")
                 val lo = l.getJSONObject("layout")
-                assertTrue("$id: has icon and name", lo.has("icon-image") && lo.has("text-field"))
-                assertEquals("$id: text-optional", true, lo.optBoolean("text-optional", false))
-                assertEquals("$id: icon not optional", false, lo.optBoolean("icon-optional", false))
-                assertEquals("$id: icons collide", false, lo.optBoolean("icon-allow-overlap", false))
-                assertEquals("$id: names collide", false, lo.optBoolean("text-allow-overlap", false))
-                assertEquals("$id: icons block others", false, lo.optBoolean("icon-ignore-placement", false))
-                assertEquals("$id: names block others", false, lo.optBoolean("text-ignore-placement", false))
-                assertTrue("$id: variable anchors", lo.has("text-variable-anchor"))
+                assertEquals("$id: symbol", "symbol", l.getString("type"))
+                if (id.endsWith("-name")) {
+                    assertTrue("$id: name only", lo.has("text-field") && !lo.has("icon-image"))
+                    assertTrue("$id: variable anchors", lo.has("text-variable-anchor"))
+                    assertTrue("$id: offset beside the icon", lo.optDouble("text-radial-offset", 0.0) > 0.0)
+                    assertEquals("$id: names collide", false, lo.optBoolean("text-allow-overlap", false))
+                    assertEquals("$id: names block others", false, lo.optBoolean("text-ignore-placement", false))
+                } else {
+                    assertTrue("$id: icon only", lo.has("icon-image") && !lo.has("text-field"))
+                    assertEquals("$id: icon not optional", false, lo.optBoolean("icon-optional", false))
+                    assertEquals("$id: icons collide", false, lo.optBoolean("icon-allow-overlap", false))
+                    assertEquals("$id: icons block others", false, lo.optBoolean("icon-ignore-placement", false))
+                    val twin = all[idx.getValue("$id-name")]
+                    for (k in listOf("filter", "minzoom", "maxzoom", "source"))
+                        assertEquals("$id: same $k as its name", l.opt(k)?.toString(), twin.opt(k)?.toString())
+                    assertEquals("$id: same sort key as its name", lo.opt("symbol-sort-key")?.toString(),
+                        twin.getJSONObject("layout").opt("symbol-sort-key")?.toString())
+                }
             }
         }
     }

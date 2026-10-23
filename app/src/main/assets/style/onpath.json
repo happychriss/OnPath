@@ -7133,6 +7133,972 @@
    }
   },
   {
+   "id": "poi-bus-detail-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 16,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bus"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "merged"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     16,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "restaurant",
+       3,
+       "cafe",
+       4,
+       "viewpoint",
+       5,
+       "spring",
+       6,
+       "waterfall",
+       7,
+       "lift",
+       8,
+       "castle",
+       9,
+       "water",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      100000
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      50000
+     ],
+     [
+      "-",
+      49999,
+      [
+       "max",
+       0,
+       [
+        "min",
+        49999,
+        [
+         "coalesce",
+         [
+          "to-number",
+          [
+           "get",
+           "pr"
+          ]
+         ],
+         0
+        ]
+       ]
+      ]
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-bus-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bus"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "detail"
+     ]
+    ]
+   ],
+   "maxzoom": 16,
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     15,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "restaurant",
+       3,
+       "cafe",
+       4,
+       "viewpoint",
+       5,
+       "spring",
+       6,
+       "waterfall",
+       7,
+       "lift",
+       8,
+       "castle",
+       9,
+       "water",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      100000
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      50000
+     ],
+     [
+      "-",
+      49999,
+      [
+       "max",
+       0,
+       [
+        "min",
+        49999,
+        [
+         "coalesce",
+         [
+          "to-number",
+          [
+           "get",
+           "pr"
+          ]
+         ],
+         0
+        ]
+       ]
+      ]
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-tier3-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 15,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "picnic",
+      "toilets",
+      "info",
+      "bike_shop",
+      "charging",
+      "shop",
+      "parking"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     16,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "restaurant",
+       3,
+       "cafe",
+       4,
+       "viewpoint",
+       5,
+       "spring",
+       6,
+       "waterfall",
+       7,
+       "lift",
+       8,
+       "castle",
+       9,
+       "water",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      100000
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      50000
+     ],
+     [
+      "-",
+      49999,
+      [
+       "max",
+       0,
+       [
+        "min",
+        49999,
+        [
+         "coalesce",
+         [
+          "to-number",
+          [
+           "get",
+           "pr"
+          ]
+         ],
+         0
+        ]
+       ]
+      ]
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-tier2-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 14,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "water",
+      "bar",
+      "fast_food",
+      "shelter",
+      "camping",
+      "church",
+      "ruins",
+      "cave",
+      "museum",
+      "chapel"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     15,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "restaurant",
+       3,
+       "cafe",
+       4,
+       "viewpoint",
+       5,
+       "spring",
+       6,
+       "waterfall",
+       7,
+       "lift",
+       8,
+       "castle",
+       9,
+       "water",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      100000
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      50000
+     ],
+     [
+      "-",
+      49999,
+      [
+       "max",
+       0,
+       [
+        "min",
+        49999,
+        [
+         "coalesce",
+         [
+          "to-number",
+          [
+           "get",
+           "pr"
+          ]
+         ],
+         0
+        ]
+       ]
+      ]
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#38332e",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-tier1-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 12,
+   "filter": [
+    "in",
+    [
+     "get",
+     "kind"
+    ],
+    [
+     "literal",
+     [
+      "hut",
+      "bivouac",
+      "restaurant",
+      "cafe",
+      "viewpoint",
+      "spring",
+      "waterfall",
+      "lift",
+      "castle"
+     ]
+    ]
+   ],
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     14,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": [
+     "+",
+     [
+      "*",
+      [
+       "match",
+       [
+        "get",
+        "kind"
+       ],
+       "train",
+       0,
+       "hut",
+       1,
+       "bivouac",
+       2,
+       "restaurant",
+       3,
+       "cafe",
+       4,
+       "viewpoint",
+       5,
+       "spring",
+       6,
+       "waterfall",
+       7,
+       "lift",
+       8,
+       "castle",
+       9,
+       "water",
+       10,
+       "bar",
+       11,
+       "fast_food",
+       12,
+       "shelter",
+       13,
+       "camping",
+       14,
+       "church",
+       15,
+       "ruins",
+       16,
+       "cave",
+       17,
+       "museum",
+       18,
+       "chapel",
+       19,
+       "picnic",
+       20,
+       "toilets",
+       21,
+       "info",
+       22,
+       "bike_shop",
+       23,
+       "charging",
+       24,
+       "shop",
+       25,
+       "parking",
+       26,
+       "bus",
+       27,
+       99
+      ],
+      100000
+     ],
+     [
+      "case",
+      [
+       "has",
+       "name"
+      ],
+      0,
+      50000
+     ],
+     [
+      "-",
+      49999,
+      [
+       "max",
+       0,
+       [
+        "min",
+        49999,
+        [
+         "coalesce",
+         [
+          "to-number",
+          [
+           "get",
+           "pr"
+          ]
+         ],
+         0
+        ]
+       ]
+      ]
+     ]
+    ],
+    "symbol-z-order": "auto",
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     10.5,
+     17,
+     12.5
+    ],
+    "text-variable-anchor": [
+     "left",
+     "right",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.05,
+    "text-justify": "auto",
+    "text-max-width": 8,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#2e2924",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "poi-station-name",
+   "type": "symbol",
+   "source": "pois",
+   "minzoom": 10,
+   "filter": [
+    "==",
+    [
+     "get",
+     "kind"
+    ],
+    "train"
+   ],
+   "layout": {
+    "text-field": [
+     "step",
+     [
+      "zoom"
+     ],
+     "",
+     11,
+     [
+      "coalesce",
+      [
+       "get",
+       "name"
+      ],
+      ""
+     ]
+    ],
+    "symbol-sort-key": 0,
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     11,
+     11,
+     14,
+     12.5,
+     17,
+     14
+    ],
+    "text-variable-anchor": [
+     "right",
+     "left",
+     "top",
+     "bottom"
+    ],
+    "text-radial-offset": 1.1,
+    "text-justify": "auto",
+    "text-max-width": 9,
+    "text-padding": 2
+   },
+   "paint": {
+    "text-color": "#1e2a3a",
+    "text-halo-color": "rgba(255,255,255,0.92)",
+    "text-halo-width": 1.5
+   }
+  },
+  {
    "id": "poi-bus-detail",
    "type": "symbol",
    "source": "pois",
@@ -7289,56 +8255,7 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto",
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     16,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Regular"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     17,
-     12.5
-    ],
-    "text-variable-anchor": [
-     "left",
-     "right",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.05,
-    "text-justify": "auto",
-    "text-max-width": 8,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#38332e",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-z-order": "auto"
    }
   },
   {
@@ -7499,56 +8416,7 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto",
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     15,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Regular"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     17,
-     12.5
-    ],
-    "text-variable-anchor": [
-     "left",
-     "right",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.05,
-    "text-justify": "auto",
-    "text-max-width": 8,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#38332e",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-z-order": "auto"
    }
   },
   {
@@ -7709,56 +8577,7 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto",
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     16,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Regular"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     17,
-     12.5
-    ],
-    "text-variable-anchor": [
-     "left",
-     "right",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.05,
-    "text-justify": "auto",
-    "text-max-width": 8,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#38332e",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-z-order": "auto"
    }
   },
   {
@@ -7922,56 +8741,7 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto",
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     15,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Regular"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     17,
-     12.5
-    ],
-    "text-variable-anchor": [
-     "left",
-     "right",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.05,
-    "text-justify": "auto",
-    "text-max-width": 8,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#38332e",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-z-order": "auto"
    }
   },
   {
@@ -8150,56 +8920,7 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto",
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     14,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     10.5,
-     17,
-     12.5
-    ],
-    "text-variable-anchor": [
-     "left",
-     "right",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.05,
-    "text-justify": "auto",
-    "text-max-width": 8,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#2e2924",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-z-order": "auto"
    }
   },
   {
@@ -8235,58 +8956,7 @@
     ],
     "icon-allow-overlap": false,
     "icon-padding": 1,
-    "symbol-sort-key": 0,
-    "text-field": [
-     "step",
-     [
-      "zoom"
-     ],
-     "",
-     11,
-     [
-      "coalesce",
-      [
-       "get",
-       "name"
-      ],
-      ""
-     ]
-    ],
-    "text-optional": true,
-    "text-font": [
-     "Noto Sans Medium"
-    ],
-    "text-size": [
-     "interpolate",
-     [
-      "exponential",
-      1
-     ],
-     [
-      "zoom"
-     ],
-     11,
-     11,
-     14,
-     12.5,
-     17,
-     14
-    ],
-    "text-variable-anchor": [
-     "right",
-     "left",
-     "top",
-     "bottom"
-    ],
-    "text-radial-offset": 1.1,
-    "text-justify": "auto",
-    "text-max-width": 9,
-    "text-padding": 2
-   },
-   "paint": {
-    "text-color": "#1e2a3a",
-    "text-halo-color": "rgba(255,255,255,0.92)",
-    "text-halo-width": 1.5
+    "symbol-sort-key": 0
    }
   },
   {

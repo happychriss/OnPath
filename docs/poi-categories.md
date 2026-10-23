@@ -56,8 +56,11 @@ bivouac 21, cave 15.
 
 ## Style layers (all symbol layers, source `pois`)
 - `poi-tier3`, `poi-tier2`, `poi-tier1` (bottom to top; minzoom 15 / 14 / 12). There are no more
-  circle or glyph layers (`poi-dot-*`, `poi-glyph-*`, `poi-label*` are gone). Icon and name are in the
-  same layer (`text-optional: true`: the icon stays when the name does not fit).
+  circle or glyph layers (`poi-dot-*`, `poi-glyph-*`, `poi-label*` are gone). Since 2026-10-23 (owner)
+  each POI layer is split: icon layer `poi-<x>` (icon only) and name layer `poi-<x>-name` (text only, same
+  filter / sort key / zooms, radial offset beside the icon). MapLibre Native places symbols from the top layer
+  down, so all icon layers lie above all name layers: every icon is placed before any name; a name without room
+  simply does not show (rarely a name may show without its icon – accepted). Same for `poi-station` / `poi-bus*`.
 - Filters are expressions on `["get","kind"]`, so the app filter
   `["all", <original filter>, ["in", ["get","kind"], ["literal", [enabled kinds]]]]` works unchanged.
   Keep the original filter of each layer (read it with `layer.filter` before wrapping, or remember it once

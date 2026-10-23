@@ -12,7 +12,8 @@ import java.io.File
 
 /**
  * Returns the POI under [screenPoint] (pixels, as from projection.toScreenLocation), searching a
- * ~24 dp box on all style layers whose id starts with "poi-". Nearest hit wins. Never throws.
+ * ~24 dp box on all style layers whose id starts with "poi-" (icon layers and their "-name" layers, so a tap on
+ * the icon or on the name finds it). Nearest hit wins. Never throws.
  */
 fun findPoiAt(map: MapLibreMap, screenPoint: PointF, boxDp: Float = 24f): Poi? = try {
     val style = map.style
