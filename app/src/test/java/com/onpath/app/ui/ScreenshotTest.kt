@@ -128,7 +128,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Route sheet ⋯ → Time details: slope bands, factors, result. */
+    /** Settings → Diagnostics → Developer tools → time estimate: slope bands, factors, result, formulas (owner 2026-10-23). */
     @Test fun timeDetails() = paparazzi.snapshot {
         OnPathTheme {
             TimeDetailsScreen(TimeDetailsUi(
@@ -141,7 +141,15 @@ class ScreenshotTest {
                         else -> com.onpath.app.routing.WayAttrs("path", "natural_trail", sac = 3, visibility = "bad")
                     })
                 }, Activity.HIKE, com.onpath.app.time.Factors(0.95, 1.0, 1.1)),
-                "Average", 1.0), onBack = {})
+                "Average", 1.0, technical = true), onBack = {})
+        }
+    }
+
+    /** Route sheet ⋯ → Time details: only plain lines – moving time, with breaks, pace level (owner 2026-10-23). */
+    @Test fun timeDetailsPlain() = paparazzi.snapshot {
+        OnPathTheme {
+            TimeDetailsScreen(TimeDetailsUi(com.onpath.app.time.TimeBreakdown.of(routePts, Activity.HIKE,
+                com.onpath.app.time.Factors(1.0, 1.0, 1.0)), "Average", 1.0), onBack = {})
         }
     }
 

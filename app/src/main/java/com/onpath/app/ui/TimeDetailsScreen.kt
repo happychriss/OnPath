@@ -38,11 +38,22 @@ data class TimeDetailsUi(
     val result: TimeBreakdown.Result,
     val paceLabel: String,
     val paceFactor: Double,
+    /** Settings → Diagnostics → Developer tools: the formulas and tables too; false = route sheet ⋯ (plain lines only). */
+    val technical: Boolean = false,
+)
+
+/** The plain lines of ⋯ → Time details (owner 2026-10-23): moving time, with breaks, pace level. Pure, unit-tested. */
+internal fun timeDetailsPlainLines(ui: TimeDetailsUi): List<Pair<String, String>> = listOf(
+    "Moving time" to Format.duration(ui.result.finalS),
+    "With breaks" to Format.duration(ui.result.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)),
+    "Pace level" to ui.paceLabel,
 )
 
 /**
- * "Time details" (route sheet ⋯): a debug view of the time estimate – which slope bands the route has, how long each
- * takes at Average pace, which factor (the pace setting) is applied, and the result. Read-only.
+ * "Time details" (route sheet ⋯): moving time, with breaks and the pace level in plain words. With [TimeDetailsUi.technical]
+ * (Settings → Diagnostics → Developer tools, owner 2026-10-23) the debug view of the estimate – which slope bands the
+ * route has, how long each takes at Average pace, which factor (the pace setting) is applied, and how it is calculated.
+ * Read-only.
  */
 @Composable
 fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
@@ -52,7 +63,15 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                Text("Time details", style = MaterialTheme.typography.titleLarge)
+                Text(if (ui.technical) "Time estimate (technical)" else "Time details", style = MaterialTheme.typography.titleLarge)
+            }
+            if (!ui.technical) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    TdSection(r.activity.navName) {
+                        timeDetailsPlainLines(ui).forEachIndexed { i, (k, v) -> TdKV(k, v, bold = i == 0) }
+                    }
+                }
+                return@Column
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {

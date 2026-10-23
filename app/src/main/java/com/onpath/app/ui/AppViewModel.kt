@@ -2192,12 +2192,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
     var timeDetails by mutableStateOf<TimeDetailsUi?>(null)
 
-    fun openTimeDetails() {
+    /** [technical]: Settings → Diagnostics → Developer tools (formulas, tables); else the plain lines of sheet ⋯. */
+    fun openTimeDetails(technical: Boolean = false) {
         val r = route ?: return
         val pace = com.onpath.app.time.TimeEstimate.pace(activity, settings)
         timeDetails = TimeDetailsUi(
             com.onpath.app.time.TimeBreakdown.of(r.points, activity, planFactors()),
-            pace.label, pace.factor,
+            pace.label, pace.factor, technical,
         )
     }
 

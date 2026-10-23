@@ -109,6 +109,8 @@ fun SettingsScreen(
     onAppSettings: () -> Unit = {},
     /** Diagnostics → "Download routing data" (normally it comes with the map by itself – owner 2026-10-22). */
     onDownloadRouting: () -> Unit = {},
+    /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
+    onTimeFormulas: (() -> Unit)? = null,
     dataBusy: String? = null,
     /** null = updates handled elsewhere (installed from Google Play) – topic hidden. */
     update: AppViewModel.UpdateState? = null,
@@ -197,7 +199,8 @@ fun SettingsScreen(
                         SettingsPage.DIAGNOSTICS -> if (diagnosticsOn != null) {
                             item { DiagnosticsSection(diagnosticsOn, onDiagnostics, onExportDiagnostics, problems, onClearProblems) }
                             item {
-                                DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir)
+                                DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
+                                    onTimeFormulas)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -398,6 +401,7 @@ private fun DiagnosticsSection(on: Boolean, onDiagnostics: (Boolean) -> Unit, on
 private fun DeveloperTools(
     initiallyOpen: Boolean, mapServer: String, mapCells: MapCellsDebug?, dataBusy: String?, onDownloadRouting: () -> Unit, onImportData: () -> Unit,
     checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String,
+    onTimeFormulas: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -415,6 +419,10 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
                 if (dataBusy != null) Text(dataBusy, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 mapCells?.let { MapCellsDebugList(it) }
+                // the formulas behind the plan sheet's time (moved here from ⋯ → Time details, owner 2026-10-23)
+                OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
+                if (onTimeFormulas == null) Text("Plan a route first.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",

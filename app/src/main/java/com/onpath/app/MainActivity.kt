@@ -192,10 +192,6 @@ class MainActivity : ComponentActivity() {
                         BackHandler { vm.routeDetailsOpen = false }
                         com.onpath.app.ui.RouteDetailsScreen(r, vm.activity, onBack = { vm.routeDetailsOpen = false })
                     }
-                    vm.timeDetails?.let { td ->
-                        BackHandler { vm.timeDetails = null }
-                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
-                    }
                     if (vm.showSettings) {
                         BackHandler { vm.settingsBack() }
                         SettingsScreen(
@@ -248,6 +244,7 @@ class MainActivity : ComponentActivity() {
                             themes = remember(vm.styleVersion) { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
                             onImportData = { openData.launch(arrayOf("*/*")) },
                             onDownloadRouting = { vm.downloadRoutingData() },
+                            onTimeFormulas = if (vm.route != null) ({ vm.openTimeDetails(technical = true) }) else null,
                             dataBusy = vm.dataBusy,
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
@@ -271,6 +268,11 @@ class MainActivity : ComponentActivity() {
                                 onAllowStorage = { storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) },
                             ),
                         )
+                    }
+                    // over Settings too: Diagnostics → Developer tools opens the technical view
+                    vm.timeDetails?.let { td ->
+                        BackHandler { vm.timeDetails = null }
+                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
                     }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
                     BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
