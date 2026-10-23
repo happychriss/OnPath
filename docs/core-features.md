@@ -36,16 +36,17 @@ the phone and the bin. First start with no tours asks once (prefs `backup` → `
 
 End to end on an emulator (since 2026-10-21): `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
 map, a finger held on the screen (UiAutomator): hold → Start here, hold → point added, hold a point → menu → Delete,
-the same after a map style reload and on a turned map. Runs in `.github/workflows/e2e.yml` on every app push to main
-and **before every release** (release.yml `needs: e2e` – no release when it fails). On failure the run keeps
+the same after a map style reload and on a turned map. Runs in `.github/workflows/e2e.yml` on every app push to main,
+beside the release (owner 2026-10-22); the release gate is only the short `StartSmokeE2ETest` (the app opens, also with a
+saved plan – the 0.9.1 crash). A red full run is fixed at once. On failure the run keeps
 screenshots, the app state and logcat as the artifact "e2e-report".
 
 Navigate draws only the route line, no numbered plan points (owner 2026-10-22, reverting 0.9.1); Plan draws them,
 also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`
 checks none in Navigate, back in Plan).
 
-To add next: Navigate → Plan with a followed plan (markers back), recording survives Plan mode, map update with a
-real cell generation.
+To add next: recording survives Plan mode, map update with a real cell generation. (Navigate → Plan with a followed
+plan, markers back: `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`.)
 
 C1 since 0.8.7: catch zone 48 dp (point menu), 48–80 dp a small "Point N: options / New point here" menu, beyond a new
 point (`MapGestures.MARKER_RADIUS_DP` / `NEAR_RADIUS_DP`). The point menu acts on the point it was opened for, found
@@ -60,10 +61,10 @@ after an edit (menu buttons, set, delete, undo) and nothing in the Points list (
 "Vibrate when planning" (default on) counts; the pulses carry an explicit media usage – unlabelled, Android treated the
 short 1× pulse as touch feedback and muted it with the system "Touch feedback" off (why "set" never vibrated in 0.8.9).
 
-C9 sheet sizes (owner 2026-10-21, "simple – only the slider and then the point editor"): small = summary; half =
-summary + profile; full = the point editor: handle + one line (time · distance) + the Points list with ⇅ Reverse /
-↺ Round trip (scrolls inside the sheet, ≤ 45 % of the screen), then the elevation profile with its gradient legend
-(owner 2026-10-21; tap → Route details) – no way types. Reorder: drag ≡ (at once, or after holding; no vibration);
-the sheet follows the finger and springs to the nearest size (field test 0.8.9). The primary button stays at
-the bottom in every size. Way types / surfaces / difficulty + the large profile: **Route details** screen
-(`RouteDetailsScreen`), opened by tapping the profile or the difficulty badge in the half sheet.
+C9 sheet steps (owner 2026-10-22, `PlanPanel` + `ui/StepSheet.kt`; replaces the 2026-10-21 sizes): small = the summary
+line (activity · time + distance · ⋯); profile = + ascent / descent, difficulty badge and the large elevation profile
+(slide a finger: the dot runs along the route); full = + the Points list (≡ drag, ✕ delete, tap → map; ⇅ Reverse /
+↺ Round trip). One body, a step only shows more of it; the sheet follows the finger and springs to the nearest step.
+Reorder: drag ≡ (at once, or after holding; no vibration). The primary button stays at the bottom in every step. Way
+types / surfaces: only on the **Route details** screen (`RouteDetailsScreen`), opened by tapping the profile or the
+difficulty badge.
