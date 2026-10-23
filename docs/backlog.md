@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] plain-language error messages (no technical texts); map loading goes on with the screen off / app in the background – since 2026-10-23
 
 
 ## Next (open, checked against the code 2026-10-22)
