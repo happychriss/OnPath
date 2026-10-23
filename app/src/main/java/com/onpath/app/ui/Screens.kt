@@ -474,21 +474,20 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
 
 /**
  * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
- * back to "Tour saved", nothing is lost by a slip of the finger.
+ * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (owner
+ * 2026-10-22, Undo brings it back) – so no "Clear route from map" here (UX review 2026-10-23, problem 12: it never showed).
  */
 @Composable
 fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,
-                        times: com.onpath.app.time.TourTimes? = null, onClearRoute: (() -> Unit)? = null) {
+                        times: com.onpath.app.time.TourTimes? = null) {
     var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
     if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
-    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times, onClearRoute)
+    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times)
 }
 
 @Composable
 fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit,
-                   times: com.onpath.app.time.TourTimes? = null,
-                   /** A planned route is still on the map (not saved, so it was not cleared automatically): offer to clear it. */
-                   onClearRoute: (() -> Unit)? = null) {
+                   times: com.onpath.app.time.TourTimes? = null) {
     AlertDialog(
         onDismissRequest = onDone,
         title = { Text("Tour saved") },
@@ -497,11 +496,6 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                 Text(t.name, fontWeight = FontWeight.SemiBold)
                 StatsRow(t.distanceM, t.ascentM, t.descentM, t.durationS)
                 times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
-                onClearRoute?.let { clear ->
-                    TextButton(onClick = clear, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Icon(Icons.Outlined.DeleteSweep, null); Spacer(Modifier.width(6.dp)); Text("Clear route from map")
-                    }
-                }
             }
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
