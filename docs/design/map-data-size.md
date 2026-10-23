@@ -1,7 +1,7 @@
 # Map data size – how to make it compact on the phone (proposal)
 
-Status: **being implemented as "format 2"** (laptop, map rework 2026-10-20). Done: terrain + contours
-(`--format 2`, §1a) and the overview map for the APK (§1b). Format 1 stays the default until the app reads all of it.
+Status: **built as "format 2"** – the cells and the app use format 2 only (format-1 cells are deleted by the daily
+cloud cleanup, `map-hosting.md` §7g). Below: the proposal and measurements of 2026-10-19/20 (history).
 Measured 2026-10-19 (laptop) on the Bozen/Meran data (OSM of 17 Oct 2026), Planetiler 0.10.2, tippecanoe 2.79.0,
 MapLibre Native Android 13.7.1. Scratch scripts were not committed; the method for each number is described below.
 

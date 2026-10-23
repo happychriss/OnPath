@@ -1,5 +1,7 @@
 # Handover cloud → laptop (2026-10-22 evening)
 
+> Historical – all items done or moved to `docs/backlog.md` (checked 2026-10-23).
+
 Everything is on `main` (last: `ebd5fea` + this file). Read this, then `docs/backlog.md` (tidied today: every entry
 checked against the code; sections Next / Waiting for the owner / Later / Done) and `docs/core-features.md`.
 

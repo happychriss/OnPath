@@ -1,5 +1,7 @@
 # Handover laptop → cloud (2026-10-22)
 
+> Historical – all items done or moved to `docs/backlog.md` (checked 2026-10-23).
+
 Owner switches the laptop off after the final phone round. Everything below is on `main`; nothing is only on the laptop
 except map-building scratch data (not needed). Read this, then `docs/backlog.md` "Next" and `docs/core-features.md`.
 

@@ -1,8 +1,8 @@
 # Map rules vs. BRouter: audit (origin/main 3511f3c, 2026-10-21)
 
-> **Status 2026-10-22:** quick fixes A on main; approach 1 ("router decides") implemented on a branch for the owner's
-> render review – classifier `tools/routing/wayclass/`, details and thresholds in `docs/map-style-notes.md`
-> "Router classes".
+> **Status 2026-10-23:** quick fixes A and approach 1 ("router decides") are merged and released in **0.10.0**; open: the
+> app does not check the cells' `wayclass` hash, tertiary and bigger roads have no class (backlog). Classifier
+> `tools/routing/wayclass/`, details and thresholds in `docs/map-style-notes.md` "Router classes".
 
 Read-only audit. Sources: `tools/make_style.py` (format 2), `tools/themes/classic.json`, `tools/extract_overlays.py`
 (`tile_attrs`, `street_attrs`), `MapController.setOverlay`, `BRouterEngine.profileFile/keyValues`,
