@@ -189,7 +189,7 @@ class ScreenshotTest {
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {})
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {})
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
