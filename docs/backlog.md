@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] text + UX review fixes (owner answers 2026-10-23, see Next) – since 2026-10-23
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -20,7 +21,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   Q2 "Clear route" allowed during a tour (= delete all points: guidance ends, recording goes on, Undo); Q3 search
   "As start" behaves like the map's "Start here" (drops the points before); Q4 unsaved plan at End tour: keep as is
   (Undo only); Q5 ride summary also on arrival Save and on the interrupted-tour Save (when a ride was found); Q6 Wi-Fi
-  only: a one-time "Load now over mobile data" in the strip / loading window. Pending: UX questions 7–8, then build.
+  only: a one-time "Load now over mobile data" in the strip / loading window; Q7 after following a track, an edited plan
+  makes "Continue" follow the plan (track drawn grey); Q8 Undo and Redo both as map buttons (Redo only when possible).
+  All answered – being built (cloud).
 - **Battery batch 2 – rest** (`docs/design/battery-audit.md`): slower GPS at rest is done (0.10.0, `RestWatch`); open:
   slower GPS with the screen off, frozen track + tail. The GPS slow-down rules are under discussion with the owner
   (2026-10-23). No battery % in the tour summary (owner decision A10).
