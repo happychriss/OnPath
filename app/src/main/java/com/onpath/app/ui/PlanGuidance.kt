@@ -19,4 +19,13 @@ object PlanGuidance {
      */
     fun resumes(endedByEmptyPlan: Boolean, recording: Boolean, following: Boolean, routePoints: Int): Boolean =
         endedByEmptyPlan && recording && !following && routePoints >= 2
+
+    /**
+     * Owner Q7 (2026-10-23): a GPX track is followed during the tour and the plan was edited since ([planAtTrackFollow] =
+     * the plan's points when the track was taken; null = unknown, e.g. after an app restart). Then "Continue" follows the
+     * plan again, and Plan draws the followed track grey behind it. An unedited plan (or Undo back to it) keeps the track.
+     */
+    fun planReplacesTrack(followIsTrack: Boolean, plan: List<com.onpath.app.routing.GeoPoint>,
+                          planAtTrackFollow: List<com.onpath.app.routing.GeoPoint>?): Boolean =
+        followIsTrack && plan.size >= 2 && planAtTrackFollow != null && plan != planAtTrackFollow
 }
