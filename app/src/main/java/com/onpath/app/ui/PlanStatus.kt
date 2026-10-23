@@ -16,10 +16,34 @@ enum class NotRouted {
 object PlanStatus {
     const val CALCULATING = "Calculating the route…"
 
-    enum class OnCancel { UNDO, KEEP_POINTS }
+    /** What Cancel does: Undo / Redo one plan step, put the activity and T level back, or keep the points unrouted. */
+    enum class OnCancel { UNDO, REDO, RESTORE_ACTIVITY, KEEP_POINTS }
 
-    /** Cancel (long-route question or a running calculation): take back the last change, else keep the points unrouted. */
-    fun onCancel(canUndo: Boolean): OnCancel = if (canUndo) OnCancel.UNDO else OnCancel.KEEP_POINTS
+    /**
+     * What started a routing run (UX review 2026-10-23, problem 1): Cancel takes back only *that* change – never the
+     * last point edit after an activity change.
+     */
+    sealed interface Cause {
+        /** A point edit (add, delete, move, reverse, clear …): one Undo step. */
+        data object PointEdit : Cause
+        /** Undo: Cancel brings the step back (Redo). */
+        data object Undo : Cause
+        /** Redo: Cancel takes it back (Undo). */
+        data object Redo : Cause
+        /** The activity / T level changed from [activity] / [sac]: Cancel puts them back. */
+        data class ActivityChange(val activity: com.onpath.app.routing.Activity, val sac: Int) : Cause
+        /** Anything else (app start, newer routing data, a plan loaded, route back …): Cancel just stops. */
+        data object Other : Cause
+    }
+
+    /** Cancel (long-route question or a running calculation) for a run started by [cause]. */
+    fun onCancel(cause: Cause, canUndo: Boolean, canRedo: Boolean): OnCancel = when (cause) {
+        Cause.PointEdit -> if (canUndo) OnCancel.UNDO else OnCancel.KEEP_POINTS
+        Cause.Redo -> if (canUndo) OnCancel.UNDO else OnCancel.KEEP_POINTS
+        Cause.Undo -> if (canRedo) OnCancel.REDO else OnCancel.KEEP_POINTS
+        is Cause.ActivityChange -> OnCancel.RESTORE_ACTIVITY
+        Cause.Other -> OnCancel.KEEP_POINTS
+    }
 
     /** Second line of the sheet when there is no route yet, for [pointCount] points. */
     fun noRouteLine(pointCount: Int, routing: Boolean, notRouted: NotRouted?): String = when {

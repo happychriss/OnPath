@@ -951,6 +951,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
     var notRouted by mutableStateOf<NotRouted?>(null)
         private set
+    /** What the next [recalc] is for (set just before it; UX review 2026-10-23, problem 1): Cancel undoes only that. */
+    private var nextCause: PlanStatus.Cause = PlanStatus.Cause.Other
+    /** What the current / last routing run (or long-route question) was started by. */
+    private var runCause: PlanStatus.Cause = PlanStatus.Cause.Other
 
 
     // --- saved state of the plan (menus / Manage routes) ---
@@ -1396,16 +1400,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- activity ----------------
 
-    fun selectActivity(a: Activity) {
+    /**
+     * The activity chosen in the picker: the route is planned again; Cancel while it is calculated puts the previous
+     * activity back. [userChange] false: taken over from elsewhere (the service switched, the switch sheet) – Cancel
+     * then only stops.
+     */
+    fun selectActivity(a: Activity, userChange: Boolean = true) {
         noteActivityChange()
+        nextCause = if (userChange) activityCause() else PlanStatus.Cause.Other
         activity = a; prefs.activity = a; recalc()
     }
+
+    /** Cause of an activity / T level change; a change still being calculated keeps the activity from before it. */
+    private fun activityCause(): PlanStatus.Cause =
+        (runCause as? PlanStatus.Cause.ActivityChange)?.takeIf { routing || longRouteAsk != null }
+            ?: PlanStatus.Cause.ActivityChange(activity, sac)
 
     /** T level from the activity picker (Hike): remembered, the route is planned again at once (owner 2026-10-22). */
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
-        if (activity == Activity.HIKE) noteActivityChange()
+        if (activity == Activity.HIKE) { noteActivityChange(); nextCause = activityCause() }
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
     }
 
@@ -1438,6 +1453,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
         planChanged()
         endGuidanceIfPlanEmpty()
+        nextCause = PlanStatus.Cause.PointEdit
         recalc()
     }
 
@@ -1955,6 +1971,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planEditPending = true
         planChanged()
         endGuidanceIfPlanEmpty()
+        nextCause = if (what == "Undo") PlanStatus.Cause.Undo else PlanStatus.Cause.Redo
         recalc()
     }
 
@@ -1982,13 +1999,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
-        if (plan) { longRouteOk = waypoints.toList(); recalc(); return }
-        // the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan restored
-        // at start or loaded): the points stay without a route – never "Calculating…" with nothing running (0.9.3 bug)
-        when (PlanStatus.onCancel(canUndo)) {
+        if (plan) { longRouteOk = waypoints.toList(); nextCause = runCause; recalc(); return }
+        // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
+        // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
+        // with nothing running (0.9.3 bug)
+        cancelRun(NotRouted.LONG)
+    }
+
+    /**
+     * Cancel of the long-route question or of a running calculation (UX review 2026-10-23, problem 1): a point edit is
+     * undone (Undo / Redo the other way), an activity / T level change gets the previous activity back, anything else
+     * just stops and leaves the points unrouted.
+     */
+    private fun cancelRun(why: NotRouted) {
+        val cause = runCause
+        runCause = PlanStatus.Cause.Other
+        val what = PlanStatus.onCancel(cause, canUndo, canRedo)
+        Problems.trace("routing", "Cancel ($why) of a run for ${cause::class.simpleName}: ${what.name.lowercase()}")
+        leaveUnrouted(why)
+        when (what) {
             PlanStatus.OnCancel.UNDO -> undoStep()
-            PlanStatus.OnCancel.KEEP_POINTS -> leaveUnrouted(NotRouted.LONG)
+            PlanStatus.OnCancel.REDO -> redoStep()
+            PlanStatus.OnCancel.RESTORE_ACTIVITY -> (cause as? PlanStatus.Cause.ActivityChange)?.let { restoreActivity(it) }
+            PlanStatus.OnCancel.KEEP_POINTS -> Unit
         }
+    }
+
+    /** The activity and T level from before the cancelled change; the route is planned for them again (no undo step). */
+    private fun restoreActivity(c: PlanStatus.Cause.ActivityChange) {
+        activity = c.activity; prefs.activity = c.activity
+        sac = c.sac; prefs.sac = c.sac
+        routeChangedNotice = null; activityBefore = null; activityRecalc = false
+        nextCause = PlanStatus.Cause.Other
+        recalc()
     }
 
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
@@ -2010,17 +2053,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Cancel while a route is calculated (owner 2026-10-22): the router stops at once and the last change is taken back
-     * – the plan is as before (Redo brings the change again). Nothing to take back: the points stay, without a route.
+     * Cancel while a route is calculated (owner 2026-10-22, 2026-10-23): the router stops at once and the change that
+     * started this calculation is taken back ([cancelRun]). Nothing to take back: the points stay, without a route.
      */
     fun cancelRouting() {
         if (!routing) return
         Problems.info("routing", "Route calculation cancelled by the user")
-        leaveUnrouted(NotRouted.STOPPED)
-        if (PlanStatus.onCancel(canUndo) == PlanStatus.OnCancel.UNDO) undoStep()
+        cancelRun(NotRouted.STOPPED)
     }
 
     private fun recalc() {
+        runCause = nextCause; nextCause = PlanStatus.Cause.Other
         routeJob?.cancel(); routeJob = null
         val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
         highlight = null; spotLine = null; spotsOpen = false
@@ -2696,7 +2739,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rest = checkRest
         closeActivityCheck()
         if (st == ActivityRowState.Plain || session == null) {
-            selectActivity(a)
+            selectActivity(a, userChange = false)
             recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
                 runCatching { db.updateActivity(id, a.name, sacFor(a)) }
                     .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
@@ -2732,7 +2775,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (a != activity) {
             followOriginal = s.original
             adoptPlanBaseline = true
-            selectActivity(a)
+            selectActivity(a, userChange = false)
         }
     }
 
