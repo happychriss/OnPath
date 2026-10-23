@@ -233,9 +233,9 @@ private fun PlanMode(
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
         )
-        // background downloads (corridor, refresh, routing data): thin blue strip below the search bar, after 10 s,
+        // background downloads (corridor, refresh, routing data): small blue chip under ☰ (owner 2026-10-23), after 10 s,
         // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
-        // (own composable: its per-second progress recomposes only the strip, not PlanMode with the sheet)
+        // (own composable: its per-second progress recomposes only the chip, not PlanMode with the sheet)
         PlanBackgroundStrip(vm, onRequestLocation)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
@@ -274,7 +274,7 @@ private fun PlanMode(
     }
 }
 
-/** The blue background-download strip of Plan + its details dialog. */
+/** Plan: the map notice strip or the background-download chip under ☰, + the details dialog. */
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit) {
     // Cell states tick with every downloaded chunk: read only through derived values, so the strip
@@ -294,13 +294,17 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
     val density = LocalDensity.current
-    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
-        .padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)
-        .onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
-    val stripOn = bg != null && !vm.searchOpen && notice == null
-    LaunchedEffect(stripOn, notice != null) { vm.backgroundStripShown = stripOn || (notice != null && !vm.searchOpen) }
-    if (notice != null && !vm.searchOpen) MapNoticeStrip(notice, cellCb, place)
-    else if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true }, modifier = place)
+    fun Modifier.measured() = onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
+    val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
+    // owner 2026-10-23: plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
+    val chipOn = bg != null && !vm.searchOpen && notice == null
+    LaunchedEffect(chipOn, notice != null) { vm.backgroundStripShown = chipOn || (notice != null && !vm.searchOpen) }
+    if (notice != null && !vm.searchOpen) {
+        MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+    } else if (chipOn) {
+        BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
+            modifier = Modifier.align(Alignment.TopEnd).then(top).padding(end = 12.dp).measured())
+    }
     BackgroundDownloadDetails(vm, bg)
 }
 

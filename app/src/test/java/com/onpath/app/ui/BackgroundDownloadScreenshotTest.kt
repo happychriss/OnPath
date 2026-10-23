@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
@@ -23,22 +24,42 @@ class BackgroundDownloadScreenshotTest {
         showSystemUi = false,
     )
 
-    private val ui = BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 24L * 1_048_576, percent = 40)
+    private val mb = 1_048_576L
+    private val ui = BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 24L * mb, percent = 34,
+        groups = LoadNames.groups(listOf(
+            LoadEntry(LoadWhy.POINT, "Bad Waldsee", "Ravensburg", waiting = true, bytes = 9 * mb),
+            LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", "Bozen", bytes = 7 * mb, phase = LoadPhase.PREPARING),
+            LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", "Bozen", bytes = 6 * mb, phase = LoadPhase.WAITING),
+            LoadEntry(null, paths = true, bytes = 2 * mb),
+        )))
+    private val longName = ui.copy(groups = LoadNames.groups(listOf(
+        LoadEntry(LoadWhy.ROUTE, "Berggasthof Gampenalm am Hochplateau über Unsere Liebe Frau im Walde", bytes = 9 * mb))))
 
-    /** Plan: thin blue strip just below the search bar. */
-    @Test fun planStrip() = paparazzi.snapshot {
+    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %" (owner 2026-10-23, replaces the full-width strip). */
+    @Test fun planChip() = planWith(ui)
+
+    /** A long name is cut with "…" at about half the width; the % always shows. */
+    @Test fun planChipLongName() = planWith(longName)
+
+    private fun planWith(u: BackgroundDownloadUi) = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
-                    BackgroundDownloadStrip(ui, onClick = {}, modifier = Modifier.padding(top = 68.dp, start = 16.dp, end = 16.dp))
+                    BackgroundDownloadChip(u, onClick = {},
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.STRIP_TOP_DP.dp, end = 12.dp))
+                    // the message bar goes below the chip (MessagePlacement), never over it
+                    androidx.compose.material3.Snackbar(Modifier.align(Alignment.TopCenter)
+                        .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp),
+                        action = { androidx.compose.material3.TextButton(onClick = {}) { androidx.compose.material3.Text("OK") } },
+                    ) { androidx.compose.material3.Text("Route saved as \"Taser Alm\".") }
                 }
             }
         }
     }
 
-    /** Navigate: only a small "⬇ 40 %" chip under the status card. */
+    /** Navigate: the same small chip under the status card, with the name when it fits. */
     @Test fun navigateChip() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -73,20 +94,12 @@ class BackgroundDownloadScreenshotTest {
         }
     }
 
-    private val newer = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 22L * 1_048_576, percent = 34, newer = 3, newerEtaMin = 4)
-
-    /** A newer version of the areas the user has: the strip is the one indicator (no veil on the map, owner 2026-10-22). */
-    @Test fun planStripNewerMap() = paparazzi.snapshot {
-        OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                MapPlaceholder(Modifier.fillMaxSize())
-                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
-                    BackgroundDownloadStrip(newer, onClick = {}, modifier = Modifier.padding(top = 68.dp, start = 16.dp, end = 16.dp))
-                }
-            }
-        }
-    }
+    private val newer = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 22L * mb, percent = 34, newer = 3, newerEtaMin = 4,
+        groups = LoadNames.groups(listOf(
+            LoadEntry(LoadWhy.REFRESH, town = "Meran", bytes = 8 * mb, phase = LoadPhase.PREPARING),
+            LoadEntry(LoadWhy.REFRESH, town = "Meran", bytes = 7 * mb, phase = LoadPhase.PREPARING),
+            LoadEntry(LoadWhy.REFRESH, town = "Bozen", bytes = 7 * mb),
+        )))
 
     /** Its details: newer version, being prepared, about N min. */
     @Test fun detailsNewerMap() = paparazzi.snapshot {

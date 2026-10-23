@@ -122,6 +122,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Loading chip with names (laptop, 2026-10-23, not released yet):** the blue background-loading strip in Plan is now a
+  small chip under ☰ ("⬇ Bad Waldsee +1 · 34 %", name cut at ~half the width; Navigate chip has the name too); details
+  list grouped lines ("Along your route to Gasthof Taser Alm (2 areas) · 13 MB · being prepared"). Names by reason
+  (`ui/LoadNames.kt`, tags set where the app asks) else the nearest overview town (`map/OverviewTowns.kt`). MapCells unchanged.
 - **Text + UX review fixes (cloud, 2026-10-23, not released yet):** owner naming (Destination, Stop, Track, activity
   names, Direction of travel, End tour; routing data never named), plain words, 5 small text bugs; Cancel undoes only
   what started the routing run (`PlanStatus.Cause`); ride summary on every tour end, Unfinished tour = Continue ·

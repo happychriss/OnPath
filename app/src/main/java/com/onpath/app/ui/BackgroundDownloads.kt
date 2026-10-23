@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -56,7 +57,15 @@ data class BackgroundDownloadUi(
     val newer: Int = 0,
     /** The server still builds some newer version: about this many minutes (null = unknown / none). */
     val newerEtaMin: Int? = null,
+    /** What loads, by name (owner 2026-10-23: "around Bad Waldsee", "along your route to …"), most important first. */
+    val groups: List<LoadGroup> = emptyList(),
 ) {
+    /** The chip's name ("Bad Waldsee") and how many other names load ("+1"). */
+    val chip: Pair<String, Int> get() = LoadNames.chip(groups)
+
+    /** "⬇ Bad Waldsee +1 · 34 %" without the arrow (accessibility, tests). */
+    val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + " · $percent %" }
+
     /** "Loading newer map" when only newer versions load (owner 2026-10-22: the strip is the one indicator for them). */
     val title: String get() = if (regions > 0 && newer >= regions && routingParts == 0) "Loading newer map" else "Loading map"
 
@@ -86,7 +95,8 @@ class BackgroundProgress {
     /** One item loading now: [done] of [total] bytes (total 0 = unknown, counted with an estimate). */
     data class Item(val key: String, val done: Long, val total: Long)
 
-    fun update(active: List<Item>, regions: Int, routingParts: Int, newer: Int = 0, newerEtaMin: Int? = null): BackgroundDownloadUi? {
+    fun update(active: List<Item>, regions: Int, routingParts: Int, newer: Int = 0, newerEtaMin: Int? = null,
+               groups: List<LoadGroup> = emptyList()): BackgroundDownloadUi? {
         if (active.isEmpty()) { items.clear(); held = 0; return null }
         val now = active.associateBy { it.key }
         for ((k, v) in items) if (k !in now) v[0] = v[1] // finished (or dropped): full
@@ -99,7 +109,7 @@ class BackgroundProgress {
         val done = items.values.sumOf { it[0] }
         val pct = if (total <= 0) 0 else (done * 100 / total).toInt().coerceIn(0, 99)
         held = maxOf(held, pct)
-        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held, newer, newerEtaMin)
+        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held, newer, newerEtaMin, groups)
     }
 
     companion object {
@@ -120,41 +130,29 @@ class BackgroundProgress {
     }
 }
 
-/** Information colour of the strip and chip: blue – not the amber of warnings, not the green brand. */
+/** Information colour of the chip and the map notice: blue – not the amber of warnings, not the green brand. */
 private val InfoBlue = Color(0xFF1565C0)
 
-/** Plan: thin, slightly transparent blue strip below the search bar: "⬇ Loading map · 3 areas · 24 MB · 40 %". Tap → details. */
-@Composable
-fun BackgroundDownloadStrip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val text = "${ui.title} · ${ui.line}"
-    Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.88f), contentColor = Color.White, shadowElevation = 2.dp,
-        modifier = modifier.fillMaxWidth().heightIn(min = 36.dp)
-            .clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
-            .semantics { contentDescription = text }) {
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Download, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-            }
-            Spacer(Modifier.height(4.dp))
-            LinearProgressIndicator(progress = { ui.percent / 100f }, modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = Color.White, trackColor = Color.White.copy(alpha = 0.3f))
-        }
-    }
-}
-
-/** Navigate: only a small "⬇ 40 %" chip (next to the recording status). Tap → details. */
+/**
+ * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (owner 2026-10-23: the full-width strip looked crowded).
+ * Plan: under the ☰ button; Navigate: under the status card. The name is cut with "…" at about half the screen width (owner: ~45 %),
+ * "+N" (more names) and the % always show. Tap → details.
+ */
 @Composable
 fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val text = "Loading map ${ui.percent} %"
+    val (name, more) = ui.chip
+    val text = "Loading map: ${ui.chipText}"
+    val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
-        Row(Modifier.background(InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.widthIn(max = maxW).background(InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Download, null, tint = Color.White, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text("${ui.percent} %", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text((if (more > 0) " +$more" else "") + " · ${ui.percent} %", color = Color.White, fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
         }
     }
 }
@@ -167,11 +165,18 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
         title = { Text("Loading in the background") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                val fresh = ui.regions - ui.newer
-                if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
-                ui.newerLine?.let { Text(it) }
-                if (fresh <= 0 && ui.newer <= 0 && ui.routingParts > 0) Text("Map: the paths for route planning")
-                Text(listOfNotNull(if (ui.bytes > 0) "About ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "))
+                if (ui.groups.isNotEmpty()) {
+                    // one line per name (owner 2026-10-23): "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
+                    ui.groups.forEach { Text(it.line) }
+                    if (ui.newer > 0) ui.newerEtaMin?.let { Text("The newer map is being prepared, about $it min. It replaces the old one when loaded.", fontSize = 13.sp) }
+                } else {
+                    val fresh = ui.regions - ui.newer
+                    if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
+                    ui.newerLine?.let { Text(it) }
+                    if (fresh <= 0 && ui.newer <= 0 && ui.routingParts > 0) Text("Map: the paths for route planning")
+                }
+                Text(listOfNotNull(if (ui.bytes > 0) "In all about ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "),
+                    fontWeight = FontWeight.Medium)
                 Text("Cancel stops it. The maps you have stay; an area loads again when you plan there.", fontSize = 13.sp)
             }
         },
@@ -205,10 +210,11 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
 
 /**
  * Where the general message bar ("… OK") sits (UX review 2026-10-23, problem 11): it stays until OK, so it must never
- * cover the blue strip's buttons (Try again, Allow location, Load now) – below the strip while it shows. Pure, tested.
+ * cover the blue strip's buttons (Try again, Allow location, Load now) – below the strip while it shows. The loading
+ * chip under ☰ (owner 2026-10-23) uses the same place: the message goes below it too, never over it. Pure, tested.
  */
 object MessagePlacement {
-    /** Top of the blue strip below the status bar (search pill + ☰ row above it). */
+    /** Top of the blue strip / the loading chip's touch area below the status bar (search pill + ☰ row above it). */
     const val STRIP_TOP_DP = 68
     /** The message bar without a strip. */
     const val MESSAGE_TOP_DP = 70
@@ -228,7 +234,7 @@ internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadU
 /**
  * What of the map card still needs the user (owner 2026-10-23: no second map card in the plan sheet – the blue strip at
  * the top says it and asks there): the mobile-data question, areas waiting for Wi-Fi, a failure, offline, no position
- * yet on a fresh install, no downloads in this build. Plain progress is the [BackgroundDownloadStrip]'s; "ready" needs
+ * yet on a fresh install, no downloads in this build. Plain progress is the [BackgroundDownloadChip]'s; "ready" needs
  * nothing. Pure, unit-tested.
  */
 fun mapNotice(card: CellCardUi?): CellCardUi? = when (card) {
