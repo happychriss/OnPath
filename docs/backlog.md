@@ -68,6 +68,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `docs/design/map-hosting.md` §7g.
 
 ## Waiting for the owner
+- **Map server access before the public launch** (owner discussion 2026-10-23, laptop): today one shared app key
+  (readable from the APK) + IP rate limit + build caps. Proposal in `docs/design/map-access.md`: anonymous per-phone
+  quota of *new* areas per month (hashed Android ID, no registration), no region lock, supporter code raises the limit,
+  separate production key with rotation. Owner decides limit size, supporter platform, timing.
 - **Google Play internal test track** (owner A11: after vehicle detection + approach 1 – both done): create the app,
   secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub secrets, upload from release.yml (today: fixed test key).
   Removes Play Protect warnings.
