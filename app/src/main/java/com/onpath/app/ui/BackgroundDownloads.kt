@@ -203,6 +203,20 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
     return rememberNoFlash(target, gate)
 }
 
+/**
+ * Where the general message bar ("… OK") sits (UX review 2026-10-23, problem 11): it stays until OK, so it must never
+ * cover the blue strip's buttons (Try again, Allow location, Load now) – below the strip while it shows. Pure, tested.
+ */
+object MessagePlacement {
+    /** Top of the blue strip below the status bar (search pill + ☰ row above it). */
+    const val STRIP_TOP_DP = 68
+    /** The message bar without a strip. */
+    const val MESSAGE_TOP_DP = 70
+
+    fun topDp(stripShown: Boolean, stripHeightDp: Int): Int =
+        if (stripShown && stripHeightDp > 0) maxOf(MESSAGE_TOP_DP, STRIP_TOP_DP + stripHeightDp + 8) else MESSAGE_TOP_DP
+}
+
 /** The details dialog for [ui] while the user opened it (strip / chip tap). */
 @androidx.compose.runtime.Composable
 internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadUi?) {
