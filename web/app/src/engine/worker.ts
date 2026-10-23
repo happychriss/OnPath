@@ -41,12 +41,26 @@ async function getEngine(): Promise<WasmEngine> {
   return exports;
 }
 
+const whole = new Map<string, Uint8Array>();
+
+/**
+ * Bytes [from, to] of a file. Uses an HTTP range request; a server that ignores ranges (answers 200 with the whole
+ * file, e.g. a simple static host for a small test area) still works – the file is kept once and sliced.
+ */
 async function range(url: string, from: number, to: number): Promise<{ bytes: Uint8Array; total: number } | null> {
-  const r = await fetch(url, { headers: { Range: `bytes=${from}-${to}` } });
-  if (r.status === 404) return null;
-  if (r.status !== 206) throw new Error(`${url}: HTTP ${r.status} (range requests needed)`);
-  const total = Number((r.headers.get('Content-Range') ?? '').split('/')[1] ?? NaN);
-  return { bytes: new Uint8Array(await r.arrayBuffer()), total };
+  let all = whole.get(url);
+  if (!all) {
+    const r = await fetch(url, { headers: { Range: `bytes=${from}-${to}` } });
+    if (r.status === 404) return null;
+    if (r.status === 206) {
+      const total = Number((r.headers.get('Content-Range') ?? '').split('/')[1] ?? NaN);
+      return { bytes: new Uint8Array(await r.arrayBuffer()), total };
+    }
+    if (r.status !== 200) throw new Error(`${url}: HTTP ${r.status}`);
+    all = new Uint8Array(await r.arrayBuffer());
+    whole.set(url, all);
+  }
+  return { bytes: all.slice(from, Math.min(to, all.length - 1) + 1), total: all.length };
 }
 
 /** End offsets of the 25 parts (low 48 bits of each big-endian long in the 200-byte index). */

@@ -65,6 +65,10 @@ jobs:
           npx playwright install --with-deps chromium
           node test/browser-compare.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Planner page click test (two points → route + profile; screenshot)
+        working-directory: web/app
+        run: node test/ui-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Sizes
         if: always()
         run: |
@@ -79,3 +83,4 @@ jobs:
             web/engine/build/jvm-results.json
             web/engine/build/browser-results.json
             web/engine/build/compare-summary.json
+            web/engine/build/planner.png
