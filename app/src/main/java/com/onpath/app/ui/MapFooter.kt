@@ -197,7 +197,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
     val what = when (status) {
         GpsStatus.OFF -> "Location is off, tap to turn it on"
         GpsStatus.NO_PERMISSION -> "Location not allowed, tap to allow"
-        else -> "Centre on my position. GPS ${status.label}"
+        else -> "Centre on my position. ${status.label}"
     }
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
