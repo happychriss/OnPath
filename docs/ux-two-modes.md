@@ -105,8 +105,9 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | --- | --- |
 | Search pill | only search |
 | ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
-| Sheet, first line | activity button (icon ▾) · time · undo / redo · ⋯ |
-| Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Reverse, Round trip, Clear |
+| Sheet, first line | activity button (icon ▾) · time · ⋯ (during a tour the activity button opens the check-and-switch sheet, owner 2026-10-23) |
+| Map buttons (right) | compass · eye · Undo · Redo (Redo only when there is something to redo, owner 2026-10-23) · locate |
+| Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Time details (plain; formulas in Settings → Diagnostics → Developer tools), Clear (also during a tour: ends the route guidance, Undo brings it back) |
 
 ## Activity while navigating (owner, 2026-10-18: "a wrong activity is a disaster")
 - **Visible:** the Navigate status card starts with the activity icon (48 dp button):
