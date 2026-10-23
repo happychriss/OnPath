@@ -10,3 +10,6 @@ __pycache__/
 *.pyc
 /out/
 /work/
+
+# Claude Code helper worktrees (temporary)
+.claude/worktrees/
