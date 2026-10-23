@@ -332,9 +332,7 @@ class MainActivity : ComponentActivity() {
                         times = vm.finishedTimes,
                         onExport = { vm.exportTour(t) },
                         onDelete = { vm.deleteTour(t); vm.finishedTour = null },
-                        onDone = { vm.finishedTour = null },
-                        // a saved plan already left the map (0.6.9); an unsaved one can go here with one tap (Undo brings it back)
-                        onClearRoute = if (vm.waypoints.size >= 2) ({ vm.clearPlan() }) else null)
+                        onDone = { vm.finishedTour = null })
                 }
             }
         }
