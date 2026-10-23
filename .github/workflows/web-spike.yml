@@ -1,0 +1,81 @@
+# Web planner spike (docs/design/web-planner.md §6): builds the Wasm routing engine from the app's own code with
+# TeaVM, builds the web page, and checks that 20 routes come out the same in headless Chromium as on the JVM.
+# Only for the web-spike branch – nothing here touches the app build or main.
+name: Web spike
+
+on:
+  push:
+    branches: [web-spike]
+  workflow_dispatch:
+
+concurrency:
+  group: web-spike-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine-and-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/app/package-lock.json
+
+      # BRouter routing data for Südtirol (E10_N45, ~200 MB), refreshed weekly. The JVM and the browser read the
+      # same file in one run, so a newer brouter.de version never makes them differ.
+      - name: Week number (cache key)
+        id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: segments
+          key: rd5-E10_N45-${{ steps.week.outputs.week }}
+      - name: Routing data
+        run: |
+          mkdir -p segments
+          [ -s segments/E10_N45.rd5 ] || curl -fsS --retry 3 -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5
+          ls -la segments
+
+      - name: Build the Wasm engine (TeaVM)
+        run: ./gradlew -p web/engine --no-daemon generateWasmGC copyWasmGCRuntime
+
+      - name: Routes on the JVM (same engine code)
+        run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
+
+      - name: Build the web page
+        working-directory: web/app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Routes in headless Chromium, compared with the JVM
+        working-directory: web/app
+        run: |
+          npx playwright install --with-deps chromium
+          node test/browser-compare.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Sizes
+        if: always()
+        run: |
+          ls -la web/engine/build/generated/teavm/wasm-gc/ || true
+          gzip -9c web/engine/build/generated/teavm/wasm-gc/onpath-web-engine.wasm | wc -c || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-spike-results
+          path: |
+            web/engine/build/jvm-results.json
+            web/engine/build/browser-results.json
+            web/engine/build/compare-summary.json
