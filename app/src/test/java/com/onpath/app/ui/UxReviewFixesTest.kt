@@ -49,4 +49,17 @@ class UxReviewFixesTest {
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
         assertTrue(main.contains("MessagePlacement.topDp(vm.backgroundStripShown"))
     }
+
+    /** Owner text Q7: ⋯ → Time details keeps plain lines only; the formulas moved to Settings → Diagnostics. */
+    @Test fun timeDetailsPlainLinesAndFormulasInDiagnostics() {
+        val pts = (0..60).map { com.onpath.app.routing.GeoPoint(46.67 + it * 0.0004, 11.16 + it * 0.0003, 350.0 + it * 3) }
+        val r = com.onpath.app.time.TimeBreakdown.of(pts, com.onpath.app.routing.Activity.HIKE, com.onpath.app.time.Factors(1.0, 1.0, 1.0))
+        val lines = timeDetailsPlainLines(TimeDetailsUi(r, "Average", 1.0))
+        assertTrue(lines.toString(), lines.map { it.first } == listOf("Moving time", "With breaks", "Pace level"))
+        assertTrue(lines[2].second == "Average")
+        val settings = File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
+        assertTrue(settings.substringAfter("private fun DeveloperTools(").contains("onTimeFormulas"))
+        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
+        assertTrue(main.contains("vm.openTimeDetails(technical = true)"))
+    }
 }
