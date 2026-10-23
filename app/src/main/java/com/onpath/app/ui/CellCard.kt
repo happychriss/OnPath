@@ -45,9 +45,9 @@ import com.onpath.app.cells.label
 import kotlin.math.atan2
 
 /**
- * The map card in the plan sheet (docs/design/map-cells.md §9): what happens with the detailed map of the area the
- * user plans in. Persistent – it never goes by itself while something is open: OK when ready, Yes / Only on Wi-Fi for
- * mobile data, Retry / Not now when it failed, × to hide it while it loads (downloads go on).
+ * What happens with the detailed map of the area the user plans in (docs/design/map-cells.md §9). Since 2026-10-23
+ * (owner) it is shown in the blue strip at the top ([mapNotice] / [MapNoticeStrip] in BackgroundDownloads.kt), no longer
+ * as a card in the plan sheet: Load now / Only on Wi-Fi for mobile data, Try again / Not now when it failed, × to hide.
  */
 sealed interface CellCardUi {
     val title: String
@@ -232,93 +232,6 @@ class CellCardCallbacks(
     /** "Allow location" on the first-start card (system permission dialog). */
     val onAllowLocation: () -> Unit = {},
 )
-
-/** The card; [compact] (plan sheet MINI): one line. */
-@Composable
-fun CellCard(ui: CellCardUi, cb: CellCardCallbacks, compact: Boolean = false, modifier: Modifier = Modifier) {
-    val (icon, tint) = when (ui) {
-        is CellCardUi.Done -> Icons.Outlined.CheckCircle to OnPathColors.Good
-        is CellCardUi.Failed -> Icons.Outlined.Warning to Color(0xFFB26A00)
-        is CellCardUi.Offline -> Icons.Outlined.CloudOff to MaterialTheme.colorScheme.onSurfaceVariant
-        CellCardUi.NotAvailable -> Icons.Outlined.Map to MaterialTheme.colorScheme.onSurfaceVariant
-        is CellCardUi.Working -> Icons.Outlined.CloudDownload to OnPathColors.Green
-        is CellCardUi.NeedPosition -> Icons.Outlined.LocationOn to OnPathColors.Green
-    }
-    val variant = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Column(Modifier.padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(ui.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                    maxLines = if (compact) 1 else 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
-                if (ui is CellCardUi.Working || ui is CellCardUi.Offline || ui is CellCardUi.NeedPosition) {
-                    IconButton(onClick = cb.onClose, modifier = Modifier.size(40.dp)) {
-                        Icon(Icons.Filled.Close, "Hide (the map keeps loading)", tint = variant, modifier = Modifier.size(18.dp))
-                    }
-                } else Spacer(Modifier.width(6.dp))
-            }
-            if (compact) {
-                // the one thing that waits for an answer stays visible even in the small sheet
-                if (ui is CellCardUi.Working && ui.question != null) Question(ui.question, cb)
-                return@Column
-            }
-            val why = when (ui) { is CellCardUi.Working -> ui.why; is CellCardUi.Offline -> ui.why; is CellCardUi.Failed -> ui.why; else -> null }
-            Column(Modifier.padding(start = 28.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                why?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
-                when (ui) {
-                    CellCardUi.NotAvailable -> Text(CellCardUi.NotAvailable.BODY, style = MaterialTheme.typography.bodySmall, color = variant)
-                    is CellCardUi.NeedPosition -> Text(CellCardUi.NeedPosition.BODY, style = MaterialTheme.typography.bodySmall, color = variant)
-                    is CellCardUi.Working -> {
-                        ui.progress?.let {
-                            LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
-                        }
-                        ui.rows.forEach { r ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(if (r.own) "●" else "○", color = if (r.own) OnPathColors.Green else variant,
-                                    style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.width(6.dp))
-                                Text(r.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                                Text(r.state, style = MaterialTheme.typography.bodySmall, color = variant, maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                                    modifier = Modifier.weight(1f).padding(start = 8.dp))
-                            }
-                        }
-                        ui.more?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
-                        ui.wifiNote?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = variant) }
-                    }
-                    else -> Unit
-                }
-            }
-            when (ui) {
-                is CellCardUi.Working -> ui.question?.let { Question(it, cb) }
-                is CellCardUi.Failed -> Row(Modifier.fillMaxWidth().padding(start = 20.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") }
-                    if (ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Retry") }
-                }
-                is CellCardUi.NeedPosition -> if (!ui.permission) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = cb.onAllowLocation, modifier = Modifier.heightIn(min = 48.dp)) { Text("Allow location") }
-                }
-                is CellCardUi.Done, CellCardUi.NotAvailable -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("OK") }
-                }
-                else -> Unit
-            }
-        }
-    }
-}
-
-@Composable
-private fun Question(q: MobileQuestion, cb: CellCardCallbacks) {
-    Column(Modifier.padding(start = 28.dp, end = 8.dp, top = 4.dp)) {
-        Text(q.text, style = MaterialTheme.typography.bodyMedium)
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            OutlinedButton(onClick = cb.onWifiOnly, modifier = Modifier.heightIn(min = 48.dp)) { Text("Only on Wi-Fi") }
-            Button(onClick = cb.onMobileYes, modifier = Modifier.heightIn(min = 48.dp)) { Text("Yes") }
-        }
-    }
-}
 
 /** Small persistent hint on the map where only the overview exists (z ≥ 10, Plan). */
 @Composable

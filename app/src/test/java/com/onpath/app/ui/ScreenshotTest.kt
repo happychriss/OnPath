@@ -63,6 +63,7 @@ class ScreenshotTest {
      */
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
+                      top: @Composable () -> Unit = {},
                       footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
@@ -73,6 +74,7 @@ class ScreenshotTest {
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
+                    Box(Modifier.fillMaxWidth().padding(top = 68.dp, start = 16.dp, end = 16.dp)) { top() }
                 }
             }
         }
@@ -192,9 +194,9 @@ class ScreenshotTest {
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
 
-    /** A map card (here: no downloads in this build) never squeezes the points away in the point editor (CI 2026-10-22). */
+    /** A map notice (here: no downloads in this build) sits in the blue strip at the top; the points keep their room. */
     @Test fun planPointsFullWithMapCard() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL).copy(cellCard = CellCardUi.NotAvailable), PlanCallbacks()) }
+        CardFrame(CellCardUi.NotAvailable, planWithPoints(PlanSize.FULL))
     }
 
     /**
@@ -202,7 +204,7 @@ class ScreenshotTest {
      * never squeeze the points away in the point editor.
      */
     @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(cellCard = CellCardUi.NotAvailable,
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(
             gapText = "Last 180 m to \"Taser Alm\" not possible by trekking bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
@@ -709,88 +711,73 @@ class ScreenshotTest {
                          job: com.onpath.app.cells.CellJob = cJob, declined: Boolean = false, available: Boolean = true) =
         CellCards.build(job, states, sizes, available, wifiOnly = false, mobileDeclined = declined)
 
-    private fun planWithCard(card: CellCardUi?, n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) =
-        planUi(n = n, r = r, size = size).copy(cellCard = card)
+    private fun planWithCard(n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) = planUi(n = n, r = r, size = size)
+
+    /** Owner 2026-10-23: what the map needs from the user shows in the blue strip at the top, not as a card in the sheet. */
+    @Composable
+    private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
+        Frame(gps = gps, top = { mapNotice(card)?.let { MapNoticeStrip(it, CellCardCallbacks()) } }) { PlanPanel(ui, PlanCallbacks()) }
 
     /** T1: a start point set outside the detailed map – the server builds the cells. */
     @Test fun cellCardPreparing() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planWithCard(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Building("base", 0.4, 300),
+        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Building("base", 0.4, 300),
                 cEast to com.onpath.app.cells.CellState.Queued(2, 360), cNorth to com.onpath.app.cells.CellState.Queued(3, 360),
-                cSouth to com.onpath.app.cells.CellState.Requested, com.onpath.app.cells.CellId(544, 360) to com.onpath.app.cells.CellState.Requested))),
-                PlanCallbacks())
-        }
+                cSouth to com.onpath.app.cells.CellState.Requested, com.onpath.app.cells.CellId(544, 360) to com.onpath.app.cells.CellState.Requested)), planWithCard())
     }
 
     /** Own cell downloading first; the route is a straight line until the routing data is there (existing note). */
     @Test fun cellCardDownloading() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planWithCard(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("2026-10-19"),
+        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("2026-10-19"),
                 cEast to com.onpath.app.cells.CellState.Downloading(4 * mbB, 10 * mbB), cNorth to com.onpath.app.cells.CellState.Building("overlays", 0.7, 60),
                 cSouth to com.onpath.app.cells.CellState.Queued(1, 120), com.onpath.app.cells.CellId(544, 360) to com.onpath.app.cells.CellState.Queued(2, 180)),
-                sizes = mapOf(cOwn to 10 * mbB)), n = 2,
+                sizes = mapOf(cOwn to 10 * mbB)), planWithCard(n = 2,
                 r = route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList())
-                ).copy(error = "Offline router could not start (routing data missing?) – straight lines shown."),
-                PlanCallbacks())
-        }
+                ).copy(error = "Offline router could not start (routing data missing?) – straight lines shown."))
     }
 
     /** Mobile data: own area loaded, the others ask once with their size – stays until answered. T3 (own position). */
     @Test fun cellCardMobileQuestion() = paparazzi.snapshot {
         val job = com.onpath.app.cells.CellJob(listOf(cOwn, cEast, cNorth, cSouth), cOwn, com.onpath.app.cells.CellWhy.HERE)
-        Frame(gps = GpsStatus.GOOD) {
-            PlanPanel(planWithCard(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
+        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
                 cEast to com.onpath.app.cells.CellState.WaitingForWifi(9 * mbB), cNorth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB),
-                cSouth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)), sizes = mapOf(cOwn to 10 * mbB), job = job), n = 0),
-                PlanCallbacks())
-        }
+                cSouth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)), sizes = mapOf(cOwn to 10 * mbB), job = job), planWithCard(n = 0), gps = GpsStatus.GOOD)
     }
 
     @Test fun cellCardOffline() = paparazzi.snapshot {
         val off = com.onpath.app.cells.CellState.Offline("No connection – the detailed map for this area will load when you are online.")
-        Frame { PlanPanel(planWithCard(cellCard(cJob.cells.associateWith { off })), PlanCallbacks()) }
+        CardFrame(cellCard(cJob.cells.associateWith { off }), planWithCard())
     }
 
     @Test fun cellCardFailed() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planWithCard(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") } +
+        CardFrame(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") } +
                 (cEast to com.onpath.app.cells.CellState.Failed("This area could not be prepared (server error). Planning still works with a straight line.")),
-                sizes = cJob.cells.associateWith { 9 * mbB }), n = 3, r = route), PlanCallbacks())
-        }
+                sizes = cJob.cells.associateWith { 9 * mbB }), planWithCard(n = 3, r = route))
     }
 
     @Test fun cellCardDone() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planWithCard(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") },
-                sizes = cJob.cells.associateWith { 8_600_000L }), n = 3, r = route), PlanCallbacks())
-        }
+        CardFrame(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") },
+                sizes = cJob.cells.associateWith { 8_600_000L }), planWithCard(n = 3, r = route))
     }
 
     /** Small sheet: the card is one line; an open question stays visible. */
     @Test fun cellCardMini() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planWithCard(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
-                cEast to com.onpath.app.cells.CellState.Downloading(2 * mbB, 9 * mbB))), n = 3, r = route, size = PlanSize.MINI), PlanCallbacks())
-        }
+        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
+                cEast to com.onpath.app.cells.CellState.Downloading(2 * mbB, 9 * mbB))), planWithCard(n = 3, r = route, size = PlanSize.MINI))
     }
 
     @Test fun cellCardNotAvailable() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithCard(cellCard(emptyMap(), available = false)), PlanCallbacks()) }
+        CardFrame(cellCard(emptyMap(), available = false), planWithCard())
     }
 
     /** Fresh install, no map yet, location not allowed: the card says what brings the detailed map (no timeout). */
     @Test fun cellCardFirstStart() = paparazzi.snapshot {
-        Frame(gps = GpsStatus.NO_PERMISSION) {
-            PlanPanel(planWithCard(CellCards.firstStart(null, available = true, noDetailedMap = true,
-                waitingForPosition = true, hidden = false, permission = false), n = 0), PlanCallbacks())
-        }
+        CardFrame(CellCards.firstStart(null, available = true, noDetailedMap = true,
+                waitingForPosition = true, hidden = false, permission = false), planWithCard(n = 0), gps = GpsStatus.NO_PERMISSION)
     }
 
     /** Fresh install, location allowed, waiting for the first fix. */
     @Test fun cellCardFirstStartWaiting() = paparazzi.snapshot {
-        Frame(gps = GpsStatus.SEARCHING) {
-            PlanPanel(planWithCard(CellCardUi.NeedPosition(permission = true), n = 0), PlanCallbacks())
-        }
+        CardFrame(CellCardUi.NeedPosition(permission = true), planWithCard(n = 0), gps = GpsStatus.SEARCHING)
     }
 
     /** Zoomed in (z ≥ 10) where only the overview map exists: a small hint below the search bar. */

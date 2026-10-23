@@ -77,7 +77,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## Done (recent)
 - **After 0.10.0 (cloud, 2026-10-23, not released yet):** no technical error texts in the app (`debug/UserText`, source
   scan `UserTextRuleTest`; details only in Settings → Diagnostics); map loading goes on with the screen off / app left
-  (`cells/MapLoadService`, quiet progress notification, ends by itself; `MapCells.loadInBackground`).
+  (`cells/MapLoadService`, quiet progress notification, ends by itself; `MapCells.loadInBackground`); one blue strip at
+  the top for map downloads – the plan sheet's map card is gone, its questions (mobile data: Only on Wi-Fi / Load now),
+  failures (Try again), offline and first-start notes show in the strip (`mapNotice` / `MapNoticeStrip`).
+  Owner answers 2026-10-23: keep the automatic slower GPS when standing (RestWatch); no slow-down with the screen off;
+  Navigate shows only the route line; keep the router's internal time limit.
 - **0.10.0 (released 2026-10-22; laptop work merged into main):** (1) map colours from the router classes
   (`tools/routing/wayclass/WayClass.java`, classes 0 good / 1 possible / 2 forbidden / 3 too hard = grey line, red only
   for access bans, via ferrata ticks kept, MTB steps grey; cell schema `-s3`; hiking band above the T level grey via

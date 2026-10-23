@@ -227,7 +227,7 @@ private fun PlanMode(
         // background downloads (corridor, refresh, routing data): thin blue strip below the search bar, after 10 s,
         // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
         // (own composable: its per-second progress recomposes only the strip, not PlanMode with the sheet)
-        PlanBackgroundStrip(vm)
+        PlanBackgroundStrip(vm, onRequestLocation)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
         val sheetHeight = remember { mutableIntStateOf(0) }
@@ -267,12 +267,28 @@ private fun PlanMode(
 
 /** The blue background-download strip of Plan + its details dialog. */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel) {
+private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit) {
+    // Cell states tick with every downloaded chunk: read only through derived values, so the strip
+    // recomposes when the card / modal really changes, not per tick (phone trace 0.10.0: sheet moves janky while
+    // map areas downloaded – CellStateReads.kt).
+    val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
+    // no flash (owner rule, field test 0.8.7): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
+    // whatever shows stays readable; a tap answers at once
+    val cellGate = remember { NoFlash<CellCardUi>(stepKey = CellCards::stepKey, urgent = CellCards::waitsForUser) }
+    val cellCard = rememberNoFlash(cellCardTarget, cellGate)
+    fun acted(f: () -> Unit): () -> Unit = { cellGate.userActed(android.os.SystemClock.uptimeMillis()); f() }
+    val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
+        onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
+        onAllowLocation = acted(onRequestLocation))
+    // owner 2026-10-23: ONE blue strip at the top – a map answer / problem (mobile data, failed, offline …) takes its place,
+    // otherwise the background progress; no second map card in the plan sheet
+    val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
-    val stripOn = bg != null && !vm.searchOpen
-    LaunchedEffect(stripOn) { vm.backgroundStripShown = stripOn }
-    if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true },
-        modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp))
+    val place = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = 68.dp, start = 16.dp, end = 16.dp)
+    val stripOn = bg != null && !vm.searchOpen && notice == null
+    LaunchedEffect(stripOn, notice != null) { vm.backgroundStripShown = stripOn || (notice != null && !vm.searchOpen) }
+    if (notice != null && !vm.searchOpen) MapNoticeStrip(notice, cellCb, place)
+    else if (stripOn) BackgroundDownloadStrip(bg!!, onClick = { vm.downloadDetailsOpen = true }, modifier = place)
     BackgroundDownloadDetails(vm, bg)
 }
 
@@ -293,18 +309,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         )
         return
     }
-    // Cell states tick with every downloaded chunk: read only through derived values, so the sheet (and its points rows)
-    // recomposes when the card / modal really changes, not per tick (phone trace 0.10.0: sheet moves janky while
-    // map areas downloaded – CellStateReads.kt).
-    val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
-    // no flash (owner rule, field test 0.8.7): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
-    // whatever shows stays readable; a tap answers at once
-    val cellGate = remember { NoFlash<CellCardUi>(stepKey = CellCards::stepKey, urgent = CellCards::waitsForUser) }
-    val cellCard = rememberNoFlash(cellCardTarget, cellGate)
-    fun acted(f: () -> Unit): () -> Unit = { cellGate.userActed(android.os.SystemClock.uptimeMillis()); f() }
-    val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
-        onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
-        onAllowLocation = acted(onRequestLocation))
     // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
     // time left and Cancel (owner 2026-10-21); ticks every second so the bar moves smoothly
     val loadUi by produceState<MapLoadUi?>(null, vm.cellJob, vm.mode) {
@@ -332,7 +336,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
-            cellCard = cellCard,
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText()),
         PlanCallbacks(
@@ -347,7 +350,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onWarnings = vm::tapWarningLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
-            cellCard = cellCb,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )
