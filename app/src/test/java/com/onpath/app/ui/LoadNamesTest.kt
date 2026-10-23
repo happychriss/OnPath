@@ -17,7 +17,6 @@ class LoadNamesTest {
             label(LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", "Meran")))
         assertEquals("newer map near Meran" to "Meran", label(LoadEntry(LoadWhy.REFRESH, null, "Meran")))
         assertEquals("ahead on your tour", label(LoadEntry(LoadWhy.AHEAD, null, "Meran")).first)
-        assertEquals(LoadNames.PATHS_LABEL, label(LoadEntry(null, paths = true)).first)
     }
 
     @Test fun fallbackIsTheNearestTownThenMapArea() {
@@ -37,12 +36,11 @@ class LoadNamesTest {
             LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 5 * mb),
             LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", bytes = 14 * mb, phase = LoadPhase.LOADING),
         ))
-        assertEquals(listOf("along your route to Gasthof Taser Alm", "around Bad Waldsee", "newer map near Meran", LoadNames.PATHS_LABEL),
-            g.map { it.label })
-        assertEquals("Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading", g[0].line)
+        assertEquals(listOf("along your route to Gasthof Taser Alm", "around Bad Waldsee", "newer map near Meran"), g.map { it.label })
+        // the route-planning part's 2 MB join the most important line (never a line of its own, owner Q5)
+        assertEquals("Along your route to Gasthof Taser Alm (2 areas) · 26 MB · loading", g[0].line)
         assertEquals("Around Bad Waldsee · 5 MB · loading", g[1].line)
         assertEquals("Newer map near Meran · 3 MB · being prepared", g[2].line)
-        assertEquals("Paths for route planning · 2 MB · loading", g[3].line)
     }
 
     @Test fun whatTheUserWaitsForComesFirst() {
@@ -81,6 +79,16 @@ class LoadNamesTest {
         assertEquals(LoadPhase.PREPARING, LoadNames.phaseOf(CellState.Queued(2, 60)))
         assertEquals(LoadPhase.WAITING, LoadNames.phaseOf(CellState.Requested))
         assertEquals(LoadPhase.FINISHING, LoadNames.phaseOf(CellState.Installing))
+    }
+
+    /** Owner texts Q5 (2026-10-23): route-planning data is part of "the map" – never a line or a word of its own. */
+    @Test fun routePlanningDataIsNeverNamed() {
+        assertTrue(LoadNames.groups(listOf(LoadEntry(null, paths = true, bytes = 9 * mb))).isEmpty()) // only in the total
+        val g = LoadNames.groups(listOf(LoadEntry(null, paths = true, bytes = 2 * mb), LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 5 * mb)))
+        assertEquals(listOf("Around Bad Waldsee · 7 MB · loading"), g.map { it.line })
+        for (l in g.map { it.line }) assertTrue(l, listOf("routing", "route planning", "paths").none { it in l.lowercase() })
+        val src = java.io.File("src/main/java/com/onpath/app/ui/BackgroundDownloads.kt").readText()
+        assertTrue("details must not name route-planning data", "paths for route planning" !in src.lowercase())
     }
 
     /** Names are never technical (CLAUDE.md: no "cells" / "routing data" toward the user). */

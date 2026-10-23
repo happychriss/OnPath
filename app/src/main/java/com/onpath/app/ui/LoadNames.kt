@@ -26,7 +26,7 @@ data class LoadTag(val why: LoadWhy, val at: GeoPoint? = null, val name: String?
 /** Where one area is: asked → prepared on the server → loading → being joined into the map. */
 enum class LoadPhase(val text: String) { LOADING("loading"), FINISHING("almost done"), PREPARING("being prepared"), WAITING("waiting") }
 
-/** One loading thing: a map area ([paths] false) or the paths for route planning. */
+/** One loading thing: a map area, or ([paths]) a part the map needs for planning routes – never named on its own (owner Q5). */
 data class LoadEntry(
     val why: LoadWhy?,
     /** Name for [why]: the point's / search result's / destination's name; null = unknown. */
@@ -49,7 +49,6 @@ data class LoadGroup(
     val areas: Int,
     val bytes: Long,
     val phase: LoadPhase,
-    val paths: Boolean = false,
 ) {
     /** "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading" */
     val line: String get() {
@@ -61,11 +60,9 @@ data class LoadGroup(
 object LoadNames {
     /** Longest name the chip shows before "…" (the chip also cuts at about half the screen). */
     const val CHIP_NAME_MAX = 24
-    const val PATHS_LABEL = "paths for route planning"
 
     /** Label and chip name of [e]. */
     fun label(e: LoadEntry): Pair<String, String?> {
-        if (e.paths) return PATHS_LABEL to null
         val near = e.town?.let { "near $it" } ?: "map area"
         return when (e.why) {
             LoadWhy.POINT -> (e.name?.let { "around $it" } ?: near) to (e.name ?: e.town)
@@ -76,19 +73,25 @@ object LoadNames {
         }
     }
 
-    /** [entries] grouped by label, most important first (waiting > route > point > newer > ahead > unknown > paths). */
+    /**
+     * [entries] grouped by label, most important first (waiting > route > point > newer > ahead > unknown). Route-planning
+     * parts ([LoadEntry.paths]) are part of "the map" (owner texts Q5, 2026-10-23): never a line of their own – their MB
+     * join the most important line; without any map line they count only in the total.
+     */
     fun groups(entries: List<LoadEntry>): List<LoadGroup> {
         data class Acc(val label: String, val chip: String?, val rank: Int, val order: Int, val list: MutableList<LoadEntry>)
         val acc = LinkedHashMap<String, Acc>()
         entries.forEachIndexed { i, e ->
+            if (e.paths) return@forEachIndexed
             val (label, chip) = label(e)
-            val rank = (if (e.waiting) 0 else 10) + when { e.paths -> 6; e.why == null -> 5; else -> e.why.ordinal + 1 }
+            val rank = (if (e.waiting) 0 else 10) + (e.why?.ordinal?.plus(1) ?: 5)
             val a = acc.getOrPut(label) { Acc(label, chip, rank, i, ArrayList()) }
             a.list += e
             if (rank < a.rank) acc[label] = a.copy(rank = rank)
         }
-        return acc.values.sortedWith(compareBy<Acc> { it.rank }.thenBy { it.order }).map { a ->
-            LoadGroup(a.label, a.chip, a.list.count { !it.paths }, a.list.sumOf { it.bytes }, a.list.minOf { it.phase }, a.list.all { it.paths })
+        val extra = entries.filter { it.paths }.sumOf { it.bytes }
+        return acc.values.sortedWith(compareBy<Acc> { it.rank }.thenBy { it.order }).mapIndexed { i, a ->
+            LoadGroup(a.label, a.chip, a.list.size, a.list.sumOf { it.bytes } + if (i == 0) extra else 0L, a.list.minOf { it.phase })
         }
     }
 

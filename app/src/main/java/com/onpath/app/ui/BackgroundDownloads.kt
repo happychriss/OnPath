@@ -173,7 +173,6 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
                     val fresh = ui.regions - ui.newer
                     if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
                     ui.newerLine?.let { Text(it) }
-                    if (fresh <= 0 && ui.newer <= 0 && ui.routingParts > 0) Text("Map: the paths for route planning")
                 }
                 Text(listOfNotNull(if (ui.bytes > 0) "In all about ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "),
                     fontWeight = FontWeight.Medium)
