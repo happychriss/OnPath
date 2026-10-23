@@ -1,9 +1,14 @@
 package com.onpath.web
 
+import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlannedRoute
+import com.onpath.app.routing.Planner
+import com.onpath.app.routing.RouteSummary
+import com.onpath.app.routing.WaypointInsertion
 import com.onpath.app.routing.Rd5Parts
 import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
@@ -120,6 +125,81 @@ object Engine {
         }
     }
 
+    private var lastPlan: Pair<List<GeoPoint>, PlannedRoute>? = null
+
+    /**
+     * Plans like the phone's plan sheet: the app's [Planner] (leg by leg, a failed leg becomes a straight dashed
+     * line with a plain message), times from [RouteTimes], difficulty from [RouteSummary].
+     */
+    fun plan(points: String, activity: String, sac: Int): String {
+        val t0 = System.currentTimeMillis()
+        return try {
+            val wps = parsePoints(points)
+            val act = Activity.valueOf(activity)
+            val p = Planner(engine()).plan(wps, act, sac)
+            lastPlan = wps to p
+            val times = if (p.points.size >= 2) RouteTimes.of(p.points, act).total() else 0.0
+            buildString {
+                append("{\"distanceM\":").append(num(p.distanceM))
+                append(",\"ascentM\":").append(num(p.ascentM))
+                append(",\"descentM\":").append(num(p.descentM))
+                append(",\"timeS\":").append(num(times))
+                append(",\"difficulty\":").append(str(RouteSummary.difficulty(act, p.distanceM, p.ascentM).label))
+                append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
+                append(",\"ms\":").append(System.currentTimeMillis() - t0)
+                append(",\"wayTypes\":").append(shares(p.wayTypes))
+                append(",\"surfaces\":").append(shares(p.surfaces))
+                profileJson(p.points)
+                append(",\"legs\":[")
+                p.legs.forEachIndexed { li, leg ->
+                    if (li > 0) append(',')
+                    append("{\"straight\":").append(leg.straight).append(",\"points\":")
+                    pointsJson(leg.points)
+                    append('}')
+                }
+                append("]}")
+            }
+        } catch (e: Exception) {
+            Problems.error("web", "Plan request failed", e)
+            "{\"error\":" + str("Unexpected: $e") + ",\"legs\":[]}"
+        }
+    }
+
+    /**
+     * Where a clicked point goes – the phone's rule ([WaypointInsertion.decide]): on the line → via in that leg,
+     * else cheapest insertion or new destination. Returns the index in the point list.
+     */
+    fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int {
+        val wps = parsePoints(points)
+        val route = lastPlan?.takeIf { it.first == wps }?.second?.points
+        return WaypointInsertion.decide(wps, GeoPoint(lat, lon), route, lineSnapM).index
+    }
+
+    /**
+     * Elevation profile like the app's (ui/ElevationProfile `profileData`: points with elevation, distance along
+     * the whole line via [Geo.cumulative]) with the app's gradient classes ([RouteSummary.steepness], 100 m window).
+     */
+    private fun StringBuilder.profileJson(points: List<GeoPoint>) {
+        val cum = if (points.size >= 2) Geo.cumulative(points) else DoubleArray(0)
+        val keep = points.indices.filter { points[it].ele != null }
+        val d = DoubleArray(keep.size) { cum[keep[it]] }
+        val e = DoubleArray(keep.size) { points[keep[it]].ele!! }
+        val steep = if (keep.size >= 2) RouteSummary.steepness(d, e) else emptyList()
+        append(",\"profile\":{\"dist\":").append(d.joinToString(",", "[", "]") { num(it, 1) })
+        append(",\"ele\":").append(e.joinToString(",", "[", "]") { num(it, 1) })
+        append(",\"steep\":").append(steep.joinToString(",", "[", "]") { it.ordinal.toString() }).append('}')
+    }
+
+    private fun StringBuilder.pointsJson(pts: List<GeoPoint>) {
+        append('[')
+        pts.forEachIndexed { i, p ->
+            if (i > 0) append(',')
+            append('[').append(num(p.lat, 6)).append(',').append(num(p.lon, 6)).append(',')
+                .append(p.ele?.let { num(it, 1) } ?: "null").append(']')
+        }
+        append(']')
+    }
+
     fun problems(): String = Problems.drain().joinToString(",", "[", "]") { str(it) }
 
     private fun shares(s: List<Share>) = s.joinToString(",", "[", "]") { "[" + str(it.key) + "," + num(it.meters, 1) + "]" }
@@ -168,6 +248,11 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun putPart(tile: String, index: Int, data: Int8Array): Boolean = Engine.putPart(tile, index, data.copyToJavaArray())
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
+
+@JSExport fun plan(points: String, activity: String, sac: Int): String = Engine.plan(points, activity, sac)
+
+@JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
+    Engine.insertIndex(points, lat, lon, lineSnapM)
 
 @JSExport fun problems(): String = Engine.problems()
 

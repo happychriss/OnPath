@@ -27,6 +27,18 @@ export class EngineClient {
   configure(base: string, segments: string) { return this.ask({ type: 'config', base, segments }); }
 
   route(points: [number, number][], activity: Activity, sac: number) {
-    return this.ask({ type: 'route', points: points.map(([lat, lon]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join(';'), activity, sac });
+    return this.ask({ type: 'route', points: enc(points), activity, sac });
+  }
+
+  plan(points: [number, number][], activity: Activity, sac: number) {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac });
+  }
+
+  /** Index where a clicked point goes (the app's WaypointInsertion rule). */
+  async insertIndex(points: [number, number][], lat: number, lon: number, lineSnapM: number): Promise<number> {
+    const r = await this.ask({ type: 'insert', points: enc(points), lat, lon, lineSnapM });
+    return r.index ?? points.length;
   }
 }
+
+const enc = (points: [number, number][]) => points.map(([lat, lon]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join(';');

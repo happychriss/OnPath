@@ -11,6 +11,8 @@ interface WasmEngine {
   putLayout(tile: string, index: Int8Array, tail: Int8Array): void;
   putPart(tile: string, index: number, data: Int8Array): boolean;
   route(points: string, activity: string, sac: number): string;
+  plan(points: string, activity: string, sac: number): string;
+  insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
   problems(): string;
 }
 
@@ -94,13 +96,17 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const e = await getEngine();
+    if (req.type === 'insert') {
+      reply({ id: req.id, ok: true, index: e.insertIndex(req.points, req.lat, req.lon, req.lineSnapM) });
+      return;
+    }
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points);
     const t1 = performance.now();
-    const json = e.route(req.points, req.activity, req.sac);
+    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac) : e.route(req.points, req.activity, req.sac);
     const t2 = performance.now();
     reply({
-      id: req.id, ok: true, result: JSON.parse(json),
+      id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),
       stats: { engineLoadMs: loadMs.engine, fetchMs: t1 - t0, routeMs: t2 - t1, bytesFetched: fetched },
       problems: JSON.parse(e.problems()),
     });
