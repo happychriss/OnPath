@@ -349,6 +349,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The open card's job was waited for in the modal: when it is all there it simply goes – no "Map ready" card. */
     private var jobWaited by mutableStateOf(false)
     private val loadProgress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+    /** The loading window's time-based % (one per window, reset when it closes). */
+    private val loadSmoother = LoadSmoother()
     /** Last % shown (never backwards). */
     private var loadHeld = 0
     /** A search / shared place opened (or joined) the modal: Cancel also removes its ring ([MapLoadCancel]). */
@@ -368,7 +370,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .also { if (it == null) loadModalFor = emptySet() else loadHeld = it.percent } // null: the map is there
         // routing data in the same modal (field test 2026-10-21): one % over both, closes when both are there
         val r = if (routingModal) routingData.status.also { if (it == null) routingModal = false } else null
-        val ui = RoutingLoads.combine(map, r, combinedHeld)
+        val raw = RoutingLoads.combine(map, r, combinedHeld)
+        // the % follows the time, not the bytes (owner 2026-10-23: quick routing data made it race to 50 % and stand)
+        val ui = when {
+            raw == null -> { loadSmoother.reset(); null }
+            raw.kind == MapLoadUi.Kind.LOADING || raw.kind == MapLoadUi.Kind.PREPARING ->
+                raw.copy(percent = maxOf(combinedHeld, loadSmoother.next(now, raw.secondsLeft)))
+            else -> raw.copy(percent = combinedHeld) // offline / Wi-Fi / failed: the bar stays where it was
+        }
         combinedHeld = ui?.percent ?: 0
         return ui
     }
