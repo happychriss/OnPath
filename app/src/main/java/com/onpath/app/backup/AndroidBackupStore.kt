@@ -108,14 +108,14 @@ internal class MediaStoreBackupStore(context: Context) : BackupStore {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val uri = try { resolver.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) } catch (e: Exception) {
-            throw BackupException("the Documents folder cannot be written (${e.message ?: e.javaClass.simpleName})", e)
+            throw BackupException("the Documents folder cannot be written", e)
         } ?: throw BackupException("the Documents folder cannot be written (storage not available)")
         try {
             (resolver.openOutputStream(uri, "w") ?: throw java.io.IOException("no output stream")).use { it.write(bytes) }
             resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         } catch (e: Exception) {
             try { resolver.delete(uri, null, null) } catch (d: Exception) { Problems.info("backup", "Half-written backup file not removed", d) }
-            throw BackupException(if (e.message?.contains("ENOSPC") == true) "storage full" else "writing failed (${e.message ?: e.javaClass.simpleName})", e)
+            throw BackupException(if (e.message?.contains("ENOSPC") == true) "storage full" else "the file could not be written – the phone's storage may be full", e)
         }
         return BackupStore.Created(uri.toString(), ops.displayName(uri) ?: fileName)
     }
@@ -147,7 +147,7 @@ internal class LegacyBackupStore(private val context: Context) : BackupStore {
         var n = 1
         while (f.exists()) f = File(d, fileName.removeSuffix(".gpx") + " (${n++}).gpx") // a file from an earlier install
         try { FileOps.writeFile(f, bytes) } catch (e: Exception) {
-            throw BackupException(if (d.usableSpace < bytes.size) "storage full" else "writing failed (${e.message})", e)
+            throw BackupException(if (d.usableSpace < bytes.size) "storage full" else "the file could not be written – the phone's storage may be full", e)
         }
         return BackupStore.Created(Uri.fromFile(f).toString(), f.name)
     }
@@ -170,7 +170,7 @@ internal class TreeBackupStore(context: Context, private val tree: Uri, override
             .firstOrNull { it.isDir && it.name == "Deleted" }?.uri
             ?: try {
                 DocumentsContract.createDocument(resolver, root, DocumentsContract.Document.MIME_TYPE_DIR, "Deleted")
-            } catch (e: Exception) { throw BackupException("the chosen folder cannot be written (${e.message})", e) }
+            } catch (e: Exception) { throw BackupException("the chosen folder cannot be written", e) }
             ?: throw BackupException("the chosen folder cannot be written")
     }
 
@@ -179,13 +179,13 @@ internal class TreeBackupStore(context: Context, private val tree: Uri, override
         val uri = try { DocumentsContract.createDocument(resolver, p, "application/octet-stream", fileName) } catch (e: SecurityException) {
             throw BackupException("no access to the chosen folder any more – choose it again in Settings → Backup", e)
         } catch (e: Exception) {
-            throw BackupException("the chosen folder cannot be written (${e.message ?: e.javaClass.simpleName})", e)
+            throw BackupException("the chosen folder cannot be written", e)
         } ?: throw BackupException("the chosen folder cannot be written")
         try {
             (resolver.openOutputStream(uri, "w") ?: throw java.io.IOException("no output stream")).use { it.write(bytes) }
         } catch (e: Exception) {
             ops.delete(uri.toString())
-            throw BackupException("writing failed (${e.message ?: e.javaClass.simpleName})", e)
+            throw BackupException("the file could not be written – the folder may be full or offline", e)
         }
         return BackupStore.Created(uri.toString(), ops.displayName(uri) ?: fileName)
     }
