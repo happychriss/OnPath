@@ -2758,6 +2758,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         NavSessionStore(File(app.filesDir, com.onpath.app.navigation.ActivityCheck.PROPOSAL_FILE)).save(proposed)
         RecordingService.send(app, RecordingService.ACTION_PROPOSE_SWITCH) { putExtra(RecordingService.EXTRA_TIME_S, fit.timeS) }
+        // chosen in Plan during the tour: the Take new route / Keep question is asked in Navigate
+        if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)
     }
 
     /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
