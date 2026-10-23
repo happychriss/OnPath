@@ -172,6 +172,12 @@ class MapCells(
     }
     @Volatile var relevance: Relevance? = null
 
+    /**
+     * A screen's state is gone: [r] is removed only when it is still the current one. Two screens (each its own
+     * ViewModel) can overlap at start (field 0.10.1) – the older one, cleared last, must not remove the newer one's.
+     */
+    @Synchronized fun releaseRelevance(r: Relevance) { if (relevance === r) relevance = null }
+
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
     /** False when this build has no map server key: the UI says "Map downloads not available in this build". */

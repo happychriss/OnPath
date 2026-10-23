@@ -3504,6 +3504,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = "Route updated with newer map data – please check it."
     }
 
+    /** This ViewModel's [com.onpath.app.cells.MapCells.relevance] – onCleared removes only its own (two screens at start, 0.10.1). */
+    private var ownRelevance: com.onpath.app.cells.MapCells.Relevance? = null
+
     // Last in the class: every property it touches is initialised by now.
     init {
         // a new cell store generation (cell added / replaced / deleted, region re-joined) → reload the map style
@@ -3542,7 +3545,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) })
                 return com.onpath.app.cells.CellTriggers.nearAny(c, pts)
             }
-        }
+        }.also { ownRelevance = it }
         safeCells("start") {
             val inst = cells.installed.value.map { it.id }.toSet()
             val loading = cells.states.value.filter { (c, s) -> c !in inst && s != com.onpath.app.cells.CellState.None &&
@@ -3556,7 +3559,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         com.onpath.app.data.AppRouting.unlisten(routingListener)
-        cells.relevance = null // the screen's state is gone: only the age / corridor rules apply
+        // the screen's state is gone: only the age / corridor rules apply – unless a newer screen set its own already
+        ownRelevance?.let { cells.releaseRelevance(it) }
         routingDispatcher.close()
         super.onCleared()
     }

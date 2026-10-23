@@ -8,6 +8,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -318,6 +320,22 @@ class CellDownloadTest {
         waitFor("b joined at start") { second.installed.value.any { it.id == b } }
         waitFor("a loaded after restart") { second.state(a) is CellState.Ready }
         assertNotNull(second.mapDir())
+    }
+
+    /** Field 0.10.1: two screens at start – the older ViewModel, cleared last, must not remove the newer one's relevance. */
+    @Test fun olderScreenDoesNotClearNewerRelevance() {
+        val mc = cells(Net())
+        fun rel() = object : MapCells.Relevance {
+            override fun waiting(): Set<CellId> = emptySet()
+            override fun stillNear(c: CellId) = true
+        }
+        val older = rel(); val newer = rel()
+        mc.relevance = older
+        mc.relevance = newer
+        mc.releaseRelevance(older)
+        assertSame(newer, mc.relevance)
+        mc.releaseRelevance(newer)
+        assertNull(mc.relevance)
     }
 
     @Test fun deleteCell() {
