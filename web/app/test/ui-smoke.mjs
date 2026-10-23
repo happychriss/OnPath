@@ -34,4 +34,8 @@ await browser.close(); server.close();
 console.log('summary:', summary.replace(/\s+/g, ' ').trim());
 console.log('status:', status);
 if (errors.length) console.log('errors:', errors);
-process.exit(errors.some((e) => !/Map files|404/.test(e)) ? 1 : 0);
+// Fail on page errors and console errors, except missing map files (404, no map data in CI) and the app's own
+// Problems log at INFO / WARN (the known reflection warning, docs/design/web-planner.md §7 finding 2).
+const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN) /.test(e));
+if (real.length) console.log('FAILED on:', real);
+process.exit(real.length ? 1 : 0);
