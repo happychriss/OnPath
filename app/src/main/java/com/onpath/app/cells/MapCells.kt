@@ -352,7 +352,13 @@ class MapCells(
     fun networkChanged() = wake()
 
     /** The app came to the foreground (true) or left it (false). Polling runs in the foreground, on a tour, or while MapLoadService runs. */
-    fun setForeground(on: Boolean) { foreground = on; if (on) wake() }
+    fun setForeground(on: Boolean) {
+        foreground = on
+        // nobody drags a map that is not on screen: a gesture whose "camera idle" never came (app left while the camera
+        // moved) must not hold back joins / removals until the app is opened again (phone check 2026-10-23)
+        if (!on && userBusy) { userBusy = false; wake() }
+        if (on) wake()
+    }
 
     /** The style loaded generation [number] fine: the previous generation can go (R-16). */
     fun confirmLoaded(number: Int) = store.confirmLoaded(number)

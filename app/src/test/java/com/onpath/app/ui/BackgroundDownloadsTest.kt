@@ -27,6 +27,28 @@ class BackgroundDownloadsTest {
         assertTrue(BackgroundProgress.cellItems(mapOf(a to CellState.Ready("v1"), b to CellState.Failed("x")), emptySet()) { null }.isEmpty())
     }
 
+    /**
+     * Field test 0.10.1 (Hilden): "Loading map · 2 areas · 0 %" for ~10 minutes while the server prepared two corridor
+     * areas – the strip counted only downloaded bytes. The preparing time moves the % now (as in the loading window).
+     */
+    @Test fun preparingOnTheServerMovesThePercent() {
+        val progress = HashMap<CellId, MapLoadProgress>()
+        val p = BackgroundProgress()
+        val states = mapOf(a to CellState.Queued(1, 600), b to CellState.Building("base", 0.0, 600))
+        fun at(now: Long) = p.update(BackgroundProgress.cellItems(states, emptySet(), progress = progress, now = now) { 20 * mb }, 2, 0)!!.percent
+        assertEquals(0, at(0))
+        val later = at(300_000) // half the server's estimate
+        assertTrue("moves while the server prepares: $later", later in 30..60)
+        assertTrue(at(900_000) < 80) // never done before the download
+    }
+
+    /** A check for a newer version of an installed area (just asked, the server has not answered) is no loading. */
+    @Test fun checkingInstalledAreaIsNotLoading() {
+        val states = mapOf(a to CellState.Requested, b to CellState.Requested, c to CellState.Building("base", 0.2, 60))
+        val items = BackgroundProgress.cellItems(states, emptySet(), installed = setOf(a, c)) { null }
+        assertEquals(listOf("cell:${b.id}", "cell:${c.id}"), items.map { it.key })
+    }
+
     @Test fun progressCountsFinishedItemsAndNeverGoesBack() {
         val p = BackgroundProgress()
         val one = p.update(listOf(BackgroundProgress.Item("a", 5 * mb, 10 * mb), BackgroundProgress.Item("b", 0, 10 * mb)), 2, 0)!!

@@ -761,6 +761,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- background downloads: visible and stoppable (owner 2026-10-22) ----------------
 
     private val bgProgress = BackgroundProgress()
+    /** Per map region of the strip: its time-based % while the server prepares it ([MapLoadProgress]). */
+    private val bgCellProgress = HashMap<com.onpath.app.cells.CellId, MapLoadProgress>()
     /** The strip / chip was tapped: what loads in the background, with "Cancel all". */
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
@@ -774,12 +776,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun backgroundDownloadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>): BackgroundDownloadUi? = try {
         val modal = loadModalFor.isNotEmpty() || routingModal
-        val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), cells::knownSize)
-        val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
-        val items = cellItems + listOfNotNull(r?.let { BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes) })
         // newer versions of installed areas: told in the strip / its details (no second indicator on the map)
         val installed = if (modal) emptySet() else cells.installed.value.map { it.id }.toSet()
-        val newer = if (modal) 0 else states.count { (c, s) -> c in installed && BackgroundProgress.loading(s) }
+        // the server's preparing time moves the % too (field test 0.10.1: 0 % for the ~10 min two areas were prepared)
+        val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), installed, bgCellProgress,
+            android.os.SystemClock.elapsedRealtime(), cells::knownSize)
+        val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
+        val items = cellItems + listOfNotNull(r?.let { BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes) })
+        val newer = if (modal) 0 else states.count { (c, s) ->
+            c in installed && BackgroundProgress.loading(s) && s != com.onpath.app.cells.CellState.Requested
+        }
         val eta = (MapUpdates.of(states, installed) as? MapUpdateUi.Preparing)?.minutes
         val groups = if (modal) emptyList() else loadGroups(states, cellItems, installed, r)
         bgProgress.update(items, cellItems.size, r?.names?.size ?: 0, newer, eta, groups)
@@ -3503,15 +3509,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // a new cell store generation (cell added / replaced / deleted, region re-joined) → reload the map style
         // (new file paths; MapLibre keeps no stale PMTiles index) and recheck the data. The search index notices by itself.
         viewModelScope.launch {
+            // what THIS ViewModel's map was asked to show (start: the data now – its map's first load takes it). Not the
+            // process-wide StyleLoader.lastMapDir: with two activities alive (field test 0.10.1) the other one's map had
+            // loaded the new data, so this one never asked its own map to reload (MapReload, StyleReloadRule).
+            var asked: java.io.File? = dataFiles.mapDir()
             cells.generation.collect {
                 val onMap = com.onpath.app.map.StyleLoader.lastMapDir
-                if (onMap == null) recheckData() // no map shown yet (missing-data screen): the first cell may complete the data
-                else if (dataFiles.mapDir() != onMap) {
+                if (onMap == null) { recheckData(); asked = dataFiles.mapDir() } // no map shown yet: its first load takes it
+                else if (StyleReloadRule.ask(dataFiles.mapDir(), asked)) {
                     // once per burst, never while the map / sheet is dragged (perf report 2026-10-22: one reload per
                     // region, native memory grew with each); the camera and location tracking stay as they are
                     styleGateJob = gated(styleGate, styleGateJob, busy = { cells.userBusy }) {
-                        if (dataFiles.mapDir() != com.onpath.app.map.StyleLoader.lastMapDir) {
-                            Problems.trace("map", "Map style reload asked for ${dataFiles.mapDir().name} (version ${styleVersion + 1})")
+                        val dir = dataFiles.mapDir()
+                        if (StyleReloadRule.ask(dir, asked)) {
+                            Problems.trace("map", "Map style reload asked for ${dir.name} (version ${styleVersion + 1})")
+                            asked = dir
                             recheckData(); styleVersion++
                         }
                     }

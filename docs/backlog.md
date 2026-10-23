@@ -15,7 +15,19 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   then two spikes on a separate branch (BRouter in the browser; Compose web + maplibre-gl), report with numbers
   before any change to the app's code.
 - **[for the laptop – owner 2026-10-23 evening, phone test 0.10.1] TODO:**
-  1. **New map areas never showed until an app restart (bug).** Hilden areas 10-531-341/342 were downloaded and joined
+  1. **DONE (laptop 2026-10-23)** – cause: two activities (each its own ViewModel + MapHost) lived at once at the
+     0.10.1 start (event log: "Plan restored at app start" twice in 1 s, Style load #1 and #2 with the native heap at
+     93 MB). They shared process-wide state: the short-lived host's onDispose cleared `reloadRef`/`ctrlRef` after the
+     other had set them → every later reload a silent no-op (styleVersion 5, no "Style load", `map: not ready`); and the
+     ViewModel's "map behind the data?" check read the global `StyleLoader.lastMapDir`, which another host may already
+     have moved on. Fix: per-host state `ui/MapReload.kt` (`MapHostView`: what this map shows, its own reload/controller;
+     `OwnedRef`: only the owner clears; `StyleReloadRule`: each ViewModel asks by what it asked last), catch-up reload
+     per host (MapReloadTwoHostsTest). Also found on the Pixel: leaving the app while the camera still moved (app camera
+     moves count as a gesture) left `userBusy` stuck → downloaded areas waited unjoined until the app was opened again;
+     `MapCells.setForeground(false)` ends it (CellDownloadTest.leavingTheAppEndsAStuckGesture). Screen-off / background
+     reloads themselves worked on the Pixel (style loads while stopped are fine). Not phone-verified after the fix
+     (install blocked at the end) – check on the next build.
+     Original report: **New map areas never showed until an app restart (bug).** Hilden areas 10-531-341/342 were downloaded and joined
      (generations 49–53, 20:52–21:21) – the map stayed blank beige at Hilden; force-closing the app fixed it. Diagnostics
      (exported 21:36): `styleVersion` 5 (the reload was asked 5×) but NO "Style load #n" trace after 20:45 (0.10.1 start);
      `map: not ready` in the export (ctrlRef null; the export runs with Settings open). Health: "no frames drawn".
@@ -25,7 +37,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
      back on screen / a new generation when the map still shows an older store. Please reproduce on the Pixel (adb
      logcat -s OnPath): plan in a new area, let areas load (screen off / app left for some minutes, MapLoadService
      notification), come back – does the map switch? Then find the root cause.
-  2. After the restart the blue bar showed "Loading map · 2 areas · 0 %" for areas that were already there – check why
+  2. **DONE (laptop 2026-10-23)** – the 2 areas were new corridor neighbours (10-532-341/342, joined at g54 21:59 and
+     22:08), not installed ones; the server prepared them ~10 min and the strip counted only downloaded bytes → 0 % the
+     whole time. Fix: the strip's % uses the loading window's time-based progress per area (`MapLoadProgress`), and a
+     plain "newer version?" check of an installed area (Requested, no server answer yet) is not counted as loading
+     (BackgroundDownloadsTest). Original: After the restart the blue bar showed "Loading map · 2 areas · 0 %" for areas that were already there – check why
      (refresh / corridor re-request?) and whether the 0 % stays.
   3. ~~Saved name on a plan in Hilden~~ **done (laptop 2026-10-23):** `RouteRules.linkedToSaved` – the plan belongs to the
      saved / loaded route while at least one of its points is one of that route's points; after Clear or with every

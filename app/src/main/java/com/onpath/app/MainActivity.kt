@@ -448,7 +448,7 @@ class MainActivity : ComponentActivity() {
      * sheet (send by mail / chat / save to Files). Never throws.
      */
     private fun exportDiagnostics() {
-        val ctrl = com.onpath.app.ui.ctrlRef[0]
+        val ctrl = com.onpath.app.ui.ctrlRef.get()
         val metrics = resources.displayMetrics
         val mapPart = com.onpath.app.debug.Diagnostics.mapSnapshot(ctrl?.map, metrics.widthPixels, metrics.heightPixels)
         val styleJson = try { ctrl?.map?.style?.json } catch (e: Exception) {
