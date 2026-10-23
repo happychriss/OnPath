@@ -123,8 +123,6 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
-    /** The map card (CellCard): mobile data answer, retry, close. */
-    val cellCard: CellCardCallbacks = CellCardCallbacks(),
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -171,8 +169,6 @@ data class PlanUi(
     val roundTrip: Boolean = false,
     /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
     val tour: TourState? = null,
-    /** Detailed map being fetched for this area (CellCard, map-cells.md §9); null = nothing to say. */
-    val cellCard: CellCardUi? = null,
     /** Rows of the Points section (full sheet), see PlanPoints.rows. */
     val points: List<PlanPointRow> = emptyList(),
     /** The route has been calculating for a while: show "Calculating route… Cancel". */
@@ -254,8 +250,6 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     ui.error?.let { ErrorBox(it) }
     ui.gapText?.let { GapLine(it, cb.onShowGap) }
     ui.warnText?.takeIf { !ui.routing }?.let { WarnLine(it, cb.onWarnings) }
-    // outside the profile step the map card is one line: it must never squeeze the points away (CI 2026-10-22)
-    ui.cellCard?.let { CellCard(it, cb.cellCard, compact = ui.size != PlanSize.COMPACT) }
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }

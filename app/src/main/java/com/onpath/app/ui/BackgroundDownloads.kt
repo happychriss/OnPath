@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -207,4 +209,61 @@ internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadU
     if (!vm.downloadDetailsOpen) return
     if (ui == null) { androidx.compose.runtime.LaunchedEffect(Unit) { vm.downloadDetailsOpen = false }; return }
     BackgroundDownloadDialog(ui, onCancelAll = vm::cancelAllDownloads, onClose = { vm.downloadDetailsOpen = false })
+}
+
+/**
+ * What of the map card still needs the user (owner 2026-10-23: no second map card in the plan sheet – the blue strip at
+ * the top says it and asks there): the mobile-data question, areas waiting for Wi-Fi, a failure, offline, no position
+ * yet on a fresh install, no downloads in this build. Plain progress is the [BackgroundDownloadStrip]'s; "ready" needs
+ * nothing. Pure, unit-tested.
+ */
+fun mapNotice(card: CellCardUi?): CellCardUi? = when (card) {
+    is CellCardUi.Working -> card.takeIf { it.question != null || it.wifiNote != null }
+    is CellCardUi.Failed, is CellCardUi.Offline, is CellCardUi.NeedPosition, CellCardUi.NotAvailable -> card
+    is CellCardUi.Done, null -> null
+}
+
+/** The blue strip when the map needs an answer or says why it does not come (see [mapNotice]); same place as the progress. */
+@Composable
+fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier = Modifier) {
+    val working = card as? CellCardUi.Working
+    val title = working?.question?.text ?: working?.wifiNote ?: card.title
+    val detail = when (card) {
+        is CellCardUi.Failed -> card.why
+        is CellCardUi.Offline -> card.why
+        is CellCardUi.NeedPosition -> CellCardUi.NeedPosition.BODY
+        CellCardUi.NotAvailable -> CellCardUi.NotAvailable.BODY
+        else -> null
+    }
+    val closable = card is CellCardUi.Offline || card is CellCardUi.NeedPosition || (working != null && working.question == null)
+    Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.94f), contentColor = Color.White, shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (card is CellCardUi.Failed) Icons.Outlined.Warning else Icons.Outlined.Download,
+                    null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                if (closable) androidx.compose.material3.IconButton(onClick = cb.onClose, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Filled.Close, "Hide (the map keeps loading)", modifier = Modifier.size(18.dp))
+                } else Spacer(Modifier.width(8.dp))
+            }
+            detail?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f), modifier = Modifier.padding(start = 22.dp, end = 8.dp)) }
+            val buttons: List<Pair<String, () -> Unit>> = when {
+                working?.question != null -> listOf("Only on Wi-Fi" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
+                card is CellCardUi.Failed -> listOfNotNull("Not now" to cb.onClose, if (card.retryable) "Try again" to cb.onRetry else null)
+                card is CellCardUi.NeedPosition && !card.permission -> listOf("Allow location" to cb.onAllowLocation)
+                card == CellCardUi.NotAvailable -> listOf("OK" to cb.onClose)
+                else -> emptyList()
+            }
+            if (buttons.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                buttons.forEachIndexed { i, (label, act) ->
+                    val main = i == buttons.lastIndex
+                    TextButton(onClick = act, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(label, color = Color.White, fontWeight = if (main) FontWeight.Bold else FontWeight.Normal)
+                    }
+                }
+            } else Spacer(Modifier.height(4.dp))
+        }
+    }
 }
