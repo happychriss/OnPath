@@ -47,14 +47,19 @@ class CellCardsTest {
     @Test fun mobileQuestionWithSizeUntilAnswered() {
         val st = mapOf(own to CellState.Ready("v"), east to CellState.WaitingForWifi(12 * MB), north to CellState.WaitingForWifi(13 * MB))
         val c = card(st, sizes = mapOf(own to 9 * MB)) as CellCardUi.Working
-        assertEquals("Download 2 more map areas (≈ 25 MB) over mobile data?", c.question!!.text)
+        assertEquals("Use mobile data? · 2 map areas, 25 MB", c.question!!.text)
         assertEquals("Detailed map ready to download", c.title)
         val answered = card(st, sizes = mapOf(own to 9 * MB), declined = true) as CellCardUi.Working
         assertNull(answered.question)
-        assertEquals("2 areas wait for Wi-Fi (≈ 25 MB)", answered.wifiNote)
+        assertEquals("2 map areas wait for Wi-Fi · 25 MB", answered.wifiNote)
+        // just answered "Wi-Fi only": a quiet status, no choice (review 2026-10-24 C8)
+        assertEquals(NoticeLook.QUIET, noticeLook(answered))
         val wifiOnly = card(st, sizes = mapOf(own to 9 * MB), wifiOnly = true) as CellCardUi.Working
         assertNull(wifiOnly.question)
-        assertTrue(wifiOnly.wifiNote!!.endsWith("Settings: “Download maps only on Wi-Fi”"))
+        assertEquals("2 map areas wait for Wi-Fi · 25 MB", wifiOnly.wifiNote)
+        // Settings says Wi-Fi only: "Load now over mobile data" stays offered (owner Q6 2026-10-23) – a question
+        assertEquals(NoticeLook.QUESTION, noticeLook(wifiOnly))
+        assertEquals(NoticeLook.QUESTION, noticeLook(c))
     }
 
     @Test fun offlineOneLine() {
@@ -74,7 +79,7 @@ class CellCardsTest {
         assertTrue(c.retryable)
         val two = card(mapOf(own to CellState.Failed("Download damaged – please try again later.", true),
             east to CellState.Failed("x", false), north to CellState.Ready("v")), sizes = mapOf(north to MB)) as CellCardUi.Failed
-        assertEquals("2 map areas could not be loaded: Download damaged – please try again later.", two.title)
+        assertEquals("2 map areas failed: Download damaged – please try again later.", two.title)
     }
 
     @Test fun doneWithCountAndSize() {

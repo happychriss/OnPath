@@ -22,6 +22,17 @@ class MapNoticeTest {
         assertNull(mapNotice(null))
     }
 
+    /** Review 2026-10-24 A / C8: blue only for questions, amber for a failure, grey pill for a status. */
+    @Test fun oneColourOneMeaning() {
+        assertEquals(NoticeLook.QUESTION, noticeLook(working(MobileQuestion(3, null))))
+        assertEquals(NoticeLook.QUESTION, noticeLook(CellCardUi.NeedPosition(permission = false)))
+        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.NeedPosition(permission = true)))
+        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.Offline(CellCards.OFFLINE_TITLE, null)))
+        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.NotAvailable))
+        assertEquals(NoticeLook.WARNING, noticeLook(CellCardUi.Failed("Download damaged – please try again later.", null, true)))
+        assertEquals("Use mobile data? · 1 map area", MobileQuestion(1, null).text)
+    }
+
     @Test fun problemsAndFirstStartDo() {
         val f = CellCardUi.Failed("This area could not be prepared", null, retryable = true)
         assertEquals(f, mapNotice(f))
