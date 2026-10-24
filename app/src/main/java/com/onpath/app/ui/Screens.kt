@@ -335,8 +335,7 @@ fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Delete, null) },
         title = { Text("Delete “${t.name}”?") },
-        text = { Text("This ${t.kind.label.lowercase()} goes to the recycle bin (My routes → ⋮ → Recycle bin). " +
-            "You can restore it there for ${com.onpath.app.backup.RecycleBin.DAYS} days.") },
+        text = { DialogText(RECYCLE_BIN_NOTE) },
         confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete", color = OnPathColors.Bad) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
     )
@@ -349,7 +348,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Filled.Route, null) },
         title = { Text("Replace current route?") },
-        text = { Text("Your current route is not saved. Save it first, or replace it with the route you picked.") },
+        text = { DialogText("Your current route is not saved. Save it first, or replace it with the route you picked.") },
         confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text("Replace") } },
         dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save first") } },
     )
@@ -454,8 +453,7 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete this tour?") },
-            text = { Text("The tour is not kept. You can still get it back from the recycle bin for 30 days " +
-                "(My routes → ⋮ → Recycle bin).") },
+            text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
             dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
@@ -465,7 +463,7 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Unfinished tour") },
-        text = { Text("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
+        text = { DialogText("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = {
             Row {

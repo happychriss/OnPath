@@ -235,6 +235,14 @@ class ScreenshotTest {
         }
     }
 
+    /** The destination deleted during a tour: verb buttons "Route back" / "Just record" (review 2026-10-24 B11). */
+    @Test fun routeBackQuestion() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+            RouteBackDialog({}, {})
+        }
+    }
+
     /**
      * Field bug 0.9.3: Cancel at the long-route question for a plan restored at start left "Calculating the route…"
      * forever. Now: the points stay, a plain notice says the route is not calculated, with "Plan anyway".
@@ -588,9 +596,6 @@ class ScreenshotTest {
     }
 
 
-    @Test fun confirmClear() = paparazzi.snapshot {
-        OnPathTheme { Frame { PlanPanel(planUi(), PlanCallbacks()) }; ConfirmClearDialog(3, {}, {}) }
-    }
 
     @Test fun track() = paparazzi.snapshot {
         Frame {

@@ -311,7 +311,7 @@ fun LoadAskDialog(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () ->
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onNotNow,
         title = { Text("Load the map for this area?") },
-        text = { Text(MapLoads.askText(regions, bytes)) },
+        text = { DialogText(MapLoads.askText(regions, bytes)) },
         confirmButton = { TextButton(onClick = onLoad, modifier = Modifier.heightIn(min = 48.dp)) { Text("Load") } },
         dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },
     )

@@ -38,7 +38,7 @@ fun RouteDialogs(vm: AppViewModel) {
         AlertDialog(
             onDismissRequest = { vm.routesProblem = null },
             title = { Text("Something went wrong") },
-            text = { Text(msg) },
+            text = { DialogText(msg) },
             confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text("OK") } },
         )
     }
