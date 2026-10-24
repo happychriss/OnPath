@@ -364,7 +364,7 @@ class TripPaceTest {
         assertEquals(was, note.wasMs)
         assertEquals(trip.snapshot().arrivalMs!!, note.nowMs)
         assertTrue((note.nowMs - note.wasMs) / 60_000.0 > 20)
-        assertTrue(note.text(), note.text().startsWith("New route: arrival ") && ", was " in note.text())
+        assertTrue(note.text(), note.text().startsWith("New route · was "))
         // stays (no timeout) while walking on
         val s2 = walk(trip, Factors.ONE, 0.5, startS = s + 1, startAlong = a)
         assertEquals(note, trip.snapshot().lineNote)
