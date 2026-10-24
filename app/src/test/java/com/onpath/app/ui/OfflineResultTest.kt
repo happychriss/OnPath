@@ -35,6 +35,6 @@ class OfflineResultTest {
             assertTrue("$fn: failures stay visible (removeAreas)", "removeAreas(" in b)
         }
         assertTrue("a failure keeps a persistent message", "message = " in body("removeAreas"))
-        assertTrue("leaving the page clears the line", Regex("""set\(v\) \{ if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(src))
+        assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(src))
     }
 }

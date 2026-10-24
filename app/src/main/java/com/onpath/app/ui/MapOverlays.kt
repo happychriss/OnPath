@@ -237,7 +237,7 @@ private fun HoldMenuItem(
         Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Column {
-            Text(label, color = color, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text(label, color = color, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1)
             supporting?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }

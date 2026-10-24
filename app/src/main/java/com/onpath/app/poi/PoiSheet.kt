@@ -122,7 +122,7 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier) {
         ) {
             Icon(Icons.Outlined.Map, contentDescription = null)
             Spacer(Modifier.width(10.dp))
-            Text(if (de) "In Google Maps öffnen" else "Open in Google Maps", fontSize = 16.sp,
+            Text(if (de) "In Google Maps öffnen" else "Open in Google Maps", style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold)
         }
         Text(
