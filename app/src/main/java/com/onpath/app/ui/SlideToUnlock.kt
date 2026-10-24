@@ -42,7 +42,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -87,7 +86,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, label: String
         Box(Modifier.fillMaxHeight().width(with(density) { offset.toDp() } + THUMB + PAD * 2)
             .clip(CircleShape).background(OnPathColors.Route.copy(alpha = 0.55f)))
         Text(
-            "→  $label", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+            "→  $label", color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.Center).padding(start = THUMB).graphicsLayer { alpha = (1f - 2f * f).coerceIn(0f, 1f) },
         )
         Surface(

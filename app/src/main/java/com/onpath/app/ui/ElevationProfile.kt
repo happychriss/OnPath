@@ -78,7 +78,7 @@ fun ElevationProfile(
     val highlight by androidx.compose.runtime.rememberUpdatedState(onHighlight)
     val release by androidx.compose.runtime.rememberUpdatedState(onRelease)
     val measurer = rememberTextMeasurer()
-    val labelStyle = remember { TextStyle(fontSize = 11.sp, color = Color(0xFF555A55)) }
+    val labelStyle = remember { TextStyle(fontSize = 12.sp, color = Color(0xFF555A55)) }
 
     fun indexAt(x: Float, width: Float, left: Float): Int {
         val d = cur
@@ -235,7 +235,7 @@ fun GradientLegend(flat: Color = OnPathColors.Route) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.width(12.dp).height(3.dp).background(c))
                     Spacer(Modifier.width(4.dp))
-                    Text(t, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
     }

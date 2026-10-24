@@ -120,17 +120,17 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     val atEnd = ui.routeIndex != null && ui.routeIndex == ui.waypointCount - 1 && ui.waypointCount > 1
                     OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Text("As start", maxLines = 1)
+                        Text("As start", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
                         modifier = Modifier.weight(1.25f).heightIn(min = 48.dp)) {
-                        Text("As destination", maxLines = 1)
+                        Text("As destination", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(onClick = actions.onGoogle, contentPadding = small,
                         modifier = Modifier.weight(1.2f).heightIn(min = 48.dp)) {
                         Icon(Icons.Outlined.Map, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Google", maxLines = 1)
+                        Text("Google", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

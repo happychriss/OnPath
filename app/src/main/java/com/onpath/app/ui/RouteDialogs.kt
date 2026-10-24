@@ -38,7 +38,7 @@ fun RouteDialogs(vm: AppViewModel) {
         AlertDialog(
             onDismissRequest = { vm.routesProblem = null },
             title = { Text("Something went wrong") },
-            text = { Text(msg) },
+            text = { DialogText(msg) },
             confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text("OK") } },
         )
     }
@@ -56,8 +56,8 @@ fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveA
         icon = { Icon(Icons.Outlined.Save, null) },
         title = { Text("Save route") },
         text = {
-            Text(if (unsaved) "Save your changes into “$name”, or keep “$name” as it was and save a new route."
-                else "“$name” is saved. Save it again, or save a copy as a new route.")
+            DialogText(if (unsaved) "Save the changes into “$name”, or as a new route."
+                else "“$name” is saved. Save it again, or as a new route.")
         },
         confirmButton = { TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save") } },
         dismissButton = {
@@ -76,8 +76,7 @@ fun StraightLegsDialog(onNavigate: () -> Unit, onCancel: () -> Unit) {
         onDismissRequest = onCancel,
         title = { Text("Parts of this route were not found") },
         text = {
-            Text("The dashed parts are straight lines, not paths. " +
-                "Move those points or change the activity – or navigate anyway.")
+            DialogText("The dashed parts are straight lines, not paths.")
         },
         confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text("Navigate anyway") } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Fix the route") } },

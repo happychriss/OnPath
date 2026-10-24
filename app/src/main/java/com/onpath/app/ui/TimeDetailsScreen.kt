@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.time.PaceModel
 import com.onpath.app.time.TimeBreakdown
@@ -169,7 +168,8 @@ private fun TdKV(k: String, v: String, bold: Boolean = false) {
 
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.TdCell(t: String, w: Float, header: Boolean = false, bold: Boolean = false) {
-    Text(t, fontSize = if (header) 11.sp else 12.sp, lineHeight = 14.sp, maxLines = 2,
+    // the technical table (Developer tools): caption size, or the numbers wrap
+    Text(t, style = MaterialTheme.typography.labelSmall, maxLines = 2,
         fontWeight = if (header || bold) FontWeight.SemiBold else null,
         color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.weight(w).padding(end = 4.dp))

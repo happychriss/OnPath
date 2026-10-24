@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.ui.AppViewModel.UpdateState
 
 /** Small card above the plan sheet when a newer version is published. Never blocks the map. */
@@ -44,9 +43,9 @@ fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit,
                 Icon(Icons.Filled.SystemUpdate, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("OnPath $version is available", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("OnPath $version is available", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                     Text(if (percent != null) "Downloading… $percent %" else "Your routes, tracks and maps are kept.",
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (percent != null) {
@@ -66,17 +65,17 @@ fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit,
 @Composable
 fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: () -> Unit, onInstall: () -> Unit) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Installed: OnPath $currentVersion", fontSize = 14.sp)
+        Text("Installed: OnPath $currentVersion", style = MaterialTheme.typography.bodyMedium)
         when (state) {
             UpdateState.Idle -> {}
-            UpdateState.Checking -> Text("Checking…", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            UpdateState.UpToDate -> Text("You have the latest version.", fontSize = 13.sp, color = OnPathColors.Good)
-            is UpdateState.Failed -> Text(state.message, fontSize = 13.sp, color = OnPathColors.Bad)
+            UpdateState.Checking -> Text("Checking…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            UpdateState.UpToDate -> Text("You have the latest version.", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Good)
+            is UpdateState.Failed -> Text(state.message, style = MaterialTheme.typography.bodySmall, color = OnPathColors.Bad)
             is UpdateState.Available, is UpdateState.Downloading -> {
                 val rel = (state as? UpdateState.Available)?.release ?: (state as UpdateState.Downloading).release
                 Text("Version ${rel.version} is available", fontWeight = FontWeight.SemiBold)
                 if (rel.notes.isNotBlank()) {
-                    Text(rel.notes.lines().take(12).joinToString("\n"), fontSize = 13.sp,
+                    Text(rel.notes.lines().take(12).joinToString("\n"), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (state is UpdateState.Downloading) {
@@ -95,6 +94,6 @@ fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: ()
             }
         }
         Text("Updates come from the OnPath page on GitHub. Android asks you to confirm every install.",
-            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

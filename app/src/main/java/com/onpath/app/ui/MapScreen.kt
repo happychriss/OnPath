@@ -195,7 +195,6 @@ fun MapScreen(
         onDismiss = { showActivity = false },
         sac = vm.sac, onSac = vm::selectSac,
     )
-    if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (vm.routeBackAsk && rec != null) RouteBackDialog(onYes = { vm.answerRouteBack(true) }, onNo = { vm.answerRouteBack(false) })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
@@ -364,7 +363,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             points = rows,
-            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText()),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(),
+            changedText = vm.routeChangedLineText()),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -375,6 +375,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onPlanAnyway = vm::planAnyway,
             onShowGap = vm::showPlanGap,
             onWarnings = vm::tapWarningLine,
+            onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,

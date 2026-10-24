@@ -46,6 +46,10 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.CircularProgressIndicator
+import com.onpath.app.data.RoutingDataNotice
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
@@ -70,7 +74,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
@@ -117,6 +120,8 @@ class PlanCallbacks(
     val onShowGap: () -> Unit = {},
     /** Tap on the amber warning line: the list of spots (or the whole route when there are none). */
     val onWarnings: () -> Unit = {},
+    /** Tap on the grey "New route for …" line: it goes, the map shows the route. */
+    val onRouteChanged: () -> Unit = {},
     val onResize: (PlanSize) -> Unit = {},
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
@@ -175,8 +180,10 @@ data class PlanUi(
     val notRouted: NotRouted? = null,
     /** A plan point the route does not reach (PlanGaps.text): one red line + "Show", while it holds. */
     val gapText: String? = null,
-    /** Something to know about the route (RouteWarnings, or "Route changed for … – please check"): one amber line. */
+    /** Something to know about the way (RouteWarnings: pushing, steps, steep): one amber line. */
     val warnText: String? = null,
+    /** "New route for … – check it" after an activity change: one grey INFO line (not a warning). */
+    val changedText: String? = null,
 ) {
     /** Without a route navigation just records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = pointCount < 2 || route != null
@@ -245,9 +252,18 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         }
     } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
-    ui.error?.let { ErrorBox(it) }
-    ui.gapText?.let { GapLine(it, cb.onShowGap) }
+    // route state, one line per kind (review 2026-10-24 A): ERROR, WARNING, INFO
+    val loadingNotice = RoutingDataNotice.isNotice(ui.error)
+    val routeError = ui.error?.takeIf { !loadingNotice }
+    when {
+        // an unreachable point and a failed leg are the same kind: one red line (+N more)
+        ui.gapText != null -> ErrorLine(ui.gapText + if (routeError != null && !ui.gapText.contains("more)")) " (+1 more)" else "",
+            onShow = cb.onShowGap)
+        routeError != null -> ErrorLine(routeError)
+    }
     ui.warnText?.takeIf { !ui.routing }?.let { WarnLine(it, cb.onWarnings) }
+    if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
+    ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }
@@ -258,9 +274,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Elevation profile" }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
+                // the gradient legend lives on Route details only (review 2026-10-24 B21)
                 ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                     onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
-                GradientLegend()
             }
         }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
@@ -300,18 +316,40 @@ private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
 }
 
 /**
- * A plan point the route does not reach (owner 2026-10-22): red, bold, in the summary (visible in the small step), no OK
- * and never self-dismissing – it goes when the plan changes so that every point is reached. "Show" = the map goes there.
+ * ERROR line (review 2026-10-24 B4): the route does not do what was asked – a plan point it does not reach (owner
+ * 2026-10-22) or a leg the router could not do ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary
+ * (visible in the small step), no OK and never self-dismissing – it goes when the plan changes. "Show" = the map goes there.
  */
 @Composable
-private fun GapLine(text: String, onShow: () -> Unit) {
-    val red = MaterialTheme.colorScheme.error
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            color = red, modifier = Modifier.weight(1f))
-        androidx.compose.material3.TextButton(onClick = onShow) {
-            Text("Show", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = red)
+private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
+    val red = OnPathColors.Error
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Cancel, null, tint = red, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+            color = red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (onShow != null) androidx.compose.material3.TextButton(onClick = onShow) {
+            Text("Show", fontWeight = FontWeight.Bold, color = red)
         }
+    }
+}
+
+/**
+ * INFO line: good to know, nothing to do – grey text, no box, a small spinner while something loads (review 2026-10-24
+ * A / B5 / B6). Tappable when [onTap] is set (then a ›).
+ */
+@Composable
+internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit)? = null) {
+    val grey = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(MaterialTheme.shapes.small)
+        .then(if (onTap != null) Modifier.clickable(role = Role.Button) { onTap() } else Modifier)
+        .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (spinner) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = grey)
+        else Icon(Icons.Outlined.Info, null, tint = grey, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = grey,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (onTap != null) Icon(Icons.Filled.ChevronRight, null, tint = grey, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -448,17 +486,6 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
         onClick = run(cb.onClear))
 }
 
-@Composable
-private fun ErrorBox(error: String) {
-    Spacer(Modifier.height(8.dp))
-    Surface(shape = MaterialTheme.shapes.small, color = Color(0xFFFFF4E0), modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(10.dp)) {
-            Icon(Icons.Outlined.Warning, null, tint = Color(0xFFB26A00), modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(error, style = MaterialTheme.typography.bodySmall, color = Color(0xFF5A3A00))
-        }
-    }
-}
 
 
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */

@@ -129,7 +129,9 @@ private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
             Text(name, style = MaterialTheme.typography.titleSmall, color = content)
             if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodyMedium, color = when {
                 s is ActivityRowState.Ready && s.fit.fits -> OnPathColors.Good
-                s is ActivityRowState.Ready -> OnPathColors.Bad
+                // "not suited" is a warning about the way (amber); red only for "no route found" (review 2026-10-24 B17)
+                s is ActivityRowState.Ready -> OnPathColors.Warn
+                s is ActivityRowState.Failed -> OnPathColors.Error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             })
         }

@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellJob
 import com.onpath.app.cells.CellState
@@ -54,7 +56,6 @@ sealed interface CellCardUi {
 
     data object NotAvailable : CellCardUi {
         override val title = "Map downloads not available in this build"
-        const val BODY = "You can still plan on the overview map; routes there are straight lines."
     }
 
     data class Working(
@@ -66,8 +67,13 @@ sealed interface CellCardUi {
         /** 0..1 when downloading, null otherwise. */
         val progress: Float?,
         val question: MobileQuestion?,
-        /** "3 areas wait for Wi-Fi (≈ 25 MB)" when the question was answered or Settings says Wi-Fi only. */
+        /** "3 map areas wait for Wi-Fi · 25 MB" when the question was answered or Settings says Wi-Fi only. */
         val wifiNote: String?,
+        /**
+         * With [wifiNote]: "Load now" over mobile data is offered (Settings says Wi-Fi only – owner Q6 2026-10-23). The
+         * user who just answered "Wi-Fi only" gets a quiet grey pill without a choice.
+         */
+        val canLoadNow: Boolean = true,
     ) : CellCardUi
 
     data class Offline(override val title: String, val why: String?) : CellCardUi
@@ -81,9 +87,10 @@ sealed interface CellCardUi {
     data class NeedPosition(val permission: Boolean) : CellCardUi {
         override val title get() = if (permission) WAITING else ALLOW
         companion object {
-            const val ALLOW = "Allow location to get the detailed map – or hold the map where you want to go"
-            const val WAITING = "Waiting for GPS to get the detailed map – or hold the map where you want to go"
-            const val BODY = "Hold the map where you want to go. Until then the overview map is shown."
+            /** A question (blue, "Allow location"). */
+            const val ALLOW = "Detailed map where you are?"
+            /** A status (grey pill, review 2026-10-24 C8). */
+            const val WAITING = "Waiting for GPS for the detailed map"
         }
     }
 
@@ -94,9 +101,10 @@ sealed interface CellCardUi {
 
 data class CellRow(val name: String, val state: String, val own: Boolean)
 
+/** "Use mobile data? · 3 map areas, 25 MB" (review 2026-10-24 B9) · Wi-Fi only · Load now. */
 data class MobileQuestion(val areas: Int, val bytes: Long?) {
-    val text: String get() = "Download $areas more map ${if (areas == 1) "area" else "areas"}" +
-        (bytes?.let { " (≈ ${mb(it)} MB)" } ?: "") + " over mobile data?"
+    val text: String get() = "Use mobile data? · $areas map ${if (areas == 1) "area" else "areas"}" +
+        (bytes?.let { ", ${mb(it)} MB" } ?: "")
 }
 
 /** Whole MB, at least 1 for anything non-empty. */
@@ -105,7 +113,7 @@ internal fun mb(bytes: Long): Long = if (bytes <= 0) 0 else maxOf(1, (bytes + 52
 /** Pure: card content from the trigger's job and the cell states (unit-tested). */
 object CellCards {
     const val MAX_ROWS = 3
-    const val OFFLINE_TITLE = "No detailed map here yet – it downloads when you're online"
+    const val OFFLINE_TITLE = "No detailed map – loads when online"
 
     /**
      * The first-start card ([CellCardUi.NeedPosition]) when there is no other card ([job] null): downloads [available],
@@ -118,6 +126,7 @@ object CellCards {
     ): CellCardUi.NeedPosition? =
         if (job == null && available && noDetailedMap && waitingForPosition && !hidden) CellCardUi.NeedPosition(permission) else null
 
+    /** Why an area loads – for the events trace / Diagnostics only; the strip shows no "why" line (review 2026-10-24 B7). */
     fun why(w: CellWhy): String = when (w) {
         CellWhy.PLANNED -> "Getting the detailed map because you planned here."
         CellWhy.HERE -> "Getting the detailed map because you are here."
@@ -147,7 +156,7 @@ object CellCards {
         val failed = all.filter { s[it] is CellState.Failed }
         if (open.isEmpty() && failed.isNotEmpty()) {
             val f = s[failed.first()] as CellState.Failed
-            val title = if (failed.size == 1) f.message else "${failed.size} map areas could not be loaded: ${f.message}"
+            val title = if (failed.size == 1) f.message else "${failed.size} map areas failed: ${f.message}"
             return CellCardUi.Failed(title, why, failed.any { (s[it] as CellState.Failed).retryable })
         }
         // only waiting for the network (no download running): one plain line
@@ -179,10 +188,11 @@ object CellCards {
             val restReady = rest.count { s[it] is CellState.Ready }
             "${rest.size} more ${if (rest.size == 1) "area" else "areas"}" + if (restReady == rest.size) " · ready" else if (restReady > 0) " · $restReady ready" else " · waiting"
         }
-        val waitNote = if (waiting.isEmpty()) null else "${waiting.size} ${if (waiting.size == 1) "area waits" else "areas wait"} for Wi-Fi" +
-            (waitBytes?.let { " (≈ ${mb(it)} MB)" } ?: "") + if (wifiOnly) " – Settings: “Download maps only on Wi-Fi”" else ""
+        val waitNote = if (waiting.isEmpty()) null else "${waiting.size} map ${if (waiting.size == 1) "area waits" else "areas wait"} for Wi-Fi" +
+            (waitBytes?.let { " · ${mb(it)} MB" } ?: "")
         val question = if (waiting.isNotEmpty() && !wifiOnly && !mobileDeclined) MobileQuestion(waiting.size, waitBytes) else null
-        return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null)
+        return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null,
+            canLoadNow = wifiOnly)
     }
 
     /**
@@ -235,16 +245,32 @@ class CellCardCallbacks(
 
 /** Small persistent hint on the map where only the overview exists (z ≥ 10, Plan). */
 @Composable
-fun OverviewHint(modifier: Modifier = Modifier) {
+fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(OVERVIEW_HINT, Icons.Outlined.Map, modifier = modifier)
+
+/**
+ * The quiet grey pill under the search bar (review 2026-10-24 C8): a status with nothing to decide ("Overview only – …",
+ * "No detailed map – loads when online", "Waiting for GPS …"). No ×: it goes when the state goes. [action]: one small
+ * text button for the rare status that still needs an OK.
+ */
+@Composable
+fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier,
+              action: Pair<String, () -> Unit>? = null) {
     Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), shadowElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), modifier = modifier) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Map, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        modifier = modifier.androidxSemantics(text)) {
+        Row(Modifier.padding(start = 12.dp, end = if (action == null) 12.dp else 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text(OVERVIEW_HINT, style = MaterialTheme.typography.bodySmall)
+            Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f, fill = false))
+            action?.let { (label, act) -> TextButton(onClick = act, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) } }
         }
     }
 }
+
+private fun Modifier.androidxSemantics(text: String) =
+    this.then(Modifier.semantics(mergeDescendants = true) { contentDescription = text })
 
 const val OVERVIEW_HINT = "Overview only – hold the map here to get the detailed map"
 

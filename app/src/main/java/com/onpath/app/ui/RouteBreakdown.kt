@@ -30,7 +30,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.Share
@@ -125,7 +124,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
     val parts = foldSmall(shares)
     if (parts.isEmpty()) return
     Column {
-        Text(title, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(3.dp))
         Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))) {
             parts.forEach { s ->
@@ -138,7 +137,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(color))
                     Spacer(Modifier.width(4.dp))
-                    Text("$label ${Format.distance(s.meters)}", fontSize = 11.sp)
+                    Text("$label ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -148,10 +147,10 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
 @Composable
 fun DifficultyBadge(d: RouteSummary.Difficulty, modifier: Modifier = Modifier) {
     val (bg, fg) = when (d) {
-        RouteSummary.Difficulty.EASY -> Color(0xFFDDEFE3) to Color(0xFF1F6E43)
-        RouteSummary.Difficulty.MODERATE -> Color(0xFFFFF0D2) to Color(0xFF8A5A00)
-        RouteSummary.Difficulty.DIFFICULT -> Color(0xFFFDE0DC) to Color(0xFFB3261E)
+        RouteSummary.Difficulty.EASY -> OnPathColors.GreenLight to OnPathColors.Green
+        RouteSummary.Difficulty.MODERATE -> OnPathColors.WarnContainer to OnPathColors.Warn
+        RouteSummary.Difficulty.DIFFICULT -> OnPathColors.ErrorContainer to OnPathColors.Error
     }
     Text(d.label, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
-        color = fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        color = fg, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
 }
