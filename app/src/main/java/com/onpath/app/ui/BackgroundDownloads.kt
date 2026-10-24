@@ -287,9 +287,11 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
  * Owner 2026-10-23 (e.g. in a car): the app opened where there is no detailed map – the strip asks instead of loading.
  */
 @Composable
-fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier) =
+fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
+                 mustBuild: Boolean = true) =
     BlueNotice("Detailed map for here? (≈ ${mb(bytes)} MB)",
-        "Until then the overview map shows. Setting a point here also loads it.",
+        (if (mustBuild) "It is prepared for you first – takes a few minutes. " else "") +
+            "Until then the overview map shows. Setting a point here also loads it.",
         warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier)
 
 /** One blue strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). */

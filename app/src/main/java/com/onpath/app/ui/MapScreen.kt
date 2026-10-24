@@ -307,7 +307,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     } else if (here != null && !vm.searchOpen) {
         // owner 2026-10-23: opening the app asks for the map of here, it never loads by itself (e.g. in a car)
         HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
-            modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+            mustBuild = here.mustBuild, modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (chipOn) {
         BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
             modifier = Modifier.align(Alignment.TopEnd).then(top).padding(end = 12.dp).measured())
