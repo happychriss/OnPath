@@ -20,9 +20,10 @@ data class TripTime(
     val lineNote: LineNote? = null,
 )
 
-/** "New route: arrival 12:45, was 13:15" (backlog: arrival forecast after plan edits). */
+/** "New route · was 13:15" (backlog: arrival forecast after plan edits). */
 data class LineNote(val wasMs: Long, val nowMs: Long) {
-    fun text(): String = "New route: arrival ${TimeEstimate.clock(nowMs)}, was ${TimeEstimate.clock(wasMs)}"
+    /** "New route · was 13:15" – the new arrival is already big beside it (review 2026-10-24 B15). */
+    fun text(): String = "New route · was ${TimeEstimate.clock(wasMs)}"
 }
 
 enum class EstimateState {

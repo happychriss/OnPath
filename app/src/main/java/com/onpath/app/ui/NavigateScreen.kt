@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.WrongLocation
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,10 +102,10 @@ data class NavUi(
     /** Recording time without breaks / breaks so far (s); null = not known (shows the elapsed clock instead). */
     val movingS: Double? = null,
     val breakS: Double? = null,
-    /** "Your pace on this trip: up 0.9× · down 1.1×" in the opened card; null = nothing learned yet. */
+    /** "Faster than planned uphill" in the opened card; null = nothing learned yet or about as planned. */
     val paceNote: String? = null,
     /**
-     * "New route: arrival 12:45, was 13:15" – the followed line changed (plan edit, re-route) and moved the arrival by
+     * "New route · was 13:15" – the followed line changed (plan edit, re-route) and moved the arrival by
      * more than 5 min; stays until the next change (owner: nothing disappears by itself). null = none.
      */
     val routeNote: String? = null,
@@ -177,8 +178,8 @@ fun NavigateOverlay(
         ) {
             // cards glide in and out instead of popping and pushing the status card (polish audit A3)
             Appearing(ui.turn) { TurnCard(it) }
-            // status (finding a way back / no way / kept) on top: readable at a glance
-            Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteBanner(it) }
+            // ONE amber card while off route (owner C1 2026-10-24): "Off route", distance + direction, the state
+            Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
@@ -212,8 +213,8 @@ private fun TurnCard(t: TurnHint) {
             Icon(turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text(t.kind.label, style = MaterialTheme.typography.titleMedium)
+                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
+                Text(t.kind.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -245,23 +246,26 @@ internal fun NorthNeedle(modifier: Modifier) {
         val cx = w / 2; val top = h * 0.36f; val bottom = h * 0.98f; val mid = (top + bottom) / 2; val half = w * 0.16f
         drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.Bad)
         drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, Color(0xFF9E9E9E))
-        val label = measurer.measure("N", TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333)))
+        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333)))
         drawText(label, topLeft = Offset(cx - label.size.width / 2f, top - label.size.height + 1f))
     }
 }
 
 /**
- * Status card: activity icon (48 dp button → check-and-switch sheet), "2 h 50 min · 7.4 km" (to go), "↑ 512 m ↓ 310 m",
- * "arrive ≈ 16:40" large on the right (to go + break allowance) and "● moving 1:12 · breaks 0:11" (moving time
- * without breaks; docs/plan-time-estimate.md §5). Buttons: the icon, "Resume" while paused, the profile chevron (48 dp);
- * the rest of the card is not clickable.
+ * Status card, readable at a glance (review 2026-10-24 B1): activity icon (48 dp button → check-and-switch sheet, the
+ * orange recording dot on it), "2 h 50 min · 7.4 km" (to go, 22 sp), "↑ 512 m ↓ 310 m" (16 sp), "Arrive 16:40" on the
+ * right (clock 30 sp bold). The recording line only when it matters (owner C3): "Paused", or the amber "No GPS ·
+ * position 4 min old"; moving time / breaks are in the opened card. Buttons: the icon, "Resume" while paused, the
+ * chevron (48 dp); the rest of the card is not clickable.
  */
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
                            onProfileRelease: () -> Unit = {}) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
-    val canOpen = hasProfile || ui.position != null
+    val movingLine = ui.recordedM?.let { movingLine(ui) }
+    val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
+    val offCard = ui.offRoute != null // the amber off-route card says where the route is – not repeated here
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {
@@ -276,6 +280,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(a.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(28.dp))
+                        // recording: the orange dot on the icon instead of a line (owner C3)
+                        if (ui.recordedM != null) RecDot(ui.paused, Modifier.align(Alignment.TopEnd).padding(5.dp).size(9.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))
@@ -283,33 +289,46 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             Column(Modifier.weight(1f)) {
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
-                        // never a stale time (owner rule 6): what is left counts again once back on the route
-                        Text("Not on the route", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        val off = g.offM
-                        if (off != null && off > 0) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        // never a stale time (owner rule 6): what is left counts again once back on the route. While the
+                        // amber off-route card shows, it says it (one place, one distance – review B2).
+                        if (!offCard) {
+                            Text("Not on the route", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            val off = g.offM
+                            if (off != null && off > 0) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
                     } else {
                         val paused = g.state == com.onpath.app.time.EstimateState.PAUSED
-                        // the time first: with the activity icon and the arrival clock beside it, an ellipsis cuts the distance, never the time
-                        Text("${Format.duration(g.timeS)} · ${Format.distance(g.distanceM)}", style = MaterialTheme.typography.titleMedium,
+                        // the time first and big (22 sp); the distance under it – beside the 30 sp arrival clock both
+                        // would not fit on one line at a glance size
+                        val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        Text(Format.duration(g.timeS), style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
-                        if (paused) Text("time paused · ${g.pausedBecause ?: "no position"}", style = MaterialTheme.typography.bodyMedium,
+                            color = if (paused) dim else Color.Unspecified)
+                        Text(Format.distance(g.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+                            maxLines = 1, color = if (paused) dim else Color.Unspecified)
+                        if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
-                            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val off = g.offM
-                        if (off != null && off > 150 && ui.offRoute == null) Text("${Format.distance(off)} from the route", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error)
+                            style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                ui.recordedM?.let { d ->
-                    Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RecDot(ui.paused, Modifier.size(8.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(recordingLine(ui, d),
-                            style = if (ui.toGo == null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                if (ui.recordedM != null && ui.waitingGps) {
+                    // no fix: the arrow and the to-go are stale – a warning, not grey small text (review B3)
+                    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(noGpsLine(ui.fixAgeS), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+                            color = OnPathColors.Warn, maxLines = 2)
+                    }
+                } else ui.recordedM?.let { d ->
+                    recordingLine(ui, d, offCard)?.let { line ->
+                        Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (ui.activity == null) { RecDot(ui.paused, Modifier.size(8.dp)); Spacer(Modifier.width(8.dp)) }
+                            Text(line,
+                                style = if (ui.toGo == null || offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }
@@ -318,14 +337,14 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
                 val paused = ui.toGo.state == com.onpath.app.time.EstimateState.PAUSED
-                // "arrive at <target> ≈ 16:40": the clock large, the target small under it, no wider than the clock
-                // (the time and the moving line on the left keep their room)
-                Text("arrive ≈", style = MaterialTheme.typography.labelMedium,
+                // "Arrive 16:40 <target>": the clock large, the target under it, no wider than the clock
+                // (the time on the left keeps its room)
+                Text("Arrive", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1,
+                Text(ui.arriveAt, style = MaterialTheme.typography.headlineMedium, maxLines = 1,
                     color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
                 ui.toGo.target?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                         modifier = Modifier.then(NoIntrinsicWidth).fillMaxWidth())
                 }
@@ -337,7 +356,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             }
         }
         ui.routeNote?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         }
@@ -346,8 +365,13 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
                 onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
+            // moving time / breaks live here (owner C3), then the pace in plain words (owner C4)
+            if (ui.toGo != null) movingLine?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp))
+            }
             ui.paceNote?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
             }
             ui.position?.let { PositionLine(it, ui.positionCopy) }
@@ -392,54 +416,89 @@ private fun PositionLine(text: String, copy: String?) {
         verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Filled.MyLocation, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(if (copied) "$text · copied ✓" else text, style = MaterialTheme.typography.bodySmall,
+        Text(if (copied) "$text · copied ✓" else text, style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 /**
- * "moving 1:12 · breaks 0:11" while navigating (the card is narrow: the recorded distance gives way, the state word only
- * when it matters: paused, no GPS); a free recording: "Recording · 2.1 km · moving 0:28 · breaks 0:05".
- * Without moving time: the elapsed clock as before.
+ * The recording line of the status card, only when it matters (owner C3 2026-10-24): a free recording (it is the card's
+ * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; paused: "Paused · moving 1:12"; off route (the card has
+ * nothing else then): "Recording · 2.1 km". Normal navigation → null (the orange dot on the activity icon says it).
+ * No GPS is the amber [noGpsLine] instead. Without moving time: the elapsed clock as before.
  */
-internal fun recordingLine(ui: NavUi, distanceM: Double): String {
-    val age = ui.fixAgeS?.takeIf { it >= 60 }?.let { " · position ${it / 60} min old" }.orEmpty()
-    val status = when { ui.paused -> "Paused"; ui.waitingGps -> "Waiting for GPS$age"; else -> "Recording" }
+internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
+    val free = ui.toGo == null
+    if (!free && !ui.paused && !offRoute) return null
+    val status = if (ui.paused) "Paused" else "Recording"
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
-    val parts = mutableListOf<String>()
-    if (ui.toGo == null || ui.paused || ui.waitingGps) parts += status
-    if (ui.toGo == null) parts += Format.distance(distanceM)
-    parts += "moving ${com.onpath.app.time.TimeEstimate.hm(moving)}"
-    val b = ui.breakS ?: 0.0
-    if (b >= 60) parts += "breaks ${com.onpath.app.time.TimeEstimate.hm(b)}"
+    val parts = mutableListOf(status)
+    if (free || offRoute) parts += Format.distance(distanceM)
+    if (free || ui.paused) {
+        parts += "moving ${com.onpath.app.time.TimeEstimate.hm(moving)}"
+        val b = ui.breakS ?: 0.0
+        if (free && b >= 60) parts += "breaks ${com.onpath.app.time.TimeEstimate.hm(b)}"
+    }
     return parts.joinToString(" · ")
 }
 
-/** "Off route – finding a way back…" (spinner) / "– no way back found" / "– original route kept" with an arrow to the route. */
+/** "Moving 1:12 · breaks 0:11" for the opened card; null without moving time. */
+internal fun movingLine(ui: NavUi): String? {
+    val moving = ui.movingS ?: return null
+    val b = ui.breakS ?: 0.0
+    return "Moving ${com.onpath.app.time.TimeEstimate.hm(moving)}" +
+        if (b >= 60) " · breaks ${com.onpath.app.time.TimeEstimate.hm(b)}" else ""
+}
+
+/** "No GPS · position 4 min old" (the age once it is a minute or more). */
+internal fun noGpsLine(fixAgeS: Long?): String =
+    "No GPS" + (fixAgeS?.takeIf { it >= 60 }?.let { " · position ${it / 60} min old" } ?: "")
+
+/** "Time paused" (the no-GPS line above says why) / "Time paused · no progress". */
+internal fun timePausedText(g: ToGo, waitingGps: Boolean): String =
+    if (waitingGps || g.pausedBecause == null) "Time paused" else "Time paused · ${g.pausedBecause}"
+
+/**
+ * The ONE off-route card (owner C1 2026-10-24, WARNING look): amber container, big arrow to the route, "Off route"
+ * (22 sp bold), "120 m north-east (direct)" (16 sp) and the state in small text ("Looking for a way back…", "No way
+ * back found", "Following the original route", "No map here to find a way back").
+ */
 @Composable
-private fun OffRouteBanner(o: OffRouteUi) {
-    val title = NavText.title(o.prompt)
+private fun OffRouteCard(o: OffRouteUi) {
     val hint = NavText.toRoute(o.toRoute)
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer, shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = listOfNotNull(title, hint).joinToString(". ") }) {
-        Row(Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+    val state = NavText.state(o.prompt)
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.WarnContainer,
+        contentColor = OnPathColors.OnWarnContainer, shadowElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
+            contentDescription = listOfNotNull(OFF_ROUTE, hint, state).joinToString(". ")
+        }) {
+        Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 when {
-                    o.prompt == NavPrompt.Searching -> CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp,
-                        color = MaterialTheme.colorScheme.onErrorContainer)
-                    o.arrowDeg != null -> Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(36.dp).rotate(o.arrowDeg))
-                    else -> Icon(Icons.Outlined.WrongLocation, null, modifier = Modifier.size(28.dp))
+                    o.arrowDeg != null -> Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Warn,
+                        modifier = Modifier.size(44.dp).rotate(o.arrowDeg))
+                    o.prompt == NavPrompt.Searching -> CircularProgressIndicator(Modifier.size(32.dp), strokeWidth = 3.dp,
+                        color = OnPathColors.Warn)
+                    else -> Icon(Icons.Outlined.WrongLocation, null, tint = OnPathColors.Warn, modifier = Modifier.size(36.dp))
                 }
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                hint?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                Text(OFF_ROUTE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                hint?.let { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (o.prompt == NavPrompt.Searching && o.arrowDeg != null) {
+                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = OnPathColors.OnWarnContainer)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(state, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
 }
+
+private const val OFF_ROUTE = "Off route"
 
 /**
  * The off-route question (owner: ask every time, never re-route silently): stays until one of the two big buttons is
@@ -557,12 +616,24 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
 internal fun toGoSeconds(times: com.onpath.app.time.RouteTimes?, remainingM: Double, f: com.onpath.app.time.Factors): Double =
     if (times == null) 0.0 else com.onpath.app.time.TimeEstimate.round(times.remainingFrom(times.lengthM - remainingM, f))
 
-/** "Your pace on this trip: up 0.9× · down 1.1×" – hidden while every factor is about 1. */
+/**
+ * The pace in plain words (owner C4 2026-10-24): "Faster than planned uphill", "Slower than planned downhill",
+ * "Faster than planned uphill · slower on the flat", "Faster than planned" (all three) – only when clearly different
+ * (time factor ≤ 0.85 or ≥ 1.15); null otherwise.
+ */
 internal fun paceNote(f: com.onpath.app.time.Factors): String? {
-    val parts = listOf("up" to f.up, "flat" to f.flat, "down" to f.down).filter { kotlin.math.abs(it.second - 1) >= 0.05 }
+    val groups = listOf("uphill" to f.up, "on the flat" to f.flat, "downhill" to f.down)
+    val faster = groups.filter { it.second <= 1 - PACE_CLEAR }.map { it.first }
+    val slower = groups.filter { it.second >= 1 + PACE_CLEAR }.map { it.first }
+    fun part(word: String, where: List<String>) = if (where.size == 3) "$word than planned" else "$word than planned " + where.joinToString(" and ")
+    val parts = listOfNotNull(faster.takeIf { it.isNotEmpty() }?.let { part("faster", it) },
+        slower.takeIf { it.isNotEmpty() }?.let { part("slower", it) })
     if (parts.isEmpty()) return null
-    return "Your pace on this trip: " + parts.joinToString(" · ") { "%s %.1f×".format(java.util.Locale.US, it.first, it.second) }
+    return parts.joinToString(" · ").replaceFirstChar { it.uppercase() }
 }
+
+/** A learned time factor this far from 1 is "clearly different" (paceNote). */
+internal const val PACE_CLEAR = 0.15
 
 /** Off the line by more than this: no turn hint (the off-route chip / warning takes over). */
 internal const val TURN_HIDE_OFF_M = 40.0
