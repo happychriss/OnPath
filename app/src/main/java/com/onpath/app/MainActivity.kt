@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
@@ -114,7 +113,6 @@ class MainActivity : ComponentActivity() {
         traceCreated(savedInstanceState != null)
         if (savedInstanceState == null) handleIntent(intent)
 
-        diagnosticsOn = com.onpath.app.debug.Diagnostics.enabled(this)
         announceLastCrash()
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
@@ -169,6 +167,7 @@ class MainActivity : ComponentActivity() {
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
+                                busy = vm.busy,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                             )
@@ -205,8 +204,8 @@ class MainActivity : ComponentActivity() {
                             onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
-                            diagnosticsOn = diagnosticsOn,
-                            onDiagnostics = { on -> diagnosticsOn = on; com.onpath.app.debug.Diagnostics.setEnabled(this@MainActivity, on) },
+                            diagnostics = true,
+                            diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
@@ -254,14 +253,15 @@ class MainActivity : ComponentActivity() {
                             backup = run {
                                 val b by com.onpath.app.backup.Backups.status.collectAsState()
                                 com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,
-                                    needsStorageAccess = remember(b) { needsStorageAccess() })
+                                    needsStorageAccess = remember(b) { needsStorageAccess() },
+                                    backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
-                                    vm.message = "Backing up all tracks and routes…"
-                                    com.onpath.app.backup.Backups.backupAll(this@MainActivity) { n ->
-                                        // a failure says itself (Backups.failure); only success here
-                                        runOnUiThread { if (n >= 0) vm.message = "Backup done: $n ${if (n == 1) "file" else "files"} written." else if (vm.message?.startsWith("Backing up") == true) vm.message = null }
+                                    vm.busy = com.onpath.app.ui.Busy.BACKUP
+                                    com.onpath.app.backup.Backups.backupAll(this@MainActivity) { _ ->
+                                        // a failure says itself (Backups.failure); success shows in "Last backup: … · N files"
+                                        runOnUiThread { if (vm.busy == com.onpath.app.ui.Busy.BACKUP) vm.busy = null }
                                     }
                                 },
                                 onChooseFolder = { launchTreePicker(pickBackupFolder) },
@@ -284,13 +284,12 @@ class MainActivity : ComponentActivity() {
 
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
-                        Snackbar(
+                        // errors get ⚠ and a red edge (review 2026-10-24 B10)
+                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null },
                             // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
-                                    vm.backgroundStripHeightDp).dp),
-                            action = { TextButton(onClick = { vm.message = null }) { Text("OK") } },
-                        ) { Text(msg) }
+                                    vm.backgroundStripHeightDp).dp))
                     }
                 }
 
@@ -455,7 +454,6 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) { com.onpath.app.debug.Problems.warn("map", "Map tile cache could not be cleared before restart", e); restart() }
     }
 
-    private var diagnosticsOn by mutableStateOf(true)
 
     /** The app crashed in an earlier run: say so once (the details are in Settings → Diagnostics). */
     private fun announceLastCrash() {
@@ -479,12 +477,12 @@ class MainActivity : ComponentActivity() {
             com.onpath.app.debug.Problems.warn("ui", "Diagnostics: loaded style not readable", e); null
         }
         val state = vm.diagnosticsState()
-        vm.message = "Creating diagnostics…"
+        vm.busy = com.onpath.app.ui.Busy.DIAGNOSTICS
         Thread {
             val result = runCatching { com.onpath.app.debug.Diagnostics.export(this, mapPart, styleJson, state) }
             runOnUiThread {
+                vm.busy = null
                 result.onSuccess { f ->
-                    vm.message = null
                     val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
                     val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

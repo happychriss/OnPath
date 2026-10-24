@@ -1220,7 +1220,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // --- dialogs / messages ---
+    /** The message bar (until OK): a result that is not visible elsewhere, or an error (MessageBar). */
     var message by mutableStateOf<String?>(null)
+    /** Work the user started that takes a moment: a spinner where it was started (review 2026-10-24 C9). */
+    var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
@@ -3341,9 +3344,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** "Imported “Name” – some parts were skipped." (the parser's warnings are in Diagnostics). */
+    internal fun importedMessage(name: String) = "Imported “$name” – some parts were skipped."
+
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
-        message = "Preparing the export…"
+        busy = Busy.EXPORT
         viewModelScope.launch {
             try {
                 val app = getApplication<Application>()
@@ -3351,7 +3357,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val f = Backups.exportZip(app, File(app.cacheDir, "export"), SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date()))
                     FileProvider.getUriForFile(app, app.packageName + ".files", f) to f.name
                 }
-                message = null
+                busy = null
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "application/zip"
                     putExtra(Intent.EXTRA_STREAM, uri.first)
@@ -3360,9 +3366,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 events += UiEvent.Share(Intent.createChooser(send, "Export all"))
             } catch (e: com.onpath.app.backup.BackupException) {
-                Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
+                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; message = "Export: ${e.reason}."
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
+                busy = null
                 message = "Export failed – the phone's storage may be full. Your tracks and routes are unchanged."
             }
         }
@@ -3467,7 +3474,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- GPX import ----------------
 
     fun importGpx(uri: Uri) {
-        message = "Importing GPX…"
+        busy = Busy.IMPORT
         viewModelScope.launch {
             try {
                 val app = getApplication<Application>()
@@ -3498,14 +3505,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                // The track panel with its name is the feedback; a message (until OK) only when something was odd.
-                message = if (data.warnings.isEmpty()) null else buildString {
-                    append("Imported “$name”: ${data.pointCount} points")
-                    if (data.waypoints.isNotEmpty()) append(", ${data.waypoints.size} waypoints")
-                    append(".")
-                    data.warnings.forEach { append("\n").append(it) }
+                // The track panel with its name is the feedback; a message (until OK) only when something was odd –
+                // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
+                busy = null
+                if (data.warnings.isNotEmpty()) {
+                    Problems.info("gpx", "GPX import “$name”: ${data.pointCount} points, ${data.waypoints.size} waypoints; " +
+                        data.warnings.joinToString("; "))
+                    message = importedMessage(name)
                 }
             } catch (e: Exception) {
+                busy = null
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")

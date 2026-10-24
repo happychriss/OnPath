@@ -53,7 +53,7 @@ class SettingsScreenshotTest {
             page = page,
             initiallyExpanded = setOf(PoiGroup.FOOD),
             update = AppViewModel.UpdateState.UpToDate,
-            diagnosticsOn = true,
+            diagnostics = true,
             problems = problems,
             mapCells = MapCellsDebug(listOf(Triple("10-543-361", "2026-10-19-s2", 41_400_000L)), emptyList(), "store generation 7", {}, {}),
             offlineMaps = offline,
