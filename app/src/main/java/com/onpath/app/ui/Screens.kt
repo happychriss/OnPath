@@ -281,6 +281,8 @@ fun RoutesScreen(
     onRecycleBin: () -> Unit = {},
     /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
     onEditRides: (Tour) -> Unit = {},
+    /** Import / Export all running: a spinner on the Import button / a line under the title (review 2026-10-24 C9). */
+    busy: Busy? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -289,11 +291,14 @@ fun RoutesScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 Text("My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
+                TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    if (busy == Busy.IMPORT) BusyContent("Importing…")
+                    else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX") }
                 }
-                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty())
+                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
             }
+            if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("No routes yet.\nSave a planned route, record a tour or import a GPX file.",

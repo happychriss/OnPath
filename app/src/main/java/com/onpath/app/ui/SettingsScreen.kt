@@ -118,9 +118,10 @@ fun SettingsScreen(
     onInstallUpdate: () -> Unit = {},
     /** Installed map package (package.json) and files from another package – Diagnostics → Developer tools. */
     mapPackage: DataFiles.PackageCheck? = null,
-    /** Diagnostics export (debug): switch + export button; null = topic hidden. */
-    diagnosticsOn: Boolean? = null,
-    onDiagnostics: (Boolean) -> Unit = {},
+    /** Settings → Diagnostics shown (problem report button + problem list); false = topic hidden. */
+    diagnostics: Boolean = false,
+    /** The problem report is being created: a spinner on its button (review 2026-10-24 C9). */
+    diagnosticsBusy: Boolean = false,
     onExportDiagnostics: () -> Unit = {},
     /** Problem log (debug/Problems), most recent first. */
     problems: List<com.onpath.app.debug.Problems.Entry> = emptyList(),
@@ -147,7 +148,7 @@ fun SettingsScreen(
         if (backup != null) add(SettingsPage.BACKUP)
         add(SettingsPage.PRIVACY)
         if (update != null) add(SettingsPage.UPDATES)
-        if (diagnosticsOn != null) add(SettingsPage.DIAGNOSTICS)
+        if (diagnostics) add(SettingsPage.DIAGNOSTICS)
         add(SettingsPage.ABOUT)
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -196,8 +197,8 @@ fun SettingsScreen(
                         SettingsPage.UPDATES -> if (update != null) item {
                             Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
-                        SettingsPage.DIAGNOSTICS -> if (diagnosticsOn != null) {
-                            item { DiagnosticsSection(diagnosticsOn, onDiagnostics, onExportDiagnostics, problems, onClearProblems) }
+                        SettingsPage.DIAGNOSTICS -> if (diagnostics) {
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
                             item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
                                     onTimeFormulas)
@@ -373,20 +374,17 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
     }
 }
 
-/** Diagnostics: export first, then the problem list. */
+/** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
 @Composable
-private fun DiagnosticsSection(on: Boolean, onDiagnostics: (Boolean) -> Unit, onExport: () -> Unit,
+private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit) {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Show export button", modifier = Modifier.weight(1f))
-                Switch(checked = on, onCheckedChange = onDiagnostics)
+            OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (busy) BusyContent(Busy.DIAGNOSTICS.text) else Text("Send problem report")
             }
-            Text("Creates a file with the app version, map files, the loaded map style, what the map shows " +
-                "right now and the app log – to send to the developer when something looks wrong. Leave the map at the " +
-                "problem spot before you export. Nothing is sent by itself.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (on) OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
+            Text("Leave the map at the problem spot first.", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ProblemList(problems, onClearProblems)
         }

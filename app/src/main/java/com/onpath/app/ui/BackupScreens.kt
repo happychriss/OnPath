@@ -130,6 +130,8 @@ data class BackupUi(
     val restoring: String? = null,
     /** Android 8–9 without storage access: the "Allow" button. */
     val needsStorageAccess: Boolean = false,
+    /** "Back up all now" runs: a spinner on its button (review 2026-10-24 C9). */
+    val backingUp: Boolean = false,
 )
 
 data class BackupCallbacks(
@@ -153,7 +155,9 @@ fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
             if (b.needsStorageAccess) OutlinedButton(onClick = cb.onAllowStorage, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Allow storage access")
             }
-            OutlinedButton(onClick = cb.onBackupNow, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back up all now") }
+            OutlinedButton(onClick = { if (!b.backingUp) cb.onBackupNow() }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (b.backingUp) BusyContent(Busy.BACKUP.text) else Text("Back up all now")
+            }
             OutlinedButton(onClick = cb.onChooseFolder, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Choose another folder (e.g. Drive, Nextcloud)")
             }
