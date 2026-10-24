@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] simplify messages + UX + type scale (review 2026-10-24, owner answers in Next) – since 2026-10-24
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -22,7 +21,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   and a smaller "App" group (Updates, Privacy, Diagnostics, About); (10) C8 statuses without a decision (offline, waiting
   for position, …) as a quiet grey pill under the search bar, no ×; blue only for questions; (11) C9 progress
   ("Importing GPX…", "Preparing the export…") as a spinner where it was started; the top bar only for a result that is
-  not visible or an error. All answered – being built (cloud).
+  not visible or an error. Built and released in 0.10.3 (cloud).
 - **[for the laptop – 2026-10-23 late] Two MainActivity instances at start – find the trigger, then guard.** Seen only on
   the first start after an install (10-22 22:50 + 22:51 after `adb install -r && monkey -p com.onpath.app 1`; 10-23
   20:45 = 0.10.1 start): one process, two activities, each its own ViewModel; the first ViewModel is cleared ~1–2 s later
