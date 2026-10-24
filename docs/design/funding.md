@@ -1,6 +1,6 @@
 # Funding without being commercial – phone and browser (draft for the owner, 2026-10-24)
 
-Status: **draft, nothing decided, nothing built.** Builds on `docs/design/map-access.md` (anonymous quota,
+Status: **draft, nothing built.** Asked the owner the base model 2026-10-24: no preference given → working assumption **A** (free + voluntary supporter code), to be confirmed. Builds on `docs/design/map-access.md` (anonymous quota,
 supporter code) and the costs in `docs/design/map-hosting.md` §3. New: the web planner (`web-planner.md`) must fit
 in. Owner's order: settle this first, then how a plan gets from the browser to the phone.
 
