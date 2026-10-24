@@ -17,9 +17,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   "Allow all the time" (only the hint in Settings → Navigation); (5) C3 Navigate recording line only when it matters
   (Paused / No GPS), else the orange dot; moving / breaks in the opened card. Done already: "Overview only" hint hidden
   while the strip asks for the map of here (field 0.10.2 overlap), strip text shortened. (6) C4 pace note in plain words
-  ("Faster than planned uphill"); (7) C5 **two release variants: dev (developer tools always on) and prod (developer
-  tools hidden, shown after 7 taps on the version in About)** – how both are published / updated to clarify with the
-  owner when building; (8) C6 Diagnostics count grey ("For bug reports"), red only while a new error is unseen.
+  ("Faster than planned uphill"); (7) C5 one release APK only: developer tools hidden until the version in About is tapped 7× (remembered) – no dev variant (owner 2026-10-24); (8) C6 Diagnostics count grey ("For bug reports"), red only while a new error is unseen.
   (9) C7 Settings list in two groups: "Your settings" (Pace, Points of interest, Map, Navigation, Offline maps, Backup)
   and a smaller "App" group (Updates, Privacy, Diagnostics, About); (10) C8 statuses without a decision (offline, waiting
   for position, …) as a quiet grey pill under the search bar, no ×; blue only for questions; (11) C9 progress
