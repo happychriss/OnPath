@@ -273,7 +273,7 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val (icon, tint) = when (ui.kind) {
-                MapLoadUi.Kind.FAILED -> Icons.Outlined.Warning to Color(0xFFB26A00)
+                MapLoadUi.Kind.FAILED -> Icons.Outlined.Warning to OnPathColors.Warn
                 MapLoadUi.Kind.OFFLINE -> Icons.Outlined.CloudOff to variant
                 else -> Icons.Outlined.CloudDownload to OnPathColors.Green
             }

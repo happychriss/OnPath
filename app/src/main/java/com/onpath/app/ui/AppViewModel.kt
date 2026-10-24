@@ -2466,7 +2466,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
 
     /** The amber line of the plan sheet: the "route changed" notice first, else the spots; null = nothing to know. */
-    fun warningLineText(): String? = routeChangedNotice ?: RouteWarnings.text(routeSpots, sac)
+    /** The amber line: spots on the way only (pushing, steps, above T, steep). */
+    fun warningLineText(): String? = RouteWarnings.text(routeSpots, sac)
+
+    /** Grey INFO line "New route for … – check it" (review 2026-10-24 B6: the user changed the activity themselves). */
+    fun routeChangedLineText(): String? = routeChangedNotice
+
+    /** Tap on the "New route for …" line: it goes, the map shows the whole route. */
+    fun tapRouteChangedLine() {
+        routeChangedNotice = null
+        val r = route ?: return
+        followMe = false
+        events += UiEvent.Fit(r.points)
+    }
 
     /** Tap on the amber line: the notice goes; the list of spots opens (none: the map shows the whole route). */
     fun tapWarningLine() {

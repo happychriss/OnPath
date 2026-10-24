@@ -148,9 +148,9 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
 @Composable
 fun DifficultyBadge(d: RouteSummary.Difficulty, modifier: Modifier = Modifier) {
     val (bg, fg) = when (d) {
-        RouteSummary.Difficulty.EASY -> Color(0xFFDDEFE3) to Color(0xFF1F6E43)
-        RouteSummary.Difficulty.MODERATE -> Color(0xFFFFF0D2) to Color(0xFF8A5A00)
-        RouteSummary.Difficulty.DIFFICULT -> Color(0xFFFDE0DC) to Color(0xFFB3261E)
+        RouteSummary.Difficulty.EASY -> OnPathColors.GreenLight to OnPathColors.Green
+        RouteSummary.Difficulty.MODERATE -> OnPathColors.WarnContainer to OnPathColors.Warn
+        RouteSummary.Difficulty.DIFFICULT -> OnPathColors.ErrorContainer to OnPathColors.Error
     }
     Text(d.label, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
         color = fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
