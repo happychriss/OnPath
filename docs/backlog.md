@@ -163,7 +163,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## Done (recent)
 - **Map for here only on a yes (cloud, 2026-10-24, owner answer A after "in the car it should not load"):** opening the
   app (or coming back to it) where there is no detailed map no longer loads by itself and shows no big loading window;
-  the blue strip asks "Detailed map for here? (≈ N MB) · Not now · Load" (`AppViewModel.hereAsk`, `HereAskStrip`).
+  owner 2026-10-24: when the server has it ready (`MapCells.builtOnServer`, GET status only – starts no build) it loads
+  quietly in the background; only when it must be built first (minutes) or the status is unknown the blue strip asks
+  "Detailed map for here? (≈ N MB) · Not now · Load" (`AppViewModel.hereAsk`, `HereAskStrip`).
   Load = in the background; Not now = that area is not asked again in this app run; setting a point there loads as
   always (T1, with the loading window) and lifts the "Not now". Not released yet.
 - **Loading chip with names (laptop, 2026-10-23, not released yet):** the blue background-loading strip in Plan is now a

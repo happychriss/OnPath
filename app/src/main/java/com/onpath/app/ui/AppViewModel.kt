@@ -304,7 +304,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var t3Pending by mutableStateOf(true)
 
     /** "Detailed map for here?" – asked in the blue strip when the app opens where there is no detailed map. */
-    data class HereAsk(val at: GeoPoint, val accuracyM: Float?, val own: com.onpath.app.cells.CellId, val regions: Int, val bytes: Long)
+    data class HereAsk(val at: GeoPoint, val accuracyM: Float?, val own: com.onpath.app.cells.CellId, val regions: Int, val bytes: Long,
+                       /** The server must build it first (a few minutes); false = status unknown. */
+                       val mustBuild: Boolean = false)
     var hereAsk by mutableStateOf<HereAsk?>(null)
         private set
     /** Areas the user said "Not now" to (this app run): not asked again until a point is set there. */
@@ -319,8 +321,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         hereAsk = null
         Problems.trace("cells", "Map for here: " + if (load) "load" else "not now")
         if (!load) { hereDeclined += a.own; return }
-        safeCells("position") { showCellJob(cellTriggers.appOpened(a.at, a.accuracyM)?.copy(own = null)?.tagged(LoadTag(LoadWhy.POINT))) }
-        routingFor(listOf(a.at), wait = false)
+        loadHere(a.at, a.accuracyM)
+    }
+
+    /** The map for here in the background (no loading window – the user only opened the app). */
+    private fun loadHere(at: GeoPoint, accuracyM: Float?) {
+        safeCells("position") { showCellJob(cellTriggers.appOpened(at, accuracyM)?.copy(own = null)?.tagged(LoadTag(LoadWhy.POINT))) }
+        routingFor(listOf(at), wait = false)
     }
     /** The first-start card ("Allow location to get the detailed map …") was hidden with × (this app run). */
     private var firstStartHidden by mutableStateOf(false)
@@ -762,15 +769,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val onTour = recState.value != null || mode == AppMode.NAVIGATE
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
-            // owner 2026-10-23 (e.g. in a car): opening the app never loads by itself – the blue strip asks first
+            // owner 2026-10-23/24 (e.g. in a car): opening the app loads the map for here silently only when the server
+            // has it ready (seconds); when it must be built first (minutes) the blue strip asks. No loading window.
             safeCells("position") {
                 val want = cellTriggers.preview(p)
                 val own = want.firstOrNull()
-                if (own != null && cells.downloadsAvailable && own !in hereDeclined) {
-                    hereAsk = HereAsk(p, acc, own, want.size,
-                        MapLoads.estimate(want, cells.states.value, cells.installed.value.associate { it.id to it.totalBytes }))
-                    Problems.trace("cells", "Asking whether to load the map for here (${want.size} area(s))")
-                } else if (own == null) hereAsk = null
+                if (own == null) { hereAsk = null; return@safeCells }
+                if (!cells.downloadsAvailable || own in hereDeclined) return@safeCells
+                viewModelScope.launch {
+                    val built = withContext(Dispatchers.IO) { cells.builtOnServer(want) }
+                    if (built != null && built.containsAll(want)) {
+                        Problems.trace("cells", "Map for here ready on the server (${want.size} area(s)) – loading it quietly")
+                        loadHere(p, acc)
+                    } else {
+                        hereAsk = HereAsk(p, acc, own, want.size,
+                            MapLoads.estimate(want, cells.states.value, cells.installed.value.associate { it.id to it.totalBytes }),
+                            mustBuild = built != null)
+                        Problems.trace("cells", "Asking whether to load the map for here (${want.size} area(s), " +
+                            (if (built == null) "server status unknown" else "${want.size - built.size} to be built") + ")")
+                    }
+                }
             }
         }
         // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off (2026-10-22)

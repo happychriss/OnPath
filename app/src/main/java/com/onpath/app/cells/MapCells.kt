@@ -228,6 +228,24 @@ class MapCells(
     // ------------------------------------------------------------------------------------------- actions
 
     /**
+     * Which of [cells] the map server has built already (owner 2026-10-24: opening the app loads the map for here
+     * silently when it is ready on the server, and asks only when it must be built first). Only reads the status –
+     * starts no build. Null when it cannot tell (no key, offline, server error). Blocking: call off the main thread.
+     */
+    fun builtOnServer(cells: List<CellId>): Set<CellId>? {
+        val a = api ?: return null
+        if (cells.isEmpty()) return emptySet()
+        if (!network.connected()) return null
+        return try {
+            val answer = cells.chunked(MAX_PER_CALL).map { a.status(it.map { c -> c.id }) }
+            val ready = answer.flatMap { it.cells }.filter { it.state == "ready" }.map { it.id }.toSet()
+            cells.filter { it.id in ready }.toSet()
+        } catch (e: Exception) {
+            Problems.info("cells", "Map server status not available; asking the user instead", e); null
+        }
+    }
+
+    /**
      * Asks for [cells]. Already installed (except for [CellReason.REFRESH]) or already queued cells are skipped.
      * [ownPoint]: the mobile-data rule's "own cell" (loads on mobile data without asking). Returns the cells added.
      */

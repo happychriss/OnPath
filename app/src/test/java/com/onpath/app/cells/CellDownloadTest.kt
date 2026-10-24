@@ -186,6 +186,16 @@ class CellDownloadTest {
         waitFor("built and loaded in the background") { mc.state(a) == CellState.Ready("v1") }
     }
 
+    /** Owner 2026-10-24: opening the app loads quietly only what the server has built – the check starts no build. */
+    @Test fun builtOnServerOnlyReadsTheStatus() {
+        server.publish(a, "v1")
+        val other = CellId(a.x + 7, a.y)
+        val mc = cells(Net())
+        assertEquals(setOf(a), mc.builtOnServer(listOf(a, other)))
+        assertFalse("no build asked for", server.log.any { it.startsWith("POST /v1/cells/request") })
+        assertEquals(null, cells(Net(connected = false), tmp.newFolder("data-offline")).builtOnServer(listOf(a)))
+    }
+
     /** Owner 2026-10-23: phone put aside while the map loads – MapLoadService keeps the polling going. */
     @Test fun loadingServiceKeepsItGoingInTheBackground() {
         server.publish(a, "v1"); server.buildPolls = 1
