@@ -64,3 +64,49 @@ OpenStreetMap / BRouter (said up front). That keeps it clearly "covering costs",
 
 Separate step (owner's order). Leading idea from web-planner §1: the plan's points in a link / QR code that OnPath
 opens – nothing stored on a server, no account, works with every model above.
+
+## 7. Owner's three wishes (2026-10-24) → proposal "fair core + OnPath Plus, open split"
+
+Owner: (1) OnPath should not be taken for granted – a price exists; part of every payment goes to an aid
+organisation, part to the owner (fixed costs, own time). (2) Message in the background: AI lets one person build
+what took others years – so software gets cheaper and the price must be fair. (3) Hikers care about a simple, robust
+app without Komoot's drawbacks and a price model they find fair; without one there is no market. Include the web
+planner and future multi-day planning.
+
+**Shape:**
+
+| | Free, forever (the core never gets worse) | OnPath Plus (proposal ~1 €/month, 10 €/year or ~30 € once) |
+|---|---|---|
+| Maps | every place in the world, offline; N new areas / month | many more new areas, pre-load a whole trip region at once |
+| Plan / navigate / record | full: planning, routing per activity, navigation, re-routing, recording, GPX | same |
+| Web planner | plan a day, send to the phone by link / QR | save plans in the browser, sync web ⇄ phone (end-to-end encrypted, below) |
+| Multi-day planning (future) | – (or 1 trip at a time) | stages by time / huts / overnight places, day split, per-day profile and times |
+| Thanks | – | supporter mark, early access to new features |
+
+Rules kept: no paid places (Plus raises **amount and comfort**, never unlocks a region), no ads, no account,
+nothing sold about users. Plus pays for what costs work or servers: builds, storage, sync, multi-day planning.
+
+**Open split, shown on a public page (the "cash book"):** every month: income, fees, server costs, the
+aid-organisation share with the receipt, the owner's share. Example for 10 €/year: ~1 € fees, ~0.5 € servers,
+**3 € to the aid organisation**, ~5.5 € owner. The split is fixed and public before launch.
+
+**No account, still one purchase for phone and web:** buying gives an **OnPath Pass** (a code, e.g. `ONP-7K3F-…`,
+max N devices). In Google Play bought through Play Billing (required for digital features there); on the web and for
+F-Droid through a "merchant of record" shop (Paddle / Lemon Squeezy type: they handle EU VAT and invoices for every
+country – a private seller otherwise must do VAT for each EU country). The server stores only a hash of the code
+and a counter, never a name or email; the shop knows the payer but never what is planned or loaded.
+
+**Sync without account (Plus):** the phone makes a secret key; pairing with the browser by QR code; plans are
+encrypted on the device and stored on the server only as unreadable blobs. Lose the key = lose the copy, never
+someone else reading it. Same "everything stays yours" story as today.
+
+**Not taken for granted, without nagging:** the price is visible in the app and on the web from day one; after a
+few finished tours a quiet card "OnPath is free. If you like it: Plus – 3 € of 10 € go to <aid organisation>."
+Never during navigation, never a blocking pop-up.
+
+**The AI message:** on the About page / website, plainly: one person + AI, open source, costs and split public –
+that is why it can be fair. Not on the hiker's main path.
+
+**Open for the owner (one at a time):** price level and form (year / once / both); which aid organisation (e.g.
+mountain rescue, a humanitarian aid organisation, or OSM); the split; what exactly is free vs Plus; shop platform;
+tax adviser before the first euro (Kleingewerbe, VAT via the shop).
