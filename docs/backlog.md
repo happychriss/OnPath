@@ -15,7 +15,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   off route = ONE amber card "Off route · 120 m north-east" with a big arrow, duplicates removed; (4) C2 never ask
   "Allow all the time" (only the hint in Settings → Navigation); (5) C3 Navigate recording line only when it matters
   (Paused / No GPS), else the orange dot; moving / breaks in the opened card. Done already: "Overview only" hint hidden
-  while the strip asks for the map of here (field 0.10.2 overlap), strip text shortened. Pending: C4–C9, then build.
+  while the strip asks for the map of here (field 0.10.2 overlap), strip text shortened. (6) C4 pace note in plain words
+  ("Faster than planned uphill"); (7) C5 **two release variants: dev (developer tools always on) and prod (developer
+  tools hidden, shown after 7 taps on the version in About)** – how both are published / updated to clarify with the
+  owner when building; (8) C6 Diagnostics count grey ("For bug reports"), red only while a new error is unseen.
+  Pending: C7–C9, then build.
 - **[for the laptop – 2026-10-23 late] Two MainActivity instances at start – find the trigger, then guard.** Seen only on
   the first start after an install (10-22 22:50 + 22:51 after `adb install -r && monkey -p com.onpath.app 1`; 10-23
   20:45 = 0.10.1 start): one process, two activities, each its own ViewModel; the first ViewModel is cleared ~1–2 s later
