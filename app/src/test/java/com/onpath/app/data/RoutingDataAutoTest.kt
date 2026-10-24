@@ -79,8 +79,8 @@ class RoutingDataAutoTest {
             assertFalse(s, s.contains(".rd5") || s.contains("/") || s.contains("segments"))
         }
         // owner 2026-10-22: never "routing data" – it is all "the map for this area"
-        assertEquals("The map for this area is still loading – the route is shown as a straight line until then.", RoutingDataNotice.text(true))
-        assertEquals("The map for this area loads when you're online – the route is shown as a straight line until then.", RoutingDataNotice.text(false))
+        assertEquals("Map loading – straight line for now", RoutingDataNotice.text(true))
+        assertEquals("Map loads when online – straight line for now", RoutingDataNotice.text(false))
         for (s in listOf(RoutingDataNotice.LOADING, RoutingDataNotice.NOT_YET)) assertFalse(s, s.contains("routing", ignoreCase = true))
     }
 

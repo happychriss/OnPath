@@ -45,7 +45,7 @@ class SettingsScreenshotTest {
 
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
-        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false) = OnPathTheme {
+        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -53,19 +53,23 @@ class SettingsScreenshotTest {
             page = page,
             initiallyExpanded = setOf(PoiGroup.FOOD),
             update = AppViewModel.UpdateState.UpToDate,
-            diagnosticsOn = true,
+            diagnostics = true,
             problems = problems,
             mapCells = MapCellsDebug(listOf(Triple("10-543-361", "2026-10-19-s2", 41_400_000L)), emptyList(), "store generation 7", {}, {}),
             offlineMaps = offline,
             backup = BackupUi("Documents/OnPath", now - 3 * 3_600_000, 28, null, custom = false),
             mapPackage = DataFiles.PackageCheck("Südtirol", listOf(10.70, 46.30, 11.60, 46.85), "2026-10-18T00:00:00Z", emptyList()),
             devToolsOpen = devTools,
+            devTools = devTools,
+            diagnosticsSeenMs = seenMs,
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
             now = now,
         )
     }
 
     @Test fun list() = paparazzi.snapshot { Screen(null) }
+    /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner C6). */
+    @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
     @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
     @Test fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }

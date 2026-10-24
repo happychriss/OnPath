@@ -48,7 +48,7 @@ object PlanStatus {
     /** Second line of the sheet when there is no route yet, for [pointCount] points. */
     fun noRouteLine(pointCount: Int, routing: Boolean, notRouted: NotRouted?): String = when {
         pointCount == 0 -> "Hold the map where you want to start or go. To only record: ☰ → Start recording."
-        pointCount == 1 -> "Hold the map to add the destination. Hold a point or place for options."
+        pointCount == 1 -> "Hold the map to set the destination."
         routing -> CALCULATING
         else -> notRoutedText(notRouted)
     }

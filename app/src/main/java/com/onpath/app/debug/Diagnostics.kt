@@ -35,14 +35,6 @@ import java.util.zip.ZipOutputStream
  */
 object Diagnostics {
 
-    const val PREF_KEY = "diagnosticsEnabled"
-
-    fun enabled(context: Context): Boolean =
-        context.getSharedPreferences("onpath", 0).getBoolean(PREF_KEY, true)
-
-    fun setEnabled(context: Context, on: Boolean) =
-        context.getSharedPreferences("onpath", 0).edit().putBoolean(PREF_KEY, on).apply()
-
     /** Live map part – call on the main thread (MapLibre). */
     fun mapSnapshot(map: MapLibreMap?, widthPx: Int, heightPx: Int): JSONObject = safe {
         if (map == null) return@safe JSONObject().put("map", "not ready")

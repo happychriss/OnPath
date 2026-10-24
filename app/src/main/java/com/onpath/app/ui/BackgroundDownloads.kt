@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.LocationSearching
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -34,7 +37,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.getValue
 import com.onpath.app.cells.CellId
@@ -147,7 +149,6 @@ class BackgroundProgress {
 }
 
 /** Information colour of the chip and the map notice: blue – not the amber of warnings, not the green brand. */
-private val InfoBlue = Color(0xFF1565C0)
 
 /**
  * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (owner 2026-10-23: the full-width strip looked crowded).
@@ -161,13 +162,13 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
     val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
-        Row(Modifier.widthIn(max = maxW).background(InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
+        Row(Modifier.widthIn(max = maxW).background(OnPathColors.InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Download, null, tint = Color.White, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+            Text(name, color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            Text((if (more > 0) " +$more" else "") + " · ${ui.percent} %", color = Color.White, fontSize = 13.sp,
+            Text((if (more > 0) " +$more" else "") + " · ${ui.percent} %", color = Color.White, style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
         }
     }
@@ -184,7 +185,7 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
                 if (ui.groups.isNotEmpty()) {
                     // one line per name (owner 2026-10-23): "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
                     ui.groups.forEach { Text(it.line) }
-                    if (ui.newer > 0) ui.newerEtaMin?.let { Text("The newer map is being prepared, about $it min. It replaces the old one when loaded.", fontSize = 13.sp) }
+                    if (ui.newer > 0) ui.newerEtaMin?.let { Text("Newer map ready in about $it min.", style = MaterialTheme.typography.bodyMedium) }
                 } else {
                     val fresh = ui.regions - ui.newer
                     if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
@@ -192,7 +193,7 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
                 }
                 Text(listOfNotNull(if (ui.bytes > 0) "In all about ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "),
                     fontWeight = FontWeight.Medium)
-                Text("Cancel stops it. The maps you have stay; an area loads again when you plan there.", fontSize = 13.sp)
+                Text("The maps you have stay.", style = MaterialTheme.typography.bodyMedium)
             }
         },
         confirmButton = { TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close") } },
@@ -258,29 +259,47 @@ fun mapNotice(card: CellCardUi?): CellCardUi? = when (card) {
     is CellCardUi.Done, null -> null
 }
 
-/** The blue strip when the map needs an answer or says why it does not come (see [mapNotice]); same place as the progress. */
+/** How the map notice looks (review 2026-10-24 A / C8): one colour = one meaning. Pure, unit-tested. */
+enum class NoticeLook { QUESTION, WARNING, QUIET }
+
+fun noticeLook(card: CellCardUi): NoticeLook = when (card) {
+    is CellCardUi.Failed -> NoticeLook.WARNING
+    is CellCardUi.Working -> if (card.question != null || card.canLoadNow) NoticeLook.QUESTION else NoticeLook.QUIET
+    is CellCardUi.NeedPosition -> if (card.permission) NoticeLook.QUIET else NoticeLook.QUESTION
+    is CellCardUi.Offline, CellCardUi.NotAvailable, is CellCardUi.Done -> NoticeLook.QUIET
+}
+
+/**
+ * The map notice at the top (see [mapNotice]); same place as the progress chip. Blue strip only for a question with
+ * buttons (mobile data, Allow location, "Load now" while Settings says Wi-Fi only); a failure = amber strip with Try
+ * again; a pure status (offline, waiting for GPS, waiting for Wi-Fi after "Wi-Fi only") = the quiet grey pill, no ×.
+ * No "why" lines (review 2026-10-24 B7).
+ */
 @Composable
 fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier = Modifier) {
     val working = card as? CellCardUi.Working
     val title = working?.question?.text ?: working?.wifiNote ?: card.title
-    val detail = when (card) {
-        is CellCardUi.Failed -> card.why
-        is CellCardUi.Offline -> card.why
-        is CellCardUi.NeedPosition -> CellCardUi.NeedPosition.BODY
-        CellCardUi.NotAvailable -> CellCardUi.NotAvailable.BODY
-        else -> null
+    when (noticeLook(card)) {
+        NoticeLook.QUIET -> Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            QuietPill(title, if (card is CellCardUi.NeedPosition) Icons.Outlined.LocationSearching else Icons.Outlined.CloudOff,
+                action = if (card == CellCardUi.NotAvailable) "OK" to cb.onClose else null)
+        }
+        NoticeLook.WARNING -> {
+            val f = card as CellCardUi.Failed
+            Notice(title, warning = true, onClose = null,
+                listOfNotNull("Not now" to cb.onClose, if (f.retryable) "Try again" to cb.onRetry else null), modifier)
+        }
+        NoticeLook.QUESTION -> {
+            val buttons: List<Pair<String, () -> Unit>> = when {
+                working?.question != null -> listOf("Wi-Fi only" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
+                // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
+                working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
+                else -> listOf("Allow location" to cb.onAllowLocation)
+            }
+            // the Wi-Fi note can be hidden (the areas keep waiting); a question is answered with its buttons
+            Notice(title, warning = false, onClose = if (working != null && working.question == null) cb.onClose else null, buttons, modifier)
+        }
     }
-    val closable = card is CellCardUi.Offline || card is CellCardUi.NeedPosition || (working != null && working.question == null)
-    val buttons: List<Pair<String, () -> Unit>> = when {
-        working?.question != null -> listOf("Only on Wi-Fi" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
-        // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
-        working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
-        card is CellCardUi.Failed -> listOfNotNull("Not now" to cb.onClose, if (card.retryable) "Try again" to cb.onRetry else null)
-        card is CellCardUi.NeedPosition && !card.permission -> listOf("Allow location" to cb.onAllowLocation)
-        card == CellCardUi.NotAvailable -> listOf("OK" to cb.onClose)
-        else -> emptyList()
-    }
-    BlueNotice(title, detail, warning = card is CellCardUi.Failed, onClose = if (closable) cb.onClose else null, buttons, modifier)
 }
 
 /**
@@ -290,31 +309,40 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
 fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
                  mustBuild: Boolean = true) =
     // short (owner 2026-10-24: simplify – title ≤ 5 words, one detail line at most)
-    BlueNotice("Detailed map for here? · ${mb(bytes)} MB",
-        if (mustBuild) "Takes a few minutes to prepare." else null,
-        warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier)
+    Notice("Detailed map for here? · ${mb(bytes)} MB",
+        warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier,
+        detail = if (mustBuild) "Takes a few minutes to prepare." else null)
 
-/** One blue strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). */
+/**
+ * One strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). Blue
+ * (ACTION) for a question; amber with ⚠ (WARNING) for a failure that offers "Try again" (review 2026-10-24 C8).
+ */
 @Composable
-private fun BlueNotice(title: String, detail: String?, warning: Boolean, onClose: (() -> Unit)?,
-                       buttons: List<Pair<String, () -> Unit>>, modifier: Modifier) {
-    Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.94f), contentColor = Color.White, shadowElevation = 2.dp,
+private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
+                   buttons: List<Pair<String, () -> Unit>>, modifier: Modifier, detail: String? = null) {
+    val bg = if (warning) OnPathColors.WarnContainer else OnPathColors.InfoBlue.copy(alpha = 0.94f)
+    val fg = if (warning) OnPathColors.OnWarnContainer else Color.White
+    Surface(shape = RoundedCornerShape(12.dp), color = bg, contentColor = fg, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (warning) Icons.Outlined.Warning else Icons.Outlined.Download, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                if (onClose != null) androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Filled.Close, "Hide (the map keeps loading)", modifier = Modifier.size(18.dp))
+                Icon(if (warning) Icons.Outlined.Warning else Icons.Outlined.Download, null,
+                    tint = if (warning) OnPathColors.Warn else fg, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                // 48 dp like every other target (gloves)
+                if (onClose != null) androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Filled.Close, "Hide (the map keeps loading)", modifier = Modifier.size(20.dp))
                 } else Spacer(Modifier.width(8.dp))
             }
-            detail?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f), modifier = Modifier.padding(start = 22.dp, end = 8.dp)) }
+            detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = fg.copy(alpha = 0.9f),
+                modifier = Modifier.padding(start = 26.dp, end = 8.dp)) }
             if (buttons.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 buttons.forEachIndexed { i, (label, act) ->
                     val main = i == buttons.lastIndex
                     TextButton(onClick = act, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(label, color = Color.White, fontWeight = if (main) FontWeight.Bold else FontWeight.Normal)
+                        Text(label, color = if (warning) OnPathColors.Warn else Color.White,
+                            fontWeight = if (main) FontWeight.Bold else FontWeight.Normal)
                     }
                 }
             } else Spacer(Modifier.height(4.dp))

@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.getValue
@@ -44,7 +45,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 
 /**
@@ -91,8 +91,7 @@ fun EndTourDialog(
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete this track?") },
-            text = { Text("Recording stops and the track is not kept. You can still get it back from the recycle bin " +
-                "for ${com.onpath.app.backup.RecycleBin.DAYS} days (My routes → ⋮ → Recycle bin).") },
+            text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
             dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
@@ -103,7 +102,7 @@ fun EndTourDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
-        text = { Text("Save keeps the track in My routes. Delete throws it away.") },
+        // no body: the buttons say it (review 2026-10-24 B11)
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = {
             Row {
@@ -114,6 +113,9 @@ fun EndTourDialog(
         },
     )
 }
+
+/** Body of every "Delete …?" dialog that moves to the recycle bin (review 2026-10-24 B11). */
+internal val RECYCLE_BIN_NOTE = "It stays in the recycle bin for ${com.onpath.app.backup.RecycleBin.DAYS} days."
 
 /** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
@@ -166,7 +168,7 @@ fun TourControls(
 
 /**
  * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour. Stays until
- * answered (no outside tap / back dismiss – never self-dismissing).
+ * answered (no outside tap / back dismiss – never self-dismissing). Verb buttons (review 2026-10-24 B11).
  */
 @Composable
 fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
@@ -174,12 +176,18 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
         onDismissRequest = {},
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text("Route back to the start?") },
-        text = { Text("You deleted the destination. Yes: go back to the start from here. No: keep " +
-            "recording without a route. Undo brings the destination back.") },
-        confirmButton = { TextButton(onClick = onYes) { Text("Yes") } },
-        dismissButton = { TextButton(onClick = onNo) { Text("No") } },
+        text = { DialogText("You deleted the destination. Undo brings it back.") },
+        confirmButton = { TextButton(onClick = onYes) { Text("Route back") } },
+        dismissButton = { TextButton(onClick = onNo) { Text("Just record") } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )
+}
+
+/** "About 29 days on foot. Calculating and loading its maps takes long." (review 2026-10-24 B11). */
+internal fun longRouteText(seconds: Double, activity: com.onpath.app.routing.Activity): String {
+    val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
+    return com.onpath.app.routing.LongRoute.describe(seconds).replaceFirstChar { it.uppercase() } +
+        " $how. Calculating and loading its maps takes long."
 }
 
 /**
@@ -189,13 +197,11 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
  */
 @Composable
 fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {
-    val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
     AlertDialog(
         onDismissRequest = {},
-        icon = { Icon(Icons.Filled.Flag, null) },
+        icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
         title = { Text("This route is very long") },
-        text = { Text("It would take ${com.onpath.app.routing.LongRoute.describe(seconds)} $how. Calculating it and " +
-            "loading its maps takes long. Plan it anyway?") },
+        text = { DialogText(longRouteText(seconds, activity)) },
         confirmButton = { TextButton(onClick = onPlan) { Text("Plan anyway") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),

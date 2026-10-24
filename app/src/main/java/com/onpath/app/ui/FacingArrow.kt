@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
@@ -32,9 +31,8 @@ fun FacingArrow(f: MapController.Facing, mapBearing: () -> Float) {
                 lineTo(c.x + w, c.y - r)
                 close()
             }
-            drawPath(path, ARROW_BLUE)
+            drawPath(path, OnPathColors.Position)
         }
     }
 }
 
-private val ARROW_BLUE = Color(0xFF1A73E8)

@@ -162,7 +162,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var page by mutableStateOf<SettingsPage?>(null)
     var settingsPage: SettingsPage?
         get() = page
-        set(v) { if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null; page = v } // the result line lasts until the page is left
+        set(v) {
+            if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
+            if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
+            page = v
+        }
+
+    /** Developer tools in Diagnostics (owner C5 2026-10-24): debug builds always, else after 7 taps on the version. */
+    var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))
+        private set
+
+    fun unlockDevTools() {
+        prefs.devToolsUnlocked = true
+        devToolsShown = true
+        Problems.info("ui", "Developer tools unlocked (7 taps on the version)")
+    }
+
+    /** Last visit to Diagnostics: a serious problem after it shows red on the Settings list (owner C6 2026-10-24). */
+    var diagnosticsSeenMs by mutableStateOf(prefs.diagnosticsSeenMs)
+        private set
+
+    private fun markDiagnosticsSeen() {
+        diagnosticsSeenMs = System.currentTimeMillis()
+        prefs.diagnosticsSeenMs = diagnosticsSeenMs
+    }
 
     /** Opens Settings, at [page] if given (map credits → About). */
     fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }
@@ -1220,7 +1243,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // --- dialogs / messages ---
+    /** The message bar (until OK): a result that is not visible elsewhere, or an error (MessageBar). */
     var message by mutableStateOf<String?>(null)
+    /** Work the user started that takes a moment: a spinner where it was started (review 2026-10-24 C9). */
+    var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
@@ -2141,9 +2167,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         recalc()
     }
 
-    /** Clear button; with two or more points the UI asks first (PlanClear.needsConfirm). */
-    var confirmClear by mutableStateOf(false)
-
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
     fun requestClear() = clearPlan()
 
@@ -2154,7 +2177,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * A followed copy of this plan goes too, unless a recording is using it right now.
      */
     fun clearPlan() {
-        confirmClear = false
         Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (recState.value != null) " (tour running)" else "")
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
@@ -2466,7 +2488,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
 
     /** The amber line of the plan sheet: the "route changed" notice first, else the spots; null = nothing to know. */
-    fun warningLineText(): String? = routeChangedNotice ?: RouteWarnings.text(routeSpots, sac)
+    /** The amber line: spots on the way only (pushing, steps, above T, steep). */
+    fun warningLineText(): String? = RouteWarnings.text(routeSpots, sac)
+
+    /** Grey INFO line "New route for … – check it" (review 2026-10-24 B6: the user changed the activity themselves). */
+    fun routeChangedLineText(): String? = routeChangedNotice
+
+    /** Tap on the "New route for …" line: it goes, the map shows the whole route. */
+    fun tapRouteChangedLine() {
+        routeChangedNotice = null
+        val r = route ?: return
+        followMe = false
+        events += UiEvent.Fit(r.points)
+    }
 
     /** Tap on the amber line: the notice goes; the list of spots opens (none: the map shows the whole route). */
     fun tapWarningLine() {
@@ -2728,24 +2762,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob?.cancel()
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
-            if (started) { enter(AppMode.NAVIGATE); maybeAskBackground() }
+            if (started) enter(AppMode.NAVIGATE)
             else if (message == null) message = "Recording did not start. Allow precise location and notifications for OnPath, then try again."
         }
     }
 
     private var startJob: Job? = null
 
-    /** First tour: offer "Allow all the time" once, so a restart / update does not stop recording (0.7.8). */
-    var askBackground by mutableStateOf(false)
 
-    private fun maybeAskBackground() {
-        if (android.os.Build.VERSION.SDK_INT < 29 || prefs.backgroundAsked) return
-        val granted = androidx.core.content.ContextCompat.checkSelfPermission(getApplication(),
-            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!granted) askBackground = true
-    }
-
-    fun backgroundAnswered() { prefs.backgroundAsked = true; askBackground = false }
     /** How long Start waits for the service's first state before saying that recording did not start. */
     private val START_TIMEOUT_MS = 6_000L
 
@@ -3329,9 +3353,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** "Imported “Name” – some parts were skipped." (the parser's warnings are in Diagnostics). */
+    internal fun importedMessage(name: String) = "Imported “$name” – some parts were skipped."
+
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
-        message = "Preparing the export…"
+        busy = Busy.EXPORT
         viewModelScope.launch {
             try {
                 val app = getApplication<Application>()
@@ -3339,7 +3366,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val f = Backups.exportZip(app, File(app.cacheDir, "export"), SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date()))
                     FileProvider.getUriForFile(app, app.packageName + ".files", f) to f.name
                 }
-                message = null
+                busy = null
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "application/zip"
                     putExtra(Intent.EXTRA_STREAM, uri.first)
@@ -3348,9 +3375,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 events += UiEvent.Share(Intent.createChooser(send, "Export all"))
             } catch (e: com.onpath.app.backup.BackupException) {
-                Problems.info("backup", "Export all: ${e.reason}", e); message = "Export: ${e.reason}."
+                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; message = "Export: ${e.reason}."
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
+                busy = null
                 message = "Export failed – the phone's storage may be full. Your tracks and routes are unchanged."
             }
         }
@@ -3455,7 +3483,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- GPX import ----------------
 
     fun importGpx(uri: Uri) {
-        message = "Importing GPX…"
+        busy = Busy.IMPORT
         viewModelScope.launch {
             try {
                 val app = getApplication<Application>()
@@ -3486,14 +3514,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                // The track panel with its name is the feedback; a message (until OK) only when something was odd.
-                message = if (data.warnings.isEmpty()) null else buildString {
-                    append("Imported “$name”: ${data.pointCount} points")
-                    if (data.waypoints.isNotEmpty()) append(", ${data.waypoints.size} waypoints")
-                    append(".")
-                    data.warnings.forEach { append("\n").append(it) }
+                // The track panel with its name is the feedback; a message (until OK) only when something was odd –
+                // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
+                busy = null
+                if (data.warnings.isNotEmpty()) {
+                    Problems.info("gpx", "GPX import “$name”: ${data.pointCount} points, ${data.waypoints.size} waypoints; " +
+                        data.warnings.joinToString("; "))
+                    message = importedMessage(name)
                 }
             } catch (e: Exception) {
+                busy = null
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")

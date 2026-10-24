@@ -736,7 +736,7 @@ class MapCells(
                 "queued" -> set(c, CellState.Queued(s.position, s.etaS))
                 "building" -> set(c, CellState.Building(s.step ?: "starting", s.progress ?: 0.0, s.etaS))
                 "failed" -> {
-                    val msg = "This map area could not be prepared. Routes there are straight lines for now."
+                    val msg = "Map for this area failed"
                     Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
                     // dropped from the queue: the next trigger for this place asks again (the server retries up to 3×)
