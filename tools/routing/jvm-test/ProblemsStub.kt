@@ -9,3 +9,9 @@ object Problems {
         System.err.println("[Problems $level] $area: $message" + (t?.let { " ($it)" } ?: ""))
     }
 }
+
+/** JVM-test stand-in for UserText (the real one names app-only exception types). */
+object UserText {
+    fun of(e: Throwable, plain: String): String =
+        (e as? com.onpath.app.routing.RoutingException)?.message?.takeIf { it.isNotBlank() } ?: plain
+}
