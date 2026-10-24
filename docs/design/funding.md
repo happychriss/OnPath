@@ -110,3 +110,20 @@ that is why it can be fair. Not on the hiker's main path.
 **Open for the owner (one at a time):** price level and form (year / once / both); which aid organisation (e.g.
 mountain rescue, a humanitarian aid organisation, or OSM); the split; what exactly is free vs Plus; shop platform;
 tax adviser before the first euro (Kleingewerbe, VAT via the shop).
+
+## 8. Price models – which exist, how they are received (owner asked 2026-10-24, before choosing a charity)
+
+| Model | Who does it (2025/26) | Reception | Fit for OnPath |
+|---|---|---|---|
+| 1. Free, donations / grants only | Organic Maps, many F-Droid apps | well liked; income small – case studies ~0.3 % of users donate; a yearly in-app ask (Thunderbird) doubled donations | fits principles; won't carry the owner's time |
+| 2. Free + "pay what you want" with a suggested price | small open-source apps | liked; a bit more than 1 when the price is shown | good start, weak "not taken for granted" |
+| 3. Free core + one-time purchase (lifetime) | OsmAnd Maps+ (one-time, ~40–70 $), Komoot until 2025 (regions 3.99 £, world 29.99 £) | **best received by outdoor users** ("pay once, it's mine"); Komoot's world pack was the classic | very good; but no recurring money for servers – keep server-heavy extras (sync) apart |
+| 4. Free core + subscription (month / year) | Komoot Premium (~60 €/year, since 2025 needed for new users to sync to devices), AllTrails+ (~36 $/year), OsmAnd Pro (~40 $/year) | common, but strong backlash when free things move behind it (Komoot 2025) | fair only for things with ongoing cost (sync, many new areas) |
+| 5. Trial, then one-time | classic paid apps | OK, but a barrier where free apps exist (Organic Maps) | only if the core were paid – it isn't |
+| 6. Trial, then subscription | AllTrails (7-day trial), most fitness apps | accepted, but auto-renew traps annoy | not needed: the free core is the "trial" |
+| 7. Paid app up front | rare today | low | no |
+| 8. **Hybrid: subscription OR one-time** | OsmAnd (Maps+ once or yearly) | well received – the user chooses | **proposal** |
+
+Proposal: free core (model 1 as base) + **OnPath Plus as one-time or yearly, user's choice** (model 8); a
+14–30-day free try of Plus features instead of a trial of the whole app. Charity share and public cash book apply
+to every payment. Prices: check the shops before deciding (sources disagree).
