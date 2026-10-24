@@ -54,8 +54,8 @@ object RoutingTiles {
  * unit-tested.
  */
 object RoutingDataNotice {
-    const val LOADING = "The map for this area is still loading – the route is shown as a straight line until then."
-    const val NOT_YET = "The map for this area loads when you're online – the route is shown as a straight line until then."
+    const val LOADING = "Map loading – straight line for now"
+    const val NOT_YET = "Map loads when online – straight line for now"
 
     fun text(loading: Boolean): String = if (loading) LOADING else NOT_YET
 

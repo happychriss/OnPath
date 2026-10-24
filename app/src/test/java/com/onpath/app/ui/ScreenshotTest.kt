@@ -442,7 +442,7 @@ class ScreenshotTest {
         Frame {
             PlanPanel(planUi(2, route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList()),
                 routing = true,
-                error = "Leg 1→2: No route found near this point. Shown as a straight dashed line. Try moving the point or changing the activity."),
+                error = "Point 1 → 2: no path found"),
                 PlanCallbacks())
         }
     }
@@ -473,10 +473,10 @@ class ScreenshotTest {
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
-    /** The amber line alone in the profile step; here the notice after an activity change. */
+    /** The grey INFO line after an activity change (review 2026-10-24 B6: not amber). */
     @Test fun planRouteChanged() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            warnText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
     }
 
     /** The list behind the amber line (shown in a bottom sheet over the map). */

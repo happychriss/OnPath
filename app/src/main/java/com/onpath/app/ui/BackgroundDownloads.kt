@@ -147,7 +147,6 @@ class BackgroundProgress {
 }
 
 /** Information colour of the chip and the map notice: blue – not the amber of warnings, not the green brand. */
-private val InfoBlue = Color(0xFF1565C0)
 
 /**
  * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (owner 2026-10-23: the full-width strip looked crowded).
@@ -161,7 +160,7 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
     val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
-        Row(Modifier.widthIn(max = maxW).background(InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
+        Row(Modifier.widthIn(max = maxW).background(OnPathColors.InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Download, null, tint = Color.White, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
@@ -298,7 +297,7 @@ fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> 
 @Composable
 private fun BlueNotice(title: String, detail: String?, warning: Boolean, onClose: (() -> Unit)?,
                        buttons: List<Pair<String, () -> Unit>>, modifier: Modifier) {
-    Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.94f), contentColor = Color.White, shadowElevation = 2.dp,
+    Surface(shape = RoundedCornerShape(12.dp), color = OnPathColors.InfoBlue.copy(alpha = 0.94f), contentColor = Color.White, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

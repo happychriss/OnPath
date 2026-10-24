@@ -115,12 +115,11 @@ class Planner(
                 val d = Geo.distance(waypoints[0], waypoints[1])
                 return PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
                     Geo.estimateSeconds(d, 0.0, 0.0, activity),
-                    "${UserText.of(e, "No route found.")} Shown as a straight dashed line. Try moving the point or changing the activity.")
+                    legError(1, 2, e))
             }
             // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
             // plan up to 120 s) – straight lines at once, the user adds points or tries again.
-            if (e is RoutingException && e.timedOut) return straight(waypoints, activity,
-                "${UserText.of(e, "Route calculation took too long.")} Shown as straight dashed lines.")
+            if (e is RoutingException && e.timedOut) return straight(waypoints, activity, TOOK_TOO_LONG)
             // otherwise fall through to per-leg routing
         }
         var dist = 0.0; var up = 0.0; var down = 0.0; var time = 0.0
@@ -145,9 +144,7 @@ class Planner(
                 stopIfCancelled()
                 // expected: RoutingException = no route for this leg (shown as a straight dashed line)
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
-                if (firstError == null) firstError = UserText.of(e, "No route found.").let {
-                    "Leg ${i + offset}→${i + offset + 1}: $it Shown as a straight dashed line. Try moving the point or changing the activity."
-                }
+                if (firstError == null) firstError = legError(i + offset, i + offset + 1, e)
             }
         }
         // straight legs start/end where their neighbours' routed legs do, so markers and lines meet
@@ -171,6 +168,25 @@ class Planner(
     }
 
     companion object {
+        /** The whole plan timed out (straight lines at once). */
+        const val TOOK_TOO_LONG = "Route took too long – straight lines for now"
+
+        /**
+         * One short ERROR line for a leg the router could not do (review 2026-10-24 B4): "Point 1 → 2: no path found" –
+         * no "Leg", no "shown as a straight dashed line" (the map shows it), no advice sentence. Missing routing data
+         * keeps the engine's text so the plain "map loading" notice still recognises it (RoutingDataNotice).
+         */
+        fun legError(from: Int, to: Int, e: Exception): String {
+            val msg = UserText.of(e, "No route found.")
+            if (msg.contains("No routing data") || msg.contains(".rd5")) return msg
+            val why = when {
+                e is RoutingException && e.timedOut -> "took too long"
+                msg.startsWith("Not enough memory") || msg.startsWith("Route too complex") -> "too long – add a point between"
+                else -> "no path found"
+            }
+            return "Point $from → $to: $why"
+        }
+
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
         const val PLAN_LIMIT_MS = 10 * 60_000L
 
