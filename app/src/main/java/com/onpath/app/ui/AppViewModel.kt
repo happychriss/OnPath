@@ -162,7 +162,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var page by mutableStateOf<SettingsPage?>(null)
     var settingsPage: SettingsPage?
         get() = page
-        set(v) { if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null; page = v } // the result line lasts until the page is left
+        set(v) {
+            if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
+            if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
+            page = v
+        }
+
+    /** Developer tools in Diagnostics (owner C5 2026-10-24): debug builds always, else after 7 taps on the version. */
+    var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))
+        private set
+
+    fun unlockDevTools() {
+        prefs.devToolsUnlocked = true
+        devToolsShown = true
+        Problems.info("ui", "Developer tools unlocked (7 taps on the version)")
+    }
+
+    /** Last visit to Diagnostics: a serious problem after it shows red on the Settings list (owner C6 2026-10-24). */
+    var diagnosticsSeenMs by mutableStateOf(prefs.diagnosticsSeenMs)
+        private set
+
+    private fun markDiagnosticsSeen() {
+        diagnosticsSeenMs = System.currentTimeMillis()
+        prefs.diagnosticsSeenMs = diagnosticsSeenMs
+    }
 
     /** Opens Settings, at [page] if given (map credits → About). */
     fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }

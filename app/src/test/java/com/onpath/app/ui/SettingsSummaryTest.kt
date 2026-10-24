@@ -7,6 +7,8 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.time.Pace
 import com.onpath.app.update.AppUpdater
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.TimeZone
 
@@ -70,11 +72,32 @@ class SettingsSummaryTest {
         assertEquals(Summary("0.10.0"), SettingsSummary.updates(AppViewModel.UpdateState.Idle, "0.10.0"))
     }
 
+    /** Owner C6 2026-10-24: grey "For bug reports"; red only while a serious problem is newer than the last visit. */
     @Test fun diagnostics() {
-        fun e(l: Problems.Level) = Problems.Entry(l, "a", "m${l.name}", null, 0, 0, 1)
-        assertEquals(Summary("No problems"), SettingsSummary.diagnostics(emptyList()))
-        assertEquals(Summary("2 problems"), SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.INFO))))
-        assertEquals(Summary("2 problems · 1 serious", Summary.Attention.PROBLEM),
-            SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR))))
+        fun e(l: Problems.Level, last: Long = 100) = Problems.Entry(l, "a", "m${l.name}", null, 0, last, 1)
+        assertEquals(Summary("For bug reports"), SettingsSummary.diagnostics(emptyList()))
+        assertEquals(Summary("For bug reports · 2 notes"), SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.INFO))))
+        assertEquals(Summary("1 new problem", Summary.Attention.PROBLEM),
+            SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 50))
+        // looked at: grey again
+        assertEquals(Summary("For bug reports · 2 notes"),
+            SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 200))
+    }
+
+    /** Owner C5 2026-10-24: Developer tools after 7 taps on the version (remembered), debug builds always. */
+    @Test fun developerTools() {
+        assertFalse(DevToolsUnlock.unlocked(6))
+        assertTrue(DevToolsUnlock.unlocked(7))
+        assertFalse(DevToolsUnlock.shown(debugBuild = false, unlocked = false))
+        assertTrue(DevToolsUnlock.shown(debugBuild = false, unlocked = true))
+        assertTrue(DevToolsUnlock.shown(debugBuild = true, unlocked = false))
+    }
+
+    /** Owner C7 2026-10-24: "Your settings" first, then the smaller "App" group. */
+    @Test fun twoGroups() {
+        assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
+            SettingsPage.BACKUP), SettingsPage.entries.filter { !it.app })
+        assertEquals(listOf(SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
+            SettingsPage.entries.filter { it.app })
     }
 }
