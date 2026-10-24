@@ -789,7 +789,7 @@ class ScreenshotTest {
 
     @Test fun cellCardFailed() = paparazzi.snapshot {
         CardFrame(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") } +
-                (cEast to com.onpath.app.cells.CellState.Failed("This area could not be prepared (server error). Planning still works with a straight line.")),
+                (cEast to com.onpath.app.cells.CellState.Failed("Map for this area failed")),
                 sizes = cJob.cells.associateWith { 9 * mbB }), planWithCard(n = 3, r = route))
     }
 

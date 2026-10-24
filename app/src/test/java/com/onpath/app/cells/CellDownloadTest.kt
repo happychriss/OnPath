@@ -235,7 +235,7 @@ class CellDownloadTest {
         mc.request(listOf(a), CellReason.POINT)
         waitFor("failed") { mc.state(a) is CellState.Failed }
         // the server's reason goes to Diagnostics only; the user reads one plain sentence (text review 2026-10-23)
-        assertEquals("This map area could not be prepared. Routes there are straight lines for now.",
+        assertEquals("Map for this area failed",
             (mc.state(a) as CellState.Failed).message)
     }
 
