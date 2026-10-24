@@ -13,7 +13,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   ERROR red with one way out; dialogs only for decisions that can lose something, verb buttons; (2) type scale 12 / 14 /
   16 / 22 / 30 bold (nothing a hiker must read below 14; Navigate time 22, turn distance + arrival 30 bold); (3) C1
   off route = ONE amber card "Off route · 120 m north-east" with a big arrow, duplicates removed; (4) C2 never ask
-  "Allow all the time" (only the hint in Settings → Navigation). Pending: C3–C9, then build.
+  "Allow all the time" (only the hint in Settings → Navigation); (5) C3 Navigate recording line only when it matters
+  (Paused / No GPS), else the orange dot; moving / breaks in the opened card. Done already: "Overview only" hint hidden
+  while the strip asks for the map of here (field 0.10.2 overlap), strip text shortened. Pending: C4–C9, then build.
 - **[for the laptop – 2026-10-23 late] Two MainActivity instances at start – find the trigger, then guard.** Seen only on
   the first start after an install (10-22 22:50 + 22:51 after `adb install -r && monkey -p com.onpath.app 1`; 10-23
   20:45 = 0.10.1 start): one process, two activities, each its own ViewModel; the first ViewModel is cleared ~1–2 s later

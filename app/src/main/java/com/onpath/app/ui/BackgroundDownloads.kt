@@ -289,9 +289,9 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
 @Composable
 fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
                  mustBuild: Boolean = true) =
-    BlueNotice("Detailed map for here? (≈ ${mb(bytes)} MB)",
-        (if (mustBuild) "It is prepared for you first – takes a few minutes. " else "") +
-            "Until then the overview map shows. Setting a point here also loads it.",
+    // short (owner 2026-10-24: simplify – title ≤ 5 words, one detail line at most)
+    BlueNotice("Detailed map for here? · ${mb(bytes)} MB",
+        if (mustBuild) "Takes a few minutes to prepare." else null,
         warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier)
 
 /** One blue strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). */

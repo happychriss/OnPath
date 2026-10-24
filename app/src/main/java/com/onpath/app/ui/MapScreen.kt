@@ -143,7 +143,9 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
-        val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN) 124.dp else 76.dp
+        // (measured height: the blue strip with a question is taller than the progress chip – field 0.10.2 overlap)
+        val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
+            (MessagePlacement.STRIP_TOP_DP + vm.backgroundStripHeightDp + 8).coerceAtLeast(124).dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -172,7 +174,8 @@ fun MapScreen(
             value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
-        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
+        // not while the strip asks "Detailed map for here?" – it says the same (field 0.10.2: both at once)
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
