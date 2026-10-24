@@ -85,7 +85,7 @@ fun RecycleBinScreen(
             properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
             icon = { Icon(Icons.Filled.Delete, null) },
             title = { Text("Delete “${t.name}” for good?") },
-            text = { Text("It is removed from this phone and from the backup folder. This cannot be undone.") },
+            text = { DialogText("It is removed from this phone and from the backup folder. This cannot be undone.") },
             confirmButton = { TextButton(onClick = { confirm = null; onDeleteForever(t) }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Delete", color = OnPathColors.Bad) } },
             dismissButton = { TextButton(onClick = { confirm = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
@@ -189,7 +189,7 @@ fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Restore, null) },
         title = { Text("Earlier tracks and routes?") },
-        text = { Text("If you used OnPath before, your tracks and routes may be in Documents/OnPath. Restore them? " +
+        text = { DialogText("If you used OnPath before, your tracks and routes may be in Documents/OnPath. Restore them? " +
             "Android then shows the folder – tap “Use this folder” and “Allow”.\n\nLater: Settings → Backup → Restore.") },
         confirmButton = { TextButton(onClick = onRestore, modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore") } },
         dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },

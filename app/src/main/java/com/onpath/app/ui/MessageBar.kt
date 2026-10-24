@@ -85,3 +85,7 @@ fun BusyContent(text: String) {
     Spacer(Modifier.width(10.dp))
     Text(text)
 }
+
+/** The body of a dialog: Body size (16 sp) – Material uses 14 there (type scale, review 2026-10-24 A). */
+@Composable
+fun DialogText(text: String) = Text(text, style = MaterialTheme.typography.bodyLarge)

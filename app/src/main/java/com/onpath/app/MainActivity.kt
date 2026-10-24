@@ -62,11 +62,6 @@ class MainActivity : ComponentActivity() {
         afterPermission = null
     }
 
-    /** "Allow all the time" (first tour, once): Android 11+ shows its settings page; nothing breaks when refused. */
-    private val backgroundLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        com.onpath.app.debug.Problems.info("gps", if (ok) "Location 'Allow all the time' granted – a tour continues after a restart"
-            else "Location 'Allow all the time' not granted – after a restart OnPath asks to continue")
-    }
 
     /** Map data / style import from the phone itself (no adb). */
     private val openData = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -295,28 +290,12 @@ class MainActivity : ComponentActivity() {
 
                 RouteDialogs(vm)
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
-                if (vm.askBackground) {
-                    AlertDialog(
-                        onDismissRequest = { vm.backgroundAnswered() },
-                        title = { Text("Keep recording after a restart?") },
-                        text = { Text("If the phone restarts or OnPath is updated during a tour, OnPath can continue recording " +
-                            "by itself. For that Android needs location access “Allow all the time”. OnPath uses it only " +
-                            "while a tour is recording. Without it, OnPath asks you to tap Continue.") },
-                        confirmButton = { TextButton(onClick = {
-                            vm.backgroundAnswered()
-                            try { backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } catch (e: Exception) {
-                                com.onpath.app.debug.Problems.warn("gps", "'Allow all the time' request could not be shown; opening app settings", e)
-                                openAppSettings()
-                            }
-                        }) { Text("Allow") } },
-                        dismissButton = { TextButton(onClick = { vm.backgroundAnswered() }) { Text("Not now") } },
-                    )
-                }
+                // "Allow all the time" is never asked (owner C2 2026-10-24) – only the quiet hint in Settings → Navigation
                 if (vm.askUpdateDuringTour) {
                     AlertDialog(
                         onDismissRequest = { vm.askUpdateDuringTour = false },
                         title = { Text("A tour is being recorded") },
-                        text = { Text("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
+                        text = { com.onpath.app.ui.DialogText("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
                             "open OnPath afterwards and tap Continue. Better: install after the tour.") },
                         confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text("After the tour") } },
                         dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text("Install now") } },

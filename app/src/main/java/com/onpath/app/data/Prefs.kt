@@ -146,10 +146,6 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return true
     }
 
-    /** "Allow all the time" was offered once (first tour); never nag again – Settings has the way back. */
-    var backgroundAsked: Boolean
-        get() = sp.getBoolean("backgroundAsked", false)
-        set(v) = sp.edit().putBoolean("backgroundAsked", v).apply()
 
     /** Last check for newer routing data after a route (ms since epoch; AppViewModel.checkRoutingData). */
     var routingDataCheckedAt: Long

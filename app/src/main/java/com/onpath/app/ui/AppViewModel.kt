@@ -2144,9 +2144,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         recalc()
     }
 
-    /** Clear button; with two or more points the UI asks first (PlanClear.needsConfirm). */
-    var confirmClear by mutableStateOf(false)
-
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
     fun requestClear() = clearPlan()
 
@@ -2157,7 +2154,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * A followed copy of this plan goes too, unless a recording is using it right now.
      */
     fun clearPlan() {
-        confirmClear = false
         Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (recState.value != null) " (tour running)" else "")
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
@@ -2743,24 +2739,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob?.cancel()
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
-            if (started) { enter(AppMode.NAVIGATE); maybeAskBackground() }
+            if (started) enter(AppMode.NAVIGATE)
             else if (message == null) message = "Recording did not start. Allow precise location and notifications for OnPath, then try again."
         }
     }
 
     private var startJob: Job? = null
 
-    /** First tour: offer "Allow all the time" once, so a restart / update does not stop recording (0.7.8). */
-    var askBackground by mutableStateOf(false)
 
-    private fun maybeAskBackground() {
-        if (android.os.Build.VERSION.SDK_INT < 29 || prefs.backgroundAsked) return
-        val granted = androidx.core.content.ContextCompat.checkSelfPermission(getApplication(),
-            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!granted) askBackground = true
-    }
-
-    fun backgroundAnswered() { prefs.backgroundAsked = true; askBackground = false }
     /** How long Start waits for the service's first state before saying that recording did not start. */
     private val START_TIMEOUT_MS = 6_000L
 
