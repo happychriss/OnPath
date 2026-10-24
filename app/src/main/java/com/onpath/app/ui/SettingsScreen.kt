@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -138,18 +139,26 @@ fun SettingsScreen(
     activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
     /** Diagnostics → "Developer tools" open at first (screenshots). */
     devToolsOpen: Boolean = false,
+    /**
+     * Developer tools shown in Diagnostics (owner C5 2026-10-24): hidden until the version line in About is tapped 7
+     * times (remembered); debug builds always.
+     */
+    devTools: Boolean = true,
+    onUnlockDevTools: () -> Unit = {},
+    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner C6). */
+    diagnosticsSeenMs: Long = 0L,
     /** Developer tools: the map server line (MapServer.describe; fixed in screenshots). */
     mapServer: String = com.onpath.app.data.MapServer.describe(),
     now: Long = System.currentTimeMillis(),
 ) {
-    val topics = buildList {
-        add(SettingsPage.PACE); add(SettingsPage.POI); add(SettingsPage.MAP); add(SettingsPage.NAVIGATION)
-        if (offlineMaps != null) add(SettingsPage.OFFLINE_MAPS)
-        if (backup != null) add(SettingsPage.BACKUP)
-        add(SettingsPage.PRIVACY)
-        if (update != null) add(SettingsPage.UPDATES)
-        if (diagnostics) add(SettingsPage.DIAGNOSTICS)
-        add(SettingsPage.ABOUT)
+    val topics = SettingsPage.entries.filter {
+        when (it) {
+            SettingsPage.OFFLINE_MAPS -> offlineMaps != null
+            SettingsPage.BACKUP -> backup != null
+            SettingsPage.UPDATES -> update != null
+            SettingsPage.DIAGNOSTICS -> diagnostics
+            else -> true
+        }
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
@@ -161,24 +170,34 @@ fun SettingsScreen(
             }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    item {
-                        Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
-                            Column {
-                                topics.forEachIndexed { i, t ->
-                                    if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
-                                    val s = when (t) {
-                                        SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
-                                        SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
-                                        SettingsPage.MAP -> SettingsSummary.map(settings)
-                                        SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
-                                        SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
-                                        SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
-                                        SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
-                                        SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems)
-                                        SettingsPage.PRIVACY -> SettingsSummary.privacy
-                                        SettingsPage.ABOUT -> SettingsSummary.about
+                    // two groups (owner C7 2026-10-24): what the user sets, then the smaller "App" group
+                    listOf(false, true).forEach { app ->
+                        val group = topics.filter { it.app == app }
+                        if (group.isEmpty()) return@forEach
+                        item {
+                            Text(if (app) "App" else "Your settings", style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, top = if (app) 20.dp else 4.dp, bottom = 6.dp))
+                        }
+                        item {
+                            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+                                Column {
+                                    group.forEachIndexed { i, t ->
+                                        if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
+                                        val s = when (t) {
+                                            SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
+                                            SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
+                                            SettingsPage.MAP -> SettingsSummary.map(settings)
+                                            SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
+                                            SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
+                                            SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
+                                            SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
+                                            SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
+                                            SettingsPage.PRIVACY -> SettingsSummary.privacy
+                                            SettingsPage.ABOUT -> SettingsSummary.about
+                                        }
+                                        TopicRow(t, s, small = app) { onPage(t) }
                                     }
-                                    TopicRow(t, s) { onPage(t) }
                                 }
                             }
                         }
@@ -199,13 +218,13 @@ fun SettingsScreen(
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
-                            item {
+                            if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
                                     onTimeFormulas)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
-                        SettingsPage.ABOUT -> item { AboutSection(version) }
+                        SettingsPage.ABOUT -> item { AboutSection(version, devTools, onUnlockDevTools) }
                     }
                 }
             }
@@ -227,16 +246,20 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.ABOUT -> Icons.Outlined.Info
     }
 
-/** One topic of the list: icon, title, summary (red when it needs attention, accent for news), chevron. */
+/**
+ * One topic of the list: icon, title, summary (red when it needs attention, accent for news), chevron. [small]: the
+ * "App" group – lower rows, grey icon.
+ */
 @Composable
-private fun TopicRow(t: SettingsPage, s: Summary, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button, onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(t.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
+private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = if (small) 56.dp else 64.dp).clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(t.icon, null, tint = if (small) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Green,
+            modifier = Modifier.size(if (small) 22.dp else 24.dp))
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
-            Text(t.title, fontSize = 16.sp)
-            Text(s.text, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            Text(t.title, style = MaterialTheme.typography.bodyLarge)
+            Text(s.text, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 fontWeight = if (s.attention == Summary.Attention.NONE) FontWeight.Normal else FontWeight.SemiBold,
                 color = when (s.attention) {
                     Summary.Attention.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -354,8 +377,8 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
         }
         // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Recording with the screen off works best with battery usage set to “Unrestricted”.",
-                fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text("Recording with the screen off: best with battery “Unrestricted”.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f))
             TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
         }
@@ -363,12 +386,12 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             val ctx = androidx.compose.ui.platform.LocalContext.current
             val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (bg) "A tour continues by itself after a restart or update (location: Allow all the time)."
-                    else "After a phone restart or app update, tap Continue to go on recording. To make this automatic, set location to “Allow all the time”.",
-                    fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // the quiet hint instead of a question (owner C2 2026-10-24: never ask); nothing to say once it is set
+            if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("After a restart, tap Continue. Automatic with location “Allow all the time”.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f))
-                if (!bg) TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
+                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
             }
         }
     }
@@ -541,10 +564,20 @@ val PRIVACY_FLOWS = listOf(
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
 @Composable
-private fun AboutSection(version: String) {
+private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevTools: () -> Unit = {}) {
+    var taps by remember { mutableStateOf(0) }
     Section("About") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("OnPath $version", fontWeight = FontWeight.SemiBold)
+            // tapped 7 times: Developer tools in Diagnostics (owner C5 2026-10-24, the Android convention); remembered
+            Text("OnPath $version", fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
+                    .clickable(enabled = !devTools, indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {
+                        taps++
+                        if (DevToolsUnlock.unlocked(taps)) onUnlockDevTools()
+                    })
+            if (devTools && taps > 0) Text("Developer tools are on – Settings → Diagnostics.", style = MaterialTheme.typography.bodySmall,
+                color = OnPathColors.Green)
             Text("Licence: Apache-2.0", fontSize = 13.sp)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             Text("Credits", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)

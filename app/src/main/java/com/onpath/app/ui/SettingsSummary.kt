@@ -9,18 +9,33 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-/** The topics of Settings (owner 2026-10-22: a list of topics, each opens its own page), in list order. */
-enum class SettingsPage(val title: String) {
+/**
+ * The topics of Settings (owner 2026-10-22: a list of topics, each opens its own page), in list order: "Your settings"
+ * first, then the smaller "App" group (owner C7 2026-10-24).
+ */
+enum class SettingsPage(val title: String, val app: Boolean = false) {
     PACE("Your pace"),
     POI("Points of interest"),
     MAP("Map"),
     NAVIGATION("Navigation"),
     OFFLINE_MAPS("Offline maps"),
     BACKUP("Backup"),
-    PRIVACY("Privacy"),
-    UPDATES("Updates"),
-    DIAGNOSTICS("Diagnostics"),
-    ABOUT("About"),
+    UPDATES("Updates", app = true),
+    PRIVACY("Privacy", app = true),
+    DIAGNOSTICS("Diagnostics", app = true),
+    ABOUT("About", app = true),
+}
+
+/**
+ * Developer tools in Settings → Diagnostics (owner C5 2026-10-24, one release APK): hidden until the version line in
+ * About is tapped [TAPS] times (the Android convention); the unlock is remembered. Debug builds show them always. Pure.
+ */
+object DevToolsUnlock {
+    const val TAPS = 7
+
+    fun unlocked(taps: Int): Boolean = taps >= TAPS
+
+    fun shown(debugBuild: Boolean, unlocked: Boolean): Boolean = debugBuild || unlocked
 }
 
 /** One line under a topic in the Settings list; [attention] colours it (problem = red, news = accent). */
@@ -79,14 +94,20 @@ object SettingsSummary {
         AppViewModel.UpdateState.Idle -> Summary(v(version))
     }
 
-    fun diagnostics(problems: List<com.onpath.app.debug.Problems.Entry>): Summary {
-        val serious = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR }
+    /**
+     * Owner C6 2026-10-24: grey and neutral ("For bug reports"); red only while a serious problem newer than the last
+     * visit to Diagnostics ([seenMs]) has not been looked at.
+     */
+    fun diagnostics(problems: List<com.onpath.app.debug.Problems.Entry>, seenMs: Long = 0L): Summary {
+        val unseen = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR && it.last > seenMs }
         return when {
-            problems.isEmpty() -> Summary("No problems")
-            serious > 0 -> Summary("${problems.size} ${plural(problems.size, "problem")} · $serious serious", Summary.Attention.PROBLEM)
-            else -> Summary("${problems.size} ${plural(problems.size, "problem")}")
+            unseen > 0 -> Summary("$unseen new ${plural(unseen, "problem")}", Summary.Attention.PROBLEM)
+            problems.isEmpty() -> Summary(FOR_BUG_REPORTS)
+            else -> Summary("$FOR_BUG_REPORTS · ${problems.size} ${plural(problems.size, "note")}")
         }
     }
+
+    const val FOR_BUG_REPORTS = "For bug reports"
 
     val privacy = Summary("Nothing is tracked · what leaves your phone")
 

@@ -111,24 +111,25 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
     var confirm by remember { mutableStateOf(initialConfirm) }
     var askClearAll by remember { mutableStateOf(initialClearAll) }
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
+    val small = MaterialTheme.typography.bodySmall
+    val body = MaterialTheme.typography.bodyLarge
     Section("Offline maps") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (!ui.available) Text("Map downloads not available in this build. Import a map package in Diagnostics → Developer tools.", fontSize = 13.sp, color = variant)
-            else Text("The detailed map downloads by itself where you set a point, plan a route or are on tour.",
-                fontSize = 13.sp, color = variant)
-            ui.result?.let { Text(it, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
-            if (ui.areas.isEmpty()) Text("No map areas downloaded yet.", fontSize = 14.sp)
+            // no intro (review 2026-10-24 B25): the page shows what is there
+            if (!ui.available) Text("Map downloads not available in this build.", style = small, color = variant)
+            ui.result?.let { Text(it, style = body, fontWeight = FontWeight.Medium) }
+            if (ui.areas.isEmpty()) Text("No map areas downloaded yet.", style = body)
             ui.areas.forEach { a ->
                 HorizontalDivider(Modifier.padding(vertical = 2.dp))
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(a.name, fontSize = 15.sp)
-                        Text("${mbText(a.bytes)} · ${a.date}" + (a.status?.let { " · $it" } ?: ""), fontSize = 12.sp, color = variant)
+                        Text(a.name, style = body)
+                        Text("${mbText(a.bytes)} · ${a.date}" + (a.status?.let { " · $it" } ?: ""), style = small, color = variant)
                     }
                     if (confirm != a.id) TextButton(onClick = { confirm = a.id }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete") }
                 }
                 if (confirm == a.id) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Delete this area? It downloads again when you plan there.", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text("Delete this area? It downloads again when you plan there.", style = small, modifier = Modifier.weight(1f))
                     TextButton(onClick = { confirm = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
                     TextButton(onClick = { confirm = null; cb.onDelete(a.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text("Delete", color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
@@ -138,47 +139,46 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             if (ui.areas.isNotEmpty()) {
                 HorizontalDivider(Modifier.padding(vertical = 2.dp))
                 Text("${ui.areas.size} ${if (ui.areas.size == 1) "area" else "areas"} · ${mbText(ui.areas.sumOf { it.bytes })} in total",
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    style = small, fontWeight = FontWeight.SemiBold)
             }
             val w = ui.waiting
             if (w != null) {
                 HorizontalDivider(Modifier.padding(vertical = 2.dp))
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(w.line, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text(w.line, style = small, modifier = Modifier.weight(1f))
                     TextButton(onClick = cb.onCancelAll, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text("Cancel all", color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                Text("Cancel all stops these downloads; the maps you have stay.", fontSize = 12.sp, color = variant)
-            } else if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading – see the blue bar on the map.",
-                fontSize = 13.sp, color = variant)
+            } else if (ui.loading > 0) Text("${ui.loading} more ${if (ui.loading == 1) "area is" else "areas are"} loading.",
+                style = small, color = variant)
         }
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
             .toggleable(value = ui.wifiOnly, role = Role.Switch, onValueChange = cb.onWifiOnly).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Download maps only on Wi-Fi", fontSize = 16.sp)
+                Text("Download maps only on Wi-Fi", style = body)
                 Text(if (ui.wifiOnly) "Nothing loads on mobile data, not even where you are"
-                    else "Where you are loads on mobile data; other areas ask first", fontSize = 12.sp, color = variant)
+                    else "Where you are loads on mobile data; other areas ask first", style = small, color = variant)
             }
             Switch(checked = ui.wifiOnly, onCheckedChange = null)
         }
         if (ui.available && ui.areas.isNotEmpty()) Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
             OutlinedButton(onClick = cb.onUpdateNow, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Update maps now") }
-            Text("Newer maps download on Wi-Fi; the current ones keep working until then. Map areas you use update once a month on their own.",
-                fontSize = 12.sp, color = variant)
+            Text("Monthly by itself; this loads now.",
+                style = small, color = variant)
         }
         if (ui.areas.isNotEmpty()) Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             HorizontalDivider(Modifier.padding(vertical = 2.dp))
             OutlinedButton(onClick = cb.onCleanUp, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Clean up") }
-            Text("Removes the areas you no longer need. Shows first what goes and what stays.", fontSize = 12.sp, color = variant)
+            Text("Shows what goes first.", style = small, color = variant)
             OutlinedButton(onClick = { askClearAll = true }, enabled = ui.clearAllBlocked == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Bad)) {
                 Text("Clear all", fontWeight = FontWeight.SemiBold)
             }
-            Text(ui.clearAllBlocked ?: "Removes every downloaded area. The world overview stays; areas load again when needed.",
-                fontSize = 12.sp, color = variant)
+            Text(ui.clearAllBlocked ?: "The world overview stays.",
+                style = small, color = variant)
         }
     }
     ui.cleanup?.let { c ->
@@ -187,8 +187,8 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(c.keepsLine)
-                    if (c.remove.isNotEmpty()) Text("Removed areas load again when you plan or go there.", fontSize = 13.sp, color = variant)
-                    else Text("Every downloaded area is in use.", fontSize = 13.sp, color = variant)
+                    if (c.remove.isNotEmpty()) Text("Removed areas load again when you plan or go there.", style = small, color = variant)
+                    else Text("Every downloaded area is in use.", style = small, color = variant)
                 }
             },
             confirmButton = {

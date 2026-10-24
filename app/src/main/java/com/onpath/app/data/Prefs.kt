@@ -147,6 +147,16 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     }
 
 
+    /** Developer tools unlocked by 7 taps on the version in Settings → About (owner C5 2026-10-24); stays. */
+    var devToolsUnlocked: Boolean
+        get() = sp.getBoolean("devToolsUnlocked", false)
+        set(v) = sp.edit().putBoolean("devToolsUnlocked", v).apply()
+
+    /** Last visit to Settings → Diagnostics (ms): newer serious problems colour its list line red (owner C6). */
+    var diagnosticsSeenMs: Long
+        get() = sp.getLong("diagnosticsSeenMs", 0L)
+        set(v) = sp.edit().putLong("diagnosticsSeenMs", v).apply()
+
     /** Last check for newer routing data after a route (ms since epoch; AppViewModel.checkRoutingData). */
     var routingDataCheckedAt: Long
         get() = sp.getLong("routingDataCheckedAt", 0L)
