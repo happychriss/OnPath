@@ -154,6 +154,8 @@ alternative to TeaVM but still experimental – watch, not use.
 types, so binaries are published as base64 text and decoded in the browser (`VITE_PACKED=1` build, `src/packed.ts`);
 the normal build reads the files directly. Not tested inside the claude.ai frame by the cloud (only headless).
 
+**Status 2026-10-24: paused by the owner after the spike report** (branch stays as it is).
+
 **Next (if the owner says yes):** move the pure helpers out of UI files, the reflection-free matched points
 (finding 2), a plan link / QR the app opens, rd5 + areas for the web on R2 with CORS (needs the map-access decision),
 then a minimal planner for purpose A.
