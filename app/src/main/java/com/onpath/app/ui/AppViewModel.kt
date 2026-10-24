@@ -302,6 +302,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var mobileDeclined by mutableStateOf(false)
     /** T3 waits for a usable fix after app start / return in Plan. */
     private var t3Pending by mutableStateOf(true)
+
+    /** "Detailed map for here?" – asked in the blue strip when the app opens where there is no detailed map. */
+    data class HereAsk(val at: GeoPoint, val accuracyM: Float?, val own: com.onpath.app.cells.CellId, val regions: Int, val bytes: Long)
+    var hereAsk by mutableStateOf<HereAsk?>(null)
+        private set
+    /** Areas the user said "Not now" to (this app run): not asked again until a point is set there. */
+    private val hereDeclined = HashSet<com.onpath.app.cells.CellId>()
+
+    /**
+     * The answer to [hereAsk]: Load = the map for here in the background (no big loading window – the user only opened
+     * the app); Not now = this area is not asked again in this run (setting a point there loads it as always).
+     */
+    fun answerHereAsk(load: Boolean) {
+        val a = hereAsk ?: return
+        hereAsk = null
+        Problems.trace("cells", "Map for here: " + if (load) "load" else "not now")
+        if (!load) { hereDeclined += a.own; return }
+        safeCells("position") { showCellJob(cellTriggers.appOpened(a.at, a.accuracyM)?.copy(own = null)?.tagged(LoadTag(LoadWhy.POINT))) }
+        routingFor(listOf(a.at), wait = false)
+    }
     /** The first-start card ("Allow location to get the detailed map …") was hidden with × (this app run). */
     private var firstStartHidden by mutableStateOf(false)
     /** "Map downloads not available in this build" was shown in this app run (once is enough). */
@@ -572,7 +592,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
         if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
-        for (p in fresh) safeCells("point") { showCellJob(cellTriggers.pointSet(p).tagged(LoadTag(LoadWhy.POINT, p))) }
+        for (p in fresh) safeCells("point") {
+            val j = cellTriggers.pointSet(p)
+            // a point set there answers "map for here?" and lifts an earlier "Not now" for those areas
+            j?.cells?.let { c -> hereDeclined.removeAll(c.toSet()); if (hereAsk?.own in c) hereAsk = null }
+            showCellJob(j.tagged(LoadTag(LoadWhy.POINT, p)))
+        }
     }
 
     /**
@@ -737,8 +762,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val onTour = recState.value != null || mode == AppMode.NAVIGATE
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
-            safeCells("position") { showCellJob(cellTriggers.appOpened(p, acc).tagged(LoadTag(LoadWhy.POINT))) }
-            routingFor(listOf(p), wait = true)
+            // owner 2026-10-23 (e.g. in a car): opening the app never loads by itself – the blue strip asks first
+            safeCells("position") {
+                val want = cellTriggers.preview(p)
+                val own = want.firstOrNull()
+                if (own != null && cells.downloadsAvailable && own !in hereDeclined) {
+                    hereAsk = HereAsk(p, acc, own, want.size,
+                        MapLoads.estimate(want, cells.states.value, cells.installed.value.associate { it.id to it.totalBytes }))
+                    Problems.trace("cells", "Asking whether to load the map for here (${want.size} area(s))")
+                } else if (own == null) hereAsk = null
+            }
         }
         // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off (2026-10-22)
     }

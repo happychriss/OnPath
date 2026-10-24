@@ -271,28 +271,43 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
         else -> null
     }
     val closable = card is CellCardUi.Offline || card is CellCardUi.NeedPosition || (working != null && working.question == null)
+    val buttons: List<Pair<String, () -> Unit>> = when {
+        working?.question != null -> listOf("Only on Wi-Fi" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
+        // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
+        working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
+        card is CellCardUi.Failed -> listOfNotNull("Not now" to cb.onClose, if (card.retryable) "Try again" to cb.onRetry else null)
+        card is CellCardUi.NeedPosition && !card.permission -> listOf("Allow location" to cb.onAllowLocation)
+        card == CellCardUi.NotAvailable -> listOf("OK" to cb.onClose)
+        else -> emptyList()
+    }
+    BlueNotice(title, detail, warning = card is CellCardUi.Failed, onClose = if (closable) cb.onClose else null, buttons, modifier)
+}
+
+/**
+ * Owner 2026-10-23 (e.g. in a car): the app opened where there is no detailed map – the strip asks instead of loading.
+ */
+@Composable
+fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier) =
+    BlueNotice("Detailed map for here? (≈ ${mb(bytes)} MB)",
+        "Until then the overview map shows. Setting a point here also loads it.",
+        warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier)
+
+/** One blue strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). */
+@Composable
+private fun BlueNotice(title: String, detail: String?, warning: Boolean, onClose: (() -> Unit)?,
+                       buttons: List<Pair<String, () -> Unit>>, modifier: Modifier) {
     Surface(shape = RoundedCornerShape(12.dp), color = InfoBlue.copy(alpha = 0.94f), contentColor = Color.White, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (card is CellCardUi.Failed) Icons.Outlined.Warning else Icons.Outlined.Download,
-                    null, modifier = Modifier.size(16.dp))
+                Icon(if (warning) Icons.Outlined.Warning else Icons.Outlined.Download, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                if (closable) androidx.compose.material3.IconButton(onClick = cb.onClose, modifier = Modifier.size(40.dp)) {
+                if (onClose != null) androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Filled.Close, "Hide (the map keeps loading)", modifier = Modifier.size(18.dp))
                 } else Spacer(Modifier.width(8.dp))
             }
             detail?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f), modifier = Modifier.padding(start = 22.dp, end = 8.dp)) }
-            val buttons: List<Pair<String, () -> Unit>> = when {
-                working?.question != null -> listOf("Only on Wi-Fi" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
-                // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
-                working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
-                card is CellCardUi.Failed -> listOfNotNull("Not now" to cb.onClose, if (card.retryable) "Try again" to cb.onRetry else null)
-                card is CellCardUi.NeedPosition && !card.permission -> listOf("Allow location" to cb.onAllowLocation)
-                card == CellCardUi.NotAvailable -> listOf("OK" to cb.onClose)
-                else -> emptyList()
-            }
             if (buttons.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 buttons.forEachIndexed { i, (label, act) ->
                     val main = i == buttons.lastIndex

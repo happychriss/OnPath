@@ -161,6 +161,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Map for here only on a yes (cloud, 2026-10-24, owner answer A after "in the car it should not load"):** opening the
+  app (or coming back to it) where there is no detailed map no longer loads by itself and shows no big loading window;
+  the blue strip asks "Detailed map for here? (≈ N MB) · Not now · Load" (`AppViewModel.hereAsk`, `HereAskStrip`).
+  Load = in the background; Not now = that area is not asked again in this app run; setting a point there loads as
+  always (T1, with the loading window) and lifts the "Not now". Not released yet.
 - **Loading chip with names (laptop, 2026-10-23, not released yet):** the blue background-loading strip in Plan is now a
   small chip under ☰ ("⬇ Bad Waldsee +1 · 34 %", name cut at ~half the width; Navigate chip has the name too); details
   list grouped lines ("Along your route to Gasthof Taser Alm (2 areas) · 13 MB · being prepared"). Names by reason

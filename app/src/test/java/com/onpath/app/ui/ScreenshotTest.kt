@@ -735,6 +735,11 @@ class ScreenshotTest {
     private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
         Frame(gps = gps, top = { mapNotice(card)?.let { MapNoticeStrip(it, CellCardCallbacks()) } }) { PlanPanel(ui, PlanCallbacks()) }
 
+    /** Owner 2026-10-23: the app opened where there is no detailed map – the strip asks, nothing loads by itself. */
+    @Test fun hereAsk() = paparazzi.snapshot {
+        Frame(top = { HereAskStrip(2, 21L * 1_048_576, {}, {}) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
+    }
+
     /** T1: a start point set outside the detailed map – the server builds the cells. */
     @Test fun cellCardPreparing() = paparazzi.snapshot {
         CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Building("base", 0.4, 300),

@@ -298,9 +298,16 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
     // owner 2026-10-23: plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
     val chipOn = bg != null && !vm.searchOpen && notice == null
-    LaunchedEffect(chipOn, notice != null) { vm.backgroundStripShown = chipOn || (notice != null && !vm.searchOpen) }
+    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null) {
+        vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null) && !vm.searchOpen)
+    }
+    val here = vm.hereAsk
     if (notice != null && !vm.searchOpen) {
         MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+    } else if (here != null && !vm.searchOpen) {
+        // owner 2026-10-23: opening the app asks for the map of here, it never loads by itself (e.g. in a car)
+        HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
+            modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (chipOn) {
         BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
             modifier = Modifier.align(Alignment.TopEnd).then(top).padding(end = 12.dp).measured())
