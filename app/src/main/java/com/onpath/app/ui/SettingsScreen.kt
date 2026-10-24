@@ -68,7 +68,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
 import com.onpath.app.poi.PoiGroup
@@ -297,8 +296,8 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                 Box(Modifier.size(12.dp).clip(CircleShape).background(Color(g.argb)))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(g.label, fontSize = 16.sp)
-                    Text("$on of ${kinds.size} shown", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(g.label, style = MaterialTheme.typography.bodyLarge)
+                    Text("$on of ${kinds.size} shown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Collapse" else "Expand")
                 Spacer(Modifier.width(8.dp))
@@ -309,7 +308,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                     .toggleable(value = shown, role = Role.Checkbox) { setHidden(if (shown) hidden + k.key else hidden - k.key) }
                     .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = shown, onCheckedChange = null, modifier = Modifier.padding(12.dp))
-                    Text(k.en, fontSize = 15.sp)
+                    Text(k.en, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -322,7 +321,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
     Section("Map") {
         if (themes.size > 1) {
-            Text("Map style", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+            Text("Map style", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
             androidx.compose.foundation.layout.FlowRow(
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -336,7 +335,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
         }
         SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
         SwitchRow("Hill shading", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
-        Text("Map direction (Plan and Navigate)", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+        Text("Map direction (Plan and Navigate)", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(true to "Direction of travel", false to "North up").forEach { (up, label) ->
                 FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
@@ -344,7 +343,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
             }
         }
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-        Text("Planning", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
+        Text("Planning", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
         SwitchRow("Vibrate when planning", "Short buzz when you hold the map, two buzzes on a route point",
             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
@@ -359,7 +358,7 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Warn after", fontSize = 14.sp)
+            Text("Warn after", style = MaterialTheme.typography.bodyMedium)
             AppSettings.OFF_ROUTE_CHOICES.forEach { m ->
                 FilterChip(selected = settings.offRouteM == m, enabled = settings.offRouteWarning,
                     onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text("$m m") },
@@ -433,39 +432,39 @@ private fun DeveloperTools(
                 Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Close" else "Open")
             }
             if (open) Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Map server: $mapServer", fontSize = 12.sp,
+                Text("Map server: $mapServer", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // by hand: the 1° routing parts at the map centre (they normally load with the map)
                 OutlinedButton(onClick = onDownloadRouting, enabled = dataBusy == null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
-                if (dataBusy != null) Text(dataBusy, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (dataBusy != null) Text(dataBusy, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 mapCells?.let { MapCellsDebugList(it) }
                 // the formulas behind the plan sheet's time (moved here from ⋯ → Time details, owner 2026-10-23)
                 OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
-                if (onTimeFormulas == null) Text("Plan a route first.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Map data", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
-                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // routing data is part of the map (owner 2026-10-22): no own button here, see above
                 DataActions(routingMissing = false, busy = dataBusy, onImport = onImportData, onDownloadRouting = {})
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Data folder", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(dataDir, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                Text("Data folder", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(dataDir, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                 checks.forEach { c ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(if (c.present) Icons.Filled.CheckCircle else Icons.Filled.RemoveCircleOutline, null,
                             tint = if (c.present) OnPathColors.Good else OnPathColors.Bad, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", fontSize = 13.sp)
+                        Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (mapPackage != null) {
                     Text("Map package: ${mapPackage.region} · ${mapPackage.area}" +
-                        (mapPackage.osmDate?.let { " · OSM ${it.take(10)}" } ?: ""), fontSize = 13.sp)
+                        (mapPackage.osmDate?.let { " · OSM ${it.take(10)}" } ?: ""), style = MaterialTheme.typography.bodySmall)
                     if (!mapPackage.ok) Text("From another package (map has gaps there): ${mapPackage.mismatched.joinToString()}. " +
-                        "Import every part of the map package again.", fontSize = 13.sp, color = OnPathColors.Bad)
+                        "Import every part of the map package again.", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Bad)
                 }
             }
         }
@@ -486,19 +485,19 @@ data class MapCellsDebug(
 
 @Composable
 private fun MapCellsDebugList(d: MapCellsDebug) {
-    Text("Map areas (debug)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-    Text("Map files: ${d.store}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    if (d.installed.isEmpty()) Text("No areas installed.", fontSize = 12.sp)
+    Text("Map areas (debug)", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    Text("Map files: ${d.store}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (d.installed.isEmpty()) Text("No areas installed.", style = MaterialTheme.typography.bodySmall)
     d.installed.forEach { (id, version, bytes) ->
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", fontSize = 12.sp,
+            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
             TextButton(onClick = { d.onDelete(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete") }
         }
     }
     if (d.installed.isNotEmpty()) Text("Total ${"%.1f".format(java.util.Locale.ROOT, d.installed.sumOf { it.third } / 1_048_576.0)} MB",
-        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    d.active.forEach { (id, s) -> Text("$id: $s", fontSize = 12.sp, fontFamily = FontFamily.Monospace) }
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    d.active.forEach { (id, s) -> Text("$id: $s", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
     OutlinedButton(onClick = d.onRequestAtCentre, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
         Text("Request map area at map centre")
     }
@@ -509,7 +508,7 @@ private fun MapCellsDebugList(d: MapCellsDebug) {
 private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onClear: () -> Unit) {
     val serious = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR }
     Text(if (problems.isEmpty()) "No problems noticed." else "Problems noticed: ${problems.size}" +
-        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
     val fmt = remember { java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault()) }
     problems.take(15).forEach { p ->
         val color = when (p.level) {
@@ -517,9 +516,9 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         Text("${fmt.format(java.util.Date(p.last))} · ${p.level.name.lowercase()} · ${p.area}: ${p.message}" +
-            (if (p.count > 1) " (× ${p.count})" else ""), fontSize = 12.sp, color = color)
+            (if (p.count > 1) " (× ${p.count})" else ""), style = MaterialTheme.typography.bodySmall, color = color)
     }
-    if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", fontSize = 12.sp)
+    if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", style = MaterialTheme.typography.bodySmall)
     if (problems.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear problem list") }
 }
 
@@ -532,13 +531,13 @@ private fun PrivacySection() {
     Section("Privacy") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Nothing is tracked. No account, no analytics, no ads.", fontWeight = FontWeight.SemiBold)
-            Text("Your tracks and routes never leave the phone – only to your own backup folder.", fontSize = 14.sp)
+            Text("Your tracks and routes never leave the phone – only to your own backup folder.", style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
-            Text("What leaves your phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("What leaves your phone", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             PRIVACY_FLOWS.forEach { f ->
                 Column {
-                    Text(f.what, fontSize = 14.sp)
-                    Text("→ ${f.to} · ${f.whenText}", fontSize = 12.sp, lineHeight = 16.sp,
+                    Text(f.what, style = MaterialTheme.typography.bodyMedium)
+                    Text("→ ${f.to} · ${f.whenText}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -578,10 +577,10 @@ private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevT
                     })
             if (devTools && taps > 0) Text("Developer tools are on – Settings → Diagnostics.", style = MaterialTheme.typography.bodySmall,
                 color = OnPathColors.Green)
-            Text("Licence: Apache-2.0", fontSize = 13.sp)
+            Text("Licence: Apache-2.0", style = MaterialTheme.typography.bodySmall)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            Text("Credits", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            MAP_CREDITS.forEach { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text("Credits", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            MAP_CREDITS.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
@@ -617,8 +616,8 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enable
         .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp)
-            if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }

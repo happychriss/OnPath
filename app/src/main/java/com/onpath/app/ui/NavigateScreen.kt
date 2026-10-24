@@ -265,7 +265,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
-    val offCard = ui.offRoute != null // the amber off-route card says where the route is – not repeated here
+    // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
+    val offCard = ui.offRoute != null && ui.offRoute.prompt !is NavPrompt.Question
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {

@@ -72,7 +72,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.DataFiles
 import com.onpath.app.data.Format
 import com.onpath.app.data.Tour
@@ -113,10 +112,10 @@ fun MissingDataScreen(
                                 tint = if (c.present) OnPathColors.Good else OnPathColors.Bad, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(c.name, fontFamily = FontFamily.Monospace, fontSize = 14.sp)
-                                Text(c.hint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(c.name, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+                                Text(c.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text(if (c.present) "found" else "missing", fontSize = 12.sp,
+                            Text(if (c.present) "found" else "missing", style = MaterialTheme.typography.bodySmall,
                                 color = if (c.present) OnPathColors.Good else OnPathColors.Bad)
                         }
                     }
@@ -131,7 +130,7 @@ fun MissingDataScreen(
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
                         SelectionContainer {
-                            Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                            Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     IconButton(onClick = { onCopy(DataFiles.ADB_COMMAND) }, Modifier.size(48.dp)) {
@@ -139,10 +138,10 @@ fun MissingDataScreen(
                     }
                 }
             }
-            Text("Target folder on the phone:\n$dataDir", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Target folder on the phone:\n$dataDir", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Check again", fontSize = 16.sp)
+                Text("Check again", style = MaterialTheme.typography.bodyLarge)
             }
             OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Continue without map data")
@@ -160,7 +159,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)) {
-            Text("Import map data (.zip) from this phone", fontSize = 16.sp)
+            Text("Import map data (.zip) from this phone", style = MaterialTheme.typography.bodyLarge)
         }
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
@@ -172,7 +171,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.material3.CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(12.dp))
-                Text(busy, fontSize = 14.sp)
+                Text(busy, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -211,13 +210,13 @@ fun ActivityDialog(
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(14.dp))
-                        Text(a.label, fontSize = 16.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                        Text(a.label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
                 if (hike) {
                     val level = SacScale.of(sac)
                     Spacer(Modifier.height(12.dp))
-                    Text("Hiking difficulty (SAC)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text("Hiking difficulty (SAC)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                     androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         SacScale.levels.forEachIndexed { i, l ->
@@ -227,10 +226,10 @@ fun ActivityDialog(
                                 shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
                                 icon = {}, // no check mark: five narrow segments
                                 modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "T${l.level} · ${l.name}" },
-                            ) { Text("T${l.level}", fontSize = 14.sp) }
+                            ) { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
-                    Text("T${level.level} · ${level.name} – ${level.text}", fontSize = 12.sp, lineHeight = 16.sp,
+                    Text("T${level.level} · ${level.name} – ${level.text}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                 }
             }
@@ -374,10 +373,10 @@ private fun TourCard(
             Column(Modifier.weight(1f)) {
                 Text(t.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${t.kind.label} · " + SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t.createdMs)),
-                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
-                if (onDelete == null) Text("Recording now", fontSize = 12.sp, color = OnPathColors.Rec)
-                else if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
+                if (onDelete == null) Text("Recording now", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                else if (onOpen == null) Text("Can be loaded after the tour", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
         }
