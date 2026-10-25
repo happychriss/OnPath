@@ -184,6 +184,32 @@ abstract class E2EBase {
     }
 
     /**
+     * The other half of [goneFresh]: waits until [selector] matches, looking afresh each time. Content that appears in
+     * place inside the same window (the plan sheet's points list when it reaches the full step) can stay invisible to
+     * UiAutomator: on Android 14 its node cache keeps the old tree and `device.wait(Until.findObject…)` asks that cache
+     * again and again (CI 2026-10-25: screenshot shows the rows with ✕, "Delete point" not found for 10 s).
+     */
+    protected fun findFresh(selector: androidx.test.uiautomator.BySelector, timeoutMs: Long): androidx.test.uiautomator.UiObject2? {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            if (Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+            device.waitForIdle(500)
+            device.findObject(selector)?.let { return it }
+            if (System.currentTimeMillis() > end) return null
+            Thread.sleep(250)
+        }
+    }
+
+    /** Content descriptions UiAutomator sees right now, after a fresh look (failure messages: missing vs. not seen). */
+    protected fun seenDescriptions(max: Int = 40): String {
+        if (Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+        return try {
+            device.findObjects(By.desc(java.util.regex.Pattern.compile(".+", java.util.regex.Pattern.DOTALL)))
+                .mapNotNull { it.contentDescription }.take(max).joinToString(" | ")
+        } catch (e: Exception) { "(hierarchy not readable: ${e.javaClass.simpleName})" } // expected: diagnostics only
+    }
+
+    /**
      * The "I am here" dot is the top of the map: every layer above its first layer is one of its own
      * (owner 2026-10-22, after the dot vanished under route items twice). [where] names the moment for the message.
      */

@@ -3,7 +3,6 @@ package com.onpath.app.e2e
 import android.graphics.Point
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Until
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.PlanSize
 import org.junit.Assert.assertEquals
@@ -51,11 +50,12 @@ class CorePointsListE2ETest : E2EBase() {
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         // the rows' ✕ (content descriptions) – UiAutomator found the "Points" header text only now and then on CI,
-        // although it was on screen (screenshots 2026-10-22)
-        if (device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000) == null) {
+        // although it was on screen (screenshots 2026-10-22); its cache kept the tree without the list (2026-10-25):
+        // look afresh each time
+        if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
             shot("no-points-section")
             var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
-            throw AssertionError("Points section shown – tour running $rec – ${state()}")
+            throw AssertionError("Points section shown – tour running $rec – UiAutomator sees: ${seenDescriptions()} – ${state()}")
         }
         // owner 2026-10-22: profile first, then the points (one scrolling area)
         val profile = desc("Elevation profile").visibleBounds
@@ -63,7 +63,7 @@ class CorePointsListE2ETest : E2EBase() {
         assertTrue("profile above the points: $profile vs $firstRow", profile.bottom <= firstRow.top + 2)
     }
 
-    private fun desc(text: String) = device.wait(Until.findObject(By.desc(text)), 5_000)
+    private fun desc(text: String) = findFresh(By.desc(text), 5_000)
         ?: run { shot("missing-${text.filter { it.isLetterOrDigit() }}"); throw AssertionError("\"$text\" not shown – ${state()}") }
 
     @Test fun deleteTheSecondPointWithX() {
@@ -128,13 +128,16 @@ class CorePointsListE2ETest : E2EBase() {
         // first swipe up: the profile, not yet the points
         dragHandle(-(h * 0.2f).toInt())
         waitUntil("profile step after the first swipe up") { size() == PlanSize.COMPACT }
-        assertNotNull("profile shown", device.wait(Until.findObject(By.desc("Elevation profile")), 5_000))
+        assertNotNull("profile shown", findFresh(By.desc("Elevation profile"), 5_000))
         assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
         Thread.sleep(600)
         // second swipe up: the points
         dragHandle(-(h * 0.25f).toInt())
         waitUntil("full sheet after the second swipe up") { size() == PlanSize.FULL }
-        assertNotNull("points shown", device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000))
+        if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
+            shot("no-points-full")
+            throw AssertionError("points shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")
+        }
         Thread.sleep(600)
         dragHandle((h * 0.2f).toInt())
         waitUntil("half sheet after a swipe down") { size() == PlanSize.COMPACT }
@@ -154,7 +157,8 @@ class CorePointsListE2ETest : E2EBase() {
                 org.maplibre.android.geometry.LatLng(target.lat + 0.05, target.lon + 0.05)))
         }
         Thread.sleep(500)
-        device.wait(Until.findObject(By.descStartsWith("Show point 2 on the map")), 5_000)!!.click()
+        (findFresh(By.descStartsWith("Show point 2 on the map"), 5_000)
+            ?: throw AssertionError("row of point 2 shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")).click()
         waitUntil("half sheet after the tap") { size() == PlanSize.COMPACT }
         Thread.sleep(1_200) // camera glide
         var highlight: GeoPoint? = null
