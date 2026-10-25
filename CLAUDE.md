@@ -3,7 +3,7 @@
 **Two sessions work on this repo (laptop + cloud): follow `docs/working-agreement.md` – pull first, claim in
 `docs/backlog.md`, push small green commits, leave a handoff.**
 
-Read this first, then `docs/project-status.md` (where we are, decisions, next steps) and
+Read this first, then `docs/owner-preferences.md` (how the owner likes to work), `docs/project-status.md` (where we are, decisions, next steps) and
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07).
 
 ## What OnPath is

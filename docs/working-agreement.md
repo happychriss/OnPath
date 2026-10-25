@@ -9,7 +9,9 @@ OnPath is developed by two Claude Code sessions that the owner uses in a mixed w
 | Gets the app to the phone by | `./gradlew installDebug` / `adb install -r` | GitHub Release → in-app update (Settings → Updates) |
 | Map data | `adb push` or zip import | builds packages with `tools/build_region.sh` |
 
-Both read this file, `CLAUDE.md` and `docs/project-status.md` at the start of every session. **GitHub `main` is
+Since 2026-10-25 the owner also works from the desktop PC **donald** (local network) – a local session there
+follows the laptop column. Both read this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
+work) and `docs/project-status.md` at the start of every session. **GitHub `main` is
 the single source of truth**; the two sessions never talk directly – they talk through the repository.
 
 ## 1. The five rules
