@@ -101,6 +101,24 @@ class RouteWarningsTest {
         assertTrue(RouteWarnings.detect(hike, Activity.HIKE, 3).isEmpty())
     }
 
+    /**
+     * Owner decision 2026-10-25: a footway without a bicycle tag that is part of a signed cycle route is
+     * ridden – the touring / trekking profiles cost it like a cycleway, so no "pushing" there. A footway off a route,
+     * or with bicycle=no / dismount, stays pushing.
+     */
+    @Test fun footwayOnACycleRouteIsNotPushing() {
+        val onRoute = WayAttrs("footway", "paved", cycleRoute = true)
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)) {
+            assertTrue("$a", RouteWarnings.detect(route(p(road, 300), p(onRoute, 300), p(road, 300)), a, 3).isEmpty())
+        }
+        val off = route(p(road, 300), p(WayAttrs("footway", "paved"), 300), p(road, 300))
+        assertEquals(SpotKind.PUSH, RouteWarnings.detect(off, Activity.BIKE_TREKKING, 3).single().kind)
+        for (b in listOf("no", "dismount")) {
+            val signed = route(p(road, 300), p(onRoute.copy(bicycle = b), 300), p(road, 300))
+            assertEquals(b, SpotKind.PUSH, RouteWarnings.detect(signed, Activity.BIKE_TOURING, 3).single().kind)
+        }
+    }
+
     @Test fun gapsBelowThirtyMetresJoin() {
         val r = route(p(road, 300), p(footway, 100), p(road, 20), p(footway, 100), p(road, 300))
         val s = RouteWarnings.detect(r, Activity.EBIKE, 3).single()

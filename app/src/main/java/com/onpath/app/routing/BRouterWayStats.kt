@@ -72,6 +72,7 @@ object BRouterWayStats {
         visibility = tags["trail_visibility"],
         rough = tags["surface"]?.takeIf { it in ROUGH },
         bicycle = tags["bicycle"]?.trim()?.ifEmpty { null },
+        cycleRoute = CYCLE_ROUTES.any { tags[it] == "yes" },
     )
 
     /**
@@ -180,6 +181,8 @@ object BRouterWayStats {
         "hiking" to 1, "T1-hiking" to 1, "mountain_hiking" to 2, "demanding_mountain_hiking" to 3,
         "alpine_hiking" to 4, "demanding_alpine_hiking" to 5, "difficult_alpine_hiking" to 6,
     )
+    /** BRouter's pseudo-tags for cycle route relations (lookups.dat); route_bicycle_mtb is not a touring route. */
+    private val CYCLE_ROUTES = listOf("route_bicycle_icn", "route_bicycle_ncn", "route_bicycle_rcn", "route_bicycle_lcn")
     private val ROUGH = setOf("rock", "rocks", "rocky", "stone", "scree")
     private val ALPINE_SAC = setOf("alpine_hiking", "demanding_alpine_hiking", "difficult_alpine_hiking")
     private val MAJOR_ROADS = setOf(

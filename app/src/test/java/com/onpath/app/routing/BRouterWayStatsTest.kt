@@ -1,6 +1,7 @@
 package com.onpath.app.routing
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -98,6 +99,14 @@ class BRouterWayStatsTest {
         // a run that matches no node: nothing (times as without attributes)
         assertTrue(BRouterWayStats.perNode(listOf(m(1, 2, "highway=path")), lon, lat).isEmpty())
         assertTrue(BRouterWayStats.perNode(null, lon, lat).isEmpty())
+    }
+
+    @Test fun cycleRouteFromRouteTags() {
+        for (n in listOf("icn", "ncn", "rcn", "lcn")) {
+            assertTrue(n, BRouterWayStats.attrs(t("highway=footway route_bicycle_$n=yes")).cycleRoute)
+        }
+        assertFalse(BRouterWayStats.attrs(t("highway=footway route_bicycle_mtb=yes route_hiking_lwn=yes")).cycleRoute)
+        assertFalse(BRouterWayStats.attrs(t("highway=footway")).cycleRoute)
     }
 
     /**

@@ -119,5 +119,9 @@ class WayTimesTest {
         assertEquals(null, WayAttrs.parse("path|natural_trail|3|-1||bad|")?.bicycle)
         assertEquals(null, WayAttrs.parse(null))
         assertNotEquals(w, WayAttrs.parse(w.copy(sac = 4).code()))
+        // cycle route (2026-10-25): round trip, and older 8-field codes read as "not on a route"
+        assertEquals(true, WayAttrs.parse(bike.copy(cycleRoute = true).code())?.cycleRoute)
+        assertEquals(false, WayAttrs.parse(bike.code())?.cycleRoute)
+        assertEquals(false, WayAttrs.parse("footway|paved|0|-1||||")?.cycleRoute)
     }
 }

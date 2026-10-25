@@ -24,7 +24,8 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  *
  * What counts (only what the route's way attributes – BRouter way tags per span – and its elevations reliably give):
  * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no; footway / pedestrian without bike
- *   access; touring / trekking / e-bike also paths of SAC ≥ T2 or mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
+ *   access (not on a signed cycle route, owner 2026-10-25); touring / trekking / e-bike also paths of SAC ≥ T2 or
+ *   mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
  *   or mtb:scale ≥ S4. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing. Sections
  *   < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
@@ -81,7 +82,8 @@ object RouteWarnings {
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
-                w.wayType == "footway" -> true
+                // a footway on a signed cycle route is ridden (owner 2026-10-25; the profiles cost it so)
+                w.wayType == "footway" -> !w.cycleRoute
                 a == Activity.MTB || a == Activity.EMTB -> w.sac >= 4 || w.mtb >= 4
                 else -> w.sac >= 2 || w.mtb >= 2
             }
