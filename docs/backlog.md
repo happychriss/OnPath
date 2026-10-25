@@ -175,6 +175,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Offline search index per map area, no empty moment (laptop, 2026-10-25, field 0.10.1 "zons" found nothing for a
+  minute: `Search index g000059: 129358 entries in 59121 ms`):** each map area (installed cell id + version, or the
+  data-folder package) is extracted once into `files/search-areas/<area>@<version>.tsv` (`search/SearchAreas.kt`); a
+  new store generation only reads the changed cells (their tiles / POIs) and reuses the rest from memory – the index is
+  the union. The previous index keeps answering while a new one is built (swap when ready); only the very first build
+  shows "Preparing offline search…" (spinner, `SearchUi.indexing`). Old installs migrate on the first build (the old
+  `search-places-v1.tsv` goes). Log: "Search index: +n areas −m areas in N ms". JVM, 130 k entries / 40 areas: full
+  build ~800 ms, one area changed ~220 ms, from files after a start ~700 ms (`SearchAreasTest`, `SearchIndexSwapTest`).
+  Chip labels unchanged (owner: bilingual version comes).
 - **Map for here only on a yes (cloud, 2026-10-24, owner answer A after "in the car it should not load"):** opening the
   app (or coming back to it) where there is no detailed map no longer loads by itself and shows no big loading window;
   owner 2026-10-24: when the server has it ready (`MapCells.builtOnServer`, GET status only – starts no build) it loads

@@ -1286,7 +1286,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val search by lazy {
         com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
             com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
-            mapDir = { dataFiles.mapDir() }) {
+            areaPlan = { com.onpath.app.search.AreaPlan.of(dataFiles.dir) }) {
             val loc = tracker.location.value
             val (cLat, cLon, _) = initialCamera()
             // Position when known and near what the user looks at, else the map centre.

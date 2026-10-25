@@ -74,6 +74,9 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             try { block() } catch (e: Throwable) { Problems.warn("search", "Search index: $what skipped (file unreadable)", e) }
         }
 
+        /** A base-map peak / place as a search [Place]. */
+        fun placeOf(i: BaseMapPlaces.Item) = i.toPlace()
+
         private fun BaseMapPlaces.Item.toPlace() = Place(
             id = "m:$kind:${"%.5f".format(java.util.Locale.ROOT, lat)},${"%.5f".format(java.util.Locale.ROOT, lon)}",
             name = name, kind = kind, lat = lat, lon = lon, ele = ele, sub = sub, source = Place.Source.MAP, alt = alt,
@@ -115,15 +118,22 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
 
         // ---------------- GeoJSON (streaming, tolerant) ----------------
 
-        fun readPois(f: File): List<Place> {
-            if (!f.isFile) return emptyList()
-            val out = ArrayList<Place>()
-            readFeatures(f) { type, coords, props ->
+        fun readPois(f: File): List<Place> = readPoisGrouped(f) { _, _ -> Unit }[Unit].orEmpty()
+
+        /**
+         * POIs per group: [group] maps a point to its group (the map area owning it) or null (left out; its properties
+         * are skipped unread when the geometry comes first, as in our files – a scan for a few areas stays cheap).
+         */
+        fun <K : Any> readPoisGrouped(f: File, group: (Double, Double) -> K?): Map<K, List<Place>> {
+            if (!f.isFile) return emptyMap()
+            val out = HashMap<K, ArrayList<Place>>()
+            readFeatures(f, keepPoint = { lat, lon -> group(lat, lon) != null }) { type, coords, props ->
                 if (type != "Point") return@readFeatures
                 val c = coords as? List<*> ?: return@readFeatures
                 val lon = (c.getOrNull(0) as? Double) ?: return@readFeatures
                 val lat = (c.getOrNull(1) as? Double) ?: return@readFeatures
-                Poi.fromProperties(props, lat, lon)?.let { out += Place.fromPoi(it) }
+                val k = group(lat, lon) ?: return@readFeatures
+                Poi.fromProperties(props, lat, lon)?.let { out.getOrPut(k) { ArrayList() } += Place.fromPoi(it) }
             }
             return out
         }
@@ -134,12 +144,15 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             return mergeTrailParts(BaseMapPlaces.readTrailNames(f).map { TrailPart(it.name, it.lat, it.lon, it.len) })
         }
 
-        class TrailPart(val name: String, val lat: Double, val lon: Double, val len: Double)
+        data class TrailPart(val name: String, val lat: Double, val lon: Double, val len: Double)
 
         /** Trail names (t = "n"): one entry per name and area (parts within 2 km merge), placed mid-trail. */
-        fun readTrails(f: File): List<Place> {
-            if (!f.isFile) return emptyList()
-            val parts = ArrayList<TrailPart>()
+        fun readTrails(f: File): List<Place> = mergeTrailParts(readTrailPartsGrouped(f) { _, _ -> Unit }[Unit].orEmpty())
+
+        /** Unmerged trail pieces of trailnames.geojson per group of their middle point (null = left out). */
+        fun <K : Any> readTrailPartsGrouped(f: File, group: (Double, Double) -> K?): Map<K, List<TrailPart>> {
+            if (!f.isFile) return emptyMap()
+            val out = HashMap<K, ArrayList<TrailPart>>()
             readFeatures(f) { type, coords, props ->
                 if (type != "LineString" || props["t"] != "n") return@readFeatures
                 val name = (props["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: return@readFeatures
@@ -147,9 +160,10 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                     ?.filter { it.first != null && it.second != null } ?: return@readFeatures
                 if (pts.isEmpty()) return@readFeatures
                 val mid = pts[pts.size / 2]
-                parts += TrailPart(name, mid.first!!, mid.second!!, (props["len"] as? Double) ?: 0.0)
+                val k = group(mid.first!!, mid.second!!) ?: return@readFeatures
+                out.getOrPut(k) { ArrayList() } += TrailPart(name, mid.first!!, mid.second!!, (props["len"] as? Double) ?: 0.0)
             }
-            return mergeTrailParts(parts)
+            return out
         }
 
         /** Longest piece first; a piece within 2 km of a kept piece of the same name is dropped. Pure, unit-tested. */
@@ -165,7 +179,12 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
             return out
         }
 
-        private fun readFeatures(f: File, onFeature: (String?, Any?, Map<String, Any?>) -> Unit) {
+        /**
+         * Streams the features of a GeoJSON file. [keepPoint]: a Point whose position it rejects is skipped – its
+         * properties are not parsed when the geometry came first.
+         */
+        private fun readFeatures(f: File, keepPoint: ((Double, Double) -> Boolean)? = null,
+                                 onFeature: (String?, Any?, Map<String, Any?>) -> Unit) {
             JsonReader(InputStreamReader(f.inputStream().buffered(1 shl 16), Charsets.UTF_8)).use { r ->
                 r.isLenient = true
                 r.beginObject()
@@ -174,6 +193,14 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                     r.beginArray()
                     while (r.hasNext()) {
                         var type: String? = null; var coords: Any? = null; var props: Map<String, Any?> = emptyMap()
+                        var skip = false
+                        fun rejected(): Boolean {
+                            if (keepPoint == null || type != "Point") return false
+                            val c = coords as? List<*> ?: return false
+                            val lon = c.getOrNull(0) as? Double ?: return false
+                            val lat = c.getOrNull(1) as? Double ?: return false
+                            return !keepPoint(lat, lon)
+                        }
                         r.beginObject()
                         while (r.hasNext()) {
                             when (r.nextName()) {
@@ -188,6 +215,8 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                                     r.endObject()
                                 }
                                 "properties" -> {
+                                    if (!skip && rejected()) skip = true
+                                    if (skip) { r.skipValue(); continue }
                                     @Suppress("UNCHECKED_CAST")
                                     props = (readValue(r) as? Map<String, Any?>) ?: emptyMap()
                                 }
@@ -195,7 +224,7 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
                             }
                         }
                         r.endObject()
-                        onFeature(type, coords, props)
+                        if (!skip) onFeature(type, coords, props)
                     }
                     r.endArray()
                 }

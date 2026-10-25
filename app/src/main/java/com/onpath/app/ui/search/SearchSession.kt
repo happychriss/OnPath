@@ -7,6 +7,8 @@ import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.AddressDb
+import com.onpath.app.search.AreaPlan
+import com.onpath.app.search.SearchAreas
 import com.onpath.app.search.AddressIndex
 import com.onpath.app.search.AddressQuery
 import com.onpath.app.search.AndroidAddressDb
@@ -43,6 +45,7 @@ data class SearchUi(
     val hits: List<SearchHit> = emptyList(),
     val online: List<SearchHit> = emptyList(),
     val onlineState: OnlineState = OnlineState.IDLE,
+    /** No offline index yet and the first one is being built ("Preparing offline search…"); never during a rebuild. */
     val indexing: Boolean = false,
     val recent: List<SearchHit> = emptyList(),
     val hasRoute: Boolean = false,
@@ -69,10 +72,10 @@ class SearchSession(
     /** Opens an offline address file (addresses.sqlite); replaced in tests. */
     private val openAddresses: (File) -> AddressDb = { AndroidAddressDb(it) },
     /**
-     * Folder of the map files the index reads (base, overlays, POIs): the data folder or the current generation of
-     * downloaded map cells (DataFiles.mapDir). Asked on every open, so a new generation rebuilds the index.
+     * The map areas the index covers (installed cells of the current store generation, or the data folder). Asked on
+     * open (and now and then while typing): a changed area is re-indexed in the background, the rest is reused.
      */
-    private val mapDir: () -> File = { dataDir },
+    private val areaPlan: () -> AreaPlan = { AreaPlan.of(dataDir) },
     private val context: () -> SearchContext,
 ) {
     @Volatile private var addresses: AddressIndex? = null
@@ -88,8 +91,11 @@ class SearchSession(
     var ui by mutableStateOf(SearchUi())
         private set
 
-    private var index: OfflineIndex? = null
+    @Volatile private var index: OfflineIndex? = null
     private val indexLock = Mutex()
+    private var refreshJob: Job? = null
+    @Volatile private var lastCheck = 0L
+    private val areas: SearchAreas get() = areasFor(cacheDir)
     private var offlineJob: Job? = null
     private var onlineJob: Job? = null
     private var generation = 0
@@ -98,7 +104,7 @@ class SearchSession(
     fun onOpen() {
         val ctx = context()
         ui = ui.copy(recent = recentHits(ctx), hasRoute = ctx.route != null)
-        scope.launch { ensureIndex(); if (ui.active) run() }
+        scope.launch { ensureIndex(force = true); if (ui.active) run() }
     }
 
     fun onQuery(q: String) { ui = ui.copy(query = q); run() }
@@ -121,21 +127,45 @@ class SearchSession(
     /** The offline index, built (off the main thread) when needed; for route names (search/RouteNamer). */
     suspend fun offlineIndex(): OfflineIndex = ensureIndex()
 
-    private suspend fun ensureIndex(): OfflineIndex = indexLock.withLock {
-        val cur = index ?: cached
-        val dir = withContext(Dispatchers.IO) { mapDir() }
-        // the folder is part of the signature: a new store generation (new paths) always rebuilds
-        val sig = withContext(Dispatchers.IO) { dir.path + "|" + OfflineIndex.signature(dir) }
-        if (cur != null && cur.signature == sig) { index = cur; return cur }
-        ui = ui.copy(indexing = true)
-        val built = withContext(Dispatchers.IO) {
-            val t0 = System.currentTimeMillis()
-            // in the event log (perf report 2026-10-22: the index is rebuilt after every map store generation)
-            OfflineIndex.load(dir, cacheDir, sig).also { com.onpath.app.debug.Problems.trace("search", "Search index ${dir.name}: ${it.entries.size} entries in ${System.currentTimeMillis() - t0} ms") }
+    /**
+     * The index to answer with now. When there is one it answers at once, and a newer one is built in the background
+     * if the map areas changed – no empty moment while a new map store generation is indexed (field 2026-10-23: "zons"
+     * found nothing for a minute). Only the very first time (no index yet) this waits; the view then shows
+     * "Preparing offline search…" ([SearchUi.indexing]).
+     */
+    private suspend fun ensureIndex(force: Boolean = false): OfflineIndex {
+        val cur = index ?: areas.latest
+        if (cur != null) { index = cur; refresh(force); return cur }
+        return rebuild()
+    }
+
+    /** Checks the map areas (at most every few seconds while typing) and rebuilds in the background when they changed. */
+    private fun refresh(force: Boolean) {
+        val now = System.currentTimeMillis()
+        if (refreshJob?.isActive == true || (!force && now - lastCheck < RECHECK_MS)) return
+        lastCheck = now
+        refreshJob = scope.launch {
+            val before = index
+            val built = rebuild()
+            // the old index found nothing for the text on screen: answer again with the new one (no rows move)
+            if (built !== before && ui.active && ui.hits.isEmpty()) run()
         }
-        index = built; cached = built
-        ui = ui.copy(indexing = false)
-        built
+    }
+
+    /** Builds the index for the current areas when it changed (only changed areas are read); swaps it in when ready. */
+    private suspend fun rebuild(): OfflineIndex = indexLock.withLock {
+        val cur = index ?: areas.latest
+        if (cur == null) ui = ui.copy(indexing = true)
+        try {
+            val plan = withContext(Dispatchers.IO) { areaPlan() }
+            if (cur != null && cur.signature == plan.signature) { index = cur; return cur }
+            // SearchAreas logs "Search index: +n areas −m areas in N ms" (perf report 2026-10-22)
+            val built = withContext(Dispatchers.IO) { areas.build(plan) }
+            index = built
+            built
+        } finally {
+            if (cur == null) ui = ui.copy(indexing = false)
+        }
     }
 
     /** Where a [findOne] result came from. */
@@ -234,7 +264,13 @@ class SearchSession(
 
     companion object {
         const val DEBOUNCE_MS = 350L
-        /** Kept for the whole process: re-opening the search is instant. */
-        @Volatile private var cached: OfflineIndex? = null
+        /** While typing, the map areas are checked for changes at most this often (on open: always). */
+        const val RECHECK_MS = 5_000L
+        private val areaStores = HashMap<String, SearchAreas>()
+
+        /** One [SearchAreas] per app folder for the whole process (its areas stay in memory between builds). */
+        @Synchronized fun areasFor(filesDir: File): SearchAreas = areaStores.getOrPut(filesDir.path) {
+            SearchAreas(File(filesDir, "search-areas"), legacyCache = File(filesDir, "search-places-v1.tsv"))
+        }
     }
 }
