@@ -26,6 +26,7 @@ import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.GpxWriter
+import com.onpath.app.gpx.SportType
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.recording.LocationTracker
 import com.onpath.app.navigation.NavKind
@@ -3441,30 +3442,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints)
+            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints, SportType.typeOf(t.activity, t.sac))
         }
     }
 
     fun exportShown() {
         val sh = shown ?: return
         viewModelScope.launch {
-            share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints)
+            // the shown tour's own activity (an imported track keeps the one it came with)
+            val tour = sh.tourId?.let { id ->
+                withContext(Dispatchers.IO) {
+                    runCatching { db.getTour(id) }.onFailure { Problems.warn("gpx", "GPX export: tour activity unreadable; exported without a sport type", it) }.getOrNull()
+                }
+            }
+            share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints,
+                tour?.let { SportType.typeOf(it.activity, it.sac) })
         }
     }
 
     fun exportPlanned() {
         val r = route ?: return
         viewModelScope.launch {
-            share(defaultName("OnPath route"), listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), emptyList())
+            share(defaultName("OnPath route"), listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), emptyList(),
+                SportType.typeOf(activity, sac))
         }
     }
 
-    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>) {
+    /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
+    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
                 val file = File(dir, GpxWriter.fileName(name))
-                file.writeText(GpxWriter.write(name, segs, wpts))
+                file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)
             }
             val send = Intent(Intent.ACTION_SEND).apply {
@@ -3497,6 +3507,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     stream.use { GpxParser.parse(it) } to name
                 }
                 val segs = data.allSegments
+                // Komoot's sport in <trk><type> preselects the activity (owner 2026-10-25); unknown → the current one
+                val pick = SportType.forImport(data.type, activity, sac)
                 val name = data.name ?: fileName?.removeSuffix(".gpx")?.removeSuffix(".GPX") ?: defaultName("Import")
                 val geo = segs.map { s -> s.map { it.toGeo() } }
                 val dist = geo.sumOf { Geo.length(it) }
@@ -3504,9 +3516,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 segs.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
                 val times = segs.flatten().mapNotNull { it.timeMs }
                 val dur = if (times.size > 1 && times.last() > times.first()) (times.last() - times.first()) / 1000.0
-                else Geo.estimateSeconds(dist, up, down, activity)
+                else Geo.estimateSeconds(dist, up, down, pick.activity)
                 val id = withContext(Dispatchers.IO) {
-                    db.insertTour(TourKind.IMPORTED, name, activity.name, sac, dist, up, down, dur, segs, data.waypoints)
+                    db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 Backups.tourChanged(app, id)
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
@@ -3514,6 +3526,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 refreshTours()
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
+                // like opening a recorded tour: its activity is chosen (not during a tour – the followed route keeps its own)
+                if (data.type != null) Problems.info("gpx", "GPX import “$name”: type “${data.type}” → ${pick.activity.name}" +
+                    if (pick.activity == Activity.HIKE) " T${pick.sac}" else "")
+                if (recState.value == null && (pick.activity != activity || (pick.activity == Activity.HIKE && pick.sac != sac))) {
+                    if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
+                    selectActivity(pick.activity, userChange = false)
+                }
                 // The track panel with its name is the feedback; a message (until OK) only when something was odd –
                 // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
                 busy = null

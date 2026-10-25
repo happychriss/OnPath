@@ -99,6 +99,8 @@ object BackupCodec {
             extensionNs = "xmlns:onpath=\"$NS\"",
             segmentExtensions = layout.trk.map { (_, kind) -> kind?.let { "<onpath:ride kind=\"${it.name}\"/>" } }
                 .takeIf { l -> l.any { it != null } },
+            // the sport as Komoot writes it: a backup file opened in Komoot (or imported again) keeps its activity
+            type = com.onpath.app.gpx.SportType.typeOf(meta.activity, meta.sac),
         )
     }
 

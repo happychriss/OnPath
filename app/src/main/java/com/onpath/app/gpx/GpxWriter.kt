@@ -18,6 +18,8 @@ object GpxWriter {
         extensionNs: String? = null,
         /** Extra XML per segment (`<trkseg><extensions>`, after its points), aligned with [segments]; null = none. */
         segmentExtensions: List<String?>? = null,
+        /** The sport as `<trk><type>` (Komoot's string, [SportType.typeOf]); null = none. */
+        type: String? = null,
     ): String {
         val sb = StringBuilder(64 + segments.sumOf { it.size } * 110)
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
@@ -36,6 +38,7 @@ object GpxWriter {
             sb.append("</wpt>\n")
         }
         sb.append("  <trk>\n    <name>").append(esc(name)).append("</name>\n")
+        type?.takeIf { it.isNotBlank() }?.let { sb.append("    <type>").append(esc(it)).append("</type>\n") }
         for ((si, seg) in segments.withIndex()) {
             if (seg.isEmpty()) continue
             sb.append("    <trkseg>\n")
