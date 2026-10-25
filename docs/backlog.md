@@ -8,6 +8,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
+  footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
+  own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
+  crossings, 172 sidewalks); `extract_overlays.py` leaves sidewalk / crossing out of paths.geojson and trails, and the
+  crossings may be hidden under the road casing. Check with a headless render of a Hilden cell (z15–17) before changing.
+- **Hilden routing follow-up (owner 2026-10-25):** footways without a bicycle tag (Itter path) –
+  our trekking / touring profiles avoid them (push penalty). Option asked: allow paved footways for trekking /
+  touring with an amber "footway – may need to push" note. The false "no way" gap is fixed (283bcaf, Planner spurs).
 - **Simplify messages + UX + text sizes (owner 2026-10-24, review `docs/review-simplify-2026-10-24.md`) – answers so
   far:** (1) the system A as proposed: INFO grey text, ACTION blue strip only for questions, WARNING amber + ⚠ tappable,
   ERROR red with one way out; dialogs only for decisions that can lose something, verb buttons; (2) type scale 12 / 14 /
