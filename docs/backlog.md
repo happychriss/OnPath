@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] bike routing: GPX comparison tool + profile tuning – since 2026-10-25
-- [desktop] difficulty with trail technique + Komoot GPX activity preselect – since 2026-10-25
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -154,7 +153,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   refs (letters like E5 / GR20, `osmc:symbol`); contours below z12 (owner chose "from z12" on 2026-10-20).
 - **Unverified paths (owner: keep):** untagged OSM ways joining two paths, ≤ 300 m, grey dashed + point-menu hint,
   never routed. Example way 330547188 near Algund.
-- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
+- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours. Open since the technique rule (2026-10-25):
+  Komoot's hiking band puts SAC **T2** in Moderate ("sure-footedness"); ours raises from T3 (as the owner's question
+  said) – ask whether long T2 stretches should make a hike Moderate too. Also open: Touring / Trekking with a long
+  unpaved or pushing share → at least Moderate (overview suggestion, not built).
+
+## Owner decisions 2026-10-25
+- **Difficulty like Komoot (owner: "Yes, both"):** the label counts trail technique (hike T3+, bikes S2+) besides
+  distance + ascent, and Hike "Easy" is tightened to Komoot's band (≈ 2 h and ≤ 300 m up; Moderate ≈ 5 h and ≤ 900 m).
+  Built, see Done.
+- **Komoot GPX import preselects the activity (owner: "Yes, preselect"):** from `<trk><type>`; unknown → last used
+  activity; the user can still change it; export writes `<type>` too. Built, see Done.
 
 ## Owner decisions 2026-10-22 (kept for reference – all built unless marked)
 - **A – laptop Q&A:** (1) attribution: short "© OpenStreetMap" on the map, tap → full credits; (2) keep "Update maps
@@ -189,6 +198,18 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   open its message list with a 0 m run at the first node; `BRouterWayStats.perNode` then returned nothing, so those routes
   had no "… m pushing" / steps hint and times without surfaces. Fixed with a test first
   (`perNodeSkipsAZeroLengthRunAtTheCurrentNode`). Also on main: the GPX comparison tool `tools/routing/jvm-test/GpxCompare.kt`.
+- **Difficulty with trail technique, like Komoot (desktop, 2026-10-25, owner "Yes, both"):** `RouteSummary.rating` =
+  distance + ascent (Hike now easy ≤ 8 effort km and ≤ 300 m up, moderate ≤ 20 and ≤ 900 m; bike bands unchanged),
+  raised by the hardest grade with ≥ 100 m on the route (summed; less = tagging noise): hike T3 → at least Moderate,
+  T4+ → Difficult; every bike S2 → at least Moderate, S3+ or a T3+ hiking trail → Difficult. Never lowers it; lines
+  without way attributes rate on fitness only. Badge "Moderate · T3" when technique raised it; Route details adds a grey
+  line "Moderate because of 250 m at T3 or harder". Tests `RouteSummaryTest`, snapshots `planTechniqueBadge`,
+  `routeDetailsTechnique`.
+- **Komoot GPX `<type>` → activity (desktop, 2026-10-25, owner "Yes, preselect"):** `gpx/SportType` – touring_bicycle /
+  racebike / e_racebike → Touring, e_touring_bicycle → E-bike, mtb_easy → Trekking, mtb / mtb_advanced → MTB, e_mtb* →
+  E-MTB, hike / jogging → Hike T2, mountaineering → Hike T3 (underscores optional); unknown → last used activity. The
+  import stores and selects it (not during a tour). Share export, backups and Export all write `<trk><type>` in
+  Komoot's spelling (Hike T1–T2 `hike`, T3–T5 `mountaineering`). Tests `SportTypeTest` (synthetic GPX only).
 - **E2E CorePointsListE2ETest flaky – "Points section shown" / "points shown" (desktop, 2026-10-25, red on 8174874 and
   283bcaf, a different test each time):** the failure screenshot shows the full sheet with all rows and ✕, plan size
   FULL, yet UiAutomator did not find "Delete point" for 10 s. The list appears in place in the same window (PlanPanel
