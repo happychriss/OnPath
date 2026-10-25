@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] E2E CorePointsListE2ETest flaky (Points section not shown) – since 2026-10-25
 - [desktop] bike routing: GPX comparison tool + profile tuning – since 2026-10-25
 - [desktop] difficulty with trail technique + Komoot GPX activity preselect – since 2026-10-25
 
@@ -186,6 +185,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **E2E CorePointsListE2ETest flaky – "Points section shown" / "points shown" (desktop, 2026-10-25, red on 8174874 and
+  283bcaf, a different test each time):** the failure screenshot shows the full sheet with all rows and ✕, plan size
+  FULL, yet UiAutomator did not find "Delete point" for 10 s. The list appears in place in the same window (PlanPanel
+  drops `clearAndSetSemantics` at the full step); on Android 14 UiAutomator kept serving its cached tree without it
+  (the mirror of the stale node `goneFresh` fixed on 10-22). `E2EBase.findFresh` clears the cache before every look; the
+  plan sheet lookups use it, same assertions and timeouts; failures now list the content descriptions UiAutomator sees.
+  E2E 40239844287 green (full run), 40241249080 green (class only).
 - **Offline search index per map area, no empty moment (laptop, 2026-10-25, field 0.10.1 "zons" found nothing for a
   minute: `Search index g000059: 129358 entries in 59121 ms`):** each map area (installed cell id + version, or the
   data-folder package) is extracted once into `files/search-areas/<area>@<version>.tsv` (`search/SearchAreas.kt`); a
