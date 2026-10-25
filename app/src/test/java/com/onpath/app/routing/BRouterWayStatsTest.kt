@@ -99,4 +99,24 @@ class BRouterWayStatsTest {
         assertTrue(BRouterWayStats.perNode(listOf(m(1, 2, "highway=path")), lon, lat).isEmpty())
         assertTrue(BRouterWayStats.perNode(null, lon, lat).isEmpty())
     }
+
+    /**
+     * Field data 2026-10-25 (22 % of 296 planned test routes): BRouter can open the message list with a
+     * zero-length run reported AT the first node. The matcher searched from the next node, found nothing and dropped
+     * all way attributes – no "pushing" hint, times without surfaces on that whole route.
+     */
+    @Test fun perNodeSkipsAZeroLengthRunAtTheCurrentNode() {
+        fun m(lon: Int, lat: Int, d: Int, tags: String) = "$lon\t$lat\t300\t$d\t1000\t0\t0\t0\t0\t$tags\t\t10\t100"
+        val lon = intArrayOf(11000000, 11000100, 11000200, 11000300)
+        val lat = intArrayOf(46000000, 46000000, 46000000, 46000000)
+        val msgs = listOf(
+            m(11000000, 46000000, 0, "highway=cycleway"), // 0 m at the start node itself
+            m(11000200, 46000000, 15, "highway=footway"),
+            m(11000300, 46000000, 8, "highway=residential"),
+        )
+        val w = BRouterWayStats.perNode(msgs, lon, lat)
+        assertEquals(4, w.size)
+        assertEquals("footway", w[0]!!.wayType); assertEquals("footway", w[1]!!.wayType)
+        assertEquals("quiet_road", w[2]!!.wayType)
+    }
 }

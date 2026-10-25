@@ -93,6 +93,8 @@ object BRouterWayStats {
             if (cols.size < 10) continue
             val lon = cols[0].trim().toIntOrNull() ?: continue
             val lat = cols[1].trim().toIntOrNull() ?: continue
+            // a zero-length run reported at the current node (BRouter does this at the start of a track): nothing to assign
+            if (nodeLon[k] == lon && nodeLat[k] == lat) continue
             var j = k + 1
             while (j < n && (nodeLon[j] != lon || nodeLat[j] != lat)) j++
             if (j >= n) return emptyList()
