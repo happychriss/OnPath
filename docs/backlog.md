@@ -7,6 +7,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] E2E CorePointsListE2ETest flaky (Points section not shown) – since 2026-10-25
 - [desktop] bike routing: GPX comparison tool + profile tuning – since 2026-10-25
+- [desktop] difficulty with trail technique + Komoot GPX activity preselect – since 2026-10-25
 
 
 ## Next (open, checked against the code 2026-10-23)
