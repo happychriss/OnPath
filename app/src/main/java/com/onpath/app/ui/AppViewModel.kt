@@ -3527,8 +3527,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 // like opening a recorded tour: its activity is chosen (not during a tour – the followed route keeps its own)
-                if (data.type != null) Problems.info("gpx", "GPX import “$name”: type “${data.type}” → ${pick.activity.name}" +
-                    if (pick.activity == Activity.HIKE) " T${pick.sac}" else "")
+                // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
+                data.type?.let { t ->
+                    val to = if (SportType.activityOf(t) == null) "unknown, kept ${pick.activity.name}"
+                        else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""
+                    Problems.info("gpx", "GPX import “$name”: type “${t.take(40)}” → $to")
+                }
                 if (recState.value == null && (pick.activity != activity || (pick.activity == Activity.HIKE && pick.sac != sac))) {
                     if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
                     selectActivity(pick.activity, userChange = false)

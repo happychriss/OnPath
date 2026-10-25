@@ -62,6 +62,25 @@ class SportTypeTest {
         assertEquals(2, g.pointCount)
     }
 
+    @Test fun aLinkTypeInsideTheTrackIsNotTheSport() {
+        // GPX 1.1 allows <link><type>text/html</type></link> inside <trk>: that is a MIME type, not the sport
+        val g = GpxParser.parse(gpx(null).replace("<trk><name>Test</name>",
+            "<trk><name>Test</name><link href=\"https://example.org\"><type>text/html</type></link>"))
+        assertNull(g.type)
+    }
+
+    @Test fun severalLinesTheFirstTypeCounts() {
+        // a file with two tracks of different sports (and one without): the first line's type is the file's sport
+        val two = gpx("mtb").replace("</gpx>",
+            """<trk><name>B</name><type>hike</type><trkseg><trkpt lat="46.69" lon="11.17"/></trkseg></trk></gpx>""")
+        assertEquals("mtb", GpxParser.parse(two).type)
+        val firstUntyped = gpx(null).replace("</gpx>",
+            """<trk><name>B</name><type>HIKE</type><trkseg><trkpt lat="46.69" lon="11.17"/></trkseg></trk></gpx>""")
+        val g = GpxParser.parse(firstUntyped)
+        assertEquals(listOf(null, "HIKE"), g.lines.map { it.type })
+        assertEquals(Pick(Activity.HIKE, 2), SportType.activityOf(g.type))
+    }
+
     @Test fun damagedFileStillGivesTheType() {
         // cut off in the middle of the track: the readable part keeps its type
         val cut = gpx("e_mtb").substringBefore("<trkpt lat=\"46.68\"")

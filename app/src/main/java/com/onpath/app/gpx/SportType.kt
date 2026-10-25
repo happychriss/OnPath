@@ -60,6 +60,5 @@ object SportType {
 
     /** [typeOf] for a stored activity name (Tour.activity); null when it is missing or unknown (no `<type>` written). */
     fun typeOf(activityName: String?, sac: Int): String? =
-        // expected: an unknown / old activity name writes no type
         activityName?.let { n -> Activity.entries.firstOrNull { it.name == n } }?.let { typeOf(it, sac) }
 }
