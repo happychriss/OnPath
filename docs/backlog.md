@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] bike routing: GPX comparison tool + profile tuning – since 2026-10-25
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -128,6 +127,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `docs/design/map-hosting.md` §7g.
 
 ## Waiting for the owner
+- **Bike profiles tuned – branch `feat/bike-routing`, green, not merged (desktop, 2026-10-26):**
+  Touring bike + E-bike → new touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes), trekking.brf
+  tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), "pushing" not on a footway
+  of a signed cycle route, Touring time ~21.7 km/h, WayClass threshold 1.20. Measured on test routes
+  (Hilden busy roads Touring
+  32 → 2.7 %, Trekking 11.8 → 7.3 %; Meran guard rails unchanged) – `docs/design/bike-routing.md` on the
+  branch. Owner: merge? Long timetabled ferries only with a via (current) or automatic? Map router classes follow
+  with the next map build; requirements.md E-bike row ("same as trekking") to update in the shared doc.
 - **Map server access before the public launch** (owner discussion 2026-10-23, laptop): today one shared app key
   (readable from the APK) + IP rate limit + build caps. Proposal in `docs/design/map-access.md`: anonymous per-phone
   quota of *new* areas per month (hashed Android ID, no registration), no region lock, supporter code raises the limit,
