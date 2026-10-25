@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] review difficulty + GPX type – since 2026-10-26
 - [desktop] verify bike routing branch (feat/bike-routing) – since 2026-10-26
 
 
@@ -129,6 +128,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `docs/design/map-hosting.md` §7g.
 
 ## Waiting for the owner
+- **Komoot GPX activity – three small questions from the review (desktop, 2026-10-26):** (1) a Komoot `hike` sets the
+  remembered T level to T2 (and `mountaineering` to T3) even when the user plans at T4 – keep the user's T level when
+  it is inside the type's band (hike T1–T2, mountaineering T3–T5)? (2) the switch is silent (only the activity chip
+  changes) and an open plan is routed again for the new activity, as when opening a recorded tour – show one grey
+  line "Activity set to MTB from the file"? (3) opening an *imported* tour later from My routes does not switch the
+  activity (only recorded tours do); older imports carry the activity that happened to be chosen, so switching
+  needs a "came from the file" flag – wanted?
 - **Bike profiles tuned – branch `feat/bike-routing`, green, not merged (desktop, 2026-10-26):**
   Touring bike + E-bike → new touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes), trekking.brf
   tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), "pushing" not on a footway
@@ -203,6 +209,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Review of difficulty + Komoot GPX type (desktop, 2026-10-26):** formula used everywhere the label shows (plan sheet,
+  Route details; nowhere else shows one), no old call left. Fixed: unit tests run in UTC (`app/build.gradle.kts`) – the
+  recycleBin snapshot had changed only by the machine's time zone, not the date; clearer import diagnostics line;
+  two more parser tests. Open questions above ("Waiting for the owner").
 - **Way attributes lost on 22 % of planned routes (desktop, 2026-10-25, found by the GPX comparison tool):** BRouter can
   open its message list with a 0 m run at the first node; `BRouterWayStats.perNode` then returned nothing, so those routes
   had no "… m pushing" / steps hint and times without surfaces. Fixed with a test first
