@@ -103,6 +103,9 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Every JVM test in UTC, like CI: dates in screenshots (recycle bin, My routes) otherwise depend on the
+        // machine's time zone and verifyPaparazziDebug fails on another machine (owner: tests in UTC).
+        unitTests.all { it.systemProperty("user.timezone", "UTC") }
     }
 }
 
