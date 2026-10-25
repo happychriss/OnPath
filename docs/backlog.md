@@ -185,6 +185,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Way attributes lost on 22 % of planned routes (desktop, 2026-10-25, found by the GPX comparison tool):** BRouter can
+  open its message list with a 0 m run at the first node; `BRouterWayStats.perNode` then returned nothing, so those routes
+  had no "… m pushing" / steps hint and times without surfaces. Fixed with a test first
+  (`perNodeSkipsAZeroLengthRunAtTheCurrentNode`). Also on main: the GPX comparison tool `tools/routing/jvm-test/GpxCompare.kt`.
 - **E2E CorePointsListE2ETest flaky – "Points section shown" / "points shown" (desktop, 2026-10-25, red on 8174874 and
   283bcaf, a different test each time):** the failure screenshot shows the full sheet with all rows and ✕, plan size
   FULL, yet UiAutomator did not find "Delete point" for 10 s. The list appears in place in the same window (PlanPanel
