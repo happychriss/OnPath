@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.PlannedRoute
-import com.onpath.app.routing.RouteSummary
 
 /**
  * Route details (owner 2026-10-21): opened by tapping the profile or the difficulty badge in the plan sheet – the
@@ -34,6 +33,7 @@ import com.onpath.app.routing.RouteSummary
  */
 @Composable
 fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Unit) {
+    val rating = rememberRating(route, activity)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -55,7 +55,12 @@ fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Un
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f, fill = false))
                     Spacer(Modifier.width(8.dp))
-                    DifficultyBadge(RouteSummary.difficulty(activity, route.distanceM, route.ascentM))
+                    DifficultyBadge(rating)
+                }
+                rating.raisedBy?.let { t ->
+                    // INFO: why the label is higher than distance and ascent alone give
+                    Text("${rating.level.label} because of ${Format.distance(t.meters)} at ${t.grade} or harder",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column {
                     ElevationProfile(route.points, height = 140.dp, gradient = true)

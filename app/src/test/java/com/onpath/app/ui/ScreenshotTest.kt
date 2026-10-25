@@ -266,6 +266,15 @@ class ScreenshotTest {
     /** Route details (tap the profile or the difficulty badge): summary, large profile, way types / surfaces. */
     @Test fun routeDetails() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(route, Activity.HIKE, onBack = {}) } }
 
+    /** A short hike with a T3 section (owner 2026-10-25, like Komoot): "Moderate · T3" and why, though 4.2 km / 280 m is Easy. */
+    private val t3Route = PlannedRoute(listOf(PlannedLeg(routePts.mapIndexed { i, p ->
+        p.copy(way = com.onpath.app.routing.WayAttrs("path", "natural_trail", if (i in 60..64) 3 else 2))
+    }, false)), 4_200.0, 280.0, 280.0, 1.6 * 3600, null)
+
+    @Test fun routeDetailsTechnique() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(t3Route, Activity.HIKE, onBack = {}) } }
+
+    @Test fun planTechniqueBadge() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT, r = t3Route), PlanCallbacks()) } }
+
     /** Drop-down menus are popups (not drawn by Paparazzi): draw their items where the menu opens. */
     @Composable
     private fun MenuCard(modifier: Modifier, items: @Composable () -> Unit) {

@@ -82,7 +82,6 @@ import com.onpath.app.routing.PlanPointRow
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
-import com.onpath.app.routing.RouteSummary
 
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
 class PlanCallbacks(
@@ -424,7 +423,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         )
         if (!ui.routing) {
             Spacer(Modifier.width(8.dp))
-            DifficultyBadge(RouteSummary.difficulty(ui.activity, route.distanceM, route.ascentM),
+            DifficultyBadge(rememberRating(route, ui.activity),
                 Modifier.clickable(role = Role.Button, onClickLabel = "Show route details", onClick = onDetails))
         }
     }

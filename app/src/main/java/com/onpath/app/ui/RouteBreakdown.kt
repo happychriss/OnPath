@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.Share
 
@@ -144,13 +147,21 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
     }
 }
 
+/** "Moderate", or "Moderate · T3" when the trail technique raised the label (owner 2026-10-25, like Komoot). */
 @Composable
-fun DifficultyBadge(d: RouteSummary.Difficulty, modifier: Modifier = Modifier) {
-    val (bg, fg) = when (d) {
+fun DifficultyBadge(r: RouteSummary.Rating, modifier: Modifier = Modifier) {
+    val (bg, fg) = when (r.level) {
         RouteSummary.Difficulty.EASY -> OnPathColors.GreenLight to OnPathColors.Green
         RouteSummary.Difficulty.MODERATE -> OnPathColors.WarnContainer to OnPathColors.Warn
         RouteSummary.Difficulty.DIFFICULT -> OnPathColors.ErrorContainer to OnPathColors.Error
     }
-    Text(d.label, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
-        color = fg, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+    Text(r.text, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
+        color = fg, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
 }
+
+/** The rating of [route] for [activity], computed once per route (walks the way attributes of every point). */
+@Composable
+fun rememberRating(route: PlannedRoute, activity: Activity): RouteSummary.Rating =
+    remember(route, activity) {
+        RouteSummary.rating(activity, route.distanceM, route.ascentM, route.points)
+    }
