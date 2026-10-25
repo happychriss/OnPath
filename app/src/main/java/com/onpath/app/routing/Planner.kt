@@ -23,6 +23,8 @@ data class PlannedRoute(
      * unknown (straight legs, fallback engine). Empty = nothing known. See [WaypointSnap.apply].
      */
     val snapped: List<GeoPoint?> = emptyList(),
+    /** Interior points (indices in the request) the router matched on a way but cut out as a spike – see [Planner.SPUR_ON_WAY_M]. */
+    val spurs: Set<Int> = emptySet(),
 ) {
     val points: List<GeoPoint> by lazy {
         val out = ArrayList<GeoPoint>()
@@ -79,6 +81,17 @@ class Planner(
      */
     fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
         require(waypoints.size >= 2)
+        val first = planPinned(waypoints, activity, sac, pinned)
+        // Field bug Hilden 2026-10-24: a point ON a way, reachable only there and back, was cut out by BRouter's
+        // via correction (up to 400 m for bikes) and then shown as "no way for Trekking bike". Owner: a point on a way
+        // is always visited – route again with it as a chunk end (chunk ends are never corrected).
+        val spurs = first.spurs - pinned
+        if (spurs.isEmpty()) return first
+        Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
+        return planPinned(waypoints, activity, sac, pinned + spurs)
+    }
+
+    private fun planPinned(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>): PlannedRoute {
         val cuts = chunkBounds(waypoints.size, pinned)
         if (cuts.size == 2) return planOne(waypoints, activity, sac)
         val parts = cuts.zipWithNext().map { (a, b) -> planOne(waypoints.subList(a, b + 1), activity, sac, a) }
@@ -88,6 +101,7 @@ class Planner(
             parts.firstNotNullOfOrNull { it.error },
             RouteSummary.mergeShares(parts.map { it.wayTypes }), RouteSummary.mergeShares(parts.map { it.surfaces }),
             mergeSnapped(waypoints.size, cuts, parts.map { it.snapped }),
+            parts.flatMap { it.spurs }.toSet(),
         )
     }
 
@@ -104,7 +118,7 @@ class Planner(
             if (r.points.size >= 2) {
                 return PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
                     RouteSummary.mergeShares(listOf(r.wayTypes)), RouteSummary.mergeShares(listOf(r.surfaces)),
-                    WaypointSnap.onRoute(waypoints, r.points, r.matched))
+                    WaypointSnap.onRoute(waypoints, r.points, r.matched), spurs(waypoints, r, offset))
             }
         } catch (e: Exception) {
             stopIfCancelled() // cancelled: no fallback, the caller shows nothing new
@@ -161,6 +175,15 @@ class Planner(
             RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
     }
 
+    /** Interior points matched on a way (≤ [SPUR_ON_WAY_M]) whose matched spot the route line misses (> [SPUR_MISSED_M]). */
+    private fun spurs(waypoints: List<GeoPoint>, r: RouteResult, offset: Int): Set<Int> {
+        if (waypoints.size < 3 || r.matched.size != waypoints.size) return emptySet()
+        return (1 until waypoints.lastIndex).filter { i ->
+            val m = r.matched[i] ?: return@filter false
+            Geo.distance(waypoints[i], m) <= SPUR_ON_WAY_M && WaypointSnap.distToLine(m, r.points) > SPUR_MISSED_M
+        }.map { it + offset }.toSet()
+    }
+
     private fun straight(waypoints: List<GeoPoint>, activity: Activity, error: String): PlannedRoute {
         val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
         val d = (1 until waypoints.size).sumOf { Geo.distance(waypoints[it - 1], waypoints[it]) }
@@ -186,6 +209,11 @@ class Planner(
             }
             return "Point $from → $to: $why"
         }
+
+        /** A point this close to the way it was matched on counts as "on the way" (the user meant that way). */
+        const val SPUR_ON_WAY_M = 30.0
+        /** The route line passes the matched spot farther than this = the router cut the point out as a detour. */
+        const val SPUR_MISSED_M = 50.0
 
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
         const val PLAN_LIMIT_MS = 10 * 60_000L

@@ -85,4 +85,44 @@ class PlannerTest {
         val r = Planner(StraightLineEngine()).plan(pts, Activity.HIKE, 3)
         assertTrue(r.snapped.all { it == null })
     }
+
+    /**
+     * Field bug Hilden 2026-10-24 (core feature C-plan): point 2 lay ON a footway by the Itter, reachable only there and
+     * back; BRouter's via correction cut that detour and the plan said "Last 370 m: no way for Trekking bike".
+     * Engine: with a via point it draws the line past it (≈ 370 m away) but reports it matched on its way.
+     */
+    private class SpurCutEngine : RoutingEngine {
+        val calls = mutableListOf<List<GeoPoint>>()
+        override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+            calls += waypoints
+            if (waypoints.size == 2) return RouteResult(waypoints, 1000.0, 0.0, 0.0, 60.0, matched = waypoints)
+            val line = listOf(waypoints.first(), GeoPoint(waypoints[1].lat, waypoints[1].lon - 0.0053), waypoints.last())
+            return RouteResult(line, 1500.0, 0.0, 0.0, 90.0, matched = waypoints)
+        }
+    }
+
+    @Test fun pointOnAWayCutAsADetourIsStillVisited() {
+        val a = GeoPoint(51.1742, 6.9235); val b = GeoPoint(51.1544, 6.9422); val c = GeoPoint(51.1458, 6.9265)
+        val e = SpurCutEngine()
+        val r = Planner(e).plan(listOf(a, b, c), Activity.BIKE_TREKKING, 3)
+        assertEquals(listOf(listOf(a, b, c), listOf(a, b), listOf(b, c)), e.calls)
+        assertTrue("the route goes through point 2", r.points.contains(b))
+        assertEquals(b, r.snapped[1]) // no gap: the plan sheet shows no "no way" line
+        assertNull(r.error)
+    }
+
+    @Test fun pointBesideTheWayIsStillSmoothed() {
+        // tapped 100 m beside the road: matched far from the tap → the cut spike stays cut (one request)
+        val a = GeoPoint(51.1742, 6.9235); val b = GeoPoint(51.1544, 6.9422); val c = GeoPoint(51.1458, 6.9265)
+        val e = object : RoutingEngine {
+            var n = 0
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+                n++
+                val m = GeoPoint(b.lat, b.lon - 0.0015) // ≈ 105 m west, on the line
+                return RouteResult(listOf(a, m, c), 1500.0, 0.0, 0.0, 90.0, matched = listOf(a, m, c))
+            }
+        }
+        Planner(e).plan(listOf(a, b, c), Activity.BIKE_TREKKING, 3)
+        assertEquals(1, e.n)
+    }
 }
