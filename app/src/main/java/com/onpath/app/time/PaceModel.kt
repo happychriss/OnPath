@@ -58,7 +58,9 @@ object PaceModel {
     data class Bike(val riderW: Double, val assistW: Double, val massKg: Double, val drag: Double, val surface: String)
 
     fun bike(activity: Activity): Bike = when (activity) {
-        Activity.BIKE_TOURING -> Bike(120.0, 0.0, 92.0, 0.27, "asphalt")
+        // touring = a normal bike like trekking (review 2026-10-25: 120 W gave ~24 km/h, road-bike like; now ~21.7 km/h on
+        // its usual asphalt, the same as trekking on the same surface)
+        Activity.BIKE_TOURING -> Bike(100.0, 0.0, 95.0, 0.30, "asphalt")
         Activity.BIKE_TREKKING -> Bike(100.0, 0.0, 95.0, 0.30, "paved")
         Activity.EBIKE -> Bike(100.0, 200.0, 115.0, 0.30, "paved")
         Activity.MTB -> Bike(110.0, 0.0, 92.0, 0.32, "unpaved")

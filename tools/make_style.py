@@ -635,8 +635,9 @@ def green_ways():
             ["in", sub, ["literal", ["footway", "pedestrian", "cycleway"]]],
             ["all", is_path, ["==", ["coalesce", ["get", "foot"], ""], "designated"]]]]
     # Bikes: one layer per BRouter profile family (map vs router audit 2026-10-21, MapController.setOverlay):
-    # "-bike" = Bike trekking / E-bike (trekking.brf), "-touring" = Bike touring (fastbike-verylowtraffic.brf: a path
-    # or footway costs 100 unless bicycle=designated, then 2), "-mtb" = MTB / MTB e-bike (mtb.brf).
+    # "-bike" = Bike trekking (trekking.brf), "-touring" = Bike touring / E-bike (touring.brf, OnPath's trekking copy for a
+    # normal bike: bicycle=yes / designated paths are good, as in trekking), "-mtb" = MTB / MTB
+    # e-bike (mtb.brf).
     # Never green on hard trails (format 2: overlay "sac", and "mtb" = mtb:scale from map packages built after
     # 2026-10-21): trekking / touring forbid T3+ and add +30 on T2 and on mtb:scale 2–3, MTB forbids T4+, adds +15 on
     # T3 and ~9000 from mtb:scale 4. Format 1 (base map) has no grades – no difficulty rule there.
@@ -660,7 +661,7 @@ def green_ways():
     bike_kind = ["all", path, ["any", ["in", sub, ["literal", ["footway", "pedestrian", "cycleway", "bridleway"]]],
                                is_path]]
     for mode, flt, visible in (("foot", foot, True), ("bike", bike_way(["yes", "designated"], 1, 1), False),
-                               ("touring", bike_way(["designated"], 1, 1), False),
+                               ("touring", bike_way(["yes", "designated"], 1, 1), False),
                                ("mtb", bike_way(["yes", "designated"], 2, 3), False)):
         if FMT == 2:
             flt = ["case", has_class(mode), ["all", hike_kind if mode == "foot" else bike_kind, class_is(mode, 0)], flt]

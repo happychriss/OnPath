@@ -104,6 +104,8 @@ class ActivityCheckTest {
         val rest = NavLine(route).restFrom(0.0)
         val surf = listOf(Share("asphalt", 1200.0), Share("gravel", 800.0))
         assertEquals(listOf("800 m unpaved"), ActivityCheck.evaluate(rest, Activity.BIKE_TOURING, 3, result(rest, surfaces = surf)).problems)
+        // E-bike routes with touring.brf (owner 2026-10-25), so it is checked like the touring bike
+        assertEquals(listOf("800 m unpaved"), ActivityCheck.evaluate(rest, Activity.EBIKE, 3, result(rest, surfaces = surf)).problems)
         // gravel is fine for a trekking bike
         assertTrue(ActivityCheck.evaluate(rest, Activity.BIKE_TREKKING, 3, result(rest, surfaces = surf)).fits)
         val ways = listOf(Share("busy_road", 1500.0), Share("path", 500.0))

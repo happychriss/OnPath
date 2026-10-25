@@ -21,8 +21,8 @@ How it was checked:
 | Activity | Profile | Overrides |
 |---|---|---|
 | Hike | hiking-mountain.brf | SAC_scale_limit = user T (1–5), SAC_scale_preferred = min(T,3) |
-| Bike touring | fastbike-verylowtraffic.brf | – |
-| Bike trekking, E-bike | trekking.brf | E-bike: power/speed/mass only (same costs) |
+| Bike touring, E-bike | touring.brf (since 2026-10-25; was fastbike-verylowtraffic.brf, E-bike was trekking.brf) | E-bike: power/speed/mass only (same costs) |
+| Bike trekking | trekking.brf | – |
 | MTB, MTB e-bike | mtb.brf | E-MTB: power/speed/mass only |
 
 The map has two activity states, plus MTB for the S-labels: **walking** (greenway-foot, access-*-foot,

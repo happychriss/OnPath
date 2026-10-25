@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Builds the BRouter routing-core jars for OnPath (app/libs/) and copies the
-# routing profiles into app/src/main/assets/brouter/.
+# upstream routing profiles into app/src/main/assets/brouter/. Careful: that overwrites OnPath's edits in trekking.brf,
+# mtb.brf and hiking-mountain.brf (re-apply them, see git log). touring.brf is OnPath's own (a trekking.brf copy for a
+# normal bike, 2026-10-25, TouringProfileTest) and is not copied.
 # Plain javac (no Gradle, no external deps): brouter-util, -codec, -expressions,
 # -mapaccess, -core, compiled with --release 11 (D8 compatible).
 # Usage: tools/routing/build_brouter_jars.sh [BROUTER_SRC_DIR]
@@ -22,7 +24,7 @@ for m in util codec expressions mapaccess core; do
 done
 A="$HERE/app/src/main/assets/brouter"
 mkdir -p "$A"
-for f in lookups.dat fastbike-verylowtraffic.brf trekking.brf mtb.brf hiking-mountain.brf; do
+for f in lookups.dat trekking.brf mtb.brf hiking-mountain.brf; do
   cp "$SRC/misc/profiles2/$f" "$A/$f"
 done
 cp "$SRC/LICENSE" "$A/LICENSE-brouter.txt"

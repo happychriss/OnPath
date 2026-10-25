@@ -197,13 +197,14 @@ Rule: **green = good for the current activity, everything else the normal black 
 ## Map vs router quick fixes (2026-10-21, owner: "start the quick fixes")
 From the map-vs-BRouter audit (each activity's BRouter profile evaluated per tag set). Style / app only – no new map
 package needed, except the `mtb` attribute below. Activity → profile: Hike = hiking-mountain, Bike touring =
-fastbike-verylowtraffic, Bike trekking + E-bike = trekking, MTB + MTB e-bike = mtb.
+fastbike-verylowtraffic, Bike trekking + E-bike = trekking, MTB + MTB e-bike = mtb. **Since 2026-10-25:** Bike touring
++ E-bike = touring.brf (OnPath's trekking copy for a normal bike), Bike trekking = trekking.
 - **Green respects access** (was already on main): `greenway-*` skip foot / bicycle = no|private and `ac` ways
   without foot / bicycle = yes|designated|permissive. Bikes now also skip bicycle = dismount|use_sidepath.
 - **Green per profile family** – three bike layers, switched by `MapController.setOverlay`:
-  `greenway-bike` (trekking, E-bike): cycleways + footways / pedestrian / paths with bicycle=yes|designated;
-  `greenway-touring` (touring): cycleways + those ways only with **bicycle=designated** (fastbike: path + yes costs
-  100, designated 2); `greenway-mtb` (MTB, E-MTB): like trekking.
+  `greenway-bike` (trekking): cycleways + footways / pedestrian / paths with bicycle=yes|designated;
+  `greenway-touring` (touring, E-bike): since 2026-10-25 like trekking (touring.brf; before: only bicycle=designated,
+  fastbike costs a bicycle=yes path 100); `greenway-mtb` (MTB, E-MTB): like trekking.
 - **No green on hard trails** (format 2): trekking / touring / E-bike only up to T1 and mtb:scale 1 (the router
   forbids T3+ and adds +30 on T2 / mtb:scale 2–3); MTB up to T2 and mtb:scale 3 (T3 +15, T4+ forbidden, mtb:scale 4+
   ≈ 9000). `sac` is in every package; **`mtb` on overlay `paths` is new** (`extract_overlays.py tile_attrs`) – older
@@ -230,13 +231,14 @@ Approach 1 of `docs/design/map-vs-router-audit.md`. The map's green / black / fo
 profiles, evaluated per way with BRouter's expression engine – no tag rules of our own where the data has classes.
 - **Classifier** `tools/routing/wayclass/WayClass.java` (built by `build.sh` into one jar with the BRouter jars of
   `app/libs`; `--selftest` checks known tag sets). Profile groups = `BRouterEngine.profileFile`: `ch` Hike
-  (hiking-mountain), `ct` Bike trekking + E-bike (trekking), `cf` Bike touring (fastbike-verylowtraffic), `cm` MTB +
-  MTB e-bike (mtb). Each way: costfactor of the better direction → **0 good** (≤ threshold), **1 possible**, **2
+  (hiking-mountain), `ct` Bike trekking (trekking), `cf` Bike touring + E-bike (touring; until 2026-10-25
+  fastbike-verylowtraffic, and E-bike was in `ct`), `cm` MTB + MTB e-bike (mtb). Each way: costfactor of the better direction → **0 good** (≤ threshold), **1 possible**, **2
   forbidden** (> 9998, BRouter's own limit, `OsmPath`). Thresholds (length-weighted costs of the test region; green is
   drawn only on path-like ways, so a threshold only separates those): hike **1.40** (every path / footway / cycleway the
-  profile does not penalise; foot=no +4, bad visibility, informal, fords, steps 3.6 = possible), trekking **1.10**
-  (cycleways, bicycle=yes|designated paths 1.05; untagged paths 5.05 = pushing), touring **2.0** (cycleways 1.3,
-  bicycle=designated 2.0; bicycle=yes paths cost 100), MTB **7.0** (unpaved cycleways, bicycle=yes|designated paths
+  profile does not penalise; foot=no +4, bad visibility, informal, fords, steps 3.6 = possible), trekking **1.20**
+  (cycleways, bicycle=yes|designated paths 1.15 off a cycle route; residential 1.25; untagged paths 5.15 = pushing;
+  1.10 / 1.05 / 5.05 until the off-route add went 0.05 → 0.15 on 2026-10-25), touring **1.20** like trekking
+  (wayclass-5, 2026-10-25; fastbike had 2.0), MTB **7.0** (unpaved cycleways, bicycle=yes|designated paths
   6.67, easy trails; plain paths 10, paved cycleways 9.6). Hike is evaluated **without sac_scale / mtb:scale** – the
   user's T level is runtime, the app applies it. `cr` = bikes' one-way (1 along / −1 against the line) where one
   direction is forbidden or costs ≥ 50 more (the profiles add +100; same in all bike profiles, selftest).

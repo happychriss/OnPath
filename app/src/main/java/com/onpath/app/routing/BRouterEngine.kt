@@ -290,13 +290,6 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private fun viaCorrectionM(activity: Activity): Double =
         if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
 
-    private fun profileFile(activity: Activity): String = when (activity) {
-        Activity.BIKE_TOURING -> "fastbike-verylowtraffic.brf"
-        Activity.BIKE_TREKKING, Activity.EBIKE -> "trekking.brf"
-        Activity.MTB, Activity.EMTB -> "mtb.brf"
-        Activity.HIKE -> "hiking-mountain.brf"
-    }
-
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
     private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
@@ -425,13 +418,25 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         private const val MAX_SNAP_M = 1000.0
         private const val ELE_FILTER_M = 10.0
         private const val ASSET_DIR = "brouter"
-        private val PROFILE_ASSETS = listOf(
+        internal val PROFILE_ASSETS = listOf(
             "lookups.dat",
-            "fastbike-verylowtraffic.brf",
+            "touring.brf",
             "trekking.brf",
             "mtb.brf",
             "hiking-mountain.brf",
         )
+
+        /**
+         * Profile per activity. Touring bike and E-bike = touring.brf, OnPath's copy of trekking.brf for a normal bike
+         * (owner 2026-10-25: paved bike ways and quiet ways, traffic and rough
+         * gravel avoided; replaces the road-bike fastbike profile). E-bike changes only power, speed and mass (keyValues).
+         */
+        internal fun profileFile(activity: Activity): String = when (activity) {
+            Activity.BIKE_TOURING, Activity.EBIKE -> "touring.brf"
+            Activity.BIKE_TREKKING -> "trekking.brf"
+            Activity.MTB, Activity.EMTB -> "mtb.brf"
+            Activity.HIKE -> "hiking-mountain.brf"
+        }
 
         init {
             // keep parsed profiles of several activities in memory

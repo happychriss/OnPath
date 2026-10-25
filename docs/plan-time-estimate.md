@@ -269,7 +269,7 @@ keeps the old line (deleting the only target of A→B does not navigate home –
 - **foot profiles** (`hiking-mountain.brf` has `validForFoot 1`, no `maxSpeed` → default 6 km/h):
   **Tobler's hiking function** `v = 6 · exp(−3.5 · |incline + 0.05|)` km/h → 5.0 km/h flat, 6 km/h at −5 %.
 - **bike profiles:** power model, solves `S_C_x·v³ + m·g·(C_r + incline)·v = bikerPower` (defaults 100 W, 90 kg,
-  `C_r` 0.01 on every surface, `maxSpeed` 45 km/h). `trekking.brf` / `fastbike` set exactly these; `mtb.brf` sets
+  `C_r` 0.01 on every surface, `maxSpeed` 45 km/h). `trekking.brf` / `touring.brf` (before: `fastbike`) set exactly these; `mtb.brf` sets
   nothing (same defaults → no surface effect); E-bike / E-MTB: `BRouterEngine.keyValues` sets 180 W, 25 km/h, 110–115 kg.
 - `hiking-mountain.brf` ignores the SAC level and surface for time (only for cost); no breaks.
 
@@ -358,8 +358,8 @@ messages already parsed by `BRouterWayStats`): SAC T1–T2 ×1.0, T3 ×1.1, T4 �
 off-path ×0.6), and the learned factor absorbs most of it, so this waits for field data.
 
 **Bikes:** keep a **power model** (physics is the right tool for bikes, like BRouter's), but compute it ourselves per
-segment so Plan and Navigate agree and learning works: rider power by activity (touring 120 W, trekking 100 W, MTB
-110 W; e-bike/e-MTB rider 100 W + assist up to 25 km/h), **rolling resistance by surface** (asphalt 0.006, paved 0.008,
+segment so Plan and Navigate agree and learning works: rider power by activity (touring 100 W like trekking since 2026-10-25 – 120 W was road-bike like, ~24 km/h –,
+trekking 100 W, MTB 110 W; e-bike/e-MTB rider 100 W + assist up to 25 km/h), **rolling resistance by surface** (asphalt 0.006, paved 0.008,
 gravel 0.012, unpaved/ground 0.02, trail 0.03), **downhill speed caps** by surface (asphalt 40, gravel 30, trail 15
 km/h; MTB trails T-scale later). Pace setting = factor on time (simple; same as hiking). Push sections (> 15 % on
 non-e-bikes for long stretches) are a later refinement.

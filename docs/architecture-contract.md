@@ -36,7 +36,7 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 
 ## Routing
 - Contract in `RoutingContract.kt`. Implementation `BRouterEngine(context: Context, segmentsDir: File)`; profiles shipped in `assets/brouter/`.
-- Activity → profile: BIKE_TOURING → fastbike-verylowtraffic, BIKE_TREKKING → trekking, EBIKE → trekking (higher power), MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit.
+- Activity → profile: BIKE_TOURING → touring, EBIKE → touring (higher power), BIKE_TREKKING → trekking, MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit. touring.brf = OnPath's trekking.brf copy for a normal bike (owner 2026-10-25; replaced the road-bike fastbike-verylowtraffic; `TouringProfileTest` pins the differences, `docs/design/bike-routing.md`).
 
 ## Build 2 additions (night work)
 | Area | Owner | Paths |
@@ -67,7 +67,8 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 ## Way attributes on the route line (time estimate P4, 2026-10-18)
 - `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys
   as in `Share`, SAC 1..6, mtb:scale, smoothness, trail_visibility, rough surface, bike access `bicycle` – added
-  2026-10-22, null = unknown; the text code gained an 8th field, older codes parse with `bicycle = null`). Set by `BRouterEngine` on every
+  2026-10-22, null = unknown; the text code gained an 8th field, older codes parse with `bicycle = null`), `cycleRoute`
+  (route_bicycle_icn|ncn|rcn|lcn, added 2026-10-25 as a 9th field "r", older codes = false). Set by `BRouterEngine` on every
   routed point (`BRouterWayStats.perNode`, from the track messages); null on straight legs, imported tracks and lines
   stored without it. **`GeoPoint.equals`/`hashCode` ignore `way`**, so all existing comparisons behave as before.
 - Because the attributes ride on the points, they survive leg-by-leg fallback, chunking at pinned points, the

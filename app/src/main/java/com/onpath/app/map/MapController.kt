@@ -12,6 +12,7 @@ import android.graphics.Typeface
 import android.location.Location
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Turn
@@ -565,7 +566,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
-        val touring = activity == Activity.BIKE_TOURING
+        // touring.brf family: Touring bike and E-bike (owner 2026-10-25; BRouterEngine.profileFile)
+        val touring = BRouterEngine.profileFile(activity) == "touring.brf"
         val trekking = !walking && !mtb && !touring
         // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions
         // 2026-10-22); format 1 has foot / bike only, where "bike" serves every bike activity.
@@ -577,8 +579,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         }
         // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
         // label (mtb:scale too), loose-surface edges for every bike activity. Green ways, forbidden ways and blocking
-        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking, E-bike),
-        // fastbike (Bike touring), mtb.brf (MTB, MTB e-bike).
+        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking),
+        // touring.brf (Bike touring, E-bike), mtb.brf (MTB, MTB e-bike).
         for ((id, on) in access + listOf(
                 // format 2 only (map package with overlays.pmtiles): bike map, barrier nodes
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,

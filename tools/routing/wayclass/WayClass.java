@@ -25,7 +25,7 @@ import java.util.Map;
  * Usage:  java -jar wayclass.jar --profiles DIR [--costs]  < requests  > answers
  *         java -jar wayclass.jar --profiles DIR --hash               (profile hash only)
  *         java -jar wayclass.jar --profiles DIR --selftest           (known tag sets, exit 1 on a wrong class)
- *   DIR = lookups.dat + hiking-mountain.brf, trekking.brf, fastbike-verylowtraffic.brf, mtb.brf
+ *   DIR = lookups.dat + hiking-mountain.brf, trekking.brf, touring.brf, mtb.brf
  *         (app/src/main/assets/brouter, the files the app routes with)
  *
  * Requests (UTF-8, one per line, tab-separated; tag values must not contain tabs / newlines):
@@ -38,8 +38,8 @@ import java.util.Map;
  *   N  id  mask                              profiles the node blocks: 1 hike, 2 trekking, 4 touring, 8 MTB
  *   --costs appends the raw forward / reverse costfactors per profile (threshold tuning, consistency test).
  *
- * Profile groups (BRouterEngine.profileFile): ch = Hike (hiking-mountain), ct = Bike trekking + E-bike (trekking),
- * cf = Bike touring (fastbike-verylowtraffic), cm = MTB + MTB e-bike (mtb). E-bike / E-MTB change only power, speed
+ * Profile groups (BRouterEngine.profileFile): ch = Hike (hiking-mountain), ct = Bike trekking (trekking),
+ * cf = Bike touring + E-bike (touring), cm = MTB + MTB e-bike (mtb). E-bike / E-MTB change only power, speed
  * and mass – the same costs.
  *
  * Hike: the SAC limit is the user's runtime setting, so it is NOT baked in: sac_scale and mtb:scale are left out of the
@@ -59,9 +59,9 @@ import java.util.Map;
  * blocked for a profile only when it blocks arriving on every way through it.
  */
 public class WayClass {
-  static final String[] PROFILES = {"hiking-mountain", "trekking", "fastbike-verylowtraffic", "mtb"};
+  static final String[] PROFILES = {"hiking-mountain", "trekking", "touring", "mtb"};
   /** Bump when a threshold or the evaluation changes: it is part of the profile hash. */
-  static final String VERSION = "wayclass-4";
+  static final String VERSION = "wayclass-5";
   /**
    * Good = at most this costfactor (better direction). Chosen from the length-weighted costs of the test region's
    * ways (docs/map-style-notes.md "Router classes"). The map draws green only on path-like ways (paths, footways,
@@ -69,12 +69,15 @@ public class WayClass {
    *   hike      1.40: every walkable path / footway / cycleway the profile does not penalise (off a hiking route 1.39,
    *                   on one ≈ 1.16, pedestrian 1.2); foot=no (+4 → 6.2), bad trail visibility (+1.5), informal,
    *                   fords and steps (3.6) are "possible".
-   *   trekking  1.10: cycleways and bicycle=yes|designated paths / footways (1.05); untagged paths 5.05 (pushing).
-   *   touring   2.00: cycleways (1.3) and bicycle=designated paths (2.0); bicycle=yes paths cost 100.
+   *   trekking  1.20: cycleways and bicycle=yes|designated paths / footways (1.15 off a cycle route, 1.0 on one);
+   *                   residential 1.25, untagged paths 5.15 (pushing). Was 1.10 while the off-route add was 0.05
+   *                   (trekking.brf 0.15 since 2026-10-25).
+   *   touring   1.20: as trekking (touring.brf = trekking.brf with other surface / traffic weights, 2026-10-25;
+   *                   before: fastbike, 2.00).
    *   MTB       7.00: unpaved cycleways and bicycle=yes|designated paths (6.67), easy trails; plain paths 10.05, paved
    *                   cycleways 9.6 (mtb.brf path_preference 20), streets 13+.
    */
-  static final float[] GOOD = {1.40f, 1.10f, 2.0f, 7.0f};
+  static final float[] GOOD = {1.40f, 1.20f, 1.20f, 7.0f};
   static final float FORBIDDEN = 9998f;
   /** the bike profiles add +100 to the costfactor against a one-way (trekking / touring / mtb .brf onewaypenalty) */
   static final float ONEWAY_EXTRA = 50f;
@@ -111,7 +114,7 @@ public class WayClass {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
     md.update(VERSION.getBytes(StandardCharsets.UTF_8));
     md.update(Arrays.toString(GOOD).getBytes(StandardCharsets.UTF_8));
-    for (String f : new String[]{"lookups.dat", "hiking-mountain.brf", "trekking.brf", "fastbike-verylowtraffic.brf", "mtb.brf"}) {
+    for (String f : new String[]{"lookups.dat", "hiking-mountain.brf", "trekking.brf", "touring.brf", "mtb.brf"}) {
       md.update(f.getBytes(StandardCharsets.UTF_8));
       md.update(Files.readAllBytes(new File(dir, f).toPath()));
     }
@@ -267,7 +270,7 @@ public class WayClass {
       {t("highway=path", "foot=no"), "1 1 1 1 0"},
       {t("highway=path", "route_hiking_lwn=yes"), "0 1 1 1 0"},
       {t("highway=path", "bicycle=designated"), "0 0 0 0 0"},
-      {t("highway=path", "bicycle=yes"), "0 0 1 0 0"},
+      {t("highway=path", "bicycle=yes"), "0 0 0 0 0"},  // touring.brf = trekking (fastbike: 1)
       {t("highway=path", "sac_scale=alpine_hiking"), "0 3 3 3 0"},
       {t("highway=path", "sac_scale=demanding_mountain_hiking"), "0 3 3 1 0"},
       {t("highway=path", "sac_scale=alpine_hiking", "access=private"), "2 2 2 2 0"},
@@ -281,7 +284,7 @@ public class WayClass {
       {t("highway=cycleway", "surface=asphalt"), "0 0 0 1 0"},
       {t("highway=cycleway", "oneway=yes"), "0 0 0 0 1"},
       {t("highway=cycleway", "oneway=-1"), "0 0 0 0 -1"},
-      {t("highway=residential", "oneway=yes", "oneway:bicycle=no"), "0 1 0 1 0"},
+      {t("highway=residential", "oneway=yes", "oneway:bicycle=no"), "0 1 1 1 0"},
       {t("highway=residential", "access=private"), "2 2 2 2 0"},
       {t("highway=pedestrian"), "0 1 1 1 0"},
     };

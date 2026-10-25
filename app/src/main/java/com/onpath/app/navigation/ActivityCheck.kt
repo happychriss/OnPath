@@ -3,6 +3,7 @@ package com.onpath.app.navigation
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.RouteResult
 import kotlin.math.max
@@ -37,8 +38,8 @@ data class ActivitySwitch(val activity: Activity, val sac: Int, val session: Nav
  * "does it fit" is read from what the router does for that activity:
  * - parts of the followed rest the new route does not use ([avoidedM]) = not suited for that activity (no access,
  *   too hard, steps, above the SAC limit – the router's profile avoids them);
- * - the new route's own way types / surfaces: steps for bikes, unpaved for road bikes, rough trail for trekking bikes,
- *   busy roads for hiking.
+ * - the new route's own way types / surfaces: steps for bikes, unpaved for touring.brf (Touring bike, E-bike), rough
+ *   trail for trekking.brf (Trekking bike), busy roads for hiking.
  * The same result is the proposal when the user switches.
  */
 object ActivityCheck {
@@ -112,18 +113,20 @@ object ActivityCheck {
             val steps = way("steps")
             if (steps >= STEPS_MIN_M) problems += "steps ${Format.distance(round10(steps))}"
         }
-        when (activity) {
-            Activity.BIKE_TOURING, Activity.EBIKE -> {
+        // the surface check follows the routing profile (review 2026-10-25: E-bike was checked like Touring but routed
+        // like Trekking) – touring.brf avoids gravel, trekking.brf only rough trails
+        when {
+            activity == Activity.HIKE -> {
+                val busy = way("busy_road")
+                if (busy >= BUSY_MIN_M) problems += "${Format.distance(round10(busy))} busy road"
+            }
+            BRouterEngine.profileFile(activity) == "touring.brf" -> {
                 val rough = surf("gravel", "ground", "unpaved", "natural_trail", "alpine")
                 if (rough >= ROUGH_MIN_M) problems += "${Format.distance(round10(rough))} unpaved"
             }
-            Activity.BIKE_TREKKING -> {
+            BRouterEngine.profileFile(activity) == "trekking.brf" -> {
                 val rough = surf("ground", "natural_trail", "alpine")
                 if (rough >= ROUGH_MIN_M) problems += "${Format.distance(round10(rough))} rough trail"
-            }
-            Activity.HIKE -> {
-                val busy = way("busy_road")
-                if (busy >= BUSY_MIN_M) problems += "${Format.distance(round10(busy))} busy road"
             }
             else -> Unit
         }
