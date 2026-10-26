@@ -30,6 +30,8 @@ DEFAULT_OUT = ROOT / "external-docs/translation"
 COLUMNS = ["Key", "Priorität", "Sicherheit", "Bereich", "Kontext", "English", "Deutsch (Vorschlag)",
            "EN neu (Owner)", "DE neu (Owner)", "Kommentar (Owner)", "Status"]
 PLACEHOLDER = re.compile(r"%(\d)\$([ds])")
+# German may leave these placeholders out (StringFilesTest.germanMayOmit): the hiking chip is "T2" in German
+GERMAN_MAY_OMIT = {"activity_chip_with_level"}
 
 BACKGROUND = [
     ("Hintergrund / Background", ""),
@@ -249,7 +251,8 @@ def do_import(path: Path, dry: bool):
         en_text = new_en or cur_en[3]
         de_text = new_de or (cur_de[3] if cur_de else "")
         is_plural_one = k.endswith("#one")
-        if de_text and not is_plural_one and holders(en_text) != holders(de_text):
+        omit_ok = k in GERMAN_MAY_OMIT and set(holders(de_text)) <= set(holders(en_text))
+        if de_text and not is_plural_one and not omit_ok and holders(en_text) != holders(de_text):
             errors.append(f"{k}: placeholders differ – EN {holders(en_text)} vs DE {holders(de_text)}")
             continue
         if new_en and new_en != cur_en[3]:
@@ -289,7 +292,7 @@ def check():
         k = r["Key"]
         if not r["Deutsch (Vorschlag)"]:
             bad.append(f"{k}: no German text")
-        elif not k.endswith("#one") and holders(r["English"]) != holders(r["Deutsch (Vorschlag)"]):
+        elif not k.endswith("#one") and k not in GERMAN_MAY_OMIT and holders(r["English"]) != holders(r["Deutsch (Vorschlag)"]):
             bad.append(f"{k}: placeholders differ")
         if k.split("#")[0] not in meta:
             bad.append(f"{k}: no metadata in tools/i18n/meta")

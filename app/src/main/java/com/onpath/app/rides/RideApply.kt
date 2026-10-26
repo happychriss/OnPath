@@ -93,5 +93,5 @@ object RideApply {
 
     /** Like a new recording: "Tour 22 Oct 2026, 16:58" (the app proposes a place name afterwards). */
     fun dateName(ms: Long): String =
-        Txt.s(Res.string.nav_tour_date_name, SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(ms)))
+        Txt.s(Res.string.nav_tour_date_name, SimpleDateFormat(Txt.s(Res.string.common_date_time), Locale.getDefault()).format(Date(ms)))
 }

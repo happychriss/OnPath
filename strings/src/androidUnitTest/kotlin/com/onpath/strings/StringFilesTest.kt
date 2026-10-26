@@ -25,10 +25,17 @@ class StringFilesTest {
         assertEquals("German plural without English", emptySet<String>(), de.plurals.keys - en.plurals.keys)
     }
 
+    /**
+     * Texts whose German may leave a placeholder out (never add one): the hiking chip is "T2" in German – "Wandern · T2"
+     * cut the route's distance on the plan sheet (owner rule: time and distance in full).
+     */
+    private val germanMayOmit = setOf("activity_chip_with_level")
+
     @Test fun placeholdersMatch() {
         val bad = en.strings.mapNotNull { (k, v) ->
             val d = de.strings[k] ?: return@mapNotNull null
-            if (holders(v) != holders(d)) "$k: '$v' vs '$d'" else null
+            val ok = if (k in germanMayOmit) holders(v).containsAll(holders(d)) else holders(v) == holders(d)
+            if (!ok) "$k: '$v' vs '$d'" else null
         } + en.plurals.flatMap { (k, forms) ->
             val all = forms.values.flatMap { holders(it) }.toSortedSet()
             (de.plurals[k] ?: emptyMap()).mapNotNull { (q, d) -> if (holders(d) - all != emptySet<String>()) "$k[$q]: '$d'" else null } +
