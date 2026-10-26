@@ -58,7 +58,7 @@ data class ActivityCheckUi(
     val note: String? = null,
 )
 
-/** "✓ fits" / "⚠ 1.4 km not suited for trekking bikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
+/** "✓ fits" / "⚠ 1.4 km not suited for gravel bikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
 internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
     ActivityRowState.Checking -> "Checking the rest of the route…"
     ActivityRowState.Plain -> ""
@@ -72,7 +72,7 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
 }
 
 /**
- * "You are navigating as: Hike (T3)" and, for every other activity, how the rest of the followed route fits it
+ * "You are navigating as: Hike T3" and, for every other activity, how the rest of the followed route fits it
  * (fits / problems + its time), computed offline in the background (spinner per row). Choosing a row asks the usual
  * "Take new route / Keep original" question with the new route as the dashed proposal. Rows ≥ 56 dp, button 56 dp.
  */
@@ -129,7 +129,9 @@ private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
             Text(name, style = MaterialTheme.typography.titleSmall, color = content)
             if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodyMedium, color = when {
                 s is ActivityRowState.Ready && s.fit.fits -> OnPathColors.Good
-                s is ActivityRowState.Ready -> OnPathColors.Bad
+                // "not suited" is a warning about the way (amber); red only for "no route found" (review 2026-10-24 B17)
+                s is ActivityRowState.Ready -> OnPathColors.Warn
+                s is ActivityRowState.Failed -> OnPathColors.Error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             })
         }

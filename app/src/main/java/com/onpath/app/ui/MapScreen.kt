@@ -143,7 +143,9 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
-        val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN) 124.dp else 76.dp
+        // (measured height: the blue strip with a question is taller than the progress chip – field 0.10.2 overlap)
+        val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
+            (MessagePlacement.STRIP_TOP_DP + vm.backgroundStripHeightDp + 8).coerceAtLeast(124).dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -172,7 +174,8 @@ fun MapScreen(
             value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
-        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup) {
+        // not while the strip asks "Detailed map for here?" – it says the same (field 0.10.2: both at once)
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
@@ -192,7 +195,6 @@ fun MapScreen(
         onDismiss = { showActivity = false },
         sac = vm.sac, onSac = vm::selectSac,
     )
-    if (vm.confirmClear) ConfirmClearDialog(vm.waypoints.size, onClear = vm::clearPlan, onDismiss = { vm.confirmClear = false })
     if (vm.routeBackAsk && rec != null) RouteBackDialog(onYes = { vm.answerRouteBack(true) }, onNo = { vm.answerRouteBack(false) })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
@@ -298,9 +300,16 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
     // owner 2026-10-23: plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
     val chipOn = bg != null && !vm.searchOpen && notice == null
-    LaunchedEffect(chipOn, notice != null) { vm.backgroundStripShown = chipOn || (notice != null && !vm.searchOpen) }
+    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null) {
+        vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null) && !vm.searchOpen)
+    }
+    val here = vm.hereAsk
     if (notice != null && !vm.searchOpen) {
         MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+    } else if (here != null && !vm.searchOpen) {
+        // owner 2026-10-23: opening the app asks for the map of here, it never loads by itself (e.g. in a car)
+        HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
+            mustBuild = here.mustBuild, modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (chipOn) {
         BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
             modifier = Modifier.align(Alignment.TopEnd).then(top).padding(end = 12.dp).measured())
@@ -354,7 +363,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
             points = rows,
-            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText()),
+            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(),
+            changedText = vm.routeChangedLineText()),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -365,6 +375,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onPlanAnyway = vm::planAnyway,
             onShowGap = vm::showPlanGap,
             onWarnings = vm::tapWarningLine,
+            onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,

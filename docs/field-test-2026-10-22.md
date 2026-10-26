@@ -1,5 +1,7 @@
 # Field test 2026-10-22 (Tasers / Schenna) – analysis of the phone data
 
+> Historical (0.9.0 field test) – fixes listed at the end; anything open is in `docs/backlog.md`.
+
 Owner's Pixel 8, app 0.9.0. Fixes made from this analysis: see the end of this file.
 
 All times are local CEST (UTC+2), with UTC (Z) where it helps. Everything was read from the phone without changing it.

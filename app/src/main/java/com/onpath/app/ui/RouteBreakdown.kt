@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,8 +31,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.Share
 
@@ -125,7 +127,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
     val parts = foldSmall(shares)
     if (parts.isEmpty()) return
     Column {
-        Text(title, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(3.dp))
         Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))) {
             parts.forEach { s ->
@@ -138,20 +140,28 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(color))
                     Spacer(Modifier.width(4.dp))
-                    Text("$label ${Format.distance(s.meters)}", fontSize = 11.sp)
+                    Text("$label ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
     }
 }
 
+/** "Moderate", or "Moderate · T3" when the trail technique raised the label (owner 2026-10-25, like Komoot). */
 @Composable
-fun DifficultyBadge(d: RouteSummary.Difficulty, modifier: Modifier = Modifier) {
-    val (bg, fg) = when (d) {
-        RouteSummary.Difficulty.EASY -> Color(0xFFDDEFE3) to Color(0xFF1F6E43)
-        RouteSummary.Difficulty.MODERATE -> Color(0xFFFFF0D2) to Color(0xFF8A5A00)
-        RouteSummary.Difficulty.DIFFICULT -> Color(0xFFFDE0DC) to Color(0xFFB3261E)
+fun DifficultyBadge(r: RouteSummary.Rating, modifier: Modifier = Modifier) {
+    val (bg, fg) = when (r.level) {
+        RouteSummary.Difficulty.EASY -> OnPathColors.GreenLight to OnPathColors.Green
+        RouteSummary.Difficulty.MODERATE -> OnPathColors.WarnContainer to OnPathColors.Warn
+        RouteSummary.Difficulty.DIFFICULT -> OnPathColors.ErrorContainer to OnPathColors.Error
     }
-    Text(d.label, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
-        color = fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    Text(r.text, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
+        color = fg, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
 }
+
+/** The rating of [route] for [activity], computed once per route (walks the way attributes of every point). */
+@Composable
+fun rememberRating(route: PlannedRoute, activity: Activity): RouteSummary.Rating =
+    remember(route, activity) {
+        RouteSummary.rating(activity, route.distanceM, route.ascentM, route.points)
+    }

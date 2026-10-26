@@ -227,7 +227,7 @@ done
 | `app/…/data/MapServer.kt` | Server URL + key per build type, shown in Settings → Diagnostics |
 
 Local checks: `cd tools/cloud && python3 -m unittest test_cloud`; `cd tools/cloud/worker && node --test`
-(Node ≥ 22.13, no npm install); `tools/cloud/worker/smoke.sh` (local `wrangler dev`, needs npm access).
+(Node ≥ 24 as in CI – 22.14 fails on node:sqlite parameters; no npm install); `tools/cloud/worker/smoke.sh` (local `wrangler dev`, needs npm access).
 
 ## 7b. First cloud builds (2026-10-21, test)
 
@@ -254,14 +254,15 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
 Field report: the 09:11 format-2 cells had no overlays layer `streets` (added 10:15), the style draws small streets
 at z13+ only from it → no small streets on the phone. Versions were named by the OSM date alone, so a rebuild on the
 same OSM date would have had the same (immutable, cached) name. Now:
-- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, now 2); the manifest has
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`; 2 when this was written, 7 since 2026-10-26 – see below); the manifest has
   `version` and `schema`.
 - **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
   rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
   A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
-- **App:** `CellApi.CELL_SCHEMA`; installed cells of an older schema are requested again at every start
-  (`CellTriggers.updateOutdated`, reason `UPDATE`, sent as `point`, allowed on mobile data); the manifest's `version`
-  is the installed version (older manifests: `osm_date`).
+- **App:** `CellApi.CELL_SCHEMA`; the manifest's `version` is the installed version (older manifests: `osm_date`).
+  Installed cells of an older schema were requested again at every start (`CellTriggers.updateOutdated`) until 0.8.3;
+  since then (no idle refresh, owner 2026-10-21) they are renewed by the after-routing check (`CellTriggers.freshenAlong`)
+  – the start-time code was removed as dead code on 2026-10-26.
 - **Bump all three** whenever the style needs data older cells lack. Old apps (before this) still work: delete the
   area in Settings → Offline maps and it is loaded again (the doorman rebuilds it first). The app shows the
   rebuild as `CellWhy.UPDATE` ("Updating the map for the new map style").
@@ -269,6 +270,19 @@ same OSM date would have had the same (immutable, cached) name. Now:
   app stays at 3 (s3 cells work, same-kind POIs just tie). Doorman `CELL_SCHEMA_SERVE` = 3: a published cell of schema
   ≥ 3 stays `ready` (+ `updating`) while its s4 rebuild runs, queued at refresh priority; below 3 as before (not
   served, asked priority). Phones get s4 through the normal refresh / after-routing check.
+- **Schema 5 (2026-10-26, router classes from the tuned bike profiles: `cf` from touring.brf, `ct` from the tuned
+  trekking.brf) is look-only too:** same pattern – builder and doorman 5, `CELL_SCHEMA_SERVE` and the app stay at 3.
+- **Schema 6 (2026-10-26, "quiet towns": town flag `u` on overlay paths / streets, link pieces `k` = "l" for path ends
+  at hidden sidewalks / crossings, `ar` on pedestrian squares – docs/map-pipeline.md 5b) is look-only too:** builder
+  (`cells.py`) and doorman (`wrangler.toml`, `config.js` default) 6, `CELL_SCHEMA_SERVE` and the app stay at 3. A cell
+  without `u` simply draws towns as before. The rebuild also refreshes the router classes for the bike footway-cost
+  fix of the same day (trekking / touring.brf: compacted counts as firm, cheap footway only without a bicycle tag).
+- **Schema 7 (2026-10-26, bike map from the Hilden field review: cycle routes only of the networks lcn / rcn / ncn /
+  icn, label lines `lb` for named local cycle routes, `bs` on bicycle streets, `br` on bridges and `fw` on hidden
+  footways in overlay `paths`, street areas (layer `areas`), sidewalk fragments hidden –
+  docs/map-pipeline.md 5b) is look-only too:** builder and doorman 7, `CELL_SCHEMA_SERVE` and the app stay at 3. An s6
+  cell just keeps the unsigned route lines and has no local route names, bicycle streets or footbridge flag; the
+  `lb` pieces also carry `majoronly`, so a style from before s7 leaves them out of the band and the major layers.
 
 ## 7d. Released APKs, loading overlay, fresh-install reset (2026-10-21, cloud)
 
@@ -344,7 +358,7 @@ queued. Owner decision: up to 4 builds at once, waiting users first, an honest E
 - **Parallel** (`PARALLEL_BUILDS`, default 4; "1" = old behaviour): the cron pump (and every request) starts
   executions until all slots are busy. Waiting cells are spread over the free slots (`ceil(waiting / free)` cells
   per execution, at most `CELLS_PER_EXECUTION`) – 3 points → 3 executions of 1 cell, built at the same time.
-  Background cells are batched (4 per execution) and **never take the last free slot** (they start only while ≥ 2
+  Background cells are spread over the free slots but one (since 2026-10-26, §7h; at most 4 per execution) and **never take the last free slot** (they start only while ≥ 2
   slots are free) and only within `MAX_EXEC_PER_HOUR/DAY` minus a reserve of `min(slots, hour/2)` starts – a waiting
   request never waits behind a refresh. Separate Cloud Run executions of the one job: no IAM change needed (the
   doorman's role already has `run.jobs.runWithOverrides`). If Google refuses a start while others run (quota),
@@ -401,6 +415,70 @@ Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback
   gcp-setup.sh; `gsutil ls gs://onpath-maps-onpath-sources/osm/` first).
 - **Manifest `sources`**: `[{id, date, url}]` of the OSM extracts the cell was cut from (job → `SRC_META` →
   build_cell.sh → `cells.py manifest --sources`); debugging aid, the app ignores it.
+
+## 7h. Faster map refreshes: where the time goes, dev loop (2026-10-26, desktop "donald")
+
+**Field case:** the look-only bump s5 → s6 (overlays only) for 6 cells around Düsseldorf / Hilden took ~48 min from
+the after-routing refresh (~09:45 UTC) to the map on the phone (10:34). From the R2 status files and `build.json`:
+- the cells were queued at **refresh priority** (s5 ≥ `CELL_SCHEMA_SERVE`) = background → batched **4 per execution**
+  and built one after the other: execution n4s2c built 4 cells 09:47:42 → 10:24:12, vrrlx 2 cells → 10:07:10;
+- **8–10.5 min per cell** in the cloud (dense area; Meran 160–175 s): overlays 129–197 s, base 87–126 s, terrain
+  63–125 s (AWS tiles, no cache on Cloud Run), pois / addresses 47–70 s each, cut + merge + renumber 25–35 s, upload ~4 s;
+- the app saw "ready + updating" and waited its **15-min idle time** before asking again: ~10 min after the last build;
+- download (126 MB) + join < 1 min.
+
+The same cell (10-531-342) on donald with the job image (4 CPUs, low priority): 247 s cold (+ 89 s for the two
+Geofabrik extracts), **179 s warm** (overlays 61 s, base 30 s, pois 22 s, addresses 23 s, terrain 20 s) – 2.5–3× faster
+than Cloud Run's 2 vCPU. An overlays-only rebuild would take ~80 s here, ~4.2 min in the cloud (see backlog: partial
+rebuild).
+
+**App poll while updating:** a cell answered "ready + updating" now counts as being built (`MapCells.updatingOnServer`):
+the app asks again at the doorman's `poll_s`, and the doorman answers `poll_s` 15 while any asked cell is rebuilt
+(was 60, and the app waited its 15-min idle time). The new version reaches the phone within ~15 s of the build
+(`CellDownloadTest.updatingCellIsPolledUntilTheRebuildIsDone`). Not on screen: unchanged (no polling).
+
+**Background lane** (`queue.js startNext`): background cells (refresh, schema rebuild, corridor) are spread over the
+free slots minus the one kept for someone waiting – 6 cells on 4 idle slots → 3 executions × 2 cells, built at the same
+time (was 4 + 2, serial: the last Hilden cell 36 min after the start, now ≈ 2 × 10 min); a long queue still goes 4 per
+execution, so the hourly cap is not used up by small batches. `PARALLEL_BUILDS` / `MAX_EXEC_PER_HOUR` unchanged (the
+Cloud Run CPU quota for more slots is not checked yet). Each extra execution costs ~1.5 min of start-up (≈ $0.003).
+
+**Pre-warm** (`queue.js prewarm`, `PREWARM_DAYS` default 30, 0 = off): the first pump after a `CELL_SCHEMA` bump queues
+every cell asked for in the last 30 days whose published version is of an older schema, once, at refresh priority
+(meta row `prewarm-schema`; a full queue continues at the next pump). Phones then find the new map built instead of
+waiting for it; cost ≈ $0.01 per cell. The first deploy of this code also pre-warms today's s < 6 cells.
+
+**Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
+working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4
+--cpu-shares 64 --blkio-weight 10`, 8 GiB; work folder `~/onpath-cells-work`, not the repo), renames the version to
+`<osm_date>-dev<MMDDHHMM>-s<schema>`, force-stops OnPath (refused while a tour records), pushes it as a complete
+download (`cells/download/<cell>/<version>/`, via `<version>.part` + one rename) and starts OnPath: `MapCells.recover()`
+joins it at start like a download finished before a crash. ~3–4 min per cell, the push + join ~12 s.
+- adb-created folders belong to `shell` with mode 2770 – the app cannot even list them (first try on the Pixel 8: the
+  cell was silently not joined); the script opens them (777 / 666), then the app joins, renames the address file and
+  deletes the folder as usual.
+- A dev version is never a server name (`CellApi.isDevVersion`), and a **refresh does not replace it for 24 h**
+  (`MapCells.DEV_KEEP_MS` – the restored plan's route asks for a refresh at every start). After that the next refresh
+  loads the server's version; at once: Settings → Offline maps → delete the area. Other cells are not touched.
+
+**Fast lane – `tools/dev/publish_cells.sh <cells…>`** (owner 2026-10-26: "build here and push to the cloud" – TEST
+only): builds the cells from **origin/main** (`git archive`, a dirty working tree is refused, manifest pipeline =
+the origin/main commit) with the same job image, ≤ 2 containers at once, and `job_build.py` uploads them to R2 exactly
+like a Cloud Run execution (files → manifest → `current.json`, status file with execution `donald-…`). A cell whose
+status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` = everything but the upload.
+- **Doorman "adopt"** (`queue.js adoptable` / `adoptQueued`): D1 does not know such a version. Before the doorman
+  queues a build (request) and before it starts one (every pump, first 40 queued cells, also with builds off), it
+  reads the cell's `current.json` + manifest; a version that is current – schema ≥ `CELL_SCHEMA`, OSM date younger than
+  `REFRESH_DAYS`, other than the D1 row's – is taken as it is: row ready (`version`, `osm_date`, `size`), no build.
+  Never while a Cloud Run job builds the cell (that job finishes and publishes its own). Logged as `{"ev":"adopted"}`.
+- **Credentials:** one R2 API token, **Object Read & Write on bucket `onpath-maps-test` only** (owner, Cloudflare
+  dashboard → R2 → Manage API tokens), in `~/.config/onpath/r2-test.env` on donald (0600, outside the repo; keys
+  `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_JURISDICTION`), passed only as
+  `docker --env-file` and never printed. The script refuses any other bucket, an `R2_ENDPOINT` override, or a file that
+  is not 0600. No D1 or Cloudflare API token is needed (adoption happens in the Worker). Production stays cloud-only.
+  Revoke: dashboard → R2 → Manage API tokens → delete the donald token.
+- Expected: 6 dense cells ≈ 10 min (2 at once, ~3 min each warm) + upload (~130 MB); the phone loads them at its
+  next refresh / request for them.
 
 ## 8. Open points
 

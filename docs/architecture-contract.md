@@ -36,7 +36,7 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 
 ## Routing
 - Contract in `RoutingContract.kt`. Implementation `BRouterEngine(context: Context, segmentsDir: File)`; profiles shipped in `assets/brouter/`.
-- Activity → profile: BIKE_TOURING → fastbike-verylowtraffic, BIKE_TREKKING → trekking, EBIKE → trekking (higher power), MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit.
+- Activity → profile: BIKE_TOURING → touring, EBIKE → touring (higher power), BIKE_TREKKING → trekking, MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit. touring.brf = OnPath's trekking.brf copy for a normal bike (owner 2026-10-25; replaced the road-bike fastbike-verylowtraffic; `TouringProfileTest` pins the differences, `docs/design/bike-routing.md`). Names the user sees (`Activity.label` + `line`, owner 2026-10-26): BIKE_TOURING "Bike", BIKE_TREKKING "Gravel bike", EBIKE "E-bike", MTB "MTB", EMTB "E-MTB", HIKE "Hike"; stored values keep the enum names.
 
 ## Build 2 additions (night work)
 | Area | Owner | Paths |
@@ -67,7 +67,12 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 ## Way attributes on the route line (time estimate P4, 2026-10-18)
 - `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys
   as in `Share`, SAC 1..6, mtb:scale, smoothness, trail_visibility, rough surface, bike access `bicycle` – added
-  2026-10-22, null = unknown; the text code gained an 8th field, older codes parse with `bicycle = null`). Set by `BRouterEngine` on every
+  2026-10-22, null = unknown; the text code gained an 8th field, older codes parse with `bicycle = null`), `cycleRoute`
+  (route_bicycle_icn|ncn|rcn|lcn, added 2026-10-25 as a 9th field "r", older codes = false) and `pedestrian`
+  (highway=pedestrian, flag "p" in the same 9th field, 2026-10-26); route hints 2026-10-26: `ford` (flag "f": a ford way,
+  or the span ends at a ford node), `construction` (flag "c": highway=construction) and `barrier` (10th field: stile /
+  kissing_gate / turnstile / full-height_turnstile at the node ending the span – node tags of BRouter's message, other
+  barriers are not kept); older codes = none. Set by `BRouterEngine` on every
   routed point (`BRouterWayStats.perNode`, from the track messages); null on straight legs, imported tracks and lines
   stored without it. **`GeoPoint.equals`/`hashCode` ignore `way`**, so all existing comparisons behave as before.
 - Because the attributes ride on the points, they survive leg-by-leg fallback, chunking at pinned points, the
@@ -75,5 +80,6 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
   optional `originalWays` / `currentWays` run lists; old files load without them). Saved routes (`TourDb`) store no
   attributes; their list time comes from `time/PlanTimesStore` written at save, else from the bare points.
 - Consumers: `time/RouteTimes` (per 50 m piece) and `time/TimeBreakdown` ("By way" table). Unknown → today's times.
-  `ui/RouteWarnings` (amber line in the plan sheet): pushing / steps / above T level; `bicycle` = yes / designated /
-  permissive on a footway or path → rideable, `dismount` → pushing.
+  `ui/RouteWarnings` (amber line in the plan sheet): ferry (wayType "ferry") / construction / pushing / steps / above T
+  level / ford / barrier (bikes) / steep; `bicycle` = yes / designated / permissive on a footway or path → rideable,
+  `dismount` → pushing.

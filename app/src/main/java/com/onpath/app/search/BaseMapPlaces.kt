@@ -23,14 +23,20 @@ object BaseMapPlaces {
     private val PLACE_CLASSES = setOf("city", "town", "village", "hamlet", "suburb", "neighbourhood", "quarter",
         "isolated_dwelling", "locality")
 
-    fun read(file: File): List<Item> {
-        val out = ArrayList<Item>()
-        forEachMaxZoomTile(file) { tile, z, x, y ->
-            try { decodeTile(tile, z, x, y, out) } catch (ex: Exception) {
+    fun read(file: File): List<Item> = readGrouped(file) { _, _, _ -> Unit }[Unit].orEmpty()
+
+    /**
+     * Like [read], but per group: [group] maps a tile (z, x, y of the highest zoom) to its group (e.g. the map area
+     * that owns it) or null (tile not read at all – only the wanted areas' tiles are decoded). Deduplicated per group.
+     */
+    fun <K : Any> readGrouped(file: File, group: (Int, Int, Int) -> K?): Map<K, List<Item>> {
+        val out = HashMap<K, ArrayList<Item>>()
+        forEachMaxZoomTile(file, group) { tile, z, x, y, k ->
+            try { decodeTile(tile, z, x, y, out.getOrPut(k) { ArrayList() }) } catch (ex: Exception) {
                 Problems.warn("search", "Base map tile not decodable; its places are missing from search", ex)
             }
         }
-        return dedupe(out)
+        return out.mapValues { dedupe(it.value) }
     }
 
     /** One trail-name piece from overlays.pmtiles (layer "trailnames", t = "n"): name, a point on it, whole length. */
@@ -41,18 +47,24 @@ object BaseMapPlaces {
      * of the highest zoom, placed at its middle vertex (pieces whose middle lies in the tile buffer belong to the
      * neighbour tile). The caller merges pieces of one name. Never throws for a broken tile (logged, skipped).
      */
-    fun readTrailNames(file: File): List<TrailName> {
-        val out = ArrayList<TrailName>()
-        forEachMaxZoomTile(file) { tile, z, x, y ->
-            try { decodeTrailNames(tile, z, x, y, out) } catch (ex: Exception) {
+    fun readTrailNames(file: File): List<TrailName> = readTrailNamesGrouped(file) { _, _, _ -> Unit }[Unit].orEmpty()
+
+    /** [readTrailNames] per group of tiles (see [readGrouped]). */
+    fun <K : Any> readTrailNamesGrouped(file: File, group: (Int, Int, Int) -> K?): Map<K, List<TrailName>> {
+        val out = HashMap<K, ArrayList<TrailName>>()
+        forEachMaxZoomTile(file, group) { tile, z, x, y, k ->
+            try { decodeTrailNames(tile, z, x, y, out.getOrPut(k) { ArrayList() }) } catch (ex: Exception) {
                 Problems.warn("search", "Overlay tile not decodable; its trail names are missing from search", ex)
             }
         }
         return out
     }
 
-    /** Calls [onTile] with every tile of the file's highest zoom (decompressed MVT bytes, z, x, y). MVT files only. */
-    private fun forEachMaxZoomTile(file: File, onTile: (ByteArray, Int, Int, Int) -> Unit) {
+    /**
+     * Calls [onTile] with every tile of the file's highest zoom (decompressed MVT bytes, z, x, y, group) whose [group]
+     * is not null; other tiles are not even read. MVT files only.
+     */
+    private fun <K : Any> forEachMaxZoomTile(file: File, group: (Int, Int, Int) -> K?, onTile: (ByteArray, Int, Int, Int, K) -> Unit) {
         if (!file.isFile) return
         RandomAccessFile(file, "r").use { raf ->
             val h = ByteArray(127)
@@ -73,14 +85,16 @@ object BaseMapPlaces {
                 for (e in dir) {
                     if (e.runLength == 0L) { walk(leafOff + e.offset, e.length, depth + 1); continue }
                     if (e.tileId + e.runLength <= zStart || e.tileId >= zEnd) continue
+                    val wanted = ArrayList<Pair<Triple<Int, Int, Int>, K>>()
+                    for (id in maxOf(e.tileId, zStart) until minOf(e.tileId + e.runLength, zEnd)) {
+                        val t = tileIdToZxy(id)
+                        group(t.first, t.second, t.third)?.let { wanted += t to it }
+                    }
+                    if (wanted.isEmpty()) continue
                     val tile = try { decompress(readBytes(dataOff + e.offset, e.length), tileComp) } catch (ex: Exception) {
                         Problems.warn("search", "Map tile (${file.name}) unreadable; its names are missing from search", ex); continue
                     }
-                    for (id in e.tileId until e.tileId + e.runLength) {
-                        if (id < zStart || id >= zEnd) continue
-                        val (tz, tx, ty) = tileIdToZxy(id)
-                        onTile(tile, tz, tx, ty)
-                    }
+                    for ((t, k) in wanted) onTile(tile, t.first, t.second, t.third, k)
                 }
             }
             walk(rootOff, rootLen, 0)

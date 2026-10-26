@@ -6,13 +6,20 @@ import com.onpath.app.debug.Problems
  * Shared contract between the app UI and the on-device routing engine.
  * Do not change without updating docs/architecture-contract.md.
  */
-enum class Activity(val label: String) {
-    BIKE_TOURING("Touring bike"),
-    BIKE_TREKKING("Trekking bike"),
-    EBIKE("E-bike"),
-    MTB("MTB"),
-    EMTB("E-MTB"),
-    HIKE("Hike"),
+/**
+ * The six activities. [label] is the one name the user sees (picker, chip, button, messages) and [line] the one short
+ * explaining line under it in the activity picker (owner 2026-10-26: names only, routing unchanged); [chip] = the name on
+ * the plan sheet's activity chip, shorter only where the full name would cut the route's distance ("Gravel": with
+ * "Gravel bike" a 112 km day tour showed "11…", owner rule 2026-10-22: time and distance in full). Stored values
+ * (prefs, DB, nav session, backups) use the enum name, never [label].
+ */
+enum class Activity(val label: String, val line: String, val chip: String = label) {
+    BIKE_TOURING("Bike", "Paved cycleways, quiet roads"),
+    BIKE_TREKKING("Gravel bike", "Gravel tracks welcome", chip = "Gravel"),
+    EBIKE("E-bike", "Bike with motor, 25 km/h"),
+    MTB("MTB", "Trails and singletrails"),
+    EMTB("E-MTB", "MTB with motor"),
+    HIKE("Hike", "T1 … T5"),
 }
 
 /**
@@ -54,10 +61,37 @@ data class WayAttrs(
      * lookups fold synonyms, e.g. allowed → yes), null = not tagged / unknown. Added 2026-10-22 (route warnings).
      */
     val bicycle: String? = null,
+    /**
+     * Part of a signed cycle route (BRouter's route_bicycle_icn / ncn / rcn / lcn). A footway without a bicycle tag on a
+     * route is ridden, not pushed (owner 2026-10-25; touring.brf / trekking.brf cost it so). Added 2026-10-25.
+     */
+    val cycleRoute: Boolean = false,
+    /**
+     * highway=pedestrian (a pedestrian zone; [wayType] says "footway" for it too). No cycling there unless signed
+     * (bicycle=yes / designated), also on a cycle route (German law) – stays "pushing". Added 2026-10-26.
+     */
+    val pedestrian: Boolean = false,
+    /**
+     * Water to cross: the way is a ford (ford=yes / stepping_stones) or the span ends at a ford node. Route hints
+     * (owner 2026-10-26: "a hint on a route if it contains anything that requires validation"). Added 2026-10-26.
+     */
+    val ford: Boolean = false,
+    /**
+     * A barrier a bike does not simply pass (stile, kissing_gate, turnstile, full-height_turnstile – OSM value) at the
+     * node ending this span; null = none of those (bollards, gates, lift gates are passable and not kept). Added 2026-10-26.
+     */
+    val barrier: String? = null,
+    /** highway=construction: the way is being built or rebuilt and may be closed. Added 2026-10-26. */
+    val construction: Boolean = false,
 ) {
-    /** Compact text form for files ("path|natural_trail|3|-1||bad||yes"); [parse] reads it back (older codes: no bike access). */
+    /**
+     * Compact text form for files ("path|natural_trail|3|-1||bad||yes|r|stile"; field 9 = flags: r cycle route,
+     * p pedestrian zone, f ford, c construction; field 10 = [barrier]); [parse] reads it back (older codes: no bike
+     * access, not on a cycle route, no pedestrian zone, no ford / barrier / construction).
+     */
     fun code(): String = listOf(wayType, surface, sac.toString(), mtb.toString(), smoothness.orEmpty(), visibility.orEmpty(),
-        rough.orEmpty(), bicycle.orEmpty()).joinToString("|")
+        rough.orEmpty(), bicycle.orEmpty(), (if (cycleRoute) "r" else "") + (if (pedestrian) "p" else "") +
+            (if (ford) "f" else "") + (if (construction) "c" else ""), barrier.orEmpty()).joinToString("|")
 
     companion object {
         fun parse(code: String?): WayAttrs? = try {
@@ -65,7 +99,9 @@ data class WayAttrs(
             if (c == null || c.size < 4 || c[0].isEmpty()) null
             else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
                 c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null },
-                c.getOrNull(7)?.ifEmpty { null })
+                c.getOrNull(7)?.ifEmpty { null }, c.getOrNull(8)?.contains('r') == true, c.getOrNull(8)?.contains('p') == true,
+                ford = c.getOrNull(8)?.contains('f') == true, barrier = c.getOrNull(9)?.ifEmpty { null },
+                construction = c.getOrNull(8)?.contains('c') == true)
         } catch (_: Exception) { null } // expected: an unknown / old code = no attributes
     }
 }

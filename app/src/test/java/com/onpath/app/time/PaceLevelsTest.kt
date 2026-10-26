@@ -40,8 +40,6 @@ class PaceLevelsTest {
         assertEquals(4.45 * 3600, Din33466.seconds(10_000.0, 600.0, 600.0), 1e-6)
         // 16 km, 300 up, 500 down: h = 4, v = 2 → 4 + 1 = 5 h
         assertEquals(5 * 3600.0, Din33466.seconds(16_000.0, 300.0, 500.0), 1e-6)
-        // the quick estimate for straight lines / imported tracks is this rule
-        assertEquals(Din33466.seconds(10_000.0, 600.0, 600.0), Geo.estimateSeconds(10_000.0, 600.0, 600.0, Activity.HIKE), 0.0)
         // the per-segment model has the same flat speed (4 km/h = 15 min per km)
         assertEquals(15.0, PaceModel.hikeMinPerKm(0.0), 1e-9)
     }

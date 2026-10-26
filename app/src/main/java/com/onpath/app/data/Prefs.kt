@@ -78,7 +78,6 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     var settings: AppSettings
         get() = AppSettings(
             hiddenPoiKinds = hiddenPoiKinds(),
-            routeOverlay = sp.getBoolean("overlay", true),
             contours = sp.getBoolean("contours", true),
             hillshade = sp.getBoolean("hillshade", true),
             offRouteWarning = sp.getBoolean("offRouteOn", true),
@@ -96,7 +95,6 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
             .putInt("poiDefaultsVer", com.onpath.app.poi.PoiKinds.DEFAULTS_VERSION)
-            .putBoolean("overlay", v.routeOverlay)
             .putBoolean("contours", v.contours)
             .putBoolean("hillshade", v.hillshade)
             .putBoolean("offRouteOn", v.offRouteWarning)
@@ -146,10 +144,16 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return true
     }
 
-    /** "Allow all the time" was offered once (first tour); never nag again – Settings has the way back. */
-    var backgroundAsked: Boolean
-        get() = sp.getBoolean("backgroundAsked", false)
-        set(v) = sp.edit().putBoolean("backgroundAsked", v).apply()
+
+    /** Developer tools unlocked by 7 taps on the version in Settings → About (owner C5 2026-10-24); stays. */
+    var devToolsUnlocked: Boolean
+        get() = sp.getBoolean("devToolsUnlocked", false)
+        set(v) = sp.edit().putBoolean("devToolsUnlocked", v).apply()
+
+    /** Last visit to Settings → Diagnostics (ms): newer serious problems colour its list line red (owner C6). */
+    var diagnosticsSeenMs: Long
+        get() = sp.getLong("diagnosticsSeenMs", 0L)
+        set(v) = sp.edit().putLong("diagnosticsSeenMs", v).apply()
 
     /** Last check for newer routing data after a route (ms since epoch; AppViewModel.checkRoutingData). */
     var routingDataCheckedAt: Long

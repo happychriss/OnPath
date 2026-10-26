@@ -6,7 +6,7 @@ package com.onpath.app.routing
  *
  * Input is BRouter's `OsmTrack.aggregateMessages()`: one tab-separated line per run of
  * identical way tags: lon, lat, ele, distance (m), costPerKm, elevCost, turnCost, nodeCost,
- * initialCost, wayTags ("highway=path surface=gravel ..."), nodeTags, time, energy.
+ * initialCost, wayTags ("highway=path surface=gravel ..."), nodeTags (of the run's last node), time, energy.
  * The engine sets `processUnusedTags=1` so that surface/tracktype/sac_scale are always present.
  *
  * Way type mapping (keys from RoutingContract.kt):
@@ -72,7 +72,24 @@ object BRouterWayStats {
         visibility = tags["trail_visibility"],
         rough = tags["surface"]?.takeIf { it in ROUGH },
         bicycle = tags["bicycle"]?.trim()?.ifEmpty { null },
+        cycleRoute = CYCLE_ROUTES.any { tags[it] == "yes" },
+        pedestrian = tags["highway"] == "pedestrian",
+        ford = tags["ford"] in FORDS,
+        construction = tags["highway"] == "construction",
     )
+
+    /**
+     * What the node ending a run adds to the span leading to it (route hints, 2026-10-26): a ford node (ford=yes /
+     * stepping_stones, highway=ford) or a barrier a bike does not simply pass ([HARD_BARRIERS]). [w] unchanged when the
+     * node has none of these.
+     */
+    fun withNode(w: WayAttrs, nodeTags: Map<String, String>): WayAttrs {
+        if (nodeTags.isEmpty()) return w
+        val ford = nodeTags["ford"] in FORDS || nodeTags["highway"] == "ford"
+        val barrier = nodeTags["barrier"]?.takeIf { it in HARD_BARRIERS }
+        if (!ford && barrier == null) return w
+        return w.copy(ford = w.ford || ford, barrier = barrier ?: w.barrier)
+    }
 
     /**
      * Way attributes per track node: [i] = the way from node i to node i+1 (the last node repeats the last way).
@@ -93,11 +110,15 @@ object BRouterWayStats {
             if (cols.size < 10) continue
             val lon = cols[0].trim().toIntOrNull() ?: continue
             val lat = cols[1].trim().toIntOrNull() ?: continue
+            // a zero-length run reported at the current node (BRouter does this at the start of a track): nothing to assign
+            if (nodeLon[k] == lon && nodeLat[k] == lat) continue
             var j = k + 1
             while (j < n && (nodeLon[j] != lon || nodeLat[j] != lat)) j++
             if (j >= n) return emptyList()
             val a = cache.getOrPut(cols[9]) { attrs(parseTags(cols[9])) }
             for (i in k until j) out[i] = a
+            // node tags (a ford, a stile) belong to the run's last node: the span leading to it carries them
+            cols.getOrNull(10)?.takeIf { it.isNotBlank() }?.let { out[j - 1] = withNode(a, parseTags(it)) }
             last = a; k = j
         }
         if (last == null) return emptyList()
@@ -178,6 +199,11 @@ object BRouterWayStats {
         "hiking" to 1, "T1-hiking" to 1, "mountain_hiking" to 2, "demanding_mountain_hiking" to 3,
         "alpine_hiking" to 4, "demanding_alpine_hiking" to 5, "difficult_alpine_hiking" to 6,
     )
+    /** BRouter's pseudo-tags for cycle route relations (lookups.dat); route_bicycle_mtb is not a touring route. */
+    private val CYCLE_ROUTES = listOf("route_bicycle_icn", "route_bicycle_ncn", "route_bicycle_rcn", "route_bicycle_lcn")
+    private val FORDS = setOf("yes", "stepping_stones")
+    /** Barriers a bike does not simply pass (bollards, gates, lift gates, cycle barriers do not count). */
+    val HARD_BARRIERS = setOf("stile", "kissing_gate", "turnstile", "full-height_turnstile")
     private val ROUGH = setOf("rock", "rocks", "rocky", "stone", "scree")
     private val ALPINE_SAC = setOf("alpine_hiking", "demanding_alpine_hiking", "difficult_alpine_hiking")
     private val MAJOR_ROADS = setOf(

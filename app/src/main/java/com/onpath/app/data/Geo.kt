@@ -1,8 +1,6 @@
 package com.onpath.app.data
 
-import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
-import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.max
@@ -77,26 +75,12 @@ object Geo {
         return best
     }
 
-    /** Rough time estimate used for straight-line fallbacks and imported tracks. */
-    fun estimateSeconds(distanceM: Double, ascentM: Double, descentM: Double, activity: Activity): Double {
-        return when (activity) {
-            Activity.HIKE -> com.onpath.app.time.Din33466.seconds(distanceM, ascentM, descentM)
-            Activity.BIKE_TOURING -> distanceM / (20 / 3.6) + ascentM * 6
-            Activity.BIKE_TREKKING -> distanceM / (16 / 3.6) + ascentM * 7
-            Activity.EBIKE -> distanceM / (20 / 3.6) + ascentM * 2.5
-            Activity.MTB -> distanceM / (12 / 3.6) + ascentM * 8
-            Activity.EMTB -> distanceM / (14 / 3.6) + ascentM * 3
-        }
-    }
-
     fun bounds(points: List<GeoPoint>): DoubleArray? {
         if (points.isEmpty()) return null
         var s = 90.0; var n = -90.0; var w = 180.0; var e = -180.0
         for (p in points) { s = min(s, p.lat); n = max(n, p.lat); w = min(w, p.lon); e = max(e, p.lon) }
         return doubleArrayOf(s, w, n, e)
     }
-
-    fun isValid(p: GeoPoint) = abs(p.lat) <= 90 && abs(p.lon) <= 180 && !(p.lat == 0.0 && p.lon == 0.0)
 }
 
 object Format {

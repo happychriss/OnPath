@@ -1,6 +1,6 @@
-# Working agreement: laptop Claude ⇄ cloud Claude
+# Working agreement: laptop / desktop Claude ⇄ cloud Claude
 
-OnPath is developed by two Claude Code sessions that the owner uses in a mixed way:
+OnPath is developed by Claude Code sessions on several machines that the owner uses in a mixed way:
 
 | | **Laptop Claude** (owner's PC, Android Studio) | **Cloud Claude** (claude.ai/code, remote container) |
 | --- | --- | --- |
@@ -9,8 +9,11 @@ OnPath is developed by two Claude Code sessions that the owner uses in a mixed w
 | Gets the app to the phone by | `./gradlew installDebug` / `adb install -r` | GitHub Release → in-app update (Settings → Updates) |
 | Map data | `adb push` or zip import | builds packages with `tools/build_region.sh` |
 
-Both read this file, `CLAUDE.md` and `docs/project-status.md` at the start of every session. **GitHub `main` is
-the single source of truth**; the two sessions never talk directly – they talk through the repository.
+Since 2026-10-25 the owner also works from the desktop PC **donald** (local network): a session there follows the
+laptop column (no phone attached unless the owner says so) and claims with **`[desktop]`** (laptop `[laptop]`, cloud
+`[cloud]`). Every session reads this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
+work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; the sessions never
+talk directly – they talk through the repository.
 
 ## 1. The five rules
 
@@ -18,18 +21,18 @@ the single source of truth**; the two sessions never talk directly – they talk
    `docs/project-status.md` and `docs/backlog.md`.
 2. **Small, green, pushed:** commit in small steps; before every push run `git pull --rebase origin main`,
    then `./gradlew testDebugUnitTest assembleDebug` (UI changes: also `verifyPaparazziDebug`). Push right away.
-   Never keep unpushed work for more than ~30 minutes – the other session may start any time.
+   Never keep unpushed work for more than ~30 minutes – another session may start any time.
 3. **`main` is always buildable and installable.** Work that takes longer than one sitting or is risky goes to a
    branch `feat/<topic>` (pushed regularly); merge it into `main` with a rebase when green.
 4. **Claim before you work:** add one line under "In progress" in `docs/backlog.md` (`- [laptop] plan panel drag`)
-   and push that immediately; remove it when done. If the other session has claimed an area, don't edit it –
+   and push that immediately; remove it when done. If another session has claimed an area, don't edit it –
    pick something else or note your request in the backlog.
 5. **Leave a handoff:** at the end of a session (or when the owner switches), update "Last session" in
    `docs/project-status.md`: who, what changed, what's half done, what's next. Push. No uncommitted files left.
 
 ## 2. Ownership by default (to avoid stepping on each other)
 
-When both sessions are active at the same time, split like this unless the backlog says otherwise:
+When sessions are active at the same time, split like this (laptop = laptop or desktop) unless the backlog says otherwise:
 
 | Area | Default owner |
 | --- | --- |
@@ -84,11 +87,13 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Requirements (IDs like F-PLAN-04) | `docs/requirements.md` |
 | Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
 | Why something was done | commit messages (say *why*, not only *what*) |
+| Non-code work (marketing, Google Play, website) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access) – never copied into this repo |
 
-Never rely on chat history of the other session – if it matters, it must be in the repo.
+Never rely on chat history of another session – if it matters, it must be in the repo.
 
 ## 7. Session start / end checklist
 
-**Start:** `git pull --rebase origin main` → read "Last session" + backlog → claim your item → push the claim.
+**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (with Drive access: open orders for you in
+OnPath / 01 Aufträge) → claim your item → push the claim.
 
 **End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.

@@ -12,6 +12,7 @@ class StraightLineEngine : RoutingEngine {
         val pts = waypoints.map { GeoPoint(it.lat, it.lon, it.ele) }
         val dist = Geo.length(pts)
         val (up, down) = Geo.climb(pts.map { it.ele })
-        return RouteResult(pts, dist, up, down, Geo.estimateSeconds(dist, up, down, activity))
+        // the one time model (time/RouteTimes), as for a planned route on these points
+        return RouteResult(pts, dist, up, down, com.onpath.app.time.RouteTimes.of(pts, activity).total())
     }
 }

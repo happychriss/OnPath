@@ -273,7 +273,7 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val (icon, tint) = when (ui.kind) {
-                MapLoadUi.Kind.FAILED -> Icons.Outlined.Warning to Color(0xFFB26A00)
+                MapLoadUi.Kind.FAILED -> Icons.Outlined.Warning to OnPathColors.Warn
                 MapLoadUi.Kind.OFFLINE -> Icons.Outlined.CloudOff to variant
                 else -> Icons.Outlined.CloudDownload to OnPathColors.Green
             }
@@ -311,7 +311,7 @@ fun LoadAskDialog(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () ->
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onNotNow,
         title = { Text("Load the map for this area?") },
-        text = { Text(MapLoads.askText(regions, bytes)) },
+        text = { DialogText(MapLoads.askText(regions, bytes)) },
         confirmButton = { TextButton(onClick = onLoad, modifier = Modifier.heightIn(min = 48.dp)) { Text("Load") } },
         dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },
     )

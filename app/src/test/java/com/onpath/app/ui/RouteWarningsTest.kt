@@ -101,6 +101,51 @@ class RouteWarningsTest {
         assertTrue(RouteWarnings.detect(hike, Activity.HIKE, 3).isEmpty())
     }
 
+    /**
+     * Owner decision 2026-10-25: a footway without a bicycle tag that is part of a signed cycle route is
+     * ridden – the touring / trekking profiles cost it like a cycleway, so no "pushing" there. A footway off a route,
+     * or with bicycle=no / dismount, stays pushing.
+     */
+    @Test fun footwayOnACycleRouteIsNotPushing() {
+        val onRoute = WayAttrs("footway", "paved", cycleRoute = true)
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)) {
+            assertTrue("$a", RouteWarnings.detect(route(p(road, 300), p(onRoute, 300), p(road, 300)), a, 3).isEmpty())
+        }
+        val off = route(p(road, 300), p(WayAttrs("footway", "paved"), 300), p(road, 300))
+        assertEquals(SpotKind.PUSH, RouteWarnings.detect(off, Activity.BIKE_TREKKING, 3).single().kind)
+        for (b in listOf("no", "dismount")) {
+            val signed = route(p(road, 300), p(onRoute.copy(bicycle = b), 300), p(road, 300))
+            assertEquals(b, SpotKind.PUSH, RouteWarnings.detect(signed, Activity.BIKE_TOURING, 3).single().kind)
+        }
+    }
+
+    /**
+     * Review 2026-10-26: the exception follows the routing profile. mtb.brf still costs a footway on a cycle route as
+     * pushing, so MTB / e-MTB keep the warning there (the line says what the router assumed).
+     */
+    @Test fun footwayOnACycleRouteStaysPushingForMtb() {
+        val onRoute = route(p(road, 300), p(WayAttrs("footway", "paved", cycleRoute = true), 300), p(road, 300))
+        for (a in listOf(Activity.MTB, Activity.EMTB)) {
+            assertEquals("$a", SpotKind.PUSH, RouteWarnings.detect(onRoute, a, 3).single().kind)
+        }
+    }
+
+    /**
+     * Review 2026-10-26: a pedestrian zone (highway=pedestrian) is no footway to ride on a cycle route – no cycling there
+     * unless signed (German law). Without bicycle=yes / designated it stays "pushing", with it it is ridden.
+     */
+    @Test fun pedestrianZoneOnACycleRouteStaysPushing() {
+        val zone = WayAttrs("footway", "paving_stones", cycleRoute = true, pedestrian = true)
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)) {
+            val r = route(p(road, 300), p(zone, 300), p(road, 300))
+            assertEquals("$a", SpotKind.PUSH, RouteWarnings.detect(r, a, 3).single().kind)
+            for (b in listOf("yes", "designated")) {
+                val open = route(p(road, 300), p(zone.copy(bicycle = b), 300), p(road, 300))
+                assertTrue("$a $b", RouteWarnings.detect(open, a, 3).isEmpty())
+            }
+        }
+    }
+
     @Test fun gapsBelowThirtyMetresJoin() {
         val r = route(p(road, 300), p(footway, 100), p(road, 20), p(footway, 100), p(road, 300))
         val s = RouteWarnings.detect(r, Activity.EBIKE, 3).single()
@@ -131,8 +176,8 @@ class RouteWarningsTest {
     }
 
     @Test fun changedTextNamesTheActivity() {
-        assertEquals("Route changed for Trekking bike – please check it", RouteWarnings.changedText(Activity.BIKE_TREKKING, 3))
-        assertEquals("Route changed for Hike T4 – please check it", RouteWarnings.changedText(Activity.HIKE, 4))
+        assertEquals("New route for Gravel bike – check it", RouteWarnings.changedText(Activity.BIKE_TREKKING, 3))
+        assertEquals("New route for Hike T4 – check it", RouteWarnings.changedText(Activity.HIKE, 4))
     }
 
     // ---------------- "route changed" ----------------
@@ -158,5 +203,84 @@ class RouteWarningsTest {
         // 5 % moved: not noticeable
         assertFalse(RouteWarnings.changedNoticeably(a, 5000.0, 300.0, line(500, 200..225, 200.0), 5000.0, 300.0))
         assertFalse(RouteWarnings.changedNoticeably(emptyList(), 0.0, 0.0, a, 5000.0, 300.0))
+    }
+
+    // ---------------- route hints (owner 2026-10-26: ferry and anything else to check before going) ----------------
+
+    private val ferry = WayAttrs("ferry", "unknown")
+
+    @Test fun ferryIsAHintForEveryActivity() {
+        val r = route(p(road, 1000), p(ferry, 300), p(road, 1000))
+        for (a in Activity.entries) {
+            val s = RouteWarnings.detect(r, a, 3).single()
+            assertEquals("$a", SpotKind.FERRY, s.kind)
+            assertEquals(300.0, s.lengthM, 1.0)
+            assertEquals("Ferry 300 m – check times", RouteWarnings.text(listOf(s), 3))
+            assertEquals("Ferry – check times", RouteWarnings.rowTitle(s, 3))
+            assertEquals("300 m · after 1.0 km", RouteWarnings.rowDetail(s))
+        }
+        val two = route(p(road, 500), p(ferry, 1200), p(road, 500), p(ferry, 200), p(road, 500))
+        assertEquals("2 ferries – check times", RouteWarnings.text(RouteWarnings.detect(two, Activity.HIKE, 2), 2))
+    }
+
+    @Test fun ferryLeadsTheLineAndIsNeverCutOff() {
+        // pushing + steps + steep + ferry: four items, the ferry first, steep goes into "+1"
+        val r = route(p(road, 1000), p(footway, 300), p(road, 200), p(steps, 30), p(track, 300, 18.0), p(road, 200),
+            p(ferry, 400), p(road, 500))
+        assertEquals("Ferry 400 m – check times · 300 m pushing · steps +1",
+            RouteWarnings.text(RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3), 3))
+    }
+
+    @Test fun fordIsAPointForEveryActivity() {
+        // a ford node at the end of one 10 m span (BRouterWayStats.withNode), 1 km along the route
+        val r = route(p(track, 1000), p(track.copy(ford = true), 10), p(track, 600), p(track.copy(ford = true), 10), p(track, 300))
+        for (a in Activity.entries) {
+            val s = RouteWarnings.detect(r, a, 3)
+            assertEquals("$a", listOf(SpotKind.FORD, SpotKind.FORD), s.map { it.kind })
+            assertEquals(1010.0, s[0].fromM, 1.0)
+            assertEquals(0.0, s[0].lengthM, 0.01)
+            assertEquals("2 fords", RouteWarnings.text(s, 3))
+            assertEquals("Ford – water to cross", RouteWarnings.rowTitle(s[0], 3))
+            assertEquals("After 1.0 km", RouteWarnings.rowDetail(s[0]))
+        }
+        // tapping it: the line around the ford, the ford in the middle
+        val s = RouteWarnings.detect(r, Activity.HIKE, 3)[0]
+        val piece = RouteWarnings.showPoints(r, s)
+        assertEquals(3, piece.size)
+        assertEquals(r[s.from], piece[1])
+        RouteWarnings.centerFor(r, s)!!.let { (c, zoom) -> assertEquals(r[s.from].lat, c.lat, 1e-9); assertEquals(17.0, zoom, 0.0) }
+        assertEquals("ford", RouteWarnings.text(listOf(s), 3))
+    }
+
+    @Test fun stileOrTurnstileOnlyForBikes() {
+        val r = route(p(road, 500), p(path().copy(barrier = "stile"), 10), p(path(), 500))
+        for (a in Activity.entries.filter { it != Activity.HIKE }) {
+            val s = RouteWarnings.detect(r, a, 3).single()
+            assertEquals("$a", SpotKind.BARRIER, s.kind)
+            assertEquals("stile", RouteWarnings.text(listOf(s), 3))
+            assertEquals("Stile – lift the bike over", RouteWarnings.rowTitle(s, 3))
+            assertEquals("After 500 m", RouteWarnings.rowDetail(s))
+        }
+        assertTrue(RouteWarnings.detect(r, Activity.HIKE, 3).isEmpty()) // hikers just walk through
+        val two = route(p(road, 500), p(path().copy(barrier = "kissing_gate"), 10), p(path(), 500),
+            p(path().copy(barrier = "full-height_turnstile"), 10), p(path(), 500))
+        val s = RouteWarnings.detect(two, Activity.BIKE_TOURING, 3)
+        assertEquals("2 barriers", RouteWarnings.text(s, 3))
+        assertEquals("Kissing gate – tight with a bike", RouteWarnings.rowTitle(s[0], 3))
+        assertEquals("Turnstile – may not pass with a bike", RouteWarnings.rowTitle(s[1], 3))
+        // the way attributes never carry passable barriers (bollards, gates): nothing to say
+        val gate = route(p(road, 500), p(path().copy(barrier = "gate"), 10), p(path(), 500))
+        assertTrue(RouteWarnings.detect(gate, Activity.BIKE_TOURING, 3).isEmpty())
+    }
+
+    @Test fun constructionForEveryActivity() {
+        val site = WayAttrs("other", "unknown", construction = true)
+        val r = route(p(road, 500), p(site, 30), p(road, 500))
+        for (a in Activity.entries) {
+            val s = RouteWarnings.detect(r, a, 3).single()
+            assertEquals("$a", SpotKind.CONSTRUCTION, s.kind)
+            assertEquals("construction site", RouteWarnings.text(listOf(s), 3))
+            assertEquals("Construction – may be closed", RouteWarnings.rowTitle(s, 3))
+        }
     }
 }

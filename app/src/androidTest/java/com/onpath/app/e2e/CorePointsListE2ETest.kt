@@ -3,7 +3,6 @@ package com.onpath.app.e2e
 import android.graphics.Point
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Until
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.PlanSize
 import org.junit.Assert.assertEquals
@@ -51,11 +50,12 @@ class CorePointsListE2ETest : E2EBase() {
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         // the rows' ✕ (content descriptions) – UiAutomator found the "Points" header text only now and then on CI,
-        // although it was on screen (screenshots 2026-10-22)
-        if (device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000) == null) {
+        // although it was on screen (screenshots 2026-10-22); its cache kept the tree without the list (2026-10-25):
+        // look afresh each time
+        if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
             shot("no-points-section")
             var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
-            throw AssertionError("Points section shown – tour running $rec – ${state()}")
+            throw AssertionError("Points section shown – tour running $rec – UiAutomator sees: ${seenDescriptions()} – ${state()}")
         }
         // owner 2026-10-22: profile first, then the points (one scrolling area)
         val profile = desc("Elevation profile").visibleBounds
@@ -63,7 +63,23 @@ class CorePointsListE2ETest : E2EBase() {
         assertTrue("profile above the points: $profile vs $firstRow", profile.bottom <= firstRow.top + 2)
     }
 
-    private fun desc(text: String) = device.wait(Until.findObject(By.desc(text)), 5_000)
+    /**
+     * Like waitUntil (same 10 s), but a timeout says where the sheet is and what it did: the events list carries the
+     * release line of the last swipe ("Sheet let go at … px (steps …) → step N", StepSheet) – CI 2026-10-26 failed
+     * with only "timeout: half sheet after a swipe down".
+     */
+    private fun waitForSize(what: String, want: PlanSize) {
+        val end = System.currentTimeMillis() + 10_000
+        while (size() != want) {
+            if (System.currentTimeMillis() > end) {
+                shot("size-${want.name.lowercase()}")
+                throw AssertionError("timeout: $what – size ${size()} – ${state()}")
+            }
+            Thread.sleep(100)
+        }
+    }
+
+    private fun desc(text: String) = findFresh(By.desc(text), 5_000)
         ?: run { shot("missing-${text.filter { it.isLetterOrDigit() }}"); throw AssertionError("\"$text\" not shown – ${state()}") }
 
     @Test fun deleteTheSecondPointWithX() {
@@ -108,36 +124,51 @@ class CorePointsListE2ETest : E2EBase() {
     /**
      * Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): the sheet follows a slow drag of its
      * handle and settles at the nearest step – small → profile (first swipe) → points (second swipe) → profile.
+     *
+     * Swipe lengths: on the CI emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel
+     * (StepSheet's "Sheet let go at …" lines, 3 runs 2026-10-26; steps 536 / 938 / 1602 px high). So every swipe that
+     * must stop at a middle step lands well inside it for any ratio from about 0.45 to 1.2, and swipes to an end step
+     * go far (the sheet only rubber-bands there). The old last swipe (20 % of the screen) needed a ratio ≥ 0.72 – it
+     * failed once at "half sheet after a swipe down".
      */
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
         settle()
         waitUntil("half sheet") { size() == PlanSize.COMPACT }
         val (_, h) = mapSize()
+        fun handle() = desc("Resize panel").visibleCenter
         fun dragHandle(dy: Int) {
-            val c = desc("Resize panel").visibleCenter
+            val c = handle()
             val path = ArrayList<Point>()
             val steps = 25
             for (k in 0..steps) path += Point(c.x, c.y + dy * k / steps)
             repeat(4) { path += Point(c.x, c.y + dy) }  // stop before letting go: no fling, the distance decides
             device.swipe(path.toTypedArray(), 6)
         }
+        // where the handle rests at the profile step: the swipe back down from the points aims there (see below)
+        val profileY = handle().y
         dragHandle((h * 0.2f).toInt())
-        waitUntil("small sheet after a swipe down") { size() == PlanSize.MINI }
+        waitForSize("small sheet after a swipe down", PlanSize.MINI)
         Thread.sleep(600)
         // first swipe up: the profile, not yet the points
         dragHandle(-(h * 0.2f).toInt())
-        waitUntil("profile step after the first swipe up") { size() == PlanSize.COMPACT }
-        assertNotNull("profile shown", device.wait(Until.findObject(By.desc("Elevation profile")), 5_000))
+        waitForSize("profile step after the first swipe up", PlanSize.COMPACT)
+        assertNotNull("profile shown", findFresh(By.desc("Elevation profile"), 5_000))
         assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
         Thread.sleep(600)
-        // second swipe up: the points
-        dragHandle(-(h * 0.25f).toInt())
-        waitUntil("full sheet after the second swipe up") { size() == PlanSize.FULL }
-        assertNotNull("points shown", device.wait(Until.findObject(By.descStartsWith("Delete point")), 10_000))
+        // second swipe up: the points – the top step, so a long swipe only rubber-bands (25 % needed a ratio ≥ 0.57)
+        dragHandle(-(h * 0.35f).toInt())
+        waitForSize("full sheet after the second swipe up", PlanSize.FULL)
+        if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
+            shot("no-points-full")
+            throw AssertionError("points shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")
+        }
         Thread.sleep(600)
-        dragHandle((h * 0.2f).toInt())
-        waitUntil("half sheet after a swipe down") { size() == PlanSize.COMPACT }
+        // swipe down to a little past where the profile step rests (110 % of the measured gap): with the sheet moving
+        // 0.47–1.2 of the finger it stops nearer the profile than the points (above the midpoint) and than the small step
+        val fullY = handle().y
+        dragHandle(((profileY - fullY) * 1.1f).toInt())
+        waitForSize("half sheet after a swipe down", PlanSize.COMPACT)
         // the list leaves with the sheet's animation: wait until it is gone (a single look found a stale node, CI 2026-10-22)
         if (!goneFresh(By.descStartsWith("Delete point"), 8_000)) {
             shot("points-still-there")
@@ -154,7 +185,8 @@ class CorePointsListE2ETest : E2EBase() {
                 org.maplibre.android.geometry.LatLng(target.lat + 0.05, target.lon + 0.05)))
         }
         Thread.sleep(500)
-        device.wait(Until.findObject(By.descStartsWith("Show point 2 on the map")), 5_000)!!.click()
+        (findFresh(By.descStartsWith("Show point 2 on the map"), 5_000)
+            ?: throw AssertionError("row of point 2 shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")).click()
         waitUntil("half sheet after the tap") { size() == PlanSize.COMPACT }
         Thread.sleep(1_200) // camera glide
         var highlight: GeoPoint? = null

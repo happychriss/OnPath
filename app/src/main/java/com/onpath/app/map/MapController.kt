@@ -12,6 +12,7 @@ import android.graphics.Typeface
 import android.location.Location
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Turn
@@ -48,6 +49,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_ORIGINAL_COLOR = "#8A8F98" // grey: the original route while a new one is followed
         const val SRC_PLANNED = "planned-route"
         const val SRC_GPX = "gpx-track"
+        /** Style layer id suffixes shown only for bike activities / only for hiking (tools/make_style.py). */
+        const val BIKEVIEW = "-bikeview"
+        const val HIKEVIEW = "-hikeview"
         /** Rides of a shown tour that are not counted (vehicle detection): grey dashed (bus / car), purple dashed (lift). */
         const val SRC_RIDES = "tour-rides"
         const val SRC_LIFTS = "tour-lifts"
@@ -497,9 +501,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             CameraPosition.Builder(cp).bearing(0.0).tilt(0.0).padding(0.0, 0.0, 0.0, 0.0).build()), 600)
     }
 
-    /** True while the compass sensor is registered (for tests/diagnostics). */
-    val compassListening: Boolean get() = heading.isListening
-
     /** Next-turn arrow at [turn], pointing in its outgoing direction; null hides it. */
     fun setTurnArrow(turn: Turn?) = guarded("turn arrow") {
         val src = source(SRC_TURN) ?: return
@@ -565,20 +566,22 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
-        val touring = activity == Activity.BIKE_TOURING
+        // touring.brf family: Bike (BIKE_TOURING) and E-bike (owner 2026-10-25; BRouterEngine.profileFile)
+        val touring = BRouterEngine.profileFile(activity) == "touring.brf"
         val trekking = !walking && !mtb && !touring
         // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions
         // 2026-10-22); format 1 has foot / bike only, where "bike" serves every bike activity.
-        val perProfile = runCatching { style.getLayer("access-no-tint-touring") != null }.getOrDefault(false)
+        val perProfile = runCatching { style.getLayer("access-no-dash-touring") != null }.getOrDefault(false)
         val accessOn = mapOf("foot" to walking, "bike" to if (perProfile) trekking else !walking,
             "touring" to (perProfile && touring), "mtb" to (perProfile && mtb))
         val access = accessOn.flatMap { (mode, on) ->
-            listOf("tint", "dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
+            // red dash + no-entry sign (no tint band since 2026-10-26: never louder than a street)
+            listOf("dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
         }
         // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
         // label (mtb:scale too), loose-surface edges for every bike activity. Green ways, forbidden ways and blocking
-        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking, E-bike),
-        // fastbike (Bike touring), mtb.brf (MTB, MTB e-bike).
+        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking),
+        // touring.brf (Bike touring, E-bike), mtb.brf (MTB, MTB e-bike).
         for ((id, on) in access + listOf(
                 // format 2 only (map package with overlays.pmtiles): bike map, barrier nodes
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
@@ -594,13 +597,36 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
                 "greenway-foot" to walking, "greenway-bike" to trekking,
                 "greenway-touring" to touring, "greenway-mtb" to mtb)) {
-            runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
-                .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
+            // "<id>-town": the town part of a layer, drawn below the streets (tools/make_style.py town_below_streets) –
+            // switched with it; a style without it is skipped
+            for (lid in listOf(id, "$id-town")) {
+                runCatching { style.getLayer(lid)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+                    .onFailure { if (live()) Problems.warn("map", "Map layer $lid not switched for the activity", it) }
+            }
+        }
+        // a look per activity group (tools/make_style.py BIKEVIEW / HIKEVIEW, owner 2026-10-26): "-bikeview" layers only
+        // for bike activities (quiet tracks), "-hikeview" layers only for hiking; a style without them is unchanged
+        val all = runCatching { style.layers }.onFailure { if (live()) Problems.warn("map", "Map layers not listable; activity look not switched", it) }
+            .getOrNull().orEmpty()
+        // a "<id>-bikeview" twin replaces its base layer "<id>" for bike activities (overview look, make_style.py low_zoom_view)
+        val ids = all.map { it.id }.toSet()
+        for (l in all) {
+            val on = when {
+                l.id.endsWith(BIKEVIEW) -> !walking
+                l.id.endsWith(HIKEVIEW) -> walking
+                "${l.id}$BIKEVIEW" in ids -> walking
+                else -> continue
+            }
+            runCatching { l.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+                .onFailure { if (live()) Problems.warn("map", "Map layer ${l.id} not switched for the activity", it) }
         }
         for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            // the band plus its major-route highlight (pink edges + name); hiking: the grey pieces above the T level
-            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label")) {
+            // hiking: the band, its major-route highlight (pink) + name, the grey pieces above the T level; bikes: the mint
+            // band under the way, long-distance routes with the hiking major look ("-over" = their green band, "-major-low",
+            // "-major") + name – a layer the style lacks is skipped
+            // "-low": the bikes' thin overview line (zoomed out, above the streets)
+            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label", "-low", "-regional")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
                     .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }
             }

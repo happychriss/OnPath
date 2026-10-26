@@ -47,6 +47,102 @@ function isStale(osmDate, cfg, now) {
   return !Number.isFinite(t) || now - t > cfg.refreshDays * DAY;
 }
 
+// ------------------------------------------------------------------------------------------------ fast lane
+// A version can be published into R2 outside a Cloud Run job: tools/dev/publish_cells.sh on a developer PC uploads
+// exactly what job_build.py would (files, manifest, then current.json) – test bucket only (map-hosting.md §7h). D1
+// does not know it; before a build is queued or started, the doorman therefore looks at the cell's current.json and
+// takes a current version as it is ("adopt": no build, the app gets it at once).
+
+/** {version, osm_date, size} of the version current.json points at (its manifest must exist), or null. */
+async function published(env, format, id) {
+  const c = parseCellId(id);
+  if (!c) return null;
+  const base = `cells/f${format}/${c.z}/${c.x}/${c.y}`;
+  try {
+    const cur = await env.BUCKET.get(`${base}/current.json`);
+    if (!cur) return null;
+    const version = JSON.parse(await cur.text())?.version;
+    if (typeof version !== "string" || !version) return null;
+    const m = await env.BUCKET.get(`${base}/${version}/manifest.json`);
+    if (!m) return null;
+    const man = JSON.parse(await m.text());
+    return { version, osm_date: man.osm_date ?? null, size: man.total_size ?? null };
+  } catch (e) {
+    log({ ev: "published-unreadable", id, format, err: String(e).slice(0, 200) }); // then it is simply built
+    return null;
+  }
+}
+
+/** The published version when it is current (schema ≥ cellSchema, not OSM-stale) and not the one D1 knows. */
+export async function adoptable(env, cfg, format, id, row, now) {
+  const p = await published(env, format, id);
+  if (!p || p.version === row?.version) return null;
+  if (schemaOf(p.version) < cfg.cellSchema || isStale(p.osm_date, cfg, now)) return null;
+  return p;
+}
+
+/** Marks the cell ready with the published version – never while a Cloud Run job builds it (that one finishes). */
+function adoptStmt(db, id, format, p, now) {
+  return db.prepare(`INSERT INTO cells (id, format, version, osm_date, size, job, priority, requested_at, last_request,
+        requests, attempts, error, permanent, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, NULL, 3, ?6, ?6, 1, 0, NULL, 0, ?6)
+      ON CONFLICT (id, format) DO UPDATE SET version = ?3, osm_date = ?4, size = ?5, job = NULL, attempts = 0,
+        error = NULL, permanent = 0, execution = NULL, eta_at = NULL, eta_seen = NULL, updated_at = ?6,
+        last_request = ?6, requests = requests + 1
+      WHERE cells.job IS NULL OR cells.job IN ('queued', 'failed')`).bind(id, format, p.version, p.osm_date, p.size, now);
+}
+
+/** Pump: queued cells (first ADOPT_SCAN in queue order) whose current version is already published → ready. */
+const ADOPT_SCAN = 40;
+
+async function adoptQueued(env, cfg, now) {
+  const db = env.DB;
+  const { results } = await db.prepare(`SELECT id, format, version FROM cells WHERE job = 'queued'
+      ORDER BY priority, requested_at LIMIT ?`).bind(ADOPT_SCAN).all();
+  const found = await Promise.all(results.map((r) => adoptable(env, cfg, r.format, r.id, r, now)));
+  const writes = [];
+  const ids = [];
+  results.forEach((r, i) => {
+    if (!found[i]) return;
+    ids.push(r.id);
+    writes.push(adoptStmt(db, r.id, r.format, found[i], now));
+  });
+  if (writes.length) {
+    await db.batch(writes);
+    log({ ev: "adopted", how: "pump", cells: ids });
+  }
+  return ids.length;
+}
+
+// ------------------------------------------------------------------------------------------------ pre-warm
+/**
+ * After a CELL_SCHEMA bump (map-hosting.md §7h): every cell asked for in the last PREWARM_DAYS whose published version
+ * is of an older schema is queued once at refresh priority – rebuilt in the background (hourly cap, the waiting
+ * reserve), so phones find the new map ready instead of waiting for it. Done when meta "prewarm-schema" = CELL_SCHEMA;
+ * a queue that is too full for all of them goes on at the next pump.
+ */
+async function prewarm(env, cfg, now) {
+  if (!cfg.prewarmDays) return 0;
+  const db = env.DB;
+  const m = await db.prepare("SELECT value FROM meta WHERE key = 'prewarm-schema'").first();
+  if (m && Number(m.value) >= cfg.cellSchema) return 0;
+  const pend = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job IN ('queued', 'building')").first();
+  const room = Math.max(0, cfg.maxQueue - pend.n);
+  const { results } = await db.prepare(`SELECT id, format, version FROM cells WHERE version IS NOT NULL AND job IS NULL
+      AND last_request > ? ORDER BY last_request DESC`).bind(now - cfg.prewarmDays * DAY).all();
+  const old = results.filter((r) => cfg.formats.includes(r.format) && schemaOf(r.version) < cfg.cellSchema);
+  const take = old.slice(0, room);
+  const writes = take.map((r) => db.prepare(`UPDATE cells SET job = 'queued', priority = ?3, requested_at = ?4, attempts = 0,
+      error = NULL, execution = NULL, eta_at = NULL, eta_seen = NULL, updated_at = ?4
+      WHERE id = ?1 AND format = ?2 AND job IS NULL`).bind(r.id, r.format, PRIORITY.refresh, now));
+  if (take.length === old.length) {
+    writes.push(db.prepare(`INSERT INTO meta (key, value, until) VALUES ('prewarm-schema', ?1, NULL)
+        ON CONFLICT (key) DO UPDATE SET value = ?1`).bind(String(cfg.cellSchema)));
+  }
+  if (writes.length) await db.batch(writes);
+  if (take.length) log({ ev: "prewarm", schema: cfg.cellSchema, cells: take.length, left: old.length - take.length });
+  return take.length;
+}
+
 /** POST /v1/cells/request */
 export async function requestCells(env, cfg, body, now = Date.now()) {
   if (!body || !Array.isArray(body.cells) || body.cells.length === 0) throw new HttpError(400, "cells: list of cell ids expected");
@@ -66,16 +162,12 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
   const rows = await rowsFor(db, cells.map((c) => c.id), format);
   const prio = PRIORITY[reason];
   const writes = [];
-  let added = 0;
+  const want = []; // cells that need a build – unless a current version is already published (adopt)
   for (const c of cells) {
     const r = rows.get(c.id);
     const queue = (p) => {
-      added++;
-      return db.prepare(`INSERT INTO cells (id, format, job, priority, requested_at, last_request, requests, attempts, error,
-          permanent, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4, 1, 0, NULL, 0, ?4)
-        ON CONFLICT (id, format) DO UPDATE SET job = 'queued', priority = ?3, requested_at = ?4, last_request = ?4,
-          requests = requests + 1, error = NULL, execution = NULL, updated_at = ?4, eta_at = NULL, eta_seen = NULL,
-          attempts = CASE WHEN ?5 = 1 THEN 0 ELSE attempts END`).bind(c.id, format, p, now, r && r.rev !== cfg.buildRev ? 1 : 0);
+      want.push({ c, r, p });
+      return null;
     };
     const touch = (p) => db.prepare(`UPDATE cells SET last_request = ?3, requests = requests + 1, priority = MIN(priority, ?4)
         WHERE id = ?1 AND format = ?2`).bind(c.id, format, now, p);
@@ -94,10 +186,29 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
     else if (r.version) writes.push(touch(PRIORITY.refresh));
     else writes.push(queue(prio));
   }
+  // fast lane (map-hosting.md §7h): a current version published into R2 outside a Cloud Run job is taken as it is
+  const found = await Promise.all(want.map((w) => adoptable(env, cfg, format, w.c.id, w.r, now)));
+  let added = 0;
+  const adopted = [];
+  want.forEach((w, i) => {
+    if (found[i]) {
+      adopted.push(w.c.id);
+      writes.push(adoptStmt(db, w.c.id, format, found[i], now));
+      return;
+    }
+    added++;
+    writes.push(db.prepare(`INSERT INTO cells (id, format, job, priority, requested_at, last_request, requests, attempts, error,
+        permanent, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4, 1, 0, NULL, 0, ?4)
+      ON CONFLICT (id, format) DO UPDATE SET job = 'queued', priority = ?3, requested_at = ?4, last_request = ?4,
+        requests = requests + 1, error = NULL, execution = NULL, updated_at = ?4, eta_at = NULL, eta_seen = NULL,
+        attempts = CASE WHEN ?5 = 1 THEN 0 ELSE attempts END`).bind(w.c.id, format, w.p, now, w.r && w.r.rev !== cfg.buildRev ? 1 : 0));
+  });
+  if (adopted.length) log({ ev: "adopted", how: "request", format, cells: adopted });
   if (added && pending.n + added > cfg.maxQueue) {
     throw new HttpError(429, "The map server is busy – please try again later.", { "retry-after": "600" });
   }
-  if (writes.length) await db.batch(writes);
+  const batch = writes.filter(Boolean); // queue() placeholders were replaced by the inserts / adoptions above
+  if (batch.length) await db.batch(batch);
   if (added) log({ ev: "request", reason, format, cells: cells.map((c) => c.id), added });
   return statusFor(env, cfg, cells.map((c) => c.id), format, now);
 }
@@ -133,6 +244,8 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
       // Not while a cell below cellSchemaServe is rebuilt: that map lacks data the style needs (streets).
       out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version,
         ...(rebuilding(r) ? { updating: true } : {}) });
+      // the app polls an updating cell at poll_s (map-hosting.md §7h): the new version soon after it is built
+      if (rebuilding(r)) active = true;
     } else if (r.job === "building" || r.job === "queued") {
       active = true;
       p ??= await plan(env, cfg, now, readStatus);
@@ -255,6 +368,12 @@ async function startNext(env, cfg, now, fetchImpl, free, slots) {
     const w = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job = 'queued' AND format = ? AND priority <= ?")
       .bind(first.format, WAITING_MAX).first();
     n = batchSize(cfg, w.n, free);
+  } else if (slots > 1) {
+    // background (refresh, schema rebuild, corridor) spread over the free slots but the one kept for someone waiting:
+    // 6 cells on 3 slots = 3 × 2 cells, not 4 + 2 built one after the other (field 2026-10-26: s5 → s6 for Hilden,
+    // the last of 4 serial cells came 36 min after the start). Long queues still go 4 per execution (hourly cap).
+    const b = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job = 'queued' AND format = ?").bind(first.format).first();
+    n = batchSize(cfg, b.n, free - 1);
   }
   const { results } = await db.prepare(`SELECT id FROM cells WHERE job = 'queued' AND format = ?1
       AND (?2 = 0 OR priority <= ?3) ORDER BY priority, requested_at LIMIT ?4`)
@@ -295,7 +414,9 @@ export async function pump(env, cfg, now = Date.now(), fetchImpl = globalFetch) 
     const { results: running } = await db.prepare("SELECT * FROM executions WHERE state = 'running'").all();
     let stillRunning = 0;
     for (const ex of running) if (!(await checkExecution(env, cfg, ex, now, fetchImpl))) stillRunning++;
+    await adoptQueued(env, cfg, now); // also while builds are off: published versions need no builder
     if (!cfg.buildsEnabled) return { disabled: true, running: stillRunning };
+    await prewarm(env, cfg, now);
     const slots = await slotCount(db, cfg, now);
     const started = [];
     let last = { running: stillRunning };

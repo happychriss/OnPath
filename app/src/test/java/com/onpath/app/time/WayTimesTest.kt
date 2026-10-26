@@ -119,5 +119,21 @@ class WayTimesTest {
         assertEquals(null, WayAttrs.parse("path|natural_trail|3|-1||bad|")?.bicycle)
         assertEquals(null, WayAttrs.parse(null))
         assertNotEquals(w, WayAttrs.parse(w.copy(sac = 4).code()))
+        // cycle route (2026-10-25): round trip, and older 8-field codes read as "not on a route"
+        assertEquals(true, WayAttrs.parse(bike.copy(cycleRoute = true).code())?.cycleRoute)
+        assertEquals(false, WayAttrs.parse(bike.code())?.cycleRoute)
+        assertEquals(false, WayAttrs.parse("footway|paved|0|-1||||")?.cycleRoute)
+        // pedestrian zone (2026-10-26): a flag beside "r"; codes with only "r" read as no pedestrian zone
+        val zone = bike.copy(cycleRoute = true, pedestrian = true)
+        assertEquals(zone, WayAttrs.parse(zone.code()))
+        assertEquals(true, WayAttrs.parse(bike.copy(pedestrian = true).code())?.pedestrian)
+        assertEquals(false, WayAttrs.parse(bike.copy(pedestrian = true).code())?.cycleRoute)
+        assertEquals(false, WayAttrs.parse("footway|paved|0|-1|||||r")?.pedestrian)
+        // route hints (2026-10-26): ford / construction flags and the barrier field; older codes read as none
+        val hints = zone.copy(ford = true, construction = true, barrier = "stile")
+        assertEquals(hints, WayAttrs.parse(hints.code()))
+        assertEquals(WayAttrs("track", "gravel", ford = true), WayAttrs.parse(WayAttrs("track", "gravel", ford = true).code()))
+        val old = WayAttrs.parse("footway|paved|0|-1|||||rp")!!
+        assertEquals(false, old.ford); assertEquals(false, old.construction); assertEquals(null, old.barrier)
     }
 }

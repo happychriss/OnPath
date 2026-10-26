@@ -127,6 +127,7 @@ object GpxParser {
 
         // current state
         private var lineName: String? = null
+        private var lineType: String? = null
         private var lineIsRoute = false
         private var inLine = false
         private val segs = mutableListOf<MutableList<TrackPoint>>()
@@ -147,7 +148,7 @@ object GpxParser {
             text.setLength(0)
             when (name) {
                 "trk", "rte" -> {
-                    inLine = true; lineIsRoute = name == "rte"; lineName = null
+                    inLine = true; lineIsRoute = name == "rte"; lineName = null; lineType = null
                     segs.clear(); curSeg = if (lineIsRoute) mutableListOf<TrackPoint>().also { segs += it } else null
                 }
                 "trkseg" -> curSeg = mutableListOf<TrackPoint>().also { segs += it }
@@ -190,6 +191,8 @@ object GpxParser {
                     else badPoints++
                     ptKind = null
                 }
+                // the line's sport (Komoot); a wpt's own <type> is not the line's
+                "type" -> if (ptKind == null && (parent == "trk" || parent == "rte")) lineType = value.ifBlank { null }
                 "trkseg" -> curSeg = null
                 "trk", "rte" -> closeLine()
             }
@@ -200,7 +203,7 @@ object GpxParser {
         private fun closeLine() {
             if (!inLine) return
             val clean = segs.filter { it.isNotEmpty() }.map { it.toList() }
-            if (clean.isNotEmpty()) lines += GpxLine(lineName?.ifBlank { null }, clean, lineIsRoute)
+            if (clean.isNotEmpty()) lines += GpxLine(lineName?.ifBlank { null }, clean, lineIsRoute, lineType)
             segs.clear(); curSeg = null; inLine = false
         }
 
@@ -234,6 +237,8 @@ internal object RegexRecovery {
     private val eleRe = Regex("<(?:\\w+:)?ele\\s*>([^<]*)<", RegexOption.IGNORE_CASE)
     private val timeRe = Regex("<(?:\\w+:)?time\\s*>([^<]*)<", RegexOption.IGNORE_CASE)
     private val nameRe = Regex("<(?:\\w+:)?name\\s*>([^<]*)<", RegexOption.IGNORE_CASE)
+    private val typeRe = Regex("<(?:\\w+:)?type\\s*>([^<]*)<", RegexOption.IGNORE_CASE)
+    private val lineRe = Regex("<(?:\\w+:)?(?:trk|rte)\\b", RegexOption.IGNORE_CASE)
     private val segRe = Regex("<(?:\\w+:)?(trkseg|trk|rte)\\b", RegexOption.IGNORE_CASE)
 
     fun parse(text: String): GpxData {
@@ -258,7 +263,9 @@ internal object RegexRecovery {
             }
         }
         val clean = segments.filter { it.isNotEmpty() }
-        val lines = if (clean.isEmpty()) emptyList() else listOf(GpxLine(null, clean, false))
+        // the first <type> after the first trk / rte (a waypoint's type before it is not the sport)
+        val type = lineRe.find(text)?.let { typeRe.find(text, it.range.first) }?.groupValues?.get(1)?.trim()?.ifBlank { null }
+        val lines = if (clean.isEmpty()) emptyList() else listOf(GpxLine(null, clean, false, type))
         val name = nameRe.find(text)?.groupValues?.get(1)?.trim()?.ifBlank { null }
         return GpxData(name, lines, wpts)
     }

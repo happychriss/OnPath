@@ -46,7 +46,6 @@ object SharedPlaceParser {
     private val TEXT_PAIR_RX = Regex("""(?<![\d.])([-+]?\d{1,2}\.\d{3,})\s*,\s*([-+]?\d{1,3}\.\d{3,})(?![\d.])""")
     /** 46°40'16.4"N 11°09'29.2"E – what Google shows for a dropped pin. */
     private val DMS_RX = Regex("""(\d{1,3})°\s*(\d{1,2})['′]\s*(\d{1,2}(?:\.\d+)?)["″]?\s*([NS])[\s,]+(\d{1,3})°\s*(\d{1,2})['′]\s*(\d{1,2}(?:\.\d+)?)["″]?\s*([EW])""")
-    private val SHORT_HOSTS = listOf("maps.app.goo.gl", "goo.gl", "g.co")
     /** Names Google gives places without one. */
     private val NO_NAME = setOf("dropped pin", "markierte position", "gesetzte markierung", "segnaposto", "puntina inserita", "pin")
 

@@ -45,9 +45,11 @@ class PaceModelTest {
 
     @Test fun bikeSpeedsArePlausible() {
         fun kmh(a: Activity, g: Double, s: String? = null) = PaceModel.bikeSpeedMs(g, a, s) * 3.6
-        // flat: trekking ~18–22 km/h, touring a bit faster, MTB on unpaved slower
+        // flat: trekking ~18–22 km/h, touring the same rider on its usual asphalt a bit faster (~21–22), MTB on unpaved slower
         assertTrue(kmh(Activity.BIKE_TREKKING, 0.0) in 17.0..23.0)
         assertTrue(kmh(Activity.BIKE_TOURING, 0.0) > kmh(Activity.BIKE_TREKKING, 0.0))
+        assertTrue(kmh(Activity.BIKE_TOURING, 0.0) in 20.0..22.5) // a normal bike, not a road bike (was ~24)
+        assertEquals(kmh(Activity.BIKE_TREKKING, 0.0, "asphalt"), kmh(Activity.BIKE_TOURING, 0.0, "asphalt"), 1e-9)
         assertTrue(kmh(Activity.MTB, 0.0) < kmh(Activity.BIKE_TREKKING, 0.0))
         // climbing 8 %: slow without motor, e-bike holds ~15+ km/h
         assertTrue(kmh(Activity.BIKE_TREKKING, 0.08) in 3.5..8.0)

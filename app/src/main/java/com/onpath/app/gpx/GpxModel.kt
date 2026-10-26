@@ -14,8 +14,11 @@ data class TrackPoint(
 
 data class GpxWaypoint(val lat: Double, val lon: Double, val name: String?, val ele: Double? = null)
 
-/** A line with one or more segments (gaps between segments are not drawn). */
-data class GpxLine(val name: String?, val segments: List<List<TrackPoint>>, val isRoute: Boolean)
+/**
+ * A line with one or more segments (gaps between segments are not drawn). [type] = its `<type>` as written (Komoot:
+ * the sport, see [SportType]), null if none.
+ */
+data class GpxLine(val name: String?, val segments: List<List<TrackPoint>>, val isRoute: Boolean, val type: String? = null)
 
 data class GpxData(
     val name: String?,
@@ -27,4 +30,6 @@ data class GpxData(
     val allSegments: List<List<TrackPoint>> get() = lines.flatMap { it.segments }.filter { it.isNotEmpty() }
     val pointCount: Int get() = allSegments.sumOf { it.size }
     val isEmpty: Boolean get() = pointCount == 0 && waypoints.isEmpty()
+    /** The first line's `<type>` (the sport), null if no line has one. */
+    val type: String? get() = lines.firstNotNullOfOrNull { it.type }
 }

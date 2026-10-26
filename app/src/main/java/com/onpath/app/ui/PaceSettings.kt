@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.AppSettings
 import com.onpath.app.routing.Activity
 import com.onpath.app.time.Pace
@@ -36,12 +35,12 @@ internal fun PaceSection(settings: AppSettings, onChange: (AppSettings) -> Unit,
     val bike = if (TimeEstimate.isBike(activity)) activity else Activity.BIKE_TREKKING
     Section("Your pace") {
         Text("Changes the times only, not the route. Times are walking / riding time without breaks.",
-            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         PaceGroup("Hiking", Activity.HIKE, settings.hikePace) { onChange(settings.copy(hikePace = it)) }
         PaceGroup("Cycling · ${bike.navName}", bike, settings.bikePace) { onChange(settings.copy(bikePace = it)) }
         Text("During a tour, the arrival time adapts to your pace of the day after about 15 minutes.",
-            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
     }
 }
@@ -49,7 +48,7 @@ internal fun PaceSection(settings: AppSettings, onChange: (AppSettings) -> Unit,
 /** One activity: the five levels as radio rows, each with what it means ("about 4 km/h · 300 m up per hour"). */
 @Composable
 private fun PaceGroup(title: String, activity: Activity, selected: Pace, onPick: (Pace) -> Unit) {
-    Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp))
     Column(Modifier.selectableGroup()) {
         Pace.entries.forEach { p ->
@@ -57,8 +56,8 @@ private fun PaceGroup(title: String, activity: Activity, selected: Pace, onPick:
                 .selectable(selected = selected == p, onClick = { onPick(p) }, role = Role.RadioButton)
                 .padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = selected == p, onClick = null, modifier = Modifier.padding(horizontal = 8.dp))
-                Text(p.label, fontSize = 14.sp, modifier = Modifier.width(76.dp))
-                Text(p.meaning(activity), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(p.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(76.dp))
+                Text(p.meaning(activity), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

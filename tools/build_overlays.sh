@@ -19,6 +19,7 @@
 #   streets     z13-14  small streets (OpenMapTiles minor / service), the base map has none there (trim_base.sh)
 #   trails      z13-14  ways       z13-14  trailnames z13-14  routes z9-14
 #   barriers    z14     barrier nodes that block an activity (--wayclass; optional)
+#   areas       z14     street areas: pedestrian areas, traffic islands, squares, platforms, bridges (optional)
 # With router classes (wayclass.json) the tile file's description says "onpath-wayclass:<profile hash>".
 # Coordinates: extent 4096 (z14 grid ~0.4 m here), no simplification at z14 (--simplify-only-low-zooms), no feature
 # dropping (-r1, no feature / tile size limit), small buffer (8 px of 256) for line joins and labels at tile edges.
@@ -58,6 +59,8 @@ layer trailnames 13 14
 layer routes 9 14
 BARRIERS=()
 if [ -s "$IN/barriers.ndjson" ]; then layer barriers 14 14; BARRIERS=("$TMP"/barriers.pmtiles); fi
+AREAS=()
+if [ -s "$IN/areas.ndjson" ]; then layer areas 14 14; AREAS=("$TMP"/areas.pmtiles); fi
 DESC=()
 if [ -s "$IN/wayclass.json" ]; then
   DESC=(-N "onpath-wayclass:$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["profiles"])' "$IN/wayclass.json")")
@@ -65,5 +68,5 @@ fi
 rm -f "$OUT.tmp.pmtiles"
 "$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" "${DESC[@]}" \
   -o "$OUT.tmp.pmtiles" "$TMP"/paths.pmtiles "${STREETS[@]}" "$TMP"/trails.pmtiles "$TMP"/ways.pmtiles "$TMP"/trailnames.pmtiles \
-  "$TMP"/routes.pmtiles "${BARRIERS[@]}" "${EXTRA[@]}"
+  "$TMP"/routes.pmtiles "${BARRIERS[@]}" "${AREAS[@]}" "${EXTRA[@]}"
 mv -f "$OUT.tmp.pmtiles" "$OUT"

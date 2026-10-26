@@ -457,6 +457,10 @@ assign any_cycleroute
 
   assign penaltymax = max roughness_penalty max tracktype_surface_penalty max wet_penalty trafficpenalty
 
+  # OnPath: a ferry that does not take bikes: bicycle=no|private, or no bicycle tag and vehicle=no|private, or neither
+  # tag and access=no|private (bicycle=dismount is fine). Not bikeaccess: on a cycle route that is always true.
+  assign ferry_nobike = if bicycle= then ( if vehicle= then access=no|private else vehicle=no|private ) else bicycle=no|private
+
   assign rawcostfactor ( # can be <1, adjusted to >=1 in final step of calculation of costfactor, uphillcostfactor,downhillcostfactor
     switch and highway= not route=ferry  10000 #only highways unless ferry
     switch highway=motorway|motorway_link|proposed|abandoned  10000
@@ -469,7 +473,9 @@ assign any_cycleroute
     min 9999
 
     switch    highway=steps  switch allow_steps     40 10000
-    switch    route=ferry    switch allow_ferries 5.67 10000
+    # OnPath: a ferry that does not take bikes (ferry_nobike) is forbidden – pushing does not help on a boat
+    # (2026-10-26: 67 of 194 test routes over a short bicycle=no ferry used it)
+    switch    route=ferry    switch and allow_ferries not ferry_nobike 5.67 10000
     switch    highway=construction                     10000
 
     add highwayclass_basefactor   add not_isbike_penalty   add unsafe_penalty   max penaltymax   nonpath_penalty

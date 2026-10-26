@@ -213,7 +213,7 @@ class ScreenshotTest {
      */
     @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
@@ -232,6 +232,14 @@ class ScreenshotTest {
         OnPathTheme {
             Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
             LongRouteDialog(29 * 24 * 3600.0, com.onpath.app.routing.Activity.HIKE, {}, {})
+        }
+    }
+
+    /** The destination deleted during a tour: verb buttons "Route back" / "Just record" (review 2026-10-24 B11). */
+    @Test fun routeBackQuestion() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+            RouteBackDialog({}, {})
         }
     }
 
@@ -257,6 +265,15 @@ class ScreenshotTest {
 
     /** Route details (tap the profile or the difficulty badge): summary, large profile, way types / surfaces. */
     @Test fun routeDetails() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(route, Activity.HIKE, onBack = {}) } }
+
+    /** A short hike with a T3 section (owner 2026-10-25, like Komoot): "Moderate · T3" and why, though 4.2 km / 280 m is Easy. */
+    private val t3Route = PlannedRoute(listOf(PlannedLeg(routePts.mapIndexed { i, p ->
+        p.copy(way = com.onpath.app.routing.WayAttrs("path", "natural_trail", if (i in 60..64) 3 else 2))
+    }, false)), 4_200.0, 280.0, 280.0, 1.6 * 3600, null)
+
+    @Test fun routeDetailsTechnique() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(t3Route, Activity.HIKE, onBack = {}) } }
+
+    @Test fun planTechniqueBadge() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT, r = t3Route), PlanCallbacks()) } }
 
     /** Drop-down menus are popups (not drawn by Paparazzi): draw their items where the menu opens. */
     @Composable
@@ -333,9 +350,18 @@ class ScreenshotTest {
     private val hint = com.onpath.app.navigation.RouteHint(120.0, 45.0, GeoPoint(46.68, 11.13))
     private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
 
-    /** Off route confirmed, the way back is being computed (usually < 1 s). */
+    /** While off route the service says "not on route" (no stale time): the status card keeps only the recording line. */
+    private val offUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 120.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE))
+
+    /** Off route confirmed, the way back is being computed (usually < 1 s): ONE amber card (owner C1). */
     @Test fun navigateOffRouteSearching() = paparazzi.snapshot {
-        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Searching, hint)))
+        NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Searching, hint, arrowDeg = 45f)))
+    }
+
+    /** No fix for 4 min: the amber "No GPS · position 4 min old" line, the time greyed "Time paused" (review B3). */
+    @Test fun navigateNoGps() = paparazzi.snapshot {
+        NavFrame(navUi.copy(toGo = navUi.toGo!!.copy(state = com.onpath.app.time.EstimateState.PAUSED,
+            pausedBecause = com.onpath.app.time.PauseReason.NO_GPS.text), arriveAt = "16:40", waitingGps = true, fixAgeS = 250))
     }
 
     /** The question: stays until answered or back on the route; big buttons in thumb reach above the map controls. */
@@ -350,19 +376,19 @@ class ScreenshotTest {
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
     @Test fun navigateOffRouteNoWay() = paparazzi.snapshot {
-        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_WAY),
+        NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_WAY),
             hint, arrowDeg = 45f)))
     }
 
     /** Outside the routing data (R-12). */
     @Test fun navigateOffRouteNoData() = paparazzi.snapshot {
-        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_DATA),
+        NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_DATA),
             hint.copy(distanceM = 640.0, bearingDeg = 250.0), arrowDeg = -110f)))
     }
 
     /** "Keep original" chosen: arrow banner, asked again only much later. */
     @Test fun navigateOffRouteKept() = paparazzi.snapshot {
-        NavFrame(navUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Kept, hint, arrowDeg = 160f)))
+        NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Kept, hint, arrowDeg = 160f)))
     }
 
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
@@ -384,9 +410,9 @@ class ScreenshotTest {
 
     private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
         ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
-            listOf("2.3 km not suited for touring bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
+            listOf("2.3 km not suited for bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
         ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
-            listOf("1.4 km not suited for trekking bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
+            listOf("1.4 km not suited for gravel bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
         ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
         ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
         ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
@@ -415,10 +441,13 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi().copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
-    /** Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full. */
+    /**
+     * Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full – with
+     * the longest bike name, Gravel bike (names of 2026-10-26; its chip says "Gravel" so the distance fits).
+     */
     @Test fun planChipLongBikeTour() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 112_480.0, durationS = 12.6 * 3600))
-            .copy(activity = Activity.BIKE_TOURING), PlanCallbacks()) }
+            .copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
     @Test fun arrival() = paparazzi.snapshot {
@@ -442,7 +471,7 @@ class ScreenshotTest {
         Frame {
             PlanPanel(planUi(2, route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList()),
                 routing = true,
-                error = "Leg 1→2: No route found near this point. Shown as a straight dashed line. Try moving the point or changing the activity."),
+                error = "Point 1 → 2: no path found"),
                 PlanCallbacks())
         }
     }
@@ -463,20 +492,47 @@ class ScreenshotTest {
     /** Owner 2026-10-22: a point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike"), PlanCallbacks()) }
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike"), PlanCallbacks()) }
+    }
+
+    /** Route hints (owner 2026-10-26): a ferry on the route – amber line first, before the way warnings. */
+    @Test fun planFerryHint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = Activity.BIKE_TOURING,
+            warnText = RouteWarnings.text(listOf(RouteSpot(SpotKind.FERRY, 40, 41, 6200.0, 6516.0),
+                RouteSpot(SpotKind.FORD, 60, 60, 9100.0, 9100.0)), 3)), PlanCallbacks()) }
+    }
+
+    /** The list behind the amber line with the route hints: ferry, construction, ford, stile. */
+    @Test fun routeSpotsListHints() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(top = 24.dp)) {
+                        RouteSpotsList(listOf(
+                            RouteSpot(SpotKind.CONSTRUCTION, 3, 5, 800.0, 840.0),
+                            RouteSpot(SpotKind.FERRY, 40, 41, 6200.0, 6516.0),
+                            RouteSpot(SpotKind.FORD, 60, 60, 9100.0, 9100.0),
+                            RouteSpot(SpotKind.BARRIER, 70, 70, 11_430.0, 11_430.0, RouteWarnings.BARRIERS.indexOf("stile")),
+                        ), sac = 2, onShow = {})
+                    }
+                }
+            }
+        }
     }
 
     /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
     @Test fun planWarningsWithGap() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
-    /** The amber line alone in the profile step; here the notice after an activity change. */
+    /** The grey INFO line after an activity change (review 2026-10-24 B6: not amber). */
     @Test fun planRouteChanged() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            warnText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
     }
 
     /** The list behind the amber line (shown in a bottom sheet over the map). */
@@ -579,13 +635,19 @@ class ScreenshotTest {
     }
 
 
-    @Test fun confirmClear() = paparazzi.snapshot {
-        OnPathTheme { Frame { PlanPanel(planUi(), PlanCallbacks()) }; ConfirmClearDialog(3, {}, {}) }
-    }
 
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+        }
+    }
+
+    /** A Komoot import switched the activity: one grey INFO line says so (captain 2026-10-26, "no surprises"). */
+    @Test fun trackImportedActivityNote() = paparazzi.snapshot {
+        Frame {
+            TrackPanel(ShownTrack(1, "Komoot – Hirzer Bergtour", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600,
+                note = "Activity set to Hike T3 from the file"),
                 isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
         }
     }
@@ -735,6 +797,11 @@ class ScreenshotTest {
     private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
         Frame(gps = gps, top = { mapNotice(card)?.let { MapNoticeStrip(it, CellCardCallbacks()) } }) { PlanPanel(ui, PlanCallbacks()) }
 
+    /** Owner 2026-10-23: the app opened where there is no detailed map – the strip asks, nothing loads by itself. */
+    @Test fun hereAsk() = paparazzi.snapshot {
+        Frame(top = { HereAskStrip(2, 21L * 1_048_576, {}, {}) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
+    }
+
     /** T1: a start point set outside the detailed map – the server builds the cells. */
     @Test fun cellCardPreparing() = paparazzi.snapshot {
         CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Building("base", 0.4, 300),
@@ -775,7 +842,7 @@ class ScreenshotTest {
 
     @Test fun cellCardFailed() = paparazzi.snapshot {
         CardFrame(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") } +
-                (cEast to com.onpath.app.cells.CellState.Failed("This area could not be prepared (server error). Planning still works with a straight line.")),
+                (cEast to com.onpath.app.cells.CellState.Failed("Map for this area failed")),
                 sizes = cJob.cells.associateWith { 9 * mbB }), planWithCard(n = 3, r = route))
     }
 

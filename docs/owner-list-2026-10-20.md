@@ -1,5 +1,7 @@
 # Owner list 2026-10-20 (hike day, cloud session) – done, open, questions
 
+> Historical (hike day 2026-10-20) – every item is done or in `docs/backlog.md` (checked 2026-10-26).
+
 For tonight's session on the laptop. Everything below is also in the release notes, backlog or design docs that are
 linked here.
 

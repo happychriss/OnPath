@@ -59,7 +59,7 @@ object RouteRules {
 
     /**
      * The plan is worth keeping and differs from what was last saved or loaded ([saved], null = never).
-     * One point is no route yet (like PlanClear.needsConfirm).
+     * One point is no route yet (a plan needs two points).
      */
     fun isUnsaved(points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean =
         points.size >= 2 && (saved == null || points.size != saved.size ||

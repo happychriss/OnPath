@@ -68,7 +68,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
@@ -104,8 +103,8 @@ fun BottomPanel(
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.SemiBold, fontSize = if (big) 28.sp else 18.sp, maxLines = 1)
-        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -159,14 +158,18 @@ fun TrackPanel(
         }
         Text("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        // "Activity set to MTB from the file": an import changed the activity – said, never silent (captain 2026-10-26)
+        track.note?.let { InfoLine(it) }
         Spacer(Modifier.height(8.dp))
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(Icons.Filled.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Export GPX", maxLines = 1)
+            // Export as a square icon button: at 16 sp "Start navigation · Gravel bike" needs the room
+            OutlinedButton(onClick = onExport, modifier = Modifier.size(56.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                Icon(Icons.Filled.Share, "Export GPX")
             }
-            Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(2f).height(56.dp)) {
+            Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
                 Text(trackFollowLabel(recording, activity), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

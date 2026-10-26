@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +45,7 @@ import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.RouteDialogs
 import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
+import com.onpath.app.debug.ScreenLifecycle
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -62,11 +62,6 @@ class MainActivity : ComponentActivity() {
         afterPermission = null
     }
 
-    /** "Allow all the time" (first tour, once): Android 11+ shows its settings page; nothing breaks when refused. */
-    private val backgroundLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        com.onpath.app.debug.Problems.info("gps", if (ok) "Location 'Allow all the time' granted – a tour continues after a restart"
-            else "Location 'Allow all the time' not granted – after a restart OnPath asks to continue")
-    }
 
     /** Map data / style import from the phone itself (no adb). */
     private val openData = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -110,9 +105,9 @@ class MainActivity : ComponentActivity() {
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        traceCreated(savedInstanceState != null)
         if (savedInstanceState == null) handleIntent(intent)
 
-        diagnosticsOn = com.onpath.app.debug.Diagnostics.enabled(this)
         announceLastCrash()
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
@@ -148,7 +143,6 @@ class MainActivity : ComponentActivity() {
                             onRequestLocation = { requestLocation(force = true) },
                             onStartNavigation = {
                                 withLocation {
-                                    val newTour = vm.recState.value == null
                                     vm.startNavigation()
                                 }
                             },
@@ -167,6 +161,7 @@ class MainActivity : ComponentActivity() {
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
+                                busy = vm.busy,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                             )
@@ -203,8 +198,17 @@ class MainActivity : ComponentActivity() {
                             onAppSettings = ::openAppSettings,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
-                            diagnosticsOn = diagnosticsOn,
-                            onDiagnostics = { on -> diagnosticsOn = on; com.onpath.app.debug.Diagnostics.setEnabled(this@MainActivity, on) },
+                            diagnostics = true,
+                            devTools = vm.devToolsShown,
+                            onUnlockDevTools = vm::unlockDevTools,
+                            testStyle = com.onpath.app.ui.TestStyleUi(
+                                // a file check per composition: cheap, and fresh after a push or reload
+                                status = com.onpath.app.map.StyleLoader.devStyleStatus(vm.dataFiles.dir, vm.devToolsShown),
+                                onRemove = vm::removeTestStyle,
+                                onReload = vm::reloadMapStyle,
+                            ),
+                            diagnosticsSeenMs = vm.diagnosticsSeenMs,
+                            diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
@@ -252,14 +256,15 @@ class MainActivity : ComponentActivity() {
                             backup = run {
                                 val b by com.onpath.app.backup.Backups.status.collectAsState()
                                 com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,
-                                    needsStorageAccess = remember(b) { needsStorageAccess() })
+                                    needsStorageAccess = remember(b) { needsStorageAccess() },
+                                    backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
-                                    vm.message = "Backing up all tracks and routes…"
-                                    com.onpath.app.backup.Backups.backupAll(this@MainActivity) { n ->
-                                        // a failure says itself (Backups.failure); only success here
-                                        runOnUiThread { if (n >= 0) vm.message = "Backup done: $n ${if (n == 1) "file" else "files"} written." else if (vm.message?.startsWith("Backing up") == true) vm.message = null }
+                                    vm.busy = com.onpath.app.ui.Busy.BACKUP
+                                    com.onpath.app.backup.Backups.backupAll(this@MainActivity) { _ ->
+                                        // a failure says itself (Backups.failure); success shows in "Last backup: … · N files"
+                                        runOnUiThread { if (vm.busy == com.onpath.app.ui.Busy.BACKUP) vm.busy = null }
                                     }
                                 },
                                 onChooseFolder = { launchTreePicker(pickBackupFolder) },
@@ -282,40 +287,23 @@ class MainActivity : ComponentActivity() {
 
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
-                        Snackbar(
+                        // errors get ⚠ and a red edge (review 2026-10-24 B10)
+                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null },
                             // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
-                                    vm.backgroundStripHeightDp).dp),
-                            action = { TextButton(onClick = { vm.message = null }) { Text("OK") } },
-                        ) { Text(msg) }
+                                    vm.backgroundStripHeightDp).dp))
                     }
                 }
 
                 RouteDialogs(vm)
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
-                if (vm.askBackground) {
-                    AlertDialog(
-                        onDismissRequest = { vm.backgroundAnswered() },
-                        title = { Text("Keep recording after a restart?") },
-                        text = { Text("If the phone restarts or OnPath is updated during a tour, OnPath can continue recording " +
-                            "by itself. For that Android needs location access “Allow all the time”. OnPath uses it only " +
-                            "while a tour is recording. Without it, OnPath asks you to tap Continue.") },
-                        confirmButton = { TextButton(onClick = {
-                            vm.backgroundAnswered()
-                            try { backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } catch (e: Exception) {
-                                com.onpath.app.debug.Problems.warn("gps", "'Allow all the time' request could not be shown; opening app settings", e)
-                                openAppSettings()
-                            }
-                        }) { Text("Allow") } },
-                        dismissButton = { TextButton(onClick = { vm.backgroundAnswered() }) { Text("Not now") } },
-                    )
-                }
+                // "Allow all the time" is never asked (owner C2 2026-10-24) – only the quiet hint in Settings → Navigation
                 if (vm.askUpdateDuringTour) {
                     AlertDialog(
                         onDismissRequest = { vm.askUpdateDuringTour = false },
                         title = { Text("A tour is being recorded") },
-                        text = { Text("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
+                        text = { com.onpath.app.ui.DialogText("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
                             "open OnPath afterwards and tap Continue. Better: install after the tour.") },
                         confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text("After the tour") } },
                         dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text("Install now") } },
@@ -343,8 +331,30 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
         handleIntent(intent)
     }
+
+    override fun onDestroy() {
+        val others = ScreenLifecycle.destroyed(screenNo)
+        com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.destroyedLine(screenNo, isFinishing, isChangingConfigurations, others))
+        super.onDestroy()
+    }
+
+    /** Number of this screen in the process (event log: field 0.10.1 had two at once at start – [ScreenLifecycle]). */
+    private var screenNo = 0
+
+    private fun traceCreated(restored: Boolean) {
+        val (n, others) = ScreenLifecycle.created()
+        screenNo = n
+        val line = ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
+        // a second screen at once is not normal: noted in Diagnostics (WARN is not announced on screen)
+        if (others > 0) com.onpath.app.debug.Problems.warn("app", line) else com.onpath.app.debug.Problems.trace("app", line)
+    }
+
+    private fun describe(i: Intent?): String = if (i == null) "no intent" else ScreenLifecycle.intentText(
+        i.action, i.data?.scheme, i.type, i.categories, i.flags, i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0,
+        try { referrer?.host } catch (e: Exception) { null }) // expected: referrer is best effort (event log only)
 
     override fun onStart() {
         super.onStart()
@@ -431,7 +441,6 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) { com.onpath.app.debug.Problems.warn("map", "Map tile cache could not be cleared before restart", e); restart() }
     }
 
-    private var diagnosticsOn by mutableStateOf(true)
 
     /** The app crashed in an earlier run: say so once (the details are in Settings → Diagnostics). */
     private fun announceLastCrash() {
@@ -455,12 +464,12 @@ class MainActivity : ComponentActivity() {
             com.onpath.app.debug.Problems.warn("ui", "Diagnostics: loaded style not readable", e); null
         }
         val state = vm.diagnosticsState()
-        vm.message = "Creating diagnostics…"
+        vm.busy = com.onpath.app.ui.Busy.DIAGNOSTICS
         Thread {
             val result = runCatching { com.onpath.app.debug.Diagnostics.export(this, mapPart, styleJson, state) }
             runOnUiThread {
+                vm.busy = null
                 result.onSuccess { f ->
-                    vm.message = null
                     val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
                     val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

@@ -4,11 +4,8 @@ import android.content.res.Resources
 import android.graphics.PointF
 import android.graphics.RectF
 import com.onpath.app.debug.Problems
-import org.json.JSONArray
-import org.json.JSONObject
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
-import java.io.File
 
 /**
  * Returns the POI under [screenPoint] (pixels, as from projection.toScreenLocation), searching a
@@ -38,27 +35,3 @@ fun findPoiAt(map: MapLibreMap, screenPoint: PointF, boxDp: Float = 24f): Poi? =
     null
 }
 
-/**
- * pois.geojson is optional. If it is missing in [dataDir], removes the "pois" source and every
- * "poi-" layer from the style JSON so MapLibre never tries to load a missing file. Returns the
- * input unchanged on any error.
- */
-fun stripPoisIfMissing(styleJson: String, dataDir: File): String {
-    if (File(dataDir, POI_DATA_FILE).isFile) return styleJson
-    return try {
-        val root = JSONObject(styleJson)
-        root.optJSONObject("sources")?.remove(POI_SOURCE_ID)
-        val layers = root.optJSONArray("layers") ?: return styleJson
-        val kept = JSONArray()
-        for (i in 0 until layers.length()) {
-            val l = layers.optJSONObject(i) ?: continue
-            if (l.optString("source") == POI_SOURCE_ID || l.optString("id").startsWith(POI_LAYER_PREFIX)) continue
-            kept.put(l)
-        }
-        root.put("layers", kept)
-        root.toString()
-    } catch (e: Exception) {
-        Problems.warn("poi", "POI layers not removed although pois.geojson is missing, style used unchanged", e)
-        styleJson
-    }
-}

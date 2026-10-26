@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.recording.GpsStatus
 
 /**
@@ -60,7 +59,7 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Compo
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             scale?.let { (label, width) -> ScaleBar(label, width) }
             // short credit on the map (owner 2026-10-22); a tap opens the full credits (Settings → About)
-            Text("© OpenStreetMap", fontSize = 10.sp, lineHeight = 12.sp, color = Color(0xFF333333), maxLines = 1,
+            Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
                 modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
                     .clickable(onClickLabel = "Show map credits", onClick = onCredits)
                     .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
@@ -85,7 +84,7 @@ fun gpsColor(status: GpsStatus): Color = when (status) {
 @Composable
 private fun ScaleBar(label: String, width: Dp) {
     Column(Modifier.background(Color(0x99FFFFFF), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
-        Text(label, fontSize = 9.sp, lineHeight = 10.sp, color = Color(0xFF222222))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF222222))
         Box(Modifier.width(width).height(2.dp).background(Color(0xFF222222)))
     }
 }

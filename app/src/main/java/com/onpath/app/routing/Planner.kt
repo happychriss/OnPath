@@ -23,6 +23,8 @@ data class PlannedRoute(
      * unknown (straight legs, fallback engine). Empty = nothing known. See [WaypointSnap.apply].
      */
     val snapped: List<GeoPoint?> = emptyList(),
+    /** Interior points (indices in the request) the router matched on a way but cut out as a spike – see [Planner.SPUR_ON_WAY_M]. */
+    val spurs: Set<Int> = emptySet(),
 ) {
     val points: List<GeoPoint> by lazy {
         val out = ArrayList<GeoPoint>()
@@ -79,6 +81,17 @@ class Planner(
      */
     fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
         require(waypoints.size >= 2)
+        val first = planPinned(waypoints, activity, sac, pinned)
+        // Field bug Hilden 2026-10-24: a point ON a way, reachable only there and back, was cut out by BRouter's
+        // via correction (up to 400 m for bikes) and then shown as "no way for Gravel bike". Owner: a point on a way
+        // is always visited – route again with it as a chunk end (chunk ends are never corrected).
+        val spurs = first.spurs - pinned
+        if (spurs.isEmpty()) return first
+        Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
+        return planPinned(waypoints, activity, sac, pinned + spurs)
+    }
+
+    private fun planPinned(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>): PlannedRoute {
         val cuts = chunkBounds(waypoints.size, pinned)
         if (cuts.size == 2) return planOne(waypoints, activity, sac)
         val parts = cuts.zipWithNext().map { (a, b) -> planOne(waypoints.subList(a, b + 1), activity, sac, a) }
@@ -88,6 +101,7 @@ class Planner(
             parts.firstNotNullOfOrNull { it.error },
             RouteSummary.mergeShares(parts.map { it.wayTypes }), RouteSummary.mergeShares(parts.map { it.surfaces }),
             mergeSnapped(waypoints.size, cuts, parts.map { it.snapped }),
+            parts.flatMap { it.spurs }.toSet(),
         )
     }
 
@@ -104,7 +118,7 @@ class Planner(
             if (r.points.size >= 2) {
                 return PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
                     RouteSummary.mergeShares(listOf(r.wayTypes)), RouteSummary.mergeShares(listOf(r.surfaces)),
-                    WaypointSnap.onRoute(waypoints, r.points, r.matched))
+                    WaypointSnap.onRoute(waypoints, r.points, r.matched), spurs(waypoints, r, offset))
             }
         } catch (e: Exception) {
             stopIfCancelled() // cancelled: no fallback, the caller shows nothing new
@@ -114,13 +128,12 @@ class Planner(
             if (waypoints.size == 2) {
                 val d = Geo.distance(waypoints[0], waypoints[1])
                 return PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
-                    Geo.estimateSeconds(d, 0.0, 0.0, activity),
-                    "${UserText.of(e, "No route found.")} Shown as a straight dashed line. Try moving the point or changing the activity.")
+                    flatSeconds(d, activity),
+                    legError(1, 2, e))
             }
             // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
             // plan up to 120 s) – straight lines at once, the user adds points or tries again.
-            if (e is RoutingException && e.timedOut) return straight(waypoints, activity,
-                "${UserText.of(e, "Route calculation took too long.")} Shown as straight dashed lines.")
+            if (e is RoutingException && e.timedOut) return straight(waypoints, activity, TOOK_TOO_LONG)
             // otherwise fall through to per-leg routing
         }
         var dist = 0.0; var up = 0.0; var down = 0.0; var time = 0.0
@@ -145,9 +158,7 @@ class Planner(
                 stopIfCancelled()
                 // expected: RoutingException = no route for this leg (shown as a straight dashed line)
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
-                if (firstError == null) firstError = UserText.of(e, "No route found.").let {
-                    "Leg ${i + offset}→${i + offset + 1}: $it Shown as a straight dashed line. Try moving the point or changing the activity."
-                }
+                if (firstError == null) firstError = legError(i + offset, i + offset + 1, e)
             }
         }
         // straight legs start/end where their neighbours' routed legs do, so markers and lines meet
@@ -156,7 +167,7 @@ class Planner(
                 val a = snapped[i - 1] ?: waypoints[i - 1]; val b = snapped[i] ?: waypoints[i]
                 val d = Geo.distance(a, b)
                 dist += d
-                time += Geo.estimateSeconds(d, 0.0, 0.0, activity)
+                time += flatSeconds(d, activity)
                 PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
@@ -164,13 +175,49 @@ class Planner(
             RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
     }
 
+    /** Interior points matched on a way (≤ [SPUR_ON_WAY_M]) whose matched spot the route line misses (> [SPUR_MISSED_M]). */
+    private fun spurs(waypoints: List<GeoPoint>, r: RouteResult, offset: Int): Set<Int> {
+        if (waypoints.size < 3 || r.matched.size != waypoints.size) return emptySet()
+        return (1 until waypoints.lastIndex).filter { i ->
+            val m = r.matched[i] ?: return@filter false
+            Geo.distance(waypoints[i], m) <= SPUR_ON_WAY_M && WaypointSnap.distToLine(m, r.points) > SPUR_MISSED_M
+        }.map { it + offset }.toSet()
+    }
+
+    /** A straight leg (no router): flat, timed by the one time model (the plan sheet re-times the whole line anyway). */
+    private fun flatSeconds(d: Double, activity: Activity) = com.onpath.app.time.PaceModel.seconds(d, 0.0, activity)
+
     private fun straight(waypoints: List<GeoPoint>, activity: Activity, error: String): PlannedRoute {
         val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
         val d = (1 until waypoints.size).sumOf { Geo.distance(waypoints[it - 1], waypoints[it]) }
-        return PlannedRoute(legs, d, 0.0, 0.0, Geo.estimateSeconds(d, 0.0, 0.0, activity), error)
+        return PlannedRoute(legs, d, 0.0, 0.0, flatSeconds(d, activity), error)
     }
 
     companion object {
+        /** The whole plan timed out (straight lines at once). */
+        const val TOOK_TOO_LONG = "Route took too long – straight lines for now"
+
+        /**
+         * One short ERROR line for a leg the router could not do (review 2026-10-24 B4): "Point 1 → 2: no path found" –
+         * no "Leg", no "shown as a straight dashed line" (the map shows it), no advice sentence. Missing routing data
+         * keeps the engine's text so the plain "map loading" notice still recognises it (RoutingDataNotice).
+         */
+        fun legError(from: Int, to: Int, e: Exception): String {
+            val msg = UserText.of(e, "No route found.")
+            if (msg.contains("No routing data") || msg.contains(".rd5")) return msg
+            val why = when {
+                e is RoutingException && e.timedOut -> "took too long"
+                msg.startsWith("Not enough memory") || msg.startsWith("Route too complex") -> "too long – add a point between"
+                else -> "no path found"
+            }
+            return "Point $from → $to: $why"
+        }
+
+        /** A point this close to the way it was matched on counts as "on the way" (the user meant that way). */
+        const val SPUR_ON_WAY_M = 30.0
+        /** The route line passes the matched spot farther than this = the router cut the point out as a detour. */
+        const val SPUR_MISSED_M = 50.0
+
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
         const val PLAN_LIMIT_MS = 10 * 60_000L
 

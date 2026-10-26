@@ -58,7 +58,9 @@ object PaceModel {
     data class Bike(val riderW: Double, val assistW: Double, val massKg: Double, val drag: Double, val surface: String)
 
     fun bike(activity: Activity): Bike = when (activity) {
-        Activity.BIKE_TOURING -> Bike(120.0, 0.0, 92.0, 0.27, "asphalt")
+        // touring = a normal bike like trekking (review 2026-10-25: 120 W gave ~24 km/h, road-bike like; now ~21.7 km/h on
+        // its usual asphalt, the same as trekking on the same surface)
+        Activity.BIKE_TOURING -> Bike(100.0, 0.0, 95.0, 0.30, "asphalt")
         Activity.BIKE_TREKKING -> Bike(100.0, 0.0, 95.0, 0.30, "paved")
         Activity.EBIKE -> Bike(100.0, 200.0, 115.0, 0.30, "paved")
         Activity.MTB -> Bike(110.0, 0.0, 92.0, 0.32, "unpaved")
@@ -215,7 +217,8 @@ object PaceModel {
 /**
  * Alpine standard hiking time rule DIN 33466 (DAV / AVS / SAC signposts): 4 km/h on the flat, 300 m up and 500 m down
  * per hour; time = the larger of horizontal and vertical time + half of the smaller. It defines the "Average" pace level
- * (shown in Settings) and is the quick estimate for straight lines and imported tracks ([com.onpath.app.data.Geo.estimateSeconds]).
+ * (shown in Settings). Times themselves – planned routes, imported tracks, straight lines – all come from [PaceModel]
+ * (one time model, captain 2026-10-26; the separate quick estimate `Geo.estimateSeconds` is gone).
  * The per-segment model ([PaceModel.hikeMinPerKm], table B) is anchored on the same rule (docs/plan-time-estimate.md §3):
  * 4 km/h on the flat, ~300–340 m/h on steady climbs, but not as slow on descents as the whole-route formula.
  */

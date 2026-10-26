@@ -1,7 +1,6 @@
 package com.onpath.app.time
 
 import com.onpath.app.data.FollowProgress
-import com.onpath.app.data.Geo
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
@@ -44,7 +43,8 @@ class ReferenceRoutesTest {
         for (id in IDS) {
             val r = load(id)
             val t = RouteTimes.of(r.points, r.activity)
-            val din = Geo.estimateSeconds(r.distanceM, r.ascentM, r.descentM, r.activity)
+            // DIN 33466 on the whole route: the old hiking "to go" (and, until 2026-10-26, the imported-track time)
+            val din = Din33466.seconds(r.distanceM, r.ascentM, r.descentM)
             println("%-40s %5.1f   %8s          %8s        %8s".format(r.name, r.distanceM / 1000, hm(r.brouterS), hm(din), hm(t.total())))
             expected[id]?.let { e ->
                 val (h, m) = e.split(':').map { it.toInt() }
@@ -78,7 +78,7 @@ class ReferenceRoutesTest {
             val r = load(id)
             val t = RouteTimes.of(r.points, r.activity).total()
             assertTrue(id, t > r.brouterS * 1.25)
-            assertTrue(id, t < Geo.estimateSeconds(r.distanceM, r.ascentM, r.descentM, r.activity))
+            assertTrue(id, t < Din33466.seconds(r.distanceM, r.ascentM, r.descentM))
         }
     }
 

@@ -149,6 +149,26 @@ def way_arrow(pr, color, both=False, canvas=(14, 8)):
     return im.resize((canvas[0] * pr, canvas[1] * pr), Image.LANCZOS)
 
 
+def both_ways_arrow(pr, color, canvas=(18, 10)):
+    """A two-headed arrow ⟷ (one shaft, a full head at each end) with a white outline: "bikes both ways" in a one-way
+    street (owner 2026-10-26: the two half arrows were too small to read)."""
+    w, h = canvas[0] * pr * SS, canvas[1] * pr * SS
+    sc = pr * SS
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    rgb = hex_rgb(color) + (255,)
+    halo = (255, 255, 255, 235)
+    ym = h / 2
+    x0, x1 = 1.2 * sc, w - 1.2 * sc
+    head, half = 4.6 * sc, 3.4 * sc
+    for col, grow in ((halo, 1.1 * sc), (rgb, 0)):
+        d.line((x0 + head * 0.6, ym, x1 - head * 0.6, ym), fill=col, width=int(1.8 * sc + 2 * grow))
+        for tip, sgn in ((x1, 1), (x0, -1)):
+            d.polygon([(tip + sgn * grow, ym), (tip - sgn * (head + grow), ym - half - grow),
+                       (tip - sgn * (head + grow), ym + half + grow)], fill=col)
+    return im.resize((canvas[0] * pr, canvas[1] * pr), Image.LANCZOS)
+
+
 # Ground symbols (fill-pattern tiles, drawn from z14 by make_style.py landcover()): very light, a darker tone of
 # the ground colour. Ground colours = tools/themes/classic.json; design: docs/design/map-colour-analysis.md.
 # name -> (ground colour, tile w, h (1x px), darken towards ink, opacity, filled?, stroke width, SVG content)
@@ -187,8 +207,12 @@ def build(pr):
         images[f"poi-{kind}-small"] = badge(col, None, pr, canvas=12, r_out=4.6, ring=1.3, shadow=True)
     images["access-no"] = no_entry(pr)
     # bike map (format 2, make_style.py bike_map): one-way streets, and one-way streets open to bikes both ways
-    images["oneway-arrow"] = way_arrow(pr, "#5a5a5a")
-    images["bike-both-ways"] = way_arrow(pr, "#2e9e3a", both=True)  # greenway.color: good for bikes, no blue ways
+    # Arrow colour rule (owner 2026-10-26): dark single arrow = one-way for everyone (bikes too); green two-headed arrow =
+    # one-way for cars, bikes both ways; green single arrow = one-way only for bikes. White outline on all of them, so
+    # they read on white streets, yellow / orange roads and black paths alike.
+    images["oneway-arrow"] = way_arrow(pr, "#262626")
+    images["bike-both-ways"] = both_ways_arrow(pr, "#1f8a32")  # greenway tone, a little darker for a small symbol
+    images["bike-oneway-arrow"] = way_arrow(pr, "#1f8a32")
     # simple shelf packing
     cols = 8
     cell = 24 * pr

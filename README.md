@@ -51,8 +51,8 @@ everyday situations calmly. I build it in the open so others can use it, check i
 
 ## Planning
 
-- Hold the map to set points; the route follows paths and roads for six activities: hike, bike touring, bike trekking,
-  e-bike, MTB and MTB e-bike.
+- Hold the map to set points; the route follows paths and roads for six activities: Bike, Gravel bike,
+  E-bike, MTB, E-MTB and Hike.
 - For hiking you choose a level from T1 to T5 (SAC scale). Trails above that level are
   not used, and via ferratas never – useful when you plan for someone else, for example a family walk.
 - If a point cannot be reached with the chosen activity (a bike destination at a mountain hut), the route ends where it

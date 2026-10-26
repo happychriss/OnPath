@@ -8,6 +8,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -184,6 +186,16 @@ class CellDownloadTest {
         waitFor("built and loaded in the background") { mc.state(a) == CellState.Ready("v1") }
     }
 
+    /** Owner 2026-10-24: opening the app loads quietly only what the server has built – the check starts no build. */
+    @Test fun builtOnServerOnlyReadsTheStatus() {
+        server.publish(a, "v1")
+        val other = CellId(a.x + 7, a.y)
+        val mc = cells(Net())
+        assertEquals(setOf(a), mc.builtOnServer(listOf(a, other)))
+        assertFalse("no build asked for", server.log.any { it.startsWith("POST /v1/cells/request") })
+        assertEquals(null, cells(Net(connected = false), tmp.newFolder("data-offline")).builtOnServer(listOf(a)))
+    }
+
     /** Owner 2026-10-23: phone put aside while the map loads – MapLoadService keeps the polling going. */
     @Test fun loadingServiceKeepsItGoingInTheBackground() {
         server.publish(a, "v1"); server.buildPolls = 1
@@ -223,7 +235,7 @@ class CellDownloadTest {
         mc.request(listOf(a), CellReason.POINT)
         waitFor("failed") { mc.state(a) is CellState.Failed }
         // the server's reason goes to Diagnostics only; the user reads one plain sentence (text review 2026-10-23)
-        assertEquals("This map area could not be prepared. Routes there are straight lines for now.",
+        assertEquals("Map for this area failed",
             (mc.state(a) as CellState.Failed).message)
     }
 
@@ -240,6 +252,52 @@ class CellDownloadTest {
         mc.request(listOf(a), CellReason.REFRESH)
         waitFor("v2") { mc.state(a) == CellState.Ready("v2") }
         assertEquals("v2", mc.installed.value.single().version)
+    }
+
+    /**
+     * Field 2026-10-26 (s5 → s6, Hilden): the server answered the refresh "ready + updating" while it rebuilt the cells;
+     * the app then waited its 15-minute idle time before asking again – the new cells came 10 min after they were
+     * built. Now an updating cell is polled at the server's pace and the new version loads right after the rebuild.
+     */
+    @Test fun updatingCellIsPolledUntilTheRebuildIsDone() {
+        server.publish(a, "2026-10-20-s5"); server.buildPolls = 0
+        val mc = cells(Net())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("s5") { mc.state(a) == CellState.Ready("2026-10-20-s5") }
+        server.updating += a.id
+        mc.request(listOf(a), CellReason.REFRESH)
+        val polls = server.log.count { it.startsWith("GET /v1/cells/status") }
+        waitFor("polled while updating") { server.log.count { it.startsWith("GET /v1/cells/status") } >= polls + 3 }
+        assertEquals(CellState.Ready("2026-10-20-s5"), mc.state(a)) // the old map stays meanwhile
+        server.publish(a, "2026-10-20-s6"); server.updating -= a.id
+        waitFor("s6 right after the rebuild", 5_000) { mc.state(a) == CellState.Ready("2026-10-20-s6") }
+        // done: no more polling for it
+        waitFor("request finished") { !File(mc.store.root, "requests.json").readText().contains(a.id) }
+    }
+
+    /**
+     * tools/dev/push_cell.sh puts a developer build on the phone as a complete download; it is joined at start and a
+     * refresh (the restored plan's route asks at every start) does not replace it for a day – after that it does.
+     */
+    @Test fun developerCellIsKeptForADay() {
+        assertTrue(CellApi.isDevVersion("2026-10-25-dev10261201-s6"))
+        assertFalse(CellApi.isDevVersion("2026-10-20-s6"))
+        assertEquals(6, CellApi.schemaOf("2026-10-25-dev10261201-s6"))
+        server.publish(a, "2026-10-20-s6"); server.buildPolls = 0
+        val data = tmp.newFolder("dev")
+        val dev = "2026-10-25-dev10261201-s6"
+        CellFixtures.cell(File(File(CellStore(data).downloadDir, a.id), dev), a, dev)
+        var later = 0L
+        val mc = MapCells(CellStore(data), api(), Net(), scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L,
+            now = { System.currentTimeMillis() + later }).also { it.start() }
+        waitFor("dev cell joined at start") { mc.installed.value.any { it.version == dev } }
+        mc.request(listOf(a), CellReason.REFRESH)
+        waitFor("refresh answered") { !File(mc.store.root, "requests.json").readText().contains(a.id) }
+        assertEquals(dev, mc.installed.value.single().version)
+        assertFalse(server.log.any { it.contains("/manifest") })
+        later = MapCells.DEV_KEEP_MS + 60_000
+        mc.request(listOf(a), CellReason.REFRESH)
+        waitFor("server version after a day") { mc.state(a) == CellState.Ready("2026-10-20-s6") }
     }
 
     /**
@@ -318,6 +376,22 @@ class CellDownloadTest {
         waitFor("b joined at start") { second.installed.value.any { it.id == b } }
         waitFor("a loaded after restart") { second.state(a) is CellState.Ready }
         assertNotNull(second.mapDir())
+    }
+
+    /** Field 0.10.1: two screens at start – the older ViewModel, cleared last, must not remove the newer one's relevance. */
+    @Test fun olderScreenDoesNotClearNewerRelevance() {
+        val mc = cells(Net())
+        fun rel() = object : MapCells.Relevance {
+            override fun waiting(): Set<CellId> = emptySet()
+            override fun stillNear(c: CellId) = true
+        }
+        val older = rel(); val newer = rel()
+        mc.relevance = older
+        mc.relevance = newer
+        mc.releaseRelevance(older)
+        assertSame(newer, mc.relevance)
+        mc.releaseRelevance(newer)
+        assertNull(mc.relevance)
     }
 
     @Test fun deleteCell() {

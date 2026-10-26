@@ -38,6 +38,10 @@ class SheetDragTest {
 
     @Test fun aSlowReleaseIsNoFling() = assertEquals(1, target(520f, v = -600f))
 
+    @Test fun theReleaseLineNamesPositionStepsSpeedAndTarget() = assertEquals(
+        "Sheet let go at 1143 px (steps 536 / 938 / 1602 px, -12 px/s) → step 1",
+        SheetDrag.describe(1143.4f, listOf(536f, 938.2f, 1602f), -12.3f, 1))
+
     @Test fun followsTheFingerWithRubberBandAtTheEnds() {
         assertEquals(400f, SheetDrag.follow(400f, 100f, 800f), 0f)
         assertEquals(830f, SheetDrag.follow(900f, 100f, 800f), 1e-3f)

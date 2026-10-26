@@ -1,10 +1,58 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-23 – current release **0.10.0** (0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1).
+Last update: 2026-10-26 – current release **0.11.3** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
-<!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
+<!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald, captain), 2026-10-26 evening – 0.11.3.** Map look tuned with the owner on the phone (fast loop:
+  `tools/dev/push_style.sh` test style in developer tools, `tools/dev/push_cell.sh` local cells): town contrast,
+  bike view like hiking (green good ways, mint route band + names, pink-green long-distance, quiet tracks, dotted loose
+  edge), zoomed-out overview (thin route lines, paths hidden / faint for hike), one-way arrows dark / green ⟷, calmer
+  forbidden ways, street areas + sidewalk outlines, underpasses (`tn` p/t). Map data schema 7 (signed cycle networks
+  only, route name label lines `lb`, bicycle streets `bs`, footbridges `br`, `areas` layer, `fw`, hidden footway
+  stubs). Faster refresh: doorman adopts cells built on donald (`tools/dev/publish_cells.sh`, TEST bucket only, token in
+  ~/.config/onpath/r2-test.env), background rebuilds spread, pre-warm after a schema bump, app polls updating cells.
+  - **Next (in progress):** routes by zoom tier (only long-distance zoomed out, regional from z11, local from z12.5 –
+    needs a new APK); coarse region-view data z6–9 (measuring sizes; owner decides).
+- **desktop (donald, captain), 2026-10-26 – 0.11.2.** All on `main`: quiet town map + path gap links + calmer
+  forbidden ways + thin cycle-route lines (cell schema 6, look-only – also refreshes router classes; maps-deploy test
+  done), compacted counts as firm / cheap footway only without a bicycle tag (Hilden Itter, `ItterPathTest`), Trekking
+  gets Touring's busy-traffic penalty (profiles now differ only in unpavedPenalty + v_rough), bike names Bike / Gravel
+  bike with one line each (chip says "Gravel" so long distances fit), GpxCompare counts empty trace runs as gaps,
+  builder test probe fix. Git history was rewritten on 2026-10-26: other checkouts must `git fetch && git reset --hard
+  origin/main` (or re-clone) before pushing.
+  - **Open:** phone check of rebuilt cells (Hilden / Düsseldorf / Meran; small stray link stubs near roundabouts at
+    z17?), plan-sheet finger-follow check on the Pixel, owner items in backlog "Waiting for the owner", requirements.md
+    names (owner / cloud).
+- **0.11.1** (2026-10-26): no app change; route profile comments and bike-routing notes tidied
+  (`docs/design/bike-routing.md`).
+- **0.11.0 released** by the captain on donald, 2026-10-26 (everything below since 0.10.3; notes
+  `docs/release-notes/v0.11.0.md`).
+- **desktop (donald), 2026-10-25/26 – bike routing, difficulty, Komoot GPX type, senior review.** All on
+  `main`, released in **0.11.0**.
+  - **Changed since 0.10.3:** offline search index per map area (laptop, 8174874); planner via-point spur fix (a point on
+    a way is always visited); E2E points-list flakiness fixed (`E2EBase.findFresh`, UiAutomator cache); way attributes
+    no longer lost on 22 % of routes (`BRouterWayStats` zero-length run); GPX comparison tool
+    (`tools/routing/jvm-test/GpxCompare.kt` + report script, run.sh options); difficulty with trail technique like
+    Komoot (`RouteSummary.rating`, badge "Moderate · T3", Route details line; hike bands ≈ 2 h / 300 m and 5 h / 900 m);
+    Komoot GPX `<type>` → activity on import, written on export (`gpx/SportType`, T level kept inside the type's band,
+    grey "Activity set to … from the file" line); unit tests run in UTC; bike profiles tuned – new
+    `touring.brf` for Touring bike + E-bike (replaces fastbike-verylowtraffic, deleted on the phone), `trekking.brf`
+    tuned, v_rough, footway on a cycle route ridden (not in a pedestrian zone), ActivityCheck follows the profile,
+    Touring time ~21.7 km/h, greenways per profile; cell schema 5 (look-only, router classes rebuilt; app stays 3).
+  - **Senior review (this session's end):** recorded tours were always stored as T3 – fixed with a test; one
+    "Hike T3" form for the activity in sentences; ~20 dead functions / settings and 21 unused theme tokens removed;
+    docs brought to one current story (CLAUDE.md, README activity names, map-pipeline, map-hosting, dated notes and
+    reviews marked as history); working agreement: donald claims `[desktop]`. Details: backlog "Done".
+  - **Open:** backlog "Next" (bike follow-ups: Köln Dom route + ferries with bicycle=no – another desktop agent had
+    them claimed; requirements.md sync for the cloud / owner; quick time estimate vs PaceModel; interrupted paths at
+    junctions; Hilden footways for bikes) and "Waiting for the owner" (imported tour → switch activity?, map server
+    access, Play internal test, field tests of 0.10.x).
+- **laptop, 2026-10-23 evening/late:** 0.10.1 field-test TODO 1–6 done (two screens at start → per-host map state
+  `ui/MapReload.kt`; time-based loading %; `RouteRules.linkedToSaved`; churches shown by default; POI priority `pr` +
+  cell schema 4), loading chip with place names, README rewrite + tester Discussions thread, design notes
+  `docs/design/map-access.md` and `docs/design/web-planner.md`. Released in 0.10.2 / 0.10.3 (cloud, 2026-10-24).
 - **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
   colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
   up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers
@@ -308,7 +356,7 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
   on the Pixel 8 first; if it misbehaves, tap-on-line insertion and the point menu still cover all edits.
 - Pinned points are not saved with tours ("My tours" → reopen: points are routed normally); a route straightened
   around an unpinned via is still possible.
-- Difficulty ignores trail technique (SAC / MTB scale); thresholds are first guesses – tune after field tests.
+- Difficulty ignores trail technique (SAC / MTB scale) – done 2026-10-25 (`RouteSummary.rating`); thresholds still to tune after field tests.
 - Remaining strip uses straight-segment matching to the followed line; no "reroute back to route" yet.
 - Plan panel is tall with breakdown bars (~60 % of the screen); the eye button helps, a collapsible details
   section may be needed.

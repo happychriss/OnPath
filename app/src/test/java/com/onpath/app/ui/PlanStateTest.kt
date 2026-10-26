@@ -63,11 +63,4 @@ class PlanStateTest {
         assertFalse(r.isCurrent(running))
         assertTrue(r.isCurrent(newer))
     }
-
-    @Test fun confirmOnlyWithARoute() {
-        assertFalse(PlanClear.needsConfirm(0))
-        assertFalse(PlanClear.needsConfirm(1))
-        assertTrue(PlanClear.needsConfirm(2))
-        assertTrue(PlanClear.needsConfirm(5))
-    }
 }

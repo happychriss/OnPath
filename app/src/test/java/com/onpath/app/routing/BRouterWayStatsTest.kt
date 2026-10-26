@@ -1,6 +1,7 @@
 package com.onpath.app.routing
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -98,5 +99,71 @@ class BRouterWayStatsTest {
         // a run that matches no node: nothing (times as without attributes)
         assertTrue(BRouterWayStats.perNode(listOf(m(1, 2, "highway=path")), lon, lat).isEmpty())
         assertTrue(BRouterWayStats.perNode(null, lon, lat).isEmpty())
+    }
+
+    @Test fun cycleRouteFromRouteTags() {
+        for (n in listOf("icn", "ncn", "rcn", "lcn")) {
+            assertTrue(n, BRouterWayStats.attrs(t("highway=footway route_bicycle_$n=yes")).cycleRoute)
+        }
+        assertFalse(BRouterWayStats.attrs(t("highway=footway route_bicycle_mtb=yes route_hiking_lwn=yes")).cycleRoute)
+        assertFalse(BRouterWayStats.attrs(t("highway=footway")).cycleRoute)
+    }
+
+    @Test fun pedestrianZoneIsMarked() {
+        val zone = BRouterWayStats.attrs(t("highway=pedestrian route_bicycle_lcn=yes"))
+        assertEquals("footway", zone.wayType)
+        assertTrue(zone.pedestrian)
+        assertTrue(zone.cycleRoute)
+        assertFalse(BRouterWayStats.attrs(t("highway=footway route_bicycle_lcn=yes")).pedestrian)
+    }
+
+    /**
+     * Field data 2026-10-25 (22 % of 296 planned test routes): BRouter can open the message list with a
+     * zero-length run reported AT the first node. The matcher searched from the next node, found nothing and dropped
+     * all way attributes – no "pushing" hint, times without surfaces on that whole route.
+     */
+    @Test fun perNodeSkipsAZeroLengthRunAtTheCurrentNode() {
+        fun m(lon: Int, lat: Int, d: Int, tags: String) = "$lon\t$lat\t300\t$d\t1000\t0\t0\t0\t0\t$tags\t\t10\t100"
+        val lon = intArrayOf(11000000, 11000100, 11000200, 11000300)
+        val lat = intArrayOf(46000000, 46000000, 46000000, 46000000)
+        val msgs = listOf(
+            m(11000000, 46000000, 0, "highway=cycleway"), // 0 m at the start node itself
+            m(11000200, 46000000, 15, "highway=footway"),
+            m(11000300, 46000000, 8, "highway=residential"),
+        )
+        val w = BRouterWayStats.perNode(msgs, lon, lat)
+        assertEquals(4, w.size)
+        assertEquals("footway", w[0]!!.wayType); assertEquals("footway", w[1]!!.wayType)
+        assertEquals("quiet_road", w[2]!!.wayType)
+    }
+
+    /**
+     * Route hints (owner 2026-10-26): a ferry, a ford (way or node), a stile / kissing gate / turnstile (node) and a way
+     * under construction reach the route's way attributes; bollards, gates and lift gates do not (passable, too common).
+     */
+    @Test fun hintTagsReachTheWayAttributes() {
+        fun m(lon: Int, way: String, node: String = "") = "$lon\t46000000\t300\t10\t1000\t0\t0\t0\t0\t$way\t$node\t10\t100"
+        val lon = IntArray(7) { 11000000 + it * 100 }
+        val lat = IntArray(7) { 46000000 }
+        val msgs = listOf(
+            m(11000100, "highway=track", "barrier=stile"),          // span 0 ends at a stile
+            m(11000200, "highway=track", "nodeaccessgranted=yes barrier=gate"),
+            m(11000300, "highway=track", "ford=yes"),               // span 2 ends at a ford node
+            m(11000400, "highway=path ford=stepping_stones"),       // the way itself is a ford
+            m(11000500, "foot=yes bicycle=yes route=ferry toll=yes"),
+            m(11000600, "highway=construction construction=path", "barrier=bollard"),
+        )
+        val w = BRouterWayStats.perNode(msgs, lon, lat)
+        assertEquals(7, w.size)
+        assertEquals("stile", w[0]!!.barrier); assertFalse(w[0]!!.ford)
+        assertEquals(null, w[1]!!.barrier) // a gate: passable
+        assertTrue(w[2]!!.ford); assertEquals(null, w[2]!!.barrier)
+        assertTrue(w[3]!!.ford)
+        assertEquals("ferry", w[4]!!.wayType)
+        assertTrue(w[5]!!.construction); assertEquals(null, w[5]!!.barrier)
+        assertFalse(BRouterWayStats.attrs(t("highway=track ford=unknown")).ford) // BRouter's "unknown" (e.g. ford=no)
+        assertTrue(BRouterWayStats.withNode(WayAttrs("track", "gravel"), t("highway=ford")).ford)
+        for (b in listOf("kissing_gate", "turnstile", "full-height_turnstile"))
+            assertEquals(b, BRouterWayStats.withNode(WayAttrs("path", "ground"), t("barrier=$b")).barrier)
     }
 }

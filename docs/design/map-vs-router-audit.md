@@ -3,6 +3,8 @@
 > **Status 2026-10-23:** quick fixes A and approach 1 ("router decides") are merged and released in **0.10.0**; open: the
 > app does not check the cells' `wayclass` hash, tertiary and bigger roads have no class (backlog). Classifier
 > `tools/routing/wayclass/`, details and thresholds in `docs/map-style-notes.md` "Router classes".
+> **Since 2026-10-26** Touring bike + E-bike use OnPath's `touring.brf` (a trekking copy, `docs/design/bike-routing.md`);
+> the "Touring" column of the cost table below is the old road-bike fastbike profile, and E-bike now shares the touring class.
 
 Read-only audit. Sources: `tools/make_style.py` (format 2), `tools/themes/classic.json`, `tools/extract_overlays.py`
 (`tile_attrs`, `street_attrs`), `MapController.setOverlay`, `BRouterEngine.profileFile/keyValues`,
@@ -21,9 +23,9 @@ How it was checked:
 | Activity | Profile | Overrides |
 |---|---|---|
 | Hike | hiking-mountain.brf | SAC_scale_limit = user T (1–5), SAC_scale_preferred = min(T,3) |
-| Bike touring | fastbike-verylowtraffic.brf | – |
-| Bike trekking, E-bike | trekking.brf | E-bike: power/speed/mass only (same costs) |
-| MTB, MTB e-bike | mtb.brf | E-MTB: power/speed/mass only |
+| Touring bike, E-bike | touring.brf (since 2026-10-26; was fastbike-verylowtraffic.brf, E-bike was trekking.brf) | E-bike: power/speed/mass only (same costs) |
+| Trekking bike | trekking.brf | – |
+| MTB, E-MTB | mtb.brf | E-MTB: power/speed/mass only |
 
 The map has two activity states, plus MTB for the S-labels: **walking** (greenway-foot, access-*-foot,
 T-labels) and **not walking** (greenway-bike, access-*-bike, bike lanes, one-way arrows, loose-surface edges).
@@ -132,8 +134,8 @@ Counted by row: 7 H rows, 12 M rows, 11 L rows.
 - Route membership by network: the router uses `route_hiking_*` / `route_foot_*` (any network) and
   `route_bicycle_{icn,ncn,rcn,lcn}`. The map has `net` rank but not whether it is a "BRouter cycle route".
 - The user's SAC limit is runtime state. The style never sees it (#4).
-- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for Touring
-  (consider_traffic = true on primary / secondary / tertiary roads).
+- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for Touring and
+  Trekking (consider_traffic = true, busy classes 4+ only, since 2026-10-26 in both).
 
 The map uses these, but the router ignores them:
 - route=mtb relations (#7) and bicycle routes without a network (#29)
@@ -184,7 +186,7 @@ barrier nodes.
 - Tile size: ~4 small ints per path / street feature, a few % of overlays.pmtiles.
 - Any profile change means rebuilding the map cells (or accepting a mismatch until the next build). The profiles are
   OnPath-edited, so tie the class to a profile hash.
-- E-bike = Trekking and E-MTB = MTB for costs, so 4 classes cover all 6 activities.
+- E-bike = Trekking (since 2026-10-26: = Touring) and E-MTB = MTB for costs, so 4 classes cover all 6 activities.
 - Class thresholds are a product decision. Trekking makes every untagged path / track "poor" (5.05) and Touring makes
   them "avoid" (100), so a literal mapping would turn most mountain paths grey or red in bike modes.
 - The base map's tertiary+ roads are not in the overlay. Either keep them tag-styled or add them to "streets".

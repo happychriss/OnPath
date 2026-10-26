@@ -172,6 +172,12 @@ class MapCells(
     }
     @Volatile var relevance: Relevance? = null
 
+    /**
+     * A screen's state is gone: [r] is removed only when it is still the current one. Two screens (each its own
+     * ViewModel) can overlap at start (field 0.10.1) – the older one, cleared last, must not remove the newer one's.
+     */
+    @Synchronized fun releaseRelevance(r: Relevance) { if (relevance === r) relevance = null }
+
     fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
 
     /** False when this build has no map server key: the UI says "Map downloads not available in this build". */
@@ -182,11 +188,8 @@ class MapCells(
 
     // ------------------------------------------------------------------------------------------- cells for places
 
-    /** Cell of a point (half-open owner rule). */
-    fun cellFor(p: GeoPoint): CellId? = CellId.at(p)
     /** Own cell + close neighbours within [radiusM] (T1/T3, Q1). Own cell first. */
     override fun cellsAround(p: GeoPoint, radiusM: Double): List<CellId> = CellId.near(p, radiusM)
-    fun cellsFor(south: Double, west: Double, north: Double, east: Double): List<CellId> = CellId.inBbox(south, west, north, east)
     /** Corridor cells of a route (T4, F-OFF-02). */
     override fun cellsAlong(line: List<GeoPoint>, corridorM: Double): List<CellId> = CellId.alongLine(line, corridorM)
 
@@ -220,6 +223,24 @@ class MapCells(
     }
 
     // ------------------------------------------------------------------------------------------- actions
+
+    /**
+     * Which of [cells] the map server has built already (owner 2026-10-24: opening the app loads the map for here
+     * silently when it is ready on the server, and asks only when it must be built first). Only reads the status –
+     * starts no build. Null when it cannot tell (no key, offline, server error). Blocking: call off the main thread.
+     */
+    fun builtOnServer(cells: List<CellId>): Set<CellId>? {
+        val a = api ?: return null
+        if (cells.isEmpty()) return emptySet()
+        if (!network.connected()) return null
+        return try {
+            val answer = cells.chunked(MAX_PER_CALL).map { a.status(it.map { c -> c.id }) }
+            val ready = answer.flatMap { it.cells }.filter { it.state == "ready" }.map { it.id }.toSet()
+            cells.filter { it.id in ready }.toSet()
+        } catch (e: Exception) {
+            Problems.info("cells", "Map server status not available; asking the user instead", e); null
+        }
+    }
 
     /**
      * Asks for [cells]. Already installed (except for [CellReason.REFRESH]) or already queued cells are skipped.
@@ -379,18 +400,6 @@ class MapCells(
         _installed.value.filter { CellApi.schemaOf(it.version) < CellApi.CELL_SCHEMA }.map { it.id }
 
     /**
-     * Installed cells due for a refresh (T6): used in the last 6 months and installed more than [ageDays] days ago.
-     * The caller requests them with [CellReason.REFRESH] (they download only when newer).
-     */
-    override fun refreshDue(ageDays: Int): List<CellId> {
-        val t = now()
-        return _installed.value.filter { c ->
-            val used = synchronized(usage) { usage[c.id] } ?: c.installedAt
-            t - used < 183L * DAY && t - c.installedAt > ageDays * DAY
-        }.map { it.id }
-    }
-
-    /**
      * Starts the worker: finishes downloads a crash interrupted, re-joins the region package if it changed, loads the
      * saved queue. Call once (app start); safe to call again.
      */
@@ -441,6 +450,11 @@ class MapCells(
     private val usage = HashMap<CellId, Long>()
     /** Cells whose request was sent in this run (a request is sent once per run, then only status is polled). */
     private val sent = java.util.Collections.synchronizedSet(HashSet<CellId>())
+    /**
+     * Installed cells the server is rebuilding right now ("ready" + updating, e.g. for a new map style): polled at the
+     * server's pace like cells being built, not after [IDLE_MS] (field 2026-10-26: rebuilt Hilden cells came 10 min late).
+     */
+    private val updatingOnServer = java.util.Collections.synchronizedSet(HashSet<CellId>())
     private val wakeup = Channel<Unit>(Channel.CONFLATED)
     private val work = Mutex()
     private var worker: Job? = null
@@ -678,7 +692,8 @@ class MapCells(
             apply(answer, pending)
             val anyReadyAllowed = pending.any { state(it.id) == READY_ON_SERVER && allowed(it) }
             if (anyReadyAllowed) return 0
-            val stillBuilding = pending.any { state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
+            val stillBuilding = pending.any { it.id in updatingOnServer ||
+                state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
             return if (!stillBuilding) IDLE_MS
                 else if (foreground || loadInBackground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
         } catch (e: CellApi.ApiException) {
@@ -697,11 +712,21 @@ class MapCells(
             val p = pending.firstOrNull { it.id == c } ?: continue
             if (!queued(c)) continue // cancelled while the server answered (modal → Cancel): no state for it any more
             s.size?.let { sizes[c] = it }
+            if (s.state != "ready" || !s.updating) updatingOnServer -= c
             when (s.state) {
                 "ready" -> {
-                    val have = inst[c]?.version
-                    if (have != null && (s.version == null || s.version == have) && s.updating) {
-                        // a newer version is being built: keep asking (state stays "ready" on the phone)
+                    val mine = inst[c]
+                    val have = mine?.version
+                    if (mine != null && p.reason == CellReason.REFRESH && CellApi.isDevVersion(have) &&
+                        now() - mine.installedAt < DEV_KEEP_MS) {
+                        // pushed by tools/dev/push_cell.sh: a refresh (also the restored plan's route at every start)
+                        // does not replace it for a day – deleting the area does
+                        updatingOnServer -= c
+                        dequeue(c); set(c, CellState.Ready(mine.version))
+                        Problems.info("cells", "Map cell $c is a developer build (${mine.version}); kept, the server version is not loaded")
+                    } else if (have != null && (s.version == null || s.version == have) && s.updating) {
+                        // a newer version is being built: keep asking at the server's pace (state stays "ready")
+                        updatingOnServer += c
                         set(c, CellState.Ready(have))
                     } else if (have != null && (s.version == null || s.version == have)) {
                         // nothing newer (refresh) – done
@@ -712,7 +737,7 @@ class MapCells(
                 "queued" -> set(c, CellState.Queued(s.position, s.etaS))
                 "building" -> set(c, CellState.Building(s.step ?: "starting", s.progress ?: 0.0, s.etaS))
                 "failed" -> {
-                    val msg = "This map area could not be prepared. Routes there are straight lines for now."
+                    val msg = "Map for this area failed"
                     Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
                     // dropped from the queue: the next trigger for this place asks again (the server retries up to 3×)
@@ -906,9 +931,10 @@ class MapCells(
         const val BATCH_MS = 10_000L
         const val MAX_BATCH_MS = 60_000L
         const val FRESH_MS = 5_000L
+        /** A developer build of a cell ([CellApi.isDevVersion]) is not replaced by a refresh for this long. */
+        const val DEV_KEEP_MS = 24L * 3600 * 1000
         private const val BUSY_RECHECK_MS = 1_000L
         /** A point / near request older than this is dropped at app start (nobody waits for it any more). */
         const val STALE_MS = 24L * 3600 * 1000
-        private const val DAY = 24L * 3600 * 1000
     }
 }

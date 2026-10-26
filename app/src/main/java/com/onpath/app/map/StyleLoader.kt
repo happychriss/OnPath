@@ -11,6 +11,7 @@ import java.io.File
  * Builds the style JSON for a map theme (e.g. "classic", "high-contrast"), with {DATA_DIR} replaced.
  *
  * Styling is meant to change often, so the app looks for the theme file in this order:
+ * 0. developer tools only: the test style `<dataDir>/dev/style.json` ([devStyleFile], tools/dev/push_style.sh);
  * 1. `<dataDir>/styles/onpath[-theme].json` – an override pushed with adb (or later downloaded),
  *    so the look can be updated without a new APK;
  * 2. the bundled asset `style/onpath[-theme].json`;
@@ -23,7 +24,6 @@ import java.io.File
  */
 object StyleLoader {
 
-    const val STYLE_ASSET = "style/onpath.json"
     const val DEFAULT_THEME = "classic"
     private const val ASSET_DIR = "style"
     const val OVERRIDE_DIR = "styles"
@@ -32,10 +32,71 @@ object StyleLoader {
     @Volatile var lastLoaded: String? = null
         private set
 
-    /** MapLibre rejected the style ([msg]) and the app switched to the fallback – kept for diagnostics. */
-    fun noteFailure(msg: String) {
+    /**
+     * MapLibre rejected the style ([msg]) – kept for diagnostics. Returns true when it was the developer test style
+     * ([devStyleFile]): it is then skipped until a new file is pushed, and the caller loads the normal style again;
+     * false = the caller switches to the fallback.
+     */
+    fun noteFailure(msg: String): Boolean {
+        val test = lastLoaded?.startsWith(TEST_STYLE) == true
+        if (test) {
+            rejectedDevStyle = lastDevStyleKey
+            Problems.warn("map", "Test style $DEV_STYLE rejected by the map: $msg – the normal map style is used")
+            lastLoaded = "REJECTED ($TEST_STYLE): $msg → normal style"
+            return true
+        }
         Problems.error("map", "Map style failed to load: $msg – fallback style used, map mostly empty")
         lastLoaded = "FAILED (${lastLoaded ?: "?"}): $msg → fallback"
+        return false
+    }
+
+    // ------------------------------------------------------------------------------------------- developer test style
+
+    /**
+     * Developer test style (tools/dev/push_style.sh, docs/map-style-notes.md): a format-2 style at `<dataDir>/dev/style.json`
+     * is used instead of every other style – only while the developer tools are shown (debug builds, or 7 taps on the
+     * version). Map tweaks reach the phone in a minute, without a release.
+     */
+    const val DEV_STYLE = "dev/style.json"
+    private const val TEST_STYLE = "test style"
+
+    /** "lastModified:length" of a test style MapLibre rejected: skipped until another file is pushed. */
+    @Volatile private var rejectedDevStyle: String? = null
+    @Volatile private var lastDevStyleKey: String? = null
+
+    private fun key(f: File) = "${f.lastModified()}:${f.length()}"
+
+    /**
+     * The test style to load, or null: developer tools off ([devTools] false – never for normal users), no file, or
+     * exactly this file was rejected by the map before. Pure apart from file checks; unit-tested.
+     */
+    fun devStyleFile(dataDir: File, devTools: Boolean): File? {
+        if (!devTools) return null
+        val f = File(dataDir, DEV_STYLE)
+        if (!f.isFile) return null
+        return f.takeIf { key(it) != rejectedDevStyle }
+    }
+
+    /** Unit tests: as if [load] had just used the test style [f]. */
+    internal fun noteTestStyleLoadedForTest(f: File) {
+        lastDevStyleKey = key(f)
+        lastLoaded = "$TEST_STYLE $DEV_STYLE"
+    }
+
+    /** Settings → Diagnostics → Developer tools line about the test style; null = no test style file. */
+    fun devStyleStatus(dataDir: File, devTools: Boolean): String? {
+        val f = File(dataDir, DEV_STYLE).takeIf { devTools && it.isFile } ?: return null
+        val at = java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.ENGLISH).format(java.util.Date(f.lastModified()))
+        return if (lastLoaded?.startsWith(TEST_STYLE) == true) "Test style active ($DEV_STYLE, $at)"
+        else "Test style $DEV_STYLE ($at) not used – see the problem list"
+    }
+
+    /** Deletes the test style; false (reported) when it could not be deleted. */
+    fun removeDevStyle(dataDir: File): Boolean {
+        val f = File(dataDir, DEV_STYLE)
+        if (!f.exists() || f.delete()) return true
+        Problems.warn("map", "Test style $DEV_STYLE could not be deleted – remove it with: adb shell rm ${f.absolutePath}")
+        return false
     }
 
     /** Asset folder of the styles for map package [format] ("style", "style/f2"). */
@@ -83,7 +144,7 @@ object StyleLoader {
      * the data folder, or the current generation of downloaded map cells (DataFiles.mapDir, map-cells.md §19).
      */
     fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME, mapDir: File = dataDir,
-             cover: List<DoubleArray> = emptyList()): String {
+             cover: List<DoubleArray> = emptyList(), devTools: Boolean = false): String {
         // a theme that no longer exists (e.g. "high-contrast", removed in 0.7.0) is simply the default – no error
         @Suppress("NAME_SHADOWING")
         val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
@@ -93,6 +154,17 @@ object StyleLoader {
         val assets = assetDir(format)
         val tag = if (format == 1) "" else " (format $format)"
         val attempts = buildList<Pair<String, () -> String>> {
+            // developer test style first (developer tools only); broken or for another format → the next one, reported
+            devStyleFile(dataDir, devTools)?.let { f ->
+                add("$TEST_STYLE $DEV_STYLE" to {
+                    lastDevStyleKey = key(f)
+                    val json = f.readText()
+                    JSONObject(json) // not JSON → reported below, the normal style is used
+                    val sf = styleFormat(json)
+                    if (sf != format) throw IllegalStateException("written for map format $sf, the map data is format $format")
+                    json
+                })
+            }
             val override = File(File(dataDir, OVERRIDE_DIR), fileName(theme))
             // expected: usually there is no override file – only a present but broken / other-format one is reported
             if (override.exists()) add("override ${override.name}" to {

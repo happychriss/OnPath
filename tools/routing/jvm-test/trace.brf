@@ -1,0 +1,24 @@
+# GpxCompare trace profile (not shipped): follows a given line through dense via points so its BRouter way tags
+# can be read. Every way with a highway tag (and ferries) costs the same, access / oneways / elevation / turns are
+# ignored: between two via points ~150 m apart the shortest way is the line itself. Not for real routing.
+
+---context:global
+assign validForBikes = true
+assign validForFoot = true
+assign processUnusedTags = true
+assign turnInstructionMode = 0
+assign downhillcost = 0
+assign uphillcost = 0
+
+---context:way
+assign turncost = 0
+assign initialcost = 0
+assign costfactor = if and highway= not route=ferry then 10000
+                    else if highway=proposed|abandoned then 10000
+                    else 1
+
+# include smoothness in the way tags (as trekking.brf)
+assign dummyUsage = smoothness=
+
+---context:node
+assign initialcost = 0

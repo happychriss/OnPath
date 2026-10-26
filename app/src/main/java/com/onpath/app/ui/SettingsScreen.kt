@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -67,7 +68,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
 import com.onpath.app.poi.PoiGroup
@@ -118,9 +118,10 @@ fun SettingsScreen(
     onInstallUpdate: () -> Unit = {},
     /** Installed map package (package.json) and files from another package – Diagnostics → Developer tools. */
     mapPackage: DataFiles.PackageCheck? = null,
-    /** Diagnostics export (debug): switch + export button; null = topic hidden. */
-    diagnosticsOn: Boolean? = null,
-    onDiagnostics: (Boolean) -> Unit = {},
+    /** Settings → Diagnostics shown (problem report button + problem list); false = topic hidden. */
+    diagnostics: Boolean = false,
+    /** The problem report is being created: a spinner on its button (review 2026-10-24 C9). */
+    diagnosticsBusy: Boolean = false,
     onExportDiagnostics: () -> Unit = {},
     /** Problem log (debug/Problems), most recent first. */
     problems: List<com.onpath.app.debug.Problems.Entry> = emptyList(),
@@ -137,18 +138,28 @@ fun SettingsScreen(
     activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
     /** Diagnostics → "Developer tools" open at first (screenshots). */
     devToolsOpen: Boolean = false,
+    /**
+     * Developer tools shown in Diagnostics (owner C5 2026-10-24): hidden until the version line in About is tapped 7
+     * times (remembered); debug builds always.
+     */
+    devTools: Boolean = true,
+    onUnlockDevTools: () -> Unit = {},
+    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner C6). */
+    diagnosticsSeenMs: Long = 0L,
     /** Developer tools: the map server line (MapServer.describe; fixed in screenshots). */
     mapServer: String = com.onpath.app.data.MapServer.describe(),
+    /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
+    testStyle: TestStyleUi? = null,
     now: Long = System.currentTimeMillis(),
 ) {
-    val topics = buildList {
-        add(SettingsPage.PACE); add(SettingsPage.POI); add(SettingsPage.MAP); add(SettingsPage.NAVIGATION)
-        if (offlineMaps != null) add(SettingsPage.OFFLINE_MAPS)
-        if (backup != null) add(SettingsPage.BACKUP)
-        add(SettingsPage.PRIVACY)
-        if (update != null) add(SettingsPage.UPDATES)
-        if (diagnosticsOn != null) add(SettingsPage.DIAGNOSTICS)
-        add(SettingsPage.ABOUT)
+    val topics = SettingsPage.entries.filter {
+        when (it) {
+            SettingsPage.OFFLINE_MAPS -> offlineMaps != null
+            SettingsPage.BACKUP -> backup != null
+            SettingsPage.UPDATES -> update != null
+            SettingsPage.DIAGNOSTICS -> diagnostics
+            else -> true
+        }
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
@@ -160,24 +171,34 @@ fun SettingsScreen(
             }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    item {
-                        Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
-                            Column {
-                                topics.forEachIndexed { i, t ->
-                                    if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
-                                    val s = when (t) {
-                                        SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
-                                        SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
-                                        SettingsPage.MAP -> SettingsSummary.map(settings)
-                                        SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
-                                        SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
-                                        SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
-                                        SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
-                                        SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems)
-                                        SettingsPage.PRIVACY -> SettingsSummary.privacy
-                                        SettingsPage.ABOUT -> SettingsSummary.about
+                    // two groups (owner C7 2026-10-24): what the user sets, then the smaller "App" group
+                    listOf(false, true).forEach { app ->
+                        val group = topics.filter { it.app == app }
+                        if (group.isEmpty()) return@forEach
+                        item {
+                            Text(if (app) "App" else "Your settings", style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, top = if (app) 20.dp else 4.dp, bottom = 6.dp))
+                        }
+                        item {
+                            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+                                Column {
+                                    group.forEachIndexed { i, t ->
+                                        if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
+                                        val s = when (t) {
+                                            SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
+                                            SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
+                                            SettingsPage.MAP -> SettingsSummary.map(settings)
+                                            SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
+                                            SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
+                                            SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
+                                            SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
+                                            SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
+                                            SettingsPage.PRIVACY -> SettingsSummary.privacy
+                                            SettingsPage.ABOUT -> SettingsSummary.about
+                                        }
+                                        TopicRow(t, s, small = app) { onPage(t) }
                                     }
-                                    TopicRow(t, s) { onPage(t) }
                                 }
                             }
                         }
@@ -196,15 +217,15 @@ fun SettingsScreen(
                         SettingsPage.UPDATES -> if (update != null) item {
                             Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
-                        SettingsPage.DIAGNOSTICS -> if (diagnosticsOn != null) {
-                            item { DiagnosticsSection(diagnosticsOn, onDiagnostics, onExportDiagnostics, problems, onClearProblems) }
-                            item {
+                        SettingsPage.DIAGNOSTICS -> if (diagnostics) {
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
+                            if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas)
+                                    onTimeFormulas, testStyle)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
-                        SettingsPage.ABOUT -> item { AboutSection(version) }
+                        SettingsPage.ABOUT -> item { AboutSection(version, devTools, onUnlockDevTools) }
                     }
                 }
             }
@@ -226,16 +247,20 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.ABOUT -> Icons.Outlined.Info
     }
 
-/** One topic of the list: icon, title, summary (red when it needs attention, accent for news), chevron. */
+/**
+ * One topic of the list: icon, title, summary (red when it needs attention, accent for news), chevron. [small]: the
+ * "App" group – lower rows, grey icon.
+ */
 @Composable
-private fun TopicRow(t: SettingsPage, s: Summary, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button, onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(t.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
+private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = if (small) 56.dp else 64.dp).clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(t.icon, null, tint = if (small) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Green,
+            modifier = Modifier.size(if (small) 22.dp else 24.dp))
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
-            Text(t.title, fontSize = 16.sp)
-            Text(s.text, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            Text(t.title, style = MaterialTheme.typography.bodyLarge)
+            Text(s.text, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 fontWeight = if (s.attention == Summary.Attention.NONE) FontWeight.Normal else FontWeight.SemiBold,
                 color = when (s.attention) {
                     Summary.Attention.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -273,8 +298,8 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                 Box(Modifier.size(12.dp).clip(CircleShape).background(Color(g.argb)))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(g.label, fontSize = 16.sp)
-                    Text("$on of ${kinds.size} shown", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(g.label, style = MaterialTheme.typography.bodyLarge)
+                    Text("$on of ${kinds.size} shown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Collapse" else "Expand")
                 Spacer(Modifier.width(8.dp))
@@ -285,7 +310,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                     .toggleable(value = shown, role = Role.Checkbox) { setHidden(if (shown) hidden + k.key else hidden - k.key) }
                     .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = shown, onCheckedChange = null, modifier = Modifier.padding(12.dp))
-                    Text(k.en, fontSize = 15.sp)
+                    Text(k.en, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -298,7 +323,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
     Section("Map") {
         if (themes.size > 1) {
-            Text("Map style", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+            Text("Map style", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
             androidx.compose.foundation.layout.FlowRow(
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -312,7 +337,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
         }
         SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
         SwitchRow("Hill shading", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
-        Text("Map direction (Plan and Navigate)", fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+        Text("Map direction (Plan and Navigate)", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(true to "Direction of travel", false to "North up").forEach { (up, label) ->
                 FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
@@ -320,7 +345,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
             }
         }
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-        Text("Planning", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
+        Text("Planning", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
         SwitchRow("Vibrate when planning", "Short buzz when you hold the map, two buzzes on a route point",
             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
@@ -335,7 +360,7 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Warn after", fontSize = 14.sp)
+            Text("Warn after", style = MaterialTheme.typography.bodyMedium)
             AppSettings.OFF_ROUTE_CHOICES.forEach { m ->
                 FilterChip(selected = settings.offRouteM == m, enabled = settings.offRouteWarning,
                     onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text("$m m") },
@@ -353,8 +378,8 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
         }
         // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Recording with the screen off works best with battery usage set to “Unrestricted”.",
-                fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text("Recording with the screen off: best with battery “Unrestricted”.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f))
             TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
         }
@@ -362,31 +387,28 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             val ctx = androidx.compose.ui.platform.LocalContext.current
             val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (bg) "A tour continues by itself after a restart or update (location: Allow all the time)."
-                    else "After a phone restart or app update, tap Continue to go on recording. To make this automatic, set location to “Allow all the time”.",
-                    fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // the quiet hint instead of a question (owner C2 2026-10-24: never ask); nothing to say once it is set
+            if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("After a restart, tap Continue. Automatic with location “Allow all the time”.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f))
-                if (!bg) TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
+                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
             }
         }
     }
 }
 
-/** Diagnostics: export first, then the problem list. */
+/** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
 @Composable
-private fun DiagnosticsSection(on: Boolean, onDiagnostics: (Boolean) -> Unit, onExport: () -> Unit,
+private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit) {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Show export button", modifier = Modifier.weight(1f))
-                Switch(checked = on, onCheckedChange = onDiagnostics)
+            OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (busy) BusyContent(Busy.DIAGNOSTICS.text) else Text("Send problem report")
             }
-            Text("Creates a file with the app version, map files, the loaded map style, what the map shows " +
-                "right now and the app log – to send to the developer when something looks wrong. Leave the map at the " +
-                "problem spot before you export. Nothing is sent by itself.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (on) OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Export diagnostics") }
+            Text("Leave the map at the problem spot first.", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ProblemList(problems, onClearProblems)
         }
@@ -402,6 +424,7 @@ private fun DeveloperTools(
     initiallyOpen: Boolean, mapServer: String, mapCells: MapCellsDebug?, dataBusy: String?, onDownloadRouting: () -> Unit, onImportData: () -> Unit,
     checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String,
     onTimeFormulas: (() -> Unit)? = null,
+    testStyle: TestStyleUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -412,43 +435,62 @@ private fun DeveloperTools(
                 Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Close" else "Open")
             }
             if (open) Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Map server: $mapServer", fontSize = 12.sp,
+                Text("Map server: $mapServer", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // by hand: the 1° routing parts at the map centre (they normally load with the map)
                 OutlinedButton(onClick = onDownloadRouting, enabled = dataBusy == null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
-                if (dataBusy != null) Text(dataBusy, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (dataBusy != null) Text(dataBusy, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 mapCells?.let { MapCellsDebugList(it) }
                 // the formulas behind the plan sheet's time (moved here from ⋯ → Time details, owner 2026-10-23)
                 OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
-                if (onTimeFormulas == null) Text("Plan a route first.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                testStyle?.let { TestStyleRow(it) }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Map data", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
-                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // routing data is part of the map (owner 2026-10-22): no own button here, see above
                 DataActions(routingMissing = false, busy = dataBusy, onImport = onImportData, onDownloadRouting = {})
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Data folder", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(dataDir, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                Text("Data folder", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(dataDir, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                 checks.forEach { c ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(if (c.present) Icons.Filled.CheckCircle else Icons.Filled.RemoveCircleOutline, null,
                             tint = if (c.present) OnPathColors.Good else OnPathColors.Bad, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", fontSize = 13.sp)
+                        Text("${c.name} – ${c.hint}" + if (c.present) "" else " (missing)", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (mapPackage != null) {
                     Text("Map package: ${mapPackage.region} · ${mapPackage.area}" +
-                        (mapPackage.osmDate?.let { " · OSM ${it.take(10)}" } ?: ""), fontSize = 13.sp)
+                        (mapPackage.osmDate?.let { " · OSM ${it.take(10)}" } ?: ""), style = MaterialTheme.typography.bodySmall)
                     if (!mapPackage.ok) Text("From another package (map has gaps there): ${mapPackage.mismatched.joinToString()}. " +
-                        "Import every part of the map package again.", fontSize = 13.sp, color = OnPathColors.Bad)
+                        "Import every part of the map package again.", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Bad)
                 }
             }
         }
     }
+}
+
+/**
+ * Developer tools: the map test style (StyleLoader.DEV_STYLE, pushed by tools/dev/push_style.sh). [status] null = no
+ * test style file (only the reload action shows).
+ */
+data class TestStyleUi(val status: String?, val onRemove: () -> Unit, val onReload: () -> Unit)
+
+@Composable
+private fun TestStyleRow(t: TestStyleUi) {
+    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    Text("Map style", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    if (t.status != null) Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(t.status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = t.onRemove, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove") }
+    } else Text("No test style (tools/dev/push_style.sh puts one in ${com.onpath.app.map.StyleLoader.DEV_STYLE}).",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    OutlinedButton(onClick = t.onReload, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reload map style") }
 }
 
 /** Data of the "Map areas (debug)" block: installed areas, areas in progress, two actions (end-to-end test only). */
@@ -465,19 +507,19 @@ data class MapCellsDebug(
 
 @Composable
 private fun MapCellsDebugList(d: MapCellsDebug) {
-    Text("Map areas (debug)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-    Text("Map files: ${d.store}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    if (d.installed.isEmpty()) Text("No areas installed.", fontSize = 12.sp)
+    Text("Map areas (debug)", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    Text("Map files: ${d.store}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (d.installed.isEmpty()) Text("No areas installed.", style = MaterialTheme.typography.bodySmall)
     d.installed.forEach { (id, version, bytes) ->
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", fontSize = 12.sp,
+            Text("$id · $version · ${"%.1f".format(java.util.Locale.ROOT, bytes / 1_048_576.0)} MB", style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
             TextButton(onClick = { d.onDelete(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete") }
         }
     }
     if (d.installed.isNotEmpty()) Text("Total ${"%.1f".format(java.util.Locale.ROOT, d.installed.sumOf { it.third } / 1_048_576.0)} MB",
-        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    d.active.forEach { (id, s) -> Text("$id: $s", fontSize = 12.sp, fontFamily = FontFamily.Monospace) }
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    d.active.forEach { (id, s) -> Text("$id: $s", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
     OutlinedButton(onClick = d.onRequestAtCentre, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
         Text("Request map area at map centre")
     }
@@ -488,7 +530,7 @@ private fun MapCellsDebugList(d: MapCellsDebug) {
 private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onClear: () -> Unit) {
     val serious = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR }
     Text(if (problems.isEmpty()) "No problems noticed." else "Problems noticed: ${problems.size}" +
-        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
     val fmt = remember { java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault()) }
     problems.take(15).forEach { p ->
         val color = when (p.level) {
@@ -496,9 +538,9 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         Text("${fmt.format(java.util.Date(p.last))} · ${p.level.name.lowercase()} · ${p.area}: ${p.message}" +
-            (if (p.count > 1) " (× ${p.count})" else ""), fontSize = 12.sp, color = color)
+            (if (p.count > 1) " (× ${p.count})" else ""), style = MaterialTheme.typography.bodySmall, color = color)
     }
-    if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", fontSize = 12.sp)
+    if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", style = MaterialTheme.typography.bodySmall)
     if (problems.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear problem list") }
 }
 
@@ -511,13 +553,13 @@ private fun PrivacySection() {
     Section("Privacy") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Nothing is tracked. No account, no analytics, no ads.", fontWeight = FontWeight.SemiBold)
-            Text("Your tracks and routes never leave the phone – only to your own backup folder.", fontSize = 14.sp)
+            Text("Your tracks and routes never leave the phone – only to your own backup folder.", style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
-            Text("What leaves your phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("What leaves your phone", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             PRIVACY_FLOWS.forEach { f ->
                 Column {
-                    Text(f.what, fontSize = 14.sp)
-                    Text("→ ${f.to} · ${f.whenText}", fontSize = 12.sp, lineHeight = 16.sp,
+                    Text(f.what, style = MaterialTheme.typography.bodyMedium)
+                    Text("→ ${f.to} · ${f.whenText}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -543,14 +585,24 @@ val PRIVACY_FLOWS = listOf(
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
 @Composable
-private fun AboutSection(version: String) {
+private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevTools: () -> Unit = {}) {
+    var taps by remember { mutableStateOf(0) }
     Section("About") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("OnPath $version", fontWeight = FontWeight.SemiBold)
-            Text("Licence: Apache-2.0", fontSize = 13.sp)
+            // tapped 7 times: Developer tools in Diagnostics (owner C5 2026-10-24, the Android convention); remembered
+            Text("OnPath $version", fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
+                    .clickable(enabled = !devTools, indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {
+                        taps++
+                        if (DevToolsUnlock.unlocked(taps)) onUnlockDevTools()
+                    })
+            if (devTools && taps > 0) Text("Developer tools are on – Settings → Diagnostics.", style = MaterialTheme.typography.bodySmall,
+                color = OnPathColors.Green)
+            Text("Licence: Apache-2.0", style = MaterialTheme.typography.bodySmall)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            Text("Credits", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            MAP_CREDITS.forEach { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text("Credits", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            MAP_CREDITS.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
@@ -586,8 +638,8 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enable
         .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp)
-            if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }

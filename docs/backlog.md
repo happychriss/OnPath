@@ -1,13 +1,82 @@
-# Backlog (shared by laptop and cloud Claude)
+# Backlog (shared by the laptop, desktop and cloud sessions)
 
 Rules: see `docs/working-agreement.md`. Claim an item under "In progress" before working on it (one line,
 push immediately), remove it when done. Newest requests on top. Owner decisions are marked **(owner)**.
 
 ## In progress
-<!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+<!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Route hints: open candidates (desktop, 2026-10-26, numbers in `docs/design/bike-routing.md` "Route hints")** –
+  (1) *faint trail* (trail_visibility=bad / horrible): 2 % of hikes, 11 % of MTB routes – a hint for hikers? owner
+  question; (2) *ferry name / landing* in the hint: BRouter's data has no names – would need the ferry from our map
+  overlays / POIs; (3) *times and seasons* (access:conditional, opening_hours, seasonal closures) and *borders* are not in
+  BRouter's lookups – would need our own data (overlay pipeline); (4) hints in Navigate (e.g. "Ferry in 2 km") – Navigate
+  has no hint list today; (5) MTB: the amber line shows on 87 % of MTB routes, pushing on 75 % (bicycle=no paths, footways
+  costed as pushing by mtb.brf) – review whether MTB pushing is noise; (6) Bike / Gravel routes over smoothness=
+  very_horrible tracks (2 % of routes, up to 1.4 km) – a profile question, not a hint. Not planned: bollards, gates, lift
+  gates, cycle barriers (on 12–67 % of routes, passable), way access=destination / agricultural / no (mostly opened again
+  by bicycle / foot tags), node bicycle=no (crossings), toll (only ferries).
+- **Map cells: partial rebuild (desktop, 2026-10-26, map-hosting.md §7h)** – a look-only schema bump rebuilds every
+  layer today. Per-layer schema in `cells.py` / the manifest; `job_build.py` reads the current manifest from R2 and, when
+  only some layers changed and the extract date is the same, `build_cell.sh REUSE=…` cuts and rebuilds only those
+  (overlays: cut + overlays + tiles) and copies the rest (R2 CopyObject, sha256 kept; terrain / contours never depend
+  on OSM). Measured Hilden 10-531-342: cloud 9.7 min full → ~4.2 min overlays-only; donald 179 s → ~80 s. Backward
+  compatible (the app ignores unknown manifest fields and downloads all files; copy, don't point into old folders –
+  cleanup deletes them).
+- **[laptop] Does the plan sheet follow the finger 1:1 on the phone? (desktop, 2026-10-26)** On the CI emulator it moves
+  only 0.69–0.80 of the injected finger travel (see Done: E2E swipe flake). Every release now writes "Sheet let go at
+  X px (steps a / b / c px, v px/s) → step N" to the events trace: drag the handle a measured distance on the Pixel 8
+  and compare. If the phone trails too, the sheet lags the finger (field 0.8.9 "the swipe is jumping").
+- **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) and (2) done (see Done); (3) requirements.md –
+  see "requirements.md sync" below; (4) answered (owner 2026-10-26): short ferries automatically, long only with a point
+  on them (as today), plus a ferry hint on the route (see Done: route hints).
+- **[for the cloud / owner] requirements.md sync (senior review, desktop 2026-10-26)** – `docs/requirements.md` is the
+  copy of the shared Claude doc, so the review did not edit it. Needed in the shared doc: (a) activity table (line ~88):
+  "Bike – e-bike: Same as trekking" → E-bike routes like the Touring bike (touring.brf: paved bike ways, quiet ways,
+  traffic and rough gravel avoided), assist ~25 km/h; activity names as in the app (Touring bike, Trekking bike, E-bike,
+  MTB, E-MTB, Hike); (b) F-GPX-08 / a new F-GPX id: Komoot's `<trk><type>` preselects the activity on import (T level
+  kept inside the type's band), OnPath writes `<type>` on export; (c) F-PLAN-06 "difficulty": the label counts distance
+  + ascent and trail technique (hike T3+, bike S2+ / T3+), hike bands like Komoot (easy ≈ 2 h and ≤ 300 m up).
+- **[for the cloud / owner] requirements.md: activity names Bike / Gravel bike (owner decision 2026-10-26)** – the app
+  now says Bike (was Touring bike), Gravel bike (was Trekking bike), E-bike, MTB, E-MTB, Hike; the shared doc's
+  activity table still uses the old names (see (a) above).
+- **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
+  footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
+  own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
+  crossings, 172 sidewalks); `extract_overlays.py` leaves sidewalk / crossing out of paths.geojson and trails, and the
+  crossings may be hidden under the road casing. Check with a headless render of a Hilden cell (z15–17) before changing.
+- **Hilden routing follow-up (owner 2026-10-25):** footways without a bicycle tag (Itter path) –
+  our trekking / touring profiles avoid them (push penalty). Option asked: allow paved footways for trekking /
+  touring with an amber "footway – may need to push" note. The false "no way" gap is fixed (283bcaf, Planner spurs).
+- **Simplify messages + UX + text sizes (owner 2026-10-24, review `docs/review-simplify-2026-10-24.md`) – answers so
+  far:** (1) the system A as proposed: INFO grey text, ACTION blue strip only for questions, WARNING amber + ⚠ tappable,
+  ERROR red with one way out; dialogs only for decisions that can lose something, verb buttons; (2) type scale 12 / 14 /
+  16 / 22 / 30 bold (nothing a hiker must read below 14; Navigate time 22, turn distance + arrival 30 bold); (3) C1
+  off route = ONE amber card "Off route · 120 m north-east" with a big arrow, duplicates removed; (4) C2 never ask
+  "Allow all the time" (only the hint in Settings → Navigation); (5) C3 Navigate recording line only when it matters
+  (Paused / No GPS), else the orange dot; moving / breaks in the opened card. Done already: "Overview only" hint hidden
+  while the strip asks for the map of here (field 0.10.2 overlap), strip text shortened. (6) C4 pace note in plain words
+  ("Faster than planned uphill"); (7) C5 one release APK only: developer tools hidden until the version in About is tapped 7× (remembered) – no dev variant (owner 2026-10-24); (8) C6 Diagnostics count grey ("For bug reports"), red only while a new error is unseen.
+  (9) C7 Settings list in two groups: "Your settings" (Pace, Points of interest, Map, Navigation, Offline maps, Backup)
+  and a smaller "App" group (Updates, Privacy, Diagnostics, About); (10) C8 statuses without a decision (offline, waiting
+  for position, …) as a quiet grey pill under the search bar, no ×; blue only for questions; (11) C9 progress
+  ("Importing GPX…", "Preparing the export…") as a spinner where it was started; the top bar only for a result that is
+  not visible or an error. Built and released in 0.10.3 (cloud).
+- **[for the laptop – 2026-10-23 late] Two MainActivity instances at start – find the trigger, then guard.** Seen only on
+  the first start after an install (10-22 22:50 + 22:51 after `adb install -r && monkey -p com.onpath.app 1`; 10-23
+  20:45 = 0.10.1 start): one process, two activities, each its own ViewModel; the first ViewModel is cleared ~1–2 s later
+  while routing. Read in code: singleTask, no `recreate()` / `finish()` / CLEAR_TASK at start, notification
+  PendingIntents SINGLE_TOP/NEW_TASK – so the trigger is in the launch path (system / launcher / installer), not in our
+  code; not proven. Done in `36bb950`: the older ViewModel no longer clears the newer one's `MapCells.relevance`
+  (`releaseRelevance`, CellDownloadTest), and the event log now has "Screen #n created (task, root, restored, intent
+  action/flags, referrer)" / "Screen #n destroyed (finished / configuration change / by the system)"; a second live
+  screen is a WARN in Diagnostics (`debug/ScreenLifecycle.kt`). **Next:** after the next install on the Pixel read
+  `scratchpad/a.sh ev 40` → the "Screen #" lines name the second launch. If it is a plain MAIN/LAUNCHER start while #1
+  lives: guard in `onCreate` (another screen alive + launcher intent → `finish()` the new one). Bigger, more robust
+  option (owner OK first): one app-wide state holder instead of a ViewModel per activity. Still doubled while it
+  happens: plan restore + route, search index, style load (+70–150 MB native), location tracker, cell requests.
 - **[for the cloud – owner 2026-10-23, start 2026-10-24] Web planner, as one codebase where possible.** Handover and
   proposal: `docs/design/web-planner.md` (Kotlin Multiplatform: shared logic + Compose for Web; BRouter compiled to
   Wasm with TeaVM so routes are computed in the browser – no routing server; link/QR hands the plan to the phone).
@@ -84,10 +153,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **CI:** `verifyPaparazziDebug` and lint do not run in CI.
 - **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Navigate "Waiting for GPS · last fix …" line may be cut (`NavigateScreen.recordingLine`, maxLines 1 – check
-  on the phone); unused theme tokens `track.edge` / `track.fill` / `track.cover.*` in `tools/themes/classic.json`; unused
-  `batteryHintShown` (`AppViewModel`); Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt:90` expects
+  on the phone); Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt:90` expects
   "unreachable", BRouter found 7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check
-  sha256); `actions/checkout@v4` / `setup-java@v4` still in `e2e.yml` and `release.yml` (Node 20 warnings).
+  sha256); `actions/checkout@v4` / `setup-java@v4` still in `e2e.yml` and `release.yml` (Node 20 warnings);
+  `tools/themes-proposals/` is history (rejected a/b/c themes, `roads-post.py` reads a `styles/d-merged.json` that is not
+  in the repo) – archive it together with its links in `docs/design/map-colour-analysis.md`; code kept alive only by tests
+  (e.g. `NavLine.bearingAt`, `PlanEdits.endAt`, `RouteProgress.visitedStops`, `Poi.osmUrl`) – fine as tested helpers,
+  delete when touched.
 - **Owner, by hand (unverified):** delete the unused Trentino extract from the GCS source bucket – `gsutil rm` command in
   `docs/design/map-hosting.md` §7g.
 
@@ -104,18 +176,33 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   unconfirmed: re-routing P0–P4, arrival / time estimate, junction vibration + lock screen, map freshness.
 
 ## Later
+- **iPhone version (owner 2026-10-26)** – not now. Direction and order in `docs/design/multiplatform.md`: EN + DE via
+  Compose Multiplatform resources (not Android `res/values`), module split on a quiet release, BRouter on iOS only
+  when iOS is a real goal. Rule from today: core logic free of Android (`SharedCoreRuleTest`).
 - **Open source + self-hosted map servers – concept (owner 2026-10-21, not built):** app setting "Map server"
   (default = owner's server; custom URL + key, also via QR code; cells carry the server in their manifest, no mixing);
   `/v1` API as an open spec; (A) all-in-one Docker Compose, (B) the cloud setup with gcp-setup.sh; builder image on
   ghcr.io. Pricing stays on the owner's server; self-hosted = free; F-Droid build without Play Billing. Not before Play launch.
-- **EN + DE strings:** all UI texts to `strings.xml` – not needed for now (owner B11).
+- **Bilingual app EN + DE – coming soon (owner 2026-10-23, replaces B11 "not needed"):** all UI texts to
+  `strings.xml` in one go, following the phone's language – as **Compose Multiplatform resources**
+  (`composeResources/values*/strings.xml`, owner 2026-10-26, so an iPhone version later reuses them;
+  `docs/design/multiplatform.md`). Until then don't change single texts' language (e.g. the
+  German search chips "Hütten, Gipfel, Wasser, Orte, Stationen" stay as they are) – fix mixed EN/DE in that pass.
 - **Ideas (owner 2026-10-21):** outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help
   page. Dropped (owner B12, "focus on the core"): sunset warning, emergency screen, battery check at start, weather.
 - **Map wishes (start only when the owner says so):** shrub ("Sträucher") symbols; trail numbers abroad beyond numeric
   refs (letters like E5 / GR20, `osmc:symbol`); contours below z12 (owner chose "from z12" on 2026-10-20).
 - **Unverified paths (owner: keep):** untagged OSM ways joining two paths, ≤ 300 m, grey dashed + point-menu hint,
   never routed. Example way 330547188 near Algund.
-- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours.
+- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours (long T2 and unpaved Bike rules: decided
+  2026-10-26, see Done).
+
+## Owner decisions 2026-10-25
+- **Difficulty like Komoot (owner: "Yes, both"):** the label counts trail technique (hike T3+, bikes S2+) besides
+  distance + ascent, and Hike "Easy" is tightened to Komoot's band (≈ 2 h and ≤ 300 m up; Moderate ≈ 5 h and ≤ 900 m).
+  Built, see Done.
+- **Komoot GPX import preselects the activity (owner: "Yes, preselect"):** from `<trk><type>`; unknown → last used
+  activity; the user can still change it; export writes `<type>` too. Built, see Done.
 
 ## Owner decisions 2026-10-22 (kept for reference – all built unless marked)
 - **A – laptop Q&A:** (1) attribution: short "© OpenStreetMap" on the map, tap → full credits; (2) keep "Update maps
@@ -146,6 +233,182 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Difficulty raised by long T2 and by unpaved Bike routes (owner 2026-10-26):** `RouteSummary.technique`
+  – Hike: ≥ 2 km at T2 or harder (summed) → at least Moderate, badge "Moderate · T2". Bike and E-bike only: ≥ 25 %
+  of the route unpaved (gravel, unpaved, ground, trail, alpine; whole %, ≥ 100 m) or ≥ 5 km on loose ground (not
+  "gravel", which folds in compacted; or smoothness bad or worse) → at least Moderate, badge "Moderate · unpaved",
+  Route details "Moderate because 31 % is unpaved (3.1 km)" / "… because of 5.4 km on loose ground". Gravel bike, MTB,
+  E-MTB unchanged; a grade (S2, S3+, T3+) is named first; never lowers. Constants `HIKE_T2_MIN_M`,
+  `BIKE_UNPAVED_SHARE_PCT`, `BIKE_LOOSE_MIN_M`. Tests `RouteSummaryTest` (both sides of each threshold).
+- **[desktop] Opening a tour switches the activity (owner 2026-10-26, question (3) of the GPX activity review):**
+  opening a recorded *or imported* tour from My routes chooses its stored activity (imports: the one their `<type>`
+  gave) with the import's rules – the user's T level stays inside the tour's band (T1–T2 / T3–T5), nothing during a
+  tour, no activity stored = nothing changes – and says so in one grey line in the track panel "Activity set to Bike
+  from the tour" (`SportType.openChoice`, shared with `importChoice`). No "came from the file" flag: the stored
+  activity counts. Tests `SportTypeTest.openingATour*`.
+- **[desktop] Region view – routes by zoom (2026-10-26, owner, for 0.11.4):** for hiking and bikes, below z11 only
+  long-distance routes, regional ones from z11, every signed route from z12.5 (`route_tiers()`, new `-regional` layers,
+  switched by `MapController`). Below z10 is left to the region / overview data work (`routes-<kind>-major-low`).
+- **[desktop] Route hints: ferry and what to check before going (2026-10-26, owner decision):** the amber line in the
+  plan sheet now also says "Ferry 320 m – check times" (several: "2 ferries – check times"; every activity, first in the
+  line), "construction site" ("Construction – may be closed"), "ford" / "3 fords" ("Ford – water to cross") and for bikes
+  "stile" / "kissing gate" / "turnstile" ("Stile – lift the bike over"); tap → list → map. Ferry / ford / barrier /
+  construction come from BRouter's way and node tags (`WayAttrs.ford / barrier / construction`). Inventory on 356 random
+  routes (`HintInventory.kt`): ferry 3–6 %, ford 6–16 %, hard barriers 0–3 %, construction ≤ 1 % of routes; JVM
+  `FerryHintTest` (Zons ⇄ Urdenbach, Kaiserswerth ⇄ Langst: 8 / 8 routes show the hint).
+- **[desktop] Map look from the Hilden field review (2026-10-26, owner tested each step on the phone):**
+  - town contrast: street edges, lighter built-up land, darker buildings; paths end at the street edge;
+  - bike view like hiking: green line = good bike way, mint band = signed route (names, bicycle streets, slim band,
+    lanes at the road edge, main-road edges);
+  - quiet bike tracks; zoomed-out overview for every activity;
+  - one-way arrow colours (new sprites); quieter forbidden ways; street space and underpasses (schema 7).
+  - Docs: `map-style-notes.md`, `design/map-colour-analysis.md`.
+- **[desktop] Test style on the phone (2026-10-26):** `tools/dev/push_style.sh` → `dev/style.json`, used only with
+  developer tools (Diagnostics: "Test style active" · Remove · Reload map style).
+- **Faster map refreshes (desktop, 2026-10-26, owner: "build here and push to the cloud"; map-hosting.md §7h):** the
+  s5 → s6 Hilden refresh took ~48 min (4 cells serial in one background execution, 8–10.5 min each, then the app's
+  15-min idle poll). Now: app polls an updating cell at `poll_s` (doorman 15 s); background rebuilds spread over the
+  free slots (6 → 3 × 2); pre-warm of cells used in 30 days after a schema bump; dev loop `tools/dev/push_cell.sh`
+  (working tree → phone, kept 24 h against refreshes); fast lane `tools/dev/publish_cells.sh` (origin/main → TEST R2,
+  the doorman adopts a current published version). donald builds a dense cell in ~3 min vs ~10 in the cloud.
+- **Clearer bike activity names (desktop, 2026-10-26, owner decision, labels only):** picker rows name + one line –
+  Bike "Paved cycleways, quiet roads", Gravel bike "Gravel tracks welcome", E-bike "Bike with motor, 25 km/h", MTB
+  "Trails and singletrails", E-MTB "MTB with motor", Hike "T1 … T5" (T row unchanged). One source `Activity.label` /
+  `line` (RoutingContract.kt); buttons, messages, "not suited for gravel bikes" (`ActivityCheck.who`, now the
+  plural of the name) follow it. Plan sheet chip says "Gravel" (`Activity.chip`): with "Gravel bike" a 112 km tour
+  showed "11…" (rule 2026-10-22: time and distance in full). Enum names, stored values, GPX `<type>`, profiles and
+  routing unchanged.
+- **Quiet towns + path gap fix + forbidden ways (desktop, 2026-10-26, branch `map-quiet-towns`, owner/captain picks
+  after the Phase A renders):**
+  - Pipeline, `extract_overlays.py`:
+    - town flag `u` on overlay paths / streets (`TownIndex`: built-up landuse + 25 m or dense buildings; 2 = town green;
+      never tracks or graded trails);
+    - link pieces `k` = "l" for path ends at hidden sidewalks / crossings (node-based, ≤ 30 m, no detours / spurs < 20 m
+      / chains to loose ends);
+    - `ar` on pedestrian squares.
+  - Style:
+    - Zoomed out: no town paths, `path-low` / `track-low` dropped in format 2, built-up land greyer.
+    - Close in, towns: grey thin footways from z14, white town streets, pale pedestrian streets. Park paths and the
+      countryside unchanged.
+    - Hiking: no green on town footways.
+    - Bikes: thin teal / violet route lines instead of bands; soft glow under bike-friendly ways (`*-glow`, switched by
+      `MapController`).
+    - Forbidden ways: tint band gone; quiet dash on service roads; private driveways / parking aisles hidden below z17;
+      sparser signs.
+  - Cell schema 6, look-only: `cells.py`, `wrangler.toml` and `config.js` at 6; serve and the app stay at 3. It also
+    carries the bike footway-cost router classes.
+  - Docs: `map-colour-analysis.md` "Quiet towns", `map-style-notes.md`, `map-pipeline.md` 5b, `map-hosting.md` §7c,
+    `bike-routing.md`.
+  - Tests:
+    - `StyleFormatTest` (`format2QuietTowns`, `forbiddenNeverLouderThanAStreet`, updated ids) – 1207 unit tests green;
+    - `tools/test_extract_overlays.py` (synthetic OSM; skipped without pyosmium);
+    - worker schema tests updated (CI, Node 24).
+  - Before/after renders are private (`external-docs/map-quiet/after/`). Needs maps-deploy and a phone check after the
+    s6 rebuild.
+- **Trekking gets Touring's busy-traffic penalty (captain decision 2026-10-26, [desktop]):** trekking.brf charges
+  busy traffic classes 4+ only (+0.2 / +0.4 / +0.8), as touring.brf does; the two profiles now differ only in
+  unpavedPenalty and "v_rough" (`TouringProfileTest`, `BikeProfileCostTest`). Hilden random pairs, Trekking: busy roads
+  7.3 → 2.4 %, bike ways 42.5 → 48.0 %, +2.5 % length; Meran SafetyTest / OnewayTest, FerryTest, IslandTest,
+  ItterPathTest unchanged (docs/design/bike-routing.md decision 3). Map router classes unchanged (profile hash only).
+  Also: `GpxCompare` counts a timed-out / empty trace run as a gap (pieces looked traced when they were not).
+- **Hilden Itter path: bike route left the shared path between plan points 3 and 4 (owner field report 2026-10-26,
+  [desktop]):** the path (highway=path, bicycle=designated, surface=compacted) cost 5.15 (Touring 11.15) because the
+  profiles treated "compacted" as loose ground; side streets were cheaper. trekking.brf / touring.brf: compacted is
+  firm like fine_gravel; the +1 for a footway is now only for footways without a bicycle tag (bicycle=no / dismount
+  keep +4). Leg 3 → 4 696 → 459 m on the path; guard rails held (docs/design/bike-routing.md decision 11).
+  Tests: `BikeProfileCostTest` (unit), `tools/routing/jvm-test/ItterPathTest.kt`, WayClass selftest. The map's router
+  classes change (the Itter path becomes "good" = green for bikes) – reaches published cells with the look-only cell
+  schema 6 (quiet towns, below).
+- **E2E CorePointsListE2ETest.swipeTheSheetHalfFullHalf flaky – "half sheet after a swipe down" (desktop, 2026-10-26,
+  red once on 687745a, rerun green):** the message said nothing more, so StepSheet now writes one events line per
+  release ("Sheet let go at X px (steps 536 / 938 / 1602 px, 0 px/s) → step N", `SheetDrag.describe`, unit tested) and
+  the test's size waits fail with size, state, events and a screenshot. Those lines showed the cause: on the CI
+  emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel, release speed 0. The last
+  swipe (480 px, 20 % of the screen) thus stopped 317–367 px below the points against a 332 px midpoint – a coin toss;
+  the swipe up to the points (600 px) needed a ratio ≥ 0.57. Now: up to the points 35 % of the screen (top step, only
+  rubber-bands), back down 110 % of the measured points → profile gap (settles on the profile for ratios 0.47–1.22;
+  CI let go at 1088–1113 px, ≥ 157 px past the midpoint). Same checks and timeouts. Why the sheet trails the injected
+  finger is open (Next: check on the phone). E2E full runs 40261092003 (908cc1e) and 40262661152 (aa8307c) green; class only 40261157640,
+  40261159593, 40261161546 (908cc1e) and 40262675663, 40262677839, 40262680045 (aa8307c) green.
+- **One time model for imported tracks (desktop, 2026-10-26, captain decision):** `Geo.estimateSeconds` and its own
+  bike speeds are gone – imported GPX without timestamps (import, My routes, the shown track; re-timed with the pace
+  level like planned routes), straight-line fallbacks and the "longer than a day?" question use `PaceModel` /
+  `RouteTimes`, so the same line shows the same time everywhere. 20 km flat at Average: Trekking 1:15 → 1:00, Touring
+  1:00 → 0:55, MTB 1:40 → 1:15, Hike unchanged (5:00); planned routes unchanged. `OneTimeModelTest`; numbers in
+  docs/plan-time-estimate.md "One time model for lines without timestamps".
+- **Bike ferries + Köln Dom route (desktop, 2026-10-26):** a ferry that does not take bikes (bicycle=no, …) is now
+  forbidden in touring / trekking / mtb.brf, one without foot access in hiking-mountain.brf (test set of 228 OSM ferries:
+  bike routes over such a ferry 56–67 → 0, Hike 6 → 0; `FerryTest.kt`, WayClass selftest). Köln Dom → Neumarkt "no
+  route" for every activity: the point snapped onto an unconnected footway inside the cathedral and BRouter's own
+  island retry kept that way – `BRouterEngine` now re-snaps such a point to the next way (`IslandTest.kt`,
+  `IslandPointTest`, core feature C3). Guard rails unchanged; details in
+  `docs/design/bike-routing.md`.
+- **Senior consistency + dedup review (desktop, 2026-10-26):** bug: every recorded tour was stored as T3 (reopening a T2
+  hike set T3, its GPX said "mountaineering") – the start now sends the T level (`NewTourSacTest`); one form "Hike T3"
+  for the activity in a sentence (`LastActivity.name`; Navigate said "Hike (T3)"), one `DEFAULT_SAC`, one tour-name
+  format (`RideApply.dateName`); dead code removed (start-time cell refresh gone since 0.8.3, `routeOverlay` setting,
+  `stripPoisIfMissing`, `PlanClear`, `batteryHintShown`, ~12 more) and 21 unused theme tokens (styles regenerate
+  byte-identical). Docs: CLAUDE.md / README activity names and profiles, repo map, map-pipeline (E-bike in `cf`),
+  map-hosting (schema, start-time refresh), dated fastbike notes marked, dated reviews / field tests marked as history,
+  working agreement with donald `[desktop]`.
+- **Bike routing tuned, merged (desktop, 2026-10-26; branch `feat/bike-routing`, verified,
+  then deleted):** Touring bike + E-bike → touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes),
+  trekking.brf tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), Touring time
+  ~21.7 km/h, WayClass threshold 1.20. **v_rough** (captain): on a cycle route a rough track (grade 3–5, smoothness bad+,
+  ground / dirt / sand / grass / mud / earth / rock) is not "perfect" in touring.brf –
+  Alps loose 10.4 → 5.6 %, Hilden busy roads 2.7 → 3.2 %, Meran guard rails unchanged. Review nits:
+  "pushing" on a footway of a cycle route is left out only for touring.brf / trekking.brf activities (MTB keeps it,
+  mtb.brf costs it as pushing), a pedestrian zone without bicycle=yes / designated stays pushing (`WayAttrs.pedestrian`);
+  the old fastbike-verylowtraffic.brf is deleted from the phone on profile install. **Cell schema 5** (look-only, app
+  stays 3): map router classes are rebuilt once with the new profiles. `docs/design/bike-routing.md`.
+- **GPX import keeps the T level + says when the activity changes (desktop, 2026-10-26, captain "no surprises"):**
+  `SportType.forImport` keeps the remembered T level inside the type's band (hike / jogging T1–T2, mountaineering
+  T3–T5; else T2 / T3); `SportType.importChoice` decides the switch (not during a tour) and the grey INFO line
+  "Activity set to Hike T3 from the file" in the track panel (`ShownTrack.note`), gone when the track is closed /
+  replaced or the activity / T level changes. Tests `SportTypeTest`, snapshot `trackImportedActivityNote`.
+- **Review of difficulty + Komoot GPX type (desktop, 2026-10-26):** formula used everywhere the label shows (plan sheet,
+  Route details; nowhere else shows one), no old call left. Fixed: unit tests run in UTC (`app/build.gradle.kts`) – the
+  recycleBin snapshot had changed only by the machine's time zone, not the date; clearer import diagnostics line;
+  two more parser tests. Open questions above ("Waiting for the owner").
+- **Way attributes lost on 22 % of planned routes (desktop, 2026-10-25, found by the GPX comparison tool):** BRouter can
+  open its message list with a 0 m run at the first node; `BRouterWayStats.perNode` then returned nothing, so those routes
+  had no "… m pushing" / steps hint and times without surfaces. Fixed with a test first
+  (`perNodeSkipsAZeroLengthRunAtTheCurrentNode`). Also on main: the GPX comparison tool `tools/routing/jvm-test/GpxCompare.kt`.
+- **Difficulty with trail technique, like Komoot (desktop, 2026-10-25, owner "Yes, both"):** `RouteSummary.rating` =
+  distance + ascent (Hike now easy ≤ 8 effort km and ≤ 300 m up, moderate ≤ 20 and ≤ 900 m; bike bands unchanged),
+  raised by the hardest grade with ≥ 100 m on the route (summed; less = tagging noise): hike T3 → at least Moderate,
+  T4+ → Difficult; every bike S2 → at least Moderate, S3+ or a T3+ hiking trail → Difficult. Never lowers it; lines
+  without way attributes rate on fitness only. Badge "Moderate · T3" when technique raised it; Route details adds a grey
+  line "Moderate because of 250 m at T3 or harder". Tests `RouteSummaryTest`, snapshots `planTechniqueBadge`,
+  `routeDetailsTechnique`.
+- **Komoot GPX `<type>` → activity (desktop, 2026-10-25, owner "Yes, preselect"):** `gpx/SportType` – touring_bicycle /
+  racebike / e_racebike → Touring, e_touring_bicycle → E-bike, mtb_easy → Trekking, mtb / mtb_advanced → MTB, e_mtb* →
+  E-MTB, hike / jogging → Hike T2, mountaineering → Hike T3 (underscores optional); unknown → last used activity. The
+  import stores and selects it (not during a tour). Share export, backups and Export all write `<trk><type>` in
+  Komoot's spelling (Hike T1–T2 `hike`, T3–T5 `mountaineering`). Tests `SportTypeTest` (synthetic GPX only).
+- **E2E CorePointsListE2ETest flaky – "Points section shown" / "points shown" (desktop, 2026-10-25, red on 8174874 and
+  283bcaf, a different test each time):** the failure screenshot shows the full sheet with all rows and ✕, plan size
+  FULL, yet UiAutomator did not find "Delete point" for 10 s. The list appears in place in the same window (PlanPanel
+  drops `clearAndSetSemantics` at the full step); on Android 14 UiAutomator kept serving its cached tree without it
+  (the mirror of the stale node `goneFresh` fixed on 10-22). `E2EBase.findFresh` clears the cache before every look; the
+  plan sheet lookups use it, same assertions and timeouts; failures now list the content descriptions UiAutomator sees.
+  E2E 40239844287 green (full run), 40241249080 green (class only).
+- **Offline search index per map area, no empty moment (laptop, 2026-10-25, field 0.10.1 "zons" found nothing for a
+  minute: `Search index g000059: 129358 entries in 59121 ms`):** each map area (installed cell id + version, or the
+  data-folder package) is extracted once into `files/search-areas/<area>@<version>.tsv` (`search/SearchAreas.kt`); a
+  new store generation only reads the changed cells (their tiles / POIs) and reuses the rest from memory – the index is
+  the union. The previous index keeps answering while a new one is built (swap when ready); only the very first build
+  shows "Preparing offline search…" (spinner, `SearchUi.indexing`). Old installs migrate on the first build (the old
+  `search-places-v1.tsv` goes). Log: "Search index: +n areas −m areas in N ms". JVM, 130 k entries / 40 areas: full
+  build ~800 ms, one area changed ~220 ms, from files after a start ~700 ms (`SearchAreasTest`, `SearchIndexSwapTest`).
+  Chip labels unchanged (owner: bilingual version comes).
+- **Map for here only on a yes (cloud, 2026-10-24, owner answer A after "in the car it should not load"):** opening the
+  app (or coming back to it) where there is no detailed map no longer loads by itself and shows no big loading window;
+  owner 2026-10-24: when the server has it ready (`MapCells.builtOnServer`, GET status only – starts no build) it loads
+  quietly in the background; only when it must be built first (minutes) or the status is unknown the blue strip asks
+  "Detailed map for here? (≈ N MB) · Not now · Load" (`AppViewModel.hereAsk`, `HereAskStrip`).
+  Load = in the background; Not now = that area is not asked again in this app run; setting a point there loads as
+  always (T1, with the loading window) and lifts the "Not now". Not released yet.
 - **Loading chip with names (laptop, 2026-10-23, not released yet):** the blue background-loading strip in Plan is now a
   small chip under ☰ ("⬇ Bad Waldsee +1 · 34 %", name cut at ~half the width; Navigate chip has the name too); details
   list grouped lines ("Along your route to Gasthof Taser Alm (2 areas) · 13 MB · being prepared"). Names by reason

@@ -6,7 +6,7 @@ import java.util.*;
 public class EvalWay {
   public static void main(String[] a) throws Exception {
     String dir = a[0];
-    String[] profiles = {"hiking-mountain", "trekking", "fastbike-verylowtraffic", "mtb"};
+    String[] profiles = {"hiking-mountain", "trekking", "touring", "mtb"};
     String[][] cases = {
       {"highway=footway"},
       {"highway=footway","access=private"},

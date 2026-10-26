@@ -68,6 +68,13 @@ class SearchScreenshotTest {
         }
     }
 
+    /** The very first offline index is being built (no older one to answer): spinner + "Preparing offline search…". */
+    @Test fun searchPreparing() = paparazzi.snapshot {
+        OnPathTheme {
+            SearchScreen(SearchUi(query = "zons", indexing = true, onlineState = OnlineState.LOADING), SearchActions(), autoFocus = false)
+        }
+    }
+
     @Test fun searchRecent() = paparazzi.snapshot {
         OnPathTheme {
             SearchScreen(SearchUi(recent = listOf(hit(hut, 2400.0),

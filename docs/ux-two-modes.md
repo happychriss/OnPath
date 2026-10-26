@@ -112,7 +112,7 @@ Everything about **this route** lives in the route sheet; the **library and app*
 ## Activity while navigating (owner, 2026-10-18: "a wrong activity is a disaster")
 - **Visible:** the Navigate status card starts with the activity icon (48 dp button):
   `[🥾]  7.4 km to go · 2 h 54 min` / `↑ 512 m ↓ 310 m` / `● Recording · …`. The plan sheet's primary button names it:
-  **"Start navigation · Hike"**, **"Continue navigation · Trekking bike"**. Only the icon, "Resume" and the profile
+  **"Start navigation · Hike"**, **"Continue navigation · Gravel bike"**. Only the icon, "Resume" and the profile
   chevron (48 dp, right) are buttons – the rest of the card is not clickable (gloves).
 - **Tap the icon → check-and-switch sheet** (`ui/ActivitySwitchSheet.kt`), stays until a choice is made (Back = Keep):
   "You are navigating as: Hike (T3)", then every other activity with how the **rest of the followed route** fits it –

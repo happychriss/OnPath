@@ -3,16 +3,21 @@ package com.onpath.app.ui
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** What a spot on the route is (order = order in the amber line). */
-enum class SpotKind { PUSH, STEPS, ABOVE_T, STEEP }
+/**
+ * What a spot on the route is (order = order in the amber line and its "+N" cut: what to check before going – ferry
+ * times, a closed way – first, then the existing way warnings, the rarer point hints, steep last).
+ */
+enum class SpotKind { FERRY, CONSTRUCTION, PUSH, STEPS, ABOVE_T, FORD, BARRIER, STEEP }
 
 /**
  * One spot worth knowing on the planned route: points [from]..[to] of the route line, [fromM]..[toM] along it.
- * [worst] = the highest SAC level (ABOVE_T) or the steepest grade in % (STEEP); 0 otherwise.
+ * [worst] = the highest SAC level (ABOVE_T), the steepest grade in % (STEEP) or the barrier's index in
+ * [RouteWarnings.BARRIERS] (BARRIER); 0 otherwise.
  */
 data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: Double, val toM: Double, val worst: Int = 0) {
     val lengthM: Double get() = toM - fromM
@@ -23,8 +28,17 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  * "1.2 km pushing · steps · 2 sections above T2"; tap → the list of spots. Pure, unit tested (RouteWarningsTest).
  *
  * What counts (only what the route's way attributes – BRouter way tags per span – and its elevations reliably give):
+ * - FERRY (every activity, owner 2026-10-26: "a hint if the route contains a ferry or anything else that needs
+ *   checking"): route=ferry, any length – timetables, season and the last boat are not in the map data.
+ * - CONSTRUCTION (every activity): highway=construction, any length – may be closed.
+ * - FORD (every activity): a ford way or node (ford=yes / stepping_stones, highway=ford) – water to cross, may be deep
+ *   after rain. The bike profiles do not avoid fords, mtb.brf and hiking-mountain.brf only make them costly.
+ * - BARRIER (bikes): a stile, kissing gate or turnstile on the way ([WayAttrs.barrier]) – the bike has to be lifted over
+ *   or may not fit. Bollards, gates, lift gates and cycle barriers are passable and on 12–67 % of routes: not listed.
  * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no; footway / pedestrian without bike
- *   access; touring / trekking / e-bike also paths of SAC ≥ T2 or mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
+ *   access (touring / trekking / e-bike: not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian zone stays
+ *   pushing); touring / trekking / e-bike also paths of SAC ≥ T2 or
+ *   mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
  *   or mtb:scale ≥ S4. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing. Sections
  *   < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
@@ -47,6 +61,26 @@ object RouteWarnings {
     /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
     val BIKES_ALLOWED = setOf("yes", "designated", "permissive", "mtb")
 
+    /**
+     * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0, owner
+     * 2026-10-25); mtb.brf still costs it as pushing, so the warning stays there for MTB / e-MTB.
+     */
+    private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
+    private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
+
+    /** Kinds that are a place, not a stretch: the spot is the point where it is (no length). */
+    val POINT_KINDS = setOf(SpotKind.FORD, SpotKind.BARRIER)
+
+    /** Barriers (OSM values) listed for bikes, as [WayAttrs.barrier] carries them; [RouteSpot.worst] = index. */
+    val BARRIERS = listOf("stile", "kissing_gate", "turnstile", "full-height_turnstile")
+
+    /** Plain name of a barrier: "stile", "kissing gate", "turnstile". */
+    fun barrierName(i: Int): String = when (BARRIERS.getOrNull(i)) {
+        "kissing_gate" -> "kissing gate"
+        "turnstile", "full-height_turnstile" -> "turnstile"
+        else -> "stile"
+    }
+
     /** Grade (%) above which a section is "steep" for [a]. */
     fun steepPercent(a: Activity): Double = when (a) {
         Activity.HIKE -> 25.0
@@ -60,10 +94,19 @@ object RouteWarnings {
         val cum = Geo.cumulative(points)
         val out = ArrayList<RouteSpot>()
         // way kinds: span i = from point i to i+1, described by points[i].way
-        for (kind in listOf(SpotKind.PUSH, SpotKind.STEPS, SpotKind.ABOVE_T)) {
+        for (kind in SpotKind.entries) {
+            if (kind == SpotKind.STEEP) continue
             val hits = BooleanArray(points.size - 1) { i -> wayHit(kind, points[i], activity, sac) }
-            val worst = { i: Int -> if (kind == SpotKind.ABOVE_T) points[i].way?.sac ?: 0 else 0 }
-            out += spans(hits, cum, kind, worst, when (kind) { SpotKind.PUSH -> PUSH_MIN_M; SpotKind.ABOVE_T -> ABOVE_T_MIN_M; else -> 0.0 })
+            val worst = { i: Int ->
+                when (kind) {
+                    SpotKind.ABOVE_T -> points[i].way?.sac ?: 0
+                    SpotKind.BARRIER -> BARRIERS.indexOf(points[i].way?.barrier).coerceAtLeast(0)
+                    else -> 0
+                }
+            }
+            val found = spans(hits, cum, kind, worst, when (kind) { SpotKind.PUSH -> PUSH_MIN_M; SpotKind.ABOVE_T -> ABOVE_T_MIN_M; else -> 0.0 })
+            // a ford node / a barrier sits at the end of the span leading to it (BRouterWayStats.withNode): a point there
+            out += if (kind in POINT_KINDS) found.map { it.copy(from = it.to, fromM = it.toM) } else found
         }
         val grades = grades(points, cum)
         val limit = steepPercent(activity)
@@ -75,13 +118,20 @@ object RouteWarnings {
     private fun wayHit(kind: SpotKind, p: GeoPoint, a: Activity, sac: Int): Boolean {
         val w = p.way ?: return false
         return when (kind) {
+            SpotKind.FERRY -> w.wayType == "ferry"
+            SpotKind.CONSTRUCTION -> w.construction
+            SpotKind.FORD -> w.ford
+            SpotKind.BARRIER -> isBike(a) && w.barrier in BARRIERS
             SpotKind.STEPS -> isBike(a) && w.wayType == "steps"
             SpotKind.PUSH -> isBike(a) && w.wayType != "steps" && when {
                 w.bicycle == "dismount" -> true // signed: get off and push, on any way
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
-                w.wayType == "footway" -> true
+                // a footway on a signed cycle route is ridden (owner 2026-10-25) – only where the profile costs
+                // it so: touring.brf / trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling
+                // there unless signed, German law)
+                w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a))
                 a == Activity.MTB || a == Activity.EMTB -> w.sac >= 4 || w.mtb >= 4
                 else -> w.sac >= 2 || w.mtb >= 2
             }
@@ -140,6 +190,10 @@ object RouteWarnings {
     fun items(spots: List<RouteSpot>, sac: Int): List<String> = SpotKind.entries.mapNotNull { k ->
         val s = spots.filter { it.kind == k }
         if (s.isEmpty()) null else when (k) {
+            SpotKind.FERRY -> if (s.size == 1) "Ferry ${rounded(s[0].lengthM)} – check times" else "${s.size} ferries – check times"
+            SpotKind.CONSTRUCTION -> if (s.size == 1) "construction site" else "${s.size} construction sites"
+            SpotKind.FORD -> if (s.size == 1) "ford" else "${s.size} fords"
+            SpotKind.BARRIER -> if (s.size == 1) barrierName(s[0].worst) else "${s.size} barriers"
             SpotKind.PUSH -> "${rounded(s.sumOf { it.lengthM })} pushing"
             SpotKind.STEPS -> if (s.size == 1) "steps" else "${s.size}× steps"
             SpotKind.ABOVE_T -> plural(s.size, "section above T$sac", "sections above T$sac")
@@ -155,25 +209,41 @@ object RouteWarnings {
         return items.take(MAX_ITEMS).joinToString(" · ") + if (more > 0) " +$more" else ""
     }
 
-    /** "Route changed for Trekking bike – please check it" (hike with its level: "for Hike T4"). */
+    /** INFO line "New route for Gravel bike – check it" (hike with its level: "for Hike T4"); grey, not amber. */
     fun changedText(a: Activity, sac: Int): String =
-        "Route changed for ${PlanGaps.activityWords(a)}${if (a == Activity.HIKE) " T$sac" else ""} – please check it"
+        "New route for ${com.onpath.app.data.LastActivity.name(a, sac)} – check it"
 
-    /** Kind of one list row in plain words: "Pushing", "Steps", "T4 – above your T2", "Steep, up to 28 %". */
+    /** Kind of one list row in plain words: "Ferry – check times", "Pushing", "Steps", "T4 – above your T2", "Steep, up to 28 %". */
     fun rowTitle(s: RouteSpot, sac: Int): String = when (s.kind) {
+        SpotKind.FERRY -> "Ferry – check times"
+        SpotKind.CONSTRUCTION -> "Construction – may be closed"
+        SpotKind.FORD -> "Ford – water to cross"
+        SpotKind.BARRIER -> when (BARRIERS.getOrNull(s.worst)) {
+            "kissing_gate" -> "Kissing gate – tight with a bike"
+            "turnstile" -> "Turnstile – tight with a bike"
+            "full-height_turnstile" -> "Turnstile – may not pass with a bike"
+            else -> "Stile – lift the bike over"
+        }
         SpotKind.PUSH -> "Pushing"
         SpotKind.STEPS -> "Steps"
         SpotKind.ABOVE_T -> "T${s.worst} – above your T$sac"
         SpotKind.STEEP -> "Steep, up to ${s.worst} %"
     }
 
-    /** Second part of a row: "350 m · after 3.4 km". */
-    fun rowDetail(s: RouteSpot): String =
-        "${rounded(s.lengthM)} · " + if (s.fromM < 50) "at the start" else "after ${Format.distance(Math.round(s.fromM / 100.0) * 100.0)}"
+    /** Second part of a row: "350 m · after 3.4 km"; a ford node or a barrier is a point: "after 3.4 km". */
+    fun rowDetail(s: RouteSpot): String {
+        val where = if (s.fromM < 50) "at the start" else "after ${Format.distance(Math.round(s.fromM / 100.0) * 100.0)}"
+        return if (s.kind in POINT_KINDS) where.replaceFirstChar { it.uppercase() } else "${rounded(s.lengthM)} · $where"
+    }
 
-    /** Where tapping a row moves the map: the spot's piece of line (a short one with room around it). */
-    fun showPoints(points: List<GeoPoint>, s: RouteSpot): List<GeoPoint> =
-        points.subList(s.from.coerceIn(0, points.size - 1), (s.to + 1).coerceIn(1, points.size))
+    /**
+     * Where tapping a row moves the map: the spot's piece of line (a short one with room around it); a point spot (ford,
+     * barrier): the line from the point before to the point after it, so the amber mark shows and its middle is the spot.
+     */
+    fun showPoints(points: List<GeoPoint>, s: RouteSpot): List<GeoPoint> {
+        val (a, b) = if (s.from == s.to) s.from - 1 to s.to + 1 else s.from to s.to
+        return points.subList(a.coerceIn(0, points.size - 1), (b + 1).coerceIn(1, points.size))
+    }
 
     /** Short pieces: centre + zoom (fitting a 40 m piece would zoom in too far); null = fit [showPoints]. */
     fun centerFor(points: List<GeoPoint>, s: RouteSpot): Pair<GeoPoint, Double>? {

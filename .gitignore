@@ -13,3 +13,4 @@ __pycache__/
 
 # Claude Code helper worktrees (temporary)
 .claude/worktrees/
+/external-docs/

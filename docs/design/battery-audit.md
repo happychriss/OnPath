@@ -207,7 +207,7 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
 - **Foreground service type:** correct. The manifest has `foregroundServiceType="location"` + `FOREGROUND_SERVICE_LOCATION`, and `startForeground(…, TYPE_LOCATION)` is called on every start command (`RecordingService.kt:196, 258-262`). Location foreground services have no Android 15 time limit (the 6 h cap applies to dataSync / mediaProcessing), so 14 h days are fine.
 - **Battery optimisation:**
   - There is no `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` request. There is only a quiet hint plus an "App settings" button (`ui/SettingsScreen.kt:229-236`).
-  - `batteryHintShown` (`ui/AppViewModel.kt:387-389`) is never read; it is dead code.
+  - `batteryHintShown` (`ui/AppViewModel.kt:387-389`) is never read; it is dead code (removed 2026-10-26).
   - R-09's "detect when throttled" is missing.
 - **Is "Unrestricted" needed?**
   - **Pixel:** a running location foreground service keeps getting fixes under the default "Optimized" setting, and moving with the phone stops deep Doze. "Unrestricted" mainly helps two cases:

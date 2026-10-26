@@ -215,17 +215,19 @@ fun MapHost(
                 false
             }
             mapView.addOnDidFailLoadingMapListener { msg ->
-                // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style)
-                StyleLoader.noteFailure(msg ?: "?")
+                // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style); a rejected
+                // developer test style (dev/style.json) is a WARN and the normal style loads again
+                if (StyleLoader.noteFailure(msg ?: "?")) {
+                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown))
                 // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
-                if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
-                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
+                } else if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
+                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown))
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             myTheme[0] = vm.settings.mapTheme
             // this host's own reload (MapReload: two activities' hosts may live at once – field test 0.10.1)
-            host.ready { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas())) }
-            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas()))
+            host.ready { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown)) }
+            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown))
         }
         // only clear what is ours: another (short-lived) map host must never switch off this one (0.10.1)
         onDispose {

@@ -7,10 +7,17 @@
   "y": 168
  },
  "bike-both-ways": {
+  "height": 10,
+  "pixelRatio": 1,
+  "width": 18,
+  "x": 96,
+  "y": 168
+ },
+ "bike-oneway-arrow": {
   "height": 8,
   "pixelRatio": 1,
   "width": 14,
-  "x": 96,
+  "x": 120,
   "y": 168
  },
  "oneway-arrow": {

@@ -70,8 +70,8 @@ class LastActivityTest {
         assertEquals("Hike · T2", LastActivity.chipText(Activity.HIKE, 2))
         assertEquals("Hike · T5", LastActivity.chipText(Activity.HIKE, 7))
         assertEquals("MTB", LastActivity.chipText(Activity.MTB, 2))
-        assertEquals("Trekking", LastActivity.chipText(Activity.BIKE_TREKKING, 4))
-        assertEquals("Touring", LastActivity.chipText(Activity.BIKE_TOURING, 4))
+        assertEquals("Gravel", LastActivity.chipText(Activity.BIKE_TREKKING, 4))
+        assertEquals("Bike", LastActivity.chipText(Activity.BIKE_TOURING, 4))
         assertEquals("E-bike", LastActivity.chipText(Activity.EBIKE, 4))
         assertEquals("E-MTB", LastActivity.chipText(Activity.EMTB, 4))
     }

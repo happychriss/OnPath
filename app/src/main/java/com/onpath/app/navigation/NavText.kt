@@ -21,12 +21,26 @@ object NavText {
         NavPrompt.Kept -> "Off route – original route kept"
     }
 
-    /** "+350 m · rejoins in 600 m" / "350 m shorter · rejoins in 600 m" (+ "nearest way 300 m away"). */
-    /** "New route for Trekking bike" / "New route for Hike (T3)". */
+    /**
+     * The state line of the one amber off-route card in Navigate (review 2026-10-24 B2): the title there is just
+     * "Off route", the distance + direction under it, this in small text.
+     */
+    fun state(p: NavPrompt): String = when (p) {
+        NavPrompt.Searching -> "Looking for a way back…"
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: "New route found"
+        is NavPrompt.NoWay -> when (p.reason) {
+            Rerouter.Reason.NO_DATA -> "No map here to find a way back"
+            Rerouter.Reason.UNAVAILABLE -> "Can't search a way back right now"
+            else -> "No way back found"
+        }
+        NavPrompt.Kept -> "Following the original route"
+    }
+
+    /** "New route for Gravel bike" / "New route for Hike T3". */
     fun switchTitle(sw: ActivitySwitch): String = "New route for " + activityName(sw.activity, sw.sac)
 
-    /** "Hike (T3)" / "MTB". */
-    fun activityName(a: Activity, sac: Int): String = if (a == Activity.HIKE) "${a.label} (T${sac.coerceIn(1, 5)})" else a.label
+    /** "Hike T3" / "MTB" ([com.onpath.app.data.LastActivity.name]). */
+    fun activityName(a: Activity, sac: Int): String = com.onpath.app.data.LastActivity.name(a, sac)
 
     fun question(q: NavPrompt.Question): String = buildString {
         q.switch?.let { sw ->
@@ -53,8 +67,11 @@ object NavText {
         }
     }
 
-    /** "120 m to the route · north-east · straight line" – a bearing, not a path: it may cross cliffs or water. */
-    fun toRoute(h: RouteHint?): String? = h?.let { "${Format.distance(round10(it.distanceM))} to the route · ${compass(it.bearingDeg)} · straight line" }
+    /**
+     * "120 m north-east (direct)" – a bearing, not a path: it may cross cliffs or water. Not "straight line": the plan
+     * uses that word for unrouted legs (review 2026-10-24 B16).
+     */
+    fun toRoute(h: RouteHint?): String? = h?.let { "${Format.distance(round10(it.distanceM))} ${compass(it.bearingDeg)} (direct)" }
 
     /**
      * "46.54120 N 10.90320 E · ±8 m · 1234 m" for an emergency call; "· fix 4 min old" when the fix is old.

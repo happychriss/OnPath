@@ -32,7 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -114,8 +114,9 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
             }
             Spacer(Modifier.size(4.dp))
             HorizontalDivider()
-            if (ui.indexing) LinearProgressIndicator(Modifier.fillMaxWidth())
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+                // only the very first time (no index yet); later a new index is built while the old one answers
+                if (ui.indexing) item { Preparing() }
                 if (!ui.active) recentSection(ui, actions) else resultSections(ui, actions)
             }
         }
@@ -184,6 +185,19 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
 private fun Header(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+}
+
+/**
+ * The very first offline index is being built (no previous one to answer): spinner + grey text where the user is
+ * waiting (INFO look, progress = spinner, review 2026-10-24). Stays until the index is ready.
+ */
+@Composable
+private fun Preparing() {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+        Spacer(Modifier.width(16.dp))
+        Text("Preparing offline search…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 
 @Composable

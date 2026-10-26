@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.backup.RecycleBin
 import com.onpath.app.data.Format
 import com.onpath.app.data.Tour
@@ -69,7 +68,7 @@ fun RecycleBinScreen(
                 Text("Recycle bin", style = MaterialTheme.typography.titleLarge)
             }
             Text("Deleted tracks and routes stay here for ${RecycleBin.DAYS} days, then they are removed.",
-                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
             if (deleted.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("The recycle bin is empty.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -85,7 +84,7 @@ fun RecycleBinScreen(
             properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
             icon = { Icon(Icons.Filled.Delete, null) },
             title = { Text("Delete “${t.name}” for good?") },
-            text = { Text("It is removed from this phone and from the backup folder. This cannot be undone.") },
+            text = { DialogText("It is removed from this phone and from the backup folder. This cannot be undone.") },
             confirmButton = { TextButton(onClick = { confirm = null; onDeleteForever(t) }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Delete", color = OnPathColors.Bad) } },
             dismissButton = { TextButton(onClick = { confirm = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
@@ -99,12 +98,12 @@ private fun BinCard(t: Tour, nowMs: Long, onRestore: () -> Unit, onDelete: () ->
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
         Column(Modifier.fillMaxWidth().padding(start = 14.dp, top = 10.dp, end = 4.dp, bottom = 4.dp)) {
             Text(t.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${t.kind.label} · ${fmt.format(Date(t.createdMs))} · ${Format.distance(t.distanceM)}", fontSize = 12.sp,
+            Text("${t.kind.label} · ${fmt.format(Date(t.createdMs))} · ${Format.distance(t.distanceM)}", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             t.deletedMs?.let { d ->
                 val left = RecycleBin.daysLeft(d, nowMs)
                 Text("Deleted ${fmt.format(Date(d))} · " + when (left) { 0 -> "removed at the next start"; 1 -> "1 day left"; else -> "$left days left" },
-                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete now", color = OnPathColors.Bad) }
@@ -130,6 +129,8 @@ data class BackupUi(
     val restoring: String? = null,
     /** Android 8–9 without storage access: the "Allow" button. */
     val needsStorageAccess: Boolean = false,
+    /** "Back up all now" runs: a spinner on its button (review 2026-10-24 C9). */
+    val backingUp: Boolean = false,
 )
 
 data class BackupCallbacks(
@@ -145,21 +146,23 @@ fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
     Section("Backup") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Every recorded track and saved route is also saved as a GPX file – it stays when OnPath is removed and " +
-                "can be restored on a new phone.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Folder: ${b.folder}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                "can be restored on a new phone.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Folder: ${b.folder}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             val last = if (b.lastMs > 0) SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(b.lastMs)) else "not yet"
-            Text("Last backup: $last · ${b.count} ${if (b.count == 1) "file" else "files"}", fontSize = 13.sp)
-            b.lastError?.let { Text("Last backup failed – $it", fontSize = 13.sp, color = OnPathColors.Bad) }
+            Text("Last backup: $last · ${b.count} ${if (b.count == 1) "file" else "files"}", style = MaterialTheme.typography.bodySmall)
+            b.lastError?.let { Text("Last backup failed – $it", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Bad) }
             if (b.needsStorageAccess) OutlinedButton(onClick = cb.onAllowStorage, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Allow storage access")
             }
-            OutlinedButton(onClick = cb.onBackupNow, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back up all now") }
+            OutlinedButton(onClick = { if (!b.backingUp) cb.onBackupNow() }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (b.backingUp) BusyContent(Busy.BACKUP.text) else Text("Back up all now")
+            }
             OutlinedButton(onClick = cb.onChooseFolder, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Choose another folder (e.g. Drive, Nextcloud)")
             }
             if (b.custom) TextButton(onClick = cb.onUseDocuments, Modifier.heightIn(min = 48.dp)) { Text("Use Documents/OnPath again") }
             if (b.restoring != null) Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(b.restoring, fontSize = 13.sp)
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(b.restoring, style = MaterialTheme.typography.bodySmall)
             } else OutlinedButton(onClick = cb.onRestore, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Restore tracks and routes") }
         }
     }
@@ -185,7 +188,7 @@ fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Restore, null) },
         title = { Text("Earlier tracks and routes?") },
-        text = { Text("If you used OnPath before, your tracks and routes may be in Documents/OnPath. Restore them? " +
+        text = { DialogText("If you used OnPath before, your tracks and routes may be in Documents/OnPath. Restore them? " +
             "Android then shows the folder – tap “Use this folder” and “Allow”.\n\nLater: Settings → Backup → Restore.") },
         confirmButton = { TextButton(onClick = onRestore, modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore") } },
         dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },

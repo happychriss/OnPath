@@ -47,9 +47,8 @@ abstract class E2EBase {
     /** Clean app state + the tiny map package; [beforeLaunch] runs before the app starts (e.g. a GPS fix). */
     protected fun launch(beforeLaunch: () -> Unit = {}) {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        // empty plan, default camera (Meran); the one-time "Allow all the time" question already answered (it would
-        // cover the map on the first tour)
-        ctx.getSharedPreferences("onpath", 0).edit().clear().putBoolean("backgroundAsked", true).commit()
+        // empty plan, default camera (Meran)
+        ctx.getSharedPreferences("onpath", 0).edit().clear().commit()
         // the one-time restore offer on an empty tour list (backup) would cover the map too
         ctx.getSharedPreferences("backup", 0).edit().putBoolean("restoreOffered", true).commit()
         val dir = dataDir
@@ -182,6 +181,32 @@ abstract class E2EBase {
             if (System.currentTimeMillis() > end) return false
             Thread.sleep(250)
         }
+    }
+
+    /**
+     * The other half of [goneFresh]: waits until [selector] matches, looking afresh each time. Content that appears in
+     * place inside the same window (the plan sheet's points list when it reaches the full step) can stay invisible to
+     * UiAutomator: on Android 14 its node cache keeps the old tree and `device.wait(Until.findObject…)` asks that cache
+     * again and again (CI 2026-10-25: screenshot shows the rows with ✕, "Delete point" not found for 10 s).
+     */
+    protected fun findFresh(selector: androidx.test.uiautomator.BySelector, timeoutMs: Long): androidx.test.uiautomator.UiObject2? {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            if (Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+            device.waitForIdle(500)
+            device.findObject(selector)?.let { return it }
+            if (System.currentTimeMillis() > end) return null
+            Thread.sleep(250)
+        }
+    }
+
+    /** Content descriptions UiAutomator sees right now, after a fresh look (failure messages: missing vs. not seen). */
+    protected fun seenDescriptions(max: Int = 40): String {
+        if (Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+        return try {
+            device.findObjects(By.desc(java.util.regex.Pattern.compile(".+", java.util.regex.Pattern.DOTALL)))
+                .mapNotNull { it.contentDescription }.take(max).joinToString(" | ")
+        } catch (e: Exception) { "(hierarchy not readable: ${e.javaClass.simpleName})" } // expected: diagnostics only
     }
 
     /**

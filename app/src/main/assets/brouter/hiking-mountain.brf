@@ -296,7 +296,9 @@ assign rawcostfactor # can be <1.0, is treated later
   (
   if    ( and highway= not route=ferry )  then 100000
   else if    highway=steps then ( switch allow_steps   ( switch consider_elevation 1.0 3.0 )     100000 )
-  else  if    route=ferry    then ( if allow_ferries then 2.34 else 100000 )
+  # OnPath: a ferry that does not take people on foot (foot=no|private, …) is forbidden (2026-10-26: 6 of 225 test
+  # routes used one – a foot=no ferry cost only +4 when it allowed bikes)
+  else  if    route=ferry    then ( if ( and allow_ferries footaccess ) then 2.34 else 100000 )
 
 # iswet=1 in global context section means wet weather, increases penalty for eventually inconvenient ways
 # ismuddy boolean relates in wet weather to unpaved or unclassified surface, that can have mud or get slicky in wet weather.

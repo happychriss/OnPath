@@ -1,6 +1,7 @@
 package com.onpath.app.time
 
 import com.onpath.app.data.AppSettings
+import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import java.util.Calendar
@@ -26,6 +27,20 @@ object TimeEstimate {
 
     /** Moving time of a whole line with [f], rounded like everywhere else ([round]). */
     fun planSeconds(points: List<GeoPoint>, a: Activity, f: Factors): Double = round(RouteTimes.of(points, a).total(f))
+
+    /**
+     * Time of an imported track: the file's own (first → last timestamp, [fileSeconds]), else the model's for its
+     * segments – the same number a planned route on the same points shows (captain 2026-10-26: one time model, no second
+     * speed table). The gap between segments is not counted. Without way attributes = the activity's usual way.
+     */
+    fun importedSeconds(segments: List<List<TrackPoint>>, a: Activity, f: Factors): Double =
+        fileSeconds(segments) ?: round(segments.sumOf { s -> RouteTimes.of(s.map { it.toGeo() }, a).total(f) })
+
+    /** Seconds the file's timestamps span (first → last); null = fewer than two, or not increasing (time is estimated). */
+    fun fileSeconds(segments: List<List<TrackPoint>>): Double? {
+        val times = segments.flatten().mapNotNull { it.timeMs }
+        return if (times.size > 1 && times.last() > times.first()) (times.last() - times.first()) / 1000.0 else null
+    }
 
     /** Display rounding (docs §4.2): under 20 min to the minute, above to 5 minutes. */
     fun round(s: Double): Double = when {

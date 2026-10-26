@@ -41,8 +41,6 @@ class DataFiles(context: Context) {
     /** Map package format of the map folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
     fun format(): Int = mapDir().let { m -> formatOf { File(m, it).isFile } }
 
-    fun allPresent() = check().all { it.present }
-
     fun has(name: String) = File(dir, name).isFile
 
     /**

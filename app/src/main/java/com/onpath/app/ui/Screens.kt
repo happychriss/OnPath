@@ -72,7 +72,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.onpath.app.data.DataFiles
 import com.onpath.app.data.Format
 import com.onpath.app.data.Tour
@@ -113,10 +112,10 @@ fun MissingDataScreen(
                                 tint = if (c.present) OnPathColors.Good else OnPathColors.Bad, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(c.name, fontFamily = FontFamily.Monospace, fontSize = 14.sp)
-                                Text(c.hint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(c.name, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+                                Text(c.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text(if (c.present) "found" else "missing", fontSize = 12.sp,
+                            Text(if (c.present) "found" else "missing", style = MaterialTheme.typography.bodySmall,
                                 color = if (c.present) OnPathColors.Good else OnPathColors.Bad)
                         }
                     }
@@ -131,7 +130,7 @@ fun MissingDataScreen(
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
                         SelectionContainer {
-                            Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                            Text(DataFiles.ADB_COMMAND, color = Color(0xFFD7F5DF), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     IconButton(onClick = { onCopy(DataFiles.ADB_COMMAND) }, Modifier.size(48.dp)) {
@@ -139,10 +138,10 @@ fun MissingDataScreen(
                     }
                 }
             }
-            Text("Target folder on the phone:\n$dataDir", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Target folder on the phone:\n$dataDir", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Check again", fontSize = 16.sp)
+                Text("Check again", style = MaterialTheme.typography.bodyLarge)
             }
             OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Continue without map data")
@@ -160,7 +159,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)) {
-            Text("Import map data (.zip) from this phone", fontSize = 16.sp)
+            Text("Import map data (.zip) from this phone", style = MaterialTheme.typography.bodyLarge)
         }
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
@@ -172,7 +171,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.material3.CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(12.dp))
-                Text(busy, fontSize = 14.sp)
+                Text(busy, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -181,7 +180,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 // ------------------------------------------------------------------ activity picker
 
 /**
- * Activity picker (plan sheet chip). A bike activity applies and closes; Hike applies and stays open with the
+ * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and closes; Hike applies and stays open with the
  * T1–T5 row (SAC level, owner 2026-10-22: moved here from Settings) and the selected level's description; a level
  * applies at once (the route is planned again) and closes. Both are remembered across sessions.
  */
@@ -211,13 +210,17 @@ fun ActivityDialog(
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(14.dp))
-                        Text(a.label, fontSize = 16.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                        // name + one short explaining line (owner 2026-10-26: "Gravel bike" / "Gravel tracks welcome")
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            Text(a.label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 if (hike) {
                     val level = SacScale.of(sac)
                     Spacer(Modifier.height(12.dp))
-                    Text("Hiking difficulty (SAC)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text("Hiking difficulty (SAC)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                     androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         SacScale.levels.forEachIndexed { i, l ->
@@ -227,10 +230,10 @@ fun ActivityDialog(
                                 shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
                                 icon = {}, // no check mark: five narrow segments
                                 modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "T${l.level} · ${l.name}" },
-                            ) { Text("T${l.level}", fontSize = 14.sp) }
+                            ) { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
-                    Text("T${level.level} · ${level.name} – ${level.text}", fontSize = 12.sp, lineHeight = 16.sp,
+                    Text("T${level.level} · ${level.name} – ${level.text}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                 }
             }
@@ -281,6 +284,8 @@ fun RoutesScreen(
     onRecycleBin: () -> Unit = {},
     /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
     onEditRides: (Tour) -> Unit = {},
+    /** Import / Export all running: a spinner on the Import button / a line under the title (review 2026-10-24 C9). */
+    busy: Busy? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -289,11 +294,14 @@ fun RoutesScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 Text("My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onImport, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX")
+                TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    if (busy == Busy.IMPORT) BusyContent("Importing…")
+                    else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX") }
                 }
-                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty())
+                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
             }
+            if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("No routes yet.\nSave a planned route, record a tour or import a GPX file.",
@@ -330,8 +338,7 @@ fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Delete, null) },
         title = { Text("Delete “${t.name}”?") },
-        text = { Text("This ${t.kind.label.lowercase()} goes to the recycle bin (My routes → ⋮ → Recycle bin). " +
-            "You can restore it there for ${com.onpath.app.backup.RecycleBin.DAYS} days.") },
+        text = { DialogText(RECYCLE_BIN_NOTE) },
         confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete", color = OnPathColors.Bad) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
     )
@@ -344,7 +351,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Filled.Route, null) },
         title = { Text("Replace current route?") },
-        text = { Text("Your current route is not saved. Save it first, or replace it with the route you picked.") },
+        text = { DialogText("Your current route is not saved. Save it first, or replace it with the route you picked.") },
         confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text("Replace") } },
         dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save first") } },
     )
@@ -370,10 +377,10 @@ private fun TourCard(
             Column(Modifier.weight(1f)) {
                 Text(t.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${t.kind.label} · " + SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t.createdMs)),
-                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", fontSize = 13.sp)
-                if (onDelete == null) Text("Recording now", fontSize = 12.sp, color = OnPathColors.Rec)
-                else if (onOpen == null) Text("Can be loaded after the tour", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
+                if (onDelete == null) Text("Recording now", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                else if (onOpen == null) Text("Can be loaded after the tour", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
         }
@@ -449,8 +456,7 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete this tour?") },
-            text = { Text("The tour is not kept. You can still get it back from the recycle bin for 30 days " +
-                "(My routes → ⋮ → Recycle bin).") },
+            text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
             dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
@@ -460,7 +466,7 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Unfinished tour") },
-        text = { Text("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
+        text = { DialogText("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = {
             Row {
