@@ -708,8 +708,15 @@ class MapCells(
             s.size?.let { sizes[c] = it }
             when (s.state) {
                 "ready" -> {
-                    val have = inst[c]?.version
-                    if (have != null && (s.version == null || s.version == have) && s.updating) {
+                    val mine = inst[c]
+                    val have = mine?.version
+                    if (mine != null && p.reason == CellReason.REFRESH && CellApi.isDevVersion(have) &&
+                        now() - mine.installedAt < DEV_KEEP_MS) {
+                        // pushed by tools/dev/push_cell.sh: a refresh (also the restored plan's route at every start)
+                        // does not replace it for a day – deleting the area does
+                        dequeue(c); set(c, CellState.Ready(mine.version))
+                        Problems.info("cells", "Map cell $c is a developer build (${mine.version}); kept, the server version is not loaded")
+                    } else if (have != null && (s.version == null || s.version == have) && s.updating) {
                         // a newer version is being built: keep asking (state stays "ready" on the phone)
                         set(c, CellState.Ready(have))
                     } else if (have != null && (s.version == null || s.version == have)) {
@@ -915,6 +922,8 @@ class MapCells(
         const val BATCH_MS = 10_000L
         const val MAX_BATCH_MS = 60_000L
         const val FRESH_MS = 5_000L
+        /** A developer build of a cell ([CellApi.isDevVersion]) is not replaced by a refresh for this long. */
+        const val DEV_KEEP_MS = 24L * 3600 * 1000
         private const val BUSY_RECHECK_MS = 1_000L
         /** A point / near request older than this is dropped at app start (nobody waits for it any more). */
         const val STALE_MS = 24L * 3600 * 1000

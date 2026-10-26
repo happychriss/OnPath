@@ -183,6 +183,12 @@ class CellApi(
         /** "2026-10-20-s2" → 2; versions named by the OSM date alone are schema 1. */
         fun schemaOf(version: String?): Int = Regex("""-s(\d+)$""").find(version.orEmpty())?.groupValues?.get(1)?.toIntOrNull() ?: 1
 
+        /**
+         * A cell built on a developer PC and pushed onto the phone by tools/dev/push_cell.sh
+         * ("2026-10-25-dev10261201-s6", docs/design/map-hosting.md §7h) – never the name of a server version.
+         */
+        fun isDevVersion(version: String?): Boolean = Regex("""-dev\d+(-s\d+)?$""").containsMatchIn(version.orEmpty())
+
         fun parseStatus(json: String): StatusAnswer = try {
             val o = JSONObject(json)
             val a = o.optJSONArray("cells") ?: JSONArray()

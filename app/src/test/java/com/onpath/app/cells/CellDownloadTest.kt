@@ -255,6 +255,31 @@ class CellDownloadTest {
     }
 
     /**
+     * tools/dev/push_cell.sh puts a developer build on the phone as a complete download; it is joined at start and a
+     * refresh (the restored plan's route asks at every start) does not replace it for a day – after that it does.
+     */
+    @Test fun developerCellIsKeptForADay() {
+        assertTrue(CellApi.isDevVersion("2026-10-25-dev10261201-s6"))
+        assertFalse(CellApi.isDevVersion("2026-10-20-s6"))
+        assertEquals(6, CellApi.schemaOf("2026-10-25-dev10261201-s6"))
+        server.publish(a, "2026-10-20-s6"); server.buildPolls = 0
+        val data = tmp.newFolder("dev")
+        val dev = "2026-10-25-dev10261201-s6"
+        CellFixtures.cell(File(File(CellStore(data).downloadDir, a.id), dev), a, dev)
+        var later = 0L
+        val mc = MapCells(CellStore(data), api(), Net(), scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L,
+            now = { System.currentTimeMillis() + later }).also { it.start() }
+        waitFor("dev cell joined at start") { mc.installed.value.any { it.version == dev } }
+        mc.request(listOf(a), CellReason.REFRESH)
+        waitFor("refresh answered") { !File(mc.store.root, "requests.json").readText().contains(a.id) }
+        assertEquals(dev, mc.installed.value.single().version)
+        assertFalse(server.log.any { it.contains("/manifest") })
+        later = MapCells.DEV_KEEP_MS + 60_000
+        mc.request(listOf(a), CellReason.REFRESH)
+        waitFor("server version after a day") { mc.state(a) == CellState.Ready("2026-10-20-s6") }
+    }
+
+    /**
      * Field report 2026-10-21: cells built before the "streets" overlay (content schema 1, version = OSM date) are found
      * as outdated and loaded again as soon as the server has the schema-2 build – also on mobile data.
      */

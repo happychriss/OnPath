@@ -410,6 +410,35 @@ Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback
 - **Manifest `sources`**: `[{id, date, url}]` of the OSM extracts the cell was cut from (job → `SRC_META` →
   build_cell.sh → `cells.py manifest --sources`); debugging aid, the app ignores it.
 
+## 7h. Faster map refreshes: where the time goes, dev loop (2026-10-26, desktop "donald")
+
+**Field case:** the look-only bump s5 → s6 (overlays only) for 6 cells around Düsseldorf / Hilden took ~48 min from
+the after-routing refresh (~09:45 UTC) to the map on the phone (10:34). From the R2 status files and `build.json`:
+- the cells were queued at **refresh priority** (s5 ≥ `CELL_SCHEMA_SERVE`) = background → batched **4 per execution**
+  and built one after the other: execution n4s2c built 4 cells 09:47:42 → 10:24:12, vrrlx 2 cells → 10:07:10;
+- **8–10.5 min per cell** in the cloud (dense area; Meran 160–175 s): overlays 129–197 s, base 87–126 s, terrain
+  63–125 s (AWS tiles, no cache on Cloud Run), pois / addresses 47–70 s each, cut + merge + renumber 25–35 s, upload ~4 s;
+- the app saw "ready + updating" and waited its **15-min idle time** before asking again: ~10 min after the last build;
+- download (126 MB) + join < 1 min.
+
+The same cell (10-531-342) on donald with the job image (4 CPUs, low priority): 247 s cold (+ 89 s for the two
+Geofabrik extracts), **179 s warm** (overlays 61 s, base 30 s, pois 22 s, addresses 23 s, terrain 20 s) – 2.5–3× faster
+than Cloud Run's 2 vCPU. An overlays-only rebuild would take ~80 s here, ~4.2 min in the cloud (see backlog: partial
+rebuild).
+
+**Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
+working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4
+--cpu-shares 64 --blkio-weight 10`, 8 GiB; work folder `~/onpath-cells-work`, not the repo), renames the version to
+`<osm_date>-dev<MMDDHHMM>-s<schema>`, force-stops OnPath (refused while a tour records), pushes it as a complete
+download (`cells/download/<cell>/<version>/`, via `<version>.part` + one rename) and starts OnPath: `MapCells.recover()`
+joins it at start like a download finished before a crash. ~3–4 min per cell, the push + join ~12 s.
+- adb-created folders belong to `shell` with mode 2770 – the app cannot even list them (first try on the Pixel 8: the
+  cell was silently not joined); the script opens them (777 / 666), then the app joins, renames the address file and
+  deletes the folder as usual.
+- A dev version is never a server name (`CellApi.isDevVersion`), and a **refresh does not replace it for 24 h**
+  (`MapCells.DEV_KEEP_MS` – the restored plan's route asks for a refresh at every start). After that the next refresh
+  loads the server's version; at once: Settings → Offline maps → delete the area. Other cells are not touched.
+
 ## 8. Open points
 
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other
