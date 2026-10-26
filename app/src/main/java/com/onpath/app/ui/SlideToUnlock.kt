@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -66,16 +67,18 @@ private val PAD = 4.dp
  * [startFraction] places the thumb (screenshot tests only).
  */
 @Composable
-fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, label: String = "Slide to plan", startFraction: Float = 0f) {
+fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, label: String = str(Res.string.plan_slide_to_plan), startFraction: Float = 0f) {
+    val switchLabel = str(Res.string.plan_switch_to_plan)
+    val desc = str(Res.string.plan_slide_desc, label)
     val slid by rememberUpdatedState(onSlid)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     BoxWithConstraints(
         modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(Color(0xE6202A33))
             .clearAndSetSemantics {
-                contentDescription = "$label. Switch to plan mode."
-                onClick(label = "Switch to plan mode") { slid(); true }
-                customActions = listOf(CustomAccessibilityAction("Switch to plan mode") { slid(); true })
+                contentDescription = desc
+                onClick(label = switchLabel) { slid(); true }
+                customActions = listOf(CustomAccessibilityAction(switchLabel) { slid(); true })
             },
     ) {
         val maxPx = with(density) { (maxWidth - THUMB - PAD * 2).toPx() }

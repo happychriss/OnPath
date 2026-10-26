@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,7 +65,7 @@ fun ElevationProfile(
     val data = remember(points) { profileData(points) }
     if (data == null) {
         Box(modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.CenterStart) {
-            Text("No elevation data for this route", style = MaterialTheme.typography.bodySmall,
+            Text(str(Res.string.plan_no_elevation), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return

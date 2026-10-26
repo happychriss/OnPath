@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -244,8 +245,8 @@ fun StepSheet(
                     .padding(horizontal = 16.dp)) {
                     // Material drag handle (32 × 4 dp) in a full-width 48 dp tall touch area
                     Box(Modifier.fillMaxWidth().height(48.dp)
-                        .clickable(onClickLabel = "Resize panel", onClick = onHandleTap)
-                        .semantics { contentDescription = "Resize panel" },
+                        .clickable(onClickLabel = str(Res.string.plan_resize_panel), onClick = onHandleTap)
+                        .semantics { contentDescription = Txt.s(Res.string.plan_resize_panel) },
                         contentAlignment = Alignment.Center) {
                         Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)
                             .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))

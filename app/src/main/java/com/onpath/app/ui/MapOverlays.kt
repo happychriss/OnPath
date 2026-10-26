@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,9 +56,9 @@ import com.onpath.app.ui.MapGestures.PointAction
 
 /** "Meraner Hütte", else "Start" / "Stop 2" / "Destination". */
 fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isNotBlank() } ?: when {
-    i == 0 -> "Start"
-    i == count - 1 && count > 1 -> "Destination"
-    else -> "Stop ${i + 1}"
+    i == 0 -> Txt.s(Res.string.plan_point_start)
+    i == count - 1 && count > 1 -> Txt.s(Res.string.plan_point_destination)
+    else -> Txt.s(Res.string.plan_point_stop, i + 1)
 }
 
 /**
@@ -154,11 +155,11 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
 @Composable
 fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier) {
     MenuSurface(modifier) {
-        Text("New route", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+        Text(str(Res.string.plan_new_route), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onStartHere)
-        HoldMenuItem(Icons.Outlined.MyLocation, "Go here", enabled = fromMeBlocked == null,
+        HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
+        HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
             supporting = fromMeBlocked, onClick = onFromMe)
     }
 }
@@ -181,13 +182,13 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (emptyPlan) {
-            HoldMenuItem(Icons.Outlined.TripOrigin, "Start here", onClick = onAdd)
-            HoldMenuItem(Icons.Outlined.MyLocation, "Go here", enabled = fromMeBlocked == null,
+            HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
+            HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
         } else {
-            HoldMenuItem(Icons.Outlined.AddLocationAlt, if (de) "Zur Route hinzufügen" else "Add to route", onClick = onAdd)
+            HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_to_route), onClick = onAdd)
         }
-        HoldMenuItem(Icons.Outlined.Map, if (de) "In Google Maps öffnen" else "Open in Google Maps", onClick = onGoogle)
+        HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
     }
 }
 
@@ -211,12 +212,12 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip)) when (a) {
             // Say what happens: the dropped points come back with Undo.
-            PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start here",
-                supporting = "Removes the ${points(index)} before it") { onAction(a) }
-            PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, "Start & finish here",
-                supporting = "Same round trip, starts here") { onAction(a) }
-            PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, "Open in Google Maps") { onAction(a) }
-            PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, "Delete", danger = true) { onAction(a) }
+            PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here),
+                supporting = plural(Res.plurals.plan_removes_points, index, index)) { onAction(a) }
+            PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_finish_here),
+                supporting = str(Res.string.plan_same_round_trip)) { onAction(a) }
+            PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps)) { onAction(a) }
+            PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, str(Res.string.common_delete), danger = true) { onAction(a) }
         }
     }
 }
@@ -256,5 +257,3 @@ private fun MenuSurface(modifier: Modifier, content: @Composable () -> Unit) {
     }
 }
 
-
-private fun points(n: Int) = if (n == 1) "1 point" else "$n points"
