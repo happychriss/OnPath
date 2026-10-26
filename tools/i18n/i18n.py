@@ -188,15 +188,20 @@ def export(out_dir: Path):
 # ---------------------------------------------------------------- import
 
 def read_sheet(path: Path):
+    """Rows as dicts; the header is the first row whose first cell is "Key" (a block above it is skipped)."""
     if path.suffix.lower() == ".xlsx":
         import openpyxl
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
         ws = wb["Texte"] if "Texte" in wb.sheetnames else wb.active
-        it = ws.iter_rows(values_only=True)
-        head = [str(h or "").strip() for h in next(it)]
-        return [{h: ("" if v is None else str(v)) for h, v in zip(head, row)} for row in it]
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
+        table = [["" if v is None else str(v) for v in row] for row in ws.iter_rows(values_only=True)]
+    else:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            table = list(csv.reader(f))
+    start = next((i for i, r in enumerate(table) if r and r[0].strip() == "Key"), None)
+    if start is None:
+        raise SystemExit(f"{path}: no header row starting with 'Key'")
+    head = [h.strip() for h in table[start]]
+    return [dict(zip(head, r)) for r in table[start + 1:]]
 
 
 def esc(text):
