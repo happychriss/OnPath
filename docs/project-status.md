@@ -1,10 +1,12 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.0** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.1** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **0.11.1** (2026-10-26): no app change; route profile comments and bike-routing notes tidied
+  (`docs/design/bike-routing.md`).
 - **0.11.0 released** by the captain on donald, 2026-10-26 (everything below since 0.10.3; notes
   `docs/release-notes/v0.11.0.md`).
 - **desktop (donald), 2026-10-25/26 – bike routing, difficulty, Komoot GPX type, senior review.** All on
