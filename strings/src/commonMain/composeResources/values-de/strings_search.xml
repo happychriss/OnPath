@@ -6,9 +6,9 @@
     <string name="search_intro">Finde Hütten, Gipfel, Dörfer, Wege und Adressen. Zuerst wird die Offline-Karte durchsucht; Online-Ergebnisse kommen dazu, wenn du verbunden bist.</string>
     <string name="search_recent">Zuletzt gesucht</string>
     <string name="search_nothing_of_kind">Nichts dieser Art in der Offline-Karte.</string>
-    <string name="search_no_match">Kein Treffer in der Offline-Karte – versuch es mit den Online-Ergebnissen oder Google Maps.</string>
+    <string name="search_no_match">Kein Treffer in der Offline-Karte – versuche es mit den Online-Ergebnissen oder Google Maps.</string>
     <string name="search_online_attribution">Online-Ergebnisse © OpenStreetMap</string>
-    <string name="search_searching_online">Suche online…</string>
+    <string name="search_searching_online">Online-Suche läuft…</string>
     <string name="search_in_google">„%1$s“ in Google Maps suchen</string>
     <string name="search_google_line">Öffnet Google Maps – Geschäfte, Öffnungszeiten, Bewertungen</string>
     <string name="search_preparing">Offline-Suche wird vorbereitet…</string>

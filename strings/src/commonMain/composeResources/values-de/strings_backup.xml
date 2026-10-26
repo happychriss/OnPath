@@ -30,7 +30,7 @@
     <string name="backup_failed">Sicherung in %1$s fehlgeschlagen – %2$s</string>
     <string name="backup_folder_chosen">gewählter Ordner</string>
     <string name="backup_folder_unknown">Sicherungsordner</string>
-    <string name="backup_folder_phone">Telefonspeicher</string>
+    <string name="backup_folder_phone">Handyspeicher</string>
     <string name="backup_err_not_written">die Sicherung konnte nicht geschrieben werden</string>
     <string name="backup_err_android10">erfordert Android 10</string>
     <string name="backup_err_documents">in den Documents-Ordner kann nicht geschrieben werden</string>

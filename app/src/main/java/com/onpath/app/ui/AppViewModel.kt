@@ -2750,7 +2750,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The date is still shown in My routes; Rename there changes it.
      */
     private fun nameRecordedTour(t: Tour) {
-        if (!t.name.startsWith("Tour ")) return
+        // the date name in the language it was made in (EN "Tour 20 Oct…", the German pattern starts the same today)
+        val datePrefix = Txt.s(Res.string.nav_tour_date_name, "\u0000").substringBefore("\u0000")
+        if (!t.name.startsWith("Tour ") && !t.name.startsWith(datePrefix)) return
         viewModelScope.launch {
             val name = try {
                 val places = search.offlineIndex().entries.map { it.place }

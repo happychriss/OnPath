@@ -28,7 +28,7 @@
     <string name="routes_sac_5_text">Oft weglos; einfache Kletterstellen (bis II. Grad); sehr ausgesetztes Gelände. Bergsteigerische Erfahrung nötig.</string>
 
     <string name="routes_title">Meine Routen</string>
-    <string name="routes_importing">Importiere…</string>
+    <string name="routes_importing">Wird importiert…</string>
     <string name="routes_import_gpx">GPX importieren</string>
     <string name="routes_empty">Noch keine Routen.\nSpeichere eine geplante Route, zeichne eine Tour auf oder importiere eine GPX-Datei.</string>
     <string name="routes_kind_planned">Geplante Route</string>

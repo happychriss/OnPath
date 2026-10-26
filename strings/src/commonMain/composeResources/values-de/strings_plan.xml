@@ -25,7 +25,7 @@
     <string name="plan_hint_pushing">%1$s Schieben</string>
     <plurals name="plan_hint_steps">
         <item quantity="one">Treppe</item>
-        <item quantity="other">%1$d× Treppe</item>
+        <item quantity="other">%1$d× Treppen</item>
     </plurals>
     <plurals name="plan_hint_above_t">
         <item quantity="one">%1$d Abschnitt über T%2$d</item>
@@ -123,7 +123,7 @@
     <string name="plan_difficulty_moderate">Mittel</string>
     <string name="plan_difficulty_difficult">Schwer</string>
     <string name="plan_difficulty_unpaved">unbefestigt</string>
-    <string name="plan_because_grade">%1$s wegen %2$s mit %3$s oder schwerer</string>
+    <string name="plan_because_grade">%1$s wegen %2$s ab %3$s</string>
     <string name="plan_because_unpaved">%1$s, weil %2$d % unbefestigt sind (%3$s)</string>
     <string name="plan_because_loose">%1$s wegen %2$s auf losem Untergrund</string>
     <string name="plan_save_as_new_route">Als neue Route speichern</string>
@@ -145,9 +145,9 @@
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
     <string name="plan_redo">Wiederholen</string>
-    <string name="plan_compass_heading">Karte dreht sich mit deiner Fahrtrichtung. Tippen für Norden oben</string>
+    <string name="plan_compass_heading">Karte dreht sich mit deiner Bewegungsrichtung. Tippen für Norden oben</string>
     <string name="plan_compass_turned">Karte ist gedreht. Tippen für Norden oben</string>
-    <string name="plan_compass_north">Norden ist oben. Tippen, um die Karte mit deiner Fahrtrichtung zu drehen</string>
+    <string name="plan_compass_north">Norden ist oben. Tippen, um die Karte mit deiner Bewegungsrichtung zu drehen</string>
     <string name="plan_hold_hide_route">Halten, um die Route auszublenden</string>
     <string name="plan_location_off_tap">Standort ist aus, tippen zum Einschalten</string>
     <string name="plan_location_denied_tap">Standort nicht erlaubt, tippen zum Erlauben</string>
@@ -161,7 +161,7 @@
     <string name="plan_add_to_route">Zur Route hinzufügen</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
     <plurals name="plan_removes_points">
-        <item quantity="one">Entfernt den %1$d Punkt davor</item>
+        <item quantity="one">Entfernt den Punkt davor</item>
         <item quantity="other">Entfernt die %1$d Punkte davor</item>
     </plurals>
     <string name="plan_start_finish_here">Hier starten &amp; enden</string>
@@ -206,8 +206,8 @@
     <string name="plan_err_a_point">Ein Routenpunkt</string>
     <string name="plan_err_cancelled">Die Routenberechnung wurde abgebrochen.</string>
     <string name="plan_err_no_data">Keine Routing-Daten für dieses Gebiet.</string>
-    <string name="plan_err_busy">Die Routenberechnung ist beschäftigt – versuche es gleich noch einmal.</string>
-    <string name="plan_err_unexpected">Die Routenberechnung ist unerwartet fehlgeschlagen. Versuche es erneut; passiert es wieder, sende die Diagnose (Einstellungen → Diagnostics).</string>
+    <string name="plan_err_busy">Es wird gerade eine andere Route berechnet – versuche es gleich noch einmal.</string>
+    <string name="plan_err_unexpected">Die Routenberechnung ist unerwartet fehlgeschlagen. Versuche es erneut; passiert es wieder, sende einen Fehlerbericht (Einstellungen → Diagnose).</string>
     <string name="plan_err_straight">Routen können gerade nicht berechnet werden – gerade Linien angezeigt.</string>
     <string name="plan_err_no_route_between">Keine Route zwischen Punkt %1$d und %2$d gefunden.</string>
     <string name="plan_err_took_too_long">Berechnung dauerte zu lange – vorerst gerade Linien</string>

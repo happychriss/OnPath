@@ -43,7 +43,7 @@
     <string name="msg_date_pattern_area">d. MMM yyyy</string>
     <string name="msg_recording_not_started">Die Aufzeichnung ist nicht gestartet. Erlaube OnPath den genauen Standort und Benachrichtigungen und versuche es dann noch einmal.</string>
     <string name="msg_check_no_route_followed">Du folgst keiner Route – die neue Aktivität gilt für die Aufzeichnung und den Plan.</string>
-    <string name="msg_check_waiting_gps">Warte auf GPS…</string>
+    <string name="msg_check_waiting_gps">Warten auf GPS…</string>
     <string name="msg_check_nothing_left">Von der Route ist nichts mehr zu prüfen</string>
     <string name="msg_check_cannot_route">Routen können gerade nicht geprüft werden</string>
     <string name="msg_check_no_route">Keine Route dafür gefunden</string>
@@ -66,7 +66,7 @@
     <string name="msg_no_location_permission">Ohne Standortberechtigung funktioniert die Karte, aber Position und Aufzeichnung nicht.</string>
     <string name="msg_no_storage_permission">Ohne Speicherzugriff kann OnPath Tracks und Routen nicht nach Documents/OnPath kopieren. Wähle einen anderen Ordner unter Einstellungen → Sicherung.</string>
     <string name="msg_no_folder_picker">Dieses Handy hat keine Ordnerauswahl – Wiederherstellen und Ordnerwahl sind nicht möglich.</string>
-    <string name="msg_something_wrong">Etwas ist schiefgelaufen. Es wurde unter Einstellungen → Diagnose notiert.</string>
+    <string name="msg_something_wrong">Etwas ist schiefgegangen. Es wurde unter Einstellungen → Diagnose notiert.</string>
     <string name="msg_rides_title">Fahrten in „%1$s“</string>
     <string name="msg_unfinished_save_title">Nicht beendete Tour speichern?</string>
     <string name="msg_update_tour_title">Eine Tour wird aufgezeichnet</string>

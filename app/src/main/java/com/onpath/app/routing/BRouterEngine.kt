@@ -120,7 +120,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException(Txt.s(Res.string.plan_err_memory))
         } catch (e: Exception) {
             Problems.warn("routing", "BRouter threw an exception; shown to the user as a routing error", e)
-            throw RoutingException(describeError(e.toString(), activity, sacLimit, timeoutMs))
+            throw RoutingException(describeError(e.toString(), activity, sacLimit, timeoutMs), timedOut = isTimeout(e.toString()))
         }
 
         return toResult(track, waypoints, activity, matchedPoints(track, nodes))

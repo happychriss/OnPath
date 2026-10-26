@@ -148,7 +148,7 @@
     <string name="maps_chip_your_route">deine Route</string>
     <string name="maps_name_newer_near">neuere Karte bei %1$s</string>
     <string name="maps_name_newer">neuere Karte</string>
-    <string name="maps_name_ahead">voraus auf deiner Tour</string>
+    <string name="maps_name_ahead">weiter vorn auf deiner Tour</string>
     <string name="maps_chip_map">Karte</string>
     <string name="maps_phase_loading">lädt</string>
     <string name="maps_phase_finishing">fast fertig</string>

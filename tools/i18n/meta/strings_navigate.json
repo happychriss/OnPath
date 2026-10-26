@@ -1,178 +1,1133 @@
 {
-  "nav_dir_left": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Left'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_slight_left": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Slight left'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_sharp_left": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Sharp left'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_hairpin_left": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Hairpin left (a bend over 150°)'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Kehre' for a hairpin bend – or 'Spitzkehre'", "max": 16},
-  "nav_dir_keep_left": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Keep left (fork)'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_right": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Right'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_slight_right": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Slight right'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_sharp_right": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Sharp right'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_hairpin_right": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Hairpin right'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Kehre' for a hairpin bend – or 'Spitzkehre'", "max": 16},
-  "nav_dir_keep_right": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Keep right'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_turn_around": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Turn around (U-turn)'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_dir_roundabout": {"area": "Navigate (turns)", "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Roundabout'). Also %1$s of 'nav_turn_in'.", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_turn_now": {"area": "Navigate (turns)", "context": "Screen reader text of the turn card when the turn is here. %1$s = direction ('Left')", "priority": 2, "confidence": "bitte prüfen", "doubt": "Word order: 'Links – jetzt'"},
-  "nav_turn_in": {"area": "Navigate (turns)", "context": "Turn card (screen reader) and lock-screen title: %1$s = direction ('Left'), %2$s = distance ('120 m')", "priority": 1, "confidence": "sicher", "max": 28},
-  "nav_turn_distance_now": {"area": "Navigate (turns)", "context": "Big distance on the turn card when the turn is closer than 15 m", "priority": 1, "confidence": "sicher", "max": 8},
-  "nav_activity_cd": {"area": "Navigate", "context": "Screen reader text of the activity icon on the status card. %1$s = activity ('Hike T3')", "priority": 2, "confidence": "sicher"},
-  "nav_not_on_route": {"area": "Navigate", "context": "Status card title when you are not on the followed route (no time shown)", "priority": 1, "confidence": "sicher", "max": 24},
-  "nav_from_route": {"area": "Navigate", "context": "Under 'Not on the route': %1$s = distance to the route ('120 m')", "priority": 1, "confidence": "sicher", "max": 28},
-  "nav_arrive": {"area": "Navigate", "context": "Small label above the arrival clock on the status card ('Arrive 16:40')", "priority": 1, "confidence": "sicher", "max": 8},
-  "nav_profile_show": {"area": "Navigate", "context": "Screen reader text of the chevron that opens the elevation profile", "priority": 2, "confidence": "sicher"},
-  "nav_profile_hide": {"area": "Navigate", "context": "Screen reader text of the chevron that closes the elevation profile", "priority": 2, "confidence": "sicher"},
-  "nav_copy_position": {"area": "Navigate", "context": "Screen reader action on the position line (copies coordinates for an emergency call)", "priority": 3, "confidence": "sicher"},
-  "nav_position_clip": {"area": "Navigate", "context": "Label of the copied coordinates on the clipboard (rarely visible)", "priority": 3, "confidence": "sicher"},
-  "nav_copied": {"area": "Navigate", "context": "Position line after a tap: %1$s = coordinates line", "priority": 2, "confidence": "sicher"},
-  "nav_status_recording": {"area": "Navigate", "context": "Status word: recording runs. Status card line, lock-screen notification text ('Recording · following …')", "priority": 1, "confidence": "sicher", "max": 14},
-  "nav_status_paused": {"area": "Navigate", "context": "Status word: recording paused (status card, notification)", "priority": 1, "confidence": "sicher", "max": 14},
-  "nav_status_searching_gps": {"area": "Notification", "context": "Notification status while GPS is lost during a tour", "priority": 2, "confidence": "sicher", "max": 16},
-  "nav_moving_lower": {"area": "Navigate", "context": "Part of the recording line: 'Recording · 2.1 km · moving 0:28'. %1$s = h:mm", "priority": 2, "confidence": "bitte prüfen", "doubt": "'in Bewegung' – alternative 'unterwegs'", "max": 20},
-  "nav_moving": {"area": "Navigate", "context": "Opened status card: 'Moving 1:12 · breaks 0:11'. %1$s = h:mm", "priority": 2, "confidence": "bitte prüfen", "doubt": "'In Bewegung' – alternative 'Unterwegs'"},
-  "nav_breaks": {"area": "Navigate", "context": "Part of a line: 'breaks 0:11'. %1$s = h:mm", "priority": 2, "confidence": "sicher"},
-  "nav_no_gps": {"area": "Navigate", "context": "Amber warning on the status card: no GPS fix during a tour", "priority": 1, "confidence": "sicher", "max": 12},
-  "nav_position_age": {"area": "Navigate", "context": "After 'No GPS' / in the position line: %1$d = minutes since the last fix", "priority": 2, "confidence": "sicher"},
-  "nav_time_paused": {"area": "Navigate", "context": "Status card: the time estimate is paused (no GPS / no progress); may get ' · no progress'", "priority": 2, "confidence": "sicher", "max": 20},
-  "nav_off_route": {"area": "Off route", "context": "Title of the amber off-route card; notification status; screen reader", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Abseits der Route' – shorter alternative 'Von der Route ab'", "max": 18},
-  "nav_pace_faster": {"area": "Navigate", "context": "Pace note in the opened status card when faster in all three (up, flat, down); first letter is made upper case", "priority": 2, "confidence": "sicher"},
-  "nav_pace_slower": {"area": "Navigate", "context": "Pace note: slower in all three; first letter is made upper case", "priority": 2, "confidence": "sicher"},
-  "nav_pace_faster_where": {"area": "Navigate", "context": "Pace note: %1$s = where ('uphill', 'uphill and downhill'); first letter is made upper case. Joined with ' · ' to a slower part", "priority": 2, "confidence": "bitte prüfen", "doubt": "German word order: 'Bergauf schneller als geplant'"},
-  "nav_pace_slower_where": {"area": "Navigate", "context": "Pace note: %1$s = where ('on the flat')", "priority": 2, "confidence": "bitte prüfen", "doubt": "German word order"},
-  "nav_pace_uphill": {"area": "Navigate", "context": "Place word in the pace note", "priority": 2, "confidence": "sicher"},
-  "nav_pace_flat": {"area": "Navigate", "context": "Place word in the pace note", "priority": 2, "confidence": "sicher"},
-  "nav_pace_downhill": {"area": "Navigate", "context": "Place word in the pace note", "priority": 2, "confidence": "sicher"},
-  "nav_pace_and": {"area": "Navigate", "context": "Joins two places in the pace note: %1$s and %2$s", "priority": 2, "confidence": "sicher"},
-  "nav_take_new_route": {"area": "Off route", "context": "Button (card and notification action): take the new route found after leaving the route", "priority": 1, "confidence": "sicher", "max": 18},
-  "nav_keep_original": {"area": "Off route", "context": "Button (card and notification action): keep following the original route", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Original behalten' – alternative 'Alte Route behalten'", "max": 18},
-  "nav_title_searching": {"area": "Off route", "context": "Off-route notification title / question card title: searching for a way back", "priority": 1, "confidence": "sicher"},
-  "nav_title_found": {"area": "Off route", "context": "Off-route notification title / question card title: a new route was found (question)", "priority": 1, "confidence": "sicher"},
-  "nav_title_no_data": {"area": "Off route", "context": "Off-route notification title / question card title: no map data here to route", "priority": 2, "confidence": "sicher"},
-  "nav_title_unavailable": {"area": "Off route", "context": "Off-route notification title / question card title: the router cannot run now", "priority": 2, "confidence": "sicher"},
-  "nav_title_no_way": {"area": "Off route", "context": "Off-route notification title / question card title: nothing found", "priority": 2, "confidence": "sicher"},
-  "nav_title_kept": {"area": "Off route", "context": "Off-route notification title / question card title: user kept the original route", "priority": 2, "confidence": "sicher"},
-  "nav_state_searching": {"area": "Off route", "context": "Small state line on the amber off-route card: searching for a way back", "priority": 1, "confidence": "sicher"},
-  "nav_state_found": {"area": "Off route", "context": "Small state line on the amber off-route card: a new route was found (question)", "priority": 1, "confidence": "sicher"},
-  "nav_state_no_data": {"area": "Off route", "context": "Small state line on the amber off-route card: no map data here to route", "priority": 2, "confidence": "sicher"},
-  "nav_state_unavailable": {"area": "Off route", "context": "Small state line on the amber off-route card: the router cannot run now", "priority": 2, "confidence": "sicher"},
-  "nav_state_no_way": {"area": "Off route", "context": "Small state line on the amber off-route card: nothing found", "priority": 2, "confidence": "sicher"},
-  "nav_state_kept": {"area": "Off route", "context": "Small state line on the amber off-route card: user kept the original route", "priority": 2, "confidence": "sicher"},
-  "nav_switch_title": {"area": "Off route", "context": "Question title when an activity switch found a route: %1$s = activity ('Hike T3', 'Gravel bike')", "priority": 2, "confidence": "sicher"},
-  "nav_rest_of_route": {"area": "Off route", "context": "Question text after an activity switch: %1$s = distance of the rest; followed by ' (+1.2 km) · 3 h 10 min'", "priority": 2, "confidence": "sicher"},
-  "nav_nearest_way": {"area": "Off route", "context": "Part of the question text: %1$s = distance to the nearest way", "priority": 2, "confidence": "sicher"},
-  "nav_new_route_length": {"area": "Off route", "context": "Part of the question text: %1$s = length of a fresh new route", "priority": 2, "confidence": "sicher"},
-  "nav_rejoins_in": {"area": "Off route", "context": "Part of the question text: %1$s = distance until the new route meets the old one", "priority": 1, "confidence": "bitte prüfen", "doubt": "'zurück auf der Route in 600 m' is long; alternative 'trifft Route in 600 m'"},
-  "nav_about_as_long": {"area": "Off route", "context": "Question text: the new route is about as long as the old rest", "priority": 2, "confidence": "sicher"},
-  "nav_shorter": {"area": "Off route", "context": "Question text: %1$s = how much shorter", "priority": 2, "confidence": "sicher"},
-  "nav_to_route_direct": {"area": "Off route", "context": "Off-route card: %1$s = distance, %2$s = direction word ('north-east'); a bearing, not a path", "priority": 1, "confidence": "bitte prüfen", "doubt": "'(Luftlinie)' for 'direct'"},
-  "nav_compass_n": {"area": "Off route", "context": "Direction word in '120 m north (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_ne": {"area": "Off route", "context": "Direction word in '120 m north-east (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_e": {"area": "Off route", "context": "Direction word in '120 m east (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_se": {"area": "Off route", "context": "Direction word in '120 m south-east (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_s": {"area": "Off route", "context": "Direction word in '120 m south (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_sw": {"area": "Off route", "context": "Direction word in '120 m south-west (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_w": {"area": "Off route", "context": "Direction word in '120 m west (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_compass_nw": {"area": "Off route", "context": "Direction word in '120 m north-west (direct)'", "priority": 1, "confidence": "sicher"},
-  "nav_back_to": {"area": "Off route", "context": "Off-route notification text without a direction: %1$s = route name", "priority": 2, "confidence": "sicher"},
-  "nav_back_to_route": {"area": "Off route", "context": "Off-route notification text without a direction or route name", "priority": 2, "confidence": "sicher"},
-  "nav_notif_to_go": {"area": "Notification", "context": "Lock screen while following a route: %1$s = distance or time left ('8.2 km to go', '1 h 25 min to go')", "priority": 1, "confidence": "bitte prüfen", "doubt": "'noch 8,2 km' – same word as 'left'"},
-  "nav_notif_arrival": {"area": "Notification", "context": "Lock screen: %1$s = arrival clock ('arrival 15:40')", "priority": 1, "confidence": "sicher"},
-  "nav_notif_left": {"area": "Notification", "context": "Lock screen: %1$s = distance left (when the title shows a junction)", "priority": 1, "confidence": "sicher"},
-  "nav_notif_following": {"area": "Notification", "context": "Recording notification text: %1$s = status ('Recording'), %2$s = name of the followed route", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Route: Meran – Algund' instead of 'following …'", "max": 40},
-  "nav_notif_recorded": {"area": "Notification", "context": "Expanded lock-screen notification: %1$s = recorded distance, %2$s = elapsed clock", "priority": 2, "confidence": "sicher"},
-  "nav_pause": {"area": "Tour card (Plan)", "context": "Button on the tour card and notification action: pause the recording", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Pausieren' (verb) – or 'Pause'", "max": 12},
-  "nav_route_fallback": {"area": "Notification", "context": "Name of a followed line that has no name (shown in the notification 'following Route')", "priority": 3, "confidence": "sicher"},
-  "nav_channel_recording": {"area": "Notification", "context": "Android notification channel name (system settings → notifications)", "priority": 3, "confidence": "sicher"},
-  "nav_channel_recording_desc": {"area": "Notification", "context": "Android notification channel description", "priority": 3, "confidence": "sicher"},
-  "nav_channel_off_route": {"area": "Notification", "context": "Android notification channel name for the off-route question", "priority": 3, "confidence": "sicher"},
-  "nav_channel_off_route_desc": {"area": "Notification", "context": "Android notification channel description", "priority": 3, "confidence": "sicher"},
-  "nav_rec_stopped_title": {"area": "Notification", "context": "Notification title when recording stopped by itself (error)", "priority": 3, "confidence": "sicher"},
-  "nav_rec_fail_read": {"area": "Notification", "context": "Error (notification + app message): saved tracks unreadable", "priority": 3, "confidence": "sicher"},
-  "nav_rec_fail_permission": {"area": "Notification", "context": "Error: no precise location permission; path in Android settings", "priority": 3, "confidence": "bitte prüfen", "doubt": "Android menu names differ by phone ('Apps' / 'Berechtigungen')"},
-  "nav_rec_fail_no_gps": {"area": "Notification", "context": "Error: device has no GPS", "priority": 3, "confidence": "sicher"},
-  "nav_rec_fail_blocked": {"area": "Notification", "context": "Error: Android refused the foreground service", "priority": 3, "confidence": "sicher"},
-  "nav_rec_fail_storage": {"area": "Notification", "context": "Error: new tour cannot be written (storage)", "priority": 3, "confidence": "sicher"},
-  "nav_rec_save_failed_title": {"area": "Notification", "context": "Notification title: points can no longer be saved", "priority": 3, "confidence": "sicher"},
-  "nav_rec_save_failed": {"area": "Notification", "context": "Notification text: points can no longer be saved", "priority": 3, "confidence": "sicher"},
-  "nav_rec_paused_title": {"area": "Notification", "context": "Notification when you walk away while paused", "priority": 2, "confidence": "sicher"},
-  "nav_rec_paused_moving": {"area": "Notification", "context": "Notification text when moving while paused (button Resume)", "priority": 2, "confidence": "sicher"},
-  "nav_interrupted_title": {"area": "Notification", "context": "Notification after a phone restart / app update during a tour", "priority": 3, "confidence": "sicher"},
-  "nav_interrupted_boot": {"area": "Notification", "context": "Notification text (short) after a phone restart; 'Continue' = button in the app", "priority": 3, "confidence": "bitte prüfen", "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"},
-  "nav_interrupted_update": {"area": "Notification", "context": "Notification text (short) after an app update", "priority": 3, "confidence": "bitte prüfen", "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"},
-  "nav_interrupted_boot_long": {"area": "Notification", "context": "Expanded notification after a phone restart: %1$s = tour name", "priority": 3, "confidence": "sicher"},
-  "nav_interrupted_update_long": {"area": "Notification", "context": "Expanded notification after an app update: %1$s = tour name", "priority": 3, "confidence": "sicher"},
-  "nav_gps_no_permission": {"area": "Map (GPS status)", "context": "Screen reader text of the locate button: no location permission", "priority": 2, "confidence": "sicher"},
-  "nav_gps_off": {"area": "Map (GPS status)", "context": "Screen reader text of the locate button: location switched off", "priority": 2, "confidence": "sicher"},
-  "nav_gps_searching": {"area": "Map (GPS status)", "context": "Screen reader text of the locate button: GPS searching", "priority": 2, "confidence": "sicher"},
-  "nav_gps_weak": {"area": "Map (GPS status)", "context": "Screen reader text of the locate button: GPS fix weak", "priority": 2, "confidence": "sicher"},
-  "nav_gps_good": {"area": "Map (GPS status)", "context": "Screen reader text of the locate button: GPS fix good", "priority": 2, "confidence": "sicher"},
-  "nav_end_tour_title": {"area": "Tour card (Plan)", "context": "Dialog title when ending a tour (buttons Cancel · Delete · Save)", "priority": 1, "confidence": "sicher", "max": 30},
-  "nav_delete_track_title": {"area": "Tour card (Plan)", "context": "Dialog title before a tour goes to the recycle bin", "priority": 2, "confidence": "sicher"},
-  "nav_recycle_bin_note": {"area": "Tour card (Plan)", "context": "Dialog text: %1$d = days in the recycle bin (30). German 'Er' = der Track", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Er' refers to 'der Track' – also used for routes in some dialogs?"},
-  "nav_arrived_title": {"area": "Navigate", "context": "Dialog when the destination is reached (Cancel = 'Keep going')", "priority": 1, "confidence": "sicher"},
-  "nav_keep_going": {"area": "Navigate", "context": "Button in the arrival dialog: do not end the tour", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Weitermachen' – alternative 'Nicht beenden'", "max": 16},
-  "nav_continue": {"area": "Tour card (Plan)", "context": "Main button of the tour card: back to navigation", "priority": 1, "confidence": "sicher", "max": 16},
-  "nav_continue_as": {"area": "Tour card (Plan)", "context": "Main button of the tour card: %1$s = activity ('Continue · Gravel bike')", "priority": 1, "confidence": "bitte prüfen", "doubt": "Long activity names ('E-Mountainbike') are cut on narrow phones", "max": 30},
-  "nav_tour_running": {"area": "Tour card (Plan)", "context": "Status line of the tour card: %1$s = distance, %2$s = elapsed clock", "priority": 1, "confidence": "sicher", "max": 40},
-  "nav_tour_paused": {"area": "Tour card (Plan)", "context": "Status line of the tour card while paused", "priority": 1, "confidence": "sicher", "max": 40},
-  "nav_end_tour": {"area": "Tour card (Plan)", "context": "Red button on the tour card (asks first)", "priority": 1, "confidence": "sicher", "max": 14},
-  "nav_route_back_title": {"area": "Tour card (Plan)", "context": "Dialog when the destination was deleted during a tour", "priority": 3, "confidence": "sicher"},
-  "nav_route_back_text": {"area": "Tour card (Plan)", "context": "Dialog text", "priority": 3, "confidence": "sicher"},
-  "nav_route_back": {"area": "Tour card (Plan)", "context": "Button: plan the way back to the start", "priority": 3, "confidence": "bitte prüfen", "doubt": "'Zurück zum Start' as verb button"},
-  "nav_just_record": {"area": "Tour card (Plan)", "context": "Button: no route, only record", "priority": 3, "confidence": "sicher"},
-  "nav_long_route_foot": {"area": "Tour card (Plan)", "context": "Dialog text: %1$s = duration in words ('About 29 days', from the plan area); first letter upper case", "priority": 3, "confidence": "bitte prüfen", "doubt": "%1$s comes from LongRoute.describe (plan area)"},
-  "nav_long_route_bike": {"area": "Tour card (Plan)", "context": "Dialog text for bikes: %1$s = duration in words", "priority": 3, "confidence": "bitte prüfen", "doubt": "%1$s comes from LongRoute.describe (plan area)"},
-  "nav_long_route_title": {"area": "Tour card (Plan)", "context": "Dialog title for a plan much longer than a day", "priority": 3, "confidence": "sicher"},
-  "nav_plan_anyway": {"area": "Tour card (Plan)", "context": "Button: plan the very long route", "priority": 3, "confidence": "sicher"},
-  "nav_check_checking": {"area": "Activity check sheet", "context": "Row status while the rest of the route is checked for that activity", "priority": 2, "confidence": "sicher"},
-  "nav_check_fits": {"area": "Activity check sheet", "context": "Row status: the rest of the route fits this activity", "priority": 2, "confidence": "sicher"},
-  "nav_check_recording_as": {"area": "Activity check sheet", "context": "Sheet header (free recording), followed by the activity", "priority": 2, "confidence": "sicher"},
-  "nav_check_navigating_as": {"area": "Activity check sheet", "context": "Sheet header (following a route), followed by the activity", "priority": 2, "confidence": "sicher"},
-  "nav_check_switch_to": {"area": "Activity check sheet", "context": "Section title above the other activities", "priority": 2, "confidence": "sicher"},
-  "nav_check_rest_of_route": {"area": "Activity check sheet", "context": "Small text right of 'Switch to'", "priority": 2, "confidence": "sicher"},
-  "nav_check_keep": {"area": "Activity check sheet", "context": "Button: keep the activity. %1$s = activity ('Hike T3')", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Wandern T3 beibehalten'"},
-  "nav_check_switch_to_cd": {"area": "Activity check sheet", "context": "Screen reader action of a row: %1$s = activity", "priority": 3, "confidence": "sicher"},
-  "nav_check_not_suited": {"area": "Activity check sheet", "context": "Row warning: %1$s = distance, %2$s = who ('gravel bikes', 'hiking (T3)')", "priority": 2, "confidence": "bitte prüfen", "doubt": "'ungeeignet für Wandern (T3)' reads a bit stiff"},
-  "nav_check_steps": {"area": "Activity check sheet", "context": "Row warning: %1$s = length of steps", "priority": 2, "confidence": "sicher"},
-  "nav_check_busy_road": {"area": "Activity check sheet", "context": "Row warning (hiking): %1$s = length of busy road", "priority": 2, "confidence": "sicher"},
-  "nav_check_unpaved": {"area": "Activity check sheet", "context": "Row warning (bike): %1$s = length unpaved", "priority": 2, "confidence": "sicher"},
-  "nav_check_rough": {"area": "Activity check sheet", "context": "Row warning (gravel bike): %1$s = length of rough trail", "priority": 2, "confidence": "bitte prüfen", "doubt": "'grobe Pfade' – alternative 'ruppige Pfade'"},
-  "nav_who_bike_touring": {"area": "Activity check sheet", "context": "Plural of the activity in 'not suited for …'", "priority": 2, "confidence": "sicher"},
-  "nav_who_bike_trekking": {"area": "Activity check sheet", "context": "Plural of the activity in 'not suited for …'", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Gravel-Räder' follows the activity name"},
-  "nav_who_ebike": {"area": "Activity check sheet", "context": "Plural of the activity in 'not suited for …'", "priority": 2, "confidence": "sicher"},
-  "nav_who_mtb": {"area": "Activity check sheet", "context": "Plural of the activity in 'not suited for …'", "priority": 2, "confidence": "bitte prüfen", "doubt": "Long form chosen; short 'MTBs' possible"},
-  "nav_who_emtb": {"area": "Activity check sheet", "context": "Plural of the activity in 'not suited for …'", "priority": 2, "confidence": "bitte prüfen", "doubt": "Long form chosen; short 'MTBs' possible"},
-  "nav_who_hike": {"area": "Activity check sheet", "context": "'not suited for hiking (T3)': %1$d = SAC level", "priority": 2, "confidence": "bitte prüfen", "doubt": "'für Wandern (T3)'"},
-  "nav_rides_question": {"area": "End tour – rides", "context": "End-tour dialog when a bus / car / lift ride was found: one = one ride, other = %1$d rides", "priority": 2, "confidence": "sicher"},
-  "nav_rides_kept_note": {"area": "End tour – rides", "context": "Small note under the choices; 'Edit rides' must match the menu item in My routes", "priority": 2, "confidence": "bitte prüfen", "doubt": "Menu item name 'Fahrten bearbeiten' must match My routes"},
-  "nav_row_on_foot": {"area": "End tour – rides", "context": "Timeline row kind", "priority": 2, "confidence": "sicher"},
-  "nav_row_by_bike": {"area": "End tour – rides", "context": "Timeline row kind", "priority": 2, "confidence": "sicher"},
-  "nav_row_vehicle": {"area": "End tour – rides", "context": "Timeline row kind (bus or car ride)", "priority": 2, "confidence": "sicher"},
-  "nav_row_lift": {"area": "End tour – rides", "context": "Timeline row kind (cable car / chair lift)", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Lift' (usual in Tyrol) – or 'Seilbahn'"},
-  "nav_ride_until_time": {"area": "End tour – rides", "context": "Choice: %1$s = clock time the ride started", "priority": 2, "confidence": "sicher"},
-  "nav_ride_until_ride": {"area": "End tour – rides", "context": "Choice (no time known)", "priority": 2, "confidence": "sicher"},
-  "nav_ride_until_last_detail": {"area": "End tour – rides", "context": "Detail under the choice (several rides)", "priority": 2, "confidence": "sicher"},
-  "nav_ride_until_detail": {"area": "End tour – rides", "context": "Detail under the choice (one ride)", "priority": 2, "confidence": "sicher"},
-  "nav_ride_not_counted": {"area": "End tour – rides", "context": "Choice: keep all, rides do not count", "priority": 2, "confidence": "sicher"},
-  "nav_ride_not_counted_detail": {"area": "End tour – rides", "context": "Detail under the choice", "priority": 2, "confidence": "sicher"},
-  "nav_ride_split_two": {"area": "End tour – rides", "context": "Choice: split the tour into two", "priority": 2, "confidence": "sicher"},
-  "nav_ride_split_n": {"area": "End tour – rides", "context": "Choice: %1$d = number of tracks (3 or more)", "priority": 2, "confidence": "sicher"},
-  "nav_ride_split_two_detail": {"area": "End tour – rides", "context": "Detail under the choice", "priority": 2, "confidence": "sicher"},
-  "nav_ride_split_n_detail": {"area": "End tour – rides", "context": "Detail under the choice", "priority": 2, "confidence": "sicher"},
-  "nav_ride_as_recorded": {"area": "End tour – rides", "context": "Choice: keep everything as recorded", "priority": 2, "confidence": "sicher"},
-  "nav_ride_as_recorded_detail": {"area": "End tour – rides", "context": "Detail under the choice", "priority": 2, "confidence": "sicher"},
-  "nav_tour_date_name": {"area": "My routes", "context": "Name of a new recorded tour: %1$s = date and time ('22 Oct 2026, 16:58'); the app proposes a place name later", "priority": 2, "confidence": "sicher"},
-  "nav_line_note": {"area": "Navigate", "context": "Status card after the followed route changed: %1$s = the old arrival clock", "priority": 2, "confidence": "bitte prüfen", "doubt": "'vorher 13:15' – alternative 'statt 13:15'"},
-  "nav_pause_no_gps": {"area": "Navigate", "context": "Reason after 'Time paused · …'", "priority": 2, "confidence": "sicher"},
-  "nav_pause_no_progress": {"area": "Navigate", "context": "Reason after 'Time paused · …'", "priority": 2, "confidence": "sicher"},
-  "nav_moving_breaks": {"area": "End of tour", "context": "Finished tour: %1$s = moving time, %2$s = breaks (h:mm)", "priority": 2, "confidence": "sicher"},
-  "nav_plan_vs_needed": {"area": "End of tour", "context": "Finished tour: %1$s = planned time, %2$s = time you needed (h:mm)", "priority": 2, "confidence": "sicher"},
-  "nav_pace_relaxed": {"area": "Settings → Pace", "context": "Pace level 'Relaxed' (one of five) in Settings → Pace and Time details; row label 76 dp wide", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Gemütlich' / 'Locker' – the levels must read as a scale", "max": 10},
-  "nav_pace_easy": {"area": "Settings → Pace", "context": "Pace level 'Easy' (one of five) in Settings → Pace and Time details; row label 76 dp wide", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Gemütlich' / 'Locker' – the levels must read as a scale", "max": 10},
-  "nav_pace_average": {"area": "Settings → Pace", "context": "Pace level 'Average' (one of five) in Settings → Pace and Time details; row label 76 dp wide", "priority": 2, "confidence": "sicher", "max": 10},
-  "nav_pace_fit": {"area": "Settings → Pace", "context": "Pace level 'Fit' (one of five) in Settings → Pace and Time details; row label 76 dp wide", "priority": 2, "confidence": "sicher", "max": 10},
-  "nav_pace_very_fit": {"area": "Settings → Pace", "context": "Pace level 'Very fit' (one of five) in Settings → Pace and Time details; row label 76 dp wide", "priority": 2, "confidence": "sicher", "max": 10},
-  "nav_pace_meaning": {"area": "Settings → Pace", "context": "What a pace level means: %1$s = km/h (decimal), %2$d = metres up per hour", "priority": 2, "confidence": "sicher"},
-  "nav_time_details": {"area": "Plan sheet ⋯", "context": "Title of the page Time details (route sheet ⋯)", "priority": 2, "confidence": "sicher"},
-  "nav_time_moving": {"area": "Plan sheet ⋯", "context": "Time details: moving time of the route", "priority": 2, "confidence": "sicher"},
-  "nav_time_with_breaks": {"area": "Plan sheet ⋯", "context": "Time details: time incl. break allowance", "priority": 2, "confidence": "sicher"},
-  "nav_time_pace_level": {"area": "Plan sheet ⋯", "context": "Time details: the pace level ('Average')", "priority": 2, "confidence": "sicher"}
+  "nav_dir_left": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Left'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_slight_left": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Slight left'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_sharp_left": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Sharp left'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_hairpin_left": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Hairpin left (a bend over 150°)'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Kehre' for a hairpin bend – or 'Spitzkehre'",
+    "max": 16
+  },
+  "nav_dir_keep_left": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Keep left (fork)'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_right": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Right'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_slight_right": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Slight right'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_sharp_right": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Sharp right'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_hairpin_right": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Hairpin right'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Kehre' for a hairpin bend – or 'Spitzkehre'",
+    "max": 16
+  },
+  "nav_dir_keep_right": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Keep right'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_turn_around": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Turn around (U-turn)'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_dir_roundabout": {
+    "area": "Navigate (turns)",
+    "context": "Direction at the next turn / junction: big green turn card in Navigate and lock-screen title ('Roundabout'). Also %1$s of 'nav_turn_in'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_turn_now": {
+    "area": "Navigate (turns)",
+    "context": "Screen reader text of the turn card when the turn is here. %1$s = direction ('Left')",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Word order: 'Links – jetzt'"
+  },
+  "nav_turn_in": {
+    "area": "Navigate (turns)",
+    "context": "Turn card (screen reader) and lock-screen title: %1$s = direction ('Left'), %2$s = distance ('120 m')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "nav_turn_distance_now": {
+    "area": "Navigate (turns)",
+    "context": "Big distance on the turn card when the turn is closer than 15 m",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 8
+  },
+  "nav_activity_cd": {
+    "area": "Navigate",
+    "context": "Screen reader text of the activity icon on the status card. %1$s = activity ('Hike T3')",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_not_on_route": {
+    "area": "Navigate",
+    "context": "Status card title when you are not on the followed route (no time shown)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "nav_from_route": {
+    "area": "Navigate",
+    "context": "Under 'Not on the route': %1$s = distance to the route ('120 m')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "nav_arrive": {
+    "area": "Navigate",
+    "context": "Small label above the arrival clock on the status card ('Arrive 16:40')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 8
+  },
+  "nav_profile_show": {
+    "area": "Navigate",
+    "context": "Screen reader text of the chevron that opens the elevation profile",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_profile_hide": {
+    "area": "Navigate",
+    "context": "Screen reader text of the chevron that closes the elevation profile",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_copy_position": {
+    "area": "Navigate",
+    "context": "Screen reader action on the position line (copies coordinates for an emergency call)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_position_clip": {
+    "area": "Navigate",
+    "context": "Label of the copied coordinates on the clipboard (rarely visible)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_copied": {
+    "area": "Navigate",
+    "context": "Position line after a tap: %1$s = coordinates line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_status_recording": {
+    "area": "Navigate",
+    "context": "Status word: recording runs. Status card line, lock-screen notification text ('Recording · following …')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_status_paused": {
+    "area": "Navigate",
+    "context": "Status word: recording paused (status card, notification)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_status_searching_gps": {
+    "area": "Notification",
+    "context": "Notification status while GPS is lost during a tour",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_moving_lower": {
+    "area": "Navigate",
+    "context": "Part of the recording line: 'Recording · 2.1 km · moving 0:28'. %1$s = h:mm",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'in Bewegung' – alternative 'unterwegs'",
+    "max": 20
+  },
+  "nav_moving": {
+    "area": "Navigate",
+    "context": "Opened status card: 'Moving 1:12 · breaks 0:11'. %1$s = h:mm",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'In Bewegung' – alternative 'Unterwegs'"
+  },
+  "nav_breaks": {
+    "area": "Navigate",
+    "context": "Part of a line: 'breaks 0:11'. %1$s = h:mm",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_no_gps": {
+    "area": "Navigate",
+    "context": "Amber warning on the status card: no GPS fix during a tour",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "nav_position_age": {
+    "area": "Navigate",
+    "context": "After 'No GPS' / in the position line: %1$d = minutes since the last fix",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_time_paused": {
+    "area": "Navigate",
+    "context": "Status card: the time estimate is paused (no GPS / no progress); may get ' · no progress'",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "nav_off_route": {
+    "area": "Off route",
+    "context": "Title of the amber off-route card; notification status; screen reader",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Abseits der Route' – shorter alternative 'Von der Route ab'",
+    "max": 18
+  },
+  "nav_pace_faster": {
+    "area": "Navigate",
+    "context": "Pace note in the opened status card when faster in all three (up, flat, down); first letter is made upper case",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_slower": {
+    "area": "Navigate",
+    "context": "Pace note: slower in all three; first letter is made upper case",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_faster_where": {
+    "area": "Navigate",
+    "context": "Pace note: %1$s = where ('uphill', 'uphill and downhill'); first letter is made upper case. Joined with ' · ' to a slower part",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German word order: 'Bergauf schneller als geplant'"
+  },
+  "nav_pace_slower_where": {
+    "area": "Navigate",
+    "context": "Pace note: %1$s = where ('on the flat')",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German word order"
+  },
+  "nav_pace_uphill": {
+    "area": "Navigate",
+    "context": "Place word in the pace note",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_flat": {
+    "area": "Navigate",
+    "context": "Place word in the pace note",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_downhill": {
+    "area": "Navigate",
+    "context": "Place word in the pace note",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_and": {
+    "area": "Navigate",
+    "context": "Joins two places in the pace note: %1$s and %2$s",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_take_new_route": {
+    "area": "Off route",
+    "context": "Button (card and notification action): take the new route found after leaving the route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 18
+  },
+  "nav_keep_original": {
+    "area": "Off route",
+    "context": "Button (card and notification action): keep following the original route",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Original behalten' – alternative 'Alte Route behalten'",
+    "max": 18
+  },
+  "nav_title_searching": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: searching for a way back",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_title_found": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: a new route was found (question)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_title_no_data": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: no map data here to route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_title_unavailable": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: the router cannot run now",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_title_no_way": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: nothing found",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_title_kept": {
+    "area": "Off route",
+    "context": "Off-route notification title / question card title: user kept the original route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_state_searching": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: searching for a way back",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_state_found": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: a new route was found (question)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_state_no_data": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: no map data here to route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_state_unavailable": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: the router cannot run now",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_state_no_way": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: nothing found",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_state_kept": {
+    "area": "Off route",
+    "context": "Small state line on the amber off-route card: user kept the original route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_switch_title": {
+    "area": "Off route",
+    "context": "Question title when an activity switch found a route: %1$s = activity ('Hike T3', 'Gravel bike')",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rest_of_route": {
+    "area": "Off route",
+    "context": "Question text after an activity switch: %1$s = distance of the rest; followed by ' (+1.2 km) · 3 h 10 min'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_nearest_way": {
+    "area": "Off route",
+    "context": "Part of the question text: %1$s = distance to the nearest way",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_new_route_length": {
+    "area": "Off route",
+    "context": "Part of the question text: %1$s = length of a fresh new route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rejoins_in": {
+    "area": "Off route",
+    "context": "Part of the question text: %1$s = distance until the new route meets the old one",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'zurück auf der Route in 600 m' is long; alternative 'trifft Route in 600 m'"
+  },
+  "nav_about_as_long": {
+    "area": "Off route",
+    "context": "Question text: the new route is about as long as the old rest",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_shorter": {
+    "area": "Off route",
+    "context": "Question text: %1$s = how much shorter",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_to_route_direct": {
+    "area": "Off route",
+    "context": "Off-route card: %1$s = distance, %2$s = direction word ('north-east'); a bearing, not a path",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'(Luftlinie)' for 'direct'"
+  },
+  "nav_compass_n": {
+    "area": "Off route",
+    "context": "Direction word in '120 m north (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_ne": {
+    "area": "Off route",
+    "context": "Direction word in '120 m north-east (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_e": {
+    "area": "Off route",
+    "context": "Direction word in '120 m east (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_se": {
+    "area": "Off route",
+    "context": "Direction word in '120 m south-east (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_s": {
+    "area": "Off route",
+    "context": "Direction word in '120 m south (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_sw": {
+    "area": "Off route",
+    "context": "Direction word in '120 m south-west (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_w": {
+    "area": "Off route",
+    "context": "Direction word in '120 m west (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_compass_nw": {
+    "area": "Off route",
+    "context": "Direction word in '120 m north-west (direct)'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_back_to": {
+    "area": "Off route",
+    "context": "Off-route notification text without a direction: %1$s = route name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_back_to_route": {
+    "area": "Off route",
+    "context": "Off-route notification text without a direction or route name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_notif_to_go": {
+    "area": "Notification",
+    "context": "Lock screen while following a route: %1$s = distance or time left ('8.2 km to go', '1 h 25 min to go')",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'noch 8,2 km' – same word as 'left'"
+  },
+  "nav_notif_arrival": {
+    "area": "Notification",
+    "context": "Lock screen: %1$s = arrival clock ('arrival 15:40')",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_notif_left": {
+    "area": "Notification",
+    "context": "Lock screen: %1$s = distance left (when the title shows a junction)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_notif_following": {
+    "area": "Notification",
+    "context": "Recording notification text: %1$s = status ('Recording'), %2$s = name of the followed route",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Route: Meran – Algund' instead of 'following …'",
+    "max": 40
+  },
+  "nav_notif_recorded": {
+    "area": "Notification",
+    "context": "Expanded lock-screen notification: %1$s = recorded distance, %2$s = elapsed clock",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pause": {
+    "area": "Tour card (Plan)",
+    "context": "Button on the tour card and notification action: pause the recording",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Pausieren' (verb) – or 'Pause'",
+    "max": 12
+  },
+  "nav_route_fallback": {
+    "area": "Notification",
+    "context": "Name of a followed line that has no name (shown in the notification 'following Route')",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_channel_recording": {
+    "area": "Notification",
+    "context": "Android notification channel name (system settings → notifications)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_channel_recording_desc": {
+    "area": "Notification",
+    "context": "Android notification channel description",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_channel_off_route": {
+    "area": "Notification",
+    "context": "Android notification channel name for the off-route question",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_channel_off_route_desc": {
+    "area": "Notification",
+    "context": "Android notification channel description",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_stopped_title": {
+    "area": "Notification",
+    "context": "Notification title when recording stopped by itself (error)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_fail_read": {
+    "area": "Notification",
+    "context": "Error (notification + app message): saved tracks unreadable",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_fail_permission": {
+    "area": "Notification",
+    "context": "Error: no precise location permission; path in Android settings",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "Android menu names differ by phone ('Apps' / 'Berechtigungen')"
+  },
+  "nav_rec_fail_no_gps": {
+    "area": "Notification",
+    "context": "Error: device has no GPS",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_fail_blocked": {
+    "area": "Notification",
+    "context": "Error: Android refused the foreground service",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_fail_storage": {
+    "area": "Notification",
+    "context": "Error: new tour cannot be written (storage)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_save_failed_title": {
+    "area": "Notification",
+    "context": "Notification title: points can no longer be saved",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_save_failed": {
+    "area": "Notification",
+    "context": "Notification text: points can no longer be saved",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_rec_paused_title": {
+    "area": "Notification",
+    "context": "Notification when you walk away while paused",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rec_paused_moving": {
+    "area": "Notification",
+    "context": "Notification text when moving while paused (button Resume)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_interrupted_title": {
+    "area": "Notification",
+    "context": "Notification after a phone restart / app update during a tour",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_interrupted_boot": {
+    "area": "Notification",
+    "context": "Notification text (short) after a phone restart; 'Continue' = button in the app",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"
+  },
+  "nav_interrupted_update": {
+    "area": "Notification",
+    "context": "Notification text (short) after an app update",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"
+  },
+  "nav_interrupted_boot_long": {
+    "area": "Notification",
+    "context": "Expanded notification after a phone restart: %1$s = tour name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_interrupted_update_long": {
+    "area": "Notification",
+    "context": "Expanded notification after an app update: %1$s = tour name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_gps_no_permission": {
+    "area": "Map (GPS status)",
+    "context": "Screen reader text of the locate button: no location permission",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_gps_off": {
+    "area": "Map (GPS status)",
+    "context": "Screen reader text of the locate button: location switched off",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_gps_searching": {
+    "area": "Map (GPS status)",
+    "context": "Screen reader text of the locate button: GPS searching",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_gps_weak": {
+    "area": "Map (GPS status)",
+    "context": "Screen reader text of the locate button: GPS fix weak",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_gps_good": {
+    "area": "Map (GPS status)",
+    "context": "Screen reader text of the locate button: GPS fix good",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_end_tour_title": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog title when ending a tour (buttons Cancel · Delete · Save)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "nav_delete_track_title": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog title before a tour goes to the recycle bin",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_recycle_bin_note": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog text: %1$d = days in the recycle bin (30). German 'Er' = der Track",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Er' refers to 'der Track' – also used for routes in some dialogs?"
+  },
+  "nav_arrived_title": {
+    "area": "Navigate",
+    "context": "Dialog when the destination is reached (Cancel = 'Keep going')",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_keep_going": {
+    "area": "Navigate",
+    "context": "Button in the arrival dialog: do not end the tour",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "'Weitermachen' – alternative 'Nicht beenden'",
+    "max": 16
+  },
+  "nav_continue": {
+    "area": "Tour card (Plan)",
+    "context": "Main button of the tour card: back to navigation",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_continue_as": {
+    "area": "Tour card (Plan)",
+    "context": "Main button of the tour card: %1$s = activity ('Continue · Gravel bike')",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Long activity names ('E-Mountainbike') are cut on narrow phones",
+    "max": 30
+  },
+  "nav_tour_running": {
+    "area": "Tour card (Plan)",
+    "context": "Status line of the tour card: %1$s = distance, %2$s = elapsed clock",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "nav_tour_paused": {
+    "area": "Tour card (Plan)",
+    "context": "Status line of the tour card while paused",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "nav_end_tour": {
+    "area": "Tour card (Plan)",
+    "context": "Red button on the tour card (asks first)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_route_back_title": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog when the destination was deleted during a tour",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_route_back_text": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog text",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_route_back": {
+    "area": "Tour card (Plan)",
+    "context": "Button: plan the way back to the start",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "'Zurück zum Start' as verb button"
+  },
+  "nav_just_record": {
+    "area": "Tour card (Plan)",
+    "context": "Button: no route, only record",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_long_route_foot": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog text: %1$s = duration in words ('About 29 days', from the plan area); first letter upper case",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "%1$s comes from LongRoute.describe (plan area)"
+  },
+  "nav_long_route_bike": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog text for bikes: %1$s = duration in words",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "%1$s comes from LongRoute.describe (plan area)"
+  },
+  "nav_long_route_title": {
+    "area": "Tour card (Plan)",
+    "context": "Dialog title for a plan much longer than a day",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_plan_anyway": {
+    "area": "Tour card (Plan)",
+    "context": "Button: plan the very long route",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_check_checking": {
+    "area": "Activity check sheet",
+    "context": "Row status while the rest of the route is checked for that activity",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_fits": {
+    "area": "Activity check sheet",
+    "context": "Row status: the rest of the route fits this activity",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_recording_as": {
+    "area": "Activity check sheet",
+    "context": "Sheet header (free recording), followed by the activity",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_navigating_as": {
+    "area": "Activity check sheet",
+    "context": "Sheet header (following a route), followed by the activity",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_switch_to": {
+    "area": "Activity check sheet",
+    "context": "Section title above the other activities",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_rest_of_route": {
+    "area": "Activity check sheet",
+    "context": "Small text right of 'Switch to'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_keep": {
+    "area": "Activity check sheet",
+    "context": "Button: keep the activity. %1$s = activity ('Hike T3')",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Wandern T3 beibehalten'"
+  },
+  "nav_check_switch_to_cd": {
+    "area": "Activity check sheet",
+    "context": "Screen reader action of a row: %1$s = activity",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_check_not_suited": {
+    "area": "Activity check sheet",
+    "context": "Row warning: %1$s = distance, %2$s = who ('gravel bikes', 'hiking (T3)')",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'ungeeignet für Wandern (T3)' reads a bit stiff"
+  },
+  "nav_check_steps": {
+    "area": "Activity check sheet",
+    "context": "Row warning: %1$s = length of steps",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_busy_road": {
+    "area": "Activity check sheet",
+    "context": "Row warning (hiking): %1$s = length of busy road",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_unpaved": {
+    "area": "Activity check sheet",
+    "context": "Row warning (bike): %1$s = length unpaved",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_check_rough": {
+    "area": "Activity check sheet",
+    "context": "Row warning (gravel bike): %1$s = length of rough trail",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'grobe Pfade' – alternative 'ruppige Pfade'"
+  },
+  "nav_who_bike_touring": {
+    "area": "Activity check sheet",
+    "context": "Plural of the activity in 'not suited for …'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_who_bike_trekking": {
+    "area": "Activity check sheet",
+    "context": "Plural of the activity in 'not suited for …'",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Gravel-Räder' follows the activity name"
+  },
+  "nav_who_ebike": {
+    "area": "Activity check sheet",
+    "context": "Plural of the activity in 'not suited for …'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_who_mtb": {
+    "area": "Activity check sheet",
+    "context": "Plural of the activity in 'not suited for …'",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Long form chosen; short 'MTBs' possible"
+  },
+  "nav_who_emtb": {
+    "area": "Activity check sheet",
+    "context": "Plural of the activity in 'not suited for …'",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Long form chosen; short 'MTBs' possible"
+  },
+  "nav_who_hike": {
+    "area": "Activity check sheet",
+    "context": "'not suited for hiking (T3)': %1$d = SAC level",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'für Wandern (T3)'"
+  },
+  "nav_rides_question": {
+    "area": "End tour – rides",
+    "context": "End-tour dialog when a bus / car / lift ride was found: one = one ride, other = %1$d rides",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rides_kept_note": {
+    "area": "End tour – rides",
+    "context": "Small note under the choices; 'Edit rides' must match the menu item in My routes",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu item name 'Fahrten bearbeiten' must match My routes"
+  },
+  "nav_row_on_foot": {
+    "area": "End tour – rides",
+    "context": "Timeline row kind",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_row_by_bike": {
+    "area": "End tour – rides",
+    "context": "Timeline row kind",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_row_vehicle": {
+    "area": "End tour – rides",
+    "context": "Timeline row kind (bus or car ride)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_row_lift": {
+    "area": "End tour – rides",
+    "context": "Timeline row kind (cable car / chair lift)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Lift' (usual in Tyrol) – or 'Seilbahn'"
+  },
+  "nav_ride_until_time": {
+    "area": "End tour – rides",
+    "context": "Choice: %1$s = clock time the ride started",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_until_ride": {
+    "area": "End tour – rides",
+    "context": "Choice (no time known)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_until_last_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice (several rides)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_until_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice (one ride)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_not_counted": {
+    "area": "End tour – rides",
+    "context": "Choice: keep all, rides do not count",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_not_counted_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_split_two": {
+    "area": "End tour – rides",
+    "context": "Choice: split the tour into two",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_split_n": {
+    "area": "End tour – rides",
+    "context": "Choice: %1$d = number of tracks (3 or more)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_split_two_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_split_n_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_as_recorded": {
+    "area": "End tour – rides",
+    "context": "Choice: keep everything as recorded",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_as_recorded_detail": {
+    "area": "End tour – rides",
+    "context": "Detail under the choice",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_tour_date_name": {
+    "area": "My routes",
+    "context": "Name of a new recorded tour: %1$s = date and time ('22 Oct 2026, 16:58'); the app proposes a place name later. The app recognises such names by the text before %1$s, so keep the date at the end",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_line_note": {
+    "area": "Navigate",
+    "context": "Status card after the followed route changed: %1$s = the old arrival clock",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'vorher 13:15' – alternative 'statt 13:15'"
+  },
+  "nav_pause_no_gps": {
+    "area": "Navigate",
+    "context": "Reason after 'Time paused · …'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pause_no_progress": {
+    "area": "Navigate",
+    "context": "Reason after 'Time paused · …'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_moving_breaks": {
+    "area": "End of tour",
+    "context": "Finished tour: %1$s = moving time, %2$s = breaks (h:mm)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_plan_vs_needed": {
+    "area": "End of tour",
+    "context": "Finished tour: %1$s = planned time, %2$s = time you needed (h:mm)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_pace_relaxed": {
+    "area": "Settings → Pace",
+    "context": "Pace level 'Relaxed' (one of five) in Settings → Pace and Time details; row label 76 dp wide",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Gemütlich' / 'Locker' – the levels must read as a scale",
+    "max": 10
+  },
+  "nav_pace_easy": {
+    "area": "Settings → Pace",
+    "context": "Pace level 'Easy' (one of five) in Settings → Pace and Time details; row label 76 dp wide",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Gemütlich' / 'Locker' – the levels must read as a scale",
+    "max": 10
+  },
+  "nav_pace_average": {
+    "area": "Settings → Pace",
+    "context": "Pace level 'Average' (one of five) in Settings → Pace and Time details; row label 76 dp wide",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "nav_pace_fit": {
+    "area": "Settings → Pace",
+    "context": "Pace level 'Fit' (one of five) in Settings → Pace and Time details; row label 76 dp wide",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "nav_pace_very_fit": {
+    "area": "Settings → Pace",
+    "context": "Pace level 'Very fit' (one of five) in Settings → Pace and Time details; row label 76 dp wide",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "nav_pace_meaning": {
+    "area": "Settings → Pace",
+    "context": "What a pace level means: %1$s = km/h (decimal), %2$d = metres up per hour",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_time_details": {
+    "area": "Plan sheet ⋯",
+    "context": "Title of the page Time details (route sheet ⋯)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_time_moving": {
+    "area": "Plan sheet ⋯",
+    "context": "Time details: moving time of the route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_time_with_breaks": {
+    "area": "Plan sheet ⋯",
+    "context": "Time details: time incl. break allowance",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_time_pace_level": {
+    "area": "Plan sheet ⋯",
+    "context": "Time details: the pace level ('Average')",
+    "priority": 2,
+    "confidence": "sicher"
+  }
 }

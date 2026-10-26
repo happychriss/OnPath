@@ -29,7 +29,7 @@
     <string name="nav_copied">%1$s · kopiert ✓</string>
     <string name="nav_status_recording">Aufzeichnung</string>
     <string name="nav_status_paused">Pausiert</string>
-    <string name="nav_status_searching_gps">Suche GPS…</string>
+    <string name="nav_status_searching_gps">GPS wird gesucht…</string>
     <string name="nav_moving_lower">in Bewegung %1$s</string>
     <string name="nav_moving">In Bewegung %1$s</string>
     <string name="nav_breaks">Pausen %1$s</string>
@@ -49,16 +49,16 @@
     <!-- off route: question, card, notification -->
     <string name="nav_take_new_route">Neue Route nehmen</string>
     <string name="nav_keep_original">Original behalten</string>
-    <string name="nav_title_searching">Abseits der Route – suche Rückweg…</string>
+    <string name="nav_title_searching">Abseits der Route – Rückweg wird gesucht…</string>
     <string name="nav_title_found">Abseits der Route – neue Route gefunden</string>
     <string name="nav_title_no_data">Abseits der Route – hier keine Karte für einen Rückweg</string>
-    <string name="nav_title_unavailable">Abseits der Route – Rückweg gerade nicht suchbar</string>
+    <string name="nav_title_unavailable">Abseits der Route – Rückweg-Suche gerade nicht möglich</string>
     <string name="nav_title_no_way">Abseits der Route – kein Rückweg gefunden</string>
     <string name="nav_title_kept">Abseits der Route – ursprüngliche Route bleibt</string>
-    <string name="nav_state_searching">Suche einen Rückweg…</string>
+    <string name="nav_state_searching">Rückweg wird gesucht…</string>
     <string name="nav_state_found">Neue Route gefunden</string>
     <string name="nav_state_no_data">Hier keine Karte für einen Rückweg</string>
-    <string name="nav_state_unavailable">Rückweg gerade nicht suchbar</string>
+    <string name="nav_state_unavailable">Rückweg-Suche gerade nicht möglich</string>
     <string name="nav_state_no_way">Kein Rückweg gefunden</string>
     <string name="nav_state_kept">Du folgst der ursprünglichen Route</string>
     <string name="nav_switch_title">Neue Route für %1$s</string>
@@ -105,15 +105,15 @@
     <string name="nav_rec_paused_title">Aufzeichnung ist pausiert</string>
     <string name="nav_rec_paused_moving">Du bist unterwegs – Aufzeichnung fortsetzen?</string>
     <string name="nav_interrupted_title">Tour-Aufzeichnung unterbrochen</string>
-    <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf Weiter, um weiter aufzuzeichnen.</string>
-    <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf Weiter, um weiter aufzuzeichnen.</string>
-    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf Weiter, um weiter aufzuzeichnen.</string>
-    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf Weiter, um weiter aufzuzeichnen.</string>
+    <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
+    <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
+    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
+    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
 
     <!-- GPS status -->
     <string name="nav_gps_no_permission">Keine Standortberechtigung</string>
     <string name="nav_gps_off">Standort ist aus</string>
-    <string name="nav_gps_searching">Suche GPS</string>
+    <string name="nav_gps_searching">GPS wird gesucht</string>
     <string name="nav_gps_weak">GPS schwach</string>
     <string name="nav_gps_good">GPS gut</string>
 
@@ -138,7 +138,7 @@
     <string name="nav_plan_anyway">Trotzdem planen</string>
 
     <!-- activity check sheet -->
-    <string name="nav_check_checking">Prüfe den Rest der Route…</string>
+    <string name="nav_check_checking">Rest der Route wird geprüft…</string>
     <string name="nav_check_fits">✓ passt</string>
     <string name="nav_check_recording_as">Du zeichnest auf als</string>
     <string name="nav_check_navigating_as">Du navigierst als</string>
@@ -150,7 +150,7 @@
     <string name="nav_check_steps">Treppen %1$s</string>
     <string name="nav_check_busy_road">%1$s stark befahrene Straße</string>
     <string name="nav_check_unpaved">%1$s unbefestigt</string>
-    <string name="nav_check_rough">%1$s grobe Pfade</string>
+    <string name="nav_check_rough">%1$s grober Pfad</string>
     <string name="nav_who_bike_touring">Fahrräder</string>
     <string name="nav_who_bike_trekking">Gravel-Räder</string>
     <string name="nav_who_ebike">E-Bikes</string>
