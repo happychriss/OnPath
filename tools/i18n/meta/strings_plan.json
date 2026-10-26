@@ -1,194 +1,1219 @@
 {
-  "plan_hint_ferry_one": {"area": "Route hints", "context": "Item of the amber hint line: one ferry on the route. %1$s = its length (\"1.2 km\")", "priority": 1, "confidence": "sicher", "max": 30},
-  "plan_hint_ferries": {"area": "Route hints", "context": "Item of the amber hint line: several ferries. %1$d = count (always 2 or more in practice)", "priority": 1, "confidence": "sicher", "max": 30},
-  "plan_hint_construction": {"area": "Route hints", "context": "Item of the amber hint line (lower case in English, joined with \" · \"). one = a single site (no number), other: %1$d = count", "priority": 1, "confidence": "sicher"},
-  "plan_hint_no_bikes": {"area": "Route hints", "context": "Item of the amber hint line (MTB): signed ways closed to bikes. %1$s = total length (\"350 m\")", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"Radfahren verboten\" is the sign wording; alternative \"für Räder gesperrt\"", "max": 30},
-  "plan_hint_dismount": {"area": "Route hints", "context": "Item of the amber hint line (MTB): signed \"dismount\". %1$s = total length", "priority": 1, "confidence": "bitte prüfen", "doubt": "German signs say \"Radfahrer absteigen\"", "max": 30},
-  "plan_hint_fords": {"area": "Route hints", "context": "Item of the amber hint line: water to cross. one = a single ford (no number), other: %1$d = count", "priority": 1, "confidence": "sicher"},
-  "plan_hint_barriers": {"area": "Route hints", "context": "Item of the amber hint line (bikes): several stiles / gates. %1$d = count (a single one shows its name instead)", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"Hindernis\" for stile / gate / turnstile together; alternative \"Durchlässe\""},
-  "plan_barrier_stile": {"area": "Route hints", "context": "Item of the amber hint line (bikes): a stile – a step over a fence", "priority": 1, "confidence": "bitte prüfen", "doubt": "Rare in the Alps; \"Zauntritt\" / \"Überstieg\""},
-  "plan_barrier_kissing_gate": {"area": "Route hints", "context": "Item of the amber hint line (bikes): a kissing gate", "priority": 1, "confidence": "bitte prüfen", "doubt": "No common German word; \"Schwinggatter\" / \"Weidetor\""},
-  "plan_barrier_turnstile": {"area": "Route hints", "context": "Item of the amber hint line (bikes): a turnstile", "priority": 1, "confidence": "sicher"},
-  "plan_hint_pushing": {"area": "Route hints", "context": "Item of the amber hint line (Bike / Gravel bike / E-bike): where the bike is pushed. %1$s = total length (\"1.2 km\")", "priority": 1, "confidence": "sicher", "max": 24},
-  "plan_hint_steps": {"area": "Route hints", "context": "Item of the amber hint line (bikes): steps on the route. one = one flight (no number), other: %1$d = count", "priority": 1, "confidence": "sicher"},
-  "plan_hint_above_t": {"area": "Route hints", "context": "Item of the amber hint line (hike): sections harder than the chosen level. %1$d = count, %2$d = chosen SAC level (T2)", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"über T2\" = harder than T2; alternative \"schwerer als T2\"", "max": 30},
-  "plan_hint_steep": {"area": "Route hints", "context": "Item of the amber hint line: steep sections (over 25 % hike, 15 % bike). %1$d = count", "priority": 1, "confidence": "sicher"},
-  "plan_route_changed": {"area": "Plan sheet", "context": "Grey line on the plan sheet after the activity changed and the route changed a lot. %1$s = activity in a sentence (\"Hike T3\", \"Gravel bike\")", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"Neue Route für Wandern T3\" reads a bit stiff"},
-  "plan_spot_ferry": {"area": "Route hints", "context": "Row title in the list \"On this route\" (tap the amber line)", "priority": 1, "confidence": "sicher"},
-  "plan_spot_construction": {"area": "Route hints", "context": "Row title in the list \"On this route\"", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"evtl.\" abbreviation; or \"kann gesperrt sein\""},
-  "plan_spot_no_bikes": {"area": "Route hints", "context": "Row title in the list \"On this route\" (MTB)", "priority": 1, "confidence": "sicher"},
-  "plan_spot_dismount": {"area": "Route hints", "context": "Row title in the list \"On this route\" (MTB)", "priority": 1, "confidence": "sicher"},
-  "plan_spot_ford": {"area": "Route hints", "context": "Row title in the list \"On this route\"", "priority": 1, "confidence": "bitte prüfen", "doubt": "Alternative \"Furt – durch Wasser\""},
-  "plan_spot_kissing_gate": {"area": "Route hints", "context": "Row title in the list \"On this route\" (bikes)", "priority": 1, "confidence": "bitte prüfen", "doubt": "See plan_barrier_kissing_gate"},
-  "plan_spot_turnstile": {"area": "Route hints", "context": "Row title in the list \"On this route\" (bikes)", "priority": 1, "confidence": "sicher"},
-  "plan_spot_turnstile_full": {"area": "Route hints", "context": "Row title in the list \"On this route\" (bikes): a full-height turnstile", "priority": 1, "confidence": "bitte prüfen", "doubt": "Long; alternative \"Drehkreuz – mit Rad evtl. zu eng\""},
-  "plan_spot_stile": {"area": "Route hints", "context": "Row title in the list \"On this route\" (bikes)", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"drüberheben\" is colloquial; \"Rad hinüberheben\""},
-  "plan_spot_pushing": {"area": "Route hints", "context": "Row title in the list \"On this route\"", "priority": 1, "confidence": "sicher"},
-  "plan_spot_steps": {"area": "Route hints", "context": "Row title in the list \"On this route\" (bikes)", "priority": 1, "confidence": "sicher"},
-  "plan_spot_above_t": {"area": "Route hints", "context": "Row title in the list \"On this route\" (hike). %1$d = hardest SAC level of the section, %2$d = chosen level", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"dein T2\" – the level is male/neuter in German speech; alternative \"über deiner Stufe T2\""},
-  "plan_spot_steep": {"area": "Route hints", "context": "Row title in the list \"On this route\". %1$d = steepest grade in percent", "priority": 1, "confidence": "sicher"},
-  "plan_spot_at_start": {"area": "Route hints", "context": "Second part of a row in \"On this route\" (\"350 m · at the start\"); capitalised automatically when it stands alone", "priority": 1, "confidence": "sicher"},
-  "plan_spot_after": {"area": "Route hints", "context": "Second part of a row in \"On this route\" (\"350 m · after 3.4 km\"). %1$s = distance from the start; capitalised automatically when alone", "priority": 1, "confidence": "sicher"},
-  "plan_spots_title": {"area": "Route hints", "context": "Title of the list of route hints (tap the amber line)", "priority": 1, "confidence": "sicher"},
-  "plan_spots_tap": {"area": "Route hints", "context": "Line under the title of the route hint list", "priority": 1, "confidence": "sicher"},
-  "plan_warn_show_spots": {"area": "Route hints", "context": "Accessibility: what tapping the amber hint line does", "priority": 2, "confidence": "sicher"},
-  "plan_calculating": {"area": "Plan sheet", "context": "Plan sheet while a route is calculated", "priority": 1, "confidence": "sicher"},
-  "plan_hint_first_point": {"area": "Plan sheet", "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Long; \"hinwillst\" is colloquial"},
-  "plan_hint_destination": {"area": "Plan sheet", "context": "Plan sheet with one point", "priority": 1, "confidence": "sicher"},
-  "plan_not_routed_long": {"area": "Plan sheet", "context": "Plan sheet: the user cancelled the \"very long route\" question", "priority": 2, "confidence": "sicher"},
-  "plan_not_routed_stopped": {"area": "Plan sheet", "context": "Plan sheet: the user stopped a long calculation", "priority": 2, "confidence": "sicher"},
-  "plan_not_routed": {"area": "Plan sheet", "context": "Plan sheet: route not calculated (other reason)", "priority": 2, "confidence": "sicher"},
-  "plan_anyway": {"area": "Plan sheet", "context": "Button next to \"Route not calculated – very long plan.\"", "priority": 2, "confidence": "sicher", "max": 18},
-  "plan_calculate": {"area": "Plan sheet", "context": "Button next to \"Route not calculated – calculation stopped.\"", "priority": 2, "confidence": "sicher", "max": 18},
-  "plan_gap_first": {"area": "Plan sheet", "context": "Red line: the route cannot reach the start point. %1$s = missing distance (\"180 m\"), %2$s = point name in quotes or \"point 1\", %3$s = activity name", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Erste 180 m ab Punkt 1\" – grammar of \"Erste\" with a distance"},
-  "plan_gap_last": {"area": "Plan sheet", "context": "Red line: the route cannot reach a point. %1$s = missing distance (\"180 m\"), %2$s = point name in quotes or \"point 3\", %3$s = activity name", "priority": 2, "confidence": "sicher"},
-  "plan_gap_point": {"area": "Plan sheet", "context": "Unnamed point inside the red gap line (\"Last 180 m to point 3\"). %1$d = point number", "priority": 2, "confidence": "sicher"},
-  "plan_quoted": {"area": "Plan sheet", "context": "A place name in quotes inside a sentence. %1$s = name", "priority": 2, "confidence": "bitte prüfen", "doubt": "German quotes „…“"},
-  "plan_more": {"area": "Plan sheet", "context": "A red line with more problems behind it. %1$s = the line, %2$d = number of further problems", "priority": 2, "confidence": "sicher"},
-  "plan_saved_as": {"area": "Plan sheet", "context": "Plan sheet line under the stats: the plan is a saved route. %1$s = route name", "priority": 2, "confidence": "sicher"},
-  "plan_changed_not_saved": {"area": "Plan sheet", "context": "Plan sheet line: the saved route was changed since. %1$s = route name", "priority": 2, "confidence": "sicher"},
-  "plan_plan_a_route": {"area": "Plan sheet", "context": "Title of the plan sheet without a route", "priority": 1, "confidence": "sicher", "max": 20},
-  "plan_max_height": {"area": "Plan sheet", "context": "Plan sheet / Route details: highest point after ascent / descent (\"↑ 842 m ↓ 310 m · max 2140 m\"). %1$s = height", "priority": 1, "confidence": "sicher"},
-  "plan_show_route_details": {"area": "Plan sheet", "context": "Accessibility: tapping the difficulty badge", "priority": 2, "confidence": "sicher"},
-  "plan_elevation_profile": {"area": "Plan sheet", "context": "Accessibility label of the profile on the plan sheet", "priority": 2, "confidence": "sicher"},
-  "plan_start_navigation_for": {"area": "Plan sheet", "context": "Main button of the plan sheet; names the activity (a wrong activity is a disaster). %1$s = activity name (\"Gravel bike\")", "priority": 1, "confidence": "bitte prüfen", "doubt": "With long German names (\"Navigation starten · E-Mountainbike\") the button cuts the end; short activity names?", "max": 34},
-  "plan_continue_navigation_for": {"area": "Plan sheet", "context": "Main button while a tour records. %1$s = activity name", "priority": 1, "confidence": "bitte prüfen", "doubt": "Long with long activity names", "max": 34},
-  "plan_route_options": {"area": "Plan sheet", "context": "Accessibility: the ⋯ button of the plan sheet", "priority": 2, "confidence": "sicher"},
-  "plan_save_route": {"area": "Plan sheet", "context": "⋯ menu item / dialog title", "priority": 1, "confidence": "sicher"},
-  "plan_time_details": {"area": "Plan sheet", "context": "⋯ menu item: how the time estimate is made up", "priority": 2, "confidence": "sicher"},
-  "plan_clear_route": {"area": "Plan sheet", "context": "⋯ menu item: remove all points (Undo brings them back)", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"löschen\" may sound final; alternative \"Route leeren\""},
-  "plan_activity_chip_desc": {"area": "Plan sheet", "context": "Accessibility of the activity chip. %1$s = chip text (\"Hike · T2\")", "priority": 2, "confidence": "sicher"},
-  "plan_points": {"area": "Plan sheet", "context": "Title of the list of route points (full sheet)", "priority": 1, "confidence": "sicher"},
-  "plan_reverse": {"area": "Plan sheet", "context": "Button above the points: reverse the route", "priority": 1, "confidence": "sicher", "max": 14},
-  "plan_round_trip": {"area": "Plan sheet", "context": "Button above the points: back to the start", "priority": 1, "confidence": "sicher", "max": 14},
-  "plan_no_points": {"area": "Plan sheet", "context": "Points list without points", "priority": 2, "confidence": "sicher"},
-  "plan_point_move_desc": {"area": "Plan sheet", "context": "Accessibility: drag handle of a point row. %1$d = number", "priority": 3, "confidence": "sicher"},
-  "plan_show_on_map": {"area": "Plan sheet", "context": "Accessibility: tapping a point row", "priority": 3, "confidence": "sicher"},
-  "plan_point_show_desc": {"area": "Plan sheet", "context": "Accessibility of a point row. %1$d = number, %2$s = name", "priority": 3, "confidence": "sicher"},
-  "plan_point_delete_desc": {"area": "Plan sheet", "context": "Accessibility: × of a point row. %1$d = number", "priority": 2, "confidence": "sicher"},
-  "plan_point_deleted_desc": {"area": "Plan sheet", "context": "Accessibility of a just deleted row. %1$s = name", "priority": 3, "confidence": "sicher"},
-  "plan_point_deleted": {"area": "Plan sheet", "context": "Shown for a moment in place of a deleted point row", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Rückgängig\" = the Undo button (map footer)"},
-  "plan_point_start": {"area": "Plan sheet", "context": "Name of an unnamed first point (list, map menu) and its role", "priority": 1, "confidence": "sicher"},
-  "plan_point_destination": {"area": "Plan sheet", "context": "Name of an unnamed last point and its role", "priority": 1, "confidence": "sicher"},
-  "plan_point_stop": {"area": "Plan sheet", "context": "Name of an unnamed point between start and destination. %1$d = its number", "priority": 1, "confidence": "bitte prüfen", "doubt": "Glossary says \"Zwischenpunkt\"; \"Stopp 2\" is shorter on the map. Alternatives: \"Punkt 2\", \"Zwischenziel 2\""},
-  "plan_point_start_finish": {"area": "Plan sheet", "context": "Role of the first point of a round trip", "priority": 1, "confidence": "sicher"},
-  "plan_way_types_surfaces": {"area": "Route details", "context": "Title of the way type / surface box", "priority": 2, "confidence": "sicher"},
-  "plan_hide_details": {"area": "Route details", "context": "Accessibility: collapse arrow", "priority": 3, "confidence": "sicher"},
-  "plan_show_details": {"area": "Route details", "context": "Accessibility: expand arrow", "priority": 3, "confidence": "sicher"},
-  "plan_way_types": {"area": "Route details", "context": "Title of a bar", "priority": 2, "confidence": "sicher"},
-  "plan_surfaces": {"area": "Route details", "context": "Title of a bar", "priority": 2, "confidence": "sicher"},
-  "plan_way_cycleway": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_path": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_footway": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_track": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "bitte prüfen", "doubt": "Forest / farm track; \"Forstweg\" or \"Feldweg\" are narrower"},
-  "plan_way_quiet_road": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_road": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_busy_road": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "bitte prüfen", "doubt": "Long in the legend; \"Hauptstraße\"?"},
-  "plan_way_steps": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_way_ferry": {"area": "Route details", "context": "Way type in the breakdown bar / summary (\"Path 49 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_asphalt": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_paved": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_gravel": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_unpaved": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_ground": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "bitte prüfen", "doubt": "OSM \"ground\"; alternative \"Naturboden\""},
-  "plan_surface_natural_trail": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "bitte prüfen", "doubt": "Alternative \"Wanderpfad\""},
-  "plan_surface_alpine": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_surface_unknown": {"area": "Route details", "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")", "priority": 2, "confidence": "sicher"},
-  "plan_other": {"area": "Route details", "context": "Breakdown legend: small categories together", "priority": 2, "confidence": "sicher"},
-  "plan_route_details": {"area": "Route details", "context": "Title of the Route details page", "priority": 2, "confidence": "sicher"},
-  "plan_no_elevation": {"area": "Plan sheet", "context": "In place of the elevation profile", "priority": 3, "confidence": "sicher"},
-  "plan_difficulty_easy": {"area": "Plan sheet", "context": "Difficulty badge of a route", "priority": 1, "confidence": "sicher", "max": 10},
-  "plan_difficulty_moderate": {"area": "Plan sheet", "context": "Difficulty badge of a route", "priority": 1, "confidence": "sicher", "max": 10},
-  "plan_difficulty_difficult": {"area": "Plan sheet", "context": "Difficulty badge of a route", "priority": 1, "confidence": "sicher", "max": 10},
-  "plan_difficulty_unpaved": {"area": "Plan sheet", "context": "Badge word after the difficulty: \"Moderate · unpaved\" (Bike / E-bike on unpaved ground)", "priority": 1, "confidence": "sicher", "max": 12},
-  "plan_because_grade": {"area": "Route details", "context": "Grey line on Route details: why the difficulty is higher. %1$s = difficulty (\"Moderate\"), %2$s = distance (\"250 m\"), %3$s = trail grade (\"T3\", \"S2\")", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"wegen 250 m mit T3 oder schwerer\" – clumsy; alternative \"Mittel: 250 m sind T3 oder schwerer\""},
-  "plan_because_unpaved": {"area": "Route details", "context": "Grey line on Route details. %1$s = difficulty, %2$d = unpaved share in %, %3$s = unpaved distance", "priority": 2, "confidence": "sicher"},
-  "plan_because_loose": {"area": "Route details", "context": "Grey line on Route details. %1$s = difficulty, %2$s = distance on loose ground", "priority": 2, "confidence": "sicher"},
-  "plan_save_as_new_route": {"area": "Dialogs", "context": "Name dialog title when the plan already is a saved route", "priority": 2, "confidence": "sicher"},
-  "plan_save_current_route": {"area": "Dialogs", "context": "Name dialog title before the plan is replaced", "priority": 2, "confidence": "sicher"},
-  "plan_route_default_name": {"area": "Dialogs", "context": "Start of the suggested name of a new route (\"Route 26 Oct\")", "priority": 2, "confidence": "sicher"},
-  "plan_something_wrong": {"area": "Dialogs", "context": "Title of a dialog when saving / loading a route failed", "priority": 3, "confidence": "sicher"},
-  "plan_save_changes_into": {"area": "Dialogs", "context": "Save dialog for a changed saved route. %1$s = route name", "priority": 2, "confidence": "sicher"},
-  "plan_saved_again": {"area": "Dialogs", "context": "Save dialog for an unchanged saved route. %1$s = route name", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"sie\" refers to \"die Route\""},
-  "plan_save_as_new": {"area": "Dialogs", "context": "Button in the save dialog", "priority": 2, "confidence": "bitte prüfen", "doubt": "Short form of \"Als neue Route speichern…\"", "max": 22},
-  "plan_straight_title": {"area": "Dialogs", "context": "Dialog title on Start navigation when legs are straight lines", "priority": 2, "confidence": "sicher"},
-  "plan_straight_text": {"area": "Dialogs", "context": "Dialog body", "priority": 2, "confidence": "sicher"},
-  "plan_navigate_anyway": {"area": "Dialogs", "context": "Button of that dialog", "priority": 2, "confidence": "sicher"},
-  "plan_fix_route": {"area": "Dialogs", "context": "Button of that dialog", "priority": 2, "confidence": "sicher"},
-  "plan_search_hint": {"area": "Top bar", "context": "Search pill at the top of the map (Plan)", "priority": 1, "confidence": "sicher", "max": 30},
-  "plan_menu": {"area": "Top bar", "context": "Accessibility: the round ☰ button", "priority": 2, "confidence": "sicher"},
-  "plan_menu_my_routes": {"area": "Top bar", "context": "☰ menu item", "priority": 1, "confidence": "sicher"},
-  "plan_menu_start_recording": {"area": "Top bar", "context": "☰ menu item: record without a route", "priority": 1, "confidence": "sicher"},
-  "plan_menu_check_updates": {"area": "Top bar", "context": "☰ menu item", "priority": 2, "confidence": "sicher"},
-  "plan_map_credits": {"area": "Map (Plan)", "context": "Accessibility: tapping \"© OpenStreetMap\"", "priority": 3, "confidence": "sicher"},
-  "plan_undo": {"area": "Map (Plan)", "context": "Accessibility: undo button on the map", "priority": 1, "confidence": "sicher"},
-  "plan_redo": {"area": "Map (Plan)", "context": "Accessibility: redo button on the map", "priority": 1, "confidence": "sicher"},
-  "plan_compass_heading": {"area": "Map (Plan)", "context": "Accessibility of the compass button", "priority": 3, "confidence": "bitte prüfen", "doubt": "\"Fahrtrichtung\" also for hikers; alternative \"Bewegungsrichtung\""},
-  "plan_compass_turned": {"area": "Map (Plan)", "context": "Accessibility of the compass button", "priority": 3, "confidence": "sicher"},
-  "plan_compass_north": {"area": "Map (Plan)", "context": "Accessibility of the compass button", "priority": 3, "confidence": "sicher"},
-  "plan_hold_hide_route": {"area": "Map (Plan)", "context": "Accessibility of the eye button", "priority": 3, "confidence": "sicher"},
-  "plan_location_off_tap": {"area": "Map (Plan)", "context": "Accessibility of the locate button", "priority": 3, "confidence": "sicher"},
-  "plan_location_denied_tap": {"area": "Map (Plan)", "context": "Accessibility of the locate button", "priority": 3, "confidence": "sicher"},
-  "plan_centre_on_me": {"area": "Map (Plan)", "context": "Accessibility of the locate button. %1$s = GPS state (\"GPS good\")", "priority": 3, "confidence": "sicher"},
-  "plan_no_location_permission": {"area": "Map (Plan)", "context": "Why \"Go here\" is greyed out in the first-point menu", "priority": 2, "confidence": "sicher", "max": 30},
-  "plan_location_off": {"area": "Map (Plan)", "context": "Why \"Go here\" is greyed out", "priority": 2, "confidence": "sicher", "max": 30},
-  "plan_searching_gps": {"area": "Map (Plan)", "context": "Why \"Go here\" is greyed out", "priority": 2, "confidence": "sicher", "max": 30},
-  "plan_new_route": {"area": "Map (Plan)", "context": "Title of the menu after the first hold on the map", "priority": 1, "confidence": "sicher"},
-  "plan_start_here": {"area": "Map (Plan)", "context": "Hold menu item: this spot is the start", "priority": 1, "confidence": "sicher", "max": 24},
-  "plan_go_here": {"area": "Map (Plan)", "context": "Hold menu item: route from my position to this spot", "priority": 1, "confidence": "bitte prüfen", "doubt": "Alternative \"Hierher navigieren\" / \"Ziel hier\"", "max": 24},
-  "plan_add_to_route": {"area": "Map (Plan)", "context": "Hold menu of a POI: add it as a point", "priority": 1, "confidence": "sicher"},
-  "plan_open_google_maps": {"area": "Map (Plan)", "context": "Hold menu item", "priority": 2, "confidence": "sicher"},
-  "plan_removes_points": {"area": "Map (Plan)", "context": "Grey line under \"Start here\" in a point menu. %1$d = number of points before it", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"den 1 Punkt\" reads oddly; alternative one form \"Entfernt den Punkt davor\""},
-  "plan_start_finish_here": {"area": "Map (Plan)", "context": "Point menu item of a round trip", "priority": 2, "confidence": "sicher"},
-  "plan_same_round_trip": {"area": "Map (Plan)", "context": "Grey line under it", "priority": 2, "confidence": "sicher"},
-  "plan_finding_shared_place": {"area": "Map (Plan)", "context": "Small pill while a place shared from another app is looked up", "priority": 3, "confidence": "sicher"},
-  "plan_resize_panel": {"area": "Plan sheet", "context": "Accessibility of the sheet handle", "priority": 3, "confidence": "sicher"},
-  "plan_slide_to_plan": {"area": "Navigate", "context": "The slider at the bottom of Navigate: the only way back to Plan", "priority": 1, "confidence": "bitte prüfen", "doubt": "Alternative \"Schieben zum Planen\"", "max": 24},
-  "plan_slide_desc": {"area": "Navigate", "context": "Accessibility of the slider. %1$s = slider text", "priority": 3, "confidence": "sicher"},
-  "plan_switch_to_plan": {"area": "Navigate", "context": "Accessibility action of the slider", "priority": 3, "confidence": "sicher"},
-  "plan_stat_distance": {"area": "Dialogs", "context": "Stat label (tour summary)", "priority": 2, "confidence": "sicher"},
-  "plan_stat_ascent": {"area": "Dialogs", "context": "Stat label (tour summary)", "priority": 2, "confidence": "bitte prüfen", "doubt": "Glossary: bergauf / bergab; \"Aufstieg\" for hikers"},
-  "plan_stat_descent": {"area": "Dialogs", "context": "Stat label (tour summary)", "priority": 2, "confidence": "bitte prüfen", "doubt": "See plan_stat_ascent"},
-  "plan_stat_time": {"area": "Dialogs", "context": "Stat label (tour summary)", "priority": 2, "confidence": "sicher"},
-  "plan_close_track": {"area": "Track panel", "context": "Accessibility: × of an opened GPX track", "priority": 2, "confidence": "sicher"},
-  "plan_navigate_track_for": {"area": "Track panel", "context": "Button on an opened track while a tour records. %1$s = activity name", "priority": 2, "confidence": "sicher", "max": 34},
-  "plan_busy_import": {"area": "Busy", "context": "Spinner text on the button that started a GPX import", "priority": 2, "confidence": "sicher"},
-  "plan_busy_export": {"area": "Busy", "context": "Spinner text while an export is prepared", "priority": 2, "confidence": "sicher"},
-  "plan_busy_backup": {"area": "Busy", "context": "Spinner text on \"Back up all now\"", "priority": 2, "confidence": "sicher"},
-  "plan_error": {"area": "Message bar", "context": "Accessibility of the ⚠ in an error message", "priority": 3, "confidence": "sicher"},
-  "plan_routing_load_failed": {"area": "Map loading", "context": "Routing data download failed (map loading card)", "priority": 3, "confidence": "sicher"},
-  "plan_about_days": {"area": "Dialogs", "context": "Estimated duration of a very long plan (\"This route is very long – about 29 days\"); 2 or more. Capitalised when alone", "priority": 3, "confidence": "sicher"},
-  "plan_about_hours": {"area": "Dialogs", "context": "Estimated duration of a very long plan; 24 or more", "priority": 3, "confidence": "sicher"},
-  "plan_err_memory": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_complex": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_engine": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_set_start_dest": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_set_start_end": {"area": "Routing errors", "context": "Routing error (no router available)", "priority": 3, "confidence": "sicher"},
-  "plan_err_no_route_for": {"area": "Routing errors", "context": "Routing error. %1$s = activity name", "priority": 3, "confidence": "sicher"},
-  "plan_err_no_route_for_try": {"area": "Routing errors", "context": "Routing error. %1$s = activity name", "priority": 3, "confidence": "sicher"},
-  "plan_err_too_far": {"area": "Routing errors", "context": "Routing error. %1$s = point name (\"Start point\", \"Stop 2\"), %2$d = metres, %3$s = activity name", "priority": 3, "confidence": "bitte prüfen", "doubt": "\"ihn\" fits \"Punkt\"/\"Startpunkt\" but not \"das Ziel\""},
-  "plan_err_not_mapped": {"area": "Routing errors", "context": "Routing error. %1$s = point name, %2$d = metres, %3$s = activity name", "priority": 3, "confidence": "bitte prüfen", "doubt": "See plan_err_too_far"},
-  "plan_err_timeout_hike": {"area": "Routing errors", "context": "Routing error (hike). %1$d = seconds, %2$d = chosen SAC level", "priority": 3, "confidence": "sicher"},
-  "plan_err_timeout": {"area": "Routing errors", "context": "Routing error. %1$d = seconds", "priority": 3, "confidence": "sicher"},
-  "plan_err_island": {"area": "Routing errors", "context": "Routing error. %1$s = activity name", "priority": 3, "confidence": "bitte prüfen", "doubt": "\"abgeschlossenes Wegenetz\" for an isolated network"},
-  "plan_err_too_long": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_profile_folder": {"area": "Routing errors", "context": "Routing error (storage)", "priority": 3, "confidence": "sicher"},
-  "plan_err_profile_install": {"area": "Routing errors", "context": "Routing error (storage). %1$s = file name", "priority": 3, "confidence": "sicher"},
-  "plan_err_profiles": {"area": "Routing errors", "context": "Routing error (storage)", "priority": 3, "confidence": "sicher"},
-  "plan_err_coordinates": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_start_point": {"area": "Routing errors", "context": "Point name inside a routing error (\"Start point is too far …\")", "priority": 3, "confidence": "sicher"},
-  "plan_err_a_stop": {"area": "Routing errors", "context": "Point name inside a routing error when the number is unknown", "priority": 3, "confidence": "sicher"},
-  "plan_err_a_point": {"area": "Routing errors", "context": "Point name inside a routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_cancelled": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_no_data": {"area": "Routing errors", "context": "Routing error; the plan shows a \"map loading\" notice instead", "priority": 3, "confidence": "bitte prüfen", "doubt": "\"Routing-Daten\" is technical; owner rule: say \"the map\""},
-  "plan_err_busy": {"area": "Routing errors", "context": "Routing error", "priority": 3, "confidence": "sicher"},
-  "plan_err_unexpected": {"area": "Routing errors", "context": "Routing error. \"Settings → Diagnostics\": the Diagnostics page stays English", "priority": 3, "confidence": "bitte prüfen", "doubt": "Menu path half German, half English (Diagnostics is not translated)"},
-  "plan_err_straight": {"area": "Routing errors", "context": "Red line when no router is available", "priority": 3, "confidence": "sicher"},
-  "plan_err_no_route_between": {"area": "Routing errors", "context": "Routing error of one leg. %1$d, %2$d = point numbers", "priority": 3, "confidence": "sicher"},
-  "plan_err_took_too_long": {"area": "Routing errors", "context": "Red line: the whole plan timed out", "priority": 3, "confidence": "sicher"},
-  "plan_err_no_route": {"area": "Routing errors", "context": "Fallback routing error", "priority": 3, "confidence": "sicher"},
-  "plan_leg_error": {"area": "Routing errors", "context": "Red line for a leg the router could not do. %1$d, %2$d = point numbers, %3$s = reason (plan_leg_*)", "priority": 2, "confidence": "sicher"},
-  "plan_leg_took_too_long": {"area": "Routing errors", "context": "Reason in \"Point 1 → 2: took too long\"", "priority": 2, "confidence": "sicher"},
-  "plan_leg_too_long": {"area": "Routing errors", "context": "Reason in \"Point 1 → 2: …\"", "priority": 2, "confidence": "sicher"},
-  "plan_leg_no_path": {"area": "Routing errors", "context": "Reason in \"Point 1 → 2: no path found\"", "priority": 2, "confidence": "sicher"}
+  "plan_hint_ferry_one": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line: one ferry on the route. %1$s = its length (\"1.2 km\")",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_hint_ferries": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line: several ferries. %1$d = count (always 2 or more in practice)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_hint_construction": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (lower case in English, joined with \" · \"). one = a single site (no number), other: %1$d = count",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_no_bikes": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (MTB): signed ways closed to bikes. %1$s = total length (\"350 m\")",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Radfahren verboten\" is the sign wording; alternative \"für Räder gesperrt\"",
+    "max": 30
+  },
+  "plan_hint_dismount": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (MTB): signed \"dismount\". %1$s = total length",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "German signs say \"Radfahrer absteigen\"",
+    "max": 30
+  },
+  "plan_hint_fords": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line: water to cross. one = a single ford (no number), other: %1$d = count",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_barriers": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (bikes): several stiles / gates. %1$d = count (a single one shows its name instead)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Hindernis\" for stile / gate / turnstile together; alternative \"Durchlässe\""
+  },
+  "plan_barrier_stile": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (bikes): a stile – a step over a fence",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Rare in the Alps; \"Zauntritt\" / \"Überstieg\""
+  },
+  "plan_barrier_kissing_gate": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (bikes): a kissing gate",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "No common German word; \"Schwinggatter\" / \"Weidetor\""
+  },
+  "plan_barrier_turnstile": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (bikes): a turnstile",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_pushing": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (Bike / Gravel bike / E-bike): where the bike is pushed. %1$s = total length (\"1.2 km\")",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "plan_hint_steps": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (bikes): steps on the route. one = one flight (no number), other: %1$d = count",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_above_t": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line (hike): sections harder than the chosen level. %1$d = count, %2$d = chosen SAC level (T2)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"über T2\" = harder than T2; alternative \"schwerer als T2\"",
+    "max": 30
+  },
+  "plan_hint_steep": {
+    "area": "Route hints",
+    "context": "Item of the amber hint line: steep sections (over 25 % hike, 15 % bike). %1$d = count",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_route_changed": {
+    "area": "Plan sheet",
+    "context": "Grey line on the plan sheet after the activity changed and the route changed a lot. %1$s = activity in a sentence (\"Hike T3\", \"Gravel bike\")",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Neue Route für Wandern T3\" reads a bit stiff"
+  },
+  "plan_spot_ferry": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (tap the amber line)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_construction": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\"",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"evtl.\" abbreviation; or \"kann gesperrt sein\""
+  },
+  "plan_spot_no_bikes": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (MTB)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_dismount": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (MTB)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_ford": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\"",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Alternative \"Furt – durch Wasser\""
+  },
+  "plan_spot_kissing_gate": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (bikes)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "See plan_barrier_kissing_gate"
+  },
+  "plan_spot_turnstile": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (bikes)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_turnstile_full": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (bikes): a full-height turnstile",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Long; alternative \"Drehkreuz – mit Rad evtl. zu eng\""
+  },
+  "plan_spot_stile": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (bikes)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"drüberheben\" is colloquial; \"Rad hinüberheben\""
+  },
+  "plan_spot_pushing": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\"",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_steps": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (bikes)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_above_t": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\" (hike). %1$d = hardest SAC level of the section, %2$d = chosen level",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"dein T2\" – the level is male/neuter in German speech; alternative \"über deiner Stufe T2\""
+  },
+  "plan_spot_steep": {
+    "area": "Route hints",
+    "context": "Row title in the list \"On this route\". %1$d = steepest grade in percent",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_at_start": {
+    "area": "Route hints",
+    "context": "Second part of a row in \"On this route\" (\"350 m · at the start\"); capitalised automatically when it stands alone",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spot_after": {
+    "area": "Route hints",
+    "context": "Second part of a row in \"On this route\" (\"350 m · after 3.4 km\"). %1$s = distance from the start; capitalised automatically when alone",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spots_title": {
+    "area": "Route hints",
+    "context": "Title of the list of route hints (tap the amber line)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_spots_tap": {
+    "area": "Route hints",
+    "context": "Line under the title of the route hint list",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_warn_show_spots": {
+    "area": "Route hints",
+    "context": "Accessibility: what tapping the amber hint line does",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_calculating": {
+    "area": "Plan sheet",
+    "context": "Plan sheet while a route is calculated",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_first_point": {
+    "area": "Plan sheet",
+    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Long; \"hinwillst\" is colloquial"
+  },
+  "plan_hint_destination": {
+    "area": "Plan sheet",
+    "context": "Plan sheet with one point",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_not_routed_long": {
+    "area": "Plan sheet",
+    "context": "Plan sheet: the user cancelled the \"very long route\" question",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_not_routed_stopped": {
+    "area": "Plan sheet",
+    "context": "Plan sheet: the user stopped a long calculation",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_not_routed": {
+    "area": "Plan sheet",
+    "context": "Plan sheet: route not calculated (other reason)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_anyway": {
+    "area": "Plan sheet",
+    "context": "Button next to \"Route not calculated – very long plan.\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 18
+  },
+  "plan_calculate": {
+    "area": "Plan sheet",
+    "context": "Button next to \"Route not calculated – calculation stopped.\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 18
+  },
+  "plan_gap_first": {
+    "area": "Plan sheet",
+    "context": "Red line: the route cannot reach the start point. %1$s = missing distance (\"180 m\"), %2$s = point name in quotes or \"point 1\", %3$s = activity name",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Erste 180 m ab Punkt 1\" – grammar of \"Erste\" with a distance"
+  },
+  "plan_gap_last": {
+    "area": "Plan sheet",
+    "context": "Red line: the route cannot reach a point. %1$s = missing distance (\"180 m\"), %2$s = point name in quotes or \"point 3\", %3$s = activity name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_gap_point": {
+    "area": "Plan sheet",
+    "context": "Unnamed point inside the red gap line (\"Last 180 m to point 3\"). %1$d = point number",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_quoted": {
+    "area": "Plan sheet",
+    "context": "A place name in quotes inside a sentence. %1$s = name",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German quotes „…“"
+  },
+  "plan_more": {
+    "area": "Plan sheet",
+    "context": "A red line with more problems behind it. %1$s = the line, %2$d = number of further problems",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_saved_as": {
+    "area": "Plan sheet",
+    "context": "Plan sheet line under the stats: the plan is a saved route. %1$s = route name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_changed_not_saved": {
+    "area": "Plan sheet",
+    "context": "Plan sheet line: the saved route was changed since. %1$s = route name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_plan_a_route": {
+    "area": "Plan sheet",
+    "context": "Title of the plan sheet without a route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "plan_max_height": {
+    "area": "Plan sheet",
+    "context": "Plan sheet / Route details: highest point after ascent / descent (\"↑ 842 m ↓ 310 m · max 2140 m\"). %1$s = height",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_show_route_details": {
+    "area": "Plan sheet",
+    "context": "Accessibility: tapping the difficulty badge",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_elevation_profile": {
+    "area": "Plan sheet",
+    "context": "Accessibility label of the profile on the plan sheet",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_start_navigation_for": {
+    "area": "Plan sheet",
+    "context": "Main button of the plan sheet; names the activity (a wrong activity is a disaster). %1$s = activity name (\"Gravel bike\")",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "With long German names (\"Navigation starten · E-Mountainbike\") the button cuts the end; short activity names?",
+    "max": 34
+  },
+  "plan_continue_navigation_for": {
+    "area": "Plan sheet",
+    "context": "Main button while a tour records. %1$s = activity name",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Long with long activity names",
+    "max": 34
+  },
+  "plan_route_options": {
+    "area": "Plan sheet",
+    "context": "Accessibility: the ⋯ button of the plan sheet",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_save_route": {
+    "area": "Plan sheet",
+    "context": "⋯ menu item / dialog title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_time_details": {
+    "area": "Plan sheet",
+    "context": "⋯ menu item: how the time estimate is made up",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_clear_route": {
+    "area": "Plan sheet",
+    "context": "⋯ menu item: remove all points (Undo brings them back)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"löschen\" may sound final; alternative \"Route leeren\""
+  },
+  "plan_activity_chip_desc": {
+    "area": "Plan sheet",
+    "context": "Accessibility of the activity chip. %1$s = chip text (\"Hike · T2\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_points": {
+    "area": "Plan sheet",
+    "context": "Title of the list of route points (full sheet)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_reverse": {
+    "area": "Plan sheet",
+    "context": "Button above the points: reverse the route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_round_trip": {
+    "area": "Plan sheet",
+    "context": "Button above the points: back to the start",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_no_points": {
+    "area": "Plan sheet",
+    "context": "Points list without points",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_point_move_desc": {
+    "area": "Plan sheet",
+    "context": "Accessibility: drag handle of a point row. %1$d = number",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_show_on_map": {
+    "area": "Plan sheet",
+    "context": "Accessibility: tapping a point row",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_point_show_desc": {
+    "area": "Plan sheet",
+    "context": "Accessibility of a point row. %1$d = number, %2$s = name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_point_delete_desc": {
+    "area": "Plan sheet",
+    "context": "Accessibility: × of a point row. %1$d = number",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_point_deleted_desc": {
+    "area": "Plan sheet",
+    "context": "Accessibility of a just deleted row. %1$s = name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_point_deleted": {
+    "area": "Plan sheet",
+    "context": "Shown for a moment in place of a deleted point row",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Rückgängig\" = the Undo button (map footer)"
+  },
+  "plan_point_start": {
+    "area": "Plan sheet",
+    "context": "Name of an unnamed first point (list, map menu) and its role",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_point_destination": {
+    "area": "Plan sheet",
+    "context": "Name of an unnamed last point and its role",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_point_stop": {
+    "area": "Plan sheet",
+    "context": "Name of an unnamed point between start and destination. %1$d = its number",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Glossary says \"Zwischenpunkt\"; \"Stopp 2\" is shorter on the map. Alternatives: \"Punkt 2\", \"Zwischenziel 2\""
+  },
+  "plan_point_start_finish": {
+    "area": "Plan sheet",
+    "context": "Role of the first point of a round trip",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_way_types_surfaces": {
+    "area": "Route details",
+    "context": "Title of the way type / surface box",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_hide_details": {
+    "area": "Route details",
+    "context": "Accessibility: collapse arrow",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_show_details": {
+    "area": "Route details",
+    "context": "Accessibility: expand arrow",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_way_types": {
+    "area": "Route details",
+    "context": "Title of a bar",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surfaces": {
+    "area": "Route details",
+    "context": "Title of a bar",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_cycleway": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_path": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_footway": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_track": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Forest / farm track; \"Forstweg\" or \"Feldweg\" are narrower"
+  },
+  "plan_way_quiet_road": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_road": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_busy_road": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Long in the legend; \"Hauptstraße\"?"
+  },
+  "plan_way_steps": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_way_ferry": {
+    "area": "Route details",
+    "context": "Way type in the breakdown bar / summary (\"Path 49 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_asphalt": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_paved": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_gravel": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_unpaved": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_ground": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "OSM \"ground\"; alternative \"Naturboden\""
+  },
+  "plan_surface_natural_trail": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Alternative \"Wanderpfad\""
+  },
+  "plan_surface_alpine": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_surface_unknown": {
+    "area": "Route details",
+    "context": "Surface in the breakdown bar / summary (\"Asphalt 98 %\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_other": {
+    "area": "Route details",
+    "context": "Breakdown legend: small categories together",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_route_details": {
+    "area": "Route details",
+    "context": "Title of the Route details page",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_no_elevation": {
+    "area": "Plan sheet",
+    "context": "In place of the elevation profile",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_difficulty_easy": {
+    "area": "Plan sheet",
+    "context": "Difficulty badge of a route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "plan_difficulty_moderate": {
+    "area": "Plan sheet",
+    "context": "Difficulty badge of a route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "plan_difficulty_difficult": {
+    "area": "Plan sheet",
+    "context": "Difficulty badge of a route",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "plan_difficulty_unpaved": {
+    "area": "Plan sheet",
+    "context": "Badge word after the difficulty: \"Moderate · unpaved\" (Bike / E-bike on unpaved ground)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "plan_because_grade": {
+    "area": "Route details",
+    "context": "Grey line on Route details: why the difficulty is higher. %1$s = difficulty (\"Moderate\"), %2$s = distance (\"250 m\"), %3$s = trail grade (\"T3\", \"S2\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"wegen 250 m ab T3\" (ab = this grade or harder); alternative \"Mittel: 250 m sind T3 oder schwerer\""
+  },
+  "plan_because_unpaved": {
+    "area": "Route details",
+    "context": "Grey line on Route details. %1$s = difficulty, %2$d = unpaved share in %, %3$s = unpaved distance",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_because_loose": {
+    "area": "Route details",
+    "context": "Grey line on Route details. %1$s = difficulty, %2$s = distance on loose ground",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_save_as_new_route": {
+    "area": "Dialogs",
+    "context": "Name dialog title when the plan already is a saved route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_save_current_route": {
+    "area": "Dialogs",
+    "context": "Name dialog title before the plan is replaced",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_route_default_name": {
+    "area": "Dialogs",
+    "context": "Start of the suggested name of a new route (\"Route 26 Oct\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_something_wrong": {
+    "area": "Dialogs",
+    "context": "Title of a dialog when saving / loading a route failed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_save_changes_into": {
+    "area": "Dialogs",
+    "context": "Save dialog for a changed saved route. %1$s = route name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_saved_again": {
+    "area": "Dialogs",
+    "context": "Save dialog for an unchanged saved route. %1$s = route name",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"sie\" refers to \"die Route\""
+  },
+  "plan_save_as_new": {
+    "area": "Dialogs",
+    "context": "Button in the save dialog",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Short form of \"Als neue Route speichern…\"",
+    "max": 22
+  },
+  "plan_straight_title": {
+    "area": "Dialogs",
+    "context": "Dialog title on Start navigation when legs are straight lines",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_straight_text": {
+    "area": "Dialogs",
+    "context": "Dialog body",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_navigate_anyway": {
+    "area": "Dialogs",
+    "context": "Button of that dialog",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_fix_route": {
+    "area": "Dialogs",
+    "context": "Button of that dialog",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_search_hint": {
+    "area": "Top bar",
+    "context": "Search pill at the top of the map (Plan)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_menu": {
+    "area": "Top bar",
+    "context": "Accessibility: the round ☰ button",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_menu_my_routes": {
+    "area": "Top bar",
+    "context": "☰ menu item",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_menu_start_recording": {
+    "area": "Top bar",
+    "context": "☰ menu item: record without a route",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_menu_check_updates": {
+    "area": "Top bar",
+    "context": "☰ menu item",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_map_credits": {
+    "area": "Map (Plan)",
+    "context": "Accessibility: tapping \"© OpenStreetMap\"",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_undo": {
+    "area": "Map (Plan)",
+    "context": "Accessibility: undo button on the map",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_redo": {
+    "area": "Map (Plan)",
+    "context": "Accessibility: redo button on the map",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_compass_heading": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the compass button",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Bewegungsrichtung\" for hikers and bikes (\"Fahrtrichtung\" fits bikes only)"
+  },
+  "plan_compass_turned": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the compass button",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_compass_north": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the compass button",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_hold_hide_route": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the eye button",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_location_off_tap": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_location_denied_tap": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_centre_on_me": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button. %1$s = GPS state (\"GPS good\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_no_location_permission": {
+    "area": "Map (Plan)",
+    "context": "Why \"Go here\" is greyed out in the first-point menu",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_location_off": {
+    "area": "Map (Plan)",
+    "context": "Why \"Go here\" is greyed out",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_searching_gps": {
+    "area": "Map (Plan)",
+    "context": "Why \"Go here\" is greyed out",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_new_route": {
+    "area": "Map (Plan)",
+    "context": "Title of the menu after the first hold on the map",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_start_here": {
+    "area": "Map (Plan)",
+    "context": "Hold menu item: this spot is the start",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "plan_go_here": {
+    "area": "Map (Plan)",
+    "context": "Hold menu item: route from my position to this spot",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Alternative \"Hierher navigieren\" / \"Ziel hier\"",
+    "max": 24
+  },
+  "plan_add_to_route": {
+    "area": "Map (Plan)",
+    "context": "Hold menu of a POI: add it as a point",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_open_google_maps": {
+    "area": "Map (Plan)",
+    "context": "Hold menu item",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_removes_points": {
+    "area": "Map (Plan)",
+    "context": "Grey line under \"Start here\" in a point menu. %1$d = number of points before it",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German one form without the number (\"Entfernt den Punkt davor\"); other form with it"
+  },
+  "plan_start_finish_here": {
+    "area": "Map (Plan)",
+    "context": "Point menu item of a round trip",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_same_round_trip": {
+    "area": "Map (Plan)",
+    "context": "Grey line under it",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_finding_shared_place": {
+    "area": "Map (Plan)",
+    "context": "Small pill while a place shared from another app is looked up",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_resize_panel": {
+    "area": "Plan sheet",
+    "context": "Accessibility of the sheet handle",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_slide_to_plan": {
+    "area": "Navigate",
+    "context": "The slider at the bottom of Navigate: the only way back to Plan",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Alternative \"Schieben zum Planen\"",
+    "max": 24
+  },
+  "plan_slide_desc": {
+    "area": "Navigate",
+    "context": "Accessibility of the slider. %1$s = slider text",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_switch_to_plan": {
+    "area": "Navigate",
+    "context": "Accessibility action of the slider",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_stat_distance": {
+    "area": "Dialogs",
+    "context": "Stat label (tour summary)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_stat_ascent": {
+    "area": "Dialogs",
+    "context": "Stat label (tour summary)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Glossary: bergauf / bergab; \"Aufstieg\" for hikers"
+  },
+  "plan_stat_descent": {
+    "area": "Dialogs",
+    "context": "Stat label (tour summary)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "See plan_stat_ascent"
+  },
+  "plan_stat_time": {
+    "area": "Dialogs",
+    "context": "Stat label (tour summary)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_close_track": {
+    "area": "Track panel",
+    "context": "Accessibility: × of an opened GPX track",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_navigate_track_for": {
+    "area": "Track panel",
+    "context": "Button on an opened track while a tour records. %1$s = activity name",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "plan_busy_import": {
+    "area": "Busy",
+    "context": "Spinner text on the button that started a GPX import",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_busy_export": {
+    "area": "Busy",
+    "context": "Spinner text while an export is prepared",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_busy_backup": {
+    "area": "Busy",
+    "context": "Spinner text on \"Back up all now\"",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_error": {
+    "area": "Message bar",
+    "context": "Accessibility of the ⚠ in an error message",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_routing_load_failed": {
+    "area": "Map loading",
+    "context": "Routing data download failed (map loading card)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_about_days": {
+    "area": "Dialogs",
+    "context": "Estimated duration of a very long plan (\"This route is very long – about 29 days\"); 2 or more. Capitalised when alone",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_about_hours": {
+    "area": "Dialogs",
+    "context": "Estimated duration of a very long plan; 24 or more",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_memory": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_complex": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_engine": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_set_start_dest": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_set_start_end": {
+    "area": "Routing errors",
+    "context": "Routing error (no router available)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_no_route_for": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$s = activity name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_no_route_for_try": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$s = activity name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_too_far": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$s = point name (\"Start point\", \"Stop 2\"), %2$d = metres, %3$s = activity name",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"ihn\" fits \"Punkt\"/\"Startpunkt\" but not \"das Ziel\""
+  },
+  "plan_err_not_mapped": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$s = point name, %2$d = metres, %3$s = activity name",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "See plan_err_too_far"
+  },
+  "plan_err_timeout_hike": {
+    "area": "Routing errors",
+    "context": "Routing error (hike). %1$d = seconds, %2$d = chosen SAC level",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_timeout": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$d = seconds",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_island": {
+    "area": "Routing errors",
+    "context": "Routing error. %1$s = activity name",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"abgeschlossenes Wegenetz\" for an isolated network"
+  },
+  "plan_err_too_long": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_profile_folder": {
+    "area": "Routing errors",
+    "context": "Routing error (storage)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_profile_install": {
+    "area": "Routing errors",
+    "context": "Routing error (storage). %1$s = file name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_profiles": {
+    "area": "Routing errors",
+    "context": "Routing error (storage)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_coordinates": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_start_point": {
+    "area": "Routing errors",
+    "context": "Point name inside a routing error (\"Start point is too far …\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_a_stop": {
+    "area": "Routing errors",
+    "context": "Point name inside a routing error when the number is unknown",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_a_point": {
+    "area": "Routing errors",
+    "context": "Point name inside a routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_cancelled": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_no_data": {
+    "area": "Routing errors",
+    "context": "Routing error; the plan shows a \"map loading\" notice instead",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Routing-Daten\" is technical; owner rule: say \"the map\""
+  },
+  "plan_err_busy": {
+    "area": "Routing errors",
+    "context": "Routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_unexpected": {
+    "area": "Routing errors",
+    "context": "Routing error. \"Settings → Diagnostics\": the Diagnostics page stays English",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "The topic is called „Diagnose“ in German, its page content stays English"
+  },
+  "plan_err_straight": {
+    "area": "Routing errors",
+    "context": "Red line when no router is available",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_no_route_between": {
+    "area": "Routing errors",
+    "context": "Routing error of one leg. %1$d, %2$d = point numbers",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_took_too_long": {
+    "area": "Routing errors",
+    "context": "Red line: the whole plan timed out",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_err_no_route": {
+    "area": "Routing errors",
+    "context": "Fallback routing error",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_leg_error": {
+    "area": "Routing errors",
+    "context": "Red line for a leg the router could not do. %1$d, %2$d = point numbers, %3$s = reason (plan_leg_*)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_leg_took_too_long": {
+    "area": "Routing errors",
+    "context": "Reason in \"Point 1 → 2: took too long\"",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_leg_too_long": {
+    "area": "Routing errors",
+    "context": "Reason in \"Point 1 → 2: …\"",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_leg_no_path": {
+    "area": "Routing errors",
+    "context": "Reason in \"Point 1 → 2: no path found\"",
+    "priority": 2,
+    "confidence": "sicher"
+  }
 }

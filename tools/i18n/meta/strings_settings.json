@@ -1,125 +1,841 @@
 {
-  "settings_page_pace": {"area": "Settings list", "context": "Topic in the Settings list and title of its page", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_poi": {"area": "Settings list", "context": "Topic: which POI kinds the map shows", "priority": 2, "confidence": "bitte prüfen", "doubt": "Glossary says POIs; \"Interessante Orte\" is clearer for non-technical users", "max": 28},
-  "settings_page_map": {"area": "Settings list", "context": "Topic: map options", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_navigation": {"area": "Settings list", "context": "Topic: off-route warning, vibrations, screen", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_offline_maps": {"area": "Settings list", "context": "Topic: downloaded map areas", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_backup": {"area": "Settings list", "context": "Topic: GPX copies of tracks and routes in a folder", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_updates": {"area": "Settings list", "context": "Topic: app updates", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_privacy": {"area": "Settings list", "context": "Topic: what leaves the phone", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_diagnostics": {"area": "Settings list", "context": "Topic: problem report and log (the page itself stays English)", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_page_about": {"area": "Settings list", "context": "Topic: version, licence, credits", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Info\" would be shorter", "max": 28},
-  "settings_group_yours": {"area": "Settings list", "context": "Group heading above the user topics", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_group_app": {"area": "Settings list", "context": "Group heading above Updates, Privacy, Diagnostics, About", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_sum_pace": {"area": "Settings list", "context": "Summary under \"Your pace\". %1$s = pace level name (e.g. Average)", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_poi_all_shown": {"area": "Settings list", "context": "Summary under \"Points of interest\": every kind shown", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_poi_all_hidden": {"area": "Settings list", "context": "Summary under \"Points of interest\": every kind hidden", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_poi_groups": {"area": "Settings list", "context": "Summary under \"Points of interest\". %1$d = groups with something shown, %2$d = all groups", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_map": {"area": "Settings list", "context": "Summary under \"Map\". %1$s / %2$s = on/off, %3$s = \"Direction of travel\" or \"North up\"", "priority": 2, "confidence": "bitte prüfen", "doubt": "Long line (2 lines max); \"Schummerung\" is the cartographic word", "max": 80},
-  "settings_on": {"area": "Settings list", "context": "Value in a summary line: switched on", "priority": 2, "confidence": "sicher", "max": 6},
-  "settings_off": {"area": "Settings list", "context": "Value in a summary line: switched off", "priority": 2, "confidence": "sicher", "max": 6},
-  "settings_sum_nav_off": {"area": "Settings list", "context": "Summary under \"Navigation\" when the off-route warning is off. %1$s = on/off", "priority": 2, "confidence": "bitte prüfen", "doubt": "Long (2 lines max)", "max": 80},
-  "settings_sum_nav": {"area": "Settings list", "context": "Summary under \"Navigation\". %1$d = metres off the route, %2$s = on/off", "priority": 2, "confidence": "sicher", "max": 60},
-  "settings_sum_maps_unavailable": {"area": "Settings list", "context": "Summary under \"Offline maps\" in a build without map server", "priority": 3, "confidence": "sicher", "max": 60},
-  "settings_sum_maps_none": {"area": "Settings list", "context": "Summary under \"Offline maps\": nothing downloaded yet", "priority": 2, "confidence": "sicher", "max": 60},
-  "settings_sum_maps_waiting": {"area": "Settings list", "context": "Summary under \"Offline maps\" with waiting downloads. %1$s = size and area count, %2$d = waiting downloads", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"ausstehend\" vs \"wartend\"", "max": 60},
-  "settings_sum_backup_failed": {"area": "Settings list", "context": "Summary under \"Backup\" (red)", "priority": 3, "confidence": "sicher", "max": 45},
-  "settings_sum_backup_storage": {"area": "Settings list", "context": "Summary under \"Backup\" on Android 8–9 without storage permission (red)", "priority": 3, "confidence": "sicher", "max": 45},
-  "settings_sum_backup_none": {"area": "Settings list", "context": "Summary under \"Backup\"", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_backup_last": {"area": "Settings list", "context": "Summary under \"Backup\". %1$s = \"today 18:40\" / \"21 Oct 18:40\"", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_when_today": {"area": "Settings list", "context": "Time of the last backup today. %1$s = time 18:40", "priority": 2, "confidence": "sicher", "max": 20},
-  "settings_when_yesterday": {"area": "Settings list", "context": "Time of the last backup yesterday. %1$s = time 18:40", "priority": 2, "confidence": "sicher", "max": 20},
-  "settings_date_day": {"area": "Settings list", "context": "DATE PATTERN (Java SimpleDateFormat) for a day this year: \"21 Oct\" / \"21. Okt.\"; only change the order or dots", "priority": 2, "confidence": "bitte prüfen", "doubt": "Date pattern, not a text", "max": 12},
-  "settings_date_day_year": {"area": "Settings list", "context": "DATE PATTERN (Java SimpleDateFormat) for a day in another year", "priority": 2, "confidence": "bitte prüfen", "doubt": "Date pattern, not a text", "max": 14},
-  "settings_sum_upd_available": {"area": "Settings list", "context": "Summary under \"Updates\" (accent colour). %1$s = version 0.12.0", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_upd_downloading": {"area": "Settings list", "context": "Summary under \"Updates\" while the APK downloads. %1$d = percent", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_upd_checking": {"area": "Settings list", "context": "Summary under \"Updates\". %1$s = installed version", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_upd_uptodate": {"area": "Settings list", "context": "Summary under \"Updates\". %1$s = installed version", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_upd_failed": {"area": "Settings list", "context": "Summary under \"Updates\" (red). %1$s = installed version", "priority": 3, "confidence": "sicher", "max": 45},
-  "settings_sum_diag": {"area": "Settings list", "context": "Summary under \"Diagnostics\"", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_privacy": {"area": "Settings list", "context": "Summary under \"Privacy\"", "priority": 2, "confidence": "sicher", "max": 60},
-  "settings_sum_about": {"area": "Settings list", "context": "Summary under \"About\"", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Credits\" → \"Quellen\" (data sources and software)", "max": 45},
-  "settings_poi_hide_all": {"area": "Settings · Points of interest", "context": "Button: hide every POI kind", "priority": 2, "confidence": "sicher", "max": 16},
-  "settings_poi_shown": {"area": "Settings · Points of interest", "context": "Line under a POI group. %1$d = kinds shown, %2$d = kinds in the group", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_cd_collapse": {"area": "Settings · Points of interest", "context": "Content description (accessibility) of the arrow of an open POI group", "priority": 3, "confidence": "sicher"},
-  "settings_cd_expand": {"area": "Settings · Points of interest", "context": "Content description (accessibility) of the arrow of a closed POI group", "priority": 3, "confidence": "sicher"},
-  "settings_poi_group_food": {"area": "Settings · Points of interest", "context": "POI group: restaurants, cafés, bars", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_poi_group_hut": {"area": "Settings · Points of interest", "context": "POI group: mountain huts, shelters, camp sites", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_poi_group_water": {"area": "Settings · Points of interest", "context": "POI group: drinking water, springs", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_poi_group_sight": {"area": "Settings · Points of interest", "context": "POI group: viewpoints, peaks, sights", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_poi_group_transport": {"area": "Settings · Points of interest", "context": "POI group: bus stops, stations, lifts, parking", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Verkehr\" or \"Bus & Bahn\" / \"Verkehrsmittel\"", "max": 28},
-  "settings_poi_group_facility": {"area": "Settings · Points of interest", "context": "POI group: toilets, benches, shops, pharmacies", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Einrichtungen\" is vague; alternative \"Service\"", "max": 28},
-  "settings_poi_group_other": {"area": "Settings · Points of interest", "context": "POI group: everything else", "priority": 2, "confidence": "sicher", "max": 28},
-  "settings_map_style": {"area": "Settings · Map", "context": "Heading above the map style chips (only with more than one style)", "priority": 3, "confidence": "sicher", "max": 30},
-  "settings_map_contours": {"area": "Settings · Map", "context": "Switch: contour lines on the map", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_map_hillshade": {"area": "Settings · Map", "context": "Switch: hill shading (relief) on the map", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Schummerung\" (cartography) vs \"Reliefschattierung\"", "max": 30},
-  "settings_map_direction": {"area": "Settings · Map", "context": "Heading above the two direction chips", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_map_travel": {"area": "Settings · Map", "context": "Chip: the map turns with the direction you move", "priority": 2, "confidence": "bitte prüfen", "doubt": "Chip width; \"Fahrtrichtung\" fits bikes only, \"Laufrichtung\" hikers only", "max": 22},
-  "settings_map_north": {"area": "Settings · Map", "context": "Chip: the map stays north-up", "priority": 2, "confidence": "sicher", "max": 22},
-  "settings_map_planning": {"area": "Settings · Map", "context": "Small heading above the planning vibration switch", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_map_vibrate": {"area": "Settings · Map", "context": "Switch title", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_map_vibrate_sub": {"area": "Settings · Map", "context": "Line under the switch", "priority": 2, "confidence": "sicher", "max": 90},
-  "settings_nav_offroute": {"area": "Settings · Navigation", "context": "Switch title", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_nav_offroute_sub": {"area": "Settings · Navigation", "context": "Line under the switch", "priority": 2, "confidence": "sicher", "max": 90},
-  "settings_nav_warn_after": {"area": "Settings · Navigation", "context": "Label before the three distance chips (25 m, 40 m, 75 m) – one row with them", "priority": 2, "confidence": "bitte prüfen", "doubt": "Row width with three chips", "max": 12},
-  "settings_nav_meters": {"area": "Settings · Navigation", "context": "Distance chip. %1$d = metres", "priority": 2, "confidence": "sicher", "max": 6},
-  "settings_nav_vibrate_off": {"area": "Settings · Navigation", "context": "Switch title", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_nav_vibrate_off_sub": {"area": "Settings · Navigation", "context": "Line under the switch", "priority": 2, "confidence": "sicher", "max": 90},
-  "settings_nav_junction": {"area": "Settings · Navigation", "context": "Switch title", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_nav_junction_sub": {"area": "Settings · Navigation", "context": "Line under the switch", "priority": 2, "confidence": "sicher", "max": 90},
-  "settings_nav_screen_on": {"area": "Settings · Navigation", "context": "Switch title", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_nav_screen_on_sub": {"area": "Settings · Navigation", "context": "Line under the switch", "priority": 2, "confidence": "sicher", "max": 90},
-  "settings_nav_battery_hint": {"area": "Settings · Navigation", "context": "Hint beside the \"App settings\" button: Android battery setting of the app", "priority": 2, "confidence": "bitte prüfen", "doubt": "Must match the German Android label of the battery option (Pixel: „Nicht eingeschränkt“ / „Uneingeschränkt“)", "max": 90},
-  "settings_nav_location_hint": {"area": "Settings · Navigation", "context": "Hint beside \"App settings\" when background location is not allowed: after a phone restart the tour is continued by a tap", "priority": 2, "confidence": "bitte prüfen", "doubt": "„Weiter“ must match the German button of the interrupted-tour notice; „Immer zulassen“ = German Android permission label", "max": 90},
-  "settings_pace_intro": {"area": "Settings · Your pace", "context": "Intro line of the pace page", "priority": 2, "confidence": "sicher"},
-  "settings_pace_hiking": {"area": "Settings · Your pace", "context": "Heading of the hiking pace levels", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_pace_cycling": {"area": "Settings · Your pace", "context": "Heading of the cycling pace levels. %1$s = bike activity name (e.g. Gravel bike)", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_pace_learn": {"area": "Settings · Your pace", "context": "Last line of the pace page", "priority": 2, "confidence": "sicher"},
-  "settings_upd_banner_title": {"area": "Update card", "context": "Card above the plan sheet when a newer version is published. %1$s = version", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_upd_downloading": {"area": "Update card", "context": "Line on the update card while it downloads. %1$d = percent", "priority": 2, "confidence": "sicher", "max": 34},
-  "settings_upd_kept": {"area": "Update card", "context": "Line on the update card", "priority": 2, "confidence": "sicher", "max": 50},
-  "settings_upd_later": {"area": "Update card", "context": "Button: hide the update card for now", "priority": 2, "confidence": "sicher", "max": 12},
-  "settings_upd_install": {"area": "Update card", "context": "Button: download and install the update", "priority": 2, "confidence": "sicher", "max": 14},
-  "settings_upd_installed": {"area": "Settings · Updates", "context": "First line of the updates page. %1$s = installed version", "priority": 2, "confidence": "sicher"},
-  "settings_upd_checking": {"area": "Settings · Updates", "context": "While the update check runs", "priority": 2, "confidence": "sicher"},
-  "settings_upd_latest": {"area": "Settings · Updates", "context": "After a check: nothing newer", "priority": 2, "confidence": "sicher"},
-  "settings_upd_version_available": {"area": "Settings · Updates", "context": "A newer version exists. %1$s = version", "priority": 2, "confidence": "sicher"},
-  "settings_upd_download_install": {"area": "Settings · Updates", "context": "Button. %1$s = version", "priority": 2, "confidence": "sicher", "max": 36},
-  "settings_upd_check": {"area": "Settings · Updates", "context": "Button: check GitHub for a newer version", "priority": 2, "confidence": "sicher", "max": 30},
-  "settings_upd_source": {"area": "Settings · Updates", "context": "Last line of the updates page", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_lead": {"area": "Settings · Privacy", "context": "First line of the privacy page (bold)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_tracks": {"area": "Settings · Privacy", "context": "Second line of the privacy page", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_what": {"area": "Settings · Privacy", "context": "Heading of the list of data flows (what → to whom · when)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_maps_what": {"area": "Settings · Privacy", "context": "Data flow 1: what is sent", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_maps_to": {"area": "Settings · Privacy", "context": "Data flow 1: to whom (after →)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_when_maps": {"area": "Settings · Privacy", "context": "Data flows 1 and 2: when", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_routing_what": {"area": "Settings · Privacy", "context": "Data flow 2: what is sent (to brouter.de)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_search_what": {"area": "Settings · Privacy", "context": "Data flow 3: what is sent by the online place search", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_search_to": {"area": "Settings · Privacy", "context": "Data flow 3: to whom. %1$s = name of the search service", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_search_when": {"area": "Settings · Privacy", "context": "Data flow 3: when", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_update_what": {"area": "Settings · Privacy", "context": "Data flow 4: what (to GitHub)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_update_when": {"area": "Settings · Privacy", "context": "Data flow 4: when", "priority": 2, "confidence": "bitte prüfen", "doubt": "Names the German button \"Nach Updates suchen\""},
-  "settings_privacy_link_what": {"area": "Settings · Privacy", "context": "Data flow 5: what (to Google)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_link_when": {"area": "Settings · Privacy", "context": "Data flow 5: when", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_tap_what": {"area": "Settings · Privacy", "context": "Data flow 6: what (to Google Maps)", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_tap_when": {"area": "Settings · Privacy", "context": "Data flow 6: when – names the button of the place card", "priority": 2, "confidence": "bitte prüfen", "doubt": "Must match the German button label of the place card"},
-  "settings_privacy_web_what": {"area": "Settings · Privacy", "context": "Data flow 7: what", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_web_to": {"area": "Settings · Privacy", "context": "Data flow 7: to whom", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_web_when": {"area": "Settings · Privacy", "context": "Data flow 7: when", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_diag_what": {"area": "Settings · Privacy", "context": "Data flow 8: what", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_diag_to": {"area": "Settings · Privacy", "context": "Data flow 8: to whom", "priority": 2, "confidence": "sicher"},
-  "settings_privacy_diag_when": {"area": "Settings · Privacy", "context": "Data flow 8: when", "priority": 2, "confidence": "sicher"},
-  "settings_about_devtools_on": {"area": "Settings · About", "context": "After tapping the version 7 times", "priority": 3, "confidence": "sicher"},
-  "settings_about_licence": {"area": "Settings · About", "context": "Licence of the app", "priority": 2, "confidence": "sicher"},
-  "settings_about_credits": {"area": "Settings · About", "context": "Heading of the data / software credits", "priority": 2, "confidence": "bitte prüfen", "doubt": "\"Quellen\" vs \"Danksagung\" / \"Mitwirkende\""},
-  "settings_credit_osm": {"area": "Settings · About", "context": "Credit line (licence requirement)", "priority": 2, "confidence": "bitte prüfen", "doubt": "OSM attribution: the OSMF accepts \"© OpenStreetMap-Mitwirkende\" in German"},
-  "settings_credit_omt": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_credit_terrain": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_credit_ne": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_credit_brouter": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_credit_icons": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_credit_maplibre": {"area": "Settings · About", "context": "Credit line", "priority": 2, "confidence": "sicher"},
-  "settings_sum_maps_areas": {"area": "Settings list", "context": "Summary under \"Offline maps\". %1$s = total size (\"1.2 GB\"), %2$d = number of map areas", "priority": 2, "confidence": "sicher", "max": 45},
-  "settings_sum_diag_new": {"area": "Settings list", "context": "Summary under \"Diagnostics\" (red) after an error. %1$d = count", "priority": 3, "confidence": "sicher", "max": 45},
-  "settings_sum_diag_notes": {"area": "Settings list", "context": "Summary under \"Diagnostics\". %1$d = entries in the problem log", "priority": 2, "confidence": "sicher", "max": 45}
+  "settings_page_pace": {
+    "area": "Settings list",
+    "context": "Topic in the Settings list and title of its page",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_poi": {
+    "area": "Settings list",
+    "context": "Topic: which POI kinds the map shows",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Glossary says POIs; \"Interessante Orte\" is clearer for non-technical users",
+    "max": 28
+  },
+  "settings_page_map": {
+    "area": "Settings list",
+    "context": "Topic: map options",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_navigation": {
+    "area": "Settings list",
+    "context": "Topic: off-route warning, vibrations, screen",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_offline_maps": {
+    "area": "Settings list",
+    "context": "Topic: downloaded map areas",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_backup": {
+    "area": "Settings list",
+    "context": "Topic: GPX copies of tracks and routes in a folder",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_updates": {
+    "area": "Settings list",
+    "context": "Topic: app updates",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_privacy": {
+    "area": "Settings list",
+    "context": "Topic: what leaves the phone",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_diagnostics": {
+    "area": "Settings list",
+    "context": "Topic: problem report and log (the page itself stays English)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_page_about": {
+    "area": "Settings list",
+    "context": "Topic: version, licence, credits",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Info\" would be shorter",
+    "max": 28
+  },
+  "settings_group_yours": {
+    "area": "Settings list",
+    "context": "Group heading above the user topics",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_group_app": {
+    "area": "Settings list",
+    "context": "Group heading above Updates, Privacy, Diagnostics, About",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_sum_pace": {
+    "area": "Settings list",
+    "context": "Summary under \"Your pace\". %1$s = pace level name (e.g. Average)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_poi_all_shown": {
+    "area": "Settings list",
+    "context": "Summary under \"Points of interest\": every kind shown",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_poi_all_hidden": {
+    "area": "Settings list",
+    "context": "Summary under \"Points of interest\": every kind hidden",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_poi_groups": {
+    "area": "Settings list",
+    "context": "Summary under \"Points of interest\". %1$d = groups with something shown, %2$d = all groups",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_map": {
+    "area": "Settings list",
+    "context": "Summary under \"Map\". %1$s / %2$s = on/off, %3$s = \"Direction of travel\" or \"North up\"",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Long line (2 lines max); \"Schummerung\" is the cartographic word",
+    "max": 80
+  },
+  "settings_on": {
+    "area": "Settings list",
+    "context": "Value in a summary line: switched on",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 6
+  },
+  "settings_off": {
+    "area": "Settings list",
+    "context": "Value in a summary line: switched off",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 6
+  },
+  "settings_sum_nav_off": {
+    "area": "Settings list",
+    "context": "Summary under \"Navigation\" when the off-route warning is off. %1$s = on/off",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Long (2 lines max)",
+    "max": 80
+  },
+  "settings_sum_nav": {
+    "area": "Settings list",
+    "context": "Summary under \"Navigation\". %1$d = metres off the route, %2$s = on/off",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "settings_sum_maps_unavailable": {
+    "area": "Settings list",
+    "context": "Summary under \"Offline maps\" in a build without map server",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "settings_sum_maps_none": {
+    "area": "Settings list",
+    "context": "Summary under \"Offline maps\": nothing downloaded yet",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "settings_sum_maps_waiting": {
+    "area": "Settings list",
+    "context": "Summary under \"Offline maps\" with waiting downloads. %1$s = size and area count, %2$d = waiting downloads",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"ausstehend\" vs \"wartend\"",
+    "max": 60
+  },
+  "settings_sum_backup_failed": {
+    "area": "Settings list",
+    "context": "Summary under \"Backup\" (red)",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_backup_storage": {
+    "area": "Settings list",
+    "context": "Summary under \"Backup\" on Android 8–9 without storage permission (red)",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_backup_none": {
+    "area": "Settings list",
+    "context": "Summary under \"Backup\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_backup_last": {
+    "area": "Settings list",
+    "context": "Summary under \"Backup\". %1$s = \"today 18:40\" / \"21 Oct 18:40\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_when_today": {
+    "area": "Settings list",
+    "context": "Time of the last backup today. %1$s = time 18:40",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "settings_when_yesterday": {
+    "area": "Settings list",
+    "context": "Time of the last backup yesterday. %1$s = time 18:40",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "settings_date_day": {
+    "area": "Settings list",
+    "context": "DATE PATTERN (Java SimpleDateFormat) for a day this year: \"21 Oct\" / \"21. Okt.\"; only change the order or dots",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Date pattern, not a text",
+    "max": 12
+  },
+  "settings_date_day_year": {
+    "area": "Settings list",
+    "context": "DATE PATTERN (Java SimpleDateFormat) for a day in another year",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Date pattern, not a text",
+    "max": 14
+  },
+  "settings_sum_upd_available": {
+    "area": "Settings list",
+    "context": "Summary under \"Updates\" (accent colour). %1$s = version 0.12.0",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_upd_downloading": {
+    "area": "Settings list",
+    "context": "Summary under \"Updates\" while the APK downloads. %1$d = percent",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_upd_checking": {
+    "area": "Settings list",
+    "context": "Summary under \"Updates\". %1$s = installed version",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_upd_uptodate": {
+    "area": "Settings list",
+    "context": "Summary under \"Updates\". %1$s = installed version",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_upd_failed": {
+    "area": "Settings list",
+    "context": "Summary under \"Updates\" (red). %1$s = installed version",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_diag": {
+    "area": "Settings list",
+    "context": "Summary under \"Diagnostics\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_privacy": {
+    "area": "Settings list",
+    "context": "Summary under \"Privacy\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "settings_sum_about": {
+    "area": "Settings list",
+    "context": "Summary under \"About\"",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Credits\" → \"Quellen\" (data sources and software)",
+    "max": 45
+  },
+  "settings_poi_hide_all": {
+    "area": "Settings · Points of interest",
+    "context": "Button: hide every POI kind",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "settings_poi_shown": {
+    "area": "Settings · Points of interest",
+    "context": "Line under a POI group. %1$d = kinds shown, %2$d = kinds in the group",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_cd_collapse": {
+    "area": "Settings · Points of interest",
+    "context": "Content description (accessibility) of the arrow of an open POI group",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "settings_cd_expand": {
+    "area": "Settings · Points of interest",
+    "context": "Content description (accessibility) of the arrow of a closed POI group",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "settings_poi_group_food": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: restaurants, cafés, bars",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_poi_group_hut": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: mountain huts, shelters, camp sites",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_poi_group_water": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: drinking water, springs",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_poi_group_sight": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: viewpoints, peaks, sights",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_poi_group_transport": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: bus stops, stations, lifts, parking",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Verkehr\" or \"Bus & Bahn\" / \"Verkehrsmittel\"",
+    "max": 28
+  },
+  "settings_poi_group_facility": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: toilets, benches, shops, pharmacies",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Einrichtungen\" is vague; alternative \"Service\"",
+    "max": 28
+  },
+  "settings_poi_group_other": {
+    "area": "Settings · Points of interest",
+    "context": "POI group: everything else",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_map_style": {
+    "area": "Settings · Map",
+    "context": "Heading above the map style chips (only with more than one style)",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_map_contours": {
+    "area": "Settings · Map",
+    "context": "Switch: contour lines on the map",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_map_hillshade": {
+    "area": "Settings · Map",
+    "context": "Switch: hill shading (relief) on the map",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Schummerung\" (cartography) vs \"Reliefschattierung\"",
+    "max": 30
+  },
+  "settings_map_direction": {
+    "area": "Settings · Map",
+    "context": "Heading above the two direction chips",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_map_travel": {
+    "area": "Settings · Map",
+    "context": "Chip: the map turns with the direction you move",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Chip width; \"Fahrtrichtung\" fits bikes only, \"Laufrichtung\" hikers only",
+    "max": 22
+  },
+  "settings_map_north": {
+    "area": "Settings · Map",
+    "context": "Chip: the map stays north-up",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "settings_map_planning": {
+    "area": "Settings · Map",
+    "context": "Small heading above the planning vibration switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_map_vibrate": {
+    "area": "Settings · Map",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_map_vibrate_sub": {
+    "area": "Settings · Map",
+    "context": "Line under the switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 90
+  },
+  "settings_nav_offroute": {
+    "area": "Settings · Navigation",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_nav_offroute_sub": {
+    "area": "Settings · Navigation",
+    "context": "Line under the switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 90
+  },
+  "settings_nav_warn_after": {
+    "area": "Settings · Navigation",
+    "context": "Label before the three distance chips (25 m, 40 m, 75 m) – one row with them",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Row width with three chips",
+    "max": 12
+  },
+  "settings_nav_meters": {
+    "area": "Settings · Navigation",
+    "context": "Distance chip. %1$d = metres",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 6
+  },
+  "settings_nav_vibrate_off": {
+    "area": "Settings · Navigation",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_nav_vibrate_off_sub": {
+    "area": "Settings · Navigation",
+    "context": "Line under the switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 90
+  },
+  "settings_nav_junction": {
+    "area": "Settings · Navigation",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_nav_junction_sub": {
+    "area": "Settings · Navigation",
+    "context": "Line under the switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 90
+  },
+  "settings_nav_screen_on": {
+    "area": "Settings · Navigation",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_nav_screen_on_sub": {
+    "area": "Settings · Navigation",
+    "context": "Line under the switch",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 90
+  },
+  "settings_nav_battery_hint": {
+    "area": "Settings · Navigation",
+    "context": "Hint beside the \"App settings\" button: Android battery setting of the app",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the German Android label of the battery option (Pixel: „Nicht eingeschränkt“ / „Uneingeschränkt“)",
+    "max": 90
+  },
+  "settings_nav_location_hint": {
+    "area": "Settings · Navigation",
+    "context": "Hint beside \"App settings\" when background location is not allowed: after a phone restart the tour is continued by a tap",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "„Fortsetzen“ = the button of the interrupted-tour dialog; „Immer zulassen“ = German Android permission label",
+    "max": 90
+  },
+  "settings_pace_intro": {
+    "area": "Settings · Your pace",
+    "context": "Intro line of the pace page",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_pace_hiking": {
+    "area": "Settings · Your pace",
+    "context": "Heading of the hiking pace levels",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_pace_cycling": {
+    "area": "Settings · Your pace",
+    "context": "Heading of the cycling pace levels. %1$s = bike activity name (e.g. Gravel bike)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_pace_learn": {
+    "area": "Settings · Your pace",
+    "context": "Last line of the pace page",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_upd_banner_title": {
+    "area": "Update card",
+    "context": "Card above the plan sheet when a newer version is published. %1$s = version",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_upd_downloading": {
+    "area": "Update card",
+    "context": "Line on the update card while it downloads. %1$d = percent",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 34
+  },
+  "settings_upd_kept": {
+    "area": "Update card",
+    "context": "Line on the update card",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 50
+  },
+  "settings_upd_later": {
+    "area": "Update card",
+    "context": "Button: hide the update card for now",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "settings_upd_install": {
+    "area": "Update card",
+    "context": "Button: download and install the update",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "settings_upd_installed": {
+    "area": "Settings · Updates",
+    "context": "First line of the updates page. %1$s = installed version",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_upd_checking": {
+    "area": "Settings · Updates",
+    "context": "While the update check runs",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_upd_latest": {
+    "area": "Settings · Updates",
+    "context": "After a check: nothing newer",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_upd_version_available": {
+    "area": "Settings · Updates",
+    "context": "A newer version exists. %1$s = version",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_upd_download_install": {
+    "area": "Settings · Updates",
+    "context": "Button. %1$s = version",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 36
+  },
+  "settings_upd_check": {
+    "area": "Settings · Updates",
+    "context": "Button: check GitHub for a newer version",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_upd_source": {
+    "area": "Settings · Updates",
+    "context": "Last line of the updates page",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_lead": {
+    "area": "Settings · Privacy",
+    "context": "First line of the privacy page (bold)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_tracks": {
+    "area": "Settings · Privacy",
+    "context": "Second line of the privacy page",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_what": {
+    "area": "Settings · Privacy",
+    "context": "Heading of the list of data flows (what → to whom · when)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_maps_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 1: what is sent",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_maps_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 1: to whom (after →)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_when_maps": {
+    "area": "Settings · Privacy",
+    "context": "Data flows 1 and 2: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_routing_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 2: what is sent (to brouter.de)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_search_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 3: what is sent by the online place search",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_search_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 3: to whom. %1$s = name of the search service",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_search_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 3: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_update_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 4: what (to GitHub)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_update_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 4: when",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Names the German button \"Nach Updates suchen\""
+  },
+  "settings_privacy_link_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 5: what (to Google)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_link_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 5: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_tap_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 6: what (to Google Maps)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_tap_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 6: when – names the button of the place card",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the German button label of the place card"
+  },
+  "settings_privacy_web_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 7: what",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_web_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 7: to whom",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_web_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 7: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_diag_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 8: what",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_diag_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 8: to whom",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_diag_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 8: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_about_devtools_on": {
+    "area": "Settings · About",
+    "context": "After tapping the version 7 times",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "settings_about_licence": {
+    "area": "Settings · About",
+    "context": "Licence of the app",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_about_credits": {
+    "area": "Settings · About",
+    "context": "Heading of the data / software credits",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Quellen\" vs \"Danksagung\" / \"Mitwirkende\""
+  },
+  "settings_credit_osm": {
+    "area": "Settings · About",
+    "context": "Credit line (licence requirement)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "OSM attribution: the OSMF accepts \"© OpenStreetMap-Mitwirkende\" in German"
+  },
+  "settings_credit_omt": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_credit_terrain": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_credit_ne": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_credit_brouter": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_credit_icons": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_credit_maplibre": {
+    "area": "Settings · About",
+    "context": "Credit line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_sum_maps_areas": {
+    "area": "Settings list",
+    "context": "Summary under \"Offline maps\". %1$s = total size (\"1.2 GB\"), %2$d = number of map areas",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_diag_new": {
+    "area": "Settings list",
+    "context": "Summary under \"Diagnostics\" (red) after an error. %1$d = count",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "settings_sum_diag_notes": {
+    "area": "Settings list",
+    "context": "Summary under \"Diagnostics\". %1$d = entries in the problem log",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  }
 }

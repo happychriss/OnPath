@@ -623,14 +623,14 @@
     "context": "Notification text (short) after a phone restart; 'Continue' = button in the app",
     "priority": 3,
     "confidence": "bitte prüfen",
-    "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"
+    "doubt": "Quotes the German button „Fortsetzen“"
   },
   "nav_interrupted_update": {
     "area": "Notification",
     "context": "Notification text (short) after an app update",
     "priority": 3,
     "confidence": "bitte prüfen",
-    "doubt": "Must match the app's 'Continue' button word (German 'Weiter')"
+    "doubt": "Quotes the German button „Fortsetzen“"
   },
   "nav_interrupted_boot_long": {
     "area": "Notification",

@@ -4,7 +4,7 @@ Gravel bike	Gravel-Rad	Activity. Chip: Gravel (short, bitte prüfen)
 E-bike	E-Bike	Activity (pedelec 25 km/h)
 MTB	Mountainbike	Activity. Chip and tight buttons: MTB (bitte prüfen)
 E-MTB	E-Mountainbike	Activity. Chip and tight buttons: E-MTB (bitte prüfen)
-Hike	Wandern	Activity; with level: "Wandern T3", chip "Wandern · T3"
+Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon (bitte prüfen)
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
 route	Route	The planned line from start to destination
