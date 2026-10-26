@@ -72,7 +72,7 @@ def run_extract(osm, tmp, x0=-50, y0=-50, x1=550, y1=350):
     if res.returncode:
         raise AssertionError(res.stdout + res.stderr)
     layers = {}
-    for name in ("paths", "streets", "routes"):
+    for name in ("paths", "streets", "routes", "areas"):
         with open(os.path.join(out, name + ".ndjson")) as f:
             layers[name] = [json.loads(line) for line in f]
     return layers
@@ -226,6 +226,77 @@ class BikeMap(unittest.TestCase):
         br = {self.y_of(f): f["properties"].get("br") for f in self.layers["paths"]
               if f["tippecanoe"]["minzoom"] == 13 and self.x_range(f)[0] == 300}
         self.assertEqual(br, {200: 1, 250: None})
+
+
+@unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
+class JunctionAreas(unittest.TestCase):
+    """Schema 7 (Hilden Hagelkreuz 2026-10-26): street areas as polygons (layer "areas") and short unnamed town footways
+    between sidewalks hidden like a sidewalk (no stray pieces, no links from them)."""
+
+    @classmethod
+    def setUpClass(cls):
+        o = Osm()
+        o.area(0, 0, 400, 300, landuse="residential")
+        o.area(10, 10, 30, 20, **{"area:highway": "footway"})
+        o.area(40, 10, 50, 16, **{"area:highway": "traffic_island"})
+        o.area(60, 10, 61, 11, **{"area:highway": "traffic_island"})       # 1 m²: left out
+        o.area(70, 10, 100, 30, highway="pedestrian", area="yes")
+        o.area(110, 10, 120, 40, man_made="bridge")
+        o.area(130, 10, 135, 60, highway="platform")
+        o.area(150, 10, 170, 30, highway="footway")                       # a closed footway line, no area
+        # a street with a sidewalk on each side; footways between the sidewalks
+        o.way([(0, 150), (350, 150), (400, 150)], highway="residential", name="Hauptstraße")
+        o.way([(0, 140), (100, 140), (200, 140), (300, 140), (400, 140)], highway="footway", footway="sidewalk")
+        o.way([(0, 160), (100, 160), (400, 160)], highway="footway", footway="sidewalk")
+        o.way([(100, 140), (100, 120)], highway="footway", footway="sidewalk")
+        o.way([(100, 120), (112, 132)], highway="footway")             # ~17 m, both ends on sidewalks: hidden
+        o.way([(200, 140), (200, 125)], highway="footway")             # 15 m stub from the sidewalk: hidden
+        o.way([(250, 140), (250, 125)], highway="footway", name="Gang")  # named: stays drawn
+        o.way([(300, 140), (300, 100)], highway="footway")             # 40 m: a real path, stays drawn
+        o.way([(350, 135), (350, 150)], highway="footway")             # short, but touches the street: stays drawn
+        o.way([(112, 132), (100, 140)], highway="footway", footway="crossing")
+        o.way([(380, 150), (380, 160)], highway="footway", footway="traffic_island")  # hidden like a sidewalk
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.layers = run_extract(o, cls.tmp.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_street_areas(self):
+        got = []
+        for f in self.layers["areas"]:
+            ring = f["geometry"]["coordinates"][0]
+            x0 = min(round((p[0] - LON0) / M_LON) for p in ring)
+            got.append((x0, f["properties"]["a"], f["tippecanoe"]))
+        z = {"minzoom": 14, "maxzoom": 14}
+        self.assertEqual(sorted(got), [(10, "foot", z), (40, "island", z), (70, "square", z), (110, "bridge", z),
+                                       (130, "platform", z)])
+
+    def test_sidewalk_fragment_hidden(self):
+        def k_at(x, y):
+            lon, lat = at(x, y)
+            for f in self.layers["paths"]:
+                c = f["geometry"]["coordinates"]
+                if f["tippecanoe"]["minzoom"] == 13 and any(abs(p[0] - lon) < 2e-6 and abs(p[1] - lat) < 2e-6
+                                                           for p in (c[0], c[-1])) and "footway" not in f["properties"]:
+                    if f["properties"].get("sub") == "footway" and f["properties"]["k"] != "l":
+                        return f["properties"]["k"], f["properties"].get("sac")
+            return None
+        self.assertEqual(k_at(112, 132), ("x", None))    # sidewalk fragment: like a sidewalk
+        self.assertEqual(k_at(200, 125), ("x", None))    # short stub
+        self.assertEqual(k_at(250, 125), ("p", 0))       # named
+        self.assertEqual(k_at(300, 100), ("p", 0))       # long enough to be a path
+        self.assertEqual(k_at(350, 135), ("p", 0))       # touches a drawn way
+        self.assertEqual(k_at(380, 160), ("x", None))    # footway=traffic_island
+
+    def test_hidden_footways_say_what_they_are(self):
+        fw = sorted({f["properties"]["fw"] for f in self.layers["paths"] if "fw" in f["properties"]})
+        self.assertEqual(fw, ["c", "s", "t"])
+        links = [f for f in self.layers["paths"] if f["properties"].get("k") == "l"]
+        lon, lat = at(100, 120)
+        self.assertFalse(any(abs(p[0] - lon) < 2e-6 and abs(p[1] - lat) < 2e-6
+                             for f in links for p in f["geometry"]["coordinates"]), links)
 
 
 if __name__ == "__main__":

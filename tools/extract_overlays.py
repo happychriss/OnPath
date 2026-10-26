@@ -163,6 +163,23 @@ BUILDING_DENSE = 8       # ... a point is built-up with at least this many build
 LINK_MAX_M = 30.0
 LINK_MAX_DETOUR = 1.6    # chain length / straight distance start -> end
 LINK_MIN_PATH_M = 20.0   # no link from a path piece shorter than this (spurs at traffic islands / corners)
+# Sidewalk fragments (owner 2026-10-26, Hilden Hagelkreuz): a short unnamed footway / path in built-up land (u = 1) that
+# touches no other drawn way at either end is a stub of the sidewalk network (across a traffic island, a corner cut, a
+# bit to a door) that just lacks the footway=sidewalk tag – drawn, it was a stray grey arc beside the street, and its
+# links made it longer. Such pieces become k="x" (like a sidewalk: not drawn as a path) and get no links. Footways tagged
+# footway=traffic_island are hidden like sidewalks and crossings everywhere (HIDDEN_FOOTWAY).
+FRAGMENT_MAX_M = 25.0
+HIDDEN_FOOTWAY = ("sidewalk", "crossing", "traffic_island")
+# Street areas (owner 2026-10-26, Hilden Hagelkreuz: the reference map shows pedestrian areas and traffic islands as light
+# polygons): tile layer "areas", z14 only (the style draws them from z16, over-zoomed), attribute a = "foot" (walkable
+# surface: area:highway footway / pedestrian / path / sidewalk / steps / cycleway, highway footway / path / cycleway
+# with area=yes), "square" (highway=pedestrian + area=yes, place=square), "island" (area:highway=traffic_island,
+# traffic_calming=island), "platform" (area:highway=platform, highway=platform, public_transport=platform + area=yes),
+# "bridge" (man_made=bridge outline). Simplified ~0.5 m, pieces under AREA_MIN_M2 left out.
+AREA_KEYS = ("area:highway", "highway", "man_made", "place", "public_transport", "traffic_calming")
+AREA_FOOT = {"footway", "pedestrian", "path", "sidewalk", "steps", "cycleway"}
+AREA_ZOOMS = (14, 14)
+AREA_MIN_M2 = 2.0
 TOWN_WAYS = {"path", "footway", "bridleway", "cycleway", "steps", "pedestrian"}
 # ways the map draws (a path end touching one of these is no gap): roads and streets, paths / tracks, cycleways, steps,
 # pedestrian streets, via ferratas – not sidewalks / crossings, platforms, corridors, construction
@@ -280,6 +297,32 @@ def street_attrs(tags, hw):
     return a
 
 
+def street_area_kind(tags):
+    """Kind of a street area for the tile layer "areas" (see AREA_KEYS), or None."""
+    ah = tags.get("area:highway")
+    if ah == "traffic_island" or tags.get("traffic_calming") == "island":
+        return "island"
+    if ah in AREA_FOOT:
+        return "foot"
+    hw = tags.get("highway")
+    if (hw == "pedestrian" and tags.get("area") == "yes") or tags.get("place") == "square":
+        return "square"
+    if hw in ("footway", "path", "cycleway") and tags.get("area") == "yes":
+        return "foot"
+    if ah == "platform" or hw == "platform" or (tags.get("public_transport") == "platform" and tags.get("area") == "yes"):
+        return "platform"
+    if tags.get("man_made") == "bridge":
+        return "bridge"
+    return None
+
+
+def rounded_poly(geom, digits=6):
+    """Polygon / MultiPolygon coordinates rounded (6 decimals = 0.1 m)."""
+    def rnd(c):
+        return [round(c[0], digits), round(c[1], digits)] if isinstance(c[0], float) else [rnd(x) for x in c]
+    return {"type": geom["type"], "coordinates": rnd(geom["coordinates"])}
+
+
 def cycle_sides(tags):
     """Cycle infrastructure per side from cycleway / cycleway:both / :left / :right -> (left, right) codes or None."""
     both = CYCLE_INFRA.get(tags.get("cycleway:both") or tags.get("cycleway") or "")
@@ -304,6 +347,9 @@ def tile_attrs(tags, hw):
     a = {}
     if hw not in ("path", "track"):
         a["sub"] = hw  # footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class
+    fw = tags.get("footway")
+    if fw in HIDDEN_FOOTWAY:
+        a["fw"] = fw[:1]  # s sidewalk / c crossing / t traffic island (schema 7): thin outlines of the street space
     if tags.get("tunnel", "no") != "no":
         a["tn"] = 1
     if tags.get("bridge", "no") != "no":
@@ -412,11 +458,15 @@ class TownIndex:
         built, tgreen, green = [], [], []
         self.buildings = Counter()
         fab = osmium.geom.WKBFactory()
+        self.areas = []  # tile layer "areas" (street_area_kind)
         fp = (osmium.FileProcessor(path).with_locations()
-              .with_areas(osmium.filter.KeyFilter("landuse", "leisure", "natural", "amenity")))
+              .with_areas(osmium.filter.KeyFilter("landuse", "leisure", "natural", "amenity", *AREA_KEYS)))
         for obj in fp:
             if obj.is_area():
                 tags = obj.tags
+                sa = street_area_kind(tags)
+                if sa:
+                    self.add_area(fab, obj, sa)
                 key = next(((k, tags.get(k)) for k in ("landuse", "leisure", "natural", "amenity")
                             if (k, tags.get(k)) in TOWN_GREEN or (k, tags.get(k)) in COUNTRY_GREEN), None)
                 built_area = tags.get("landuse") in TOWN_LANDUSE or tags.get("amenity") in TOWN_AMENITY
@@ -447,8 +497,25 @@ class TownIndex:
                 if minlon - pad < lon < maxlon + pad and minlat - pad < lat < maxlat + pad:
                     self.buildings[self.cell(lon * self.kx, lat * self.ky)] += 1
         self.layers = [(STRtree(g), g) for g in (green, tgreen, built)]
+        print("street areas:", len(self.areas))
         print("towns:", len(built), "built-up areas,", len(tgreen), "town green,", len(green), "open green,",
               sum(self.buildings.values()), "buildings")
+
+    def add_area(self, fab, obj, kind):
+        """A street area (street_area_kind) as a tile feature of layer "areas": ~0.5 m simplified, 6 decimals."""
+        from shapely import wkb
+        try:
+            g = wkb.loads(fab.create_multipolygon(obj), hex=True)
+        except Exception:  # expected: broken multipolygons in OSM (osmium cannot close the ring) – skipped
+            return
+        if not g.intersects(BBOX):
+            return
+        g = g.simplify(FINE_SIMPLIFY, preserve_topology=True)
+        if g.is_empty or self.project(g).area < AREA_MIN_M2:
+            return
+        if g.geom_type == "MultiPolygon" and len(g.geoms) == 1:
+            g = g.geoms[0]
+        self.areas.append({"type": "Feature", "geometry": rounded_poly(mapping(g)), "properties": {"a": kind}})
 
     def project(self, g):
         from shapely import transform
@@ -482,6 +549,26 @@ class TownIndex:
 
 
 TOWNS = None  # TownIndex, format 2 only (main)
+
+
+def sidewalk_fragments(drawn, ends, candidates):
+    """FRAGMENT_MAX_M: candidate ways (id -> node ids) whose two ends touch no other drawn way become k="x" (their tile
+    props are changed in place; their nodes no longer count as drawn). Returns the path ends without theirs, for
+    link_pieces, and the number of ways changed."""
+    props, end_nodes = {}, {}
+    for node, way, p, _ in ends:
+        if way in candidates:
+            props[way] = p
+            end_nodes.setdefault(way, []).append(node)
+    hidden = {w for w, ns in end_nodes.items() if all(drawn.get(n, 0) == 1 for n in ns)}
+    for w in hidden:
+        p = props[w]
+        p["k"] = "x"
+        for key in ("sac", "vis"):
+            p.pop(key, None)
+        for n in set(candidates[w]):
+            drawn[n] -= 1
+    return [e for e in ends if e[1] not in hidden], len(hidden)
 
 
 def link_pieces(graph, coords, drawn, first_way, ends):
@@ -604,13 +691,14 @@ class WayPass(osmium.SimpleHandler):
         self.drawn = {}       # node -> number of drawn ways through it
         self.first_way = {}   # node -> one drawn way through it
         self.path_ends = []   # (node, way id, tile props, length m) of drawn path ends (k "p")
+        self.fragments = {}   # way id -> node ids of short unnamed town footways / paths (sidewalk_fragments)
         self.by_name = {}  # label -> list of raw coordinate lists
         self.by_ref = {}   # "24 · 25" -> list of raw coordinate lists
 
     def collect_names(self, w):
         hikes = self.way_hikes.get(w.id, [])
         hw = w.tags.get("highway", "")
-        trail = hw in TRAIL_HW and w.tags.get("footway") not in ("sidewalk", "crossing")
+        trail = hw in TRAIL_HW and w.tags.get("footway") not in HIDDEN_FOOTWAY
         label = clean_name(w.tags) if trail else ""
         if trail and not label:
             # unnamed member way of a named hiking route: show the route's name
@@ -718,7 +806,7 @@ class WayPass(osmium.SimpleHandler):
         quality = self.quality(w)
         faint = vis is not None and vis >= 3
         hw = w.tags.get("highway", "")
-        low = hw in LOW_WAYS and w.tags.get("footway") not in ("sidewalk", "crossing") and w.tags.get("area") != "yes"
+        low = hw in LOW_WAYS and w.tags.get("footway") not in HIDDEN_FOOTWAY and w.tags.get("area") != "yes"
         extra = TILES is not None and not (low or sac) and tile_extra(w.tags, hw)
         if TILES is not None and hw:
             self.note_links(w, hw)
@@ -796,6 +884,10 @@ class WayPass(osmium.SimpleHandler):
                 if pp["k"] == "p" and len(w.nodes) > 1:
                     n = length_m(line)
                     self.path_ends += [(w.nodes[0].ref, w.id, tp, n), (w.nodes[-1].ref, w.id, tp, n)]
+                    if (tp.get("u") == 1 and hw in ("footway", "path") and n < FRAGMENT_MAX_M
+                            and not w.tags.get("name") and w.tags.get("footway") is None):
+                        # a candidate only: sidewalk_fragments checks its ends
+                        self.fragments[w.id] = [nd.ref for nd in w.nodes]
         elif extra:
             self.tile_paths.append({"type": "Feature", "geometry": fine or rounded(mapping(self.fine_geom(w, hw))),
                                     "properties": {"k": "x", **tile_attrs(w.tags, hw), **({"u": town} if town else {})},
@@ -805,7 +897,7 @@ class WayPass(osmium.SimpleHandler):
         """Gap fix bookkeeping (link_pieces): nodes of every drawn way; the graph of hidden sidewalks / crossings."""
         if w.tags.get("area") == "yes":
             return
-        if hw in LOW_WAYS and w.tags.get("footway") in ("sidewalk", "crossing"):
+        if hw in LOW_WAYS and w.tags.get("footway") in HIDDEN_FOOTWAY:
             try:
                 pts = [(n.ref, n.lon, n.lat) for n in w.nodes]
             except osmium.InvalidLocationError:
@@ -838,7 +930,7 @@ class WayPass(osmium.SimpleHandler):
         """Way-quality props for ways.geojson, or None if nothing the map would show differently."""
         hw = w.tags.get("highway", "")
         k = WAY_KIND.get(hw)
-        if not k or w.tags.get("footway") in ("sidewalk", "crossing"):
+        if not k or w.tags.get("footway") in HIDDEN_FOOTWAY:
             return None
         tt = TRACKTYPE.get(w.tags.get("tracktype", "")) if k == "t" else None
         surf = SURF.get(w.tags.get("surface", "").split(";")[0])
@@ -966,7 +1058,7 @@ def classify(wp, tiles_dir):
     return barriers
 
 
-def write_tiles(tiles_dir, layers, low, tile_paths, streets, barriers=None):
+def write_tiles(tiles_dir, layers, low, tile_paths, streets, barriers=None, areas=None):
     """Format 2: one line-delimited GeoJSON file per tile layer, input of tools/build_overlays.sh. "paths" holds the
     former lowways as a coarse copy for z11-12 and the exact ways for z13-14 (per-feature tippecanoe zoom range)."""
     import os
@@ -997,6 +1089,10 @@ def write_tiles(tiles_dir, layers, low, tile_paths, streets, barriers=None):
         with open(f"{tiles_dir}/barriers.ndjson", "w") as f:
             for feat in barriers:
                 dump(f, feat, BARRIER_ZOOMS)
+    if areas is not None:
+        with open(f"{tiles_dir}/areas.ndjson", "w") as f:
+            for feat in areas:
+                dump(f, feat, AREA_ZOOMS)
     print("tiles: paths", len(low), "+", len(tile_paths), ", streets", len(streets), "->", tiles_dir)
 
 
@@ -1013,8 +1109,9 @@ def main():
     barriers = None
     if TILES is not None:
         os.makedirs(TILES, exist_ok=True)
-        links = link_pieces(wp.link_graph, wp.link_coords, wp.drawn, wp.first_way, wp.path_ends)
-        print("gap fix:", len(links), "link pieces")
+        ends, n_frag = sidewalk_fragments(wp.drawn, wp.path_ends, wp.fragments)
+        links = link_pieces(wp.link_graph, wp.link_coords, wp.drawn, wp.first_way, ends)
+        print("gap fix:", len(links), "link pieces,", n_frag, "sidewalk fragments hidden")
         wp.tile_paths.extend(links)
         barriers = classify(wp, TILES) if WAYCLASS else None
     for f in wp.routes:
@@ -1027,7 +1124,7 @@ def main():
                 json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"))
             print(name, len(feats))
     if TILES is not None:
-        write_tiles(TILES, layers, wp.low, wp.tile_paths, wp.streets, barriers)
+        write_tiles(TILES, layers, wp.low, wp.tile_paths, wp.streets, barriers, TOWNS.areas)
 
 
 main()

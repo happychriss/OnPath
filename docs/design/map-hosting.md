@@ -278,7 +278,8 @@ same OSM date would have had the same (immutable, cached) name. Now:
   without `u` simply draws towns as before. The rebuild also refreshes the router classes for the bike footway-cost
   fix of the same day (trekking / touring.brf: compacted counts as firm, cheap footway only without a bicycle tag).
 - **Schema 7 (2026-10-26, bike map from the Hilden field review: cycle routes only of the networks lcn / rcn / ncn /
-  icn, label lines `lb` for named local cycle routes, `bs` on bicycle streets, `br` on bridges in overlay `paths` –
+  icn, label lines `lb` for named local cycle routes, `bs` on bicycle streets, `br` on bridges and `fw` on hidden
+  footways in overlay `paths`, street areas (layer `areas`), sidewalk fragments hidden –
   docs/map-pipeline.md 5b) is look-only too:** builder and doorman 7, `CELL_SCHEMA_SERVE` and the app stay at 3. An s6
   cell just keeps the unsigned route lines and has no local route names, bicycle streets or footbridge flag; the
   `lb` pieces also carry `majoronly`, so a style from before s7 leaves them out of the band and the major layers.
