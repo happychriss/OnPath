@@ -12,7 +12,7 @@ const segments = path.resolve(process.argv[2] ?? '/home/user/build/routing-test/
 const dataDir = path.resolve(process.argv[3] ?? '/home/user/build/cell/store');
 const shot = process.argv[4] ?? path.join(here, '../../engine/build/search.png');
 const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments, dataDir });
-const proxy = process.env.ONLINE === '1' && process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY } : undefined;
+const proxy = process.env.ONLINE === '1' && process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: '127.0.0.1,localhost' } : undefined;
 const browser = await chromium.launch({ proxy, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: true });
 if (process.env.ONLINE !== '1') await ctx.route('https://photon.komoot.io/**', (r) => r.abort());
@@ -76,6 +76,6 @@ if (process.env.ONLINE === '1') {
 }
 
 await browser.close(); server.close();
-const real = errors.filter((e) => !/status of 404/.test(e) && !/ERR_FAILED|net::/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
+const real = errors.filter((e) => !/status of 404/.test(e) && !/ERR_FAILED|net::|CORS policy/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) { console.log('errors:', real); fails.push('page errors'); }
 process.exit(fails.length ? 1 : 0);

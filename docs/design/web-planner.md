@@ -246,3 +246,31 @@ in the browser.
 
 Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
 there first; requesting new cells from the web (needs the doorman without app key – map-access.md).
+
+## 10. Plan edits and search with the app's code (cloud, 2026-10-26)
+
+Owner: "start here, reverse, round trip – can we benefit from the same code?" and "add search, same as on mobile".
+
+**Plan edits:** Reverse, Round trip and the point menu (Start here / round trip "Start & finish here" / Delete) run
+the app's `PlanEdits` in the engine; the Points list is the app's `PlanPoints.rows` (names, leg distances along the
+route, a round trip once with ↺). Only the menu rule itself (`ui/MapGestures.pointMenu`, 6 lines) is mirrored in TS –
+it sits in a file that imports the GPS tracker; move it to a pure file when the module split comes (finding 3 again).
+Test: `web/app/test/edit-smoke.mjs` (CI), incl. "switching Hike → Bike plans again".
+
+**Search:** the app's `OfflineIndex` (POIs from pois.geojson, trail names from overlays.pmtiles, peaks and places from
+base.pmtiles via `BaseMapPlaces`), `SearchRanking`, `PhotonParser`, `OnlineRanking`, `SearchMerge` and `AddPreview`
+compiled into the engine (`WebSearch.kt`); the page indexes the cells in view (≤ 4, nearest first) the first time
+someone types. Online: Photon after 350 ms for 3+ letters, the same URL as the app (`PhotonProvider.url`: position
+rounded to ~1 km), mixed in below the rows already shown. Place card: "Add to route" (where it goes, said before the
+click), "As start", "As destination"; a found place becomes a pinned, named stop (and travels in the plan link).
+Not yet: offline house numbers (the app's `addresses.sqlite` would need SQLite in the browser), recents, categories.
+Photon is komoot's public instance (fair use) – a public planner with many users should count requests or host its own.
+
+What TeaVM lacked, and the web stand-ins (only in the engine build, the app is unchanged):
+- `java.text.Normalizer` → NFD table for the accented Latin letters (generated from the Unicode data).
+- TeaVM's regex lists the digit category as "N" instead of "IsN", so `\p{N}` failed → its `TAbstractCharClass`
+  shadowed with that one line fixed (worth reporting upstream).
+- Gson's `Streams` (its tree reader pulls in classes the browser lacks) → an equivalent small reader;
+  `AtomicIntegerArray`; MapLibre `Feature`/`Point` and Android SQLite as empty shells for code the web never calls.
+
+Test: `web/app/test/search-smoke.mjs` (local – needs a map cell; `ONLINE=1` also checks Photon).
