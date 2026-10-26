@@ -231,6 +231,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Map look from the Hilden field review (2026-10-26, owner tested each step on the phone):**
+  - town contrast: street edges, lighter built-up land, darker buildings; paths end at the street edge;
+  - bike view like hiking: green line = good bike way, mint band = signed route (names, bicycle streets, slim band,
+    lanes at the road edge, main-road edges);
+  - quiet bike tracks; zoomed-out overview for every activity;
+  - one-way arrow colours (new sprites); quieter forbidden ways; street space and underpasses (schema 7).
+  - Docs: `map-style-notes.md`, `design/map-colour-analysis.md`.
+- **[desktop] Test style on the phone (2026-10-26):** `tools/dev/push_style.sh` → `dev/style.json`, used only with
+  developer tools (Diagnostics: "Test style active" · Remove · Reload map style).
 - **Faster map refreshes (desktop, 2026-10-26, owner: "build here and push to the cloud"; map-hosting.md §7h):** the
   s5 → s6 Hilden refresh took ~48 min (4 cells serial in one background execution, 8–10.5 min each, then the app's
   15-min idle poll). Now: app polls an updating cell at `poll_s` (doorman 15 s); background rebuilds spread over the
