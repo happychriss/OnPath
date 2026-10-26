@@ -49,6 +49,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_ORIGINAL_COLOR = "#8A8F98" // grey: the original route while a new one is followed
         const val SRC_PLANNED = "planned-route"
         const val SRC_GPX = "gpx-track"
+        /** Style layer id suffixes shown only for bike activities / only for hiking (tools/make_style.py). */
+        const val BIKEVIEW = "-bikeview"
+        const val HIKEVIEW = "-hikeview"
         /** Rides of a shown tour that are not counted (vehicle detection): grey dashed (bus / car), purple dashed (lift). */
         const val SRC_RIDES = "tour-rides"
         const val SRC_LIFTS = "tour-lifts"
@@ -593,10 +596,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
                 "greenway-foot" to walking, "greenway-bike" to trekking,
-                "greenway-touring" to touring, "greenway-mtb" to mtb,
-                // format 2: soft glow under the ways good for the bike, and under roads with a cycle lane (2026-10-26)
-                "greenway-bike-glow" to trekking, "greenway-touring-glow" to touring, "greenway-mtb-glow" to mtb,
-                "bike-lane-glow" to !walking)) {
+                "greenway-touring" to touring, "greenway-mtb" to mtb)) {
             // "<id>-town": the town part of a layer, drawn below the streets (tools/make_style.py town_below_streets) –
             // switched with it; a style without it is skipped
             for (lid in listOf(id, "$id-town")) {
@@ -604,11 +604,29 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .onFailure { if (live()) Problems.warn("map", "Map layer $lid not switched for the activity", it) }
             }
         }
+        // a look per activity group (tools/make_style.py BIKEVIEW / HIKEVIEW, owner 2026-10-26): "-bikeview" layers only
+        // for bike activities (quiet tracks), "-hikeview" layers only for hiking; a style without them is unchanged
+        val all = runCatching { style.layers }.onFailure { if (live()) Problems.warn("map", "Map layers not listable; activity look not switched", it) }
+            .getOrNull().orEmpty()
+        // a "<id>-bikeview" twin replaces its base layer "<id>" for bike activities (overview look, make_style.py low_zoom_view)
+        val ids = all.map { it.id }.toSet()
+        for (l in all) {
+            val on = when {
+                l.id.endsWith(BIKEVIEW) -> !walking
+                l.id.endsWith(HIKEVIEW) -> walking
+                "${l.id}$BIKEVIEW" in ids -> walking
+                else -> continue
+            }
+            runCatching { l.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+                .onFailure { if (live()) Problems.warn("map", "Map layer ${l.id} not switched for the activity", it) }
+        }
         for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            // hiking: the band, its major-route highlight (pink) + name, the grey pieces above the T level; bikes: thin route
-            // lines (long-distance routes on top, "-major-low") + name – a layer the style lacks is skipped
-            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label")) {
+            // hiking: the band, its major-route highlight (pink) + name, the grey pieces above the T level; bikes: the mint
+            // band under the way, long-distance routes with the hiking major look ("-over" = their green band, "-major-low",
+            // "-major") + name – a layer the style lacks is skipped
+            // "-low": the bikes' thin overview line (zoomed out, above the streets)
+            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label", "-low")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
                     .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }
             }

@@ -54,8 +54,7 @@ class StyleFormatTest {
         assertEquals(setOf("track-base", "path-base", "track-low", "path-low"), ids(f1).toSet() - ids(f2).toSet())
         // format 2 only (MapController.setOverlay)
         val f2only = listOf("access-no-dash-foot-service", "access-no-sign-bike-service", "bike-lane-left",
-            "bike-lane-right-shared", "bike-oneway", "bike-oneway-streets", "bike-oneway-paths", "bike-both-ways",
-            "greenway-bike-glow", "greenway-touring-glow", "greenway-mtb-glow", "bike-lane-glow")
+            "bike-lane-right-shared", "bike-oneway", "bike-oneway-streets", "bike-oneway-paths", "bike-both-ways")
         f2only.forEach { assertTrue(it, it in ids(f2).toSet()) }
     }
 
@@ -224,25 +223,161 @@ class StyleFormatTest {
             val color = byId.getValue(id).getJSONObject("paint").get("line-color").toString()
             assertTrue("$id: grey in town", color.startsWith("[\"case\"") && "\"u\"" in color)
         }
-        assertTrue(byId.getValue("paths-link").getJSONArray("filter").toString() == "[\"==\",[\"get\",\"k\"],\"l\"]")
+        // link pieces: k = "l" (the town part is "paths-link-town", format2TownWaysEndAtTheStreet)
+        for (id in listOf("paths-link", "paths-link-town"))
+            assertTrue(id, byId.getValue(id).getJSONArray("filter").toString().endsWith("[\"==\",[\"get\",\"k\"],\"l\"]]"))
         assertTrue("pedestrian squares: no lane", byId.getValue("pedestrian-town").getJSONArray("filter").toString().contains("\"ar\""))
         assertTrue("no hiking green in town", byId.getValue("greenway-foot").getJSONArray("filter").toString().contains("\"u\""))
         assertTrue("white town streets", byId.getValue("road-minor-lane").getJSONObject("paint").get("line-color").toString()
             .contains("\"u\""))
         for (s in listOf(f1, f2)) assertTrue("no tint band", ids(s).none { "access-no-tint" in it })
-        // bike glow: hidden until a bike activity, below every road casing
+        // the soft bike glow of 0.11.2 is gone (owner 2026-10-26: green line = good way, band = signed route)
+        for (s in listOf(f1, f2)) assertTrue("no glow", ids(s).none { it.endsWith("-glow") })
+    }
+
+    /**
+     * Bike activities, the same two layers as hiking (owner 2026-10-26): green line = a way good for the bike, band = a
+     * signed route. Local / regional cycle routes: a mint band above the road casings and below every lane (a mint border
+     * beside the street, never over it – also on a wide main road), light zoomed out; long distance (net >= 3): exactly the
+     * hiking major-route look (green band + pink dashes).
+     */
+    @Test fun bikeRoutesAsBands() {
+        for (s in listOf(f1, f2)) {
+            val byId = byId(s)
+            val order = ids(s)
+            val band = order.indexOf("routes-bike")
+            assertTrue("routes-bike above the road casings", band > order.indexOf("road-motorway-casing"))
+            assertTrue("routes-bike below the lanes", band < order.indexOf("track-own-lane-hikeview"))
+            // main roads keep a thin edge on top of the band (owner 2026-10-26, Benrather Straße)
+            for (gid in listOf("tertiary", "secondary", "primary", "motorway")) {
+                val e = order.indexOf("road-$gid-edge")
+                assertTrue("road-$gid-edge above the band, below the lanes", e > band && e < order.indexOf("track-own-lane-hikeview"))
+            }
+            val w = byId.getValue("routes-bike").getJSONObject("paint").get("line-width")
+            assertTrue("wider than a street at z16", range(w, 16.0).first >= 12.0)
+            val op = byId.getValue("routes-bike").getJSONObject("paint").get("line-opacity")
+            assertTrue("light zoomed out", range(op, 12.0).second <= 0.6)
+            // long distance = the hiking major look
+            for ((bike, hike) in listOf("routes-bike-major" to "routes-hike-major", "routes-bike-major-low" to "routes-hike-major-low",
+                                        "routes-bike-over" to "routes-hike")) {
+                assertEquals(bike, byId.getValue(hike).getJSONObject("paint").toString(), byId.getValue(bike).getJSONObject("paint").toString())
+                assertTrue("$bike: net >= 3", byId.getValue(bike).get("filter").toString().contains("\"net\""))
+                assertEquals(bike, "none", byId.getValue(bike).getJSONObject("layout").getString("visibility"))
+            }
+            // route names: every named piece (schema 7 label lines "lb"), placed first (last layer) so streets don't hide them
+            assertEquals("routes-bike-major-label", order.last())
+            assertTrue(!byId.getValue("routes-bike-major-label").get("filter").toString().contains("\"net\""))
+            // the bike green line: a little wider than the hiking one
+            val g = byId.getValue("greenway-bike").getJSONObject("paint").get("line-width")
+            val h = byId.getValue("greenway-foot").getJSONObject("paint").get("line-width")
+            assertTrue(range(g, 16.0).first > range(h, 16.0).second)
+        }
+    }
+
+    /**
+     * Bike view of tracks and paths (owner 2026-10-26, "the brown ways look very dominant"): for bike activities a track is
+     * a light lane with thin edges ("-bikeview" layers), hiking keeps the dotted brown edges ("-hikeview"); a closed way is a
+     * quieter dash for bikes. MapController.setOverlay switches the suffixes; the style ships the hiking look.
+     */
+    @Test fun bikeAndHikeViews() {
+        for (s in listOf(f1, f2)) {
+            val byId = byId(s)
+            val bike = byId.keys.filter { it.endsWith("-bikeview") }
+            val hike = byId.keys.filter { it.endsWith("-hikeview") }
+            assertTrue(bike.containsAll(listOf("track-bike-edges-bikeview", "track-bike-lane-bikeview")))
+            // bicycle streets (schema 7 "bs"): the green bike line, format 2
+            if (s === f2) assertTrue("bike-street-bikeview" in bike)
+            assertTrue(hike.containsAll(listOf("track-own-single-hikeview", "track-own-loose-hikeview", "track-own-lane-hikeview")))
+            bike.forEach { assertEquals(it, "none", byId.getValue(it).getJSONObject("layout").getString("visibility")) }
+            hike.forEach { assertTrue(it, byId.getValue(it).optJSONObject("layout")?.optString("visibility") != "none") }
+            // closed ways: hiking keeps the clear red dash, bikes a thinner one
+            val foot = byId.getValue("access-no-dash-foot").getJSONObject("paint").get("line-width")
+            val bikeDash = byId.getValue("access-no-dash-bike").getJSONObject("paint").get("line-width")
+            assertTrue(range(bikeDash, 16.0).second < range(foot, 16.0).first)
+        }
+    }
+
+    /**
+     * Overview (owner 2026-10-26, every activity): zoomed out (≤ z13.5) a signed route is a thin solid line and paths are
+     * hidden (bikes) or faint (hiking); from z14.5 the close-up look (route band, paths). Bikes get "-bikeview" twins of the
+     * shared path layers (MapController shows the twin instead of the base layer) and a thin "routes-bike-low" line.
+     */
+    @Test fun overviewZoomedOut() {
+        val byId = byId(f2)
+        fun op(id: String, z: Double) = range(byId.getValue(id).getJSONObject("paint").get("line-opacity"), z)
+        fun w(id: String, z: Double) = range(byId.getValue(id).getJSONObject("paint").get("line-width"), z)
+        // routes: thin and solid zoomed out, the soft band close in
+        assertTrue(w("routes-hike", 13.0).second <= 2.5 && op("routes-hike", 13.0).first >= 0.9)
+        assertTrue(w("routes-hike", 15.0).first >= 8.0 && op("routes-hike", 15.0).second <= 0.5)
+        assertTrue("bike band hidden zoomed out", op("routes-bike", 13.0).second == 0.0)
+        assertTrue("bike overview line", op("routes-bike-low", 13.0).first >= 0.9 && op("routes-bike-low", 14.5).second == 0.0)
+        // paths: no black lines for bikes zoomed out, faint for hikers, full close in
+        for (id in listOf("paths-own", "trails-low", "trails-mountain", "cycleway")) {
+            assertTrue("$id-bikeview", op("$id-bikeview", 13.0).second == 0.0)
+            assertEquals("$id-bikeview", "none", byId.getValue("$id-bikeview").getJSONObject("layout").getString("visibility"))
+            assertTrue("$id faint for hikers", op(id, 13.0).second in 0.1..0.5)
+        }
+        assertTrue(op("paths-own", 15.0).second == 1.0)
+        assertTrue(op("track-bike-lane-bikeview", 13.0).second == 0.0)
+    }
+
+    /**
+     * Owner 2026-10-26: arrow colours (dark = one-way for all, green ⇄ = bikes both ways, green → = one-way only for
+     * bikes), quieter forbidden markings (signs from z16, see-through), street space (schema 7 "areas" / "fw") between
+     * the buildings and the road casings, underpasses (tn "t") as a clear path above the railway.
+     */
+    @Test fun arrowsForbiddenStreetSpaceUnderpass() {
+        val byId = byId(f2)
+        val order = ids(f2)
+        assertEquals("oneway-arrow", byId.getValue("bike-oneway-streets").getJSONObject("layout").getString("icon-image"))
+        assertEquals("bike-oneway-arrow", byId.getValue("bike-oneway-streets-green-bikeview").getJSONObject("layout").getString("icon-image"))
+        assertEquals("bike-both-ways", byId.getValue("bike-both-ways-streets-bikeview").getJSONObject("layout").getString("icon-image"))
+        for (m in listOf("foot", "bike")) {
+            val sign = byId.getValue("access-no-sign-$m")
+            assertTrue(sign.getInt("minzoom") >= 16)
+            assertTrue(sign.getJSONObject("paint").getDouble("icon-opacity") < 1.0)
+        }
+        val firstRoad = order.indexOfFirst { it.startsWith("road-") }
+        for (id in listOf("street-area", "street-area-outline", "street-space-lines"))
+            assertTrue(id, order.indexOf(id) in (order.indexOf("building") + 1) until firstRoad)
+        assertTrue(order.indexOf("paths-underpass") > order.indexOf("rail-hatch"))
+    }
+
+    /**
+     * Town street endings + contrast (owner 2026-10-26, Hilden old town on 0.11.2: "the green line and black lines go into
+     * the other street", "the roads are very low contrast"): in towns the path-like layers and the bike green lines have a
+     * "-town" copy below every lane, above the casings and the bike route band (paths end at the street edge), switched
+     * with their layer by MapController.setOverlay; country paths keep their place above the lanes; passages are dashed;
+     * pedestrian streets have an edge below the lanes.
+     */
+    @Test fun format2TownWaysEndAtTheStreet() {
+        val byId = byId(f2)
         val order = ids(f2)
         val firstRoad = order.indexOfFirst { it.startsWith("road-") }
-        for (id in listOf("greenway-bike-glow", "greenway-touring-glow", "greenway-mtb-glow", "bike-lane-glow")) {
-            assertEquals(id, "none", byId.getValue(id).getJSONObject("layout").getString("visibility"))
-            assertTrue("$id below the roads", order.indexOf(id) < firstRoad)
+        val firstLane = order.indexOfFirst { it.startsWith("road-") && it.endsWith("-lane") }
+        val allLanes = order.indexOf("track-own-lane-hikeview")
+        for (id in listOf("paths-own", "paths-link", "cycleway", "cycleway-unpaved", "path-steps",
+                          "greenway-bike", "greenway-touring", "greenway-mtb")) {
+            val town = byId.getValue("$id-town")
+            assertTrue("$id-town below the lanes", order.indexOf("$id-town") < allLanes)
+            assertTrue("$id-town above the bike route band", order.indexOf("$id-town") > order.indexOf("routes-bike"))
+            assertTrue("$id stays above the lanes outside towns", order.indexOf(id) > firstLane)
+            assertTrue("$id-town: only u = 1", "\"u\"" in town.get("filter").toString())
+            assertEquals("$id-town: same paint", byId.getValue(id).getJSONObject("paint").toString(), town.getJSONObject("paint").toString())
+            assertEquals("$id-town: same visibility", byId.getValue(id).optJSONObject("layout")?.optString("visibility"),
+                town.optJSONObject("layout")?.optString("visibility"))
         }
-        // bikes: thin route lines, no pink dashed band
-        for (s in listOf(f1, f2)) {
-            assertTrue("routes-bike-major" !in ids(s))
-            val w = byId(s).getValue("routes-bike").getJSONObject("paint").get("line-width")
-            assertTrue("thin at z12", range(w, 12.0).second <= 1.5)
-        }
+        assertTrue("green line on paths: above the grey path", order.indexOf("greenway-bike-town") > order.indexOf("paths-own-town"))
+        // passages: never a solid line through the houses
+        assertTrue("paths-own skips town passages", "\"tn\"" in byId.getValue("paths-own").get("filter").toString())
+        val tunnel = byId.getValue("paths-tunnel-town")
+        assertTrue(tunnel.getJSONObject("paint").has("line-dasharray"))
+        assertTrue(tunnel.getInt("minzoom") >= 16)
+        assertTrue(order.indexOf("paths-tunnel-town") < allLanes)
+        // pedestrian streets: an edge with the casings, the lane on top
+        val ped = order.indexOf("pedestrian-town-casing")
+        assertTrue(ped in (firstRoad + 1) until order.indexOf("pedestrian-town"))
+        assertEquals(byId.getValue("pedestrian-town").get("filter").toString(), byId.getValue("pedestrian-town-casing").get("filter").toString())
     }
 
     /**
