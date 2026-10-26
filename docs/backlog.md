@@ -5,14 +5,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] bike ferries with bicycle=no + Köln Dom route – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
-- **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) Köln Dom → Neumarkt (~1 km) finds no bike
-  route – on main before the merge too, look separately; (2) a ferry tagged bicycle=no is not forbidden in the bike
-  profiles (unchanged, upstream behaviour); (3) requirements.md – see "requirements.md sync" below; (4) owner question kept: long timetabled ferries only
-  with a via point (today) or automatic?
+- **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) and (2) done (see Done); (3) requirements.md –
+  see "requirements.md sync" below; (4) owner question kept: long timetabled ferries only with a via point (today) or
+  automatic?
 - **[for the cloud / owner] requirements.md sync (senior review, desktop 2026-10-26)** – `docs/requirements.md` is the
   copy of the shared Claude doc, so the review did not edit it. Needed in the shared doc: (a) activity table (line ~88):
   "Bike – e-bike: Same as trekking" → E-bike routes like the Touring bike (touring.brf: paved bike ways, quiet ways,
@@ -220,6 +218,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Bike ferries + Köln Dom route (desktop, 2026-10-26):** a ferry that does not take bikes (bicycle=no, …) is now
+  forbidden in touring / trekking / mtb.brf, one without foot access in hiking-mountain.brf (test set of 228 OSM ferries:
+  bike routes over such a ferry 56–67 → 0, Hike 6 → 0; `FerryTest.kt`, WayClass selftest). Köln Dom → Neumarkt "no
+  route" for every activity: the point snapped onto an unconnected footway inside the cathedral and BRouter's own
+  island retry kept that way – `BRouterEngine` now re-snaps such a point to the next way (`IslandTest.kt`,
+  `IslandPointTest`, core feature C3). Guard rails unchanged; details in
+  `docs/design/bike-routing.md`.
 - **Senior consistency + dedup review (desktop, 2026-10-26):** bug: every recorded tour was stored as T3 (reopening a T2
   hike set T3, its GPX said "mountaineering") – the start now sends the T level (`NewTourSacTest`); one form "Hike T3"
   for the activity in a sentence (`LastActivity.name`; Navigate said "Hike (T3)"), one `DEFAULT_SAC`, one tour-name
