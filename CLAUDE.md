@@ -141,12 +141,12 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   content is never stored or drawn; only link out to Google Maps. Exception (owner decision 2026-10-20): the coordinate
   of a place the user shares from Google Maps (share sheet / link, `search/SharedPlace.kt`) may be used to place our own
   marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name.
-- **Activities** (exactly six): Bike, Gravel bike, E-bike, MTB, E-MTB, Hike (SAC T1–T5,
+- **Activities** (exactly six): Bike, Gravelbike, E-bike, MTB, E-MTB, Hike (SAC T1–T5,
   default T2, chosen in the activity picker; the app remembers the last activity and T level). Names + the one picker line
   under each: `Activity.label` / `line`, chip `Activity.chip` ("Gravel") (owner 2026-10-26; enum names BIKE_TOURING / BIKE_TREKKING … unchanged and the only
   stored form). Profiles
   (`BRouterEngine.profileFile` – the one source; map layers, route warnings and the activity check ask it): Bike +
-  E-bike → `touring.brf`, Gravel bike → `trekking.brf`, MTB + E-MTB → `mtb.brf`, Hike → `hiking-mountain.brf` with the
+  E-bike → `touring.brf`, Gravelbike → `trekking.brf`, MTB + E-MTB → `mtb.brf`, Hike → `hiking-mountain.brf` with the
   T limit (E-bike / E-MTB change only power, speed and mass). In a sentence the activity reads "Hike T3"
   (`LastActivity.name`), on the chip "Hike · T3".
 - **Git**: small commits with clear messages on `main` (single developer for now); never commit map data,

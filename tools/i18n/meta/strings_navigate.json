@@ -886,8 +886,8 @@
     "area": "Activity check sheet",
     "context": "Plural of the activity in 'not suited for …'",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Gravel-Räder' follows the activity name"
+    "confidence": "sicher",
+    "decided": "Owner review 2026-10-26: Gravelbikes"
   },
   "nav_who_ebike": {
     "area": "Activity check sheet",

@@ -56,7 +56,7 @@
     <string name="plan_spots_tap">Tap a spot to see it on the map.</string>
     <string name="plan_warn_show_spots">Show the spots</string>
     <string name="plan_calculating">Calculating the route…</string>
-    <string name="plan_hint_first_point">Hold the map where you want to start or go. To only record: ☰ → Start recording.</string>
+    <string name="plan_hint_first_point">Select a point on the map, where to start or where to go.</string>
     <string name="plan_hint_destination">Hold the map to set the destination.</string>
     <string name="plan_not_routed_long">Route not calculated – very long plan.</string>
     <string name="plan_not_routed_stopped">Route not calculated – calculation stopped.</string>
@@ -169,7 +169,7 @@
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
-    <string name="plan_slide_to_plan">Slide to plan</string>
+    <string name="plan_slide_to_plan">Edit Route</string>
     <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>

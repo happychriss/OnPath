@@ -226,8 +226,8 @@
     "area": "Plan sheet",
     "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Long; \"hinwillst\" is colloquial"
+    "confidence": "sicher",
+    "decided": "Owner review 2026-10-26: new text (select a point)"
   },
   "plan_hint_destination": {
     "area": "Plan sheet",
@@ -891,8 +891,8 @@
     "area": "Map (Plan)",
     "context": "Grey line under \"Start here\" in a point menu. %1$d = number of points before it",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "German one form without the number (\"Entfernt den Punkt davor\"); other form with it"
+    "confidence": "sicher",
+    "decided": "Owner review 2026-10-26: Löscht … (other form: number and plural kept)"
   },
   "plan_start_finish_here": {
     "area": "Map (Plan)",
@@ -922,9 +922,9 @@
     "area": "Navigate",
     "context": "The slider at the bottom of Navigate: the only way back to Plan",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Alternative \"Schieben zum Planen\"",
-    "max": 24
+    "confidence": "sicher",
+    "max": 24,
+    "decided": "Owner review 2026-10-26: Edit Route / Route ändern"
   },
   "plan_slide_desc": {
     "area": "Navigate",

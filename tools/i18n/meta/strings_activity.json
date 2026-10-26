@@ -24,9 +24,9 @@
     "area": "Activity picker",
     "context": "Activity name: gravel bike (picker, buttons, messages)",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Owner wording 'Gravel-Rad'; common German alternatives: 'Gravelbike'",
-    "max": 16
+    "confidence": "sicher",
+    "max": 16,
+    "decided": "Owner review 2026-10-26: Gravelbike (EN and DE)"
   },
   "activity_bike_trekking_line": {
     "area": "Activity picker",
@@ -70,7 +70,7 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 16,
-    "decided": "Owner 2026-10-26: full name in the picker, MTB on buttons"
+    "decided": "Owner review 2026-10-26: MTB also in the picker"
   },
   "activity_mtb_line": {
     "area": "Activity picker",
@@ -93,7 +93,7 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 16,
-    "decided": "Owner 2026-10-26: full name in the picker, E-MTB on buttons"
+    "decided": "Owner review 2026-10-26: E-MTB also in the picker"
   },
   "activity_emtb_line": {
     "area": "Activity picker",
@@ -160,7 +160,7 @@
     "priority": 1,
     "max": 16,
     "confidence": "sicher",
-    "decided": "Owner 2026-10-26"
+    "decided": "Owner review 2026-10-26: Gravelbike, follows activity_bike_trekking"
   },
   "activity_ebike_button": {
     "area": "Plan sheet",

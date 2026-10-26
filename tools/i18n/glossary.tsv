@@ -1,9 +1,9 @@
 English	Deutsch	Note
 Bike	Fahrrad	Activity (touring / city bike on paved ways). Chip: Fahrrad
-Gravel bike	Gravel-Rad	Activity. Chip: Gravel (short, bitte prüfen)
+Gravelbike	Gravelbike	Activity, same word in English and German (owner review 2026-10-26; was "Gravel bike" / "Gravel-Rad"). Chip: Gravel
 E-bike	E-Bike	Activity (pedelec 25 km/h)
-MTB	Mountainbike	Activity: full name in the picker; on buttons MTB ("Navigation starten · MTB") – Owner 2026-10-26
-E-MTB	E-Mountainbike	Activity: full name in the picker; on buttons E-MTB – Owner 2026-10-26
+MTB	MTB	Activity: MTB in the picker and on buttons (owner review 2026-10-26)
+E-MTB	E-MTB	Activity: E-MTB in the picker and on buttons (owner review 2026-10-26)
 Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon – Owner 2026-10-26
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
@@ -58,3 +58,4 @@ bus / car / lift	Bus / Auto / Lift	Rides inside a tour (lift = Seilbahn / Sessel
 you (address)	du	Friendly, factual; imperative "Tippe …", "Prüfe …"; buttons in the infinitive ("Speichern")
 time (duration)	1 h 05 min	Same as English (as on Alpine signposts), not "1 Std. 5 Min." – Owner 2026-10-26
 hill shading	Relief	Map switch "Relief"; not "Schummerung" – Owner 2026-10-26
+Slide to plan (Navigate slider)	Route ändern	English "Edit Route" – owner review 2026-10-26
