@@ -355,6 +355,75 @@ class StyleFormatTest {
         assertTrue(!f1.getJSONObject("sources").has("region-shade")) // format 1 has no packages
     }
 
+    /**
+     * Greener region view (owner 2026-10-26: "the landscape doesn't look green at all zoomed out"): a light green veil
+     * ("land-tint", a background layer) over the open land, farmland and the packages' relief, below meadows / forest /
+     * towns, gone at z13 – the close-up look is unchanged.
+     */
+    @Test fun landTintZoomedOut() {
+        for (s in listOf(f1, f2)) {
+            val byId = byId(s)
+            val order = ids(s)
+            val tint = byId.getValue("land-tint")
+            assertEquals("background", tint.getString("type"))
+            assertEquals("right above farmland", order.indexOf("landcover-farmland") + 1, order.indexOf("land-tint"))
+            for (above in listOf("landcover-grass", "landcover-wood", "landuse-residential", "water"))
+                assertTrue(above, order.indexOf(above) > order.indexOf("land-tint"))
+            assertTrue(tint.getDouble("maxzoom") <= 13.0)
+            val op = tint.getJSONObject("paint").get("background-opacity")
+            assertTrue(range(op, 9.0).first >= 0.3)
+            assertEquals(0.0, range(op, 13.0).second, 0.0)
+        }
+        // the app's overview merge (packages + cells): the veil stays above the cover, the cover keeps the land colour
+        val box = doubleArrayOf(6.0, 50.0, 8.0, 52.0)
+        val merged = JSONObject(Overview.merge(f2.toString(), setOf("base.pmtiles", "terrain.pmtiles", "hillshade.pmtiles"),
+            listOf(box), listOf(box)))
+        val order = ids(merged)
+        assertTrue(order.indexOf("land-tint") > order.indexOf(Overview.COVER))
+        assertTrue(order.indexOf("land-tint") > order.indexOf("region-relief"))
+        assertEquals(f2.getJSONArray("layers").getJSONObject(0).getJSONObject("paint").getString("background-color"),
+            byId(merged).getValue(Overview.COVER).getJSONObject("paint").getString("fill-color"))
+    }
+
+    /**
+     * Owner 2026-10-26: pink zoomed out = exactly the routes with the pink-green band close in – long distance (net >= 3)
+     * for bikes AND hiking. Zoomed out a wider pink-violet line on a thin white halo; the halo ids end in -hikeview /
+     * -bikeview (MapController shows them with the activity group). Regional routes (net 2): the green overview line up
+     * to the local tier, the normal band close in.
+     */
+    @Test fun pinkOnlyForLongDistance() {
+        val net3 = "[\">=\",[\"coalesce\",[\"get\",\"net\"],0],3]"
+        for (s in listOf(f1, f2)) {
+            val byId = byId(s)
+            val order = ids(s)
+            for (id in listOf("routes-hike-major", "routes-hike-major-low", "routes-bike-major", "routes-bike-major-low")) {
+                val f = byId.getValue(id).get("filter").toString()
+                assertTrue(id, f.contains(net3) && !f.contains("0],2]"))
+            }
+            for ((line, halo, vis) in listOf(Triple("routes-hike-major-low", "routes-hike-major-low-halo-hikeview", "visible"),
+                                             Triple("routes-bike-major-low", "routes-bike-major-low-halo-bikeview", "none"))) {
+                assertEquals(halo, order.indexOf(line) - 1, order.indexOf(halo))
+                val l = byId.getValue(line); val h = byId.getValue(halo)
+                assertEquals(halo, l.get("filter").toString(), h.get("filter").toString())
+                assertEquals(halo, vis, h.getJSONObject("layout").getString("visibility"))
+                for (z in listOf(7.0, 11.0, 13.0))
+                    assertTrue("$halo z$z", range(h.getJSONObject("paint").get("line-width"), z).first >
+                        range(l.getJSONObject("paint").get("line-width"), z).second)
+                assertTrue("$line: about 2 px at z7, 3 px at z11",
+                    range(l.getJSONObject("paint").get("line-width"), 7.0).first >= 1.8 &&
+                        range(l.getJSONObject("paint").get("line-width"), 11.0).first >= 2.6)
+            }
+            val pink = byId.getValue("routes-hike-major-low").getJSONObject("paint").getString("line-color")
+            for (id in listOf("routes-hike-regional", "routes-bike-regional")) {
+                val r = byId.getValue(id)
+                assertTrue(id, r.get("filter").toString().contains("0],2]"))
+                assertEquals(id, 12.5, r.getDouble("maxzoom"), 0.0)
+                assertTrue(id, r.getJSONObject("paint").getString("line-color") != pink)
+            }
+            assertTrue(order.none { it.startsWith("routes-") && it.contains("regional-halo") })
+        }
+    }
+
     @Test fun arrowsForbiddenStreetSpaceUnderpass() {
         val byId = byId(f2)
         val order = ids(f2)

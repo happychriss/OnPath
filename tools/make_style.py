@@ -109,6 +109,14 @@ def landcover():
         layer(id_=f"landcover-{cls}", type="fill", source="base", **{"source-layer": "landcover"},
               minzoom=minz, filter=["==", ["get", "class"], cls],
               paint={"fill-color": Z(f"{cls}.color"), "fill-antialias": False})
+    if T("land.tint.color", None):
+        # Region view (owner 2026-10-26: "the landscape doesn't look green at all zoomed out"): a light green veil over
+        # the open land up to about z13 – over the background, the region packages' relief (z7-9, opaque tiles) and
+        # farmland; below meadows, forests, towns and water. A background layer (no source): map/Overview.kt keeps it in
+        # place, above its cover (the cover takes the first background layer's colour).
+        at = next(i for i, x in enumerate(L) if x["id"] == "landcover-farmland") + 1
+        L.insert(at, {"id": "land-tint", "type": "background", "maxzoom": T("land.tint.maxzoom", 13),
+                      "paint": {"background-color": Z("land.tint.color"), "background-opacity": Z("land.tint.opacity")}})
     # Ground symbols (sprite "pattern-*", tools/make_sprite.py) only close in (GROUND_SYMBOLS_ZOOM, the last two zoom
     # steps before the app's max zoom 18 – owner 2026-10-20: below that plain landcover colour), very light.
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
@@ -574,8 +582,9 @@ def lanes():
         fill = T(f"{col}.fill")
         layer(id_=f"road-{gid}", type="line", source="base", **{"source-layer": "transportation"},
               minzoom=minz, filter=f, layout=lay,
-              # below z10 there is no casing: draw major roads in their casing colour so they stay visible
-              paint={"line-color": fill if minz >= 10 else ["step", ["zoom"], T(f"{col}.casing"), 10, fill],
+              # below z10 there is no casing: major roads in one darker colour so they stay visible ("<col>.low", lighter
+              # than the casing: a calmer region view where the routes stand out – owner 2026-10-26)
+              paint={"line-color": fill if minz >= 10 else ["step", ["zoom"], T(f"{col}.low", T(f"{col}.casing")), 10, fill],
                      "line-width": Z(f"road.{gid}.width")})
 
 
@@ -639,22 +648,28 @@ def route_bands():
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
-        major = ["all", flt, [">=", ["coalesce", ["get", "net"], 0], 2]]
+        # Long distance only (net >= 3, owner 2026-10-26, as for bikes): pink zoomed out = exactly the routes with the
+        # pink-green band close in. Regional routes (net 2) get the normal band close in, the dark-green regional line
+        # zoomed out (route_tiers()), and keep their name label (in the regional route colour).
+        net = ["coalesce", ["get", "net"], 0]
+        major = ["all", flt, [">=", net, 3]]
+        named = ["all", flt, [">=", net, 2]]
         # zoomed out: the major route as a thin solid pink line on top of the green one
         layer(id_=f"routes-{kind}-major-low", type="line", source="routes", minzoom=minz, maxzoom=13.5,
               filter=major, layout={"line-join": "round", "line-cap": "round", "visibility": vis},
-              paint={"line-color": T("route.major.line.color"), "line-width": interp(9, 1.2, 12, 2.0, 13, 2.6, base=1)})
+              paint=route_low_paint())
         layer(id_=f"routes-{kind}-major", type="line", source="routes", minzoom=13.5,
               filter=major, layout={"line-join": "round", "visibility": vis},
               paint={"line-color": T("route.major.color"), "line-width": Z("route.width"),
                      "line-opacity": T("route.major.opacity"), "line-dasharray": T("route.major.dash")})
         layer(id_=f"routes-{kind}-major-label", type="symbol", source="routes", minzoom=12,
-              filter=["all", major, ["!=", ["coalesce", ["get", "name"], ""], ""]],
+              filter=["all", named, ["!=", ["coalesce", ["get", "name"], ""], ""]],
               layout={"symbol-placement": "line", "symbol-spacing": interp(12, 300, 16, 500),
                       "text-field": ["get", "name"], "text-font": T("font.medium"), "text-size": interp(12, 10, 16, 12, base=1),
                       "text-max-angle": 30, "text-padding": 4, "text-offset": [0, 1.0], "visibility": vis},
-              paint={"text-color": T("route.major.label.color"), "text-halo-color": T("label.halo.color"),
-                     "text-halo-width": 1.5})
+              paint={"text-color": ["case", [">=", net, 3], T("route.major.label.color"),
+                                    T("route.regional.label.color", T("route.bike.label.color"))],
+                     "text-halo-color": T("label.halo.color"), "text-halo-width": 1.5})
 
 
 def bike_route_lines(minz, band):
@@ -689,7 +704,7 @@ def bike_route_lines(minz, band):
     layer(id_="routes-bike-over", type="line", source="routes", minzoom=minz, filter=long, layout=lay,
           paint=route_band_paint())
     layer(id_="routes-bike-major-low", type="line", source="routes", minzoom=minz, maxzoom=13.5, filter=long, layout=lay,
-          paint={"line-color": T("route.major.line.color"), "line-width": interp(9, 1.2, 12, 2.0, 13, 2.6, base=1)})
+          paint=route_low_paint())
     layer(id_="routes-bike-major", type="line", source="routes", minzoom=13.5, filter=long,
           layout={"line-join": "round", "visibility": "none"},
           paint={"line-color": T("route.major.color"), "line-width": Z("route.width"),
@@ -715,6 +730,14 @@ def route_band_paint():
     return {"line-color": T("route.band.color"),
             "line-opacity": low_fade(T("route.opacity"), T("route.low.opacity", 1)),
             "line-width": low_to_close("route.low.width", band_w)}
+
+
+def route_low_paint():
+    """Overview line of a long-distance route (net >= 3): one pink-violet line for hiking and bikes, below LOW_FROM (owner
+    2026-10-26: "bike roads zoomed out are red like streets – pink, a bit wider"). A light halo below it comes from
+    route_halos()."""
+    width = Z("route.low.major.width", interp(9, 1.2, 12, 2.0, 13, 2.6, base=1))
+    return {"line-color": T("route.low.major.color", T("route.major.line.color")), "line-width": width}
 
 
 def hike_band_filter(limit, over):
@@ -1037,17 +1060,42 @@ def route_tiers():
         i = lyr["id"]
         if i in ("routes-hike", "routes-hike-over", "routes-bike", "routes-bike-low"):
             lyr["minzoom"] = max(lyr.get("minzoom", 0), local)
-        if i == "routes-hike-major-low":
-            # pink thin line: long distance from the start, regional from route.tier.regional
-            reg = copy.deepcopy(lyr) | {"id": "routes-hike-regional", "minzoom": regional,
-                                        "filter": ["all", lyr["filter"], ["==", net, 2]]}
-            lyr["filter"] = ["all", lyr["filter"], [">=", net, 3]]
+        if i in ("routes-hike", "routes-bike-low"):
+            # a regional route (net 2) before the local tier: its net pieces as the thin green line the local tier starts
+            # with (hiking: the band's overview line, bikes: their dark-green overview line) - never pink (owner
+            # 2026-10-26: pink zoomed out = exactly the routes with the pink-green band close in, long distance only)
+            kind = "hike" if i == "routes-hike" else "bike"
+            reg = copy.deepcopy(lyr) | {"id": f"routes-{kind}-regional", "minzoom": regional, "maxzoom": local,
+                                        "filter": ["all", ["==", ["get", "kind"], kind], ["==", net, 2]]}
+            if kind == "hike":
+                reg["paint"] = {"line-color": T("route.band.color"), "line-width": Z("route.low.width")}
             L.insert(L.index(lyr), reg)
-        if i == "routes-bike-low":
-            # the dark-green overview line of a regional cycle route before the local tier (its net pieces)
-            reg = copy.deepcopy(lyr) | {"id": "routes-bike-regional", "minzoom": regional, "maxzoom": local,
-                                        "filter": ["all", ["==", ["get", "kind"], "bike"], ["==", net, 2]]}
-            L.insert(L.index(lyr), reg)
+
+
+def _plus(expr, d):
+    """A width (number or zoom curve with number stops) plus d."""
+    if isinstance(expr, list) and expr and expr[0] == "interpolate":
+        return expr[:3] + [v if i % 2 == 0 else round(v + d, 3) for i, v in enumerate(expr[3:])]
+    return round(expr + d, 3)
+
+
+ROUTE_HALOS = ("routes-hike-major-low", "routes-bike-major-low")
+
+
+def route_halos():
+    """A thin light halo under the overview route lines (route_low_paint()), so they read on roads and towns. Its id ends in
+    -hikeview / -bikeview: MapController shows it with its activity group (the route layers' own switch has fixed
+    suffixes)."""
+    if not T("route.low.halo.color", None):
+        return
+    for lid in ROUTE_HALOS:
+        lyr = next((x for x in L if x["id"] == lid), None)
+        if lyr is None:
+            continue
+        halo = copy.deepcopy(lyr) | {"id": lid + "-halo" + (HIKEVIEW if "-hike-" in lid else BIKEVIEW)}
+        halo["paint"] = {"line-color": T("route.low.halo.color"), "line-opacity": T("route.low.halo.opacity", 1),
+                         "line-width": _plus(lyr["paint"]["line-width"], 2 * T("route.low.halo.width"))}
+        L.insert(L.index(lyr), halo)
 
 
 def road_edges_on_top():
@@ -1616,6 +1664,7 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
     low_zoom_view()
     if FMT == 2:
         region_view()
+    route_halos()
     if FMT == 2:
         # GeoJSON overlay sources -> source-layers of the one vector source "overlays"
         for lyr in L:

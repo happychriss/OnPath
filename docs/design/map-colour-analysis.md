@@ -335,6 +335,21 @@ Hiking keeps its look in every row (`-hikeview` layers; pixel-checked renders of
 ### Region view: routes by zoom (2026-10-26, owner)
 Zoomed out to a region, every signed route at once (local loops, town networks) hid the few routes that matter at that
 scale. The map now shows them in tiers, the same for hiking and bikes:
-- long-distance routes (national, EuroVelo, long-distance hiking) at every zoom, as the thin pink line;
-- regional routes from z11: dark green for bikes, the pink major line for hiking;
+- long-distance routes (national, EuroVelo, long-distance hiking) at every zoom, as the pink line;
+- regional routes from z11: the thin green overview line (bikes dark green, hiking the band green);
 - every signed route from z12.5.
+
+### Greener region view, pink long-distance routes (2026-10-26, owner on 0.11.4 over Düsseldorf – Köln)
+"The landscape doesn't look green at all zoomed out – it looks like there is no nice area to walk" and "bike roads
+zoomed out are red, very similar to streets". Three rounds of renders and phone tests (r1 calm, r2 stronger, r3 / r3b
+after the owner's look at r2); shipped as r3b.
+
+| What | Before | Now | Why |
+|---|---|---|---|
+| Open land z7–12 | pale background / near-white region relief (`#fffff4`), farmland `#f1f0de` | **green veil `#c8e0a6`**, 60 % up to z9 → 25 % at z12 → 0 at z13 | Region packages drop farmland at z7–9, so open land was the pale background; the veil also softens the grey relief |
+| Forest | `#cde3b8` up to z12 | **`#a9d789` at z8** → `#c1e3a5` z12 → today's tone at z13 (all a step greener: z15 `#d4edbf`) | A clear, slightly deeper green zoomed out, not neon |
+| Meadow / park | `#e3edd2` up to z12 | **`#c4e7a5` at z8** → `#e2f0cf` z13 (z15 `#e6f2d7`) | Green areas read as green at every zoom |
+| Towns | residential 60 % at z9 | 90 % at z9; residential / industrial ~4 % darker close in (`#d9d7d2`, `#d3cfcd`) | Towns stay grey on the greener land; white streets still stand out, buildings stay a step darker |
+| Long-distance routes zoomed out | raspberry `#c43a7d`, 1.2–2.6 px | **pink-violet `#c02fb0`**, 2.2 px z7 → 3.2 px z11, thin white halo | Clearly not a road colour (roads are yellow / orange / brown), reads on roads and towns |
+| Which routes are pink | hiking: regional and long distance | **long distance only (net ≥ 3)**, hiking like bikes | Pink zoomed out = exactly the routes with the pink-green band close in |
+| Main roads below z10 | casing colour (`#b38a2c` …) | lighter brown `<col>.low`, a little thinner to z11 | Calmer region view, the routes stand out |

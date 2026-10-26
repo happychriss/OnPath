@@ -6,6 +6,11 @@
 #   tools/dev/push_style.sh THEME.json       a theme file, e.g. {"extends": "classic", "street.town.edge.color.z17": "#7d766d"}
 #   tools/dev/push_style.sh STYLE.json       a ready MapLibre style (a JSON with "layers"), e.g. a variant from a render test
 #   tools/dev/push_style.sh --remove         delete the test style (the bundled style shows after the restart)
+#   tools/dev/push_style.sh --check          only ask the phone whether a push may restart OnPath now (exit 0 = yes)
+#   --force (before the other arguments)     skip the tour check – only when you know nobody records
+#
+# The restart stops a running tour recording / navigation, so the script refuses while OnPath's RecordingService runs,
+# and also when adb gives no usable answer (unknown = refuse, never "not running").
 #
 # The app uses <data dir>/dev/style.json (StyleLoader.DEV_STYLE) only while its developer tools are shown: debug builds,
 # or after 7 taps on the version in Settings → About. Settings → Diagnostics → Developer tools shows "Test style active"
@@ -18,12 +23,44 @@ PKG=com.onpath.app
 DEST=/sdcard/Android/data/$PKG/files/onpath/dev/style.json
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
+FORCE=0
+if [[ "${1:-}" == "--force" ]]; then
+  FORCE=1
+  shift
+fi
+
+# exit 3 unless OnPath can be restarted now: no RecordingService (tour recording / navigation), and a real answer
+not_recording() {
+  if [[ $FORCE == 1 ]]; then
+    echo "--force: not checking for a running tour" >&2
+    return 0
+  fi
+  local out
+  if ! out=$(adb shell dumpsys activity services "$PKG" 2>/dev/null) || [[ -z "${out//[[:space:]]/}" ]]; then
+    echo "ERROR: no answer from the phone (adb) whether OnPath records a tour – not restarting it." >&2
+    echo "       Check 'adb devices'; --force skips this check." >&2
+    exit 3
+  fi
+  if grep -q "RecordingService" <<<"$out"; then
+    echo "ERROR: OnPath is recording / navigating a tour right now – a restart would interrupt it. Try after the tour." >&2
+    exit 3
+  fi
+}
+
 restart() {
+  not_recording
   adb shell am force-stop "$PKG"
   adb shell am start -n "$PKG/$PKG.MainActivity" >/dev/null
   echo "OnPath restarted"
 }
 
+if [[ "${1:-}" == "--check" ]]; then
+  not_recording
+  echo "OnPath is not recording: a style push may restart it"
+  exit 0
+fi
+
+not_recording
 if [[ "${1:-}" == "--remove" ]]; then
   adb shell rm -f "$DEST"
   echo "test style removed"
