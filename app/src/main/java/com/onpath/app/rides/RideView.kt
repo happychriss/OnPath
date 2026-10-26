@@ -1,5 +1,7 @@
 package com.onpath.app.rides
 
+import com.onpath.strings.*
+
 import com.onpath.app.data.Geo
 import com.onpath.app.gpx.TrackPoint
 import java.time.Instant
@@ -221,7 +223,12 @@ object RideView {
 
     // ------------------------------------------------------------------------------------------------ summary
 
-    enum class RowKind(val label: String) { ON_FOOT("On foot"), BY_BIKE("By bike"), VEHICLE("Bus / car"), LIFT("Lift") }
+    enum class RowKind(private val res: org.jetbrains.compose.resources.StringResource) {
+        ON_FOOT(Res.string.nav_row_on_foot), BY_BIKE(Res.string.nav_row_by_bike), VEHICLE(Res.string.nav_row_vehicle),
+        LIFT(Res.string.nav_row_lift);
+
+        val label: String get() = Txt.s(res)
+    }
 
     /** One line of the timeline: what, from – to, km, ascent / descent, average speed while moving (km/h; null = unknown). */
     data class Row(val kind: RowKind, val startMs: Long?, val endMs: Long?, val distanceM: Double, val ascentM: Double,
@@ -273,14 +280,14 @@ object RideView {
         val parts = 1 + splitParts(segments, rides).size
         val options = buildList {
             if (last.from >= 1) add(Option(RideChoice.UNTIL,
-                if (untilTime != null) "Save only until $untilTime" else "Save only until the ride",
-                if (rides.size > 1) "The last ride and everything after it dropped; earlier rides not counted"
-                else "The ride and everything after it dropped"))
-            add(Option(RideChoice.NOT_COUNTED, "Save all, rides not counted", "Rides grey on the map, not in km, time or pace"))
+                if (untilTime != null) Txt.s(Res.string.nav_ride_until_time, untilTime) else Txt.s(Res.string.nav_ride_until_ride),
+                if (rides.size > 1) Txt.s(Res.string.nav_ride_until_last_detail)
+                else Txt.s(Res.string.nav_ride_until_detail)))
+            add(Option(RideChoice.NOT_COUNTED, Txt.s(Res.string.nav_ride_not_counted), Txt.s(Res.string.nav_ride_not_counted_detail)))
             if (allowSplit && parts >= 2 && rides.first().from >= 1) add(Option(RideChoice.SPLIT,
-                if (parts == 2) "Split into two tracks" else "Split into $parts tracks",
-                if (parts == 2) "Before and after the ride" else "One track between rides"))
-            add(Option(RideChoice.AS_RECORDED, "Save as recorded", "Everything counts, the rides too"))
+                if (parts == 2) Txt.s(Res.string.nav_ride_split_two) else Txt.s(Res.string.nav_ride_split_n, parts),
+                if (parts == 2) Txt.s(Res.string.nav_ride_split_two_detail) else Txt.s(Res.string.nav_ride_split_n_detail)))
+            add(Option(RideChoice.AS_RECORDED, Txt.s(Res.string.nav_ride_as_recorded), Txt.s(Res.string.nav_ride_as_recorded_detail)))
         }
         var after = 0.0
         for (i in last.to until f.size - 1) after += f.d(i, i + 1)

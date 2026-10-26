@@ -1,5 +1,7 @@
 package com.onpath.app.rides
 
+import com.onpath.strings.*
+
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
@@ -90,5 +92,6 @@ object RideApply {
     }
 
     /** Like a new recording: "Tour 22 Oct 2026, 16:58" (the app proposes a place name afterwards). */
-    fun dateName(ms: Long): String = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(ms))
+    fun dateName(ms: Long): String =
+        Txt.s(Res.string.nav_tour_date_name, SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(ms)))
 }
