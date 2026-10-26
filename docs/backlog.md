@@ -5,11 +5,16 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] Faster map refreshes: dev loop push_cell.sh, donald → test R2 fast lane, app poll while updating, doorman
-  lane + pre-warm (map-hosting.md §7h) – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Map cells: partial rebuild (desktop, 2026-10-26, map-hosting.md §7h)** – a look-only schema bump rebuilds every
+  layer today. Per-layer schema in `cells.py` / the manifest; `job_build.py` reads the current manifest from R2 and, when
+  only some layers changed and the extract date is the same, `build_cell.sh REUSE=…` cuts and rebuilds only those
+  (overlays: cut + overlays + tiles) and copies the rest (R2 CopyObject, sha256 kept; terrain / contours never depend
+  on OSM). Measured Hilden 10-531-342: cloud 9.7 min full → ~4.2 min overlays-only; donald 179 s → ~80 s. Backward
+  compatible (the app ignores unknown manifest fields and downloads all files; copy, don't point into old folders –
+  cleanup deletes them).
 - **[laptop] Does the plan sheet follow the finger 1:1 on the phone? (desktop, 2026-10-26)** On the CI emulator it moves
   only 0.69–0.80 of the injected finger travel (see Done: E2E swipe flake). Every release now writes "Sheet let go at
   X px (steps a / b / c px, v px/s) → step N" to the events trace: drag the handle a measured distance on the Pixel 8
@@ -226,6 +231,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Faster map refreshes (desktop, 2026-10-26, owner: "build here and push to the cloud"; map-hosting.md §7h):** the
+  s5 → s6 Hilden refresh took ~48 min (4 cells serial in one background execution, 8–10.5 min each, then the app's
+  15-min idle poll). Now: app polls an updating cell at `poll_s` (doorman 15 s); background rebuilds spread over the
+  free slots (6 → 3 × 2); pre-warm of cells used in 30 days after a schema bump; dev loop `tools/dev/push_cell.sh`
+  (working tree → phone, kept 24 h against refreshes); fast lane `tools/dev/publish_cells.sh` (origin/main → TEST R2,
+  the doorman adopts a current published version). donald builds a dense cell in ~3 min vs ~10 in the cloud.
 - **Clearer bike activity names (desktop, 2026-10-26, owner decision, labels only):** picker rows name + one line –
   Bike "Paved cycleways, quiet roads", Gravel bike "Gravel tracks welcome", E-bike "Bike with motor, 25 km/h", MTB
   "Trails and singletrails", E-MTB "MTB with motor", Hike "T1 … T5" (T row unchanged). One source `Activity.label` /
