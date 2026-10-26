@@ -30,6 +30,15 @@ class PlanCodeTest {
         assertEquals("Waalweg ü ß ✓", back.title)
     }
 
+    @Test fun formatVersion1IsFrozen() {
+        // the same text the web planner's browser test expects (web/app/test/share-smoke.mjs): app and browser agree,
+        // and codes in QR codes and links already shared keep opening
+        val plan = SharedPlan(listOf(GeoPoint(46.6717, 11.15), GeoPoint(46.6879, 11.1111)), Activity.HIKE, 3,
+            pinned = setOf(1), names = mapOf(1 to "Vellau"), title = "Waalweg")
+        assertEquals("AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU", PlanCode.encode(plan))
+        assertEquals(plan.copy(points = plan.points), PlanCode.decode("AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU"))
+    }
+
     @Test fun everyActivitySurvives() {
         for (a in Activity.entries) {
             val back = PlanCode.decode(PlanCode.encode(SharedPlan(listOf(meran, algund), a)))!!
