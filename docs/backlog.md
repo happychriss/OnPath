@@ -6,15 +6,26 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] bike ferries with bicycle=no + Köln Dom route – since 2026-10-26
-- [desktop] senior consistency + dedup review – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
 - **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) Köln Dom → Neumarkt (~1 km) finds no bike
   route – on main before the merge too, look separately; (2) a ferry tagged bicycle=no is not forbidden in the bike
-  profiles (unchanged, upstream behaviour); (3) `docs/requirements.md` E-bike row still says "same as trekking" (E-bike
-  now uses touring.brf) – shared doc, owner / cloud updates it; (4) owner question kept: long timetabled ferries only
+  profiles (unchanged, upstream behaviour); (3) requirements.md – see "requirements.md sync" below; (4) owner question kept: long timetabled ferries only
   with a via point (today) or automatic?
+- **[for the cloud / owner] requirements.md sync (senior review, desktop 2026-10-26)** – `docs/requirements.md` is the
+  copy of the shared Claude doc, so the review did not edit it. Needed in the shared doc: (a) activity table (line ~88):
+  "Bike – e-bike: Same as trekking" → E-bike routes like the Touring bike (touring.brf: paved bike ways, quiet ways,
+  traffic and rough gravel avoided), assist ~25 km/h; activity names as in the app (Touring bike, Trekking bike, E-bike,
+  MTB, E-MTB, Hike); (b) F-GPX-08 / a new F-GPX id: Komoot's `<trk><type>` preselects the activity on import (T level
+  kept inside the type's band), OnPath writes `<type>` on export; (c) F-PLAN-06 "difficulty": the label counts distance
+  + ascent and trail technique (hike T3+, bike S2+ / T3+), hike bands like Komoot (easy ≈ 2 h and ≤ 300 m up).
+- **Quick time estimate vs the time model (senior review 2026-10-26, not changed):** `Geo.estimateSeconds` keeps its own
+  bike speeds (Touring 20, Trekking 16, E-bike 20, MTB 12, E-MTB 14 km/h + a cost per metre up) beside `time/PaceModel`
+  (Touring ~21.7 km/h on asphalt since 2026-10-25, Trekking the same rider on "paved"). It times imported tracks without timestamps, straight-line
+  fallbacks and the "longer than a day?" question – so an imported Trekking track without times shows a slower time
+  than the same line once planned. Proposal: derive the quick estimate from `PaceModel` (flat speed + steady-climb rate),
+  update `ReferenceRoutesTest`; ask the owner first (times are visible).
 - **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
   footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
   own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
@@ -126,10 +137,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **CI:** `verifyPaparazziDebug` and lint do not run in CI.
 - **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Navigate "Waiting for GPS · last fix …" line may be cut (`NavigateScreen.recordingLine`, maxLines 1 – check
-  on the phone); unused theme tokens `track.edge` / `track.fill` / `track.cover.*` in `tools/themes/classic.json`; unused
-  `batteryHintShown` (`AppViewModel`); Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt:90` expects
+  on the phone); Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt:90` expects
   "unreachable", BRouter found 7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check
-  sha256); `actions/checkout@v4` / `setup-java@v4` still in `e2e.yml` and `release.yml` (Node 20 warnings).
+  sha256); `actions/checkout@v4` / `setup-java@v4` still in `e2e.yml` and `release.yml` (Node 20 warnings);
+  `tools/themes-proposals/` is history (rejected a/b/c themes, `roads-post.py` reads a `styles/d-merged.json` that is not
+  in the repo) – archive it together with its links in `docs/design/map-colour-analysis.md`; code kept alive only by tests
+  (e.g. `NavLine.bearingAt`, `PlanEdits.endAt`, `RouteProgress.visitedStops`, `Poi.osmUrl`) – fine as tested helpers,
+  delete when touched.
 - **Owner, by hand (unverified):** delete the unused Trentino extract from the GCS source bucket – `gsutil rm` command in
   `docs/design/map-hosting.md` §7g.
 
@@ -206,6 +220,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Senior consistency + dedup review (desktop, 2026-10-26):** bug: every recorded tour was stored as T3 (reopening a T2
+  hike set T3, its GPX said "mountaineering") – the start now sends the T level (`NewTourSacTest`); one form "Hike T3"
+  for the activity in a sentence (`LastActivity.name`; Navigate said "Hike (T3)"), one `DEFAULT_SAC`, one tour-name
+  format (`RideApply.dateName`); dead code removed (start-time cell refresh gone since 0.8.3, `routeOverlay` setting,
+  `stripPoisIfMissing`, `PlanClear`, `batteryHintShown`, ~12 more) and 21 unused theme tokens (styles regenerate
+  byte-identical). Docs: CLAUDE.md / README activity names and profiles, repo map, map-pipeline (E-bike in `cf`),
+  map-hosting (schema, start-time refresh), dated fastbike notes marked, dated reviews / field tests marked as history,
+  working agreement with donald `[desktop]`.
 - **Bike routing tuned, merged (desktop, 2026-10-26; branch `feat/bike-routing`, verified,
   then deleted):** Touring bike + E-bike → touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes),
   trekking.brf tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), Touring time

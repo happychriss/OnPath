@@ -1,35 +1,36 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-23 – current release **0.10.0** (0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1).
+Last update: 2026-10-26 – current release **0.10.3** (2026-10-24); `main` has more, not released yet (see "Last
+session"). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
-<!-- Overwrite at the end of every session: who (laptop/cloud), date, what changed, what's half done, next. -->
-- **laptop, 2026-10-23 evening/late – handover to the cloud (start 2026-10-24).** All on `main`, **not released**
-  (latest release 0.10.1). Owner's Pixel has a debug build of `a5132f1` (installed 22:51, no wipe); the 5 test map
-  areas from the reload investigation (Würzburg, Kassel, Fulda) may still be on it – owner cleans up.
-  - **Laptop TODO 1–6 from the 0.10.1 field test – done:** (1) new map areas only after a restart: two screens at
-    start cleared each other's reload refs → per-host state (`ui/MapReload.kt`, `a5132f1`); leaving the app ends a
-    stuck gesture; (2) "0 %" strip = server still preparing → time-based % (`a5132f1`); (3) old route name on a new
-    plan → `RouteRules.linkedToSaved` (`f969c9a`); (4) "intensiū" is a real OSM name, "Unterstand" = shelter label – no
-    bug; (5) churches/chapels shown by default, others were already (`f969c9a`); (6) POIs swapping while zooming →
-    fixed priority `pr` from `extract_pois.py`, cell schema 4 (server serves s3 while rebuilding, `73f2de4`) and icon
-    / name in separate layers, all icons placed first (`4af985a`).
-  - **Loading chip** under ☰ with place names ("⬇ Bad Waldsee +1 · 34 %", `ui/LoadNames.kt`, `map/OverviewTowns.kt`,
-    `79fb952`); routing data never named, its MB join the map line (`096e08c`).
-  - **Two screens at start** (`36bb950`, `95c7be8`): only on the first start after an install; relevance fix +
-    screen lifecycle trace. Next step: backlog "Next" (read "Screen #" lines after the next install, then a guard).
-  - **README rewritten** (factual, usability first, fair dated Komoot comparison, call for testers);
-    **Discussions on**, tester thread https://github.com/happychriss/OnPath/discussions/1 (owner pins it).
-  - **Design notes:** `docs/design/map-access.md` (map server access without registration – decide before public
-    launch); `docs/design/web-planner.md` (**cloud TODO, start 2026-10-24**, see backlog "Next").
-  - **Bilingual EN + DE coming soon** (owner) – no single-text language changes until then (backlog).
-  - **In progress on the laptop when this was written:** offline search index per map area + old index answers while
-    rebuilding (field: 129k entries rebuilt in 59 s after each map change, no local results meanwhile). The laptop
-    agent pushes to `main` when green and adds a Done line to the backlog – check `git log` / backlog first.
-  - **Next for the cloud:** web planner (ask the owner the purpose first, then the two spikes); a release 0.10.2 with
-    the above once the search index work is in (owner wants the reload + POI fixes on the phone; release flow in
-    CLAUDE.md); after it, check the "Screen #" trace on the phone and the POI look at Bad Waldsee.
+<!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald), 2026-10-25/26 – bike routing, difficulty, Komoot GPX type, senior review.** All on
+  `main`, **no release since 0.10.3** – the captain decides right after this review (release flow in CLAUDE.md; release
+  notes are not written yet).
+  - **Changed since 0.10.3:** offline search index per map area (laptop, 8174874); planner via-point spur fix (a point on
+    a way is always visited); E2E points-list flakiness fixed (`E2EBase.findFresh`, UiAutomator cache); way attributes
+    no longer lost on 22 % of routes (`BRouterWayStats` zero-length run); GPX comparison tool
+    (`tools/routing/jvm-test/GpxCompare.kt` + report script, run.sh options); difficulty with trail technique like
+    Komoot (`RouteSummary.rating`, badge "Moderate · T3", Route details line; hike bands ≈ 2 h / 300 m and 5 h / 900 m);
+    Komoot GPX `<type>` → activity on import, written on export (`gpx/SportType`, T level kept inside the type's band,
+    grey "Activity set to … from the file" line); unit tests run in UTC; bike profiles tuned – new
+    `touring.brf` for Touring bike + E-bike (replaces fastbike-verylowtraffic, deleted on the phone), `trekking.brf`
+    tuned, v_rough, footway on a cycle route ridden (not in a pedestrian zone), ActivityCheck follows the profile,
+    Touring time ~21.7 km/h, greenways per profile; cell schema 5 (look-only, router classes rebuilt; app stays 3).
+  - **Senior review (this session's end):** recorded tours were always stored as T3 – fixed with a test; one
+    "Hike T3" form for the activity in sentences; ~20 dead functions / settings and 21 unused theme tokens removed;
+    docs brought to one current story (CLAUDE.md, README activity names, map-pipeline, map-hosting, dated notes and
+    reviews marked as history); working agreement: donald claims `[desktop]`. Details: backlog "Done".
+  - **Open:** backlog "Next" (bike follow-ups: Köln Dom route + ferries with bicycle=no – another desktop agent had
+    them claimed; requirements.md sync for the cloud / owner; quick time estimate vs PaceModel; interrupted paths at
+    junctions; Hilden footways for bikes) and "Waiting for the owner" (imported tour → switch activity?, map server
+    access, Play internal test, field tests of 0.10.x).
+- **laptop, 2026-10-23 evening/late:** 0.10.1 field-test TODO 1–6 done (two screens at start → per-host map state
+  `ui/MapReload.kt`; time-based loading %; `RouteRules.linkedToSaved`; churches shown by default; POI priority `pr` +
+  cell schema 4), loading chip with place names, README rewrite + tester Discussions thread, design notes
+  `docs/design/map-access.md` and `docs/design/web-planner.md`. Released in 0.10.2 / 0.10.3 (cloud, 2026-10-24).
 - **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
   colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
   up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers
