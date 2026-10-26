@@ -6,6 +6,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] finish + merge bike routing (v_rough, nits, cell schema 5) – since 2026-10-26
+- [desktop] GPX import keeps T level + says when the activity changes – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -128,11 +129,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `docs/design/map-hosting.md` §7g.
 
 ## Waiting for the owner
-- **Komoot GPX activity – three small questions from the review (desktop, 2026-10-26):** (1) a Komoot `hike` sets the
-  remembered T level to T2 (and `mountaineering` to T3) even when the user plans at T4 – keep the user's T level when
-  it is inside the type's band (hike T1–T2, mountaineering T3–T5)? (2) the switch is silent (only the activity chip
-  changes) and an open plan is routed again for the new activity, as when opening a recorded tour – show one grey
-  line "Activity set to MTB from the file"? (3) opening an *imported* tour later from My routes does not switch the
+- **Komoot GPX activity – questions from the review (desktop, 2026-10-26):** (1) and (2) decided by the captain
+  (2026-10-26, "no surprises"): keep the user's T level when it is inside the type's band (hike T1–T2, mountaineering
+  T3–T5), else the band's default; one grey line "Activity set to MTB from the file" when the import changes the
+  activity – being built. Still open: (3) opening an *imported* tour later from My routes does not switch the
   activity (only recorded tours do); older imports carry the activity that happened to be chosen, so switching
   needs a "came from the file" flag – wanted?
 - **Bike profiles tuned – branch `feat/bike-routing`, green, not merged (desktop, 2026-10-26):**
