@@ -20,7 +20,8 @@ All POI data is OpenStreetMap (ODbL). Google Maps is a link-out only: nothing fr
 
 ## Code changes for the lead (3 small edits, done in build 1.1 – kept for history)
 
-1. `map/StyleLoader.kt`, `load()`: after replacing `{DATA_DIR}`:
+1. `map/StyleLoader.kt`, `load()`: after replacing `{DATA_DIR}` (replaced later by the style loader's general handling
+   of optional sources; `stripPoisIfMissing` was removed 2026-10-26):
 ```kotlin
 json.replace("{DATA_DIR}", dir).let { com.onpath.app.poi.stripPoisIfMissing(it, dataDir) }
 ```

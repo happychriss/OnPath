@@ -87,5 +87,3 @@ object PoiKinds {
 
 /** Layer ids in the style that carry POIs all start with this prefix. */
 const val POI_LAYER_PREFIX = "poi-"
-const val POI_SOURCE_ID = "pois"
-const val POI_DATA_FILE = "pois.geojson"

@@ -259,9 +259,10 @@ same OSM date would have had the same (immutable, cached) name. Now:
 - **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
   rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
   A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
-- **App:** `CellApi.CELL_SCHEMA`; installed cells of an older schema are requested again at every start
-  (`CellTriggers.updateOutdated`, reason `UPDATE`, sent as `point`, allowed on mobile data); the manifest's `version`
-  is the installed version (older manifests: `osm_date`).
+- **App:** `CellApi.CELL_SCHEMA`; the manifest's `version` is the installed version (older manifests: `osm_date`).
+  Installed cells of an older schema were requested again at every start (`CellTriggers.updateOutdated`) until 0.8.3;
+  since then (no idle refresh, owner 2026-10-21) they are renewed by the after-routing check (`CellTriggers.freshenAlong`)
+  – the start-time code was removed as dead code on 2026-10-26.
 - **Bump all three** whenever the style needs data older cells lack. Old apps (before this) still work: delete the
   area in Settings → Offline maps and it is loaded again (the doorman rebuilds it first). The app shows the
   rebuild as `CellWhy.UPDATE` ("Updating the map for the new map style").

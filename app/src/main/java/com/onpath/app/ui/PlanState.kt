@@ -58,11 +58,6 @@ class RouteRequests {
     fun isCurrent(g: Int): Boolean = g == gen
 }
 
-object PlanClear {
-    /** Ask "Clear this route?" only when there is a route worth keeping (two or more points). */
-    fun needsConfirm(pointCount: Int): Boolean = pointCount >= 2
-}
-
 /**
  * The route point a point menu is open for: its index when opened AND its position (core feature C1). The menu acts
  * on the point the user held, not on whatever sits at that index later – the plan can change underneath an open menu

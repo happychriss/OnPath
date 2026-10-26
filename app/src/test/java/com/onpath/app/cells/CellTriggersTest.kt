@@ -18,7 +18,6 @@ class CellTriggersTest {
         val queued = LinkedHashMap<CellId, Pair<CellReason, Boolean>>()
         val requests = ArrayList<Triple<List<CellId>, CellReason, Boolean>>()
         val used = HashSet<CellId>()
-        var due: List<CellId> = emptyList()
 
         override fun cellsAround(p: GeoPoint, radiusM: Double) = CellId.near(p, radiusM)
         override fun cellsAlong(line: List<GeoPoint>, corridorM: Double) = CellId.alongLine(line, corridorM)
@@ -31,7 +30,6 @@ class CellTriggersTest {
             added.forEach { queued[it] = reason to ownPoint }
             return added
         }
-        override fun refreshDue(ageDays: Int) = due
         override fun installedAmong(cells: List<CellId>) = cells.filter { it in installed }
         override fun markUsed(cells: Collection<CellId>) { used += cells.filter { it in installed } }
         val kept = ArrayList<Set<CellId>>()
@@ -162,18 +160,6 @@ class CellTriggersTest {
         // … but after half an hour
         now += CellTriggers.AHEAD_RETRY_MS
         assertEquals(listOf(east), t.onTour(nearEdge))
-    }
-
-    @Test fun t6RefreshOnceADay() {
-        var now = 10L * CellTriggers.DAY_MS
-        val f = FakeCells(installed = mutableSetOf(meran)).apply { due = listOf(meran) }
-        val t = CellTriggers(f) { now }
-        assertEquals(listOf(meran), t.refreshIfDue())
-        assertEquals(CellReason.REFRESH, f.requests.last().second)
-        f.queued.clear()
-        assertTrue(t.refreshIfDue().isEmpty())
-        now += CellTriggers.DAY_MS
-        assertEquals(listOf(meran), t.refreshIfDue())
     }
 
     @Test fun mergeJoinsAnOpenCardAndReplacesAFinishedOne() {

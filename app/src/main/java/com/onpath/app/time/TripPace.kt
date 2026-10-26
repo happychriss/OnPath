@@ -242,9 +242,6 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /** Unrounded "to go" on the screen (s); replay metrics. */
     fun shownToGoS(): Double? = shownToGoS
 
-    /** Moving time from [alongM] to the end with the factors learned so far (s); replay metrics. */
-    fun remainingAt(alongM: Double): Double = times?.remainingFrom(alongM, prior * factors()) ?: 0.0
-
     /**
      * Whether the shown estimate can be trusted now (docs/plan-time-estimate.md, owner rules 6 and 8): not on the
      * route; no fix for [STALE_S] (not in a break); or moving for [STALE_S] while the progress along the route stays.

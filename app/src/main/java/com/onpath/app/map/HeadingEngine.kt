@@ -228,11 +228,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     private var declination = 0f
     private val r = FloatArray(9)
 
-    val isListening: Boolean get() = registered
     private var noSensorReported = false
-
-    /** The map heading as it is now (for the camera to start from), or null. */
-    val mapHeading: Double? get() = mapCh.shown ?: mapFilter.heading
 
     override fun addCompassListener(l: CompassListener) {
         listeners += l

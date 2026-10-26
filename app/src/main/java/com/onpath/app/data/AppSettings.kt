@@ -4,7 +4,6 @@ package com.onpath.app.data
 data class AppSettings(
     /** POI kinds the user switched off (keys of poi/PoiKinds). Empty = show all. */
     val hiddenPoiKinds: Set<String> = emptySet(),
-    val routeOverlay: Boolean = true,
     val contours: Boolean = true,
     val hillshade: Boolean = true,
     val offRouteWarning: Boolean = true,

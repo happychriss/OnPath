@@ -188,11 +188,8 @@ class MapCells(
 
     // ------------------------------------------------------------------------------------------- cells for places
 
-    /** Cell of a point (half-open owner rule). */
-    fun cellFor(p: GeoPoint): CellId? = CellId.at(p)
     /** Own cell + close neighbours within [radiusM] (T1/T3, Q1). Own cell first. */
     override fun cellsAround(p: GeoPoint, radiusM: Double): List<CellId> = CellId.near(p, radiusM)
-    fun cellsFor(south: Double, west: Double, north: Double, east: Double): List<CellId> = CellId.inBbox(south, west, north, east)
     /** Corridor cells of a route (T4, F-OFF-02). */
     override fun cellsAlong(line: List<GeoPoint>, corridorM: Double): List<CellId> = CellId.alongLine(line, corridorM)
 
@@ -401,18 +398,6 @@ class MapCells(
     /** Installed cells of an older content schema than this app's style needs ([CellApi.CELL_SCHEMA]). */
     override fun outdated(): List<CellId> =
         _installed.value.filter { CellApi.schemaOf(it.version) < CellApi.CELL_SCHEMA }.map { it.id }
-
-    /**
-     * Installed cells due for a refresh (T6): used in the last 6 months and installed more than [ageDays] days ago.
-     * The caller requests them with [CellReason.REFRESH] (they download only when newer).
-     */
-    override fun refreshDue(ageDays: Int): List<CellId> {
-        val t = now()
-        return _installed.value.filter { c ->
-            val used = synchronized(usage) { usage[c.id] } ?: c.installedAt
-            t - used < 183L * DAY && t - c.installedAt > ageDays * DAY
-        }.map { it.id }
-    }
 
     /**
      * Starts the worker: finishes downloads a crash interrupted, re-joins the region package if it changed, loads the
@@ -933,6 +918,5 @@ class MapCells(
         private const val BUSY_RECHECK_MS = 1_000L
         /** A point / near request older than this is dropped at app start (nobody waits for it any more). */
         const val STALE_MS = 24L * 3600 * 1000
-        private const val DAY = 24L * 3600 * 1000
     }
 }

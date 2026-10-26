@@ -56,8 +56,6 @@ class RouteTimes private constructor(
         c
     }
 
-    val segmentCount: Int get() = seconds.size
-
     /** Seconds per group for the whole line (Average pace). */
     fun groupTotals(): DoubleArray = DoubleArray(PaceModel.GROUPS) { cum[it].last() }
 

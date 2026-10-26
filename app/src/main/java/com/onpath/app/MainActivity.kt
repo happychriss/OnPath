@@ -143,7 +143,6 @@ class MainActivity : ComponentActivity() {
                             onRequestLocation = { requestLocation(force = true) },
                             onStartNavigation = {
                                 withLocation {
-                                    val newTour = vm.recState.value == null
                                     vm.startNavigation()
                                 }
                             },

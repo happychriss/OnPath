@@ -2,7 +2,6 @@ package com.onpath.app.data
 
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
-import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.max
@@ -95,8 +94,6 @@ object Geo {
         for (p in points) { s = min(s, p.lat); n = max(n, p.lat); w = min(w, p.lon); e = max(e, p.lon) }
         return doubleArrayOf(s, w, n, e)
     }
-
-    fun isValid(p: GeoPoint) = abs(p.lat) <= 90 && abs(p.lon) <= 180 && !(p.lat == 0.0 && p.lon == 0.0)
 }
 
 object Format {

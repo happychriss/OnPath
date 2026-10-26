@@ -23,7 +23,6 @@ import java.io.File
  */
 object StyleLoader {
 
-    const val STYLE_ASSET = "style/onpath.json"
     const val DEFAULT_THEME = "classic"
     private const val ASSET_DIR = "style"
     const val OVERRIDE_DIR = "styles"

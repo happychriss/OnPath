@@ -498,9 +498,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             CameraPosition.Builder(cp).bearing(0.0).tilt(0.0).padding(0.0, 0.0, 0.0, 0.0).build()), 600)
     }
 
-    /** True while the compass sensor is registered (for tests/diagnostics). */
-    val compassListening: Boolean get() = heading.isListening
-
     /** Next-turn arrow at [turn], pointing in its outgoing direction; null hides it. */
     fun setTurnArrow(turn: Turn?) = guarded("turn arrow") {
         val src = source(SRC_TURN) ?: return

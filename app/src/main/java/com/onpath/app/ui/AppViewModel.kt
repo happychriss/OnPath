@@ -447,7 +447,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- routing data on a fresh install (field test 2026-10-21: it never came by itself) ----------------
 
-    private val netStatus by lazy { com.onpath.app.cells.AndroidNetworkStatus(getApplication()) }
     /** Loads missing routing data tiles from brouter.de (mobile data too unless "Maps only on Wi-Fi"). */
     private val routingData: com.onpath.app.data.RoutingDataLoader by lazy {
         com.onpath.app.data.AppRouting.listen(routingListener)
@@ -1381,10 +1380,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun initialCamera(): Triple<Double, Double, Double> = prefs.camera ?: Triple(46.67, 11.16, 12.0)
     fun saveCamera(lat: Double, lon: Double, zoom: Double) { prefs.camera = Triple(lat, lon, zoom) }
-
-    var batteryHintShown: Boolean
-        get() = getApplication<Application>().getSharedPreferences("onpath", 0).getBoolean("batteryHint", false)
-        set(v) { getApplication<Application>().getSharedPreferences("onpath", 0).edit().putBoolean("batteryHint", v).apply() }
 
     /** App state for the diagnostics export (Settings → Diagnostics); never throws. */
     fun diagnosticsState(): org.json.JSONObject = try {
