@@ -1,6 +1,7 @@
 package com.onpath.app.backup
 
 import com.onpath.app.data.TourKind
+import com.onpath.strings.*
 
 /** A backup file found in the picked folder: its entry plus where it lies (handle, file name). */
 data class FoundBackup(val entry: BackupEntry, val handle: String, val fileName: String)
@@ -22,14 +23,14 @@ object BackupRestore {
 
     /** "23 tours and 5 plans restored." (+ already there / unreadable). */
     fun summary(r: Result): String {
-        fun n(k: Int, one: String, many: String) = "$k ${if (k == 1) one else many}"
         val main = when {
-            r.tours == 0 && r.plans == 0 -> "No tracks or routes restored"
-            else -> "${n(r.tours, "track", "tracks")} and ${n(r.plans, "route", "routes")} restored"
+            r.tours == 0 && r.plans == 0 -> Txt.s(Res.string.backup_restore_none)
+            else -> Txt.s(Res.string.backup_restore_main, Txt.p(Res.plurals.backup_n_tracks, r.tours, r.tours),
+                Txt.p(Res.plurals.backup_n_routes, r.plans, r.plans))
         }
         val extra = buildList {
-            if (r.skipped > 0) add("${r.skipped} already on this phone")
-            if (r.failed > 0) add("${r.failed} could not be read")
+            if (r.skipped > 0) add(Txt.s(Res.string.backup_restore_skipped, r.skipped))
+            if (r.failed > 0) add(Txt.s(Res.string.backup_restore_failed, r.failed))
         }
         return main + (if (extra.isEmpty()) "." else " (" + extra.joinToString(", ") + ").")
     }
