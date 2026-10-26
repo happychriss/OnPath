@@ -86,6 +86,35 @@ with bad knees 24 / 24 / 0 %, relaxed ×1.3 11 / 11 / 10 %, fit ×0.8 11 / 13 / 
 1 min + 2 % rule allows ~8 min per update on a 6 h day). Real tracks: add folders to `app/src/test/resources/tracks/`
 (plan.gpx + track.gpx + info.txt, see `TripReplay`).
 
+### One time model for lines without timestamps (2026-10-26, captain decision)
+
+Until then `Geo.estimateSeconds` kept its own older speeds (hike DIN 33466 on the whole line; bikes fixed km/h + seconds
+per metre up: Touring 20, Trekking 16, E-bike 20, MTB 12, E-MTB 14 km/h) beside this model. An imported track without
+timestamps therefore showed another (mostly slower) time than the same line once planned. Now there is one source:
+
+- **Imported GPX without timestamps:** `TimeEstimate.importedSeconds` = the model per segment (`RouteTimes`, the
+  file's own elevation, no way attributes → the activity's usual surface / factor 1) × the pace level, the gap between
+  segments not counted – the same number `planSeconds` gives for the same points. With timestamps: the file's span.
+- **My routes / the shown track:** imported tracks without timestamps are re-timed on load like planned routes
+  (`AppViewModel.withModelTime`), so a pace change moves them too; recorded tours and timed imports stay as recorded.
+- **Straight lines:** `StraightLineEngine` (`RouteTimes`), the straight legs of `Planner` and the "longer than a
+  day?" question (`LongRoute`, flat) use `PaceModel.seconds`. `Geo.estimateSeconds` is removed.
+- Guard: `OneTimeModelTest` (import = plan for every reference route, activity and pace level).
+
+What moved (20 km line, Average pace, h:mm; with climb = 400 m up over the first half and down over the second):
+
+| Activity | flat before → after | 400 m up / down before → after |
+| --- | --- | --- |
+| Hike (T2) | 5:00 → 5:00 | 6:05 → 5:15 |
+| Bike touring | 1:00 → 0:55 | 1:40 → 1:30 |
+| Bike trekking | 1:15 → 1:00 | 2:00 → 1:35 |
+| E-bike | 1:00 → 0:50 | 1:15 → 0:50 |
+| MTB | 1:40 → 1:15 | 2:35 → 1:50 |
+| MTB e-bike | 1:25 → 0:50 | 1:45 → 1:05 |
+
+Planned routes are unchanged (they already used this model); `ReferenceRoutesTest` numbers did not move (its "DIN"
+column now calls `Din33466` directly).
+
 ### Learning per tour only (2026-10-22)
 
 Owner decision: "learning per tour only". What the code does now (`time/TripPace`, `TimeEstimate.planFactors`):
@@ -373,7 +402,7 @@ BRouter's `durationS` stays in the `RouteResult` contract but is no longer shown
 
 Settings → "Your pace", hiking and cycling, **five levels** each (owner 2026-10-22; until then three: Relaxed ×1.25 /
 Normal / Fit ×0.8). Speeds about 15 % apart around **Average = DIN 33466** (4 km/h, 300 m up and 500 m down per hour;
-`time/Din33466`, also the quick estimate in `Geo.estimateSeconds`; table B is anchored on it). Time factor = 1 / speed.
+`time/Din33466`; table B is anchored on it). Time factor = 1 / speed.
 Each level shows what it means for the activity (`Pace.meaning`): hiking from DIN, bikes from the power model of the
 current bike (flat speed, height per hour on a 6 % climb), both × speed. Table B stays the main hiking model (owner
 2026-10-22). **E-bikes / e-MTBs** (owner 2026-10-22): the flat speed is capped at about 25 km/h at every level (the
@@ -565,7 +594,7 @@ New package `time/` (pure Kotlin, no Android, JVM-testable; like `navigation/`):
 | `Rerouter` scoring with `Geo.estimateSeconds` | same `PaceModel` (consistency; optional) |
 | `RecordingService` (elapsed time only) | owns a `TripPace` next to the `Navigator` (the service runs with the screen off and knows progress); publishes `moving`, `breaks`, factors, remaining, arrival in `RecState`; persists with `nav-session.json`. On tour end → `PaceStore.update`. |
 | `NavigateScreen` `ToGo(... timeS)` | shows `RecState` remaining + arrival (no own computation). |
-| `Geo.estimateSeconds` | kept for imported GPX without times and as fallback. |
+| `Geo.estimateSeconds` | kept for imported GPX without times and as fallback; **removed 2026-10-26** (one time model, see "One time model for lines without timestamps"). |
 
 Data: no new DB columns needed for v1 (break/moving can be recomputed from points); optional `accuracy` column later
 for better replay.

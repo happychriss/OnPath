@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] one time model for imported tracks (no second speed table) – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -19,12 +18,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   MTB, E-MTB, Hike); (b) F-GPX-08 / a new F-GPX id: Komoot's `<trk><type>` preselects the activity on import (T level
   kept inside the type's band), OnPath writes `<type>` on export; (c) F-PLAN-06 "difficulty": the label counts distance
   + ascent and trail technique (hike T3+, bike S2+ / T3+), hike bands like Komoot (easy ≈ 2 h and ≤ 300 m up).
-- **Quick time estimate vs the time model (senior review 2026-10-26, not changed):** `Geo.estimateSeconds` keeps its own
-  bike speeds (Touring 20, Trekking 16, E-bike 20, MTB 12, E-MTB 14 km/h + a cost per metre up) beside `time/PaceModel`
-  (Touring ~21.7 km/h on asphalt since 2026-10-25, Trekking the same rider on "paved"). It times imported tracks without timestamps, straight-line
-  fallbacks and the "longer than a day?" question – so an imported Trekking track without times shows a slower time
-  than the same line once planned. Proposal: derive the quick estimate from `PaceModel` (flat speed + steady-climb rate),
-  update `ReferenceRoutesTest`; ask the owner first (times are visible).
 - **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
   footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
   own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
@@ -219,6 +212,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **One time model for imported tracks (desktop, 2026-10-26, captain decision):** `Geo.estimateSeconds` and its own
+  bike speeds are gone – imported GPX without timestamps (import, My routes, the shown track; re-timed with the pace
+  level like planned routes), straight-line fallbacks and the "longer than a day?" question use `PaceModel` /
+  `RouteTimes`, so the same line shows the same time everywhere. 20 km flat at Average: Trekking 1:15 → 1:00, Touring
+  1:00 → 0:55, MTB 1:40 → 1:15, Hike unchanged (5:00); planned routes unchanged. `OneTimeModelTest`; numbers in
+  docs/plan-time-estimate.md "One time model for lines without timestamps".
 - **Bike ferries + Köln Dom route (desktop, 2026-10-26):** a ferry that does not take bikes (bicycle=no, …) is now
   forbidden in touring / trekking / mtb.brf, one without foot access in hiking-mountain.brf (test set of 228 OSM ferries:
   bike routes over such a ferry 56–67 → 0, Hike 6 → 0; `FerryTest.kt`, WayClass selftest). Köln Dom → Neumarkt "no
