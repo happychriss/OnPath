@@ -57,9 +57,9 @@ fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Un
                     Spacer(Modifier.width(8.dp))
                     DifficultyBadge(rating)
                 }
-                rating.raisedBy?.let { t ->
+                rating.because?.let { why ->
                     // INFO: why the label is higher than distance and ascent alone give
-                    Text("${rating.level.label} because of ${Format.distance(t.meters)} at ${t.grade} or harder",
+                    Text(why,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column {

@@ -184,10 +184,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   refs (letters like E5 / GR20, `osmc:symbol`); contours below z12 (owner chose "from z12" on 2026-10-20).
 - **Unverified paths (owner: keep):** untagged OSM ways joining two paths, ≤ 300 m, grey dashed + point-menu hint,
   never routed. Example way 330547188 near Algund.
-- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours. Open since the technique rule (2026-10-25):
-  Komoot's hiking band puts SAC **T2** in Moderate ("sure-footedness"); ours raises from T3 (as the owner's question
-  said) – ask whether long T2 stretches should make a hike Moderate too. Also open: Touring / Trekking with a long
-  unpaved or pushing share → at least Moderate (overview suggestion, not built).
+- Tune difficulty thresholds (Easy / Moderate / Difficult) with real tours (long T2 and unpaved Bike rules: decided
+  2026-10-26, see Done).
 
 ## Owner decisions 2026-10-25
 - **Difficulty like Komoot (owner: "Yes, both"):** the label counts trail technique (hike T3+, bikes S2+) besides
@@ -225,6 +223,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Difficulty raised by long T2 and by unpaved Bike routes (owner 2026-10-26):** `RouteSummary.technique`
+  – Hike: ≥ 2 km at T2 or harder (summed) → at least Moderate, badge "Moderate · T2". Bike and E-bike only: ≥ 25 %
+  of the route unpaved (gravel, unpaved, ground, trail, alpine; whole %, ≥ 100 m) or ≥ 5 km on loose ground (not
+  "gravel", which folds in compacted; or smoothness bad or worse) → at least Moderate, badge "Moderate · unpaved",
+  Route details "Moderate because 31 % is unpaved (3.1 km)" / "… because of 5.4 km on loose ground". Gravel bike, MTB,
+  E-MTB unchanged; a grade (S2, S3+, T3+) is named first; never lowers. Constants `HIKE_T2_MIN_M`,
+  `BIKE_UNPAVED_SHARE_PCT`, `BIKE_LOOSE_MIN_M`. Tests `RouteSummaryTest` (both sides of each threshold).
 - **[desktop] Opening a tour switches the activity (owner 2026-10-26, question (3) of the GPX activity review):**
   opening a recorded *or imported* tour from My routes chooses its stored activity (imports: the one their `<type>`
   gave) with the import's rules – the user's T level stays inside the tour's band (T1–T2 / T3–T5), nothing during a

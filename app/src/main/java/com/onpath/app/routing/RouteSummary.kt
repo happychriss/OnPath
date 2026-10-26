@@ -1,7 +1,9 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** Pure helpers for the Komoot-style route summary (breakdown, difficulty, gradient). */
 object RouteSummary {
@@ -49,21 +51,54 @@ object RouteSummary {
     const val HIKE_MODERATE_UP_M = 900.0
     /** A trail grade counts only from this many metres (summed over the route): a few tagged metres are noise. */
     const val TECHNIQUE_MIN_M = 100.0
+    /** Hike: this much T2 or harder makes it at least Moderate – hours on a mountain path ask for sure-footedness (owner 2026-10-26). */
+    const val HIKE_T2_MIN_M = 2_000.0
+    /** Bike / E-bike: this share unpaved (in whole %) makes it at least Moderate – a quarter off the tarmac is felt on a touring bike (owner 2026-10-26). */
+    const val BIKE_UNPAVED_SHARE_PCT = 25
+    /** Bike / E-bike: this much loose ground makes it at least Moderate, however long the route – a long loose stretch is hard on a touring bike even when it is a small share (owner 2026-10-26). */
+    const val BIKE_LOOSE_MIN_M = 5_000.0
 
-    /** The hardest trail grade of a route that counts: [grade] "T3" / "S2", [meters] on it or harder, the [level] it asks for. */
-    data class Technique(val level: Difficulty, val grade: String, val meters: Double)
+    /** Surface keys ([WayAttrs.surface]) that are not paved: every one of them counts for the unpaved share. */
+    private val UNPAVED = setOf("gravel", "unpaved", "ground", "natural_trail", "alpine")
+    /**
+     * Loose ground: unpaved but not "gravel" – that key folds in compacted and fine gravel, fine on any bike (like the
+     * map's loose-surface edge, docs/map-style-notes.md) – or any surface with smoothness bad or worse, or rock / scree.
+     */
+    private val LOOSE = setOf("unpaved", "ground", "natural_trail", "alpine")
+    private val ROUGH_SMOOTHNESS = setOf("bad", "very_bad", "horrible", "very_horrible", "impassable")
+
+    /** Why a route is rated higher than distance and ascent give: a trail grade, or (Bike / E-bike) unpaved ground. */
+    enum class Reason { GRADE, UNPAVED_SHARE, LOOSE }
 
     /**
-     * The label shown on a route: [level], and [raisedBy] when the trail technique raised it above what distance and
-     * ascent alone give. [text] = "Moderate" or "Moderate · T3".
+     * What raised a route: [grade] "T3" / "S2" / "unpaved" (the badge word), [meters] at that grade or harder (unpaved /
+     * loose metres for the surface reasons), [sharePct] the unpaved share in whole % (surface reasons only), the
+     * [level] it asks for.
+     */
+    data class Technique(val level: Difficulty, val grade: String, val meters: Double,
+                         val reason: Reason = Reason.GRADE, val sharePct: Int = 0) {
+        /** The end of Route details' grey line "Moderate because …". */
+        val because: String get() = when (reason) {
+            Reason.GRADE -> "of ${Format.distance(meters)} at $grade or harder"
+            Reason.UNPAVED_SHARE -> "$sharePct % is unpaved (${Format.distance(meters)})"
+            Reason.LOOSE -> "of ${Format.distance(meters)} on loose ground"
+        }
+    }
+
+    /**
+     * The label shown on a route: [level], and [raisedBy] when the trail technique (or a Bike's unpaved ground) raised it
+     * above what distance and ascent alone give. [text] = "Moderate" or "Moderate · T3"; [because] = Route details' grey
+     * line ("Moderate because of 250 m at T3 or harder"), null when nothing raised it.
      */
     data class Rating(val level: Difficulty, val raisedBy: Technique? = null) {
         val text: String get() = if (raisedBy == null) level.label else "${level.label} · ${raisedBy.grade}"
+        val because: String? get() = raisedBy?.let { "${level.label} because ${it.because}" }
     }
 
     /**
      * Difficulty like Komoot's ("fitness, sport and technical complexity", owner 2026-10-25): [difficulty] from distance
-     * and ascent, raised to what [technique] asks for when that is higher.
+     * and ascent, raised to what [technique] asks for when that is higher (trail grade T3+ / S2+, a hike's long T2, a
+     * Bike's or E-bike's unpaved share or long loose stretch; owner 2026-10-26). Never lowered.
      */
     fun rating(activity: Activity, distanceM: Double, ascentM: Double, points: List<GeoPoint>): Rating {
         val fitness = difficulty(activity, distanceM, ascentM)
@@ -75,35 +110,56 @@ object RouteSummary {
      * The level the trail technique of [points] asks for: the hardest grade with at least [TECHNIQUE_MIN_M] at it or
      * harder (summed over the route), from the way attributes of the points (lines without them – straight legs,
      * imported tracks – have none: null).
-     * - Hike (SAC): T3 → at least Moderate, T4 or harder → Difficult (Komoot: SAC 1 easy, 2–3 moderate, 4–6 difficult;
-     *   T2 is the everyday mountain path and does not raise the label).
+     * - Hike (SAC): T3 → at least Moderate, T4 or harder → Difficult (Komoot: SAC 1 easy, 2–3 moderate, 4–6 difficult);
+     *   T2, the everyday mountain path, raises to Moderate only from [HIKE_T2_MIN_M] at T2 or harder (owner 2026-10-26).
      * - Every bike activity (mtb:scale, Komoot's legend S0–S1 easy, S2 moderate, S3–S5 difficult): S2 → at least
      *   Moderate, S3 or harder → Difficult; a hiking trail of T3 or harder counts like S3 (Komoot: T3+ trails are
      *   highly dangerous on a bike).
+     * - Bike and E-bike only (touring.brf; owner 2026-10-26 – Gravel bike, MTB, E-MTB are made for it): at least
+     *   Moderate when [BIKE_UNPAVED_SHARE_PCT] % or more of the route is unpaved ([UNPAVED]) or [BIKE_LOOSE_MIN_M] or
+     *   more is loose ground ([LOOSE], smoothness bad or worse) – badge word "unpaved". The share is of the whole line;
+     *   spans without way attributes count as not unpaved. A grade (S2, S3+, T3+) is named first.
      */
     fun technique(activity: Activity, points: List<GeoPoint>): Technique? {
         if (points.size < 2) return null
         val sacM = DoubleArray(7)   // metres with SAC ≥ k (T1..T6)
         val mtbM = DoubleArray(7)   // metres with mtb:scale ≥ k (S0..S6)
+        var totalM = 0.0; var unpavedM = 0.0; var looseM = 0.0; var known = false
         for (i in 0 until points.size - 1) {
-            val w = points[i].way ?: continue
             val len = Geo.distance(points[i], points[i + 1])
+            totalM += len
+            val w = points[i].way ?: continue
+            known = true
             for (k in 1..minOf(w.sac, 6)) sacM[k] += len
             for (k in 0..minOf(w.mtb, 6)) mtbM[k] += len
+            if (w.surface in UNPAVED) unpavedM += len
+            if (w.surface in LOOSE || w.rough != null ||
+                (w.smoothness in ROUGH_SMOOTHNESS && w.surface != "asphalt" && w.surface != "paved")) looseM += len
         }
+        if (!known) return null
         val sac = (6 downTo 1).firstOrNull { sacM[it] >= TECHNIQUE_MIN_M }
         if (activity == Activity.HIKE) return when {
-            sac == null || sac < 3 -> null
-            else -> Technique(if (sac >= 4) Difficulty.DIFFICULT else Difficulty.MODERATE, "T$sac", sacM[sac])
+            sac != null && sac >= 3 -> Technique(if (sac >= 4) Difficulty.DIFFICULT else Difficulty.MODERATE, "T$sac", sacM[sac])
+            sacM[2] >= HIKE_T2_MIN_M -> Technique(Difficulty.MODERATE, "T2", sacM[2])
+            else -> null
         }
         val mtb = (6 downTo 2).firstOrNull { mtbM[it] >= TECHNIQUE_MIN_M }
+        val sharePct = if (totalM > 0) (unpavedM / totalM * 100).roundToInt() else 0
+        val touring = activity == Activity.BIKE_TOURING || activity == Activity.EBIKE
         return when {
             mtb != null && mtb >= 3 -> Technique(Difficulty.DIFFICULT, "S$mtb", mtbM[mtb])
             sac != null && sac >= 3 -> Technique(Difficulty.DIFFICULT, "T$sac", sacM[sac])
             mtb == 2 -> Technique(Difficulty.MODERATE, "S2", mtbM[2])
+            !touring -> null
+            unpavedM >= TECHNIQUE_MIN_M && sharePct >= BIKE_UNPAVED_SHARE_PCT ->
+                Technique(Difficulty.MODERATE, UNPAVED_WORD, unpavedM, Reason.UNPAVED_SHARE, sharePct)
+            looseM >= BIKE_LOOSE_MIN_M -> Technique(Difficulty.MODERATE, UNPAVED_WORD, looseM, Reason.LOOSE, sharePct)
             else -> null
         }
     }
+
+    /** Badge word for the surface reasons ("Moderate · unpaved"). */
+    private const val UNPAVED_WORD = "unpaved"
 
     /** Gradient classes for colouring the elevation profile (absolute slope, up or down). */
     enum class Steepness { FLAT, MODERATE, STEEP, VERY_STEEP }
