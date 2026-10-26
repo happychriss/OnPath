@@ -22,10 +22,6 @@ data class PoiKind(val key: String, val group: PoiGroup, val glyph: String, priv
     /** Name in the app's language. */
     val label: String get() = res?.let { Txt.s(it) } ?: raw
 
-    /** Older name of [label] (Settings → POIs list); now in the app's language too. */
-    @Deprecated("use label", ReplaceWith("label"))
-    val en: String get() = label
-
     /** Older form: the app's language decides ([Poi.isGerman] follows it), [german] is not used any more. */
     @Suppress("UNUSED_PARAMETER")
     fun label(german: Boolean): String = label

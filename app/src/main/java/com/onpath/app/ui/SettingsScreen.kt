@@ -314,7 +314,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                     .toggleable(value = shown, role = Role.Checkbox) { setHidden(if (shown) hidden + k.key else hidden - k.key) }
                     .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = shown, onCheckedChange = null, modifier = Modifier.padding(12.dp))
-                    Text(k.en, style = MaterialTheme.typography.bodyLarge)
+                    Text(k.label, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
