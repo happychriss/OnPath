@@ -214,6 +214,8 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
       // Not while a cell below cellSchemaServe is rebuilt: that map lacks data the style needs (streets).
       out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version,
         ...(rebuilding(r) ? { updating: true } : {}) });
+      // the app polls an updating cell at poll_s (map-hosting.md §7h): the new version soon after it is built
+      if (rebuilding(r)) active = true;
     } else if (r.job === "building" || r.job === "queued") {
       active = true;
       p ??= await plan(env, cfg, now, readStatus);

@@ -255,6 +255,27 @@ class CellDownloadTest {
     }
 
     /**
+     * Field 2026-10-26 (s5 → s6, Hilden): the server answered the refresh "ready + updating" while it rebuilt the cells;
+     * the app then waited its 15-minute idle time before asking again – the new cells came 10 min after they were
+     * built. Now an updating cell is polled at the server's pace and the new version loads right after the rebuild.
+     */
+    @Test fun updatingCellIsPolledUntilTheRebuildIsDone() {
+        server.publish(a, "2026-10-20-s5"); server.buildPolls = 0
+        val mc = cells(Net())
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("s5") { mc.state(a) == CellState.Ready("2026-10-20-s5") }
+        server.updating += a.id
+        mc.request(listOf(a), CellReason.REFRESH)
+        val polls = server.log.count { it.startsWith("GET /v1/cells/status") }
+        waitFor("polled while updating") { server.log.count { it.startsWith("GET /v1/cells/status") } >= polls + 3 }
+        assertEquals(CellState.Ready("2026-10-20-s5"), mc.state(a)) // the old map stays meanwhile
+        server.publish(a, "2026-10-20-s6"); server.updating -= a.id
+        waitFor("s6 right after the rebuild", 5_000) { mc.state(a) == CellState.Ready("2026-10-20-s6") }
+        // done: no more polling for it
+        waitFor("request finished") { !File(mc.store.root, "requests.json").readText().contains(a.id) }
+    }
+
+    /**
      * tools/dev/push_cell.sh puts a developer build on the phone as a complete download; it is joined at start and a
      * refresh (the restored plan's route asks at every start) does not replace it for a day – after that it does.
      */

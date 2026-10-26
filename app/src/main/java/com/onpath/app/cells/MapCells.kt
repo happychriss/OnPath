@@ -450,6 +450,11 @@ class MapCells(
     private val usage = HashMap<CellId, Long>()
     /** Cells whose request was sent in this run (a request is sent once per run, then only status is polled). */
     private val sent = java.util.Collections.synchronizedSet(HashSet<CellId>())
+    /**
+     * Installed cells the server is rebuilding right now ("ready" + updating, e.g. for a new map style): polled at the
+     * server's pace like cells being built, not after [IDLE_MS] (field 2026-10-26: rebuilt Hilden cells came 10 min late).
+     */
+    private val updatingOnServer = java.util.Collections.synchronizedSet(HashSet<CellId>())
     private val wakeup = Channel<Unit>(Channel.CONFLATED)
     private val work = Mutex()
     private var worker: Job? = null
@@ -687,7 +692,8 @@ class MapCells(
             apply(answer, pending)
             val anyReadyAllowed = pending.any { state(it.id) == READY_ON_SERVER && allowed(it) }
             if (anyReadyAllowed) return 0
-            val stillBuilding = pending.any { state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
+            val stillBuilding = pending.any { it.id in updatingOnServer ||
+                state(it.id).let { s -> s is CellState.Queued || s is CellState.Building || s is CellState.Requested } }
             return if (!stillBuilding) IDLE_MS
                 else if (foreground || loadInBackground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
         } catch (e: CellApi.ApiException) {
@@ -706,6 +712,7 @@ class MapCells(
             val p = pending.firstOrNull { it.id == c } ?: continue
             if (!queued(c)) continue // cancelled while the server answered (modal → Cancel): no state for it any more
             s.size?.let { sizes[c] = it }
+            if (s.state != "ready" || !s.updating) updatingOnServer -= c
             when (s.state) {
                 "ready" -> {
                     val mine = inst[c]
@@ -714,10 +721,12 @@ class MapCells(
                         now() - mine.installedAt < DEV_KEEP_MS) {
                         // pushed by tools/dev/push_cell.sh: a refresh (also the restored plan's route at every start)
                         // does not replace it for a day – deleting the area does
+                        updatingOnServer -= c
                         dequeue(c); set(c, CellState.Ready(mine.version))
                         Problems.info("cells", "Map cell $c is a developer build (${mine.version}); kept, the server version is not loaded")
                     } else if (have != null && (s.version == null || s.version == have) && s.updating) {
-                        // a newer version is being built: keep asking (state stays "ready" on the phone)
+                        // a newer version is being built: keep asking at the server's pace (state stays "ready")
+                        updatingOnServer += c
                         set(c, CellState.Ready(have))
                     } else if (have != null && (s.version == null || s.version == have)) {
                         // nothing newer (refresh) – done

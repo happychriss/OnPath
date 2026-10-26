@@ -20,6 +20,8 @@ class FakeDoorman(val root: File, val key: String = "test-key", var buildPolls: 
     /** "10-543-361" → version served when ready. */
     val versions = ConcurrentHashMap<String, String>()
     val failing = ConcurrentHashMap<String, String>()
+    /** Cells whose served (ready) version is being rebuilt: answered "ready" + `updating: true`, like the doorman. */
+    val updating: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val polls = ConcurrentHashMap<String, Int>()
     val log = CopyOnWriteArrayList<String>()
     /** File downloads cut after this many bytes (simulates a broken connection), null = whole file. */
@@ -70,6 +72,7 @@ class FakeDoorman(val root: File, val key: String = "test-key", var buildPolls: 
         val v = versions[id] ?: return JSONObject().put("id", id).put("state", "none")
         val n = polls.getOrDefault(id, 0)
         return if (n >= buildPolls) JSONObject().put("id", id).put("state", "ready").put("version", v).put("osm_date", v).put("size", 1000)
+            .also { if (id in updating) it.put("updating", true) }
         else JSONObject().put("id", id).put("state", "building").put("step", "base").put("progress", 0.5).put("eta_s", 60)
     }
 

@@ -426,6 +426,11 @@ Geofabrik extracts), **179 s warm** (overlays 61 s, base 30 s, pois 22 s, addres
 than Cloud Run's 2 vCPU. An overlays-only rebuild would take ~80 s here, ~4.2 min in the cloud (see backlog: partial
 rebuild).
 
+**App poll while updating:** a cell answered "ready + updating" now counts as being built (`MapCells.updatingOnServer`):
+the app asks again at the doorman's `poll_s`, and the doorman answers `poll_s` 15 while any asked cell is rebuilt
+(was 60, and the app waited its 15-min idle time). The new version reaches the phone within ~15 s of the build
+(`CellDownloadTest.updatingCellIsPolledUntilTheRebuildIsDone`). Not on screen: unchanged (no polling).
+
 **Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
 working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4
 --cpu-shares 64 --blkio-weight 10`, 8 GiB; work folder `~/onpath-cells-work`, not the repo), renames the version to

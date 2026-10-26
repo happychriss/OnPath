@@ -377,6 +377,7 @@ test("old ready cell: answered ready (+ updating) and a low-priority refresh is 
   const j = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-20"));
   assert.equal(j.cells[0].state, "ready");
   assert.equal(j.cells[0].updating, true);
+  assert.equal(j.poll_s, 15); // the app keeps asking at this pace while the refresh builds (§7h)
   const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();
   assert.deepEqual({ ...row }, { job: "queued", priority: 3 });
 });
@@ -398,6 +399,7 @@ test("cell of an older content schema: rebuilt with the asked priority, not serv
   const k = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-21"));
   assert.equal(k.cells[0].state, "ready");
   assert.equal(k.cells[0].updating, undefined);
+  assert.equal(k.poll_s, 60); // nothing being built for it
 });
 
 test("cell of an older but servable schema (s3, no POI priority): rebuilt, served as ready meanwhile", async () => {
