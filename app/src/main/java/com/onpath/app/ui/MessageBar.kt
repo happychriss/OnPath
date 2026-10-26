@@ -54,8 +54,8 @@ object MessageKind {
  * bar; an error gets the ⚠ icon and a red left edge (ERROR look).
  */
 @Composable
-fun MessageBar(text: String, onOk: () -> Unit, modifier: Modifier = Modifier) {
-    val err = MessageKind.isError(text)
+fun MessageBar(text: String, onOk: () -> Unit, modifier: Modifier = Modifier, error: Boolean = MessageKind.isError(text)) {
+    val err = error // EN + DE: the view model says whether it is an error (AppViewModel.showError)
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.inverseSurface,
         contentColor = MaterialTheme.colorScheme.inverseOnSurface, shadowElevation = 6.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
