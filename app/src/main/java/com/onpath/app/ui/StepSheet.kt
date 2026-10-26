@@ -189,7 +189,9 @@ fun StepSheet(
     suspend fun release(velocityPxS: Float) {
         if (!state.dragging) return
         val shown = state.dragHeight
-        val target = SheetDrag.target(shown, state.heights(), velocityPxS, flingPxS)
+        val heights = state.heights()
+        val target = SheetDrag.target(shown, heights, velocityPxS, flingPxS)
+        Problems.trace("sheet", SheetDrag.describe(shown, heights, velocityPxS, target))
         state.anim.snapTo(shown)
         state.animReady = true
         state.velocity = -velocityPxS

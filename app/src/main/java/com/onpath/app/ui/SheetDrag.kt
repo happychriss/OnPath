@@ -1,6 +1,7 @@
 package com.onpath.app.ui
 
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Where a dragged step sheet settles (owner field test 0.8.9: "the swipe is jumping"; owner 2026-10-22: small → profile
@@ -22,6 +23,15 @@ object SheetDrag {
             else -> nearest
         }
     }
+
+    /**
+     * One events-trace line per release: where the finger left the sheet, the steps, the speed and the step chosen –
+     * "Sheet let go at 1143 px (steps 536 / 938 / 1602 px, 0 px/s) → step 1". A swipe that settles somewhere unexpected
+     * (field "the swipe is jumping"; CI 2026-10-26: a swipe down from the points stayed on the points) is explained by it.
+     */
+    fun describe(shownPx: Float, heightsPx: List<Float>, velocityPxS: Float, target: Int): String =
+        "Sheet let go at ${shownPx.roundToInt()} px (steps ${heightsPx.joinToString(" / ") { "${it.roundToInt()}" }} px, " +
+            "${velocityPxS.roundToInt()} px/s) → step $target"
 
     /** Height while dragging: follows the finger, with resistance beyond [minPx] / [maxPx] (rubber band). */
     fun follow(rawPx: Float, minPx: Float, maxPx: Float): Float = when {
