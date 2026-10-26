@@ -40,5 +40,8 @@ export function config(env) {
     // older published cells of at least this schema are still served ("ready" + updating) while their rebuild runs:
     // the style works with them, they only look less good (4 = POI priority "pr"); below it the map lacks data
     cellSchemaServe: num(env.CELL_SCHEMA_SERVE, 3),
+    // after a CELL_SCHEMA bump: cells asked for in the last N days are rebuilt in the background (queue.js prewarm);
+    // 0 = off
+    prewarmDays: num(env.PREWARM_DAYS, 30),
   };
 }

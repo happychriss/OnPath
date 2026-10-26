@@ -500,6 +500,66 @@ test("fast lane: the pump takes a version published while the cell waited in the
   assert.equal((await row(off, BOZEN)).version, "2026-10-25-s6");
 });
 
+// ------------------------------------------------------------------------------------------------ background lane
+test("background rebuilds are spread over the free slots (6 refresh cells → 3 × 2), one slot stays free", async () => {
+  const env = testEnv(); // PARALLEL_BUILDS 4, CELLS_PER_EXECUTION 4
+  const cfg = config(env);
+  const g = fakeGoogle();
+  const six = Array.from({ length: 6 }, (_, i) => `10-${530 + (i % 3)}-${341 + Math.floor(i / 3)}`);
+  await requestCells(env, cfg, { cells: six, reason: "refresh" }, NOW);
+  const r = await pump(env, cfg, NOW + 1000, g);
+  const runs = g.calls.filter((x) => x.url.endsWith(":run")).map((x) => JSON.parse(x.body).overrides.containerOverrides[0].env[0].value.split(" "));
+  assert.deepEqual(runs.map((x) => x.length), [2, 2, 2]); // was 4 + 2, built one after the other
+  assert.deepEqual(runs.flat().sort(), [...six].sort());
+  assert.equal(r.running, 3);
+  // a long background queue still goes 4 per execution (the hourly cap counts executions)
+  const env2 = testEnv();
+  const g2 = fakeGoogle();
+  const many = Array.from({ length: 20 }, (_, i) => `10-${600 + i}-300`);
+  await requestCells(env2, config(env2), { cells: many, reason: "refresh" }, NOW);
+  await pump(env2, config(env2), NOW + 1000, g2);
+  assert.deepEqual(g2.calls.filter((x) => x.url.endsWith(":run")).map((x) => JSON.parse(x.body).overrides.containerOverrides[0].env[0].value.split(" ").length), [4, 4, 4]);
+});
+
+test("pre-warm: after a schema bump the recently used cells of an older schema are rebuilt once, in the background", async () => {
+  const env = testEnv({ BUILDS_ENABLED: "true", PARALLEL_BUILDS: "1" });
+  const cfg = config(env);
+  const g = fakeGoogle();
+  const ins = (id, version, lastRequest, job = null) => env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date,
+      size, job, priority, last_request, requests) VALUES (?, 2, ?, '2026-10-20', 5, ?, 0, ?, 1)`).bind(id, version, job, lastRequest).run();
+  await ins("10-530-341", "2026-10-20-s5", NOW - 2 * 86_400_000);  // used 2 days ago, old schema → rebuilt
+  await ins("10-531-341", "2026-10-20-s5", NOW - 40 * 86_400_000); // not used for 40 days → left alone
+  await ins("10-532-341", "2026-10-20-s6", NOW - 86_400_000);      // current → left alone
+  await ins("10-533-341", "2026-10-20-s5", NOW - 86_400_000, "failed");
+  await pump(env, cfg, NOW, g);
+  const st = async (id) => ({ ...(await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(id).first()) });
+  assert.ok(["queued", "building"].includes((await st("10-530-341")).job));
+  assert.equal((await st("10-530-341")).priority, 3); // refresh: never ahead of someone waiting
+  assert.equal((await st("10-531-341")).job, null);
+  assert.equal((await st("10-532-341")).job, null);
+  assert.equal((await st("10-533-341")).job, "failed");
+  // once per schema: the same old cell is not queued again by later pumps
+  await env.DB.prepare("UPDATE cells SET job = NULL WHERE id = '10-530-341'").run();
+  await pump(env, cfg, NOW + 60_000, g);
+  assert.equal((await st("10-530-341")).job, null);
+  // a queue too full for all of them: the rest at the next pump (MAX_QUEUE)
+  const small = testEnv({ MAX_QUEUE: "1", BUILDS_ENABLED: "true", PARALLEL_BUILDS: "1" });
+  for (const id of ["10-540-341", "10-541-341"]) {
+    await small.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, last_request, requests)
+        VALUES (?, 2, '2026-10-20-s5', '2026-10-20', 5, 0, ?, 1)`).bind(id, NOW - 86_400_000).run();
+  }
+  await pump(small, config(small), NOW, fakeGoogle());
+  const n = await small.DB.prepare("SELECT COUNT(*) AS n FROM cells WHERE job IS NOT NULL").first();
+  assert.equal(n.n, 1);
+  assert.equal(await small.DB.prepare("SELECT value FROM meta WHERE key = 'prewarm-schema'").first(), null);
+  // off
+  const off = testEnv({ PREWARM_DAYS: "0" });
+  await off.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, last_request, requests)
+      VALUES ('10-550-341', 2, '2026-10-20-s5', '2026-10-20', 5, 0, ?, 1)`).bind(NOW).run();
+  await pump(off, config(off), NOW, fakeGoogle());
+  assert.equal((await off.DB.prepare("SELECT job FROM cells").first()).job, null);
+});
+
 test("scheduled handler runs the pump", async () => {
   const env = testEnv({ BUILDS_ENABLED: "false" });
   const c = ctx();

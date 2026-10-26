@@ -352,7 +352,7 @@ queued. Owner decision: up to 4 builds at once, waiting users first, an honest E
 - **Parallel** (`PARALLEL_BUILDS`, default 4; "1" = old behaviour): the cron pump (and every request) starts
   executions until all slots are busy. Waiting cells are spread over the free slots (`ceil(waiting / free)` cells
   per execution, at most `CELLS_PER_EXECUTION`) – 3 points → 3 executions of 1 cell, built at the same time.
-  Background cells are batched (4 per execution) and **never take the last free slot** (they start only while ≥ 2
+  Background cells are spread over the free slots but one (since 2026-10-26, §7h; at most 4 per execution) and **never take the last free slot** (they start only while ≥ 2
   slots are free) and only within `MAX_EXEC_PER_HOUR/DAY` minus a reserve of `min(slots, hour/2)` starts – a waiting
   request never waits behind a refresh. Separate Cloud Run executions of the one job: no IAM change needed (the
   doorman's role already has `run.jobs.runWithOverrides`). If Google refuses a start while others run (quota),
@@ -430,6 +430,17 @@ rebuild).
 the app asks again at the doorman's `poll_s`, and the doorman answers `poll_s` 15 while any asked cell is rebuilt
 (was 60, and the app waited its 15-min idle time). The new version reaches the phone within ~15 s of the build
 (`CellDownloadTest.updatingCellIsPolledUntilTheRebuildIsDone`). Not on screen: unchanged (no polling).
+
+**Background lane** (`queue.js startNext`): background cells (refresh, schema rebuild, corridor) are spread over the
+free slots minus the one kept for someone waiting – 6 cells on 4 idle slots → 3 executions × 2 cells, built at the same
+time (was 4 + 2, serial: the last Hilden cell 36 min after the start, now ≈ 2 × 10 min); a long queue still goes 4 per
+execution, so the hourly cap is not used up by small batches. `PARALLEL_BUILDS` / `MAX_EXEC_PER_HOUR` unchanged (the
+Cloud Run CPU quota for more slots is not checked yet). Each extra execution costs ~1.5 min of start-up (≈ $0.003).
+
+**Pre-warm** (`queue.js prewarm`, `PREWARM_DAYS` default 30, 0 = off): the first pump after a `CELL_SCHEMA` bump queues
+every cell asked for in the last 30 days whose published version is of an older schema, once, at refresh priority
+(meta row `prewarm-schema`; a full queue continues at the next pump). Phones then find the new map built instead of
+waiting for it; cost ≈ $0.01 per cell. The first deploy of this code also pre-warms today's s < 6 cells.
 
 **Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
 working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4

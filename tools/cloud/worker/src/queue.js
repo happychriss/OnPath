@@ -113,6 +113,36 @@ async function adoptQueued(env, cfg, now) {
   return ids.length;
 }
 
+// ------------------------------------------------------------------------------------------------ pre-warm
+/**
+ * After a CELL_SCHEMA bump (map-hosting.md §7h): every cell asked for in the last PREWARM_DAYS whose published version
+ * is of an older schema is queued once at refresh priority – rebuilt in the background (hourly cap, the waiting
+ * reserve), so phones find the new map ready instead of waiting for it. Done when meta "prewarm-schema" = CELL_SCHEMA;
+ * a queue that is too full for all of them goes on at the next pump.
+ */
+async function prewarm(env, cfg, now) {
+  if (!cfg.prewarmDays) return 0;
+  const db = env.DB;
+  const m = await db.prepare("SELECT value FROM meta WHERE key = 'prewarm-schema'").first();
+  if (m && Number(m.value) >= cfg.cellSchema) return 0;
+  const pend = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job IN ('queued', 'building')").first();
+  const room = Math.max(0, cfg.maxQueue - pend.n);
+  const { results } = await db.prepare(`SELECT id, format, version FROM cells WHERE version IS NOT NULL AND job IS NULL
+      AND last_request > ? ORDER BY last_request DESC`).bind(now - cfg.prewarmDays * DAY).all();
+  const old = results.filter((r) => cfg.formats.includes(r.format) && schemaOf(r.version) < cfg.cellSchema);
+  const take = old.slice(0, room);
+  const writes = take.map((r) => db.prepare(`UPDATE cells SET job = 'queued', priority = ?3, requested_at = ?4, attempts = 0,
+      error = NULL, execution = NULL, eta_at = NULL, eta_seen = NULL, updated_at = ?4
+      WHERE id = ?1 AND format = ?2 AND job IS NULL`).bind(r.id, r.format, PRIORITY.refresh, now));
+  if (take.length === old.length) {
+    writes.push(db.prepare(`INSERT INTO meta (key, value, until) VALUES ('prewarm-schema', ?1, NULL)
+        ON CONFLICT (key) DO UPDATE SET value = ?1`).bind(String(cfg.cellSchema)));
+  }
+  if (writes.length) await db.batch(writes);
+  if (take.length) log({ ev: "prewarm", schema: cfg.cellSchema, cells: take.length, left: old.length - take.length });
+  return take.length;
+}
+
 /** POST /v1/cells/request */
 export async function requestCells(env, cfg, body, now = Date.now()) {
   if (!body || !Array.isArray(body.cells) || body.cells.length === 0) throw new HttpError(400, "cells: list of cell ids expected");
@@ -338,6 +368,12 @@ async function startNext(env, cfg, now, fetchImpl, free, slots) {
     const w = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job = 'queued' AND format = ? AND priority <= ?")
       .bind(first.format, WAITING_MAX).first();
     n = batchSize(cfg, w.n, free);
+  } else if (slots > 1) {
+    // background (refresh, schema rebuild, corridor) spread over the free slots but the one kept for someone waiting:
+    // 6 cells on 3 slots = 3 × 2 cells, not 4 + 2 built one after the other (field 2026-10-26: s5 → s6 for Hilden,
+    // the last of 4 serial cells came 36 min after the start). Long queues still go 4 per execution (hourly cap).
+    const b = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job = 'queued' AND format = ?").bind(first.format).first();
+    n = batchSize(cfg, b.n, free - 1);
   }
   const { results } = await db.prepare(`SELECT id FROM cells WHERE job = 'queued' AND format = ?1
       AND (?2 = 0 OR priority <= ?3) ORDER BY priority, requested_at LIMIT ?4`)
@@ -380,6 +416,7 @@ export async function pump(env, cfg, now = Date.now(), fetchImpl = globalFetch) 
     for (const ex of running) if (!(await checkExecution(env, cfg, ex, now, fetchImpl))) stillRunning++;
     await adoptQueued(env, cfg, now); // also while builds are off: published versions need no builder
     if (!cfg.buildsEnabled) return { disabled: true, running: stillRunning };
+    await prewarm(env, cfg, now);
     const slots = await slotCount(db, cfg, now);
     const started = [];
     let last = { running: stillRunning };
