@@ -141,7 +141,43 @@ data class Share(val key: String, val meters: Double)
  * [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the
  * same or shorter budget (leg by leg) would time out too, so the planner does not retry (perf report 2026-10-22).
  */
-class RoutingException(message: String, val timedOut: Boolean = false) : Exception(message)
+class RoutingException(message: String, val timedOut: Boolean = false, kind: Kind? = null) : Exception(message) {
+    /**
+     * What failed, for code that must not read the message (it is in the user's language since EN + DE, owner
+     * 2026-10-26). Without [kind] it is found from the message (the app's own texts for these cases); a timed-out
+     * request that is nothing else is [Kind.TIMEOUT].
+     */
+    val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }
+
+    enum class Kind {
+        OTHER,
+        /** Routing data for the area is missing (the map loads it). */
+        NO_DATA,
+        /** The request was cancelled (a newer one, or the user). */
+        CANCELLED,
+        /** Another route is being calculated. */
+        BUSY,
+        /** Out of memory / too complex: fewer or closer points help. */
+        TOO_COMPLEX,
+        /** The routing engine could not be loaded. */
+        UNAVAILABLE,
+        /** The request took too long (also: no route within the time limit). */
+        TIMEOUT,
+        /** The start point is too far from any usable way (re-routing: nothing to retry from here). */
+        START_POINT;
+
+        companion object {
+            fun of(message: String): Kind = when (message) {
+                Txt.s(Res.string.plan_err_no_data) -> NO_DATA
+                Txt.s(Res.string.plan_err_cancelled) -> CANCELLED
+                Txt.s(Res.string.plan_err_busy) -> BUSY
+                Txt.s(Res.string.plan_err_memory), Txt.s(Res.string.plan_err_complex) -> TOO_COMPLEX
+                Txt.s(Res.string.plan_err_engine) -> UNAVAILABLE
+                else -> if (message.startsWith(Txt.s(Res.string.plan_err_start_point))) START_POINT else OTHER
+            }
+        }
+    }
+}
 
 /**
  * Cancel signal for one routing request (re-routing while navigating: a newer request supersedes an older one).

@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import com.onpath.app.data.RoutingDataLoader
 
 /**
@@ -49,5 +50,5 @@ object RoutingLoads {
      */
     fun recalcOnArrival(mode: AppMode, onTour: Boolean, points: Int): Boolean = mode == AppMode.PLAN && !onTour && points >= 2
 
-    const val FAILED_TEXT = "Something went wrong while loading it. Please try again."
+    val FAILED_TEXT: String get() = Txt.s(Res.string.plan_routing_load_failed)
 }

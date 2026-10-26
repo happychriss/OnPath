@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Box
@@ -157,7 +158,7 @@ fun MapScreen(
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-                    androidx.compose.material3.Text("Finding the shared place…")
+                    androidx.compose.material3.Text(str(Res.string.plan_finding_shared_place))
                 }
             }
         }

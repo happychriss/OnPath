@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import com.onpath.app.recording.GpsStatus
 import kotlin.math.max
 import kotlin.math.min
@@ -76,10 +77,10 @@ object MapGestures {
      * A stale fix (status SEARCHING) is not used: the route would start in the wrong place.
      */
     fun fromMeBlocked(status: GpsStatus, hasFix: Boolean): String? = when (status) {
-        GpsStatus.NO_PERMISSION -> "No location permission"
-        GpsStatus.OFF -> "Location off"
-        GpsStatus.SEARCHING -> "Searching GPS…"
-        GpsStatus.WEAK, GpsStatus.GOOD -> if (hasFix) null else "Searching GPS…"
+        GpsStatus.NO_PERMISSION -> Txt.s(Res.string.plan_no_location_permission)
+        GpsStatus.OFF -> Txt.s(Res.string.plan_location_off)
+        GpsStatus.SEARCHING -> Txt.s(Res.string.plan_searching_gps)
+        GpsStatus.WEAK, GpsStatus.GOOD -> if (hasFix) null else Txt.s(Res.string.plan_searching_gps)
     }
 
     /** How the armed hold feels (decided at finger-down, same targets as [decide]); [Buzz.NONE] = no ring either. */

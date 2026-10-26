@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
@@ -82,9 +83,9 @@ object RouteWarnings {
 
     /** Plain name of a barrier: "stile", "kissing gate", "turnstile". */
     fun barrierName(i: Int): String = when (BARRIERS.getOrNull(i)) {
-        "kissing_gate" -> "kissing gate"
-        "turnstile", "full-height_turnstile" -> "turnstile"
-        else -> "stile"
+        "kissing_gate" -> Txt.s(Res.string.plan_barrier_kissing_gate)
+        "turnstile", "full-height_turnstile" -> Txt.s(Res.string.plan_barrier_turnstile)
+        else -> Txt.s(Res.string.plan_barrier_stile)
     }
 
     /** Grade (%) above which a section is "steep" for [a]; null = no steep hint (MTB / e-MTB). */
@@ -197,22 +198,21 @@ object RouteWarnings {
 
     private fun rounded(m: Double): String = Format.distance(if (m < 1000) Math.round(m / 10.0) * 10.0 else m)
 
-    private fun plural(n: Int, one: String, many: String) = if (n == 1) "1 $one" else "$n $many"
-
     /** The items of the line, in [SpotKind] order. */
     fun items(spots: List<RouteSpot>, sac: Int): List<String> = SpotKind.entries.mapNotNull { k ->
         val s = spots.filter { it.kind == k }
         if (s.isEmpty()) null else when (k) {
-            SpotKind.FERRY -> if (s.size == 1) "Ferry ${rounded(s[0].lengthM)} – check times" else "${s.size} ferries – check times"
-            SpotKind.CONSTRUCTION -> if (s.size == 1) "construction site" else "${s.size} construction sites"
-            SpotKind.NO_BIKES -> "${rounded(s.sumOf { it.lengthM })} no bikes allowed"
-            SpotKind.DISMOUNT -> "${rounded(s.sumOf { it.lengthM })} dismount (sign)"
-            SpotKind.FORD -> if (s.size == 1) "ford" else "${s.size} fords"
-            SpotKind.BARRIER -> if (s.size == 1) barrierName(s[0].worst) else "${s.size} barriers"
-            SpotKind.PUSH -> "${rounded(s.sumOf { it.lengthM })} pushing"
-            SpotKind.STEPS -> if (s.size == 1) "steps" else "${s.size}× steps"
-            SpotKind.ABOVE_T -> plural(s.size, "section above T$sac", "sections above T$sac")
-            SpotKind.STEEP -> plural(s.size, "steep section", "steep sections")
+            SpotKind.FERRY -> if (s.size == 1) Txt.s(Res.string.plan_hint_ferry_one, rounded(s[0].lengthM))
+                else Txt.p(Res.plurals.plan_hint_ferries, s.size, s.size)
+            SpotKind.CONSTRUCTION -> Txt.p(Res.plurals.plan_hint_construction, s.size, s.size)
+            SpotKind.NO_BIKES -> Txt.s(Res.string.plan_hint_no_bikes, rounded(s.sumOf { it.lengthM }))
+            SpotKind.DISMOUNT -> Txt.s(Res.string.plan_hint_dismount, rounded(s.sumOf { it.lengthM }))
+            SpotKind.FORD -> Txt.p(Res.plurals.plan_hint_fords, s.size, s.size)
+            SpotKind.BARRIER -> if (s.size == 1) barrierName(s[0].worst) else Txt.p(Res.plurals.plan_hint_barriers, s.size, s.size)
+            SpotKind.PUSH -> Txt.s(Res.string.plan_hint_pushing, rounded(s.sumOf { it.lengthM }))
+            SpotKind.STEPS -> Txt.p(Res.plurals.plan_hint_steps, s.size, s.size)
+            SpotKind.ABOVE_T -> Txt.p(Res.plurals.plan_hint_above_t, s.size, s.size, sac)
+            SpotKind.STEEP -> Txt.p(Res.plurals.plan_hint_steep, s.size, s.size)
         }
     }
 
@@ -226,30 +226,31 @@ object RouteWarnings {
 
     /** INFO line "New route for Gravel bike – check it" (hike with its level: "for Hike T4"); grey, not amber. */
     fun changedText(a: Activity, sac: Int): String =
-        "New route for ${com.onpath.app.data.LastActivity.name(a, sac)} – check it"
+        Txt.s(Res.string.plan_route_changed, com.onpath.app.data.LastActivity.name(a, sac))
 
     /** Kind of one list row in plain words: "Ferry – check times", "Pushing", "Steps", "T4 – above your T2", "Steep, up to 28 %". */
     fun rowTitle(s: RouteSpot, sac: Int): String = when (s.kind) {
-        SpotKind.FERRY -> "Ferry – check times"
-        SpotKind.CONSTRUCTION -> "Construction – may be closed"
-        SpotKind.NO_BIKES -> "No bikes allowed – sign on the way"
-        SpotKind.DISMOUNT -> "Dismount – sign on the way"
-        SpotKind.FORD -> "Ford – water to cross"
+        SpotKind.FERRY -> Txt.s(Res.string.plan_spot_ferry)
+        SpotKind.CONSTRUCTION -> Txt.s(Res.string.plan_spot_construction)
+        SpotKind.NO_BIKES -> Txt.s(Res.string.plan_spot_no_bikes)
+        SpotKind.DISMOUNT -> Txt.s(Res.string.plan_spot_dismount)
+        SpotKind.FORD -> Txt.s(Res.string.plan_spot_ford)
         SpotKind.BARRIER -> when (BARRIERS.getOrNull(s.worst)) {
-            "kissing_gate" -> "Kissing gate – tight with a bike"
-            "turnstile" -> "Turnstile – tight with a bike"
-            "full-height_turnstile" -> "Turnstile – may not pass with a bike"
-            else -> "Stile – lift the bike over"
+            "kissing_gate" -> Txt.s(Res.string.plan_spot_kissing_gate)
+            "turnstile" -> Txt.s(Res.string.plan_spot_turnstile)
+            "full-height_turnstile" -> Txt.s(Res.string.plan_spot_turnstile_full)
+            else -> Txt.s(Res.string.plan_spot_stile)
         }
-        SpotKind.PUSH -> "Pushing"
-        SpotKind.STEPS -> "Steps"
-        SpotKind.ABOVE_T -> "T${s.worst} – above your T$sac"
-        SpotKind.STEEP -> "Steep, up to ${s.worst} %"
+        SpotKind.PUSH -> Txt.s(Res.string.plan_spot_pushing)
+        SpotKind.STEPS -> Txt.s(Res.string.plan_spot_steps)
+        SpotKind.ABOVE_T -> Txt.s(Res.string.plan_spot_above_t, s.worst, sac)
+        SpotKind.STEEP -> Txt.s(Res.string.plan_spot_steep, s.worst)
     }
 
     /** Second part of a row: "350 m · after 3.4 km"; a ford node or a barrier is a point: "after 3.4 km". */
     fun rowDetail(s: RouteSpot): String {
-        val where = if (s.fromM < 50) "at the start" else "after ${Format.distance(Math.round(s.fromM / 100.0) * 100.0)}"
+        val where = if (s.fromM < 50) Txt.s(Res.string.plan_spot_at_start)
+            else Txt.s(Res.string.plan_spot_after, Format.distance(Math.round(s.fromM / 100.0) * 100.0))
         return if (s.kind in POINT_KINDS) where.replaceFirstChar { it.uppercase() } else "${rounded(s.lengthM)} · $where"
     }
 
