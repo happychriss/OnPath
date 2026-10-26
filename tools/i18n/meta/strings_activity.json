@@ -1,0 +1,22 @@
+{
+  "activity_bike_touring": {"area": "Activity picker", "context": "Activity name: city / touring bike on paved ways (picker, buttons, messages)", "priority": 1, "confidence": "sicher", "max": 16},
+  "activity_bike_touring_line": {"area": "Activity picker", "context": "The one line under 'Bike' in the activity picker", "priority": 1, "confidence": "sicher", "max": 40},
+  "activity_bike_touring_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet next to time and distance (short)", "priority": 1, "confidence": "sicher", "max": 10},
+  "activity_bike_trekking": {"area": "Activity picker", "context": "Activity name: gravel bike (picker, buttons, messages)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Owner wording 'Gravel-Rad'; common German alternatives: 'Gravelbike'", "max": 16},
+  "activity_bike_trekking_line": {"area": "Activity picker", "context": "The one line under 'Gravel bike' in the activity picker", "priority": 1, "confidence": "sicher", "max": 40},
+  "activity_bike_trekking_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet (short: a 112 km day tour must still show its distance)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Short form 'Gravel' kept as in English", "max": 10},
+  "activity_ebike": {"area": "Activity picker", "context": "Activity name: e-bike (pedelec, 25 km/h)", "priority": 1, "confidence": "sicher", "max": 16},
+  "activity_ebike_line": {"area": "Activity picker", "context": "The one line under 'E-bike' in the activity picker", "priority": 1, "confidence": "sicher", "max": 40},
+  "activity_ebike_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet (short)", "priority": 1, "confidence": "sicher", "max": 10},
+  "activity_mtb": {"area": "Activity picker", "context": "Activity name: mountain bike (picker, buttons, messages)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Owner wording 'Mountainbike' is long on buttons ('Navigation starten · Mountainbike'); 'MTB' is also usual in German", "max": 16},
+  "activity_mtb_line": {"area": "Activity picker", "context": "The one line under 'MTB' in the activity picker", "priority": 1, "confidence": "sicher", "max": 40},
+  "activity_mtb_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet (short)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Short form 'MTB' on the chip", "max": 10},
+  "activity_emtb": {"area": "Activity picker", "context": "Activity name: e-mountain bike", "priority": 1, "confidence": "bitte prüfen", "doubt": "'E-Mountainbike' is long on buttons; 'E-MTB' is also usual", "max": 16},
+  "activity_emtb_line": {"area": "Activity picker", "context": "The one line under 'E-MTB' in the activity picker", "priority": 1, "confidence": "sicher", "max": 40},
+  "activity_emtb_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet (short)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Short form 'E-MTB' on the chip", "max": 10},
+  "activity_hike": {"area": "Activity picker", "context": "Activity name: hiking (picker, buttons, messages)", "priority": 1, "confidence": "sicher", "max": 16},
+  "activity_hike_line": {"area": "Activity picker", "context": "The line under 'Hike': the SAC hiking scale T1 to T5", "priority": 1, "confidence": "sicher"},
+  "activity_hike_chip": {"area": "Plan sheet", "context": "Activity chip on the plan sheet: '%1$s · T2'", "priority": 1, "confidence": "sicher", "max": 10},
+  "activity_with_level": {"area": "Messages", "context": "The activity in a sentence: 'Hike T3'. %1$s = activity name, %2$d = SAC level 1-5. Used in 'New route for Hike T3 – check it', 'Activity set to Hike T3 from the file'", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Wandern T3' inside a sentence ('Neue Route für Wandern T3') reads a bit stiff", "max": 20},
+  "activity_chip_with_level": {"area": "Plan sheet", "context": "Activity chip for hiking: 'Hike · T2'. %1$s = chip name, %2$d = SAC level", "priority": 1, "confidence": "sicher", "max": 14}
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Words used on many screens (buttons, content descriptions). Context: tools/i18n/meta/strings_common.json -->
+<resources>
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_remove">Remove</string>
+    <string name="common_save">Save</string>
+    <string name="common_close">Close</string>
+    <string name="common_back">Back</string>
+    <string name="common_done">Done</string>
+    <string name="common_not_now">Not now</string>
+    <string name="common_try_again">Try again</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_open">Open</string>
+    <string name="common_more">More</string>
+    <string name="common_show">Show</string>
+    <string name="common_show_all">Show all</string>
+    <string name="common_rename">Rename</string>
+    <string name="common_restore">Restore</string>
+    <string name="common_replace">Replace</string>
+    <string name="common_reset">Reset</string>
+    <string name="common_resume">Resume</string>
+    <string name="common_cancel_all">Cancel all</string>
+    <string name="common_clear_all">Clear all</string>
+    <string name="common_app_settings">App settings</string>
+    <string name="common_recycle_bin">Recycle bin</string>
+    <string name="common_export_gpx">Export GPX</string>
+    <string name="common_settings">Settings</string>
+</resources>
