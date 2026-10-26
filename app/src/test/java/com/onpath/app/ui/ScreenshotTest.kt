@@ -495,6 +495,33 @@ class ScreenshotTest {
             gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike"), PlanCallbacks()) }
     }
 
+    /** Route hints (owner 2026-10-26): a ferry on the route – amber line first, before the way warnings. */
+    @Test fun planFerryHint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = Activity.BIKE_TOURING,
+            warnText = RouteWarnings.text(listOf(RouteSpot(SpotKind.FERRY, 40, 41, 6200.0, 6516.0),
+                RouteSpot(SpotKind.FORD, 60, 60, 9100.0, 9100.0)), 3)), PlanCallbacks()) }
+    }
+
+    /** The list behind the amber line with the route hints: ferry, construction, ford, stile. */
+    @Test fun routeSpotsListHints() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(top = 24.dp)) {
+                        RouteSpotsList(listOf(
+                            RouteSpot(SpotKind.CONSTRUCTION, 3, 5, 800.0, 840.0),
+                            RouteSpot(SpotKind.FERRY, 40, 41, 6200.0, 6516.0),
+                            RouteSpot(SpotKind.FORD, 60, 60, 9100.0, 9100.0),
+                            RouteSpot(SpotKind.BARRIER, 70, 70, 11_430.0, 11_430.0, RouteWarnings.BARRIERS.indexOf("stile")),
+                        ), sac = 2, onShow = {})
+                    }
+                }
+            }
+        }
+    }
+
     /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
     @Test fun planWarningsWithGap() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,

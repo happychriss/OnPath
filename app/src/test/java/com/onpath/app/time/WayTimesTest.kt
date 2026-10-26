@@ -129,5 +129,11 @@ class WayTimesTest {
         assertEquals(true, WayAttrs.parse(bike.copy(pedestrian = true).code())?.pedestrian)
         assertEquals(false, WayAttrs.parse(bike.copy(pedestrian = true).code())?.cycleRoute)
         assertEquals(false, WayAttrs.parse("footway|paved|0|-1|||||r")?.pedestrian)
+        // route hints (2026-10-26): ford / construction flags and the barrier field; older codes read as none
+        val hints = zone.copy(ford = true, construction = true, barrier = "stile")
+        assertEquals(hints, WayAttrs.parse(hints.code()))
+        assertEquals(WayAttrs("track", "gravel", ford = true), WayAttrs.parse(WayAttrs("track", "gravel", ford = true).code()))
+        val old = WayAttrs.parse("footway|paved|0|-1|||||rp")!!
+        assertEquals(false, old.ford); assertEquals(false, old.construction); assertEquals(null, old.barrier)
     }
 }

@@ -71,13 +71,27 @@ data class WayAttrs(
      * (bicycle=yes / designated), also on a cycle route (German law) – stays "pushing". Added 2026-10-26.
      */
     val pedestrian: Boolean = false,
+    /**
+     * Water to cross: the way is a ford (ford=yes / stepping_stones) or the span ends at a ford node. Route hints
+     * (owner 2026-10-26: "a hint on a route if it contains anything that requires validation"). Added 2026-10-26.
+     */
+    val ford: Boolean = false,
+    /**
+     * A barrier a bike does not simply pass (stile, kissing_gate, turnstile, full-height_turnstile – OSM value) at the
+     * node ending this span; null = none of those (bollards, gates, lift gates are passable and not kept). Added 2026-10-26.
+     */
+    val barrier: String? = null,
+    /** highway=construction: the way is being built or rebuilt and may be closed. Added 2026-10-26. */
+    val construction: Boolean = false,
 ) {
     /**
-     * Compact text form for files ("path|natural_trail|3|-1||bad||yes|r"; last field = flags: r cycle route, p pedestrian
-     * zone); [parse] reads it back (older codes: no bike access, not on a cycle route, no pedestrian zone).
+     * Compact text form for files ("path|natural_trail|3|-1||bad||yes|r|stile"; field 9 = flags: r cycle route,
+     * p pedestrian zone, f ford, c construction; field 10 = [barrier]); [parse] reads it back (older codes: no bike
+     * access, not on a cycle route, no pedestrian zone, no ford / barrier / construction).
      */
     fun code(): String = listOf(wayType, surface, sac.toString(), mtb.toString(), smoothness.orEmpty(), visibility.orEmpty(),
-        rough.orEmpty(), bicycle.orEmpty(), (if (cycleRoute) "r" else "") + (if (pedestrian) "p" else "")).joinToString("|")
+        rough.orEmpty(), bicycle.orEmpty(), (if (cycleRoute) "r" else "") + (if (pedestrian) "p" else "") +
+            (if (ford) "f" else "") + (if (construction) "c" else ""), barrier.orEmpty()).joinToString("|")
 
     companion object {
         fun parse(code: String?): WayAttrs? = try {
@@ -85,7 +99,9 @@ data class WayAttrs(
             if (c == null || c.size < 4 || c[0].isEmpty()) null
             else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
                 c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null },
-                c.getOrNull(7)?.ifEmpty { null }, c.getOrNull(8)?.contains('r') == true, c.getOrNull(8)?.contains('p') == true)
+                c.getOrNull(7)?.ifEmpty { null }, c.getOrNull(8)?.contains('r') == true, c.getOrNull(8)?.contains('p') == true,
+                ford = c.getOrNull(8)?.contains('f') == true, barrier = c.getOrNull(9)?.ifEmpty { null },
+                construction = c.getOrNull(8)?.contains('c') == true)
         } catch (_: Exception) { null } // expected: an unknown / old code = no attributes
     }
 }

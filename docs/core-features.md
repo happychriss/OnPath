@@ -45,6 +45,17 @@ Navigate draws only the route line, no numbered plan points (owner 2026-10-22, r
 also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`
 checks none in Navigate, back in Plan).
 
+Route warnings and hints (plan sheet, `ui/RouteWarnings`): one amber ⚠ line, tap → "On this route" list → tap a row →
+the map shows that spot. Way warnings since 2026-10-22 (pushing, steps, above your T, steep); hints to check before
+going since 2026-10-26 (owner: "a warning/hint on a route if it contains a ferry or anything else that requires
+validation"): **ferry** for every activity ("Ferry 320 m – check times", several: "2 ferries – check times"; first in
+the line), **construction site** ("Construction – may be closed"), **ford** (way or node; "Ford – water to cross") and,
+for bikes only, a **stile / kissing gate / turnstile** ("Stile – lift the bike over"). The tags come from BRouter's way
+and node tags per span (`BRouterWayStats.perNode` → `WayAttrs.ford / barrier / construction`). Tests:
+`RouteWarningsTest`, `BRouterWayStatsTest.hintTagsReachTheWayAttributes`, `WayTimesTest.codeRoundTrip`, screenshots
+`ScreenshotTest.planFerryHint` / `routeSpotsListHints`; JVM `tools/routing/jvm-test/FerryHintTest.kt` (Rhine ferries
+Zons ⇄ Urdenbach, Kaiserswerth ⇄ Langst, every activity class). Counts on real routes: `HintInventory.kt`.
+
 To add next: recording survives Plan mode, map update with a real cell generation. (Navigate → Plan with a followed
 plan, markers back: `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`.)
 

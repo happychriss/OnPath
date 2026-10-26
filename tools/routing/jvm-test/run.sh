@@ -7,6 +7,8 @@
 #      IslandTest.kt = a point on a way without a connection (Köln Dom, needs E5_N50.rd5) still gets a route, pass/fail;
 #      ItterPathTest.kt = bike routes stay on a compacted foot / cycle path (Hilden Itter, needs E5_N50.rd5), pass/fail;
 #      FerryTest.kt = no route over a ferry that does not take bikes / people on foot (RAW_TAP=1, FERRY_CASES=<file>);
+#      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
+#      HintInventory.kt = candidate route hints (ford, barriers, access, ...) counted on random routes (RAW_TAP=1);
 #      SafetyTest.kt = trail safety (SAC / via_ferrata / bike limits) metres per class, SAFETY_TAG=label;
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);
 #      GpxCompare.kt = compare with a reference GPX line (another app's plan, a ride; see its header, needs RAW_TAP=1).
@@ -49,6 +51,6 @@ rm -rf "$W/kt"; mkdir -p "$W/kt"
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
   "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \
-  "$R/Planner.kt" "$R/RouteSummary.kt" \
+  "$R/Planner.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

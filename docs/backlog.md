@@ -8,6 +8,16 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Route hints: open candidates (desktop, 2026-10-26, numbers in `docs/design/bike-routing.md` "Route hints")** –
+  (1) *faint trail* (trail_visibility=bad / horrible): 2 % of hikes, 11 % of MTB routes – a hint for hikers? owner
+  question; (2) *ferry name / landing* in the hint: BRouter's data has no names – would need the ferry from our map
+  overlays / POIs; (3) *times and seasons* (access:conditional, opening_hours, seasonal closures) and *borders* are not in
+  BRouter's lookups – would need our own data (overlay pipeline); (4) hints in Navigate (e.g. "Ferry in 2 km") – Navigate
+  has no hint list today; (5) MTB: the amber line shows on 87 % of MTB routes, pushing on 75 % (bicycle=no paths, footways
+  costed as pushing by mtb.brf) – review whether MTB pushing is noise; (6) Bike / Gravel routes over smoothness=
+  very_horrible tracks (2 % of routes, up to 1.4 km) – a profile question, not a hint. Not planned: bollards, gates, lift
+  gates, cycle barriers (on 12–67 % of routes, passable), way access=destination / agricultural / no (mostly opened again
+  by bicycle / foot tags), node bicycle=no (crossings), toll (only ferries).
 - **Map cells: partial rebuild (desktop, 2026-10-26, map-hosting.md §7h)** – a look-only schema bump rebuilds every
   layer today. Per-layer schema in `cells.py` / the manifest; `job_build.py` reads the current manifest from R2 and, when
   only some layers changed and the extract date is the same, `build_cell.sh REUSE=…` cuts and rebuilds only those
@@ -20,8 +30,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   X px (steps a / b / c px, v px/s) → step N" to the events trace: drag the handle a measured distance on the Pixel 8
   and compare. If the phone trails too, the sheet lags the finger (field 0.8.9 "the swipe is jumping").
 - **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) and (2) done (see Done); (3) requirements.md –
-  see "requirements.md sync" below; (4) owner question kept: long timetabled ferries only with a via point (today) or
-  automatic?
+  see "requirements.md sync" below; (4) answered (owner 2026-10-26): short ferries automatically, long only with a point
+  on them (as today), plus a ferry hint on the route (see Done: route hints).
 - **[for the cloud / owner] requirements.md sync (senior review, desktop 2026-10-26)** – `docs/requirements.md` is the
   copy of the shared Claude doc, so the review did not edit it. Needed in the shared doc: (a) activity table (line ~88):
   "Bike – e-bike: Same as trekking" → E-bike routes like the Touring bike (touring.brf: paved bike ways, quiet ways,
@@ -239,6 +249,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **[desktop] Region view – routes by zoom (2026-10-26, owner, for 0.11.4):** for hiking and bikes, below z11 only
   long-distance routes, regional ones from z11, every signed route from z12.5 (`route_tiers()`, new `-regional` layers,
   switched by `MapController`). Below z10 is left to the region / overview data work (`routes-<kind>-major-low`).
+- **[desktop] Route hints: ferry and what to check before going (2026-10-26, owner decision):** the amber line in the
+  plan sheet now also says "Ferry 320 m – check times" (several: "2 ferries – check times"; every activity, first in the
+  line), "construction site" ("Construction – may be closed"), "ford" / "3 fords" ("Ford – water to cross") and for bikes
+  "stile" / "kissing gate" / "turnstile" ("Stile – lift the bike over"); tap → list → map. Ferry / ford / barrier /
+  construction come from BRouter's way and node tags (`WayAttrs.ford / barrier / construction`). Inventory on 356 random
+  routes (`HintInventory.kt`): ferry 3–6 %, ford 6–16 %, hard barriers 0–3 %, construction ≤ 1 % of routes; JVM
+  `FerryHintTest` (Zons ⇄ Urdenbach, Kaiserswerth ⇄ Langst: 8 / 8 routes show the hint).
 - **[desktop] Map look from the Hilden field review (2026-10-26, owner tested each step on the phone):**
   - town contrast: street edges, lighter built-up land, darker buildings; paths end at the street edge;
   - bike view like hiking: green line = good bike way, mint band = signed route (names, bicycle streets, slim band,

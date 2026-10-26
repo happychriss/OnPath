@@ -31,7 +31,9 @@ Guard rails for every profile change: Meran `SafetyTest` / `OnewayTest` (no T3+,
 `BikeProfileCostTest` (way costs per tag set, unit test), and a check in
 other regions (Alps, Black Forest, Bodensee, Netherlands, Ruhr, cities) for surprises such as rough gravel.
 
-Open (owner, `docs/backlog.md`): long timetabled ferries (22 km IJsselmeer) only with a via point (today) or automatic.
+Ferries, owner decision 2026-10-26: short ferries automatically, long timetabled ones only with a point on them (as
+today); every route over a ferry shows the amber hint "Ferry 320 m – check times" in the plan sheet (all activities;
+`ui/RouteWarnings`, `tools/routing/jvm-test/FerryHintTest.kt`).
 
 ## Measured before the tuning (tools/routing/jvm-test, 60 random routes 2–8 km, Düsseldorf / Hilden / Solingen, brouter.de rd5)
 | Profile (activity) | bike ways* | quiet roads | roads | busy roads | footway, no bike tag | track / path |
@@ -124,6 +126,16 @@ fixed on main 802e7f9, `BRouterWayStatsTest`).
 - *GpxCompare trace gaps.* A trace run that timed out returned an empty track that was not counted as a gap, so some
   pieces looked traced when they were not (63–83 % traced). The tracer now counts an error or an empty track as a
   failed run (split, then a gap).
+- *Route hints (owner 2026-10-26).* "We need a warning/hint on a route if it contains a ferry or anything else that
+  requires validation." Inventory of what BRouter's way / node tags tell on 356 random routes (2–8 km; Hilden /
+  Düsseldorf, Rhine Dormagen–Kaiserswerth, Meran; Bike / Gravel bike / MTB / Hike; `HintInventory.kt`), share of routes:
+  ferry 3 / 3 / 6 / 6 %, ford 6 / 9 / 16 / 10 % (mostly Meran), stile / kissing gate / turnstile 0 / 0 / 3 / – %,
+  construction 0 / 0 / 0 / 1 % → shown. Not shown (noise or not reliable): bollard 56–67 %, gate 22–34 %, cycle barrier
+  19–28 %, lift gate 12–17 %, kerb 23–28 %, way access=destination / agricultural / no 3–14 % (mostly opened again by
+  foot / bicycle=yes), node bicycle=no 5–8 % (crossings, odd bollards), toll only on ferries; trail_visibility bad 2 % of
+  hikes / 11 % of MTB routes (owner question, backlog); access:conditional / opening_hours / seasonal and borders are
+  not in BRouter's data. The amber line already shows on 54 % of Bike, 87 % of MTB and 33 % of Hike routes (pushing,
+  steep) – the new hints add little to that.
 
 ## Map drawing: paths interrupted at streets (separate problem)
 Sidewalks and crossings (`footway=sidewalk|crossing`) are not drawn (k="x" in format 2), so ~18 % of path ends in a

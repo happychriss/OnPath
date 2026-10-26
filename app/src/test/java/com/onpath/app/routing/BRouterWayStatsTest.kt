@@ -136,4 +136,34 @@ class BRouterWayStatsTest {
         assertEquals("footway", w[0]!!.wayType); assertEquals("footway", w[1]!!.wayType)
         assertEquals("quiet_road", w[2]!!.wayType)
     }
+
+    /**
+     * Route hints (owner 2026-10-26): a ferry, a ford (way or node), a stile / kissing gate / turnstile (node) and a way
+     * under construction reach the route's way attributes; bollards, gates and lift gates do not (passable, too common).
+     */
+    @Test fun hintTagsReachTheWayAttributes() {
+        fun m(lon: Int, way: String, node: String = "") = "$lon\t46000000\t300\t10\t1000\t0\t0\t0\t0\t$way\t$node\t10\t100"
+        val lon = IntArray(7) { 11000000 + it * 100 }
+        val lat = IntArray(7) { 46000000 }
+        val msgs = listOf(
+            m(11000100, "highway=track", "barrier=stile"),          // span 0 ends at a stile
+            m(11000200, "highway=track", "nodeaccessgranted=yes barrier=gate"),
+            m(11000300, "highway=track", "ford=yes"),               // span 2 ends at a ford node
+            m(11000400, "highway=path ford=stepping_stones"),       // the way itself is a ford
+            m(11000500, "foot=yes bicycle=yes route=ferry toll=yes"),
+            m(11000600, "highway=construction construction=path", "barrier=bollard"),
+        )
+        val w = BRouterWayStats.perNode(msgs, lon, lat)
+        assertEquals(7, w.size)
+        assertEquals("stile", w[0]!!.barrier); assertFalse(w[0]!!.ford)
+        assertEquals(null, w[1]!!.barrier) // a gate: passable
+        assertTrue(w[2]!!.ford); assertEquals(null, w[2]!!.barrier)
+        assertTrue(w[3]!!.ford)
+        assertEquals("ferry", w[4]!!.wayType)
+        assertTrue(w[5]!!.construction); assertEquals(null, w[5]!!.barrier)
+        assertFalse(BRouterWayStats.attrs(t("highway=track ford=unknown")).ford) // BRouter's "unknown" (e.g. ford=no)
+        assertTrue(BRouterWayStats.withNode(WayAttrs("track", "gravel"), t("highway=ford")).ford)
+        for (b in listOf("kissing_gate", "turnstile", "full-height_turnstile"))
+            assertEquals(b, BRouterWayStats.withNode(WayAttrs("path", "ground"), t("barrier=$b")).barrier)
+    }
 }
