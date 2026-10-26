@@ -395,7 +395,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#e6e5e1",
+    "fill-color": "#e2e0db",
     "fill-opacity": [
      "interpolate",
      [
@@ -406,8 +406,8 @@
       "zoom"
      ],
      9,
-     0.55,
-     13,
+     0.6,
+     11,
      1
     ]
    }
@@ -435,7 +435,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#e0dadb"
+    "fill-color": "#dcd8d6"
    }
   },
   {
@@ -3404,7 +3404,8 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": [
+    "line-color": "#138a7c",
+    "line-opacity": [
      "interpolate",
      [
       "linear"
@@ -3412,12 +3413,13 @@
      [
       "zoom"
      ],
+     11,
+     0.55,
+     12,
+     0.65,
      13,
-     "#168403",
-     14,
-     "#168403"
+     0.9
     ],
-    "line-opacity": 0.4,
     "line-width": [
      "interpolate",
      [
@@ -3427,21 +3429,17 @@
       "zoom"
      ],
      9,
-     1.6,
+     0.8,
      11,
-     2.8,
+     1.0,
      12,
-     3.8,
+     1.3,
      13,
-     4.6,
-     14,
-     7,
+     2.0,
      15,
-     9.5,
-     16,
-     12,
+     2.6,
      18,
-     17
+     3.6
     ]
    }
   },
@@ -3450,7 +3448,6 @@
    "type": "line",
    "source": "routes",
    "minzoom": 9,
-   "maxzoom": 13.5,
    "filter": [
     "all",
     [
@@ -3471,7 +3468,7 @@
       ],
       0
      ],
-     2
+     3
     ]
    ],
    "layout": {
@@ -3480,83 +3477,26 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c43a7d",
+    "line-color": "#7a4bc4",
+    "line-opacity": 0.95,
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1
+      "linear"
      ],
      [
       "zoom"
      ],
      9,
-     1.2,
-     12,
-     2.0,
-     13,
-     2.6
-    ]
-   }
-  },
-  {
-   "id": "routes-bike-major",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 13.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "bike"
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "#e8a5d8",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.5,
+     1.1,
      11,
-     2.5,
+     1.4,
      13,
-     6,
+     2.2,
      15,
-     12,
+     2.8,
      18,
-     18
-    ],
-    "line-opacity": 0.85,
-    "line-dasharray": [
-     1.2,
-     1.0
+     3.8
     ]
    }
   },
@@ -3649,7 +3589,23 @@
     "visibility": "none"
    },
    "paint": {
-    "text-color": "#a61e4d",
+    "text-color": [
+     "case",
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      3
+     ],
+     "#5a2f9e",
+     "#0d5f55"
+    ],
     "text-halo-color": "rgba(255,255,255,0.92)",
     "text-halo-width": 1.5
    }
@@ -5155,6 +5111,24 @@
    "source": "lowways",
    "minzoom": 11,
    "maxzoom": 13,
+   "filter": [
+    "any",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "u"
+     ]
+    ]
+   ],
    "layout": {
     "line-join": "round"
    },
@@ -5835,129 +5809,6 @@
    }
   },
   {
-   "id": "access-no-tint-foot",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
-   "minzoom": 14,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "access"
-      ],
-      "no"
-     ],
-     [
-      "any",
-      [
-       "in",
-       [
-        "get",
-        "class"
-       ],
-       [
-        "literal",
-        [
-         "path",
-         "track"
-        ]
-       ]
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "minor"
-       ],
-       [
-        "all",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "service"
-        ],
-        [
-         "!",
-         [
-          "in",
-          [
-           "get",
-           "service"
-          ],
-          [
-           "literal",
-           [
-            "driveway",
-            "parking_aisle"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ]
-    ],
-    [
-     "!",
-     [
-      "in",
-      [
-       "coalesce",
-       [
-        "get",
-        "foot"
-       ],
-       ""
-      ],
-      [
-       "literal",
-       [
-        "yes",
-        "designated",
-        "permissive"
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
    "id": "access-no-dash-foot",
    "type": "line",
    "source": "base",
@@ -6193,9 +6044,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -6216,151 +6067,6 @@
     "icon-allow-overlap": false,
     "icon-padding": 1,
     "visibility": "visible"
-   }
-  },
-  {
-   "id": "access-no-tint-bike",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
-   "minzoom": 14,
-   "filter": [
-    "all",
-    [
-     "any",
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "access"
-       ],
-       "no"
-      ],
-      [
-       "any",
-       [
-        "in",
-        [
-         "get",
-         "class"
-        ],
-        [
-         "literal",
-         [
-          "path",
-          "track"
-         ]
-        ]
-       ],
-       [
-        "any",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "minor"
-        ],
-        [
-         "all",
-         [
-          "==",
-          [
-           "get",
-           "class"
-          ],
-          "service"
-         ],
-         [
-          "!",
-          [
-           "in",
-           [
-            "get",
-            "service"
-           ],
-           [
-            "literal",
-            [
-             "driveway",
-             "parking_aisle"
-            ]
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "class"
-       ],
-       "path"
-      ],
-      [
-       "==",
-       [
-        "get",
-        "subclass"
-       ],
-       "steps"
-      ]
-     ]
-    ],
-    [
-     "!",
-     [
-      "in",
-      [
-       "coalesce",
-       [
-        "get",
-        "bicycle"
-       ],
-       ""
-      ],
-      [
-       "literal",
-       [
-        "yes",
-        "designated",
-        "permissive"
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
    }
   },
   {
@@ -6643,9 +6349,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [

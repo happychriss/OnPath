@@ -216,6 +216,33 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Quiet towns + path gap fix + forbidden ways (desktop, 2026-10-26, branch `map-quiet-towns`, owner/captain picks
+  after the Phase A renders):**
+  - Pipeline, `extract_overlays.py`:
+    - town flag `u` on overlay paths / streets (`TownIndex`: built-up landuse + 25 m or dense buildings; 2 = town green;
+      never tracks or graded trails);
+    - link pieces `k` = "l" for path ends at hidden sidewalks / crossings (node-based, ≤ 30 m, no detours / spurs < 20 m
+      / chains to loose ends);
+    - `ar` on pedestrian squares.
+  - Style:
+    - Zoomed out: no town paths, `path-low` / `track-low` dropped in format 2, built-up land greyer.
+    - Close in, towns: grey thin footways from z14, white town streets, pale pedestrian streets. Park paths and the
+      countryside unchanged.
+    - Hiking: no green on town footways.
+    - Bikes: thin teal / violet route lines instead of bands; soft glow under bike-friendly ways (`*-glow`, switched by
+      `MapController`).
+    - Forbidden ways: tint band gone; quiet dash on service roads; private driveways / parking aisles hidden below z17;
+      sparser signs.
+  - Cell schema 6, look-only: `cells.py`, `wrangler.toml` and `config.js` at 6; serve and the app stay at 3. It also
+    carries the bike footway-cost router classes.
+  - Docs: `map-colour-analysis.md` "Quiet towns", `map-style-notes.md`, `map-pipeline.md` 5b, `map-hosting.md` §7c,
+    `bike-routing.md`.
+  - Tests:
+    - `StyleFormatTest` (`format2QuietTowns`, `forbiddenNeverLouderThanAStreet`, updated ids) – 1207 unit tests green;
+    - `tools/test_extract_overlays.py` (synthetic OSM; skipped without pyosmium);
+    - worker schema tests updated (CI, Node 24).
+  - Before/after renders are private (`external-docs/map-quiet/after/`). Needs maps-deploy and a phone check after the
+    s6 rebuild.
 - **Trekking gets Touring's busy-traffic penalty (captain decision 2026-10-26, [desktop]):** trekking.brf charges
   busy traffic classes 4+ only (+0.2 / +0.4 / +0.8), as touring.brf does; the two profiles now differ only in
   unpavedPenalty and "v_rough" (`TouringProfileTest`, `BikeProfileCostTest`). Hilden random pairs, Trekking: busy roads
@@ -227,9 +254,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   profiles treated "compacted" as loose ground; side streets were cheaper. trekking.brf / touring.brf: compacted is
   firm like fine_gravel; the +1 for a footway is now only for footways without a bicycle tag (bicycle=no / dismount
   keep +4). Leg 3 → 4 696 → 459 m on the path; guard rails held (docs/design/bike-routing.md decision 11).
-  Tests: `BikeProfileCostTest` (unit), `tools/routing/jvm-test/ItterPathTest.kt`, WayClass selftest. **Open (cloud):**
-  the map's router classes change (the Itter path becomes "good" = green for bikes) – needs a look-only cell schema
-  bump to reach published cells.
+  Tests: `BikeProfileCostTest` (unit), `tools/routing/jvm-test/ItterPathTest.kt`, WayClass selftest. The map's router
+  classes change (the Itter path becomes "good" = green for bikes) – reaches published cells with the look-only cell
+  schema 6 (quiet towns, below).
 - **E2E CorePointsListE2ETest.swipeTheSheetHalfFullHalf flaky – "half sheet after a swipe down" (desktop, 2026-10-26,
   red once on 687745a, rerun green):** the message said nothing more, so StepSheet now writes one events line per
   release ("Sheet let go at X px (steps 536 / 938 / 1602 px, 0 px/s) → step N", `SheetDrag.describe`, unit tested) and

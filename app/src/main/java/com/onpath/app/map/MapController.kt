@@ -568,11 +568,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val trekking = !walking && !mtb && !touring
         // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions
         // 2026-10-22); format 1 has foot / bike only, where "bike" serves every bike activity.
-        val perProfile = runCatching { style.getLayer("access-no-tint-touring") != null }.getOrDefault(false)
+        val perProfile = runCatching { style.getLayer("access-no-dash-touring") != null }.getOrDefault(false)
         val accessOn = mapOf("foot" to walking, "bike" to if (perProfile) trekking else !walking,
             "touring" to (perProfile && touring), "mtb" to (perProfile && mtb))
         val access = accessOn.flatMap { (mode, on) ->
-            listOf("tint", "dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
+            // red dash + no-entry sign (no tint band since 2026-10-26: never louder than a street)
+            listOf("dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
         }
         // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
         // label (mtb:scale too), loose-surface edges for every bike activity. Green ways, forbidden ways and blocking
@@ -592,13 +593,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 "surface-loose-track" to !walking, "surface-loose-path" to !walking,
                 // thin green "good for walking / riding" ways (tools/make_style.py green_ways)
                 "greenway-foot" to walking, "greenway-bike" to trekking,
-                "greenway-touring" to touring, "greenway-mtb" to mtb)) {
+                "greenway-touring" to touring, "greenway-mtb" to mtb,
+                // format 2: soft glow under the ways good for the bike, and under roads with a cycle lane (2026-10-26)
+                "greenway-bike-glow" to trekking, "greenway-touring-glow" to touring, "greenway-mtb-glow" to mtb,
+                "bike-lane-glow" to !walking)) {
             runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
                 .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
         }
         for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
-            // the band plus its major-route highlight (pink edges + name); hiking: the grey pieces above the T level
+            // hiking: the band, its major-route highlight (pink) + name, the grey pieces above the T level; bikes: thin route
+            // lines (long-distance routes on top, "-major-low") + name – a layer the style lacks is skipped
             for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
                     .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }

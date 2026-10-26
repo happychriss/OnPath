@@ -19,7 +19,7 @@ crons = ["* * * * *"]
 [vars]
 ENVIRONMENT = "dev"
 FORMATS = "2"
-CELL_SCHEMA = "5"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "6"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
 BUILDS_ENABLED = "false"
 GCP_JOB = "onpath-cell-dev"
@@ -42,7 +42,7 @@ routes = [{ pattern = "__MAPS_HOST_TEST__", custom_domain = true }]
 [env.test.vars]
 ENVIRONMENT = "test"
 FORMATS = "2"
-CELL_SCHEMA = "5"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "6"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-test"
@@ -73,7 +73,7 @@ routes = [{ pattern = "__MAPS_HOST_PRODUCTION__", custom_domain = true }]
 [env.production.vars]
 ENVIRONMENT = "production"
 FORMATS = "2"
-CELL_SCHEMA = "5"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
+CELL_SCHEMA = "6"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-prod"

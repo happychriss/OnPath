@@ -167,6 +167,56 @@ def _color_at(key, z):
     return st[-1][1]
 
 
+def _num_at(key, z):
+    """Theme number '<key>' at zoom z, interpolated like Z() (exponential with the token's .base, clamped)."""
+    st = style_theme.stops(key)
+    if not st:
+        return T(key)
+    if isinstance(st[0][1], str):
+        return _color_at(key, z)
+    if z <= st[0][0]:
+        return st[0][1]
+    if z >= st[-1][0]:
+        return st[-1][1]
+    base = T(key + ".base", 1.2)
+    for (z0, v0), (z1, v1) in zip(st, st[1:]):
+        if z0 <= z <= z1:
+            t = (z - z0) / (z1 - z0) if base == 1 else (base ** (z - z0) - 1) / (base ** (z1 - z0) - 1)
+            return round(v0 + (v1 - v0) * t, 3)
+    return st[-1][1]
+
+
+# Towns (format 2, extract_overlays.py TownIndex, owner 2026-10-26 "quiet towns"): overlay attribute u = 1 built-up,
+# 2 town green (park, cemetery …). Older cells have no u: every expression below then gives today's look.
+TOWN = ["==", ["coalesce", ["get", "u"], 0], 1]
+NOT_TOWN = ["!", TOWN]
+
+
+def town_or(town_key, other_key):
+    """One zoom curve: the town token on ways with u = 1, the other token elsewhere (a "case" inside every stop – MapLibre
+    allows ["zoom"] only as the input of the top-level curve)."""
+    zs = sorted({z for z, _ in style_theme.stops(town_key)} | {z for z, _ in style_theme.stops(other_key)})
+    if not zs:
+        return ["case", TOWN, T(town_key), T(other_key)]
+    expr = ["interpolate", ["linear"], ["zoom"]]
+    for z in zs:
+        expr += [z, ["case", TOWN, _num_at(town_key, z), _num_at(other_key, z)]]
+    return expr
+
+
+def town_fade(from_zoom, opacity=1):
+    """Opacity: town ways (u = 1) fade in from from_zoom - 1 to from_zoom, other ways stay at `opacity` (a number or an
+    expression without zoom)."""
+    return ["interpolate", ["linear"], ["zoom"], from_zoom - 1, ["case", TOWN, 0, opacity], from_zoom, opacity]
+
+
+def case_and(flt, cond):
+    """Add `cond` to a filter; a router-class filter ["case", has_class, A, B] keeps "case" on top (both branches)."""
+    if flt[0] == "case":
+        return ["case", flt[1], ["all", cond, flt[2]], ["all", cond, flt[3]]]
+    return ["all", cond, flt]
+
+
 HILLSHADE_MAXZOOM = 17
 
 
@@ -262,16 +312,42 @@ STREETS_ZOOM = 13
 OWN_STREETS = {"source": "overlays", "source-layer": "streets"}
 
 
-def street_layer(id_, minzoom, **kw):
+def street_layer(id_, minzoom, low_paint=None, own_paint=None, **kw):
     """A layer of small streets (STREETS classes): format 1 from the base map; format 2 from the base map below
-    STREETS_ZOOM (id + "-low") and from overlays "streets" above (same id, so ids stay the same in both formats)."""
+    STREETS_ZOOM (id + "-low") and from overlays "streets" above (same id, so ids stay the same in both formats).
+    Format 2 only: low_paint / own_paint replace the paint of the "-low" / overlay layer (towns, owner 2026-10-26)."""
     if FMT != 2:
         layer(id_=id_, source="base", **{"source-layer": "transportation"}, minzoom=minzoom, **kw)
         return
     if minzoom < STREETS_ZOOM:
         layer(id_=f"{id_}-low", source="base", **{"source-layer": "transportation"}, minzoom=minzoom,
-              maxzoom=STREETS_ZOOM, **kw)
-    layer(id_=id_, **OWN_STREETS, minzoom=max(minzoom, STREETS_ZOOM), **kw)
+              maxzoom=STREETS_ZOOM, **(kw | ({"paint": low_paint} if low_paint else {})))
+    layer(id_=id_, **OWN_STREETS, minzoom=max(minzoom, STREETS_ZOOM), **(kw | ({"paint": own_paint} if own_paint else {})))
+
+
+# Private driveways / parking aisles (overlay "streets", access no / private): not drawn below PRIVATE_SERVICE_ZOOM –
+# nobody may use them, and close to a town they outnumbered the streets (owner 2026-10-26)
+PRIVATE_SERVICE_ZOOM = 17
+PRIVATE_SERVICE = ["all", ["==", ["get", "access"], "no"],
+                   ["in", ["coalesce", ["get", "service"], ""], ["literal", ["driveway", "parking_aisle"]]]]
+
+
+def street_opacity(opacity):
+    """Opacity of a small street (overlay "streets"): 0 for a private driveway / parking aisle below
+    PRIVATE_SERVICE_ZOOM."""
+    return ["step", ["zoom"], ["case", PRIVATE_SERVICE, 0, opacity], PRIVATE_SERVICE_ZOOM, opacity]
+
+
+def town_street_paint(gid, lane):
+    """Format 2 overlay streets from z13: in town (u = 1) a white lane, a little wider, with light grey edges – the
+    grid reads at a glance; outside towns the 0.7.0 look (warm light lane, two grey edges). lane: the lane, else the
+    two edges (casing)."""
+    gap = town_or(f"street.town.{gid}.gap", f"street.{gid}.gap")
+    if lane:
+        return {"line-color": ["case", TOWN, T("street.town.lane.color"), T("street.lane.color")],
+                "line-opacity": street_opacity(["case", TOWN, 1, T("street.lane.opacity")]), "line-width": gap}
+    return {"line-color": town_or("street.town.edge.color", "street.edge.color"), "line-gap-width": gap,
+            "line-width": Z("street.edge.width"), "line-opacity": street_opacity(1)}
 
 
 def roads():
@@ -288,7 +364,9 @@ def roads():
         kw = dict(type="line", filter=f, layout={"line-join": "round", "line-cap": "round", "line-sort-key": ON_BRIDGE},
                   paint=paint)
         if gid in STREETS:
-            street_layer(f"road-{gid}-casing", max(minz, 10), **kw)
+            low = {"line-color": T("street.low.edge.color"), "line-gap-width": Z("street.low.minor.gap"),
+                   "line-width": Z("street.low.edge.width")} if gid == "minor" else None
+            street_layer(f"road-{gid}-casing", max(minz, 10), low_paint=low, own_paint=town_street_paint(gid, False), **kw)
         else:
             layer(id_=f"road-{gid}-casing", source="base", **{"source-layer": "transportation"}, minzoom=max(minz, 10), **kw)
     for gid, classes, minz, col in ROAD_GROUPS:
@@ -351,13 +429,22 @@ def lanes():
     slane = {"line-color": T("street.lane.color"), "line-opacity": T("street.lane.opacity")}
     layer(id_="track-own-paved-lane", type="line", **own, filter=["all", ["==", k, "t"], ["has", "pv"]],
           layout=rl, paint={**slane, "line-width": Z("street.minor.gap")})
+    if FMT == 2:
+        # pedestrian streets in town: a pale warm lane like a small street (not a dark line); squares (area=yes, "ar")
+        # are left out – their outline is no street
+        layer(id_="pedestrian-town", type="line", **own_paths(), minzoom=14,
+              filter=["all", ["==", SUB, "pedestrian"], NOT_TUNNEL_OWN, TOWN, ["!", ["has", "ar"]]], layout=rl,
+              paint={"line-color": T("pedestrian.town.color"), "line-width": Z("pedestrian.town.width")})
     for gid, classes, minz, col in ROAD_GROUPS:
         f = ["all", ["in", cls, ["literal", classes]], not_tunnel]
         lay = {**rl, "line-sort-key": ON_BRIDGE}
         if gid in STREETS:
             # small streets: light lane exactly the gap between the two grey edges (edges stay as in 0.7.0)
+            low = {"line-color": T("street.low.lane.color"), "line-opacity": T("street.lane.opacity"),
+                   "line-width": Z("street.low.minor.gap")} if gid == "minor" else None
             street_layer(f"road-{gid}-lane", max(minz, 10), type="line", filter=f, layout=lay,
-                         paint={**slane, "line-width": Z(f"street.{gid}.gap")})
+                         paint={**slane, "line-width": Z(f"street.{gid}.gap")}, low_paint=low,
+                         own_paint=town_street_paint(gid, True))
             continue
         fill = T(f"{col}.fill")
         layer(id_=f"road-{gid}", type="line", source="base", **{"source-layer": "transportation"},
@@ -405,8 +492,10 @@ def route_bands():
                   layout={"line-join": "round", "line-cap": "round", "visibility": vis},
                   paint={"line-color": T("route.band.edge.color"), "line-width": Z("route.band.edge.width")})
         band = ["all", flt, ["!", ["has", "majoronly"]]]
-        if kind == "hike":
-            band = hike_band_filter(DEFAULT_SAC_LIMIT, over=False)
+        if kind == "bike":
+            bike_route_lines(minz, band)
+            continue
+        band = hike_band_filter(DEFAULT_SAC_LIMIT, over=False)
         layer(id_=f"routes-{kind}", type="line", source="routes", minzoom=minz,
               filter=band,
               layout={"line-join": "round", "line-cap": "round", "visibility": vis},
@@ -444,6 +533,30 @@ def route_bands():
                      "text-halo-width": 1.5})
 
 
+def bike_route_lines(minz, band):
+    """Signed cycle routes for the bike activities (owner 2026-10-26): thin lines on the way instead of the 40 % band –
+    in cycling regions the networks are so dense that bands covered whole towns. Local / regional routes teal, national
+    and long-distance routes (net >= 3: national, EuroVelo) violet on top, with the name. Lighter while zoomed out.
+    Same ids as before (routes-bike, routes-bike-major-low, routes-bike-major-label; MapController.setOverlay)."""
+    lay = {"line-join": "round", "line-cap": "round", "visibility": "none"}
+    layer(id_="routes-bike", type="line", source="routes", minzoom=minz, filter=band, layout=lay,
+          paint={"line-color": T("route.bike.color"), "line-opacity": Z("route.bike.opacity"),
+                 "line-width": Z("route.bike.width")})
+    long = [">=", ["coalesce", ["get", "net"], 0], 3]
+    layer(id_="routes-bike-major-low", type="line", source="routes", minzoom=minz,
+          filter=["all", ["==", ["get", "kind"], "bike"], long], layout=lay,
+          paint={"line-color": T("route.bike.long.color"), "line-opacity": T("route.bike.long.opacity"),
+                 "line-width": Z("route.bike.long.width")})
+    major = ["all", ["==", ["get", "kind"], "bike"], [">=", ["coalesce", ["get", "net"], 0], 2]]
+    layer(id_="routes-bike-major-label", type="symbol", source="routes", minzoom=12,
+          filter=["all", major, ["!=", ["coalesce", ["get", "name"], ""], ""]],
+          layout={"symbol-placement": "line", "symbol-spacing": interp(12, 300, 16, 500),
+                  "text-field": ["get", "name"], "text-font": T("font.medium"), "text-size": interp(12, 10, 16, 12, base=1),
+                  "text-max-angle": 30, "text-padding": 4, "text-offset": [0, 1.0], "visibility": "none"},
+          paint={"text-color": ["case", long, T("route.bike.long.label.color"), T("route.bike.label.color")],
+                 "text-halo-color": T("label.halo.color"), "text-halo-width": 1.5})
+
+
 def hike_band_filter(limit, over):
     """Hiking route band pieces at / below (over=False) or above (over=True) the T level `limit` (route "sac", set by
     extract_overlays.py; pieces without it count as T0), and pieces the hiking profile forbids at any level ("hx":
@@ -470,27 +583,26 @@ def paths():
     pw = Z("path.width")
     fb = {"onpath:fallback-for": "paths"}
     tl = {"source": "base", "source-layer": "transportation"}
-    # zoomed out (base map): one thin solid darker line
-    layer(id_="track-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=base_track,
-          layout={"line-join": "round"}, paint={"line-color": T("track.color"), "line-width": Z("track.low.width")})
-    layer(id_="path-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]],
-          layout={"line-join": "round"}, paint={"line-color": T("path.low.color"), "line-width": pw})
+    # zoomed out (base map): one thin solid darker line. Format 1 only: format 2's overlay "paths" has every path / track
+    # at z11-12 (trails-low), with the town flag – the base map's copy drew town footways a second time (2026-10-26)
+    if FMT == 1:
+        layer(id_="track-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=base_track,
+              layout={"line-join": "round"}, paint={"line-color": T("track.color"), "line-width": Z("track.low.width")})
+        layer(id_="path-low", type="line", **tl, minzoom=12, maxzoom=LOW_ZOOM_SOLID, filter=["all", foot, ["!", steps]],
+              layout={"line-join": "round"}, paint={"line-color": T("path.low.color"), "line-width": pw})
     # fallback without paths.geojson (format 1 only: format 2 always has the overlay)
     if FMT == 1:
         paths_base_fallback(tl, base_track, foot, steps, pw, fb)
     if FMT == 2:
         own = own_paths()
-        cw = Z("path.width")  # a plain path line (owner 2026-10-21: no blue ways)
         cyc = ["all", ["==", SUB, "cycleway"], NOT_TUNNEL_OWN]
         layer(id_="cycleway", type="line", **own, minzoom=13, layout={"line-join": "round"},
-              filter=["all", cyc, ["!", ["has", "uv"]]],
-              paint={"line-color": T("path.color"), "line-width": cw})
+              filter=["all", cyc, ["!", ["has", "uv"]]], paint=path_paint())
         layer(id_="cycleway-unpaved", type="line", **own, minzoom=13, layout={"line-join": "round"},
-              filter=["all", cyc, ["has", "uv"]],
-              paint={"line-color": T("path.color"), "line-width": cw, "line-dasharray": T("cycleway.dash")})
+              filter=["all", cyc, ["has", "uv"]], paint={**path_paint(), "line-dasharray": T("cycleway.dash")})
         layer(id_="path-steps", type="line", **own, minzoom=14, layout={"line-join": "round"},
               filter=["all", ["==", SUB, "steps"], NOT_TUNNEL_OWN],
-              paint={"line-color": T("path.color"), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
+              paint={**path_paint(), "line-width": Z("steps.width"), "line-dasharray": T("steps.dash")})
     else:
         paths_base_lines(tl, foot, steps)
     # own exact data
@@ -498,7 +610,22 @@ def paths():
     k = ["get", "k"]
     layer(id_="paths-own", type="line", **own,
           filter=["all", ["==", k, "p"], ["!", ["has", "st"]], ["<", ["get", "sac"], 2], ["<", ["coalesce", ["get", "vis"], 0], 3]],
-          layout={"line-join": "round", "line-cap": "round"}, paint={"line-color": T("path.color"), "line-width": pw})
+          layout={"line-join": "round", "line-cap": "round"}, paint=path_paint())
+    if FMT == 2:
+        # gap fix (extract_overlays.py link_pieces): the hidden sidewalk / crossing piece between a path end and the
+        # nearest drawn way, drawn like the path it continues
+        layer(id_="paths-link", type="line", **own, filter=["==", k, "l"],
+              layout={"line-join": "round", "line-cap": "round"}, paint=path_paint())
+
+
+def path_paint():
+    """Path line: near-black in the country and in parks; in towns (u = 1, format 2) thin mid-grey and only from z14
+    (fades in from z13) – town footways were hundreds of dark dashes zoomed out (owner 2026-10-26). Without u (format 1,
+    older cells) always the plain path line."""
+    if FMT != 2:
+        return {"line-color": T("path.color"), "line-width": Z("path.width")}
+    return {"line-color": ["case", TOWN, T("path.town.color"), T("path.color")],
+            "line-width": town_or("path.town.width", "path.width"), "line-opacity": town_fade(14)}
 
 
 def paths_base_fallback(tl, base_track, foot, steps, pw, fb):
@@ -552,7 +679,10 @@ def trails():
     # Zoomed out: one thin solid dark line for every graded trail (dots would only read as noise).
     # Zoomed out every path / track from our own data (the base map has them only from z12–13), so every route line
     # sits on a visible way – like Komoot. Tracks lighter than paths.
+    # Towns (format 2 "u", 2026-10-26): no footways / paths of built-up land or town parks zoomed out – they were
+    # hundreds of short dark dashes; tracks always stay.
     layer(id_="trails-low", type="line", source="lowways", minzoom=11, maxzoom=LOW_ZOOM_SOLID,
+          filter=["any", ["==", ["get", "k"], "t"], ["!", ["has", "u"]]],
           layout={"line-join": "round"},
           paint={"line-color": ["case", ["==", ["get", "k"], "t"], T("track.low.color"), T("trail.low.color")],
                  # one zoom curve with the case inside (MapLibre allows only one zoom expression per property;
@@ -619,8 +749,11 @@ def green_ways():
         cls = ["get", "class"]; sub = ["get", "subclass"]
         path = ["all", ["==", cls, "path"], ["!=", ["get", "brunnel"], "tunnel"]]
         is_path = ["==", sub, "path"]
+    ped = ["all", path, ["==", sub, "pedestrian"]]
+    if FMT == 2:
+        ped += [NOT_TOWN, ["!", ["has", "ar"]]]  # in town: pedestrian-town (lanes()); squares: no outline line
     layer(id_="pedestrian-line", type="line", **src, minzoom=13,
-          filter=["all", path, ["==", sub, "pedestrian"]], layout={"line-join": "round", "line-cap": "round"},
+          filter=ped, layout={"line-join": "round", "line-cap": "round"},
           paint={"line-color": T("path.color"), "line-width": Z("greenway.width")})
     # never green when the activity may not use the way (owner 2026-10-21, private garden footway at Plarserhof):
     # foot / bicycle = no|private, or access=no/private without foot / bicycle = yes|designated|permissive – the same
@@ -663,16 +796,51 @@ def green_ways():
     for mode, flt, visible in (("foot", foot, True), ("bike", bike_way(["yes", "designated"], 1, 1), False),
                                ("touring", bike_way(["yes", "designated"], 1, 1), False),
                                ("mtb", bike_way(["yes", "designated"], 2, 3), False)):
+        paint = {"line-color": T("greenway.color"), "line-width": Z("greenway.width")}
         if FMT == 2:
             flt = ["case", has_class(mode), ["all", hike_kind if mode == "foot" else bike_kind, class_is(mode, 0)], flt]
+            # towns (2026-10-26): hiking – no green line on town footways / sidewalks (every one was green: in a town
+            # anything is walkable, the line only cluttered); bikes – green ways in town only from z14 (fade in)
+            flt = case_and(flt, ["!", ["has", "ar"]])
+            if mode == "foot":
+                flt = case_and(flt, NOT_TOWN)
+            else:
+                paint["line-opacity"] = town_fade(14)
+        GREENWAY_FILTERS[mode] = flt
         layer(id_=f"greenway-{mode}", type="line", **src, minzoom=13,
               filter=flt, layout={"line-join": "round", "line-cap": "round", "visibility": "visible" if visible else "none"},
-              paint={"line-color": T("greenway.color"), "line-width": Z("greenway.width")})
+              paint=paint)
+
+
+GREENWAY_FILTERS = {}  # mode -> filter of greenway-<mode> (green_ways(), read by bike_glow())
+
+
+def bike_glow():
+    """Format 2, bike activities: a soft mint glow under the ways good for the bike – the bike green ways and roads with
+    a cycle lane / track (overlay cwl / cwr l | t) – from z13, in towns from z14 (owner 2026-10-26). Drawn below every
+    road casing, so on a road only the part beside it shows. One layer per profile family + one for the cycle lanes
+    (MapController.setOverlay)."""
+    glow = {"line-color": T("greenway.glow.color"), "line-opacity": town_fade(14, T("greenway.glow.opacity"))}
+    lay = {"line-join": "round", "line-cap": "round", "visibility": "none"}
+    first = len(L)
+    for mode in ("bike", "touring", "mtb"):
+        layer(id_=f"greenway-{mode}-glow", type="line", **own_paths(), minzoom=13, filter=GREENWAY_FILTERS[mode],
+              layout=lay, paint={**glow, "line-width": Z("greenway.glow.width")})
+
+    def lane(key):
+        return ["in", ["coalesce", ["get", key], ""], ["literal", ["l", "t"]]]
+    layer(id_="bike-lane-glow", type="line", **own_paths(), minzoom=13,
+          filter=["all", ["==", ["get", "k"], "x"], ["any", lane("cwl"), lane("cwr")]],
+          layout=lay, paint={**glow, "line-width": Z("bike.lane.glow.width")})
+    # the filters exist only after green_ways(): move the glow layers below the first road casing
+    glows, L[first:] = L[first:], []
+    at = next(i for i, lyr in enumerate(L) if lyr["id"].startswith("road-"))
+    L[at:at] = glows
 
 
 def access_restrictions():
-    """Ways you may not use, like Komoot's blocked sign: a light red tint along the way (z14+) and a small red
-    no-entry sign repeated along it (z15+). OpenMapTiles sets "access": "no" for OSM access=no/private, but many
+    """Ways you may not use: a red dash along the way and a small red no-entry sign repeated along it (zooms and
+    strength below; no tint band since 2026-10-26). OpenMapTiles sets "access": "no" for OSM access=no/private, but many
     marked trails are "access=no + foot=yes" (closed to vehicles, open to walkers) – so the marking depends on
     the activity: the "-foot" layers (hiking, visible by default) skip ways with foot=yes, the "-bike" layers
     (bike profiles, hidden by default) skip ways with bicycle=yes. The app switches them with the activity
@@ -713,22 +881,29 @@ def access_restrictions():
         if FMT != 2:
             return old
         return ["case", has_class(mode), ["all", class_where[suffix], class_is(mode, 2)], old]
+    # Owner 2026-10-26 (field test, industrial area): a forbidden way is never louder than a street at the same zoom.
+    # No tint band any more (it was wider than a minor street). Paths / tracks (they matter for hikers): a clear red
+    # dash from z13 (town paths from z15, fading in), the no-entry sign from z15, sparse. Service roads / yards: a thin
+    # muted dash from z14, the sign only from z17 and about once per way. Driveways / parking aisles carry no marking
+    # (`street` above); private ones are not drawn below z17 at all (roads()).
     for mode, tag, visible in modes:
         vis = {"visibility": "visible" if visible else "none"}
         for suffix, src, where in parts:
-            layer(id_=f"access-no-tint-{mode}{suffix}", type="line", **src, minzoom=14,
-                  filter=blocked_filter(mode, tag, suffix, where), layout={"line-join": "round", "line-cap": "round", **vis},
-                  paint={"line-color": T("access.no.tint.color"), "line-width": Z("access.no.tint.width")})
-        # owner decision 2026-10-22 (4): forbidden = red and dashed – short red dashes along the way from z13
+            if suffix == "-service":
+                paint = {"line-color": T("forbidden.service.color"), "line-width": Z("forbidden.service.width"),
+                         "line-opacity": T("forbidden.service.opacity"), "line-dasharray": T("forbidden.dash", [2, 2])}
+            else:
+                paint = {"line-color": T("forbidden.color", "#c62828"), "line-width": Z("forbidden.width", 1.4),
+                         "line-dasharray": T("forbidden.dash", [2, 2])}
+                if FMT == 2:
+                    paint["line-opacity"] = town_fade(15)
+            layer(id_=f"access-no-dash-{mode}{suffix}", type="line", **src, minzoom=14 if suffix else 13,
+                  filter=blocked_filter(mode, tag, suffix, where), layout={"line-join": "round", **vis}, paint=paint)
         for suffix, src, where in parts:
-            layer(id_=f"access-no-dash-{mode}{suffix}", type="line", **src, minzoom=13,
-                  filter=blocked_filter(mode, tag, suffix, where), layout={"line-join": "round", **vis},
-                  paint={"line-color": T("forbidden.color", "#c62828"), "line-width": Z("forbidden.width", 1.4),
-                         "line-dasharray": T("forbidden.dash", [2, 2])})
-        for suffix, src, where in parts:
-            layer(id_=f"access-no-sign-{mode}{suffix}", type="symbol", **src, minzoom=15,
+            spacing = interp(17, 600, 18, 800) if suffix else interp(15, 250, 18, 400)
+            layer(id_=f"access-no-sign-{mode}{suffix}", type="symbol", **src, minzoom=17 if suffix else 15,
                   filter=blocked_filter(mode, tag, suffix, where),
-                  layout={"symbol-placement": "line", "symbol-spacing": interp(15, 90, 18, 160),
+                  layout={"symbol-placement": "line", "symbol-spacing": spacing,
                           "icon-image": "access-no", "icon-size": interp(15, 0.75, 18, 1.0, base=1),
                           "icon-rotation-alignment": "viewport", "icon-allow-overlap": False, "icon-padding": 1, **vis})
 
@@ -1071,6 +1246,8 @@ def build(theme=DEFAULT_THEME, fmt=1):
     # labels, so the path line inside the band stays sharp.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); roads(); track_edges(); lanes(); route_bands(); railways(); paths()
     green_ways()
+    if FMT == 2:
+        bike_glow()
     trails(); surface_loose(); access_restrictions()
     if FMT == 2:
         via_ferrata(); too_hard(); bike_map(); barriers()

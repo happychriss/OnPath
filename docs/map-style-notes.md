@@ -292,3 +292,38 @@ terrain 1.0 → 3.1 MB (Meran 10/543/361: 1.02 → 3.13 MB, 542/361 1.01 → 3.1
 ~9.3 → ~11.4 MB (+23 %); test region terrain 8.7 → 21.9 MB. Mean brightness of the map at Partschins (z11 / 13 / 15):
 −0.2 / +2.2 / +1.3 % against main. Cells of schema 2 (terrain z12) mixed with new ones show no relief at z13 tiles of
 the old cells until they are rebuilt (the s3 bump asks for all of them).
+
+## Quiet towns, cycle-route lines, forbidden ways (2026-10-26, owner field report; schema 6 cells)
+Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overlay `u` (1 built-up, 2 town green),
+`k` = "l" link pieces, `ar` squares (`docs/map-pipeline.md` 5b). Cells without them look as before.
+- **Paths** (`path_paint()` in `make_style.py`, used by `paths-own`, `paths-link`, `cycleway`, `cycleway-unpaved`,
+  `path-steps`):
+  - Colour: `case u = 1 → path.town.color`, else the path ink.
+  - Width: `town_or()`, a case inside every zoom stop – MapLibre allows `["zoom"]` only as the input of the top-level
+    curve.
+  - Opacity: `town_fade(14)`, so town paths fade in from z13 to z14.
+  - The same layer ids as before. The app switches no new layers for towns; zoom inside a filter is avoided on purpose,
+    because overzoomed tiles evaluate it at the tile zoom.
+- **Zoomed out:** `trails-low` leaves out paths with any `u`. Format 2 has no `path-low` / `track-low` any more (the base
+  map's copy drew town footways twice).
+- **Streets:**
+  - Overlay `streets` layers (z13+) read `u`: white lane, light edges, a little wider (`town_street_paint()`).
+  - The base-map `-low` layers (z11–12) get their own `street.low.*` paint.
+  - Private driveways / parking aisles: opacity 0 below z17 (`street_opacity()`).
+- **Pedestrian:** `pedestrian-town` is a lane in `lanes()`, before the street lanes. `pedestrian-line` and the green ways
+  skip squares (`ar`).
+- **Green ways:**
+  - `greenway-foot` skips `u = 1`.
+  - The bike green ways fade in at z14 in towns.
+  - New for bike activities, hidden by default and switched by `MapController.setOverlay`: `greenway-bike-glow`,
+    `greenway-touring-glow`, `greenway-mtb-glow`, `bike-lane-glow`. `bike_glow()` builds them after `green_ways()`
+    (it needs the same filters) and moves them below the first road casing.
+- **Cycle routes:** `bike_route_lines()` – `routes-bike` thin teal, `routes-bike-major-low` violet for net ≥ 3 (no
+  maxzoom), `routes-bike-major-label`. `routes-bike-major` (pink dashes) is gone; `setOverlay` skips a missing layer.
+  Hiking keeps its band.
+- **Forbidden:**
+  - `access-no-tint-*` removed. `setOverlay` detects the per-profile style by `access-no-dash-touring`.
+  - Path / track dash from z13, town paths from z15.
+  - Service dash: thin, muted, from z14.
+  - Signs: from z15 (paths, spacing 250–400) / z17 (service, 600–800).
+  - `StyleFormatTest.forbiddenNeverLouderThanAStreet` checks the widths at z14–18.

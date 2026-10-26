@@ -126,3 +126,7 @@ Sidewalks and crossings (`footway=sidewalk|crossing`) are not drawn (k="x" in fo
 Hilden sample (61 of 344) stop at an invisible piece before the street. Drawing all crossings is no fix (301 crossing
 ends would then dangle at hidden sidewalks). Proposal: in `extract_overlays.py` draw only the hidden pieces that link
 a drawn path end to the nearest drawn way (short chain through sidewalk / crossing, ≤ ~30 m) – needs a map rebuild.
+**Done 2026-10-26 (cell schema 6):** `extract_overlays.py` `link_pieces` draws exactly these hidden pieces as
+`k` = "l" (node-based, ≤ 30 m; no link for detours, path pieces < 20 m or towards another loose end) – see
+docs/design/map-colour-analysis.md "Quiet towns".
+

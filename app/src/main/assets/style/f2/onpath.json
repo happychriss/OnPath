@@ -363,7 +363,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#e6e5e1",
+    "fill-color": "#e2e0db",
     "fill-opacity": [
      "interpolate",
      [
@@ -374,8 +374,8 @@
       "zoom"
      ],
      9,
-     0.55,
-     13,
+     0.6,
+     11,
      1
     ]
    }
@@ -403,7 +403,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#e0dadb"
+    "fill-color": "#dcd8d6"
    }
   },
   {
@@ -1081,6 +1081,1125 @@
    }
   },
   {
+   "id": "greenway-bike-glow",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "case",
+    [
+     "has",
+     "ct"
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "all",
+       [
+        "!",
+        [
+         "has",
+         "tn"
+        ]
+       ],
+       [
+        "any",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "sub"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "footway",
+           "pedestrian",
+           "cycleway",
+           "bridleway"
+          ]
+         ]
+        ],
+        [
+         "all",
+         [
+          "!",
+          [
+           "has",
+           "sub"
+          ]
+         ],
+         [
+          "!=",
+          [
+           "get",
+           "k"
+          ],
+          "t"
+         ]
+        ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "ct"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
+       ],
+       [
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
+        [
+         "coalesce",
+         [
+          "get",
+          "sub"
+         ],
+         ""
+        ],
+        "cycleway"
+       ],
+       [
+        "all",
+        [
+         "any",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       1
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       1
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#a9e4c6",
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      0.55
+     ],
+     14,
+     0.55
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     2.5,
+     15,
+     5,
+     17,
+     8,
+     18,
+     10
+    ]
+   }
+  },
+  {
+   "id": "greenway-touring-glow",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "case",
+    [
+     "has",
+     "cf"
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "all",
+       [
+        "!",
+        [
+         "has",
+         "tn"
+        ]
+       ],
+       [
+        "any",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "sub"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "footway",
+           "pedestrian",
+           "cycleway",
+           "bridleway"
+          ]
+         ]
+        ],
+        [
+         "all",
+         [
+          "!",
+          [
+           "has",
+           "sub"
+          ]
+         ],
+         [
+          "!=",
+          [
+           "get",
+           "k"
+          ],
+          "t"
+         ]
+        ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "cf"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
+       ],
+       [
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
+        [
+         "coalesce",
+         [
+          "get",
+          "sub"
+         ],
+         ""
+        ],
+        "cycleway"
+       ],
+       [
+        "all",
+        [
+         "any",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       1
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       1
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#a9e4c6",
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      0.55
+     ],
+     14,
+     0.55
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     2.5,
+     15,
+     5,
+     17,
+     8,
+     18,
+     10
+    ]
+   }
+  },
+  {
+   "id": "greenway-mtb-glow",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "case",
+    [
+     "has",
+     "cm"
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "all",
+       [
+        "!",
+        [
+         "has",
+         "tn"
+        ]
+       ],
+       [
+        "any",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "sub"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "footway",
+           "pedestrian",
+           "cycleway",
+           "bridleway"
+          ]
+         ]
+        ],
+        [
+         "all",
+         [
+          "!",
+          [
+           "has",
+           "sub"
+          ]
+         ],
+         [
+          "!=",
+          [
+           "get",
+           "k"
+          ],
+          "t"
+         ]
+        ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "cm"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
+       ],
+       [
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
+        [
+         "coalesce",
+         [
+          "get",
+          "sub"
+         ],
+         ""
+        ],
+        "cycleway"
+       ],
+       [
+        "all",
+        [
+         "any",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       2
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       3
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#a9e4c6",
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      0.55
+     ],
+     14,
+     0.55
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     2.5,
+     15,
+     5,
+     17,
+     8,
+     18,
+     10
+    ]
+   }
+  },
+  {
+   "id": "bike-lane-glow",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "x"
+    ],
+    [
+     "any",
+     [
+      "in",
+      [
+       "coalesce",
+       [
+        "get",
+        "cwl"
+       ],
+       ""
+      ],
+      [
+       "literal",
+       [
+        "l",
+        "t"
+       ]
+      ]
+     ],
+     [
+      "in",
+      [
+       "coalesce",
+       [
+        "get",
+        "cwr"
+       ],
+       ""
+      ],
+      [
+       "literal",
+       [
+        "l",
+        "t"
+       ]
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#a9e4c6",
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      0.55
+     ],
+     14,
+     0.55
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     6,
+     15,
+     12,
+     17,
+     22,
+     18,
+     30
+    ]
+   }
+  },
+  {
    "id": "road-service-casing",
    "type": "line",
    "source": "overlays",
@@ -1128,24 +2247,149 @@
     ]
    },
    "paint": {
-    "line-color": "#7d766d",
-    "line-gap-width": [
+    "line-color": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     0.6,
-     14,
-     1.6,
-     16,
-     3.0,
-     18,
-     5.5
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "#b8b2aa",
+      "#7d766d"
+     ],
+     15.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "rgba(163,156,147,1.00)",
+      "#7d766d"
+     ],
+     17.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "#8f887f",
+      "#7d766d"
+     ]
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.6
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.8,
+      1.6
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      3.2,
+      3.0
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      5.5,
+      5.5
+     ]
     ],
     "line-width": [
      "interpolate",
@@ -1164,6 +2408,48 @@
      1.2,
      18,
      1.6
+    ],
+    "line-opacity": [
+     "step",
+     [
+      "zoom"
+     ],
+     [
+      "case",
+      [
+       "all",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "service"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ],
+      0,
+      1
+     ],
+     17,
+     1
     ]
    }
   },
@@ -1216,42 +2502,34 @@
     ]
    },
    "paint": {
-    "line-color": "#7d766d",
+    "line-color": "#958e85",
     "line-gap-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
      11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
+     0.7,
+     12,
+     1.25,
+     13,
+     1.5
     ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     12,
-     0.6,
-     14,
-     0.9,
-     16,
-     1.2,
-     18,
-     1.6
+     11,
+     0.5,
+     13,
+     0.6
     ]
    }
   },
@@ -1303,24 +2581,167 @@
     ]
    },
    "paint": {
-    "line-color": "#7d766d",
-    "line-gap-width": [
+    "line-color": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "#b8b2aa",
+      "#7d766d"
+     ],
+     15.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "rgba(163,156,147,1.00)",
+      "#7d766d"
+     ],
+     17.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      "#8f887f",
+      "#7d766d"
+     ]
+    ],
+    "line-gap-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     11.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.9,
+      0.6
+     ],
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.9,
+      1.446
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.6,
+      2.0
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      4.4,
+      3.6
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      8,
+      7
+     ]
     ],
     "line-width": [
      "interpolate",
@@ -1339,6 +2760,48 @@
      1.2,
      18,
      1.6
+    ],
+    "line-opacity": [
+     "step",
+     [
+      "zoom"
+     ],
+     [
+      "case",
+      [
+       "all",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "service"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ],
+      0,
+      1
+     ],
+     17,
+     1
     ]
    }
   },
@@ -2735,6 +4198,77 @@
    }
   },
   {
+   "id": "pedestrian-town",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 14,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "sub"
+      ],
+      ""
+     ],
+     "pedestrian"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "tn"
+     ]
+    ],
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "u"
+      ],
+      0
+     ],
+     1
+    ],
+    [
+     "!",
+     [
+      "has",
+      "ar"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": "#f1ebe0",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     2.6,
+     16,
+     6,
+     18,
+     14
+    ]
+   }
+  },
+  {
    "id": "road-service-lane",
    "type": "line",
    "source": "overlays",
@@ -2782,25 +4316,177 @@
     ]
    },
    "paint": {
-    "line-color": "#f9f7f1",
-    "line-opacity": 0.92,
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#ffffff",
+     "#f9f7f1"
+    ],
+    "line-opacity": [
+     "step",
+     [
+      "zoom"
+     ],
+     [
+      "case",
+      [
+       "all",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "service"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ],
+      0,
+      [
+       "case",
+       [
+        "==",
+        [
+         "coalesce",
+         [
+          "get",
+          "u"
+         ],
+         0
+        ],
+        1
+       ],
+       1,
+       0.92
+      ]
+     ],
+     17,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1,
+      0.92
+     ]
+    ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     0.6,
-     14,
-     1.6,
-     16,
-     3.0,
-     18,
-     5.5
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.6
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.8,
+      1.6
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      3.2,
+      3.0
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      5.5,
+      5.5
+     ]
     ]
    }
   },
@@ -2853,25 +4539,22 @@
     ]
    },
    "paint": {
-    "line-color": "#f9f7f1",
+    "line-color": "#fdfcf9",
     "line-opacity": 0.92,
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
      11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
+     0.7,
+     12,
+     1.25,
+     13,
+     1.5
     ]
    }
   },
@@ -2923,25 +4606,195 @@
     ]
    },
    "paint": {
-    "line-color": "#f9f7f1",
-    "line-opacity": 0.92,
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#ffffff",
+     "#f9f7f1"
+    ],
+    "line-opacity": [
+     "step",
+     [
+      "zoom"
+     ],
+     [
+      "case",
+      [
+       "all",
+       [
+        "==",
+        [
+         "get",
+         "access"
+        ],
+        "no"
+       ],
+       [
+        "in",
+        [
+         "coalesce",
+         [
+          "get",
+          "service"
+         ],
+         ""
+        ],
+        [
+         "literal",
+         [
+          "driveway",
+          "parking_aisle"
+         ]
+        ]
+       ]
+      ],
+      0,
+      [
+       "case",
+       [
+        "==",
+        [
+         "coalesce",
+         [
+          "get",
+          "u"
+         ],
+         0
+        ],
+        1
+       ],
+       1,
+       0.92
+      ]
+     ],
+     17,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1,
+      0.92
+     ]
+    ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     11,
-     0.6,
-     14,
-     2.0,
-     16,
-     3.6,
-     18,
-     7
+     11.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.9,
+      0.6
+     ],
+     13.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.9,
+      1.446
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.6,
+      2.0
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      4.4,
+      3.6
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      8,
+      7
+     ]
     ]
    }
   },
@@ -3665,7 +5518,8 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": [
+    "line-color": "#138a7c",
+    "line-opacity": [
      "interpolate",
      [
       "linear"
@@ -3673,12 +5527,13 @@
      [
       "zoom"
      ],
+     11,
+     0.55,
+     12,
+     0.65,
      13,
-     "#168403",
-     14,
-     "#168403"
+     0.9
     ],
-    "line-opacity": 0.4,
     "line-width": [
      "interpolate",
      [
@@ -3688,21 +5543,17 @@
       "zoom"
      ],
      9,
-     1.6,
+     0.8,
      11,
-     2.8,
+     1.0,
      12,
-     3.8,
+     1.3,
      13,
-     4.6,
-     14,
-     7,
+     2.0,
      15,
-     9.5,
-     16,
-     12,
+     2.6,
      18,
-     17
+     3.6
     ]
    }
   },
@@ -3712,7 +5563,6 @@
    "source": "overlays",
    "source-layer": "routes",
    "minzoom": 9,
-   "maxzoom": 13.5,
    "filter": [
     "all",
     [
@@ -3733,7 +5583,7 @@
       ],
       0
      ],
-     2
+     3
     ]
    ],
    "layout": {
@@ -3742,84 +5592,26 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c43a7d",
+    "line-color": "#7a4bc4",
+    "line-opacity": 0.95,
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1
+      "linear"
      ],
      [
       "zoom"
      ],
      9,
-     1.2,
-     12,
-     2.0,
-     13,
-     2.6
-    ]
-   }
-  },
-  {
-   "id": "routes-bike-major",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "routes",
-   "minzoom": 13.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "bike"
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "#e8a5d8",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.5,
+     1.1,
      11,
-     2.5,
+     1.4,
      13,
-     6,
+     2.2,
      15,
-     12,
+     2.8,
      18,
-     18
-    ],
-    "line-opacity": 0.85,
-    "line-dasharray": [
-     1.2,
-     1.0
+     3.8
     ]
    }
   },
@@ -3913,7 +5705,23 @@
     "visibility": "none"
    },
    "paint": {
-    "text-color": "#a61e4d",
+    "text-color": [
+     "case",
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      3
+     ],
+     "#5a2f9e",
+     "#0d5f55"
+    ],
     "text-halo-color": "rgba(255,255,255,0.92)",
     "text-halo-width": 1.5
    }
@@ -4100,126 +5908,6 @@
    }
   },
   {
-   "id": "track-low",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
-   "minzoom": 12,
-   "maxzoom": 13,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "class"
-     ],
-     "track"
-    ],
-    [
-     "!=",
-     [
-      "get",
-      "brunnel"
-     ],
-     "tunnel"
-    ]
-   ],
-   "layout": {
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#6b4a2b",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     0.9,
-     13,
-     1.2
-    ]
-   }
-  },
-  {
-   "id": "path-low",
-   "type": "line",
-   "source": "base",
-   "source-layer": "transportation",
-   "minzoom": 12,
-   "maxzoom": 13,
-   "filter": [
-    "all",
-    [
-     "all",
-     [
-      "==",
-      [
-       "get",
-       "class"
-      ],
-      "path"
-     ],
-     [
-      "!=",
-      [
-       "get",
-       "subclass"
-      ],
-      "cycleway"
-     ],
-     [
-      "!=",
-      [
-       "get",
-       "brunnel"
-      ],
-      "tunnel"
-     ]
-    ],
-    [
-     "!",
-     [
-      "==",
-      [
-       "get",
-       "subclass"
-      ],
-      "steps"
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round"
-   },
-   "paint": {
-    "line-color": "#1e150e",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     12,
-     0.8,
-     14,
-     1.35,
-     16,
-     2.2,
-     18,
-     3.3
-    ]
-   }
-  },
-  {
    "id": "cycleway",
    "type": "line",
    "source": "overlays",
@@ -4261,24 +5949,132 @@
     ]
    ],
    "paint": {
-    "line-color": "#33251a",
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#8e8780",
+     "#33251a"
+    ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     12,
-     0.8,
+     12.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.8
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      1.35
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.4,
+      2.2
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.2,
+      3.3
+     ]
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
      14,
-     1.35,
-     16,
-     2.2,
-     18,
-     3.3
+     1
     ]
    }
   },
@@ -4321,24 +6117,132 @@
     ]
    ],
    "paint": {
-    "line-color": "#33251a",
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#8e8780",
+     "#33251a"
+    ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     12,
-     0.8,
+     12.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.8
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      1.35
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.4,
+      2.2
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.2,
+      3.3
+     ]
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
      14,
-     1.35,
-     16,
-     2.2,
-     18,
-     3.3
+     1
     ],
     "line-dasharray": [
      3,
@@ -4378,7 +6282,23 @@
     ]
    ],
    "paint": {
-    "line-color": "#33251a",
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#8e8780",
+     "#33251a"
+    ],
     "line-width": [
      "interpolate",
      [
@@ -4392,6 +6312,35 @@
      2.2,
      18,
      5
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     14,
+     1
     ],
     "line-dasharray": [
      0.4,
@@ -4448,24 +6397,280 @@
     "line-cap": "round"
    },
    "paint": {
-    "line-color": "#33251a",
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#8e8780",
+     "#33251a"
+    ],
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     12,
-     0.8,
+     12.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.8
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      1.35
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.4,
+      2.2
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.2,
+      3.3
+     ]
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
      14,
-     1.35,
-     16,
-     2.2,
-     18,
-     3.3
+     1
+    ]
+   }
+  },
+  {
+   "id": "paths-link",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "paths",
+   "minzoom": 13,
+   "filter": [
+    "==",
+    [
+     "get",
+     "k"
+    ],
+    "l"
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round"
+   },
+   "paint": {
+    "line-color": [
+     "case",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ],
+     "#8e8780",
+     "#33251a"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     12.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      0.8
+     ],
+     14.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0.9,
+      1.35
+     ],
+     16.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      1.4,
+      2.2
+     ],
+     18.0,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      2.2,
+      3.3
+     ]
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     14,
+     1
     ]
    }
   },
@@ -4495,6 +6700,28 @@
       ""
      ],
      "pedestrian"
+    ],
+    [
+     "!",
+     [
+      "==",
+      [
+       "coalesce",
+       [
+        "get",
+        "u"
+       ],
+       0
+      ],
+      1
+     ]
+    ],
+    [
+     "!",
+     [
+      "has",
+      "ar"
+     ]
     ]
    ],
    "layout": {
@@ -4536,160 +6763,27 @@
     [
      "all",
      [
+      "!",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ]
+     ],
+     [
       "all",
       [
        "!",
        [
         "has",
-        "tn"
-       ]
-      ],
-      [
-       "any",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "pedestrian",
-          "cycleway"
-         ]
-        ]
-       ],
-       [
-        "all",
-        [
-         "all",
-         [
-          "!",
-          [
-           "has",
-           "sub"
-          ]
-         ],
-         [
-          "!=",
-          [
-           "get",
-           "k"
-          ],
-          "t"
-         ]
-        ],
-        [
-         "==",
-         [
-          "coalesce",
-          [
-           "get",
-           "foot"
-          ],
-          ""
-         ],
-         "designated"
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ch"
-      ],
-      0
-     ]
-    ],
-    [
-     "all",
-     [
-      "!",
-      [
-       "has",
-       "tn"
-      ]
-     ],
-     [
-      "all",
-      [
-       "!",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "foot"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "no",
-          "private"
-         ]
-        ]
-       ]
-      ],
-      [
-       "any",
-       [
-        "!",
-        [
-         "has",
-         "ac"
-        ]
-       ],
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "foot"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "yes",
-          "designated",
-          "permissive"
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "any",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "footway",
-         "pedestrian",
-         "cycleway"
-        ]
+        "ar"
        ]
       ],
       [
@@ -4700,29 +6794,218 @@
          "!",
          [
           "has",
-          "sub"
+          "tn"
          ]
         ],
         [
-         "!=",
+         "any",
          [
-          "get",
-          "k"
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian",
+            "cycleway"
+           ]
+          ]
          ],
-         "t"
+         [
+          "all",
+          [
+           "all",
+           [
+            "!",
+            [
+             "has",
+             "sub"
+            ]
+           ],
+           [
+            "!=",
+            [
+             "get",
+             "k"
+            ],
+            "t"
+           ]
+          ],
+          [
+           "==",
+           [
+            "coalesce",
+            [
+             "get",
+             "foot"
+            ],
+            ""
+           ],
+           "designated"
+          ]
+         ]
         ]
        ],
        [
         "==",
         [
-         "coalesce",
-         [
-          "get",
-          "foot"
-         ],
-         ""
+         "get",
+         "ch"
         ],
-        "designated"
+        0
+       ]
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "ar"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "has",
+         "tn"
+        ]
+       ],
+       [
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "foot"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "foot"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ],
+       [
+        "any",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "sub"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "footway",
+           "pedestrian",
+           "cycleway"
+          ]
+         ]
+        ],
+        [
+         "all",
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ],
+         [
+          "==",
+          [
+           "coalesce",
+           [
+            "get",
+            "foot"
+           ],
+           ""
+          ],
+          "designated"
+         ]
+        ]
        ]
       ]
      ]
@@ -4768,167 +7051,23 @@
     [
      "all",
      [
-      "all",
-      [
-       "!",
-       [
-        "has",
-        "tn"
-       ]
-      ],
-      [
-       "any",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "pedestrian",
-          "cycleway",
-          "bridleway"
-         ]
-        ]
-       ],
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ct"
-      ],
-      0
-     ]
-    ],
-    [
-     "all",
-     [
       "!",
       [
        "has",
-       "tn"
+       "ar"
       ]
      ],
      [
       "all",
-      [
-       "!",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "bicycle"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "dismount",
-          "use_sidepath"
-         ]
-        ]
-       ]
-      ],
       [
        "all",
        [
         "!",
         [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "no",
-           "private"
-          ]
-         ]
+         "has",
+         "tn"
         ]
        ],
-       [
-        "any",
-        [
-         "!",
-         [
-          "has",
-          "ac"
-         ]
-        ],
-        [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "yes",
-           "designated",
-           "permissive"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "any",
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "cycleway"
-      ],
-      [
-       "all",
        [
         "any",
         [
@@ -4945,7 +7084,9 @@
           "literal",
           [
            "footway",
-           "pedestrian"
+           "pedestrian",
+           "cycleway",
+           "bridleway"
           ]
          ]
         ],
@@ -4967,50 +7108,212 @@
           "t"
          ]
         ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "ct"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
        ],
        [
-        "in",
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
         [
          "coalesce",
          [
           "get",
-          "bicycle"
+          "sub"
          ],
          ""
         ],
+        "cycleway"
+       ],
+       [
+        "all",
         [
-         "literal",
+         "any",
          [
-          "yes",
-          "designated"
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
          ]
         ]
        ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       1
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       1
       ]
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "sac"
-       ],
-       0
-      ],
-      1
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "mtb"
-       ],
-       0
-      ],
-      1
      ]
     ]
    ],
@@ -5036,6 +7339,35 @@
      2.2,
      18,
      3.8
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     14,
+     1
     ]
    }
   },
@@ -5054,167 +7386,23 @@
     [
      "all",
      [
-      "all",
-      [
-       "!",
-       [
-        "has",
-        "tn"
-       ]
-      ],
-      [
-       "any",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "pedestrian",
-          "cycleway",
-          "bridleway"
-         ]
-        ]
-       ],
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cf"
-      ],
-      0
-     ]
-    ],
-    [
-     "all",
-     [
       "!",
       [
        "has",
-       "tn"
+       "ar"
       ]
      ],
      [
       "all",
-      [
-       "!",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "bicycle"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "dismount",
-          "use_sidepath"
-         ]
-        ]
-       ]
-      ],
       [
        "all",
        [
         "!",
         [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "no",
-           "private"
-          ]
-         ]
+         "has",
+         "tn"
         ]
        ],
-       [
-        "any",
-        [
-         "!",
-         [
-          "has",
-          "ac"
-         ]
-        ],
-        [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "yes",
-           "designated",
-           "permissive"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "any",
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "cycleway"
-      ],
-      [
-       "all",
        [
         "any",
         [
@@ -5231,7 +7419,9 @@
           "literal",
           [
            "footway",
-           "pedestrian"
+           "pedestrian",
+           "cycleway",
+           "bridleway"
           ]
          ]
         ],
@@ -5253,50 +7443,212 @@
           "t"
          ]
         ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "cf"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
        ],
        [
-        "in",
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
         [
          "coalesce",
          [
           "get",
-          "bicycle"
+          "sub"
          ],
          ""
         ],
+        "cycleway"
+       ],
+       [
+        "all",
         [
-         "literal",
+         "any",
          [
-          "yes",
-          "designated"
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
          ]
         ]
        ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       1
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       1
       ]
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "sac"
-       ],
-       0
-      ],
-      1
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "mtb"
-       ],
-       0
-      ],
-      1
      ]
     ]
    ],
@@ -5322,6 +7674,35 @@
      2.2,
      18,
      3.8
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     14,
+     1
     ]
    }
   },
@@ -5340,167 +7721,23 @@
     [
      "all",
      [
-      "all",
-      [
-       "!",
-       [
-        "has",
-        "tn"
-       ]
-      ],
-      [
-       "any",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "pedestrian",
-          "cycleway",
-          "bridleway"
-         ]
-        ]
-       ],
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cm"
-      ],
-      0
-     ]
-    ],
-    [
-     "all",
-     [
       "!",
       [
        "has",
-       "tn"
+       "ar"
       ]
      ],
      [
       "all",
-      [
-       "!",
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "bicycle"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "dismount",
-          "use_sidepath"
-         ]
-        ]
-       ]
-      ],
       [
        "all",
        [
         "!",
         [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "no",
-           "private"
-          ]
-         ]
+         "has",
+         "tn"
         ]
        ],
-       [
-        "any",
-        [
-         "!",
-         [
-          "has",
-          "ac"
-         ]
-        ],
-        [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "bicycle"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "yes",
-           "designated",
-           "permissive"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "any",
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "cycleway"
-      ],
-      [
-       "all",
        [
         "any",
         [
@@ -5517,7 +7754,9 @@
           "literal",
           [
            "footway",
-           "pedestrian"
+           "pedestrian",
+           "cycleway",
+           "bridleway"
           ]
          ]
         ],
@@ -5539,50 +7778,212 @@
           "t"
          ]
         ]
+       ]
+      ],
+      [
+       "==",
+       [
+        "get",
+        "cm"
+       ],
+       0
+      ]
+     ]
+    ],
+    [
+     "all",
+     [
+      "!",
+      [
+       "has",
+       "ar"
+      ]
+     ],
+     [
+      "all",
+      [
+       "!",
+       [
+        "has",
+        "tn"
+       ]
+      ],
+      [
+       "all",
+       [
+        "!",
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "dismount",
+           "use_sidepath"
+          ]
+         ]
+        ]
        ],
        [
-        "in",
+        "all",
+        [
+         "!",
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "no",
+            "private"
+           ]
+          ]
+         ]
+        ],
+        [
+         "any",
+         [
+          "!",
+          [
+           "has",
+           "ac"
+          ]
+         ],
+         [
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "bicycle"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "yes",
+            "designated",
+            "permissive"
+           ]
+          ]
+         ]
+        ]
+       ]
+      ],
+      [
+       "any",
+       [
+        "==",
         [
          "coalesce",
          [
           "get",
-          "bicycle"
+          "sub"
          ],
          ""
         ],
+        "cycleway"
+       ],
+       [
+        "all",
         [
-         "literal",
+         "any",
          [
-          "yes",
-          "designated"
+          "in",
+          [
+           "coalesce",
+           [
+            "get",
+            "sub"
+           ],
+           ""
+          ],
+          [
+           "literal",
+           [
+            "footway",
+            "pedestrian"
+           ]
+          ]
+         ],
+         [
+          "all",
+          [
+           "!",
+           [
+            "has",
+            "sub"
+           ]
+          ],
+          [
+           "!=",
+           [
+            "get",
+            "k"
+           ],
+           "t"
+          ]
+         ]
+        ],
+        [
+         "in",
+         [
+          "coalesce",
+          [
+           "get",
+           "bicycle"
+          ],
+          ""
+         ],
+         [
+          "literal",
+          [
+           "yes",
+           "designated"
+          ]
          ]
         ]
        ]
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        0
+       ],
+       2
+      ],
+      [
+       "<=",
+       [
+        "coalesce",
+        [
+         "get",
+         "mtb"
+        ],
+        0
+       ],
+       3
       ]
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "sac"
-       ],
-       0
-      ],
-      2
-     ],
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "mtb"
-       ],
-       0
-      ],
-      3
      ]
     ]
    ],
@@ -5608,6 +8009,35 @@
      2.2,
      18,
      3.8
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     14,
+     1
     ]
    }
   },
@@ -5618,6 +8048,24 @@
    "source-layer": "paths",
    "minzoom": 11,
    "maxzoom": 13,
+   "filter": [
+    "any",
+    [
+     "==",
+     [
+      "get",
+      "k"
+     ],
+     "t"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "u"
+     ]
+    ]
+   ],
    "layout": {
     "line-join": "round"
    },
@@ -6306,368 +8754,6 @@
    }
   },
   {
-   "id": "access-no-tint-foot",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "paths",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "ch"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "k"
-       ],
-       "t"
-      ],
-      [
-       "any",
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ],
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "cycleway",
-          "bridleway",
-          "steps",
-          "pedestrian"
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "via_ferrata"
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ch"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "all",
-      [
-       "has",
-       "ac"
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "k"
-        ],
-        "t"
-       ],
-       [
-        "any",
-        [
-         "all",
-         [
-          "!",
-          [
-           "has",
-           "sub"
-          ]
-         ],
-         [
-          "!=",
-          [
-           "get",
-           "k"
-          ],
-          "t"
-         ]
-        ],
-        [
-         "in",
-         [
-          "coalesce",
-          [
-           "get",
-           "sub"
-          ],
-          ""
-         ],
-         [
-          "literal",
-          [
-           "footway",
-           "cycleway",
-           "bridleway",
-           "steps",
-           "pedestrian"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "foot"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
-   "id": "access-no-tint-foot-service",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "streets",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "ch"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "class"
-       ],
-       "minor"
-      ],
-      [
-       "all",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "service"
-       ],
-       [
-        "!",
-        [
-         "in",
-         [
-          "get",
-          "service"
-         ],
-         [
-          "literal",
-          [
-           "driveway",
-           "parking_aisle"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ch"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "access"
-       ],
-       "no"
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "minor"
-       ],
-       [
-        "all",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "service"
-        ],
-        [
-         "!",
-         [
-          "in",
-          [
-           "get",
-           "service"
-          ],
-          [
-           "literal",
-           [
-            "driveway",
-            "parking_aisle"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "foot"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
    "id": "access-no-dash-foot",
    "type": "line",
    "source": "overlays",
@@ -6866,6 +8952,35 @@
     "line-dasharray": [
      2,
      2
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     15,
+     1
     ]
    }
   },
@@ -6874,7 +8989,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 13,
+   "minzoom": 14,
    "filter": [
     "case",
     [
@@ -7012,23 +9127,23 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#c62828",
+    "line-color": "#b85c5c",
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     1.0,
+     14,
+     0.7,
      16,
-     1.6,
+     1.1,
      18,
-     2.4
+     1.4
     ],
+    "line-opacity": 0.85,
     "line-dasharray": [
      2,
      2
@@ -7221,9 +9336,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -7251,7 +9366,7 @@
    "type": "symbol",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 15,
+   "minzoom": 17,
    "filter": [
     "case",
     [
@@ -7395,10 +9510,10 @@
      [
       "zoom"
      ],
-     15,
-     90,
+     17,
+     600,
      18,
-     160
+     800
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -7419,383 +9534,6 @@
     "icon-allow-overlap": false,
     "icon-padding": 1,
     "visibility": "visible"
-   }
-  },
-  {
-   "id": "access-no-tint-bike",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "paths",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "ct"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "k"
-       ],
-       "t"
-      ],
-      [
-       "any",
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ],
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "cycleway",
-          "bridleway",
-          "steps",
-          "pedestrian"
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "via_ferrata"
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ct"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "all",
-       [
-        "has",
-        "ac"
-       ],
-       [
-        "any",
-        [
-         "==",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ],
-        [
-         "any",
-         [
-          "all",
-          [
-           "!",
-           [
-            "has",
-            "sub"
-           ]
-          ],
-          [
-           "!=",
-           [
-            "get",
-            "k"
-           ],
-           "t"
-          ]
-         ],
-         [
-          "in",
-          [
-           "coalesce",
-           [
-            "get",
-            "sub"
-           ],
-           ""
-          ],
-          [
-           "literal",
-           [
-            "footway",
-            "cycleway",
-            "bridleway",
-            "steps",
-            "pedestrian"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "steps"
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
-   "id": "access-no-tint-bike-service",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "streets",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "ct"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "class"
-       ],
-       "minor"
-      ],
-      [
-       "all",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "service"
-       ],
-       [
-        "!",
-        [
-         "in",
-         [
-          "get",
-          "service"
-         ],
-         [
-          "literal",
-          [
-           "driveway",
-           "parking_aisle"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "ct"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "access"
-       ],
-       "no"
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "minor"
-       ],
-       [
-        "all",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "service"
-        ],
-        [
-         "!",
-         [
-          "in",
-          [
-           "get",
-           "service"
-          ],
-          [
-           "literal",
-           [
-            "driveway",
-            "parking_aisle"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
    }
   },
   {
@@ -8012,6 +9750,35 @@
     "line-dasharray": [
      2,
      2
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     15,
+     1
     ]
    }
   },
@@ -8020,7 +9787,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 13,
+   "minzoom": 14,
    "filter": [
     "case",
     [
@@ -8158,23 +9925,23 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c62828",
+    "line-color": "#b85c5c",
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     1.0,
+     14,
+     0.7,
      16,
-     1.6,
+     1.1,
      18,
-     2.4
+     1.4
     ],
+    "line-opacity": 0.85,
     "line-dasharray": [
      2,
      2
@@ -8382,9 +10149,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -8412,7 +10179,7 @@
    "type": "symbol",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 15,
+   "minzoom": 17,
    "filter": [
     "case",
     [
@@ -8556,10 +10323,10 @@
      [
       "zoom"
      ],
-     15,
-     90,
+     17,
+     600,
      18,
-     160
+     800
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -8580,383 +10347,6 @@
     "icon-allow-overlap": false,
     "icon-padding": 1,
     "visibility": "none"
-   }
-  },
-  {
-   "id": "access-no-tint-touring",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "paths",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "cf"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "k"
-       ],
-       "t"
-      ],
-      [
-       "any",
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ],
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "cycleway",
-          "bridleway",
-          "steps",
-          "pedestrian"
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "via_ferrata"
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cf"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "all",
-       [
-        "has",
-        "ac"
-       ],
-       [
-        "any",
-        [
-         "==",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ],
-        [
-         "any",
-         [
-          "all",
-          [
-           "!",
-           [
-            "has",
-            "sub"
-           ]
-          ],
-          [
-           "!=",
-           [
-            "get",
-            "k"
-           ],
-           "t"
-          ]
-         ],
-         [
-          "in",
-          [
-           "coalesce",
-           [
-            "get",
-            "sub"
-           ],
-           ""
-          ],
-          [
-           "literal",
-           [
-            "footway",
-            "cycleway",
-            "bridleway",
-            "steps",
-            "pedestrian"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "steps"
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
-   "id": "access-no-tint-touring-service",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "streets",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "cf"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "class"
-       ],
-       "minor"
-      ],
-      [
-       "all",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "service"
-       ],
-       [
-        "!",
-        [
-         "in",
-         [
-          "get",
-          "service"
-         ],
-         [
-          "literal",
-          [
-           "driveway",
-           "parking_aisle"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cf"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "access"
-       ],
-       "no"
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "minor"
-       ],
-       [
-        "all",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "service"
-        ],
-        [
-         "!",
-         [
-          "in",
-          [
-           "get",
-           "service"
-          ],
-          [
-           "literal",
-           [
-            "driveway",
-            "parking_aisle"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
    }
   },
   {
@@ -9173,6 +10563,35 @@
     "line-dasharray": [
      2,
      2
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     15,
+     1
     ]
    }
   },
@@ -9181,7 +10600,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 13,
+   "minzoom": 14,
    "filter": [
     "case",
     [
@@ -9319,23 +10738,23 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c62828",
+    "line-color": "#b85c5c",
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     1.0,
+     14,
+     0.7,
      16,
-     1.6,
+     1.1,
      18,
-     2.4
+     1.4
     ],
+    "line-opacity": 0.85,
     "line-dasharray": [
      2,
      2
@@ -9543,9 +10962,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -9573,7 +10992,7 @@
    "type": "symbol",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 15,
+   "minzoom": 17,
    "filter": [
     "case",
     [
@@ -9717,10 +11136,10 @@
      [
       "zoom"
      ],
-     15,
-     90,
+     17,
+     600,
      18,
-     160
+     800
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -9741,383 +11160,6 @@
     "icon-allow-overlap": false,
     "icon-padding": 1,
     "visibility": "none"
-   }
-  },
-  {
-   "id": "access-no-tint-mtb",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "paths",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "cm"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "k"
-       ],
-       "t"
-      ],
-      [
-       "any",
-       [
-        "all",
-        [
-         "!",
-         [
-          "has",
-          "sub"
-         ]
-        ],
-        [
-         "!=",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ]
-       ],
-       [
-        "in",
-        [
-         "coalesce",
-         [
-          "get",
-          "sub"
-         ],
-         ""
-        ],
-        [
-         "literal",
-         [
-          "footway",
-          "cycleway",
-          "bridleway",
-          "steps",
-          "pedestrian"
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "via_ferrata"
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cm"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "all",
-       [
-        "has",
-        "ac"
-       ],
-       [
-        "any",
-        [
-         "==",
-         [
-          "get",
-          "k"
-         ],
-         "t"
-        ],
-        [
-         "any",
-         [
-          "all",
-          [
-           "!",
-           [
-            "has",
-            "sub"
-           ]
-          ],
-          [
-           "!=",
-           [
-            "get",
-            "k"
-           ],
-           "t"
-          ]
-         ],
-         [
-          "in",
-          [
-           "coalesce",
-           [
-            "get",
-            "sub"
-           ],
-           ""
-          ],
-          [
-           "literal",
-           [
-            "footway",
-            "cycleway",
-            "bridleway",
-            "steps",
-            "pedestrian"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ],
-      [
-       "==",
-       [
-        "coalesce",
-        [
-         "get",
-         "sub"
-        ],
-        ""
-       ],
-       "steps"
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
-   }
-  },
-  {
-   "id": "access-no-tint-mtb-service",
-   "type": "line",
-   "source": "overlays",
-   "source-layer": "streets",
-   "minzoom": 14,
-   "filter": [
-    "case",
-    [
-     "has",
-     "cm"
-    ],
-    [
-     "all",
-     [
-      "any",
-      [
-       "==",
-       [
-        "get",
-        "class"
-       ],
-       "minor"
-      ],
-      [
-       "all",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "service"
-       ],
-       [
-        "!",
-        [
-         "in",
-         [
-          "get",
-          "service"
-         ],
-         [
-          "literal",
-          [
-           "driveway",
-           "parking_aisle"
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "==",
-      [
-       "get",
-       "cm"
-      ],
-      2
-     ]
-    ],
-    [
-     "all",
-     [
-      "all",
-      [
-       "==",
-       [
-        "get",
-        "access"
-       ],
-       "no"
-      ],
-      [
-       "any",
-       [
-        "==",
-        [
-         "get",
-         "class"
-        ],
-        "minor"
-       ],
-       [
-        "all",
-        [
-         "==",
-         [
-          "get",
-          "class"
-         ],
-         "service"
-        ],
-        [
-         "!",
-         [
-          "in",
-          [
-           "get",
-           "service"
-          ],
-          [
-           "literal",
-           [
-            "driveway",
-            "parking_aisle"
-           ]
-          ]
-         ]
-        ]
-       ]
-      ]
-     ],
-     [
-      "!",
-      [
-       "in",
-       [
-        "coalesce",
-        [
-         "get",
-         "bicycle"
-        ],
-        ""
-       ],
-       [
-        "literal",
-        [
-         "yes",
-         "designated",
-         "permissive"
-        ]
-       ]
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "rgba(120,70,70,0.28)",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     14,
-     4,
-     16,
-     7,
-     18,
-     12
-    ]
    }
   },
   {
@@ -10334,6 +11376,35 @@
     "line-dasharray": [
      2,
      2
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     14,
+     [
+      "case",
+      [
+       "==",
+       [
+        "coalesce",
+        [
+         "get",
+         "u"
+        ],
+        0
+       ],
+       1
+      ],
+      0,
+      1
+     ],
+     15,
+     1
     ]
    }
   },
@@ -10342,7 +11413,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 13,
+   "minzoom": 14,
    "filter": [
     "case",
     [
@@ -10480,23 +11551,23 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c62828",
+    "line-color": "#b85c5c",
     "line-width": [
      "interpolate",
      [
-      "exponential",
-      1.2
+      "linear"
      ],
      [
       "zoom"
      ],
-     13,
-     1.0,
+     14,
+     0.7,
      16,
-     1.6,
+     1.1,
      18,
-     2.4
+     1.4
     ],
+    "line-opacity": 0.85,
     "line-dasharray": [
      2,
      2
@@ -10704,9 +11775,9 @@
       "zoom"
      ],
      15,
-     90,
+     250,
      18,
-     160
+     400
     ],
     "icon-image": "access-no",
     "icon-size": [
@@ -10734,7 +11805,7 @@
    "type": "symbol",
    "source": "overlays",
    "source-layer": "streets",
-   "minzoom": 15,
+   "minzoom": 17,
    "filter": [
     "case",
     [
@@ -10878,10 +11949,10 @@
      [
       "zoom"
      ],
-     15,
-     90,
+     17,
+     600,
      18,
-     160
+     800
     ],
     "icon-image": "access-no",
     "icon-size": [

@@ -195,9 +195,9 @@ once the style reads them from `overlays`.
 
 | Layer | Zooms | Content |
 | --- | --- | --- |
-| `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" |
-| `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` 1 tunnel, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded), `mtb` 1–6 mtb:scale (number; since 2026-10-21, older packages lack it) |
-| `streets` | 13–14 | small streets (owner 2026-10-21), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
+| `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" and the town flag `u` (schema 6) |
+| `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` 1 tunnel, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded), `mtb` 1–6 mtb:scale (number; since 2026-10-21, older packages lack it), `ar` 1 area=yes (pedestrian square outline; schema 6). **Towns (schema 6, 2026-10-26):** `u` 1 built-up land / 2 town green (park, cemetery, allotments …) on footways, paths, bridleways, cycleways, steps and pedestrian ways – never on tracks or graded trails (T2+, faint); `k` = "l" link pieces: the hidden sidewalk / crossing chain (≤ 30 m) from a loose path end to the nearest drawn way, with the path's `u` (`extract_overlays.py` `TownIndex`, `link_pieces`; docs/design/map-colour-analysis.md "Quiet towns") |
+| `streets` | 13–14 | small streets (owner 2026-10-21), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. `u` 1 = a town street (built-up land, schema 6). Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
 | `paths`, `streets` | 13–14 | **router classes** (with `extract_overlays.py --wayclass`, since cell schema 3, rebuilt with the tuned bike profiles in schema 5; docs/map-style-notes.md "Router classes"): `ch` hike, `ct` trekking, `cf` touring + e-bike (touring.brf), `cm` MTB + e-MTB, each 0 good / 1 possible / 2 forbidden; `cr` 1 / −1 bikes may ride only along / against the line |
 | `barriers` | 14 | barrier nodes that block at least one activity (`--wayclass`): `b` mask 1 hike, 2 trekking, 4 touring, 8 MTB. Optional |
 | `trails` | 13–14 | as `trails.geojson` |
@@ -215,6 +215,18 @@ small streets still meet the unsmoothed tertiary+ roads; a way is smoothed whole
 cells compute the same line. Tertiary and bigger roads are not smoothed (the base map draws them). Route bands use the
 same 0.5 m / smoothed geometry as the way below them – the former 3 m simplification put the band ~3 m beside the path
 at z16+. Smoothed lines keep 6 decimals.
+
+**Towns and path links (schema 6, 2026-10-26).** `extract_overlays.py` reads the extract once more with osmium's area
+assembly (landuse / leisure / natural / amenity areas only) and the centre of every building way, before the way pass.
+Built-up = residential / commercial / retail / industrial / garages / railway / education landuse or a school /
+university / college / hospital / kindergarten area, grown by 25 m, or ≥ 8 buildings in the 3 × 3 squares of 40 m
+around a point; forests, meadows, farmland, orchards, vineyards, scrub, heath, grassland, wetland and golf courses win
+(no `u`); parks, gardens, playgrounds, pitches, stadiums, cemeteries, allotments, recreation grounds give `u` 2. A way
+is judged at the middle of its line. Links: Dijkstra over the sidewalk / crossing graph from every path end that touches
+no other drawn way, up to 30 m, to the first node of another drawn way; skipped when the chain is longer than 1.6 × the
+straight gap, when the path piece is shorter than 20 m, or when the end node is another loose path end. Düsseldorf
+cut (cells 10/531/341–342 + 5 km, 88 MB PBF): whole overlay step 69 s, 1.5 GB peak; `overlays.pmtiles` +1.8 %;
+1 191 link pieces.
 
 **Sizes** (test region 10.70–11.60 E / 46.30–46.85 N, OSM of 17 Oct 2026; cell = z10 10/543/361 Meran, own z ≥ 10 tiles):
 
