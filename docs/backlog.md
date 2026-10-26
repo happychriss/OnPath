@@ -1,10 +1,10 @@
-# Backlog (shared by laptop and cloud Claude)
+# Backlog (shared by the laptop, desktop and cloud sessions)
 
 Rules: see `docs/working-agreement.md`. Claim an item under "In progress" before working on it (one line,
 push immediately), remove it when done. Newest requests on top. Owner decisions are marked **(owner)**.
 
 ## In progress
-<!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+<!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] bike ferries with bicycle=no + Köln Dom route – since 2026-10-26
 - [desktop] senior consistency + dedup review – since 2026-10-26
 
