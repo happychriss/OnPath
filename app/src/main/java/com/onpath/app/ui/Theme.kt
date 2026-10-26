@@ -122,16 +122,6 @@ val Activity.icon: ImageVector
         Activity.HIKE -> Icons.Filled.Hiking
     }
 
-val Activity.shortLabel: String
-    get() = when (this) {
-        Activity.BIKE_TOURING -> "Touring"
-        Activity.BIKE_TREKKING -> "Trekking"
-        Activity.EBIKE -> "E-bike"
-        Activity.MTB -> "MTB"
-        Activity.EMTB -> "E-MTB"
-        Activity.HIKE -> "Hike"
-    }
-
 /** Name on the primary button: "Start navigation · Trekking bike". */
 val Activity.navName: String
     get() = label

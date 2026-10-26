@@ -1,5 +1,6 @@
 package com.onpath.app.gpx
 
+import com.onpath.app.data.LastActivity
 import com.onpath.app.routing.Activity
 
 /**
@@ -19,9 +20,7 @@ import com.onpath.app.routing.Activity
 object SportType {
 
     /** An activity and, for Hike, its T level (SAC 1..5; ignored for bikes). */
-    data class Pick(val activity: Activity, val sac: Int = DEFAULT_SAC)
-
-    const val DEFAULT_SAC = 2
+    data class Pick(val activity: Activity, val sac: Int = LastActivity.DEFAULT_SAC)
 
     /** Normalised Komoot type (lower case, no `_` / `-` / spaces) → activity. */
     private val komoot = mapOf(
@@ -75,7 +74,7 @@ object SportType {
         val pick = forImport(type, current, currentSac)
         val switch = !touring && (pick.activity != current || (pick.activity == Activity.HIKE && pick.sac != currentSac))
         val note = if (!switch) null
-            else "Activity set to ${pick.activity.label}${if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""} from the file"
+            else "Activity set to ${LastActivity.name(pick.activity, pick.sac)} from the file"
         return ImportChoice(pick, switch, note)
     }
 

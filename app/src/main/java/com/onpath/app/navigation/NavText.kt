@@ -36,11 +36,11 @@ object NavText {
         NavPrompt.Kept -> "Following the original route"
     }
 
-    /** "New route for Trekking bike" / "New route for Hike (T3)". */
+    /** "New route for Trekking bike" / "New route for Hike T3". */
     fun switchTitle(sw: ActivitySwitch): String = "New route for " + activityName(sw.activity, sw.sac)
 
-    /** "Hike (T3)" / "MTB". */
-    fun activityName(a: Activity, sac: Int): String = if (a == Activity.HIKE) "${a.label} (T${sac.coerceIn(1, 5)})" else a.label
+    /** "Hike T3" / "MTB" ([com.onpath.app.data.LastActivity.name]). */
+    fun activityName(a: Activity, sac: Int): String = com.onpath.app.data.LastActivity.name(a, sac)
 
     fun question(q: NavPrompt.Question): String = buildString {
         q.switch?.let { sw ->

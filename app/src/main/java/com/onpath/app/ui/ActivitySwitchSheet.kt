@@ -72,7 +72,7 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
 }
 
 /**
- * "You are navigating as: Hike (T3)" and, for every other activity, how the rest of the followed route fits it
+ * "You are navigating as: Hike T3" and, for every other activity, how the rest of the followed route fits it
  * (fits / problems + its time), computed offline in the background (spinner per row). Choosing a row asks the usual
  * "Take new route / Keep original" question with the new route as the dashed proposal. Rows ≥ 56 dp, button 56 dp.
  */

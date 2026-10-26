@@ -114,7 +114,7 @@ class ActivityCheckTest {
 
     @Test fun hikingNamesTheSacLimit() {
         assertEquals("hiking (T4)", ActivityCheck.who(Activity.HIKE, 4))
-        assertEquals("Hike (T3)", NavText.activityName(Activity.HIKE, 3))
+        assertEquals("Hike T3", NavText.activityName(Activity.HIKE, 3))
         assertEquals("MTB", NavText.activityName(Activity.MTB, 3))
     }
 
