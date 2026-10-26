@@ -21,7 +21,9 @@ class TouringProfileTest {
 
     @Test fun touringDiffersFromTrekkingOnlyInTheIntendedValues() {
         val trek = code("trekking.brf")
-        val tour = code("touring.brf")
+        val all = code("touring.brf")
+        for (line in TOURING_ONLY) assertTrue("touring.brf has: $line", all.any { it.trim() == line })
+        val tour = all.filter { it.trim() !in TOURING_ONLY }
         assertEquals("same number of code lines", trek.size, tour.size)
         val diff = trek.indices.filter { trek[it] != tour[it] }.map { trek[it].trim() to tour[it].trim() }
         assertEquals(EXPECTED, diff)
@@ -50,6 +52,14 @@ class TouringProfileTest {
             "switch estimated_traffic_class=4      0.6" to "switch estimated_traffic_class=4      0.2",
             "switch estimated_traffic_class=5      0.8" to "switch estimated_traffic_class=5      0.4",
             "switch estimated_traffic_class=6|7    1 99 0" to "switch estimated_traffic_class=6|7    0.8 99 0",
+            // v_rough (captain 2026-10-26): a rough track on a cycle route is not "perfect", the unpaved penalty applies
+            "else if ( and is_ldcr not ldcr_busy ) then 1" to "else if ( and is_ldcr not or ldcr_busy ldcr_rough ) then 1",
+        )
+
+        /** Code lines only touring.brf has (left out before the line-by-line comparison). */
+        val TOURING_ONLY = setOf(
+            "assign ldcr_rough = or tracktype=grade3|grade4|grade5 or smoothness=bad|very_bad|horrible|very_horrible|" +
+                "impassable surface=ground|dirt|sand|grass|mud|earth|rock",
         )
     }
 }

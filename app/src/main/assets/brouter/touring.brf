@@ -289,6 +289,9 @@ assign ldcr_busy =
        if hascycleway then false
        else if highway=trunk|trunk_link|primary|primary_link|secondary|secondary_link then true
        else and highway=tertiary|tertiary_link estimated_traffic_class=4|5|6|7
+# OnPath: a rough track on a cycle route is not "perfect" either, so the unpaved penalty applies there (captain
+# 2026-10-26, "v_rough": Touring = normal bike, no rough gravel surprises; Alps loose share 10.4 -> 5.6 %)
+assign ldcr_rough = or tracktype=grade3|grade4|grade5 or smoothness=bad|very_bad|horrible|very_horrible|impassable surface=ground|dirt|sand|grass|mud|earth|rock
 assign costfactor
 
   #
@@ -341,7 +344,7 @@ assign costfactor
   #
   # handle long-distance cycle-routes.
   #
-  else if ( and is_ldcr not ldcr_busy ) then 1  # always treated as perfect (=1); OnPath: not a busy road
+  else if ( and is_ldcr not or ldcr_busy ldcr_rough ) then 1  # always treated as perfect (=1); OnPath: not a busy road, not rough
   else
   add ( if stick_to_cycleroutes then 0.5 else 0.15 )  # everything else somewhat up (OnPath: was 0.05; 0.20 took a T2 path in Meran)
 
