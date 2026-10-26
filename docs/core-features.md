@@ -46,7 +46,10 @@ also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e `CoreFieldE2ET
 checks none in Navigate, back in Plan).
 
 Route warnings and hints (plan sheet, `ui/RouteWarnings`): one amber ⚠ line, tap → "On this route" list → tap a row →
-the map shows that spot. Way warnings since 2026-10-22 (pushing, steps, above your T, steep); hints to check before
+the map shows that spot. Way warnings since 2026-10-22 (pushing, steps, above your T, steep) – not for MTB / E-MTB
+since 2026-10-26 except signed pushing (bicycle=no / dismount; owner: "remove the rules for MTB – we don't want to look
+stupid": footways, hard trails and steep sections are what they ride; the line was on 87 % of MTB routes, now 55 %,
+`RouteWarningsTest.mtbHasNoPushingOrSteepHint` / `mtbKeepsTheHintsToCheck`); hints to check before
 going since 2026-10-26 (owner: "a warning/hint on a route if it contains a ferry or anything else that requires
 validation"): **ferry** for every activity ("Ferry 320 m – check times", several: "2 ferries – check times"; first in
 the line), **construction site** ("Construction – may be closed"), **ford** (way or node; "Ford – water to cross") and,

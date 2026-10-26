@@ -35,16 +35,16 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  *   after rain. The bike profiles do not avoid fords, mtb.brf and hiking-mountain.brf only make them costly.
  * - BARRIER (bikes): a stile, kissing gate or turnstile on the way ([WayAttrs.barrier]) – the bike has to be lifted over
  *   or may not fit. Bollards, gates, lift gates and cycle barriers are passable and on 12–67 % of routes: not listed.
- * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no; footway / pedestrian without bike
- *   access (touring / trekking / e-bike: not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian zone stays
- *   pushing); touring / trekking / e-bike also paths of SAC ≥ T2 or
- *   mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
- *   or mtb:scale ≥ S4. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing. Sections
- *   < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
+ * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no. Bike / Gravel bike / E-bike also a
+ *   footway / pedestrian without bike access (not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian
+ *   zone stays pushing) and paths of SAC ≥ T2 or mtb:scale ≥ S2. MTB / e-MTB: only the signed cases (owner 2026-10-26,
+ *   "remove the rules for MTB – we don't want to look stupid": footways and hard trails are what they ride; the line
+ *   was on 87 % of MTB routes). A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing.
+ *   Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
  * - ABOVE_T (hike): SAC level above the chosen T level, sections ≥ [ABOVE_T_MIN_M].
- * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, MTB / e-MTB 20 %,
- *   other bikes 15 % – up or down, sections ≥ [STEEP_MIN_M].
+ * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, bikes 15 % – up or
+ *   down, sections ≥ [STEEP_MIN_M]. Not for MTB / e-MTB (owner 2026-10-26: steep is normal there).
  * Spans of the same kind less than [MERGE_GAP_M] apart are one spot.
  */
 object RouteWarnings {
@@ -58,12 +58,15 @@ object RouteWarnings {
 
     fun isBike(a: Activity) = a != Activity.HIKE
 
+    /** MTB / e-MTB: no "pushing" for unsigned footways / hard trails and no "steep" (owner 2026-10-26). */
+    fun isMtb(a: Activity) = a == Activity.MTB || a == Activity.EMTB
+
     /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
     val BIKES_ALLOWED = setOf("yes", "designated", "permissive", "mtb")
 
     /**
      * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0, owner
-     * 2026-10-25); mtb.brf still costs it as pushing, so the warning stays there for MTB / e-MTB.
+     * 2026-10-25). mtb.brf costs it as pushing, but MTB / e-MTB get no unsigned pushing at all ([isMtb]).
      */
     private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
     private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
@@ -81,10 +84,10 @@ object RouteWarnings {
         else -> "stile"
     }
 
-    /** Grade (%) above which a section is "steep" for [a]. */
-    fun steepPercent(a: Activity): Double = when (a) {
-        Activity.HIKE -> 25.0
-        Activity.MTB, Activity.EMTB -> 20.0
+    /** Grade (%) above which a section is "steep" for [a]; null = no steep hint (MTB / e-MTB). */
+    fun steepPercent(a: Activity): Double? = when {
+        a == Activity.HIKE -> 25.0
+        isMtb(a) -> null
         else -> 15.0
     }
 
@@ -108,10 +111,11 @@ object RouteWarnings {
             // a ford node / a barrier sits at the end of the span leading to it (BRouterWayStats.withNode): a point there
             out += if (kind in POINT_KINDS) found.map { it.copy(from = it.to, fromM = it.toM) } else found
         }
-        val grades = grades(points, cum)
-        val limit = steepPercent(activity)
-        val steep = BooleanArray(points.size - 1) { i -> grades[i]?.let { abs(it) > limit } == true }
-        out += spans(steep, cum, SpotKind.STEEP, { i -> grades[i]?.let { abs(it).roundToInt() } ?: 0 }, STEEP_MIN_M)
+        steepPercent(activity)?.let { limit ->
+            val grades = grades(points, cum)
+            val steep = BooleanArray(points.size - 1) { i -> grades[i]?.let { abs(it) > limit } == true }
+            out += spans(steep, cum, SpotKind.STEEP, { i -> grades[i]?.let { abs(it).roundToInt() } ?: 0 }, STEEP_MIN_M)
+        }
         return out.sortedWith(compareBy({ it.fromM }, { it.kind.ordinal }))
     }
 
@@ -128,11 +132,11 @@ object RouteWarnings {
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
+                isMtb(a) -> false // MTB / e-MTB: only signed pushing (owner 2026-10-26)
                 // a footway on a signed cycle route is ridden (owner 2026-10-25) – only where the profile costs
                 // it so: touring.brf / trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling
                 // there unless signed, German law)
                 w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a))
-                a == Activity.MTB || a == Activity.EMTB -> w.sac >= 4 || w.mtb >= 4
                 else -> w.sac >= 2 || w.mtb >= 2
             }
             SpotKind.ABOVE_T -> a == Activity.HIKE && w.sac > sac.coerceIn(1, 5)

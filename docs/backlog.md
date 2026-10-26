@@ -13,8 +13,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question; (2) *ferry name / landing* in the hint: BRouter's data has no names – would need the ferry from our map
   overlays / POIs; (3) *times and seasons* (access:conditional, opening_hours, seasonal closures) and *borders* are not in
   BRouter's lookups – would need our own data (overlay pipeline); (4) hints in Navigate (e.g. "Ferry in 2 km") – Navigate
-  has no hint list today; (5) MTB: the amber line shows on 87 % of MTB routes, pushing on 75 % (bicycle=no paths, footways
-  costed as pushing by mtb.brf) – review whether MTB pushing is noise; (6) Bike / Gravel routes over smoothness=
+  has no hint list today; (5) MTB pushing noise – done (see Done); (6) Bike / Gravel routes over smoothness=
   very_horrible tracks (2 % of routes, up to 1.4 km) – a profile question, not a hint. Not planned: bollards, gates, lift
   gates, cycle barriers (on 12–67 % of routes, passable), way access=destination / agricultural / no (mostly opened again
   by bicycle / foot tags), node bicycle=no (crossings), toll (only ferries).
@@ -233,6 +232,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] No pushing / steep hints for MTB and E-MTB (owner 2026-10-26: "remove the rules for MTB – we don't want to
+  look stupid"):** the amber line was on 87 % of MTB routes, 75 % "… m pushing". `RouteWarnings`: MTB / E-MTB get no
+  "steep" and "pushing" only where signed (bicycle=no / dismount – a forbidden way stays a hint); unsigned footways and
+  T4+ / S4+ trails are no longer pushing. Ferry, ford, construction, stile / kissing gate / turnstile and steps stay.
+  `HintInventory.kt` (same 90 MTB routes): amber line 87 → 55 %, pushing 75 → 44 % (bicycle=no ways), steep 28 → 0 %;
+  dropping the signed cases too would give 24 % (one line, `wayHit` PUSH). Other activities unchanged. Tests
+  `RouteWarningsTest.mtbHasNoPushingOrSteepHint` / `mtbKeepsTheHintsToCheck`.
 - **[desktop] Difficulty raised by long T2 and by unpaved Bike routes (owner 2026-10-26):** `RouteSummary.technique`
   – Hike: ≥ 2 km at T2 or harder (summed) → at least Moderate, badge "Moderate · T2". Bike and E-bike only: ≥ 25 %
   of the route unpaved (gravel, unpaved, ground, trail, alpine; whole %, ≥ 100 m) or ≥ 5 km on loose ground (not
