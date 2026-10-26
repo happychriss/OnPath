@@ -1,10 +1,20 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.1** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.2** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald, captain), 2026-10-26 – 0.11.2.** All on `main`: quiet town map + path gap links + calmer
+  forbidden ways + thin cycle-route lines (cell schema 6, look-only – also refreshes router classes; maps-deploy test
+  done), compacted counts as firm / cheap footway only without a bicycle tag (Hilden Itter, `ItterPathTest`), Trekking
+  gets Touring's busy-traffic penalty (profiles now differ only in unpavedPenalty + v_rough), bike names Bike / Gravel
+  bike with one line each (chip says "Gravel" so long distances fit), GpxCompare counts empty trace runs as gaps,
+  builder test probe fix. Git history was rewritten on 2026-10-26: other checkouts must `git fetch && git reset --hard
+  origin/main` (or re-clone) before pushing.
+  - **Open:** phone check of rebuilt cells (Hilden / Düsseldorf / Meran; small stray link stubs near roundabouts at
+    z17?), plan-sheet finger-follow check on the Pixel, owner items in backlog "Waiting for the owner", requirements.md
+    names (owner / cloud).
 - **0.11.1** (2026-10-26): no app change; route profile comments and bike-routing notes tidied
   (`docs/design/bike-routing.md`).
 - **0.11.0 released** by the captain on donald, 2026-10-26 (everything below since 0.10.3; notes
