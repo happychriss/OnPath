@@ -1,14 +1,14 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.10.3** (2026-10-24); `main` has more, not released yet (see "Last
-session"). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.0** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **0.11.0 released** by the captain on donald, 2026-10-26 (everything below since 0.10.3; notes
+  `docs/release-notes/v0.11.0.md`).
 - **desktop (donald), 2026-10-25/26 – bike routing, difficulty, Komoot GPX type, senior review.** All on
-  `main`, **no release since 0.10.3** – the captain decides right after this review (release flow in CLAUDE.md; release
-  notes are not written yet).
+  `main`, released in **0.11.0**.
   - **Changed since 0.10.3:** offline search index per map area (laptop, 8174874); planner via-point spur fix (a point on
     a way is always visited); E2E points-list flakiness fixed (`E2EBase.findFresh`, UiAutomator cache); way attributes
     no longer lost on 22 % of routes (`BRouterWayStats` zero-length run); GPX comparison tool
