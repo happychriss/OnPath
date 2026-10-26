@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="poi_kind_viewpoint">Aussichtspunkt</string>
+    <string name="poi_kind_hut">Schutzhütte</string>
+    <string name="poi_kind_bivouac">Biwak / Selbstversorgerhütte</string>
+    <string name="poi_kind_shelter">Unterstand</string>
+    <string name="poi_kind_camping">Campingplatz</string>
+    <string name="poi_kind_restaurant">Restaurant / Gasthaus</string>
+    <string name="poi_kind_cafe">Café</string>
+    <string name="poi_kind_bar">Bar / Kneipe</string>
+    <string name="poi_kind_fast_food">Imbiss</string>
+    <string name="poi_kind_shop">Lebensmittel</string>
+    <string name="poi_kind_water">Trinkwasser</string>
+    <string name="poi_kind_spring">Quelle</string>
+    <string name="poi_kind_waterfall">Wasserfall</string>
+    <string name="poi_kind_castle">Burg / Schloss</string>
+    <string name="poi_kind_ruins">Ruine</string>
+    <string name="poi_kind_church">Kirche</string>
+    <string name="poi_kind_chapel">Kapelle</string>
+    <string name="poi_kind_cave">Höhle</string>
+    <string name="poi_kind_museum">Museum</string>
+    <string name="poi_kind_bus">Bushaltestelle</string>
+    <string name="poi_kind_train">Bahnhof</string>
+    <string name="poi_kind_lift">Seilbahn / Liftstation</string>
+    <string name="poi_kind_parking">Parkplatz</string>
+    <string name="poi_kind_toilets">Toiletten</string>
+    <string name="poi_kind_picnic">Rastplatz</string>
+    <string name="poi_kind_info">Tourismusinformation</string>
+    <string name="poi_kind_bike_shop">Fahrradwerkstatt</string>
+    <string name="poi_kind_charging">E-Bike-Ladestation</string>
+
+    <string name="poi_cuisine">Küche</string>
+    <string name="poi_opening_hours">Öffnungszeiten</string>
+    <string name="poi_phone">Telefon</string>
+    <string name="poi_website">Website</string>
+    <string name="poi_open_google">In Google Maps öffnen</string>
+    <string name="poi_google_line">Online · Bewertungen, Fotos und aktuelle Infos bei Google</string>
+</resources>

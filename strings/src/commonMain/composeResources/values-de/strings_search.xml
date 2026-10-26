@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_placeholder">Orte oder Adressen suchen</string>
+    <string name="search_clear_query">Eingabe löschen</string>
+    <string name="search_clear_recent">Löschen</string>
+    <string name="search_intro">Finde Hütten, Gipfel, Dörfer, Wege und Adressen. Zuerst wird die Offline-Karte durchsucht; Online-Ergebnisse kommen dazu, wenn du verbunden bist.</string>
+    <string name="search_recent">Zuletzt gesucht</string>
+    <string name="search_nothing_of_kind">Nichts dieser Art in der Offline-Karte.</string>
+    <string name="search_no_match">Kein Treffer in der Offline-Karte – versuch es mit den Online-Ergebnissen oder Google Maps.</string>
+    <string name="search_online_attribution">Online-Ergebnisse © OpenStreetMap</string>
+    <string name="search_searching_online">Suche online…</string>
+    <string name="search_in_google">„%1$s“ in Google Maps suchen</string>
+    <string name="search_google_line">Öffnet Google Maps – Geschäfte, Öffnungszeiten, Bewertungen</string>
+    <string name="search_preparing">Offline-Suche wird vorbereitet…</string>
+    <string name="search_near_route">nahe deiner Route</string>
+    <string name="search_online">online</string>
+
+    <string name="search_cat_huts">Hütten</string>
+    <string name="search_cat_peaks">Gipfel</string>
+    <string name="search_cat_water">Wasser</string>
+    <string name="search_cat_places">Orte</string>
+    <string name="search_cat_stations">Stationen</string>
+
+    <string name="search_kind_peak">Gipfel</string>
+    <string name="search_kind_saddle">Pass / Joch</string>
+    <string name="search_kind_place">Ort</string>
+    <string name="search_kind_trail">Weg</string>
+    <string name="search_kind_address">Adresse</string>
+    <string name="search_kind_street">Straße</string>
+    <string name="search_kind_store">Geschäft</string>
+    <string name="search_place_city">Stadt</string>
+    <string name="search_place_town">Stadt</string>
+    <string name="search_place_village">Dorf</string>
+    <string name="search_place_hamlet">Weiler</string>
+    <string name="search_place_suburb">Stadtteil</string>
+    <string name="search_place_neighbourhood">Viertel</string>
+    <string name="search_place_quarter">Viertel</string>
+    <string name="search_place_isolated_dwelling">Hof / Einzelhaus</string>
+    <string name="search_place_locality">Flur / Örtlichkeit</string>
+
+    <string name="search_card_add">Zur Route hinzufügen</string>
+    <string name="search_card_remove">Aus der Route entfernen</string>
+    <string name="search_card_as_start">Als Start</string>
+    <string name="search_card_as_destination">Als Ziel</string>
+    <string name="search_add_as_start">als Start</string>
+    <string name="search_add_as_destination">als Ziel</string>
+    <string name="search_add_as_new_destination">als neues Ziel</string>
+    <string name="search_add_as_stop_on_route">als Stopp %1$d – auf deiner Route</string>
+    <string name="search_add_as_stop_best">als Stopp %1$d – passt am besten</string>
+    <string name="search_add_about">ca. %1$s</string>
+    <string name="search_is_start">ist der Start</string>
+    <string name="search_is_destination">ist das Ziel</string>
+    <string name="search_is_stop">ist Stopp %1$d</string>
+    <string name="search_note_from_address">Position aus der Adresse ermittelt</string>
+
+    <string name="search_route_round_to">Rundtour zu %1$s</string>
+    <string name="search_route_round_from">Rundtour ab %1$s</string>
+    <string name="search_route_from">Von %1$s</string>
+    <string name="search_route_to">Nach %1$s</string>
+    <string name="search_route_via">%1$s (über %2$s)</string>
+</resources>
