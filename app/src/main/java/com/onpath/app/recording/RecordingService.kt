@@ -1,5 +1,7 @@
 package com.onpath.app.recording
 
+import com.onpath.strings.*
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -201,19 +203,19 @@ class RecordingService : Service() {
         val existing = try {
             if (continueId >= 0) db.getTour(continueId) else if (intent == null) db.findActiveRecording() else null
         } catch (e: Exception) {
-            failLoud("Recording could not start: your saved tracks cannot be read.", e)
+            failLoud(Txt.s(Res.string.nav_rec_fail_read), "Recording could not start: your saved tracks cannot be read.", e)
             return START_NOT_STICKY
         }
         if (intent == null && existing == null) { stopSelf(); return START_NOT_STICKY }
 
         // Nothing silent (R-01): without precise location or GPS the user is told, not left "Searching GPS…" for hours.
         if (!tracker.hasFinePermission()) {
-            failLoud("Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.")
+            failLoud(Txt.s(Res.string.nav_rec_fail_permission), "Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.")
             return START_NOT_STICKY
         }
-        if (!tracker.hasGps()) { failLoud("Recording stopped: this device has no GPS."); return START_NOT_STICKY }
+        if (!tracker.hasGps()) { failLoud(Txt.s(Res.string.nav_rec_fail_no_gps), "Recording stopped: this device has no GPS."); return START_NOT_STICKY }
         if (!goForeground()) {
-            failLoud("Recording could not start – Android blocked it. Open OnPath and try again.")
+            failLoud(Txt.s(Res.string.nav_rec_fail_blocked), "Recording could not start – Android blocked it. Open OnPath and try again.")
             return START_NOT_STICKY
         }
 
@@ -244,7 +246,7 @@ class RecordingService : Service() {
             }
         } catch (e: Exception) {
             tourId = -1
-            failLoud("Recording could not start: the track cannot be saved (phone storage full or damaged).", e)
+            failLoud(Txt.s(Res.string.nav_rec_fail_storage), "Recording could not start: the track cannot be saved (phone storage full or damaged).", e)
             return START_NOT_STICKY
         }
         snapshotDirty = true
@@ -417,10 +419,10 @@ class RecordingService : Service() {
 
     private fun notifySaveFailed() {
         try {
-            val text = "The track cannot be saved any more (phone storage full or damaged). Free up space; recording keeps trying."
+            val text = Txt.s(Res.string.nav_rec_save_failed)
             nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Recording cannot be saved")
+                .setContentTitle(Txt.s(Res.string.nav_rec_save_failed_title))
                 .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_ERROR)
@@ -435,13 +437,14 @@ class RecordingService : Service() {
     /**
      * The service cannot (or can no longer) record: say so in a notification that stays, then stop. The tour keeps
      * its "active" state, so the app offers Continue / Save next time. Never a silent stopSelf().
+     * [text] = what the user reads (app language), [log] = the English line for the problem log.
      */
-    private fun failLoud(text: String, cause: Throwable? = null) {
-        Problems.error("recording", text, cause)
+    private fun failLoud(text: String, log: String, cause: Throwable? = null) {
+        Problems.error("recording", log, cause)
         try {
             nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Recording stopped")
+                .setContentTitle(Txt.s(Res.string.nav_rec_stopped_title))
                 .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_ERROR)
@@ -470,7 +473,7 @@ class RecordingService : Service() {
             stored != null && stored.active.size == line.size -> stored
             else -> {
                 val prefs = Prefs(this)
-                NavSession(NavKind.TRACK, follow?.first ?: "Route", prefs.activity, prefs.sac, line)
+                NavSession(NavKind.TRACK, follow?.first ?: Txt.s(Res.string.nav_route_fallback), prefs.activity, prefs.sac, line)
             }
         }
         val old = navigator
@@ -569,7 +572,7 @@ class RecordingService : Service() {
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
         if ((settings ?: Prefs(this).settings).junctionVibrate) {
             vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
-            Problems.trace("navigation", "Junction cue: ${cue.text}")
+            Problems.trace("navigation", "Junction cue: ${cue.name}")
         }
     }
 
@@ -613,7 +616,7 @@ class RecordingService : Service() {
         try {
             val text = when (pr) {
                 is NavPrompt.Question -> NavText.question(pr)
-                else -> hint ?: "Back to ${follow?.first ?: "the route"}"
+                else -> hint ?: follow?.first?.let { Txt.s(Res.string.nav_back_to, it) } ?: Txt.s(Res.string.nav_back_to_route)
             }
             val b = NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -646,15 +649,15 @@ class RecordingService : Service() {
         try {
             val b = NotificationCompat.Builder(this, CHANNEL_NAV)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Recording is paused")
-                .setContentText("You are moving – resume recording?")
+                .setContentTitle(Txt.s(Res.string.nav_rec_paused_title))
+                .setContentText(Txt.s(Res.string.nav_rec_paused_moving))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openAppIntent())
-                .addAction(0, "Resume", actionIntent(ACTION_RESUME, 2))
+                .addAction(0, Txt.s(Res.string.common_resume), actionIntent(ACTION_RESUME, 2))
             nm().notify(PAUSE_ALERT_ID, b.build())
         } catch (e: SecurityException) {
             Problems.warn("recording", "Paused-but-moving reminder refused (notification permission?)", e)
@@ -879,11 +882,12 @@ class RecordingService : Service() {
         null
     }
 
+    /** The status word (app language); NavNotification compares it with nav_status_recording. */
     private fun notifStatus() = when {
-        paused -> "Paused"
-        tourId >= 0 && gpsLost() -> "Searching GPS…"
-        navigator?.prompt != null -> "Off route"
-        else -> "Recording"
+        paused -> Txt.s(Res.string.nav_status_paused)
+        tourId >= 0 && gpsLost() -> Txt.s(Res.string.nav_status_searching_gps)
+        navigator?.prompt != null -> Txt.s(Res.string.nav_off_route)
+        else -> Txt.s(Res.string.nav_status_recording)
     }
 
     private fun buildNotification(): Notification {
@@ -895,7 +899,7 @@ class RecordingService : Service() {
             .setShowWhen(!paused)
             .setUsesChronometer(!paused)
             .setWhen(System.currentTimeMillis() - elapsedS * 1000)
-            .setContentText(status + (follow?.let { " · following ${it.first}" } ?: ""))
+            .setContentText(follow?.let { Txt.s(Res.string.nav_notif_following, status, it.first) } ?: status)
             // readable on the lock screen (owner 2026-10-22); no button here ends a tour
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -907,11 +911,11 @@ class RecordingService : Service() {
         navText?.let { n ->
             // following a route: next junction / distance to go as the title, time to go · arrival · distance below
             b.setContentTitle(n.title).setContentText(n.text).setUsesChronometer(false).setShowWhen(false)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(n.text + "\nRecorded " + Format.distance(distance) +
-                    " · " + Format.clock(elapsedS)))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(n.text + "\n" +
+                    Txt.s(Res.string.nav_notif_recorded, Format.distance(distance), Format.clock(elapsedS))))
         }
-        if (paused) b.addAction(0, "Resume", actionIntent(ACTION_RESUME, 2))
-        else b.addAction(0, "Pause", actionIntent(ACTION_PAUSE, 1))
+        if (paused) b.addAction(0, Txt.s(Res.string.common_resume), actionIntent(ACTION_RESUME, 2))
+        else b.addAction(0, Txt.s(Res.string.nav_pause), actionIntent(ACTION_PAUSE, 1))
         // No "Stop & save" here (owner 2026-10-20: ending a tour must be deliberate) – one tap on the lock screen or
         // in the pocket would end the recording. Ending is in the app, with a question first.
         return b.build()
@@ -984,14 +988,14 @@ class RecordingService : Service() {
             if (Build.VERSION.SDK_INT < 26) return
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_REC, "Recording", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Shows distance and time while recording"
+                NotificationChannel(CHANNEL_REC, Txt.s(Res.string.nav_channel_recording), NotificationManager.IMPORTANCE_LOW).apply {
+                    description = Txt.s(Res.string.nav_channel_recording_desc)
                 }
             )
             runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) } // expected to be harmless: old channel may not exist
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_NAV, "Off route", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Asks when you leave the route you follow: take a new route or keep the original"
+                NotificationChannel(CHANNEL_NAV, Txt.s(Res.string.nav_channel_off_route), NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = Txt.s(Res.string.nav_channel_off_route_desc)
                     enableVibration(false)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }

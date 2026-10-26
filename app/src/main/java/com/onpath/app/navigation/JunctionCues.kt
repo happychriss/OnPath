@@ -1,5 +1,7 @@
 package com.onpath.app.navigation
 
+import com.onpath.strings.*
+
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
@@ -87,17 +89,19 @@ object NavNotification {
     fun of(status: String, junction: Pair<JunctionCue, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
            distance: (Double) -> String, duration: (Double) -> String, clock: (Long) -> String): Text? {
         if (toGoM == null) return null
-        val distanceInTitle = status == "Recording" && !(junction != null && junction.second <= JUNCTION_TITLE_M)
+        // the plain status (same text as RecordingService.notifStatus, so it works in every language)
+        val recording = status == Txt.s(Res.string.nav_status_recording)
+        val distanceInTitle = recording && !(junction != null && junction.second <= JUNCTION_TITLE_M)
         val title = when {
-            status != "Recording" -> status
-            !distanceInTitle -> "${junction!!.first.text} in ${distance(roundDist(junction.second))}"
-            else -> "${distance(toGoM)} to go"
+            !recording -> status
+            !distanceInTitle -> Txt.s(Res.string.nav_turn_in, junction!!.first.text, distance(roundDist(junction.second)))
+            else -> Txt.s(Res.string.nav_notif_to_go, distance(toGoM))
         }
         // The distance is said once: in the title ("8.2 km to go") or, when the title is a status / junction, here.
         val parts = buildList {
-            if (toGoS != null) add(if (distanceInTitle) duration(toGoS) else "${duration(toGoS)} to go")
-            if (arrivalMs != null) add("arrival ${clock(arrivalMs)}")
-            if (!distanceInTitle) add("${distance(toGoM)} left")
+            if (toGoS != null) add(if (distanceInTitle) duration(toGoS) else Txt.s(Res.string.nav_notif_to_go, duration(toGoS)))
+            if (arrivalMs != null) add(Txt.s(Res.string.nav_notif_arrival, clock(arrivalMs)))
+            if (!distanceInTitle) add(Txt.s(Res.string.nav_notif_left, distance(toGoM)))
         }
         return Text(title, parts.joinToString(" · "))
     }
