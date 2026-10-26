@@ -3,6 +3,7 @@
 # tools/cells/README.md.
 #
 #   tools/cells/build_cell.sh Z X Y            e.g. 10 543 361 (Meran)
+#   tools/cells/build_cell.sh 7 X Y            a region package (z7-9 of a z7 tile): tools/cells/build_package.sh
 #
 # Env (defaults fit the Docker image, paths inside the container):
 #   FORMAT=2                 cell format: 2 (default; docs/design/map-data-size.md) or 1 (GeoJSON overlays, PNG terrain)
@@ -56,7 +57,9 @@ set -euo pipefail
 
 [ $# -eq 3 ] || { sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 2; }
 Z=$1 X=$2 Y=$3
-[ "$Z" = 10 ] || { echo "only z10 cells are defined (map-cells.md §2)" >&2; exit 2; }
+# a z7 id is a region package (map-cells.md §20): its own steps, same env, same output layout
+[ "$Z" = 7 ] && exec bash "$(dirname "${BASH_SOURCE[0]}")/build_package.sh" "$@"
+[ "$Z" = 10 ] || { echo "only z10 cells and z7 region packages are defined (map-cells.md §2, §20)" >&2; exit 2; }
 for v in "$X" "$Y"; do [[ "$v" =~ ^[0-9]+$ ]] || { echo "bad cell x/y" >&2; exit 2; }; done
 
 CELLS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

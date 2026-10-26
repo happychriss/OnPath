@@ -29,7 +29,8 @@ Tiles are opaque: the shade is composited onto --background (the style's backgro
 lossless, and a noisy alpha channel made RGBA tiles 6-10 x larger (world z0-7 ≈ 180-280 MB vs ≈ 25 MB, measured
 without blur). So the layer must be drawn directly above the background, below every fill (the overview's ice /
 urban fills then need some transparency to let the relief through). Sea tiles (no height > 0 m) and tiles without any shade are left
-out (the map shows the background there). Heights below 0 m count as 0 (sea floor flat). Above z6 only tiles whose
+out (the map shows the background there) – unless --keep-flat (region packages, docs/design/map-cells.md §20: the
+package's shade must cover the overview below it, so every tile is written, flat ones as plain background). Heights below 0 m count as 0 (sea floor flat). Above z6 only tiles whose
 z6 parent has land are downloaded.
 
 Usage:
@@ -186,12 +187,12 @@ def tile_shade(z, x, y, strength, sigma, k=1):
     return np.tensordot(rows, e, axes=(1, 1)).transpose(0, 2, 1)
 
 
-def encode(p, quality):
+def encode(p, quality, force=False):
     """premultiplied RGBA float -> WebP lossy bytes, None when there is (almost) no shade. With BACKGROUND set the
     shade is composited onto it (opaque image: about 1/10 of the size – WebP keeps alpha lossless, and a noisy
     alpha channel costs far more than the lossy colour), else RGBA."""
     a = p[..., 3]
-    if a.max() * 255 < ALPHA_MIN:
+    if a.max() * 255 < ALPHA_MIN and not force:
         return None
     if BACKGROUND is not None:
         im = Image.fromarray(np.round((p[..., :3] + BACKGROUND * (1 - a[..., None])) * 255).astype(np.uint8), "RGB")
@@ -234,6 +235,9 @@ def main(argv=None):
     ap.add_argument("--tile-size", type=int, choices=(256, 512), default=256,
                     help="512: each tile from the 2 x 2 DEM tiles one zoom deeper (z0-6 at 512 = z7 detail, half the "
                          "tile edges); the style source then needs tileSize 512")
+    ap.add_argument("--keep-flat", action="store_true",
+                    help="write every tile of the bbox: sea / flat tiles as plain --background tiles (region packages: "
+                         "the opaque layer then hides the overview below it everywhere inside the package)")
     ap.add_argument("--workers", type=int, default=4, help="worker processes (keep the laptop usable)")
     ap.add_argument("--cache", required=True, help="AWS Terrarium PNGs DIR/z/x/y.png (shared with build_terrain.py)")
     a = ap.parse_args(argv)
@@ -246,6 +250,7 @@ def main(argv=None):
     k = a.tile_size // N
     dz = k - 1  # DEM zoom = tile zoom + dz
     need = {z: tile_range(z, minlon, minlat, maxlon, maxlat) for z in range(a.minzoom, top + 1)}
+    every = [(z, x, y) for z in need for (_, x, y) in need[z]]  # before the land test (--keep-flat)
     land = None
     if top + dz > 6:
         # land test on the z6 DEM; tiles from a deeper DEM under a z6 tile without land (sea) are neither
@@ -286,6 +291,17 @@ def main(argv=None):
             if n_done % 4000 == 0:
                 print(f"  shaded {n_done}", flush=True)
     print(f"shaded {len(jobs)} tiles in {time.time() - t0:.0f} s", flush=True)
+    if a.keep_flat:
+        if BACKGROUND is None:
+            sys.exit("--keep-flat needs a --background colour")
+        flat = encode(np.dstack([np.zeros((N * k, N * k, 3)), np.full((N * k, N * k), 1e-3)]), a.quality,
+                      force=True)
+        added = 0
+        for t in every:
+            if t not in out:
+                out[t] = flat
+                added += 1
+        print(f"  {added} flat / sea tiles written as plain background", flush=True)
 
     tmp = a.out + ".tmp"
     with open(tmp, "wb") as f:

@@ -62,6 +62,15 @@ STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.23, "re
                  "base-own": 0.47, "base-trim": 0.47, "overlays": 0.48, "overlays-tiles": 0.58, "overlays-own": 0.63,
                  "pois": 0.63, "pois-ids": 0.70, "clip": 0.70, "addresses": 0.70, "terrain": 0.76, "contours": 0.94,
                  "terrain-own": 0.94, "contours-own": 0.97, "manifest": 0.97, "upload": 0.98}
+# region packages (z7 ids, tools/cells/build_package.sh, map-cells.md §20): cut + Planetiler are most of the time
+PACKAGE_STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.35, "renumber": 0.4, "base": 0.45,
+                         "base-own": 0.75, "base-trim": 0.76, "routes-filter": 0.78, "routes": 0.8, "routes-tiles": 0.85,
+                         "routes-own": 0.88, "shade": 0.9, "manifest": 0.97, "upload": 0.98}
+PACKAGE_Z = 7
+PACKAGE_BUFFER_KM = 10  # build_package.sh PKG_BUFFER_KM: the sources must cover the package + this
+# a package (~200 km) touches many Geofabrik leaves – Düsseldorf's 7/66/42: 15 (NL provinces, NRW districts, Belgium,
+# Lower Saxony …); each is cut on its own (memory of one cut), so more extracts only cost time
+PACKAGE_MAX_EXTRACTS = 20
 IMMUTABLE = "public, max-age=31536000, immutable"
 
 
@@ -86,8 +95,8 @@ def parse_cells(text):
         if not m:
             raise ValueError(f"bad cell id {tok!r}")
         z, x, y = map(int, m.groups())
-        if z != 10 or not (0 <= x < 1024 and 0 <= y < 1024):
-            raise ValueError(f"bad cell id {tok!r} (only z10 cells)")
+        if z not in (10, PACKAGE_Z) or not (0 <= x < 2 ** z and 0 <= y < 2 ** z):
+            raise ValueError(f"bad cell id {tok!r} (only z10 cells and z7 region packages)")
         if (z, x, y) not in out:
             out.append((z, x, y))
     return out
@@ -205,9 +214,10 @@ class Builder:
         pinned = osm_sources.pick_pinned(self.sources, cell_bbox(z, x, y))
         if pinned:
             return [dict(pinned, path=os.path.join(self.src_dir, "osm", f"{pinned['id']}.osm.pbf"))]
-        box = buffered_bbox(cell_bbox(z, x, y), self.buffer_km)
+        box = buffered_bbox(cell_bbox(z, x, y), PACKAGE_BUFFER_KM if z == PACKAGE_Z else self.buffer_km)
         out = []
-        for r in osm_sources.select(self.regions(), box):
+        for r in osm_sources.select(self.regions(), box,
+                                    PACKAGE_MAX_EXTRACTS if z == PACKAGE_Z else osm_sources.MAX_EXTRACTS):
             rel = re.sub(r"^https?://[^/]+/", "", r.url)
             rel = re.sub(r"(-latest)?\.osm\.pbf$", "", rel)
             out.append({"id": r.id, "url": r.url,
@@ -356,13 +366,14 @@ class Builder:
         p = self.popen(["bash", self.build_cell, str(z), str(x), str(y)], env=env, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, text=True, bufsize=1)
         tail, progress = [], 0.0
+        table = PACKAGE_STEP_PROGRESS if z == PACKAGE_Z else STEP_PROGRESS
         for line in p.stdout:
             sys.stdout.write(line)
             tail = (tail + [line.rstrip()])[-30:]
             m = re.search(r"==> (\S+)", line)
             if m:
                 step = m.group(1)
-                progress = STEP_PROGRESS.get(step, progress)
+                progress = table.get(step, progress)
                 self.status(cid, "building", step=step, progress=progress)
         rc = p.wait()
         return rc, tail

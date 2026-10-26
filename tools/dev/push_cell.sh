@@ -3,6 +3,7 @@
 # working tree (uncommitted changes included) and put it straight into OnPath on the phone – no cloud involved.
 #
 #   tools/dev/push_cell.sh 10-531-342          (Hilden; ANDROID_SERIAL picks the phone when several are attached)
+#   tools/dev/push_cell.sh 7-66-42             a region package (z7-9 around Düsseldorf, map-cells.md §20) – same way
 #   PUSH_ONLY=<dir> tools/dev/push_cell.sh 10-531-342   push an already built version folder again (no build)
 #
 # How it reaches the map: the cell is pushed as a complete download (cells/download/<cell>/<version>/ with
