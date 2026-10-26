@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
 import kotlinx.coroutines.CoroutineScope
@@ -63,15 +64,16 @@ sealed interface CellState {
 
 /** Short plain-language line for a state ("building – base 40 %", "downloading 60 %") – debug list, card rows. */
 fun CellState.label(): String = when (this) {
-    CellState.None -> "not on the phone"
-    CellState.Requested -> "waiting"
-    is CellState.Queued -> "waiting" + (etaS?.let { " – about ${(it + 59) / 60} min" } ?: "")
-    is CellState.Building -> "being prepared – ${(progress * 100).toInt()} %" + (etaS?.let { ", about ${(it + 59) / 60} min" } ?: "")
-    is CellState.WaitingForWifi -> "waits for Wi-Fi" + (bytes?.let { " (${it / 1_048_576} MB)" } ?: "")
-    is CellState.Downloading -> if (totalBytes <= 0) "downloading" else "downloading $percent %"
-    CellState.Installing -> "almost ready"
-    CellState.Downloaded -> "on the phone – shows after the tour"
-    is CellState.Ready -> "ready ($version)"
+    CellState.None -> Txt.s(Res.string.maps_state_not_on_phone)
+    CellState.Requested -> Txt.s(Res.string.maps_state_waiting)
+    is CellState.Queued -> etaS?.let { Txt.s(Res.string.maps_state_waiting_min, (it + 59) / 60) } ?: Txt.s(Res.string.maps_state_waiting)
+    is CellState.Building -> etaS?.let { Txt.s(Res.string.maps_state_building_min, (progress * 100).toInt(), (it + 59) / 60) }
+        ?: Txt.s(Res.string.maps_state_building, (progress * 100).toInt())
+    is CellState.WaitingForWifi -> bytes?.let { Txt.s(Res.string.maps_state_wifi_mb, it / 1_048_576) } ?: Txt.s(Res.string.maps_state_wifi)
+    is CellState.Downloading -> if (totalBytes <= 0) Txt.s(Res.string.maps_state_downloading) else Txt.s(Res.string.maps_state_downloading_pct, percent)
+    CellState.Installing -> Txt.s(Res.string.maps_state_installing)
+    CellState.Downloaded -> Txt.s(Res.string.maps_state_downloaded)
+    is CellState.Ready -> Txt.s(Res.string.maps_state_ready, version)
     is CellState.Offline -> message
     is CellState.Failed -> message
 }
@@ -745,7 +747,7 @@ class MapCells(
         } catch (e: Exception) {
             synchronized(finished) { ids.forEach { finished.remove(it) } }
             Problems.error("cells", "Map areas ${ids.joinToString { it.id }} could not be joined into the map", e)
-            ids.forEach { set(it, CellState.Failed((e as? CellStore.StoreException)?.message ?: "The map could not be saved.")) }
+            ids.forEach { set(it, CellState.Failed((e as? CellStore.StoreException)?.message ?: Txt.s(Res.string.maps_err_not_saved))) }
         }
     }
 
@@ -753,11 +755,11 @@ class MapCells(
         val pending = synchronized(queue) { queue.values.filter { it.confirmed } }
         if (pending.isEmpty()) return IDLE_MS
         if (api == null) {
-            pending.forEach { set(it.id, CellState.Failed("This app version cannot download maps. Please install the latest version.", retryable = false)) }
+            pending.forEach { set(it.id, CellState.Failed(Txt.s(Res.string.maps_err_app_version), retryable = false)) }
             return IDLE_MS
         }
         if (!network.connected()) {
-            pending.forEach { set(it.id, CellState.Offline("No connection – the detailed map for this area will load when you are online.")) }
+            pending.forEach { set(it.id, CellState.Offline(Txt.s(Res.string.maps_err_no_connection))) }
             return 60_000L
         }
         try {
@@ -811,12 +813,12 @@ class MapCells(
     private fun packagesFailed(e: CellApi.ApiException, pkgs: List<Pending>) {
         when (e.failure) {
             CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY ->
-                pkgs.forEach { set(it.id, CellState.Offline("Map server not reachable – trying again.")) }
+                pkgs.forEach { set(it.id, CellState.Offline(Txt.s(Res.string.maps_err_unreachable))) }
             else -> {
                 Problems.info("cells", "Region packages not available from the map server (${e.failure}); asked again at the next start", e)
                 packagesRefused = true // not after every join of this run (phone test 2026-10-26: a 400 per join)
                 synchronized(queue) { pkgs.forEach { queue.remove(it.id) }; saveQueue() }
-                pkgs.forEach { set(it.id, CellState.Failed("Region view not available", retryable = true)) }
+                pkgs.forEach { set(it.id, CellState.Failed(Txt.s(Res.string.maps_err_region_view), retryable = true)) }
             }
         }
     }
@@ -857,7 +859,7 @@ class MapCells(
                 "queued" -> set(c, CellState.Queued(s.position, s.etaS))
                 "building" -> set(c, CellState.Building(s.step ?: "starting", s.progress ?: 0.0, s.etaS))
                 "failed" -> {
-                    val msg = "Map for this area failed"
+                    val msg = Txt.s(Res.string.maps_err_area_failed)
                     if (c.isPackage) Problems.info("cells", "Region package $c failed on the server: ${s.reason}")
                     else Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
@@ -880,16 +882,16 @@ class MapCells(
         when (e.failure) {
             CellApi.Failure.REFUSED -> {
                 Problems.error("cells", "Map server refused the app key", e)
-                pending.forEach { set(it.id, CellState.Failed(com.onpath.app.debug.UserText.of(e, "Map server refused the request – update the app."), retryable = false)) }
+                pending.forEach { set(it.id, CellState.Failed(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_refused)), retryable = false)) }
                 return IDLE_MS
             }
             CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY -> {
                 Problems.info("cells", "Map server not reachable (${e.failure}); retrying", e)
-                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Map server not reachable – trying again."))) }
+                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_unreachable)))) }
             }
             else -> {
                 Problems.warn("cells", "Map server answer not usable; retrying", e)
-                pending.forEach { set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Map server not reachable – trying again."))) }
+                pending.forEach { set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_unreachable)))) }
             }
         }
         return wait
@@ -901,15 +903,15 @@ class MapCells(
         try {
             val m = api.manifest(c)
             if (m.cell != c) throw IllegalStateException("manifest is for ${m.cell}")
-            if (m.format != CellApi.FORMAT) { set(c, CellState.Failed("This area is only available for another app version.", false)); dequeue(c); return }
+            if (m.format != CellApi.FORMAT) { set(c, CellState.Failed(Txt.s(Res.string.maps_err_other_version), false)); dequeue(c); return }
             if (m.minApp != null && com.onpath.app.update.AppUpdater.isNewer(m.minApp, appVersion)) {
-                set(c, CellState.Failed("Update OnPath to load this area (needs ${m.minApp}).", false)); dequeue(c); return
+                set(c, CellState.Failed(Txt.s(Res.string.maps_err_needs_app, m.minApp), false)); dequeue(c); return
             }
             store.current()?.cell(c)?.takeIf { it.version == m.version }?.let { dequeue(c); set(c, CellState.Ready(it.version)); return }
             val free = store.root.apply { mkdirs() }.usableSpace
             val need = m.totalSize * 2 + CellStore.MARGIN // download + its tiles in the new store generation
             if (free in 0 until need) {
-                set(c, CellState.Failed("Not enough space (needs ${need / 1_048_576} MB). Delete old areas in Settings → Offline maps."))
+                set(c, CellState.Failed(Txt.s(Res.string.maps_err_space_needs, need / 1_048_576)))
                 Problems.warn("cells", "Not enough space for map cell $c (${need / 1_048_576} MB needed)")
                 dequeue(c); return
             }
@@ -958,19 +960,19 @@ class MapCells(
         } catch (e: CellApi.ChecksumException) {
             if (c in damaged) {
                 Problems.warn("cells", "Map cell $c damaged twice while downloading", e)
-                set(c, CellState.Failed("Download damaged – please try again later.")); dequeue(c)
+                set(c, CellState.Failed(Txt.s(Res.string.maps_err_damaged))); dequeue(c)
             } else { damaged += c; Problems.info("cells", "Map cell $c download damaged; loading again", e); set(c, READY_ON_SERVER) }
         } catch (e: CellApi.ApiException) {
             if (e.failure == CellApi.Failure.NOT_READY) { sent -= c; set(c, CellState.Requested); return }
-            set(c, CellState.Offline(com.onpath.app.debug.UserText.of(e, "Download stopped – continues when connected.")))
+            set(c, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_stopped))))
             Problems.info("cells", "Map cell $c download stopped (${e.failure})", e)
             throw e
         } catch (e: CellStore.StoreException) {
             Problems.error("cells", "Map cell $c could not be joined into the map", e)
-            set(c, CellState.Failed(com.onpath.app.debug.UserText.of(e, "The map could not be saved."))); dequeue(c)
+            set(c, CellState.Failed(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_not_saved)))); dequeue(c)
         } catch (e: Exception) {
             Problems.error("cells", "Map cell $c download failed", e)
-            set(c, CellState.Failed("Download failed. Please try again later.")); dequeue(c)
+            set(c, CellState.Failed(Txt.s(Res.string.maps_err_failed))); dequeue(c)
         }
     }
 

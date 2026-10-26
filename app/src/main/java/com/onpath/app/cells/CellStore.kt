@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import org.json.JSONArray
 import org.json.JSONObject
@@ -162,7 +163,7 @@ class CellStore(
         val final = File(storeDir, "%s%06d".format("g", number))
         try {
             tmp.deleteRecursively()
-            if (!tmp.mkdirs()) throw StoreException("The map could not be saved – the phone's storage is not writable. The previous map is kept.",
+            if (!tmp.mkdirs()) throw StoreException(Txt.s(Res.string.maps_err_store_not_writable),
                 IOException("mkdirs failed: ${tmp.path}"))
             // space: the new generation is at most the sum of its inputs
             val need = LAYERS.sumOf { n ->
@@ -171,8 +172,7 @@ class CellStore(
             } + (cur?.dir?.let { File(it, POIS).length() } ?: 0L) + add.sumOf { File(it.dir, POIS).length() } +
                 (if (POIS in region) File(dataDir, POIS).length() else 0L) + MARGIN
             val free = freeSpace(storeDir)
-            if (free < need) throw StoreException("Not enough space for the map (needs ${need / MB} MB, ${free / MB} MB free). " +
-                "Delete map areas in Settings.")
+            if (free < need) throw StoreException(Txt.s(Res.string.maps_err_store_space, need / MB, free / MB))
             val bytes = HashMap<CellId, MutableMap<String, Long>>()
             val files = LinkedHashMap<String, Long>()
             for (n in LAYERS) {
@@ -195,7 +195,7 @@ class CellStore(
                 val out = File(tmp, n)
                 val bounds = boundsOf(allIds, inputs.zip(owners).filter { it.second == null && it.first.file.parentFile == dataDir }.map { it.first.file })
                 val r = try { PmTiles.merge(inputs, out, bounds, mergedMetadata(inputs.map { it.file })) }
-                catch (e: PmTiles.IncompatibleException) { throw StoreException("The downloaded map does not fit the map already on the phone. The previous map is kept.", IOException(n, e)) }
+                catch (e: PmTiles.IncompatibleException) { throw StoreException(Txt.s(Res.string.maps_err_store_incompatible), IOException(n, e)) }
                 if (r == null) continue
                 files[n] = PmTiles.verify(out).let { out.length() }
                 r.bytesPerInput.forEachIndexed { i, b -> owners[i]?.let { c -> bytes.getOrPut(c) { HashMap() }[n] = b } }
@@ -225,7 +225,7 @@ class CellStore(
             }.sortedBy { it.id }
             val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now)
             File(tmp, STORE_JSON).writeText(toJson(gen).toString(1))
-            if (!tmp.renameTo(final)) throw StoreException("The map could not be saved. The previous map is kept.", IOException("rename ${tmp.name} failed"))
+            if (!tmp.renameTo(final)) throw StoreException(Txt.s(Res.string.maps_err_store_failed), IOException("rename ${tmp.name} failed"))
             // the cells' addresses go where the search reads them; only after the generation is active
             for (d in add) installAddresses(d)
             for (c in remove - addIds) deleteAddresses(c)
@@ -239,8 +239,7 @@ class CellStore(
         } catch (e: Exception) {
             tmp.deleteRecursively()
             val low = freeSpace(storeDir) < MARGIN
-            throw StoreException(if (low) "Not enough space to save the map. Delete map areas in Settings." else
-                "The map could not be saved. The previous map is kept.", e)
+            throw StoreException(if (low) Txt.s(Res.string.maps_err_store_low) else Txt.s(Res.string.maps_err_store_failed), e)
         }
     }
 
