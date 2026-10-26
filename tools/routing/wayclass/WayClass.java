@@ -287,6 +287,13 @@ public class WayClass {
       {t("highway=residential", "oneway=yes", "oneway:bicycle=no"), "0 1 1 1 0"},
       {t("highway=residential", "access=private"), "2 2 2 2 0"},
       {t("highway=pedestrian"), "0 1 1 1 0"},
+      // ferries (2026-10-26): no bikes on board = forbidden for bikes (also on a cycle route), foot=no for hikers
+      {t("route=ferry", "foot=yes", "bicycle=yes"), "1 1 1 0 0"},
+      {t("route=ferry", "bicycle=dismount"), "1 1 1 1 0"},
+      {t("route=ferry", "foot=yes", "bicycle=no"), "1 2 2 2 0"},
+      {t("route=ferry", "foot=yes", "bicycle=no", "route_bicycle_lcn=yes"), "1 2 2 2 0"},
+      {t("route=ferry", "access=no", "foot=yes"), "1 2 2 2 0"},
+      {t("route=ferry", "foot=no", "bicycle=yes"), "2 1 1 0 0"},
     };
     int bad = 0;
     for (Object[] c : cases) {

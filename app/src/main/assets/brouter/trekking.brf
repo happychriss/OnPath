@@ -282,6 +282,10 @@ assign ldcr_busy =
        if hascycleway then false
        else if highway=trunk|trunk_link|primary|primary_link|secondary|secondary_link then true
        else and highway=tertiary|tertiary_link estimated_traffic_class=4|5|6|7
+# OnPath: a ferry that does not take bikes: bicycle=no|private, or no bicycle tag and vehicle=no|private, or neither
+# tag and access=no|private (bicycle=dismount is fine). Not bikeaccess: that also says no to dismount.
+assign ferry_nobike = if bicycle= then ( if vehicle= then access=no|private else vehicle=no|private ) else bicycle=no|private
+
 assign costfactor
 
   #
@@ -329,7 +333,9 @@ assign costfactor
   # to really exclude them be setting cost to infinity
   #
   if ( highway=steps ) then ( if allow_steps then 40 else 10000 )
-  else if ( route=ferry   ) then ( if allow_ferries then 5.67 else 10000 )
+  # OnPath: a ferry that does not take bikes (ferry_nobike) is forbidden – pushing does not help on a boat
+  # (2026-10-26: 56 of 208 test routes over a short bicycle=no ferry used it)
+  else if ( route=ferry   ) then ( if ( and allow_ferries not ferry_nobike ) then 5.67 else 10000 )
 
   #
   # handle long-distance cycle-routes.
