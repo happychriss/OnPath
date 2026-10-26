@@ -1,5 +1,6 @@
 package com.onpath.app.data
 
+import com.onpath.strings.*
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.NetworkStatus
 import com.onpath.app.debug.Problems
@@ -54,8 +55,8 @@ object RoutingTiles {
  * unit-tested.
  */
 object RoutingDataNotice {
-    const val LOADING = "Map loading – straight line for now"
-    const val NOT_YET = "Map loads when online – straight line for now"
+    val LOADING: String get() = Txt.s(Res.string.maps_routing_loading)
+    val NOT_YET: String get() = Txt.s(Res.string.maps_routing_not_yet)
 
     fun text(loading: Boolean): String = if (loading) LOADING else NOT_YET
 
@@ -67,7 +68,9 @@ object RoutingDataNotice {
      */
     fun forRoute(error: String?, missing: Boolean, loading: Boolean): String? = when {
         missing -> text(loading)
-        error != null && (error.contains("No routing data") || error.contains(".rd5")) -> text(loading)
+        // the router's own sentence (English before EN + DE, in the app's language since) or a file name
+        error != null && (error.contains("No routing data") || error.contains(com.onpath.app.routing.BRouterEngine.NO_DATA) ||
+            error.contains(".rd5")) -> text(loading)
         else -> error
     }
 }

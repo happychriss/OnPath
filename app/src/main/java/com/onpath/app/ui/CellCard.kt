@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,7 +56,7 @@ sealed interface CellCardUi {
     val title: String
 
     data object NotAvailable : CellCardUi {
-        override val title = "Map downloads not available in this build"
+        override val title get() = Txt.s(Res.string.maps_card_not_available)
     }
 
     data class Working(
@@ -88,14 +89,14 @@ sealed interface CellCardUi {
         override val title get() = if (permission) WAITING else ALLOW
         companion object {
             /** A question (blue, "Allow location"). */
-            const val ALLOW = "Detailed map where you are?"
+            val ALLOW: String get() = Txt.s(Res.string.maps_need_position_allow)
             /** A status (grey pill, review 2026-10-24 C8). */
-            const val WAITING = "Waiting for GPS for the detailed map"
+            val WAITING: String get() = Txt.s(Res.string.maps_need_position_waiting)
         }
     }
 
     data class Done(val areas: Int, val bytes: Long) : CellCardUi {
-        override val title get() = "Map ready offline ✓ ($areas ${if (areas == 1) "area" else "areas"}, ${mb(bytes)} MB)"
+        override val title get() = Txt.p(Res.plurals.maps_card_done, areas, areas, mb(bytes))
     }
 }
 
@@ -103,8 +104,8 @@ data class CellRow(val name: String, val state: String, val own: Boolean)
 
 /** "Use mobile data? · 3 map areas, 25 MB" (review 2026-10-24 B9) · Wi-Fi only · Load now. */
 data class MobileQuestion(val areas: Int, val bytes: Long?) {
-    val text: String get() = "Use mobile data? · $areas map ${if (areas == 1) "area" else "areas"}" +
-        (bytes?.let { ", ${mb(it)} MB" } ?: "")
+    val text: String get() = if (bytes == null) Txt.p(Res.plurals.maps_mobile_question, areas, areas)
+        else Txt.p(Res.plurals.maps_mobile_question_mb, areas, areas, mb(bytes))
 }
 
 /** Whole MB, at least 1 for anything non-empty. */
@@ -113,7 +114,7 @@ internal fun mb(bytes: Long): Long = if (bytes <= 0) 0 else maxOf(1, (bytes + 52
 /** Pure: card content from the trigger's job and the cell states (unit-tested). */
 object CellCards {
     const val MAX_ROWS = 3
-    const val OFFLINE_TITLE = "No detailed map – loads when online"
+    val OFFLINE_TITLE: String get() = Txt.s(Res.string.maps_card_offline)
 
     /**
      * The first-start card ([CellCardUi.NeedPosition]) when there is no other card ([job] null): downloads [available],
@@ -156,14 +157,15 @@ object CellCards {
         val failed = all.filter { s[it] is CellState.Failed }
         if (open.isEmpty() && failed.isNotEmpty()) {
             val f = s[failed.first()] as CellState.Failed
-            val title = if (failed.size == 1) f.message else "${failed.size} map areas failed: ${f.message}"
+            val title = if (failed.size == 1) f.message else Txt.s(Res.string.maps_card_failed_many, failed.size, f.message)
             return CellCardUi.Failed(title, why, failed.any { (s[it] as CellState.Failed).retryable })
         }
         // only waiting for the network (no download running): one plain line
         val busy = open.filter { s[it] !is CellState.Offline }
         if (busy.isEmpty() && open.isNotEmpty()) {
             val msg = (s[open.first()] as CellState.Offline).message
-            return CellCardUi.Offline(if (msg.startsWith("No connection")) OFFLINE_TITLE else msg, why)
+            // the "no connection" text of the map download (cells/MapCells, CellApi) – compared as a whole, in any language
+            return CellCardUi.Offline(if (msg == Txt.s(Res.string.maps_err_no_connection)) OFFLINE_TITLE else msg, why)
         }
         val downloading = open.mapNotNull { s[it] as? CellState.Downloading }
         val installing = open.any { s[it] == CellState.Installing }
@@ -172,12 +174,13 @@ object CellCards {
         val title = when {
             downloading.isNotEmpty() || installing -> {
                 val done = ready.sumOf { sizes[it] ?: 0L } + downloading.sumOf { it.doneBytes }
-                "Downloading ${minOf(ready.size + 1, all.size)} of ${all.size} · ${mb(done)} MB"
+                Txt.s(Res.string.maps_card_downloading, minOf(ready.size + 1, all.size), all.size, mb(done))
             }
-            waiting.size == open.size -> "Detailed map ready to download"
+            waiting.size == open.size -> Txt.s(Res.string.maps_card_ready_to_download)
             else -> {
                 val eta = open.mapNotNull { when (val x = s[it]) { is CellState.Queued -> x.etaS; is CellState.Building -> x.etaS; else -> null } }.maxOrNull()
-                "Preparing map for this area" + (eta?.let { " – about ${maxOf(1, (it + 59) / 60)} min" } ?: "")
+                if (eta == null) Txt.s(Res.string.maps_card_preparing)
+                else Txt.s(Res.string.maps_card_preparing_min, maxOf(1, (eta + 59) / 60))
             }
         }
         val progress = downloading.firstOrNull { it.totalBytes > 0 }?.let { it.doneBytes.toFloat() / it.totalBytes }
@@ -186,10 +189,14 @@ object CellCards {
         val rest = ordered.drop(MAX_ROWS)
         val more = if (rest.isEmpty()) null else {
             val restReady = rest.count { s[it] is CellState.Ready }
-            "${rest.size} more ${if (rest.size == 1) "area" else "areas"}" + if (restReady == rest.size) " · ready" else if (restReady > 0) " · $restReady ready" else " · waiting"
+            when {
+                restReady == rest.size -> Txt.p(Res.plurals.maps_card_more_ready, rest.size, rest.size)
+                restReady > 0 -> Txt.p(Res.plurals.maps_card_more_some_ready, rest.size, rest.size, restReady)
+                else -> Txt.p(Res.plurals.maps_card_more_waiting, rest.size, rest.size)
+            }
         }
-        val waitNote = if (waiting.isEmpty()) null else "${waiting.size} map ${if (waiting.size == 1) "area waits" else "areas wait"} for Wi-Fi" +
-            (waitBytes?.let { " · ${mb(it)} MB" } ?: "")
+        val waitNote = if (waiting.isEmpty()) null else if (waitBytes == null) Txt.p(Res.plurals.maps_card_wait_wifi, waiting.size, waiting.size)
+            else Txt.p(Res.plurals.maps_card_wait_wifi_mb, waiting.size, waiting.size, mb(waitBytes))
         val question = if (waiting.isNotEmpty() && !wifiOnly && !mobileDeclined) MobileQuestion(waiting.size, waitBytes) else null
         return CellCardUi.Working(title, why, rows, more, progress, question, if (question == null) waitNote else null,
             canLoadNow = wifiOnly)
@@ -214,20 +221,22 @@ object CellCards {
         ui == CellCardUi.NotAvailable || (ui is CellCardUi.Working && ui.question != null)
 
     private fun rowState(s: CellState): String = when (s) {
-        is CellState.Ready -> "ready ✓"
-        CellState.None -> "waiting"
+        is CellState.Ready -> Txt.s(Res.string.maps_row_ready)
+        CellState.None -> Txt.s(Res.string.maps_state_waiting)
         else -> s.label()
     }
 
     /** "Your point" / "Your position" for the own cell, "Area to the north-east" for a neighbour, "Map area 2" else. */
     internal fun name(c: CellId, job: CellJob, index: Int): String {
         val own = job.own
-        if (c == own) return if (job.why == CellWhy.HERE) "Your position" else "Your point"
-        if (own == null) return "Map area ${index + 1}"
+        if (c == own) return Txt.s(if (job.why == CellWhy.HERE) Res.string.maps_row_your_position else Res.string.maps_row_your_point)
+        if (own == null) return Txt.s(Res.string.maps_row_area_n, index + 1)
         val dx = (c.x - own.x).toDouble(); val dy = (own.y - c.y).toDouble()
-        val dirs = listOf("east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east")
+        val dirs = listOf(Res.string.maps_row_area_east, Res.string.maps_row_area_north_east, Res.string.maps_row_area_north,
+            Res.string.maps_row_area_north_west, Res.string.maps_row_area_west, Res.string.maps_row_area_south_west,
+            Res.string.maps_row_area_south, Res.string.maps_row_area_south_east)
         val a = Math.toDegrees(atan2(dy, dx)).let { if (it < 0) it + 360 else it }
-        return "Area to the " + dirs[((a + 22.5) / 45).toInt() % 8]
+        return Txt.s(dirs[((a + 22.5) / 45).toInt() % 8])
     }
 }
 
@@ -245,7 +254,7 @@ class CellCardCallbacks(
 
 /** Small persistent hint on the map where only the overview exists (z ≥ 10, Plan). */
 @Composable
-fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(OVERVIEW_HINT, Icons.Outlined.Map, modifier = modifier)
+fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(str(Res.string.maps_overview_hint), Icons.Outlined.Map, modifier = modifier)
 
 /**
  * The quiet grey pill under the search bar (review 2026-10-24 C8): a status with nothing to decide ("Overview only – …",
@@ -272,7 +281,7 @@ fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVecto
 private fun Modifier.androidxSemantics(text: String) =
     this.then(Modifier.semantics(mergeDescendants = true) { contentDescription = text })
 
-const val OVERVIEW_HINT = "Overview only – hold the map here to get the detailed map"
+val OVERVIEW_HINT: String get() = Txt.s(Res.string.maps_overview_hint)
 
 /**
  * When the "Overview only" hint shows (Plan, z ≥ [MIN_ZOOM]): when a large part of the visible map has no detailed
@@ -323,9 +332,9 @@ object MapUpdates {
     }
 
     fun text(u: MapUpdateUi): String = when (u) {
-        is MapUpdateUi.Loading -> "Loading the newer map…"
-        is MapUpdateUi.Preparing -> "Newer map for this area being prepared" + (u.minutes?.let { " · about $it min" } ?: "") +
-            ""
+        is MapUpdateUi.Loading -> Txt.s(Res.string.maps_update_loading)
+        is MapUpdateUi.Preparing -> u.minutes?.let { Txt.s(Res.string.maps_update_preparing_min, it) }
+            ?: Txt.s(Res.string.maps_update_preparing)
     }
 }
 

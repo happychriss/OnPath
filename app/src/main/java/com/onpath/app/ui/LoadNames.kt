@@ -1,7 +1,9 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import com.onpath.app.cells.CellState
 import com.onpath.app.routing.GeoPoint
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Human names for what loads in the background (owner 2026-10-23): map areas only have grid ids, so each one is named
@@ -24,7 +26,12 @@ enum class LoadWhy {
 data class LoadTag(val why: LoadWhy, val at: GeoPoint? = null, val name: String? = null, val sinceMs: Long = 0L)
 
 /** Where one area is: asked → prepared on the server → loading → being joined into the map. */
-enum class LoadPhase(val text: String) { LOADING("loading"), FINISHING("almost done"), PREPARING("being prepared"), WAITING("waiting") }
+enum class LoadPhase(private val res: StringResource) {
+    LOADING(Res.string.maps_phase_loading), FINISHING(Res.string.maps_phase_finishing),
+    PREPARING(Res.string.maps_phase_preparing), WAITING(Res.string.maps_phase_waiting);
+
+    val text: String get() = Txt.s(res)
+}
 
 /** One loading thing: a map area, or ([paths]) a part the map needs for planning routes – never named on its own (owner Q5). */
 data class LoadEntry(
@@ -52,7 +59,8 @@ data class LoadGroup(
 ) {
     /** "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading" */
     val line: String get() {
-        val head = label.replaceFirstChar { it.uppercase() } + if (areas > 1) " ($areas areas)" else ""
+        val cap = label.replaceFirstChar { it.uppercase() }
+        val head = if (areas > 1) Txt.s(Res.string.maps_group_areas, cap, areas) else cap
         return listOfNotNull(head, if (bytes > 0) "${mb(bytes)} MB" else null, phase.text).joinToString(" · ")
     }
 }
@@ -63,12 +71,14 @@ object LoadNames {
 
     /** Label and chip name of [e]. */
     fun label(e: LoadEntry): Pair<String, String?> {
-        val near = e.town?.let { "near $it" } ?: "map area"
+        val near = e.town?.let { Txt.s(Res.string.maps_name_near, it) } ?: Txt.s(Res.string.maps_name_area)
         return when (e.why) {
-            LoadWhy.POINT -> (e.name?.let { "around $it" } ?: near) to (e.name ?: e.town)
-            LoadWhy.ROUTE -> (e.name?.let { "along your route to $it" } ?: "along your route") to (e.name ?: "your route")
-            LoadWhy.REFRESH -> (e.town ?: e.name)?.let { "newer map near $it" to it } ?: ("newer map" to null)
-            LoadWhy.AHEAD -> "ahead on your tour" to "ahead on your tour"
+            LoadWhy.POINT -> (e.name?.let { Txt.s(Res.string.maps_name_around, it) } ?: near) to (e.name ?: e.town)
+            LoadWhy.ROUTE -> (e.name?.let { Txt.s(Res.string.maps_name_route_to, it) } ?: Txt.s(Res.string.maps_name_route)) to
+                (e.name ?: Txt.s(Res.string.maps_chip_your_route))
+            LoadWhy.REFRESH -> (e.town ?: e.name)?.let { Txt.s(Res.string.maps_name_newer_near, it) to it }
+                ?: (Txt.s(Res.string.maps_name_newer) to null)
+            LoadWhy.AHEAD -> Txt.s(Res.string.maps_name_ahead).let { it to it }
             null -> near to e.town
         }
     }
@@ -98,7 +108,7 @@ object LoadNames {
     /** Chip name of [groups]: the most important name, shortened, and how many other names ("Bad Waldsee" to 1). */
     fun chip(groups: List<LoadGroup>): Pair<String, Int> {
         val names = groups.mapNotNull { it.chipName }.distinct()
-        if (names.isEmpty()) return "Map" to 0
+        if (names.isEmpty()) return Txt.s(Res.string.maps_chip_map) to 0
         return short(names.first().replaceFirstChar { it.uppercase() }) to names.size - 1
     }
 
