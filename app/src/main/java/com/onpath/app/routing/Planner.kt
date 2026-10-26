@@ -128,7 +128,7 @@ class Planner(
             if (waypoints.size == 2) {
                 val d = Geo.distance(waypoints[0], waypoints[1])
                 return PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
-                    Geo.estimateSeconds(d, 0.0, 0.0, activity),
+                    flatSeconds(d, activity),
                     legError(1, 2, e))
             }
             // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
@@ -167,7 +167,7 @@ class Planner(
                 val a = snapped[i - 1] ?: waypoints[i - 1]; val b = snapped[i] ?: waypoints[i]
                 val d = Geo.distance(a, b)
                 dist += d
-                time += Geo.estimateSeconds(d, 0.0, 0.0, activity)
+                time += flatSeconds(d, activity)
                 PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
@@ -184,10 +184,13 @@ class Planner(
         }.map { it + offset }.toSet()
     }
 
+    /** A straight leg (no router): flat, timed by the one time model (the plan sheet re-times the whole line anyway). */
+    private fun flatSeconds(d: Double, activity: Activity) = com.onpath.app.time.PaceModel.seconds(d, 0.0, activity)
+
     private fun straight(waypoints: List<GeoPoint>, activity: Activity, error: String): PlannedRoute {
         val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
         val d = (1 until waypoints.size).sumOf { Geo.distance(waypoints[it - 1], waypoints[it]) }
-        return PlannedRoute(legs, d, 0.0, 0.0, Geo.estimateSeconds(d, 0.0, 0.0, activity), error)
+        return PlannedRoute(legs, d, 0.0, 0.0, flatSeconds(d, activity), error)
     }
 
     companion object {

@@ -2406,14 +2406,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Planned routes show the model time (recomputed, the stored router time is ignored); others as stored. */
+    /**
+     * Planned routes and imported tracks without timestamps show the model time with the current pace (recomputed, the
+     * stored time is ignored: one time model, captain 2026-10-26); recorded tours and timed imports as stored.
+     */
     private fun withModelTime(t: Tour): Tour {
-        if (t.kind != TourKind.PLANNED) return t
+        if (t.kind != TourKind.PLANNED && t.kind != TourKind.IMPORTED) return t
         // expected: unknown/old activity name in the DB falls back to Hike
         val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: Activity.HIKE
         val f = planFactors(a)
         val key = f to t.distanceM // an overwritten route has a new distance
         plannedTimes[t.id]?.takeIf { it.first == key }?.let { return t.copy(durationS = it.second) }
+        if (t.kind == TourKind.IMPORTED) return try {
+            val s = com.onpath.app.time.TimeEstimate.importedSeconds(db.loadSegments(t.id), a, f)
+            plannedTimes[t.id] = key to s
+            t.copy(durationS = s)
+        } catch (e: Exception) {
+            Problems.warn("time", "Model time of an imported track could not be computed; stored time shown", e)
+            t
+        }
         // stored at save with the way attributes (P4); the stored points alone have none
         planTimes.get(t.id, t.distanceM)?.let { g ->
             val s = com.onpath.app.time.PlanTimesStore.seconds(g, f)
@@ -3522,9 +3533,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val dist = geo.sumOf { Geo.length(it) }
                 var up = 0.0; var down = 0.0
                 segs.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
-                val times = segs.flatten().mapNotNull { it.timeMs }
-                val dur = if (times.size > 1 && times.last() > times.first()) (times.last() - times.first()) / 1000.0
-                else Geo.estimateSeconds(dist, up, down, pick.activity)
+                // the file's own time, else the one time model with the pace level (the same as this line planned)
+                val dur = com.onpath.app.time.TimeEstimate.importedSeconds(segs, pick.activity, planFactors(pick.activity))
                 val id = withContext(Dispatchers.IO) {
                     db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, dist, up, down, dur, segs, data.waypoints)
                 }
