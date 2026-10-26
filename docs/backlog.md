@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] finish + merge bike routing (v_rough, nits, cell schema 5) – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
