@@ -155,7 +155,7 @@ object ActivityCheck {
         return off.coerceAtMost(r.lengthM)
     }
 
-    /** "gravel bikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
+    /** "gravelbikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
     fun who(activity: Activity, sac: Int): String = when (activity) {
         Activity.HIKE -> Txt.s(Res.string.nav_who_hike, sac.coerceIn(1, 5))
         Activity.BIKE_TOURING -> Txt.s(Res.string.nav_who_bike_touring)

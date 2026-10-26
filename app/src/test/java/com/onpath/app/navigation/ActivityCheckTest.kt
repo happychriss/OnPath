@@ -82,7 +82,7 @@ class ActivityCheckTest {
         assertEquals(1500.0, ActivityCheck.avoidedM(rest, bike), 150.0)
         val f = ActivityCheck.evaluate(rest, Activity.BIKE_TREKKING, 3, result(bike))
         assertFalse(f.fits)
-        assertTrue(f.problems.first(), f.problems.first().endsWith("not suited for gravel bikes"))
+        assertTrue(f.problems.first(), f.problems.first().endsWith("not suited for gravelbikes"))
         assertTrue(f.extraM > 0)
     }
 

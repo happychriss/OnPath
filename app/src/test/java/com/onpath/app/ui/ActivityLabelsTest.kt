@@ -45,7 +45,7 @@ class ActivityLabelsTest {
 
     /** "… not suited for <who>" in the activity switch sheet follows the names. */
     @Test fun activityCheckNamesTheActivityInThePlural() {
-        assertEquals(listOf("bikes", "gravel bikes", "e-bikes", "MTBs", "E-MTBs", "hiking (T3)"),
+        assertEquals(listOf("bikes", "gravelbikes", "e-bikes", "MTBs", "E-MTBs", "hiking (T3)"),
             Activity.entries.map { com.onpath.app.navigation.ActivityCheck.who(it, 3) })
     }
 }

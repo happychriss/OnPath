@@ -60,7 +60,7 @@ data class ActivityCheckUi(
     val note: String? = null,
 )
 
-/** "✓ fits" / "⚠ 1.4 km not suited for gravel bikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
+/** "✓ fits" / "⚠ 1.4 km not suited for gravelbikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
 internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
     ActivityRowState.Checking -> Txt.s(Res.string.nav_check_checking)
     ActivityRowState.Plain -> ""

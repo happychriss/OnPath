@@ -227,7 +227,7 @@
     "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",
     "priority": 1,
     "confidence": "sicher",
-    "decided": "Owner review 2026-10-26: new text (select a point)"
+    "decided": "Owner answer 2026-10-26: kept exactly as the owner wrote it"
   },
   "plan_hint_destination": {
     "area": "Plan sheet",
@@ -924,7 +924,7 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 24,
-    "decided": "Owner review 2026-10-26: Edit Route / Route ändern"
+    "decided": "Owner answer 2026-10-26: \"Edit route\" (sentence case) / \"Route ändern\""
   },
   "plan_slide_desc": {
     "area": "Navigate",
