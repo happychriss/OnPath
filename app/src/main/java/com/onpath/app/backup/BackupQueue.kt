@@ -2,6 +2,7 @@ package com.onpath.app.backup
 
 import com.onpath.app.data.Tour
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.strings.*
 
 /** What the backup reads (TourDb in the app, a map in tests). */
 interface BackupSource {
@@ -70,6 +71,6 @@ class BackupQueue(
     private inline fun guarded(block: () -> Unit): Boolean = try { block(); true } catch (e: BackupException) {
         listener.failed(e.reason, e); false
     } catch (e: Exception) {
-        listener.failed("the backup could not be written", e); false
+        listener.failed(Txt.s(Res.string.backup_err_not_written), e); false
     }
 }
