@@ -1,10 +1,15 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.4** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.5** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald, captain), 2026-10-26 late – 0.11.5.** App bilingual EN + DE (`:strings` KMP module with Compose
+  resources, `Txt` / `str()`, language override in Developer tools, guards `StringFilesTest` + `HardCodedTextRuleTest`,
+  round trip `tools/i18n/i18n.py` – docs/i18n.md; owner reviewed the sheet in Drive). Region look r3b: greener land
+  (land-tint), pink only long-distance (net ≥ 3, hiking band too), regional green line, darker built-up close in.
+  push_style.sh / push_cell.sh refuse while OnPath records (or adb gives no answer).
 - **desktop (donald, captain), 2026-10-26 night – 0.11.4.** Region packages (z7 ids, map z7–9: base without farmland,
   long-distance routes, relief as cover; doorman `PACKAGE_SCHEMA` 1, builder `build_package.sh`, app `ensurePackages`,
   Overview `!within` labels – map-cells.md §20); route hints (ferry/ford/construction/stiles; `WayAttrs` ford/barrier/
