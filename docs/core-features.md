@@ -8,7 +8,7 @@ that reproduces it, then the fix.** Run `./gradlew testDebugUnitTest` before eve
 | --- | --- | --- | --- |
 | C1 | **Plan: hold a route point (≤ 48 dp) → its menu → Delete / Start here / Google; beside it → a new point, never a question (owner 2026-10-22)** | 0.7.19 (map turned under the finger), 0.8.3 (new point added instead of the menu), 0.8.5 (holds 68 dp from the point added a point next to it; "Delete did nothing") | `CoreHoldPointTest`, `CoreDeletePointTest`, `MapGesturesTest`; emulator `CoreDeleteE2ETest` |
 | C2 | Plan: hold the map / route line → add a point (smart insertion) | – | `MapGesturesTest`, `WaypointInsertionTest`, `PlanEditsTest` |
-| C3 | Routing: route for every activity, offline, fallback to straight lines | – | `PlannerTest`, `ReferenceRoutesTest`, `RouteRulesTest` |
+| C3 | Routing: route for every activity, offline, fallback to straight lines; a point on a way without a connection (BRouter "island") is snapped to the next way | 2026-10-26 (Köln Dom → Neumarkt: no route for any activity) | `PlannerTest`, `ReferenceRoutesTest`, `RouteRulesTest`, `IslandPointTest`; JVM `tools/routing/jvm-test/IslandTest.kt` |
 | C4 | Recording never loses a track; ends only deliberately (Plan never stops it) | 0.7.7 | `TrackReplayTest`, `PointFilterTest`, `PauseWatchTest`, `AppModeTest` |
 | C5 | Navigate: follow, off-route alarm, re-route, arrival | 0.7.26 (re-route kept the old route) | `NavigatorTest`, `NavReplayTest`, `OffRouteDetectorTest`, `RerouteTargetsTest`, `ArrivalGateTest` |
 | C6 | Map loads: missing data / cells / style never crash; old map stays until the new one is complete | 0.8.0 (profile crash), small streets missing | `CellStoreTest`, `CellDownloadTest`, `StyleLoaderTest`, `ProfileTinyTest` |

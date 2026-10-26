@@ -4,6 +4,7 @@
 # Needs a kotlin-compiler-embeddable jar (Gradle's lib dir has one); set GRADLE_LIB if not found.
 # Env: KTTEST=<file.kt> runs another test main (default KtTest.kt; ViaTest.kt = via-point tests;
 #      SnapTest.kt = plan points moved onto the way; TimeP4Test.kt = route times without / with way attributes; RerouterJvmTest.kt = re-routing while navigating, pass/fail);
+#      IslandTest.kt = a point on a way without a connection (Köln Dom, needs E5_N50.rd5) still gets a route, pass/fail;
 #      SafetyTest.kt = trail safety (SAC / via_ferrata / bike limits) metres per class, SAFETY_TAG=label;
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);
 #      GpxCompare.kt = compare with a reference GPX line (another app's plan, a ride; see its header, needs RAW_TAP=1).

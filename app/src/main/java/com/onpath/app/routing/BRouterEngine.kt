@@ -2,6 +2,7 @@ package com.onpath.app.routing
 
 import android.content.Context
 import btools.mapaccess.MatchedWaypoint
+import btools.mapaccess.OsmNodePairSet
 import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
 import btools.router.ProfileCache
@@ -109,33 +110,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
-        val rc = RoutingContext()
-        rc.localFunction = File(profileDir, profileFile(activity)).absolutePath
-        rc.keyValues = keyValues(activity, sacLimit)
-
-        val nodes = ArrayList<OsmNodeNamed>(waypoints.size)
-        waypoints.forEachIndexed { i, p ->
-            val n = OsmNodeNamed()
-            n.name = when (i) {
-                0 -> "from"
-                waypoints.size - 1 -> "to"
-                else -> "via$i"
-            }
-            n.ilon = ((p.lon + 180.0) * 1_000_000.0 + 0.5).toInt()
-            n.ilat = ((p.lat + 90.0) * 1_000_000.0 + 0.5).toInt()
-            nodes.add(n)
-        }
-
-        val track: OsmTrack
-        try {
-            val engine = BRouter(null, null, segmentsDir, nodes, rc)
-            engine.quite = true
-            cancel?.onCancel { engine.terminate() }
-            try { engine.doRun(timeoutMs) } finally { cancel?.onCancel(null) }
-            if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
-            val err = engine.errorMessage
-            if (err != null) throw RoutingException(describeError(err, activity, sacLimit, timeoutMs), timedOut = isTimeout(err))
-            track = engine.foundTrack ?: throw RoutingException(describeError(null, activity, sacLimit, timeoutMs))
+        val (track, nodes) = try {
+            search(waypoints, activity, sacLimit, timeoutMs, cancel)
         } catch (e: RoutingException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -147,6 +123,90 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         }
 
         return toResult(track, waypoints, activity, matchedPoints(track, nodes))
+    }
+
+    /**
+     * Runs BRouter and returns the track with the nodes it was given. A point that BRouter snapped onto an "island" (a
+     * way without a connection to the rest of the network, e.g. a footway inside Köln cathedral, field case
+     * 2026-10-26) is snapped again to the next way: BRouter's own island retry snaps to the same way again, so the app
+     * hands it the ways to skip (owner rule: a point that cannot be routed takes the closest usable way).
+     */
+    private fun search(
+        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?,
+    ): Pair<OsmTrack, List<OsmNodeNamed>> {
+        val t0 = System.currentTimeMillis()
+        val skipWays = ArrayList<LongArray>()
+        while (true) {
+            val rc = RoutingContext()
+            rc.localFunction = File(profileDir, profileFile(activity)).absolutePath
+            rc.keyValues = keyValues(activity, sacLimit)
+            val nodes = bRouterNodes(waypoints)
+            val engine = BRouter(null, null, segmentsDir, nodes, rc)
+            engine.quite = true
+            if (skipWays.isNotEmpty()) skipOnSnap(engine, skipWays)
+            val left = timeoutMs - (System.currentTimeMillis() - t0)
+            cancel?.onCancel { engine.terminate() }
+            try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null) }
+            if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
+            val err = engine.errorMessage
+                ?: return (engine.foundTrack ?: throw RoutingException(describeError(null, activity, sacLimit, timeoutMs))) to nodes
+            val island = if (isTimeout(err)) null else islandPoint(err, islandRetries(engine), waypoints.size)
+            if (island == null) throw RoutingException(describeError(err, activity, sacLimit, timeoutMs), timedOut = isTimeout(err))
+            val way = snappedWay(engine, nodes[island].name)
+            if (way == null || skipWays.size >= MAX_ISLAND_SKIPS || timeoutMs - (System.currentTimeMillis() - t0) < MIN_BUDGET_MS) {
+                throw RoutingException(describeError("island", activity, sacLimit, timeoutMs))
+            }
+            Problems.info("routing", "Point ${island + 1} of ${waypoints.size} snapped to a way without a connection " +
+                "(BRouter: $err); snapping it to the next way")
+            skipWays.add(way)
+        }
+    }
+
+    private fun bRouterNodes(waypoints: List<GeoPoint>): List<OsmNodeNamed> = waypoints.mapIndexed { i, p ->
+        OsmNodeNamed().apply {
+            name = when (i) {
+                0 -> "from"
+                waypoints.size - 1 -> "to"
+                else -> "via$i"
+            }
+            ilon = ((p.lon + 180.0) * 1_000_000.0 + 0.5).toInt()
+            ilat = ((p.lat + 90.0) * 1_000_000.0 + 0.5).toInt()
+        }
+    }
+
+    /**
+     * The way (its two end nodes as BRouter ids) that BRouter snapped the point [name] to in a failed run, or null.
+     * BRouter keeps the snapped ways in the protected `RoutingEngine.matchedWaypoints`, hence reflection.
+     */
+    private fun snappedWay(engine: BRouter, name: String): LongArray? = try {
+        val f = BRouter::class.java.getDeclaredField("matchedWaypoints").apply { isAccessible = true }
+        (f.get(engine) as? List<*>).orEmpty().filterIsInstance<MatchedWaypoint>()
+            .firstOrNull { it.name == name && it.node1 != null && it.node2 != null }
+            ?.let { longArrayOf(it.node1.idFromPos, it.node2.idFromPos) }
+    } catch (e: Throwable) {
+        Problems.warn("routing", "BRouter snapped ways not readable (reflection); no second snap for an isolated way", e)
+        null
+    }
+
+    /** How often BRouter itself retried after an island (its `islandNodePairs` freeze count); -1 = unknown. */
+    private fun islandRetries(engine: BRouter): Int = try {
+        val f = BRouter::class.java.getDeclaredField("islandNodePairs").apply { isAccessible = true }
+        (f.get(engine) as OsmNodePairSet).freezeCount
+    } catch (e: Throwable) {
+        Problems.warn("routing", "BRouter island retries not readable (reflection)", e)
+        -1
+    }
+
+    /** Makes BRouter's waypoint matching skip [ways] (its island list – used only when snapping points). */
+    private fun skipOnSnap(engine: BRouter, ways: List<LongArray>) {
+        try {
+            val f = BRouter::class.java.getDeclaredField("islandNodePairs").apply { isAccessible = true }
+            val pairs = f.get(engine) as OsmNodePairSet
+            ways.forEach { pairs.addTempPair(it[0], it[1]) }
+            pairs.freezeTempPairs()
+        } catch (e: Throwable) {
+            Problems.warn("routing", "BRouter island list not writable (reflection); point stays on the isolated way", e)
+        }
     }
 
     /**
@@ -414,6 +474,26 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         /** An engine bug (details in the problem log): plain text, no exception message. */
         const val UNEXPECTED = "Routing failed unexpectedly. Try again; if it keeps happening, send the diagnostics (Settings → Diagnostics)."
         private const val MIN_BUDGET_MS = 500L
+        /** Isolated ways skipped per request before giving up (each failed try is fast, ~0.1 s). */
+        private const val MAX_ISLAND_SKIPS = 3
+        /** BRouter retries a start on an island this often (its `freezeCount` limit) before "no track found". */
+        private const val BROUTER_ISLAND_RETRIES = 5
+        private val ISLAND_ERROR = Regex("(start|target) island detected for section (\\d+)")
+
+        /**
+         * The point (index) BRouter snapped onto an island (a way without a connection to the rest of the network) in a
+         * failed run, or null when the failure is something else. "target island detected for section i" = point i + 1
+         * (BRouter gives up at once); "start island … section i" = point i; "no track found" after BRouter's own island
+         * retries ([islandRetries], -1 = unknown) = the start – only known for two points (a failed multi-point route is
+         * routed leg by leg by the Planner).
+         */
+        internal fun islandPoint(err: String, islandRetries: Int, points: Int): Int? {
+            ISLAND_ERROR.find(err)?.let { m ->
+                val section = m.groupValues[2].toInt()
+                return (if (m.groupValues[1] == "target") section + 1 else section).takeIf { it in 0 until points }
+            }
+            return if (err.startsWith("no track found") && islandRetries >= BROUTER_ISLAND_RETRIES && points == 2) 0 else null
+        }
         private const val VIA_CORRECTION_M = 400.0
         private const val VIA_CORRECTION_HIKE_M = 50.0
         private const val CACHE_SIZE = 8
