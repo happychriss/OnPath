@@ -10,12 +10,9 @@ import sys
 import tempfile
 import unittest
 
-try:
-    import osmium  # noqa: F401
-    import shapely  # noqa: F401
-    HAVE_LIBS = True
-except ImportError:
-    HAVE_LIBS = False
+# Probe in a fresh interpreter, the way the script runs: another test in the same run (test_extract_pois) may put a
+# stand-in "osmium" into sys.modules, so an import here could succeed while the real script cannot.
+HAVE_LIBS = subprocess.run([sys.executable, "-c", "import osmium, shapely"], capture_output=True).returncode == 0
 
 LON0, LAT0 = 11.0, 46.0
 M_LAT = 1 / 110540.0
