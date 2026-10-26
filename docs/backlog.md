@@ -154,12 +154,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `docs/design/map-hosting.md` §7g.
 
 ## Waiting for the owner
-- **Komoot GPX activity – questions from the review (desktop, 2026-10-26):** (1) and (2) decided by the captain
-  (2026-10-26, "no surprises"): keep the user's T level when it is inside the type's band (hike T1–T2, mountaineering
-  T3–T5), else the band's default; one grey line "Activity set to MTB from the file" when the import changes the
-  activity – done (see Done). Still open: (3) opening an *imported* tour later from My routes does not switch the
-  activity (only recorded tours do); older imports carry the activity that happened to be chosen, so switching
-  needs a "came from the file" flag – wanted?
 - **Map server access before the public launch** (owner discussion 2026-10-23, laptop): today one shared app key
   (readable from the APK) + IP rate limit + build caps. Proposal in `docs/design/map-access.md`: anonymous per-phone
   quota of *new* areas per month (hashed Android ID, no registration), no region lock, supporter code raises the limit,
@@ -231,6 +225,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Opening a tour switches the activity (owner 2026-10-26, question (3) of the GPX activity review):**
+  opening a recorded *or imported* tour from My routes chooses its stored activity (imports: the one their `<type>`
+  gave) with the import's rules – the user's T level stays inside the tour's band (T1–T2 / T3–T5), nothing during a
+  tour, no activity stored = nothing changes – and says so in one grey line in the track panel "Activity set to Bike
+  from the tour" (`SportType.openChoice`, shared with `importChoice`). No "came from the file" flag: the stored
+  activity counts. Tests `SportTypeTest.openingATour*`.
 - **[desktop] Region view – routes by zoom (2026-10-26, owner, for 0.11.4):** for hiking and bikes, below z11 only
   long-distance routes, regional ones from z11, every signed route from z12.5 (`route_tiers()`, new `-regional` layers,
   switched by `MapController`). Below z10 is left to the region / overview data work (`routes-<kind>-major-low`).

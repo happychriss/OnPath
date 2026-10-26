@@ -99,6 +99,53 @@ class SportTypeTest {
         assertNull(t.note)
     }
 
+    /**
+     * Owner 2026-10-26: opening a tour from My routes (imported or recorded) switches to the tour's stored activity and
+     * says so in one grey line – the same rules as the import (T level kept inside the band, nothing during a tour).
+     */
+    @Test fun openingATourSwitchesToItsActivity() {
+        val bike = SportType.openChoice("BIKE_TOURING", 2, Activity.HIKE, 2, touring = false)
+        assertTrue(bike.switch)
+        assertEquals(Pick(Activity.BIKE_TOURING), bike.pick)
+        assertEquals("Activity set to Bike from the tour", bike.note)
+        assertEquals("Activity set to Gravel bike from the tour",
+            SportType.openChoice("BIKE_TREKKING", 3, Activity.MTB, 2, touring = false).note)
+        // a mountain hike (T4) while a bike is chosen and the remembered level is T2: the tour's level
+        val berg = SportType.openChoice("HIKE", 4, Activity.EMTB, 2, touring = false)
+        assertEquals(Pick(Activity.HIKE, 4), berg.pick)
+        assertEquals("Activity set to Hike T4 from the tour", berg.note)
+        // Hike T2 tour while hiking at T4: outside the band T1–T2 → the tour's level, said
+        assertEquals("Activity set to Hike T2 from the tour",
+            SportType.openChoice("HIKE", 2, Activity.HIKE, 4, touring = false).note)
+    }
+
+    @Test fun openingATourKeepsTheTLevelInsideItsBand() {
+        // T level inside the tour's band (T1–T2 / T3–T5): the user's own stays – no switch, no line
+        for ((tourSac, own) in listOf(2 to 1, 1 to 2, 3 to 5, 5 to 3, 4 to 4)) {
+            val c = SportType.openChoice("HIKE", tourSac, Activity.HIKE, own, touring = false)
+            assertEquals("tour T$tourSac, own T$own", Pick(Activity.HIKE, own), c.pick)
+            assertTrue(!c.switch)
+            assertNull(c.note)
+        }
+        // from a bike: the remembered level counts when it is inside the band
+        assertEquals(Pick(Activity.HIKE, 5), SportType.openChoice("HIKE", 3, Activity.MTB, 5, touring = false).pick)
+    }
+
+    @Test fun openingATourWithoutAnActivityChangesNothing() {
+        for (name in listOf(null, "", "SKI", "hike")) { // missing, empty, unknown, not the stored (enum) form
+            val c = SportType.openChoice(name, 3, Activity.MTB, 4, touring = false)
+            assertEquals("$name", Pick(Activity.MTB, 4), c.pick)
+            assertTrue("$name", !c.switch)
+            assertNull("$name", c.note)
+        }
+        // same activity: nothing to say
+        assertNull(SportType.openChoice("EBIKE", 2, Activity.EBIKE, 5, touring = false).note)
+        // during a tour the followed route keeps its activity
+        val t = SportType.openChoice("MTB", 2, Activity.HIKE, 2, touring = true)
+        assertTrue(!t.switch)
+        assertNull(t.note)
+    }
+
     @Test fun parserReadsTheTrackType() {
         assertEquals("touring_bicycle", GpxParser.parse(gpx("touring_bicycle")).type)
         assertEquals("mtb", GpxParser.parse(gpx("mtb", line = "rte")).type)

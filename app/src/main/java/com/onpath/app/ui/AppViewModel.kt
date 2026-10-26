@@ -77,7 +77,8 @@ data class ShownTrack(
     val rides: List<Pair<List<GeoPoint>, com.onpath.app.rides.RideKind>> = emptyList(),
     /**
      * Grey INFO line in the track panel, e.g. "Activity set to MTB from the file" after an import changed the activity
-     * (captain 2026-10-26, "no surprises"); stays until the track is closed / replaced or the user picks an activity.
+     * (captain 2026-10-26, "no surprises"), "Activity set to Bike from the tour" after opening one from My routes did
+     * (owner 2026-10-26); stays until the track is closed / replaced or the user picks an activity.
      */
     val note: String? = null,
 ) {
@@ -3299,14 +3300,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
-                // a recorded tour brings its activity (UX review 2026-10-23, problem 5) – not during a tour (the
-                // followed route keeps its activity); not stored: the current one stays
-                // expected: unknown/old activity name keeps the current activity
-                val tourActivity = t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull() }
-                if (recState.value == null && t.kind == com.onpath.app.data.TourKind.RECORDED && tourActivity != null &&
-                    (tourActivity != activity || (tourActivity == Activity.HIKE && t.sac != sac))) {
-                    if (tourActivity == Activity.HIKE) { sac = t.sac.coerceIn(1, 5); prefs.sac = sac }
-                    selectActivity(tourActivity, userChange = false)
+                // a recorded or imported tour brings its activity (UX review 2026-10-23, problem 5; imports: owner
+                // 2026-10-26) – like the import: the T level stays inside the tour's band, not during a tour (the
+                // followed route keeps its activity), a change is said in the track panel; an unknown / missing
+                // activity keeps the current one
+                val choice = SportType.openChoice(t.activity, t.sac, activity, sac, touring = recState.value != null)
+                // before the track is shown: an activity change clears the panel's line, this one sets it
+                if (choice.switch) {
+                    if (choice.pick.activity == Activity.HIKE) { sac = choice.pick.sac.coerceIn(1, 5); prefs.sac = sac }
+                    selectActivity(choice.pick.activity, userChange = false)
                 }
                 // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
                 val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
@@ -3315,7 +3317,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     l.points.map { it.toGeo() } to (if (l.part == com.onpath.app.rides.RideView.Part.LIFT) com.onpath.app.rides.RideKind.LIFT
                         else com.onpath.app.rides.RideKind.VEHICLE)
                 }
-                showTrack(ShownTrack(t.id, t.name, kept, t.waypoints, t.distanceM, t.ascentM, t.descentM, t.durationS, rides))
+                showTrack(ShownTrack(t.id, t.name, kept, t.waypoints, t.distanceM, t.ascentM, t.descentM, t.durationS, rides,
+                    note = choice.note))
             }
         }
     }

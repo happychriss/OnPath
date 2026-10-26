@@ -16,6 +16,8 @@ import com.onpath.app.routing.Activity
  * No surprises (captain 2026-10-26): a hiking type covers a band of T levels (`hike` / `jogging` T1–T2,
  * `mountaineering` T3–T5) – the user's own T level is kept when it is inside the band, else the band's default (T2 / T3).
  * When the import changes the activity or T level, the track panel says so in one grey line ([importChoice]).
+ * Opening a recorded or imported tour from My routes later does the same with its stored activity ([openChoice],
+ * owner 2026-10-26).
  */
 object SportType {
 
@@ -70,11 +72,30 @@ object SportType {
      */
     data class ImportChoice(val pick: Pick, val switch: Boolean, val note: String?)
 
-    fun importChoice(type: String?, current: Activity, currentSac: Int, touring: Boolean): ImportChoice {
-        val pick = forImport(type, current, currentSac)
+    fun importChoice(type: String?, current: Activity, currentSac: Int, touring: Boolean): ImportChoice =
+        choice(forImport(type, current, currentSac), current, currentSac, touring, "the file")
+
+    /**
+     * Opening a tour from My routes (owner 2026-10-26): the tour's stored [activityName] (`Tour.activity`, the enum name;
+     * for an import the one its `<type>` gave) and [tourSac] are chosen like on import – the user's own T level stays
+     * when it is inside the band of the tour's level (T1–T2 / T3–T5), nothing during a tour, a change is said in one
+     * grey line ("Activity set to Bike from the tour"). Without a known activity nothing changes.
+     */
+    fun openChoice(activityName: String?, tourSac: Int, current: Activity, currentSac: Int, touring: Boolean): ImportChoice {
+        val a = activityName?.let { n -> Activity.entries.firstOrNull { it.name == n } }
+            ?: return ImportChoice(Pick(current, currentSac), switch = false, note = null)
+        val pick = if (a != Activity.HIKE) Pick(a) else {
+            val own = tourSac.coerceIn(1, 5)
+            val band = bands[key(typeOf(a, own))]
+            Pick(a, if (band != null && currentSac in band) currentSac else own)
+        }
+        return choice(pick, current, currentSac, touring, "the tour")
+    }
+
+    /** [pick] against the current choice: switch (not during a tour) and the grey line naming [source]. */
+    private fun choice(pick: Pick, current: Activity, currentSac: Int, touring: Boolean, source: String): ImportChoice {
         val switch = !touring && (pick.activity != current || (pick.activity == Activity.HIKE && pick.sac != currentSac))
-        val note = if (!switch) null
-            else "Activity set to ${LastActivity.name(pick.activity, pick.sac)} from the file"
+        val note = if (!switch) null else "Activity set to ${LastActivity.name(pick.activity, pick.sac)} from $source"
         return ImportChoice(pick, switch, note)
     }
 
