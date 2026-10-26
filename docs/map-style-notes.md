@@ -431,9 +431,33 @@ Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overl
   - from `route.tier.local` (12.5) every signed route.
   - Close in nothing changes.
 - The merged band lines carry no network level, so they are the local tier (minzoom 12.5).
-- Regional routes before that come from their net pieces: `routes-bike-regional` (the dark-green overview line,
-  z11–12.5) and `routes-hike-regional` (the pink major line, from z11). `MapController.setOverlay` switches the
-  `-regional` suffix with the route layers.
-- `routes-<kind>-major-low` is the long-distance tier (hiking: now net ≥ 3 only). Region / overview data below z10
-  may extend it; `route_tiers()` changes nothing below z10.
+- Regional routes before that come from their net pieces: `routes-bike-regional` and `routes-hike-regional`, z11–12.5,
+  each the thin green line its local tier starts with (bikes `route.bike.low.color`, hiking `route.band.color`).
+  `MapController.setOverlay` switches the `-regional` suffix with the route layers.
+- `routes-<kind>-major-low` is the long-distance tier (net ≥ 3). Region / overview data below z10 may extend it;
+  `route_tiers()` changes nothing below z10.
 - Guard: `StyleFormatTest.routeTiersByZoom`.
+
+## Pink = long distance; greener region view (2026-10-26, owner on 0.11.4 – variants r1 … r3b)
+- **Pink only for long-distance routes** (net ≥ 3), hiking and bikes alike: pink zoomed out = exactly the routes that get
+  the pink-green band close in. The hiking major band (`routes-hike-major`) was net ≥ 2 – now net ≥ 3 like the bikes';
+  regional hiking routes get the normal green band and keep their name label (`routes-hike-major-label`, net ≥ 2,
+  coloured by net: pink-red for long distance, `route.bike.label.color` for regional).
+- **Overview line** (`route_low_paint()`, theme `route.low.major.*`): pink-violet `#c02fb0`, 2.2 px at z7 → 3.2 px at z11
+  → 3.6 px at z13 (was the raspberry `#c43a7d`, 1.2–2.6 px: "red, very similar to streets"). Below it a white halo
+  (`route.low.halo.*`, 1 px each side, 90 %) as its own layer `routes-<kind>-major-low-halo-hikeview` / `-bikeview`:
+  the route layers' switch has fixed suffixes, the view-group switch shows the halo with its activity group.
+- **Roads below z10** in their own colour `<col>.low` (motorway / primary / secondary; was the casing colour) and a
+  little thinner at z7–11 (`road.<class>.width.z10`): calmer, so the routes stand out.
+- **Land veil** `land-tint` (theme `land.tint.*`): a background layer right above `landcover-farmland` – over the
+  background, the region packages' relief (opaque tiles, the background colour is baked in, so a background colour by
+  zoom would not show at z7–9) and farmland; below meadows, forest, towns and water. `#c8e0a6` at 60 % up to z9, 25 % at
+  z12, 0 from z13 (layer maxzoom 13). It is no first layer and has no source: `Overview.merge` takes the cover colour
+  from the first background (still `land.color`) and leaves the veil above the cover (guard checks this too).
+- **Greens**: forest `#a9d789` / meadow `#c4e7a5` at z8, today's light greens from z13 – all a step greener than before
+  (hue towards green, ~20 % more saturation, same lightness), also close in (meadow z15 `#e6f2d7`, forest z15
+  `#d4edbf`, leisure, wetland, farmland a touch).
+- **Built-up land** about 4 % darker (residential `#d9d7d2` → `#e1dfda` z14 → z16, industrial `#d3cfcd`), 90 % opaque
+  at z9 so towns read on the greener land.
+- Renders (private): `external-docs/map-quiet/region/index.html`.
+- Guards: `StyleFormatTest.landTintZoomedOut`, `StyleFormatTest.pinkOnlyForLongDistance`.
