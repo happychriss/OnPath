@@ -2,7 +2,6 @@ package com.onpath.app.poi
 
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.Point
-import java.util.Locale
 
 /** One OSM point of interest from pois.geojson (all data is OpenStreetMap, ODbL). */
 data class Poi(
@@ -20,8 +19,9 @@ data class Poi(
 ) {
     val kindInfo: PoiKind get() = PoiKinds.of(kind)
 
-    /** Name, or the kind label when unnamed. */
-    fun title(german: Boolean = isGerman()): String = name ?: kindInfo.label(german)
+    /** Name, or the kind label (app language) when unnamed; [german] is not used any more. */
+    @Suppress("UNUSED_PARAMETER")
+    fun title(german: Boolean = isGerman()): String = name ?: kindInfo.label
 
     /** "pizza;regional" -> "Pizza, Regional". */
     val cuisineLabel: String?
@@ -44,7 +44,8 @@ data class Poi(
         }
 
     companion object {
-        fun isGerman(): Boolean = Locale.getDefault().language == "de"
+        /** The app's texts are German (phone language or the Developer tools override, com.onpath.strings.Txt). */
+        fun isGerman(): Boolean = com.onpath.strings.Txt.language() == "de"
 
         /** Pure mapping from GeoJSON properties (values may be String / Number / null). */
         fun fromProperties(props: Map<String, Any?>, lat: Double, lon: Double): Poi? {

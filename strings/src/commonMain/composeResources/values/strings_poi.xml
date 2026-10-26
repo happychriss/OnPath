@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- POI kinds and the POI details sheet (poi/). Context: tools/i18n/meta/strings_poi.json -->
+<resources>
+    <string name="poi_kind_viewpoint">Viewpoint</string>
+    <string name="poi_kind_hut">Mountain hut</string>
+    <string name="poi_kind_bivouac">Bivouac / unstaffed hut</string>
+    <string name="poi_kind_shelter">Shelter</string>
+    <string name="poi_kind_camping">Campsite</string>
+    <string name="poi_kind_restaurant">Restaurant</string>
+    <string name="poi_kind_cafe">Café</string>
+    <string name="poi_kind_bar">Bar / pub</string>
+    <string name="poi_kind_fast_food">Snack bar</string>
+    <string name="poi_kind_shop">Food shop</string>
+    <string name="poi_kind_water">Drinking water</string>
+    <string name="poi_kind_spring">Spring</string>
+    <string name="poi_kind_waterfall">Waterfall</string>
+    <string name="poi_kind_castle">Castle</string>
+    <string name="poi_kind_ruins">Ruins</string>
+    <string name="poi_kind_church">Church</string>
+    <string name="poi_kind_chapel">Chapel</string>
+    <string name="poi_kind_cave">Cave</string>
+    <string name="poi_kind_museum">Museum</string>
+    <string name="poi_kind_bus">Bus stop</string>
+    <string name="poi_kind_train">Train station</string>
+    <string name="poi_kind_lift">Cable car / lift station</string>
+    <string name="poi_kind_parking">Parking</string>
+    <string name="poi_kind_toilets">Toilets</string>
+    <string name="poi_kind_picnic">Picnic site</string>
+    <string name="poi_kind_info">Tourist information</string>
+    <string name="poi_kind_bike_shop">Bike shop / repair</string>
+    <string name="poi_kind_charging">E-bike charging</string>
+
+    <string name="poi_cuisine">Cuisine</string>
+    <string name="poi_opening_hours">Opening hours</string>
+    <string name="poi_phone">Phone</string>
+    <string name="poi_website">Website</string>
+    <string name="poi_open_google">Open in Google Maps</string>
+    <string name="poi_google_line">Online · reviews, photos and current info on Google</string>
+</resources>

@@ -77,6 +77,8 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.routing.Activity
+import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -101,8 +103,8 @@ fun MissingDataScreen(
         ) {
             Spacer(Modifier.height(12.dp))
             Text("OnPath", style = MaterialTheme.typography.headlineMedium, color = OnPathColors.Green, fontWeight = FontWeight.Bold)
-            Text("Offline map data is missing", style = MaterialTheme.typography.titleLarge)
-            Text("OnPath works fully offline. Copy the map package to the phone once, then everything runs without network.",
+            Text(str(Res.string.routes_missing_title), style = MaterialTheme.typography.titleLarge)
+            Text(str(Res.string.routes_missing_body),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
                 Column(Modifier.padding(vertical = 6.dp)) {
@@ -115,7 +117,7 @@ fun MissingDataScreen(
                                 Text(c.name, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
                                 Text(c.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text(if (c.present) "found" else "missing", style = MaterialTheme.typography.bodySmall,
+                            Text(if (c.present) str(Res.string.routes_missing_found) else str(Res.string.routes_missing_missing), style = MaterialTheme.typography.bodySmall,
                                 color = if (c.present) OnPathColors.Good else OnPathColors.Bad)
                         }
                     }
@@ -125,7 +127,7 @@ fun MissingDataScreen(
                 routingMissing = checks.any { it.name.startsWith("segments") && !it.present },
                 busy = busy, onImport = onImport, onDownloadRouting = onDownloadRouting,
             )
-            Text("Or, from a computer with USB debugging on:", style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.routes_missing_adb), style = MaterialTheme.typography.bodyMedium)
             Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF1E2421)) {
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
@@ -134,17 +136,17 @@ fun MissingDataScreen(
                         }
                     }
                     IconButton(onClick = { onCopy(DataFiles.ADB_COMMAND) }, Modifier.size(48.dp)) {
-                        Icon(Icons.Filled.ContentCopy, "Copy command", tint = Color.White)
+                        Icon(Icons.Filled.ContentCopy, str(Res.string.routes_missing_copy_command), tint = Color.White)
                     }
                 }
             }
-            Text("Target folder on the phone:\n$dataDir", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(str(Res.string.routes_missing_target, dataDir), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Check again", style = MaterialTheme.typography.bodyLarge)
+                Text(str(Res.string.routes_missing_check_again), style = MaterialTheme.typography.bodyLarge)
             }
             OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Continue without map data")
+                Text(str(Res.string.routes_missing_continue))
             }
         }
     }
@@ -159,12 +161,12 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)) {
-            Text("Import map data (.zip) from this phone", style = MaterialTheme.typography.bodyLarge)
+            Text(str(Res.string.routes_data_import), style = MaterialTheme.typography.bodyLarge)
         }
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
                 modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                Text("Download paths for route planning (≈ 10 MB)")
+                Text(str(Res.string.routes_data_download_paths))
             }
         }
         if (busy != null) {
@@ -196,8 +198,8 @@ fun ActivityDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         // picking a bike activity applies it and closes; with Hike the dialog stays for the T level
-        confirmButton = { if (hike) TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Done") } },
-        title = { Text("Activity") },
+        confirmButton = { if (hike) TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_done)) } },
+        title = { Text(str(Res.string.routes_activity_title)) },
         text = {
             Column {
                 Activity.entries.forEach { a ->
@@ -220,20 +222,21 @@ fun ActivityDialog(
                 if (hike) {
                     val level = SacScale.of(sac)
                     Spacer(Modifier.height(12.dp))
-                    Text("Hiking difficulty (SAC)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text(str(Res.string.routes_sac_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                     androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         SacScale.levels.forEachIndexed { i, l ->
+                            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
                             SegmentedButton(
                                 selected = l.level == level.level,
                                 onClick = { onSac(l.level); onDismiss() },
                                 shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
                                 icon = {}, // no check mark: five narrow segments
-                                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "T${l.level} · ${l.name}" },
+                                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc },
                             ) { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
-                    Text("T${level.level} · ${level.name} – ${level.text}", style = MaterialTheme.typography.bodySmall,
+                    Text(str(Res.string.routes_sac_line, level.level, level.name, level.text), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                 }
             }
@@ -246,13 +249,17 @@ fun ActivityDialog(
  * (owner 2026-10-22): the routing avoids paths above the chosen level.
  */
 internal object SacScale {
-    data class Level(val level: Int, val name: String, val text: String)
+    /** [name] / [text] in the app's language (strings_routes.xml; German = the SAC's own German wording). */
+    class Level(val level: Int, private val nameRes: StringResource, private val textRes: StringResource) {
+        val name: String get() = Txt.s(nameRes)
+        val text: String get() = Txt.s(textRes)
+    }
     val levels = listOf(
-        Level(1, "Hiking", "Well-built path, flat or slightly steep. No fall risk. Trainers are enough."),
-        Level(2, "Mountain hiking", "Continuous path, steep in places, fall risk not excluded. Some sure-footedness; hiking boots recommended."),
-        Level(3, "Demanding mountain hiking", "Path not always visible; exposed places may have ropes or chains; hands sometimes needed for balance. Sure-footed, good hiking boots."),
-        Level(4, "Alpine hiking", "Path not always present; hands needed in places; exposed terrain, steep grass, scree, easy snow fields. Experience in exposed terrain."),
-        Level(5, "Demanding alpine hiking", "Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed."),
+        Level(1, Res.string.routes_sac_1_name, Res.string.routes_sac_1_text),
+        Level(2, Res.string.routes_sac_2_name, Res.string.routes_sac_2_text),
+        Level(3, Res.string.routes_sac_3_name, Res.string.routes_sac_3_text),
+        Level(4, Res.string.routes_sac_4_name, Res.string.routes_sac_4_text),
+        Level(5, Res.string.routes_sac_5_name, Res.string.routes_sac_5_text),
     )
     fun of(level: Int): Level = levels[level.coerceIn(1, 5) - 1]
 }
@@ -292,11 +299,11 @@ fun RoutesScreen(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                Text("My routes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
+                Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    if (busy == Busy.IMPORT) BusyContent("Importing…")
-                    else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text("Import GPX") }
+                    if (busy == Busy.IMPORT) BusyContent(str(Res.string.routes_importing))
+                    else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_import_gpx)) }
                 }
                 RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
             }
@@ -304,7 +311,7 @@ fun RoutesScreen(
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No routes yet.\nSave a planned route, record a tour or import a GPX file.",
+                    Text(str(Res.string.routes_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
@@ -325,7 +332,11 @@ fun RoutesScreen(
         DeleteRouteDialog(t, onDelete = { confirmDelete = null; onDelete(t) }, onCancel = { confirmDelete = null })
     }
     rename?.let { t ->
-        NameDialog("Rename ${t.kind.label.lowercase()}", t.name, confirmLabel = "Rename",
+        NameDialog(str(when (t.kind) {
+            TourKind.PLANNED -> Res.string.routes_rename_planned
+            TourKind.RECORDED -> Res.string.routes_rename_recorded
+            TourKind.IMPORTED -> Res.string.routes_rename_imported
+        }), t.name, confirmLabel = str(Res.string.common_rename),
             onDone = { rename = null; onRename(t, it) }, onDismiss = { rename = null })
     }
 }
@@ -337,10 +348,10 @@ fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
         onDismissRequest = onCancel,
         properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
         icon = { Icon(Icons.Filled.Delete, null) },
-        title = { Text("Delete “${t.name}”?") },
+        title = { Text(str(Res.string.routes_delete_title, t.name)) },
         text = { DialogText(RECYCLE_BIN_NOTE) },
-        confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text("Delete", color = OnPathColors.Bad) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) } },
+        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
 
@@ -350,10 +361,10 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Filled.Route, null) },
-        title = { Text("Replace current route?") },
-        text = { DialogText("Your current route is not saved. Save it first, or replace it with the route you picked.") },
-        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text("Replace") } },
-        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save first") } },
+        title = { Text(str(Res.string.routes_replace_title)) },
+        text = { DialogText(str(Res.string.routes_replace_text)) },
+        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
+        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
     )
 }
 
@@ -379,8 +390,8 @@ private fun TourCard(
                 Text("${t.kind.label} · " + SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t.createdMs)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
-                if (onDelete == null) Text("Recording now", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
-                else if (onOpen == null) Text("Can be loaded after the tour", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                else if (onOpen == null) Text(str(Res.string.routes_after_tour), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
         }
@@ -392,11 +403,11 @@ private fun TourCard(
 private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExport: Boolean) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }, Modifier.size(48.dp)) { Icon(Icons.Filled.MoreVert, "More") }
+        IconButton(onClick = { open = true }, Modifier.size(48.dp)) { Icon(Icons.Filled.MoreVert, str(Res.string.common_more)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("Export all (ZIP)") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, enabled = canExport,
+            DropdownMenuItem(text = { Text(str(Res.string.routes_export_all)) }, leadingIcon = { Icon(Icons.Filled.Share, null) }, enabled = canExport,
                 onClick = { open = false; onExportAll() }, modifier = Modifier.heightIn(min = 48.dp))
-            DropdownMenuItem(text = { Text("Recycle bin") }, leadingIcon = { Icon(Icons.Outlined.DeleteSweep, null) },
+            DropdownMenuItem(text = { Text(str(Res.string.common_recycle_bin)) }, leadingIcon = { Icon(Icons.Outlined.DeleteSweep, null) },
                 onClick = { open = false; onRecycleBin() }, modifier = Modifier.heightIn(min = 48.dp))
         }
     }
@@ -408,18 +419,18 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
-            Icon(Icons.Filled.MoreVert, "Options for “${t.name}”", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Filled.MoreVert, str(Res.string.routes_options_desc, t.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             fun run(a: () -> Unit): () -> Unit = { open = false; a() }
-            DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
+            DropdownMenuItem(text = { Text(str(Res.string.common_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
                 onClick = run(onRename), modifier = Modifier.heightIn(min = 48.dp))
-            DropdownMenuItem(text = { Text("Export GPX") }, leadingIcon = { Icon(Icons.Filled.Share, null) },
+            DropdownMenuItem(text = { Text(str(Res.string.common_export_gpx)) }, leadingIcon = { Icon(Icons.Filled.Share, null) },
                 onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
-            if (onEditRides != null) DropdownMenuItem(text = { Text("Edit rides") },
+            if (onEditRides != null) DropdownMenuItem(text = { Text(str(Res.string.routes_edit_rides)) },
                 leadingIcon = { Icon(Icons.Filled.DirectionsBus, null) },
                 onClick = run(onEditRides), modifier = Modifier.heightIn(min = 48.dp))
-            if (onDelete != null) DropdownMenuItem(text = { Text("Delete", color = OnPathColors.Bad) },
+            if (onDelete != null) DropdownMenuItem(text = { Text(str(Res.string.common_delete), color = OnPathColors.Bad) },
                 leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
                 onClick = run(onDelete), modifier = Modifier.heightIn(min = 48.dp))
         }
@@ -429,7 +440,7 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
 // ------------------------------------------------------------------ dialogs
 
 @Composable
-fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = "Save",
+fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = str(Res.string.common_save),
                /** A better name computed in the background (route names): replaces [initial] until the user types. */
                suggestion: String? = null) {
     var text by remember { mutableStateOf(suggestion ?: initial) }
@@ -438,9 +449,9 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { OutlinedTextField(value = text, onValueChange = { text = it; typed = true }, singleLine = true, label = { Text("Name") }) },
+        text = { OutlinedTextField(value = text, onValueChange = { text = it; typed = true }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
         confirmButton = { TextButton(onClick = { onDone(text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
 
@@ -455,24 +466,24 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
         AlertDialog(
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete this tour?") },
+            title = { Text(str(Res.string.routes_unfinished_delete_title)) },
             text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
+            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
         )
         return
     }
     AlertDialog(
         onDismissRequest = {},
-        title = { Text("Unfinished tour") },
-        text = { DialogText("A recording was interrupted (${Format.distance(t.distanceM)}, ${Format.duration(t.durationS)}). Nothing was lost.") },
-        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        title = { Text(str(Res.string.routes_unfinished_title)) },
+        text = { DialogText(str(Res.string.routes_unfinished_text, Format.distance(t.distanceM), Format.duration(t.durationS))) },
+        confirmButton = { TextButton(onClick = onSave) { Text(str(Res.string.common_save)) } },
         dismissButton = {
             Row {
-                TextButton(onClick = onContinue) { Text("Continue") }
+                TextButton(onClick = onContinue) { Text(str(Res.string.routes_unfinished_continue)) }
                 TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
             }
         },
     )
@@ -496,7 +507,7 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                    times: com.onpath.app.time.TourTimes? = null) {
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("Track saved") },
+        title = { Text(str(Res.string.routes_track_saved)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(t.name, fontWeight = FontWeight.SemiBold)
@@ -504,11 +515,11 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                 times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
             }
         },
-        confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDone) { Text(str(Res.string.common_done)) } },
         dismissButton = {
             Row {
-                TextButton(onClick = onDelete) { Text("Delete", color = OnPathColors.Bad) }
-                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text("Export GPX") }
+                TextButton(onClick = onDelete) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) }
+                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text(str(Res.string.common_export_gpx)) }
             }
         },
     )
