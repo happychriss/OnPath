@@ -3493,7 +3493,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 9,
+   "minzoom": 12.5,
    "filter": [
     "all",
     [
@@ -7896,7 +7896,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 10,
+   "minzoom": 12.5,
    "filter": [
     "all",
     [
@@ -7987,7 +7987,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 10,
+   "minzoom": 12.5,
    "filter": [
     "all",
     [
@@ -8071,6 +8071,76 @@
    }
   },
   {
+   "id": "routes-hike-regional",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 11,
+   "maxzoom": 13.5,
+   "filter": [
+    "all",
+    [
+     "all",
+     [
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "hike"
+     ],
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
+    ],
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": "#c43a7d",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.2,
+     12,
+     2.0,
+     13,
+     2.6
+    ]
+   }
+  },
+  {
    "id": "routes-hike-major-low",
    "type": "line",
    "source": "overlays",
@@ -8080,12 +8150,27 @@
    "filter": [
     "all",
     [
-     "==",
+     "all",
      [
-      "get",
-      "kind"
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "hike"
      ],
-     "hike"
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
     ],
     [
      ">=",
@@ -8097,7 +8182,7 @@
       ],
       0
      ],
-     2
+     3
     ]
    ],
    "layout": {
@@ -8283,11 +8368,79 @@
    }
   },
   {
+   "id": "routes-bike-regional",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 11,
+   "maxzoom": 12.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bike"
+    ],
+    [
+     "==",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     2
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": "#1f7a5a",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      1.2
+     ],
+     [
+      "zoom"
+     ],
+     9,
+     1.0,
+     12,
+     1.6,
+     13.5,
+     2.2
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     1,
+     14.5,
+     0
+    ]
+   }
+  },
+  {
    "id": "routes-bike-low",
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 9,
+   "minzoom": 12.5,
    "maxzoom": 14.5,
    "filter": [
     "all",

@@ -231,6 +231,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Region view – routes by zoom (2026-10-26, owner, for 0.11.4):** for hiking and bikes, below z11 only
+  long-distance routes, regional ones from z11, every signed route from z12.5 (`route_tiers()`, new `-regional` layers,
+  switched by `MapController`). Below z10 is left to the region / overview data work (`routes-<kind>-major-low`).
 - **[desktop] Map look from the Hilden field review (2026-10-26, owner tested each step on the phone):**
   - town contrast: street edges, lighter built-up land, darker buildings; paths end at the street edge;
   - bike view like hiking: green line = good bike way, mint band = signed route (names, bicycle streets, slim band,

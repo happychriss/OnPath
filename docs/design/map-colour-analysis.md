@@ -331,3 +331,10 @@ Hiking keeps its look in every row (`-hikeview` layers; pixel-checked renders of
 | No-entry signs | from z15, every 250–400 px | **0.7× size, 70 % (bikes) / 85 % (hiking), about once per way, from z16** (service roads z17) | Still says "no", without dotting a yard with red |
 | Street space (z16+) | – | pedestrian areas / squares / islands / platforms `#f1ebdc` with a `#a89b88` outline; sidewalk / crossing lines `#9a9184` 0.6–1.0 px | A junction reads like a plan (Hagelkreuz in Hilden); data from schema 7 cells |
 | Underpass | faint grey dashes (like a passage through a building) | **clear path line with thin dashed tunnel edges** above the railway | An underpass at a station is an important way, a building passage is not; needs the pipeline's `tn = "t"` |
+
+### Region view: routes by zoom (2026-10-26, owner)
+Zoomed out to a region, every signed route at once (local loops, town networks) hid the few routes that matter at that
+scale. The map now shows them in tiers, the same for hiking and bikes:
+- long-distance routes (national, EuroVelo, long-distance hiking) at every zoom, as the thin pink line;
+- regional routes from z11: dark green for bikes, the pink major line for hiking;
+- every signed route from z12.5.

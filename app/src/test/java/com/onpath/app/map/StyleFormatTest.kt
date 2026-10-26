@@ -326,6 +326,18 @@ class StyleFormatTest {
      * bikes), quieter forbidden markings (signs from z16, see-through), street space (schema 7 "areas" / "fw") between
      * the buildings and the road casings, underpasses (tn "t") as a clear path above the railway.
      */
+    /** Region view (owner 2026-10-26): long-distance routes always, regional from z11, every route from z12.5 – bike and hike. */
+    @Test fun routeTiersByZoom() {
+        val byId = byId(f2)
+        for (id in listOf("routes-hike", "routes-bike", "routes-bike-low")) assertTrue(id, byId.getValue(id).getDouble("minzoom") >= 12.5)
+        for (id in listOf("routes-hike-regional", "routes-bike-regional")) {
+            assertEquals(id, 11.0, byId.getValue(id).getDouble("minzoom"), 0.0)
+            assertTrue(id, byId.getValue(id).get("filter").toString().contains("\"net\""))
+        }
+        assertTrue(byId.getValue("routes-bike-major-low").getDouble("minzoom") < 11)
+        assertTrue(byId.getValue("routes-hike-major-low").get("filter").toString().contains("[\">=\",[\"coalesce\",[\"get\",\"net\"],0],3]"))
+    }
+
     @Test fun arrowsForbiddenStreetSpaceUnderpass() {
         val byId = byId(f2)
         val order = ids(f2)

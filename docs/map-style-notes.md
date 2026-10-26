@@ -423,3 +423,17 @@ Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overl
   railway. `paths-tunnel-town` keeps the faint dashed look for covered passages (`tn = "p"`) and for the old flag
   `tn = 1`.
 - Guard: `StyleFormatTest.arrowsForbiddenStreetSpaceUnderpass`.
+
+## Routes by zoom – region view (2026-10-26, owner; 0.11.4)
+- One rule for hiking and bikes (`route_tiers()`, theme `route.tier.*`):
+  - below `route.tier.regional` (11) only long-distance routes (net ≥ 3);
+  - from z11 also regional routes (net 2);
+  - from `route.tier.local` (12.5) every signed route.
+  - Close in nothing changes.
+- The merged band lines carry no network level, so they are the local tier (minzoom 12.5).
+- Regional routes before that come from their net pieces: `routes-bike-regional` (the dark-green overview line,
+  z11–12.5) and `routes-hike-regional` (the pink major line, from z11). `MapController.setOverlay` switches the
+  `-regional` suffix with the route layers.
+- `routes-<kind>-major-low` is the long-distance tier (hiking: now net ≥ 3 only). Region / overview data below z10
+  may extend it; `route_tiers()` changes nothing below z10.
+- Guard: `StyleFormatTest.routeTiersByZoom`.

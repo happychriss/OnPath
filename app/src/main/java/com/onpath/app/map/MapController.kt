@@ -626,7 +626,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             // band under the way, long-distance routes with the hiking major look ("-over" = their green band, "-major-low",
             // "-major") + name – a layer the style lacks is skipped
             // "-low": the bikes' thin overview line (zoomed out, above the streets)
-            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label", "-low")) {
+            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label", "-low", "-regional")) {
                 runCatching { style.getLayer("$id$suffix")?.setProperties(vis) }
                     .onFailure { if (live()) Problems.warn("map", "Route layer $id$suffix not shown / hidden", it) }
             }

@@ -1022,6 +1022,34 @@ TOWN_BELOW_STREETS = ("paths-own", "paths-link", "cycleway", "cycleway-unpaved",
 TOWN_ONLY_BELOW_STREETS = ("paths-tunnel-town",)
 
 
+def route_tiers():
+    """Route lines by zoom, one rule for hiking and bikes (owner 2026-10-26, region view): below route.tier.regional only
+    long-distance routes (net >= 3), from route.tier.regional also regional ones (net 2), from route.tier.local every
+    signed route. The merged band lines carry no net (extract_overlays.py merged_routes), so they are the local tier;
+    regional routes show before that from their net pieces ("majoronly"), as a "-regional" layer that MapController
+    switches with the activity's route layers.
+    Layer roles (keep them, other work builds on them): "routes-<kind>-major-low" = the long-distance tier (net >= 3,
+    every zoom from its minzoom – region / overview data below z10 may extend it); "routes-<kind>-regional" = net 2 from
+    route.tier.regional; the merged band layers = the local tier. Nothing here touches zooms below 10."""
+    regional, local = T("route.tier.regional", 11), T("route.tier.local", 12.5)
+    net = ["coalesce", ["get", "net"], 0]
+    for lyr in list(L):
+        i = lyr["id"]
+        if i in ("routes-hike", "routes-hike-over", "routes-bike", "routes-bike-low"):
+            lyr["minzoom"] = max(lyr.get("minzoom", 0), local)
+        if i == "routes-hike-major-low":
+            # pink thin line: long distance from the start, regional from route.tier.regional
+            reg = copy.deepcopy(lyr) | {"id": "routes-hike-regional", "minzoom": regional,
+                                        "filter": ["all", lyr["filter"], ["==", net, 2]]}
+            lyr["filter"] = ["all", lyr["filter"], [">=", net, 3]]
+            L.insert(L.index(lyr), reg)
+        if i == "routes-bike-low":
+            # the dark-green overview line of a regional cycle route before the local tier (its net pieces)
+            reg = copy.deepcopy(lyr) | {"id": "routes-bike-regional", "minzoom": regional, "maxzoom": local,
+                                        "filter": ["all", ["==", ["get", "kind"], "bike"], ["==", net, 2]]}
+            L.insert(L.index(lyr), reg)
+
+
 def road_edges_on_top():
     """The thin "road-<class>-edge" lines (tertiary … motorway) go just below the first lane: above the bike route band
     and the town path copies, so a main road keeps a visible edge where a route band runs along it."""
@@ -1563,6 +1591,7 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
     if FMT == 2:
         town_below_streets()
     road_edges_on_top()
+    route_tiers()
     low_zoom_view()
     if FMT == 2:
         # GeoJSON overlay sources -> source-layers of the one vector source "overlays"
