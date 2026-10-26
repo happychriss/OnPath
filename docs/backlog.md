@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] bike ferries with bicycle=no + Köln Dom route – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
