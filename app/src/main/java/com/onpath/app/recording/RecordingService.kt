@@ -59,9 +59,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /** Live recording state for the UI. */
 data class RecState(
@@ -235,8 +232,11 @@ class RecordingService : Service() {
                 recActivity = activityOf(existing.activity)
                 loadTrip()
             } else {
-                val name = "Tour " + SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date())
-                tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), 3,
+                val name = com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis())
+                // the tour keeps the T level it was recorded at (was a fixed 3 until 2026-10-26: reopening a T2 hike set
+                // the user's level to T3, and its GPX said "mountaineering")
+                val sac = newTourSac(intent?.getIntExtra(EXTRA_SAC, 0) ?: 0, Prefs(this).sac)
+                tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
@@ -944,6 +944,12 @@ class RecordingService : Service() {
         const val ACTION_CHECK_NOW = "com.onpath.app.CHECK_NOW"
         const val EXTRA_CONTINUE_ID = "continueId"
         const val EXTRA_ACTIVITY = "activity"
+        /** T level (SAC 1..5) the tour is recorded at; missing = the stored one ([Prefs.sac]). */
+        const val EXTRA_SAC = "sac"
+
+        /** T level of a new recorded tour: the one sent with the start ([extra] 1..5), else the [stored] one. */
+        fun newTourSac(extra: Int, stored: Int): Int =
+            com.onpath.app.data.LastActivity.sac(extra.takeIf { it in 1..5 }, stored)
 
         const val CHANNEL_REC = "recording"
         /** Old off-route channel (vibrated by itself); deleted, see [CHANNEL_NAV]. */

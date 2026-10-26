@@ -3162,6 +3162,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {
             putExtra(RecordingService.EXTRA_ACTIVITY, activity.name)
+            putExtra(RecordingService.EXTRA_SAC, sac)
         }
         followMe = true
     }
