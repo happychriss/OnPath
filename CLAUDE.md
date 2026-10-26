@@ -36,6 +36,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `tools/cells/`, `tools/cloud/` | Map cells (`build_cell.sh`, zo: `run.sh`); cloud hosting: Cloud Run Job image + `job_build.py`, Cloudflare Worker doorman (`worker/`), `gcp-setup.sh`; deployed by `.github/workflows/maps-deploy.yml` – see `docs/design/map-hosting.md` |
 | `tools/dev/` | Map cells built on this PC with the cloud job image: `push_cell.sh <cell>` (working tree → straight onto the phone, dev loop), `publish_cells.sh <cells…>` (origin/main → TEST R2 fast lane, the doorman adopts them) – see `docs/design/map-hosting.md` §7h |
 | `tools/hetzner/` | Superseded region server (Hetzner): `onpath_hetzner.py` (laptop: creates only its own labelled Hetzner server), `server/` (install.sh, API, worker, web page) – see its README |
+| `strings/` | User texts EN + DE as Compose Multiplatform resources (small KMP module), `Txt` / `str()` – see `docs/i18n.md`; review round trip `tools/i18n/` |
 | `docs/` | Requirements, architecture contract, project status |
 
 ## Build and test
@@ -131,8 +132,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   sprite images (`tools/make_sprite.py`). Layers with metadata `onpath:fallback-for` are drawn only when that source is missing.
   Layer ids the app depends on: `routes-hike`, `routes-bike` (MTB shows the cycle band), `poi-*`; the app's own layers
   (`planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`) go on top.
-- **Map labels** in German (`name:de` → `name`); UI strings currently English, hard-coded (to move to
-  `strings.xml` with EN + DE).
+- **Map labels** in German (`name:de` → `name`). **UI texts EN + DE** (owner 2026-10-26, `docs/i18n.md`): every user
+  text in `strings/…/composeResources/values[-de]/strings_<area>.xml` (Compose Multiplatform resources), used via
+  `str(Res.string.x)` in Compose / `Txt.s(…)` elsewhere – no new hard-coded texts; review sheet round trip
+  `tools/i18n/i18n.py export|import`. Diagnostics, Developer tools and the problem log stay English.
 - **Data/licences**: the map shows a short "© OpenStreetMap"; a tap opens Settings → About with the full credits
   ("© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution). Google
   content is never stored or drawn; only link out to Google Maps. Exception (owner decision 2026-10-20): the coordinate
