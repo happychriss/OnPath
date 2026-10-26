@@ -254,7 +254,7 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
 Field report: the 09:11 format-2 cells had no overlays layer `streets` (added 10:15), the style draws small streets
 at z13+ only from it → no small streets on the phone. Versions were named by the OSM date alone, so a rebuild on the
 same OSM date would have had the same (immutable, cached) name. Now:
-- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, now 2); the manifest has
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`; 2 when this was written, 5 since 2026-10-26 – see below); the manifest has
   `version` and `schema`.
 - **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
   rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).

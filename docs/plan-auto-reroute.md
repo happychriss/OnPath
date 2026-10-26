@@ -176,7 +176,7 @@ needed with this rule; see question Q3.)
 
 **U-turn avoidance:** BRouter 1.7.11 has `RoutingContext.startDirection` / `forceUseStartDirection` (service params
 `heading` / `direction`). It fakes a point 1000 m behind the start, so the profile's normal turn cost applies to the
-first turn: a U-turn costs about 2 × `turncost` (trekking/fastbike 90 → ~180 m extra; **hiking `turncost 0` → no effect**).
+first turn: a U-turn costs about 2 × `turncost` (trekking / touring 90 → ~180 m extra; **hiking `turncost 0` → no effect**).
 In our experiment (on the route, heading backwards) it changed **nothing** (§5.3). For bikes we can still pass the GPS
 heading when moving ≥ 2 m/s – cheap, a small nudge. So U-turns are handled by our candidate choice: a U-turn back to a missed junction wins only when it is really
 the fastest way to the route ahead. That is the right answer for a missed turn (scenario 1).

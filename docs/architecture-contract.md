@@ -68,7 +68,8 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 - `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys
   as in `Share`, SAC 1..6, mtb:scale, smoothness, trail_visibility, rough surface, bike access `bicycle` – added
   2026-10-22, null = unknown; the text code gained an 8th field, older codes parse with `bicycle = null`), `cycleRoute`
-  (route_bicycle_icn|ncn|rcn|lcn, added 2026-10-25 as a 9th field "r", older codes = false). Set by `BRouterEngine` on every
+  (route_bicycle_icn|ncn|rcn|lcn, added 2026-10-25 as a 9th field "r", older codes = false) and `pedestrian`
+  (highway=pedestrian, flag "p" in the same 9th field, 2026-10-26). Set by `BRouterEngine` on every
   routed point (`BRouterWayStats.perNode`, from the track messages); null on straight legs, imported tracks and lines
   stored without it. **`GeoPoint.equals`/`hashCode` ignore `way`**, so all existing comparisons behave as before.
 - Because the attributes ride on the points, they survive leg-by-leg fallback, chunking at pinned points, the

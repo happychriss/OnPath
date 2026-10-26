@@ -66,7 +66,7 @@ Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`)
 | track without tracktype | as before: solid if OpenMapTiles says paved, else fine dots | always |
 | trail with `trail_visibility` bad / horrible / no | same rhythm, sparser and lighter dots (`trail.faint.*`); T1/untagged faint paths get the T2 dot rhythm | always |
 | SAC label "T1"…"T6" | small black text along the way (`trails-sac-label`) | every activity but MTB (bikes since 2026-10-21) |
-| MTB label "S0"…"S5", with the T-grade "T3 S2" | same look (`trails-mtb-label`) | **MTB / MTB e-bike only** |
+| MTB label "S0"…"S5", with the T-grade "T3 S2" | same look (`trails-mtb-label`) | **MTB / E-MTB only** |
 | loose surface (gravel, stony, dirt, ground, grass, sand, …) or smoothness bad or worse | thin warm-brown edge on both sides (`surface.loose.*`, `line-gap-width`) | **bike activities only** |
 Compacted and fine gravel do not count as loose (fine on any bike). The app switches the activity-dependent layers
 in `MapController.setOverlay`. Tracktype edges come from `ways.geojson`, drawn over the base map's track with a
@@ -219,7 +219,7 @@ fastbike-verylowtraffic, Bike trekking + E-bike = trekking, MTB + MTB e-bike = m
 - **No MTB route band**: mtb.brf ignores route=mtb and rewards cycle routes, so MTB / MTB e-bike now show the cycle
   band (`routes-bike`); the `routes-mtb*` layers are gone from the style (route data kind "mtb" stays unused).
 - **Steps in bike modes**: blocked tint + no-entry sign (`access-no-*-bike`), unless bicycle=yes|designated (ramp).
-  Router: MTB forbidden, touring 1000, trekking 40 (carry the bike). Hiking unchanged.
+  Router: MTB forbidden, touring 1000 (fastbike; touring.brf since 2026-10-26: 40 like trekking), trekking 40 (carry the bike). Hiking unchanged.
 Renders (before / after per activity): Pfelders bicycle=yes path, Töll T2 path, St.-Georgen-Straße, Laubengasse,
 Stuanbruch-Trail, steps at the Etsch / Meran, Weißlahn, Kassianspitz.
 Still open (audit): #4 trails over the user's SAC limit, #5 trail_visibility=no, #6 paved cycleways for MTB (still

@@ -333,7 +333,7 @@ a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions,
   on the Pixel 8 first; if it misbehaves, tap-on-line insertion and the point menu still cover all edits.
 - Pinned points are not saved with tours ("My tours" → reopen: points are routed normally); a route straightened
   around an unpinned via is still possible.
-- Difficulty ignores trail technique (SAC / MTB scale); thresholds are first guesses – tune after field tests.
+- Difficulty ignores trail technique (SAC / MTB scale) – done 2026-10-25 (`RouteSummary.rating`); thresholds still to tune after field tests.
 - Remaining strip uses straight-segment matching to the followed line; no "reroute back to route" yet.
 - Plan panel is tall with breakdown bars (~60 % of the screen); the eye button helps, a collapsible details
   section may be needed.
