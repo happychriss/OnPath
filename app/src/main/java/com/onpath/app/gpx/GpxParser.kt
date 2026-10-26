@@ -1,6 +1,7 @@
 package com.onpath.app.gpx
 
 import com.onpath.app.debug.Problems
+import com.onpath.strings.*
 import org.xml.sax.Attributes
 import org.xml.sax.SAXException
 import org.xml.sax.helpers.DefaultHandler
@@ -34,7 +35,7 @@ object GpxParser {
 
     fun parse(raw: ByteArray): GpxData {
         val bytes = trimToFirstTag(raw)
-        if (bytes.isEmpty()) throw GpxException("The file is empty or not a GPX file.")
+        if (bytes.isEmpty()) throw GpxException(Txt.s(Res.string.routes_gpx_empty))
 
         val handler = Handler()
         // the parser's own error text is technical: it goes to the problem log only, the user gets the plain warning below
@@ -66,7 +67,7 @@ object GpxParser {
                 warnings += "The file is damaged; imported the readable part (${result.pointCount} points)."
             }
         }
-        if (result.isEmpty) throw GpxException("No track, route or waypoint found in this file.")
+        if (result.isEmpty) throw GpxException(Txt.s(Res.string.routes_gpx_nothing))
         return result.copy(warnings = warnings + result.warnings)
     }
 
@@ -84,7 +85,7 @@ object GpxParser {
             val n = input.read(buf)
             if (n < 0) break
             total += n
-            if (total > MAX_BYTES) throw GpxException("The file is larger than 60 MB.")
+            if (total > MAX_BYTES) throw GpxException(Txt.s(Res.string.routes_gpx_too_large, (MAX_BYTES / (1024 * 1024)).toInt()))
             out.write(buf, 0, n)
         }
         return out.toByteArray()

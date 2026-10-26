@@ -37,7 +37,9 @@ class TourEndPathsTest {
 
     @Test fun unfinishedDialogHasContinueDeleteSaveAndDeleteAsksAgain() {
         val dlg = screens.substringAfter("fun UnfinishedDialog(").substringBefore("\n}\n")
-        listOf("Text(\"Continue\")", "Text(\"Delete\")", "Text(\"Save\")", "Delete this tour?", "onDismissRequest = {}").forEach {
+        // texts as string resources (EN + DE): Continue, Delete, Save, "Delete this tour?"
+        listOf("Res.string.routes_unfinished_continue", "Res.string.common_delete", "Res.string.common_save",
+            "Res.string.routes_unfinished_delete_title", "onDismissRequest = {}").forEach {
             assertTrue(it, dlg.contains(it))
         }
         val del = body(vm, "fun deleteUnfinished(")
