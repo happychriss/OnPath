@@ -507,6 +507,8 @@ class CellDownloadTest {
         assertFalse(File(mc.store.root, "requests.json").readText().contains(pa.id))
         assertTrue(mc.packages.value.isEmpty())
         assertTrue(mc.states.value.keys.none { it.isPackage })
+        // not asked again in this run (every join would ask: a 400 each time)
+        assertEquals(emptyList<CellId>(), mc.ensurePackages())
     }
 
     /** Packages belong to the cells: when the cells' request goes (plan changed), theirs goes too; deleting the last

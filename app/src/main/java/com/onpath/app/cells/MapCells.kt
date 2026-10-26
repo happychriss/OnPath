@@ -312,7 +312,7 @@ class MapCells(
      * [PACKAGE_CHECK_MS] is asked for again (the server answers "ready" with the same version when nothing is newer).
      * Returns the packages added. Called at start and with every request; never throws.
      */
-    fun ensurePackages(extra: Collection<CellId> = emptyList()): List<CellId> = if (!regionPackages) emptyList() else try {
+    fun ensurePackages(extra: Collection<CellId> = emptyList()): List<CellId> = if (!regionPackages || packagesRefused) emptyList() else try {
         val have = _packages.value.associateBy { it.id }
         val cells = (extra.filter { !it.isPackage } + _installed.value.map { it.id } +
             synchronized(queue) { queue.keys.filter { !it.isPackage } }).toSet()
@@ -504,6 +504,9 @@ class MapCells(
      */
     private data class Pending(val id: CellId, val reason: CellReason, val ownPoint: Boolean, val at: Long,
                                val approvedMobile: Boolean, val confirmed: Boolean = true)
+
+    /** The server refused package calls (not a connection problem): no more package requests in this run. */
+    @Volatile private var packagesRefused = false
 
     /** Corridor of the current plan's route as last told ([keepCorridor]); null = not told in this run. */
     @Volatile private var planCorridor: Set<CellId>? = null
@@ -811,6 +814,7 @@ class MapCells(
                 pkgs.forEach { set(it.id, CellState.Offline("Map server not reachable – trying again.")) }
             else -> {
                 Problems.info("cells", "Region packages not available from the map server (${e.failure}); asked again at the next start", e)
+                packagesRefused = true // not after every join of this run (phone test 2026-10-26: a 400 per join)
                 synchronized(queue) { pkgs.forEach { queue.remove(it.id) }; saveQueue() }
                 pkgs.forEach { set(it.id, CellState.Failed("Region view not available", retryable = true)) }
             }
