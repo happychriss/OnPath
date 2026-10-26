@@ -13,43 +13,82 @@ import kotlin.math.tan
 /**
  * A map cell (docs/design/map-cells.md §2): web-mercator tile at zoom 10. Id "10-543-361" in files and the API,
  * "10/543/361" in URLs. Same formulas as tools/cells/cells.py and the doorman (tools/cloud/worker/src/cells.js).
+ *
+ * The same type names a **region package** ([z] = [PACKAGE_Z], map-cells.md §20): the z7 tile "7-66-42" holding the
+ * map zooms 7–9 of ~200 × 200 km (main roads, towns, forests, long-distance routes, relief). It is requested,
+ * downloaded and joined like a cell; [MapCells] keeps packages out of the cell lists the UI shows.
  */
-data class CellId(val x: Int, val y: Int) : Comparable<CellId> {
-    init { require(x in 0 until N && y in 0 until N) { "cell $x/$y outside the grid" } }
+data class CellId(val x: Int, val y: Int, val z: Int = Z) : Comparable<CellId> {
+    init {
+        require(z == Z || z == PACKAGE_Z) { "zoom $z is neither a cell nor a region package" }
+        require(x in 0 until (1 shl z) && y in 0 until (1 shl z)) { "cell $z/$x/$y outside the grid" }
+    }
 
     /** "10-543-361" */
-    val id: String get() = "$Z-$x-$y"
+    val id: String get() = "$z-$x-$y"
     /** "10/543/361" */
-    val path: String get() = "$Z/$x/$y"
+    val path: String get() = "$z/$x/$y"
+
+    /** A region package (z7, map zooms 7–9), not a cell. */
+    val isPackage: Boolean get() = z == PACKAGE_Z
 
     /** [west, south, east, north] in degrees. */
-    val bbox: DoubleArray get() = doubleArrayOf(lonOf(x), latOf(y + 1), lonOf(x + 1), latOf(y))
+    val bbox: DoubleArray get() = doubleArrayOf(lonOf(x, z), latOf(y + 1, z), lonOf(x + 1, z), latOf(y, z))
 
     val center: GeoPoint get() = bbox.let { GeoPoint((it[1] + it[3]) / 2, (it[0] + it[2]) / 2) }
 
-    /** True if map tile z/x/y (z ≥ 10) lies inside this cell. Tiles below zoom 10 belong to no cell. */
-    fun ownsTile(z: Int, tx: Int, ty: Int): Boolean = z >= Z && (tx shr (z - Z)) == x && (ty shr (z - Z)) == y
+    /**
+     * True if map tile z/x/y lies inside this cell and belongs to it: a cell owns its tiles at zoom ≥ 10, a region
+     * package its tiles at zoom 7–9 ([PACKAGE_MAX_ZOOM]). Other tiles belong to neither.
+     */
+    fun ownsTile(tz: Int, tx: Int, ty: Int): Boolean =
+        tz >= z && (if (isPackage) tz <= PACKAGE_MAX_ZOOM else true) && (tx shr (tz - z)) == x && (ty shr (tz - z)) == y
 
-    override fun compareTo(other: CellId): Int = compareValuesBy(this, other, { it.y }, { it.x })
+    /** Cells first, then packages; within each row by row. */
+    override fun compareTo(other: CellId): Int = compareValuesBy(this, other, { -it.z }, { it.y }, { it.x })
     override fun toString(): String = id
 
     companion object {
         const val Z = 10
         const val N = 1 shl Z
+        /** Region packages (map-cells.md §20): z7 tiles holding the map zooms 7–9. */
+        const val PACKAGE_Z = 7
+        const val PACKAGE_MAX_ZOOM = 9
 
         private val PATTERN = Regex("""^(\d{1,2})[-/](\d{1,4})[-/](\d{1,4})$""")
 
-        /** "10-543-361" or "10/543/361" → cell, null when not a zoom-10 cell id. */
+        /** "10-543-361" or "10/543/361" → cell ("7-66-42" → region package), null for anything else. */
         fun parse(s: String?): CellId? {
             val m = PATTERN.matchEntire(s?.trim() ?: return null) ?: return null
             val (z, x, y) = m.destructured
-            if (z.toInt() != Z) return null
+            val zi = z.toInt()
+            if (zi != Z && zi != PACKAGE_Z) return null
             val xi = x.toInt(); val yi = y.toInt()
-            return if (xi < N && yi < N) CellId(xi, yi) else null
+            return if (xi < (1 shl zi) && yi < (1 shl zi)) CellId(xi, yi, zi) else null
         }
 
-        fun lonOf(x: Int): Double = x.toDouble() / N * 360.0 - 180.0
-        fun latOf(y: Int): Double = Math.toDegrees(atan(sinh(PI * (1 - 2.0 * y / N))))
+        fun lonOf(x: Int, z: Int = Z): Double = x.toDouble() / (1 shl z) * 360.0 - 180.0
+        fun latOf(y: Int, z: Int = Z): Double = Math.toDegrees(atan(sinh(PI * (1 - 2.0 * y / (1 shl z)))))
+
+        /** The region package [c] lies in (a package is its own). */
+        fun packageOf(c: CellId): CellId =
+            if (c.isPackage) c else CellId(c.x shr (Z - PACKAGE_Z), c.y shr (Z - PACKAGE_Z), PACKAGE_Z)
+
+        /**
+         * Region packages [cells] need (map-cells.md §20): each cell's own package, and the neighbouring package where a
+         * cell lies on its package's edge (the 8 cells around it reach into it) – zoomed out around a place near the edge
+         * the region view goes on. Own packages first.
+         */
+        fun packagesFor(cells: Collection<CellId>): List<CellId> {
+            val out = LinkedHashSet<CellId>()
+            for (c in cells) if (!c.isPackage) out += packageOf(c)
+            for (c in cells) if (!c.isPackage) for (dy in -1..1) for (dx in -1..1) {
+                val y = c.y + dy
+                if (y !in 0 until N) continue
+                out += packageOf(CellId((c.x + dx + N) % N, y))
+            }
+            return out.toList()
+        }
 
         /**
          * Owner of a point (half-open rule, §2): `west ≤ lon < east`, `south < lat ≤ north`, so a point on a border
@@ -71,8 +110,12 @@ data class CellId(val x: Int, val y: Int) : Comparable<CellId> {
 
         fun at(p: GeoPoint): CellId? = at(p.lat, p.lon)
 
-        /** Cell owning tile z/x/y (z ≥ 10), null below zoom 10. */
-        fun ofTile(z: Int, x: Int, y: Int): CellId? = if (z < Z) null else CellId(x shr (z - Z), y shr (z - Z))
+        /** Cell owning tile z/x/y (z ≥ 10), the region package owning it (z 7–9), null below zoom 7. */
+        fun ofTile(z: Int, x: Int, y: Int): CellId? = when {
+            z >= Z -> CellId(x shr (z - Z), y shr (z - Z))
+            z >= PACKAGE_Z -> CellId(x shr (z - PACKAGE_Z), y shr (z - PACKAGE_Z), PACKAGE_Z)
+            else -> null
+        }
 
         /** All cells touching the box (degrees); at most [max] (a guard against "whole world" boxes). */
         fun inBbox(south: Double, west: Double, north: Double, east: Double, max: Int = 400): List<CellId> {

@@ -52,7 +52,7 @@ class NoStaleDownloadsTest {
 
     private fun cells(net: NetworkStatus = Net(), data: File = tmp.newFolder("data"), freshMs: Long = MapCells.FRESH_MS,
                       start: Boolean = true) =
-        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L, freshMs = freshMs)
+        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L, freshMs = freshMs, regionPackages = false)
             .also { if (start) it.start() }
 
     private fun queueFile(mc: MapCells) = File(mc.store.root, "requests.json")

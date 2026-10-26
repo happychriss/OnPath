@@ -30,6 +30,11 @@ enum class CellReason(val api: String) {
      * streets): rebuilt and loaded at once, also on mobile data – the map is incomplete until then.
      */
     UPDATE("point"),
+    /**
+     * A region package (z7, map zooms 7–9, map-cells.md §20) for the cells installed or asked for – asked for by the app
+     * itself, quietly: no card, no modal, never dropped as stale; the server builds it at refresh priority.
+     */
+    PACKAGE("refresh"),
 }
 
 /** What the phone knows about one cell – the card and the Settings list show this. */
@@ -90,6 +95,13 @@ interface NetworkStatus {
  *
  * Thread model: one worker coroutine in [scope] does all network and disk work; public calls only change the queue
  * and wake it. Never throws to the caller; every failure becomes a plain [CellState] and a Problems entry.
+ *
+ * Region packages (z7 [CellId]s, map-cells.md §20) ride along quietly: whenever cells are installed or asked for, the
+ * packages under them (and across a package edge next to them) are asked for with [CellReason.PACKAGE]
+ * ([ensurePackages]), sent and polled in calls of their own (a server without packages cannot break the cells' calls),
+ * downloaded after the cells and joined into the same store generations. They are never in [states] / [installed] (the
+ * card, the modal and Settings show the regions the user asked for); [packages] lists them, [packageAreas] gives the
+ * style their boxes.
  */
 class MapCells(
     val store: CellStore,
@@ -113,6 +125,8 @@ class MapCells(
     private val maxBatchMs: Long = MAX_BATCH_MS,
     /** A point request younger than this is never dropped (the trigger just asked; the card may not show it yet). */
     private val freshMs: Long = FRESH_MS,
+    /** Ask for region packages with the cells (map-cells.md §20); off in tests about the cells alone. */
+    private val regionPackages: Boolean = true,
 ) : CellSource {
     // ------------------------------------------------------------------------------------------- public state
 
@@ -123,6 +137,14 @@ class MapCells(
     private val _installed = MutableStateFlow<List<CellStore.InstalledCell>>(emptyList())
     /** Installed cells (id, version, size). */
     val installed: StateFlow<List<CellStore.InstalledCell>> = _installed
+
+    /** States of region packages (kept apart from [states]: the UI's card / modal never show them). */
+    private val _packageStates = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
+    val packageStates: StateFlow<Map<CellId, CellState>> = _packageStates
+
+    private val _packages = MutableStateFlow<List<CellStore.InstalledCell>>(emptyList())
+    /** Installed region packages (map-cells.md §20) – diagnostics; the map style gets their boxes ([packageAreas]). */
+    val packages: StateFlow<List<CellStore.InstalledCell>> = _packages
 
     private val _generation = MutableStateFlow(0)
     /** Store generation; changes when the map files changed → reload the map style (and the search index). */
@@ -178,7 +200,7 @@ class MapCells(
      */
     @Synchronized fun releaseRelevance(r: Relevance) { if (relevance === r) relevance = null }
 
-    fun state(id: CellId): CellState = _states.value[id] ?: CellState.None
+    fun state(id: CellId): CellState = (if (id.isPackage) _packageStates.value[id] else _states.value[id]) ?: CellState.None
 
     /** False when this build has no map server key: the UI says "Map downloads not available in this build". */
     override val downloadsAvailable: Boolean get() = api != null
@@ -209,6 +231,12 @@ class MapCells(
     } catch (e: Exception) {
         Problems.warn("cells", "Detailed map areas unknown; the overview may show through at the edges", e); emptyList()
     }
+
+    /**
+     * Boxes [west, south, east, north] of the installed region packages: there the style draws z7–9 from the detailed
+     * map and hides the overview (map/Overview.kt). Never throws.
+     */
+    fun packageAreas(): List<DoubleArray> = _packages.value.map { it.id.bbox }
 
     /** Of [cells]: those installed on the phone (after-routing check for newer versions). */
     override fun installedAmong(cells: List<CellId>): List<CellId> {
@@ -266,6 +294,8 @@ class MapCells(
             }
             saveQueue()
         }
+        // the region view around them (quiet, small): the packages these cells need
+        if (reason != CellReason.PACKAGE) ensurePackages(cells)
         if (added.isNotEmpty()) {
             Problems.trace("cells", "Requested ${added.size} region(s) (${reason.name.lowercase()}): ${added.joinToString { it.id }}")
             // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
@@ -274,6 +304,38 @@ class MapCells(
             wake()
         }
         return added
+    }
+
+    /**
+     * Asks for the region packages (map-cells.md §20) that [extra] cells and every installed or asked-for cell need
+     * ([CellId.packagesFor]) and that are neither installed nor asked for; an installed package older than
+     * [PACKAGE_CHECK_MS] is asked for again (the server answers "ready" with the same version when nothing is newer).
+     * Returns the packages added. Called at start and with every request; never throws.
+     */
+    fun ensurePackages(extra: Collection<CellId> = emptyList()): List<CellId> = if (!regionPackages) emptyList() else try {
+        val have = _packages.value.associateBy { it.id }
+        val cells = (extra.filter { !it.isPackage } + _installed.value.map { it.id } +
+            synchronized(queue) { queue.keys.filter { !it.isPackage } }).toSet()
+        val t = now()
+        val want = CellId.packagesFor(cells).filter { p -> have[p]?.let { t - it.installedAt > PACKAGE_CHECK_MS } ?: true }
+        val added = ArrayList<CellId>()
+        synchronized(queue) {
+            for (p in want) if (p !in queue && !isFinished(p)) {
+                queue[p] = Pending(p, CellReason.PACKAGE, ownPoint = false, at = t, approvedMobile = false)
+                added += p
+            }
+            if (added.isNotEmpty()) saveQueue()
+        }
+        if (added.isNotEmpty()) {
+            Problems.trace("cells", "Requested ${added.size} region package(s): ${added.joinToString { it.id }}")
+            update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
+            sent.removeAll(added.toSet())
+            wake()
+        }
+        added
+    } catch (e: Exception) {
+        Problems.warn("cells", "Region packages not requested; the region view stays the world overview there", e)
+        emptyList()
     }
 
     /** The user said yes to mobile data for these cells (the card's question). */
@@ -318,7 +380,7 @@ class MapCells(
     fun knownSize(c: CellId): Long? = sizes[c]
 
     fun waiting(): Waiting {
-        val ids = synchronized(queue) { queue.keys.toList() }
+        val ids = synchronized(queue) { queue.keys.filter { !it.isPackage } }
         val s = ids.map { c -> sizes[c] ?: (state(c) as? CellState.WaitingForWifi)?.bytes }
         return Waiting(ids.size, s.filterNotNull().sum(), s.count { it == null })
     }
@@ -346,6 +408,9 @@ class MapCells(
      */
     fun delete(cells: Collection<CellId>, why: String = "deleted in Settings") {
         if (cells.isEmpty()) return
+        // region packages no remaining cell needs go with them (Settings never lists packages)
+        @Suppress("NAME_SHADOWING")
+        val cells = cells + orphanPackages(cells.toSet())
         cancel(cells)
         synchronized(finished) { cells.forEach { finished.remove(it) } }
         synchronized(toRemove) { toRemove += cells }
@@ -364,6 +429,12 @@ class MapCells(
         delete(all, "Clear all in Settings")
         if (all.isEmpty()) Problems.trace("cells", "Clear all in Settings: no downloaded areas")
         return all
+    }
+
+    /** Installed packages that no installed cell outside [removed] needs any more. */
+    private fun orphanPackages(removed: Set<CellId>): List<CellId> {
+        val keep = CellId.packagesFor(_installed.value.map { it.id }.filter { it !in removed }).toSet()
+        return _packages.value.map { it.id }.filter { it !in keep && it !in removed }
     }
 
     /** Installed areas waiting to be removed ([delete]) – Settings shows "removed after the tour". */
@@ -407,6 +478,7 @@ class MapCells(
         if (worker?.isActive == true) return
         loadQueue(); loadUsage()
         refreshInstalled()
+        ensurePackages()
         worker = scope.launch {
             work.withLock { recover() }
             loop()
@@ -468,8 +540,14 @@ class MapCells(
 
     private fun wake() { wakeup.trySend(Unit) }
 
+    /** Changes cell and package states together; packages land in [_packageStates], cells in [_states]. */
     private fun update(block: (MutableMap<CellId, CellState>) -> Unit) {
-        synchronized(_states) { val m = _states.value.toMutableMap(); block(m); _states.value = m }
+        synchronized(_states) {
+            val m = (_states.value + _packageStates.value).toMutableMap(); block(m)
+            val (pk, cs) = m.entries.partition { it.key.isPackage }
+            _states.value = cs.associate { it.key to it.value }
+            _packageStates.value = pk.associate { it.key to it.value }
+        }
     }
 
     private fun set(c: CellId, s: CellState) = update { it[c] = s }
@@ -480,7 +558,8 @@ class MapCells(
      */
     private fun refreshInstalled(gen: Int? = null) {
         val inst = store.installed()
-        _installed.value = inst
+        _installed.value = inst.filter { !it.id.isPackage }
+        _packages.value = inst.filter { it.id.isPackage }
         _generation.value = gen ?: store.current()?.number ?: 0
         update { m ->
             m.entries.removeAll { (c, s) -> s is CellState.Ready && inst.none { it.id == c } }
@@ -586,7 +665,15 @@ class MapCells(
         CellReason.POINT, CellReason.NEAR ->
             if (rel != null && t - p.at >= freshMs && !rel.stillNear(p.id)) "no longer near a planned point, the search or the position" else null
         CellReason.REFRESH, CellReason.UPDATE -> if (p.id !in inst) "area no longer on the phone" else null
+        // small and for the whole region: kept while an installed or asked-for cell needs it (a cancelled long
+        // route's packages go with its corridor)
+        CellReason.PACKAGE -> if (p.id !in packagesNeeded(inst)) "no region on the phone or asked for needs it" else null
     }
+
+    /** Packages the installed cells ([inst]), the cells in the queue and the downloaded ones waiting to be joined need. */
+    private fun packagesNeeded(inst: Set<CellId>): Set<CellId> =
+        CellId.packagesFor(inst.filter { !it.isPackage } + synchronized(queue) { queue.keys.filter { !it.isPackage } } +
+            synchronized(finished) { finished.keys.filter { !it.isPackage } }).toSet()
 
     /** Drops requests no longer wanted ([whyInvalid]); the user's waited-for cells always stay. */
     private fun prune() {
@@ -629,7 +716,8 @@ class MapCells(
             return null
         }
         val t = now()
-        val pend = synchronized(queue) { queue.values.filter { it.confirmed } }
+        // region packages build for minutes at refresh priority: finished cells never wait for them
+        val pend = synchronized(queue) { queue.values.filter { it.confirmed && !it.id.isPackage } }
         val more = pend.any { p -> state(p.id) is CellState.Downloading && allowed(p) }
         val building = pend.any { p -> state(p.id).let { s -> s is CellState.Queued || s is CellState.Building || s == CellState.Requested } }
         val quiet = t - lastFinishedAt
@@ -650,6 +738,7 @@ class MapCells(
             publish(gen)
             done.forEach { set(it.manifest.cell, CellState.Ready(it.manifest.version)) }
             Problems.trace("cells", "Joined ${ids.size} region(s) into the map in one update (generation ${gen.number}): ${ids.joinToString { it.id }}")
+            ensurePackages() // a package dropped meanwhile (e.g. during a tour) is asked for again
         } catch (e: Exception) {
             synchronized(finished) { ids.forEach { finished.remove(it) } }
             Problems.error("cells", "Map areas ${ids.joinToString { it.id }} could not be joined into the map", e)
@@ -675,20 +764,16 @@ class MapCells(
             val next = ready.filter { allowed(it) }.sortedWith(compareByDescending<Pending> { it.ownPoint }.thenBy { it.reason.ordinal }.thenBy { it.at }).firstOrNull()
             if (next != null) { downloadAndInstall(next); backoff = 0; return 0 }
             if (!foreground && !tourInBackground && !loadInBackground) return IDLE_MS
-            // 2. send requests not sent in this run (grouped by reason), else poll status
-            val unsent = pending.filter { it.id !in sent }
-            val answer = if (unsent.isNotEmpty()) {
-                val byReason = unsent.groupBy { it.reason }
-                var last: CellApi.StatusAnswer? = null
-                for ((reason, list) in byReason) for (chunk in list.chunked(MAX_PER_CALL)) {
-                    last = merge(last, api.request(chunk.map { it.id.id }, reason.api))
-                    sent += chunk.map { it.id }
-                }
-                last!!
-            } else {
-                pending.chunked(MAX_PER_CALL).map { api.status(it.map { p -> p.id.id }) }.reduce { a, b -> merge(a, b) }
+            // 2. send requests not sent in this run (grouped by reason), else poll status – region packages in calls of
+            // their own: a failure there (e.g. a server without packages) never holds up the cells
+            val (pkgPending, cellPending) = pending.partition { it.id.isPackage }
+            val cellAnswer = if (cellPending.isEmpty()) null else exchange(api, cellPending)
+            val pkgAnswer = if (pkgPending.isEmpty()) null else try { exchange(api, pkgPending) } catch (e: CellApi.ApiException) {
+                packagesFailed(e, pkgPending); null
             }
             backoff = 0
+            val answer = listOfNotNull(cellAnswer, pkgAnswer).reduceOrNull { a, b -> merge(a, b) }
+                ?: return if (cellPending.isEmpty()) PACKAGE_RETRY_MS else IDLE_MS
             apply(answer, pending)
             val anyReadyAllowed = pending.any { state(it.id) == READY_ON_SERVER && allowed(it) }
             if (anyReadyAllowed) return 0
@@ -698,6 +783,37 @@ class MapCells(
                 else if (foreground || loadInBackground) pollDelayMs(answer.pollS) else maxOf(pollDelayMs(answer.pollS), backgroundPollMs)
         } catch (e: CellApi.ApiException) {
             return failed(e, pending)
+        }
+    }
+
+    /** Sends the requests of [pending] not sent in this run (grouped by reason), else polls their status. */
+    private fun exchange(api: CellApi, pending: List<Pending>): CellApi.StatusAnswer {
+        val unsent = pending.filter { it.id !in sent }
+        return if (unsent.isNotEmpty()) {
+            var last: CellApi.StatusAnswer? = null
+            for ((reason, list) in unsent.groupBy { it.reason }) for (chunk in list.chunked(MAX_PER_CALL)) {
+                last = merge(last, api.request(chunk.map { it.id.id }, reason.api))
+                sent += chunk.map { it.id }
+            }
+            last!!
+        } else {
+            pending.chunked(MAX_PER_CALL).map { api.status(it.map { p -> p.id.id }) }.reduce { a, b -> merge(a, b) }
+        }
+    }
+
+    /**
+     * The package calls failed: offline / server busy → they wait like cells (asked again next round); any other answer
+     * (a server that does not know packages, a refusal) → dropped quietly until the next app start ([ensurePackages]).
+     */
+    private fun packagesFailed(e: CellApi.ApiException, pkgs: List<Pending>) {
+        when (e.failure) {
+            CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY ->
+                pkgs.forEach { set(it.id, CellState.Offline("Map server not reachable – trying again.")) }
+            else -> {
+                Problems.info("cells", "Region packages not available from the map server (${e.failure}); asked again at the next start", e)
+                synchronized(queue) { pkgs.forEach { queue.remove(it.id) }; saveQueue() }
+                pkgs.forEach { set(it.id, CellState.Failed("Region view not available", retryable = true)) }
+            }
         }
     }
 
@@ -738,7 +854,8 @@ class MapCells(
                 "building" -> set(c, CellState.Building(s.step ?: "starting", s.progress ?: 0.0, s.etaS))
                 "failed" -> {
                     val msg = "Map for this area failed"
-                    Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
+                    if (c.isPackage) Problems.info("cells", "Region package $c failed on the server: ${s.reason}")
+                    else Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
                     // dropped from the queue: the next trigger for this place asks again (the server retries up to 3×)
                     synchronized(queue) { queue.remove(c) }
@@ -833,7 +950,7 @@ class MapCells(
             Problems.trace("cells", "Download finished: $c (${p.reason.name.lowercase()}), ${mbOf(m.totalSize)}")
         } catch (e: Cancelled) {
             Problems.trace("cells", "Download stopped: $c (${p.reason.name.lowercase()}) – no longer wanted")
-            update { it.remove(c) }
+            update { it.remove(c) } // packages too (update keeps both maps)
         } catch (e: CellApi.ChecksumException) {
             if (c in damaged) {
                 Problems.warn("cells", "Map cell $c damaged twice while downloading", e)
@@ -934,6 +1051,10 @@ class MapCells(
         /** A developer build of a cell ([CellApi.isDevVersion]) is not replaced by a refresh for this long. */
         const val DEV_KEEP_MS = 24L * 3600 * 1000
         private const val BUSY_RECHECK_MS = 1_000L
+        /** Package calls failed while no cell waits: asked again after this. */
+        private const val PACKAGE_RETRY_MS = 5 * 60_000L
+        /** An installed region package is asked for again (newer version?) when it is older than this. */
+        const val PACKAGE_CHECK_MS = 30L * 24 * 3600 * 1000
         /** A point / near request older than this is dropped at app start (nobody waits for it any more). */
         const val STALE_MS = 24L * 3600 * 1000
     }
