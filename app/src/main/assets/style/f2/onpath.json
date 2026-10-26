@@ -33,6 +33,11 @@
    "type": "vector",
    "url": "pmtiles://file://{DATA_DIR}/overlays.pmtiles"
   },
+  "region-shade": {
+   "type": "raster",
+   "url": "pmtiles://file://{DATA_DIR}/hillshade.pmtiles",
+   "tileSize": 256
+  },
   "pois": {
    "type": "geojson",
    "data": "file://{DATA_DIR}/pois.geojson",
@@ -46,6 +51,19 @@
    "type": "background",
    "paint": {
     "background-color": "#f6f4ec"
+   }
+  },
+  {
+   "id": "region-relief",
+   "type": "raster",
+   "source": "region-shade",
+   "minzoom": 7,
+   "maxzoom": 10,
+   "paint": {
+    "raster-resampling": "linear",
+    "raster-fade-duration": 0,
+    "raster-contrast": 0.25,
+    "raster-brightness-max": 0.9
    }
   },
   {
@@ -8145,7 +8163,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 10,
+   "minzoom": 7,
    "maxzoom": 13.5,
    "filter": [
     "all",
@@ -8577,7 +8595,7 @@
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
-   "minzoom": 9,
+   "minzoom": 7,
    "maxzoom": 13.5,
    "filter": [
     "all",

@@ -338,6 +338,23 @@ class StyleFormatTest {
         assertTrue(byId.getValue("routes-hike-major-low").get("filter").toString().contains("[\">=\",[\"coalesce\",[\"get\",\"net\"],0],3]"))
     }
 
+    /**
+     * Region packages (map-cells.md §20): their relief right above the background (opaque, z7–10; not a "hillshade" id –
+     * the Settings switch must not take the cover away), long-distance routes from z7.
+     */
+    @Test fun regionPackagesView() {
+        val byId = byId(f2)
+        val src = f2.getJSONObject("sources").getJSONObject("region-shade")
+        assertEquals("raster", src.getString("type"))
+        assertEquals("pmtiles://file://{DATA_DIR}/hillshade.pmtiles", src.getString("url"))
+        assertEquals(listOf("background", "region-relief"), ids(f2).take(2))
+        val r = byId.getValue("region-relief")
+        assertEquals(7.0, r.getDouble("minzoom"), 0.0); assertEquals(10.0, r.getDouble("maxzoom"), 0.0)
+        assertTrue(ids(f2).none { it.startsWith("hillshade") && byId.getValue(it).optString("source") == "region-shade" })
+        for (id in listOf("routes-bike-major-low", "routes-hike-major-low")) assertEquals(id, 7.0, byId.getValue(id).getDouble("minzoom"), 0.0)
+        assertTrue(!f1.getJSONObject("sources").has("region-shade")) // format 1 has no packages
+    }
+
     @Test fun arrowsForbiddenStreetSpaceUnderpass() {
         val byId = byId(f2)
         val order = ids(f2)

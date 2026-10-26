@@ -783,6 +783,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Areas with the detailed map (installed cells, region package) for the style's overview cover. */
     fun detailedAreas(): List<DoubleArray> = cells.detailedAreas()
 
+    /** Boxes of the installed region packages (z7–9, map-cells.md §20): the style's region view there. */
+    fun packageAreas(): List<DoubleArray> = cells.packageAreas()
+
     /** True when a large part of the visible box has no detailed map ([OverviewHintRule], any zoom). */
     fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = try {
         OverviewHintRule.show(OverviewHintRule.MIN_ZOOM,

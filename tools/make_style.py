@@ -1092,6 +1092,27 @@ LOW_BIKE = ("access-no-dash-bike", "access-no-dash-touring", "access-no-dash-mtb
 LOW_GOOD = ("greenway-foot", "greenway-bike", "greenway-touring", "greenway-mtb", "bike-street-bikeview")
 
 
+REGION_ZOOM = 7  # region packages bring the detailed map for z7-9 (docs/design/map-cells.md §20)
+
+
+def region_view():
+    """Region packages (format 2, map-cells.md §20): the detailed map at z7-9 where a package is installed – main roads,
+    towns, forests, water, borders from the base map, long-distance routes from the overlays, relief from the package's
+    pre-rendered hill shade. The app (map/Overview.kt) starts the base layers at z7 when packages are installed and keeps
+    the world overview below this relief.
+    - "region-relief": the package's hillshade.pmtiles (opaque tiles shaded onto the background like the overview's
+      relief, the same paint as Overview.HILLSHADE_PAINT) right above the background, z7-10 – it is also what hides the
+      overview inside the packages. Not a "hillshade" id: the Settings switch must not take that cover away.
+    - routes-<kind>-major-low (the long-distance tier, route_tiers()) from z7: only net >= 3 lines exist there."""
+    at = next(i for i, lyr in enumerate(L) if lyr["id"] == "background") + 1
+    L.insert(at, {"id": "region-relief", "type": "raster", "source": "region-shade", "minzoom": REGION_ZOOM, "maxzoom": 10,
+                  "paint": {"raster-resampling": "linear", "raster-fade-duration": 0, "raster-contrast": 0.25,
+                            "raster-brightness-max": 0.9}})
+    for lyr in L:
+        if lyr["id"] in ("routes-bike-major-low", "routes-hike-major-low"):
+            lyr["minzoom"] = REGION_ZOOM
+
+
 def low_zoom_view():
     hike, bike = T("lowzoom.path.opacity.hike", 0), T("lowzoom.path.opacity.bike", 0)
     good = T("lowzoom.goodway.opacity", 0)
@@ -1594,6 +1615,8 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
     route_tiers()
     low_zoom_view()
     if FMT == 2:
+        region_view()
+    if FMT == 2:
         # GeoJSON overlay sources -> source-layers of the one vector source "overlays"
         for lyr in L:
             if lyr.get("source") in OVERLAY_LAYERS:
@@ -1611,6 +1634,8 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
     if FMT == 2:
         # paths z11-14, trails / ways / trailnames z13-14, routes z9-14 (tools/build_overlays.sh)
         sources["overlays"] = {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/overlays.pmtiles"}
+        # region packages' relief z7-9 (region_view); stripped by the app when no package is installed
+        sources["region-shade"] = {"type": "raster", "url": "pmtiles://file://{DATA_DIR}/hillshade.pmtiles", "tileSize": 256}
     else:
         sources.update(geojson_overlay_sources())
     sources["pois"] = {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14, "buffer": 32}
