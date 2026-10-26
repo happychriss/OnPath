@@ -1,10 +1,18 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.3** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.4** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald, captain), 2026-10-26 night – 0.11.4.** Region packages (z7 ids, map z7–9: base without farmland,
+  long-distance routes, relief as cover; doorman `PACKAGE_SCHEMA` 1, builder `build_package.sh`, app `ensurePackages`,
+  Overview `!within` labels – map-cells.md §20); route hints (ferry/ford/construction/stiles; `WayAttrs` ford/barrier/
+  construction); MTB: no pushing/steep, signed ways "no bikes allowed"/"dismount (sign)"; route tiers by zoom; opening a
+  tour switches activity; difficulty T2 ≥ 2 km / Bike unpaved ≥ 25 % or loose ≥ 5 km → Moderate; build_hillshade loop fix.
+  Owner decisions today (all in backlog Done). Private material: external-docs/ (local) + Drive OnPath/External-Docs (text).
+  - **Open:** AGP 9.4.1 upgrade later (owner); Drive order A-001 (website screenshots, phone); hint ideas in backlog Next
+    (ferry names, Navigate hints, trail visibility); region packages: neighbour edge, pink density at z7.
 - **desktop (donald, captain), 2026-10-26 evening – 0.11.3.** Map look tuned with the owner on the phone (fast loop:
   `tools/dev/push_style.sh` test style in developer tools, `tools/dev/push_cell.sh` local cells): town contrast,
   bike view like hiking (green good ways, mint route band + names, pink-green long-distance, quiet tracks, dotted loose
