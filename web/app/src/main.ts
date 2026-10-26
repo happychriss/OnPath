@@ -12,6 +12,7 @@ import type { Activity, PlanResult, SharedPlan } from './engine/types';
 import { shareDialog } from './share';
 import { profileSvg } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
+import { Cells } from './cells';
 import './style.css';
 
 const ACTIVITIES: [Activity, string][] = [
@@ -56,6 +57,10 @@ actSel.value = state.activity; sacSel.value = String(state.sac);
 maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's module worker; tell it where
 const pmtiles = new Protocol();
 maplibregl.addProtocol('pmtiles', pmtiles.tile);
+// Map: the map server's cells (default), or one flat map folder (?map=folder, and the packed preview)
+const useCells = !PACKED && params.get('map') !== 'folder';
+const cells = new Cells(params.get('data') ?? base + 'data/');
+if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 const map = new maplibregl.Map({
   container: 'map', style: await loadStyle(), center: [11.16, 46.67], zoom: 12, attributionControl: false,
 });
@@ -63,7 +68,9 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors, © OpenMapTiles' }));
+if (useCells) map.on('moveend', () => cells.loadPois(map));
 map.on('load', () => {
+  if (useCells) cells.loadPois(map);
   map.addSource('planned-route', { type: 'geojson', data: empty() });
   const routed = ['==', ['get', 'straight'], false] as maplibregl.FilterSpecification;
   const straight = ['==', ['get', 'straight'], true] as maplibregl.FilterSpecification;
@@ -78,6 +85,11 @@ map.on('load', () => {
 // The style the app ships, pointed at web URLs; sources whose file is not there are left out (no blank errors).
 async function loadStyle(): Promise<StyleSpecification> {
   const s: StyleSpecification = await (await fetch(base + 'style/onpath.json')).json();
+  if (useCells) {
+    s.glyphs = base + 'fonts/{fontstack}/{range}.pbf';
+    s.sprite = base + 'sprites/onpath';
+    return cells.style(s);
+  }
   const data = params.get('data') ?? base + 'map/';
   const fix = (u: string) => u.replace('pmtiles://file://{DATA_DIR}/', 'pmtiles://' + data).replace('file://{DATA_DIR}/', data);
   s.glyphs = PACKED ? packedGlyphs(base) : base + 'fonts/{fontstack}/{range}.pbf';

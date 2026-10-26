@@ -211,3 +211,38 @@ test on the plain JVM (web CI does).
 Cloudflare Pages for the page; rd5 parts and map areas from the existing R2 bucket through the Worker with CORS
 (brouter.de has no CORS); access during the test by Cloudflare Access (e-mail code, free up to 50) – no app key in the
 browser (map-access.md). The planner host name is also the App Link host above.
+
+## 9. Test page host (cloud, 2026-10-26) – built, not deployed
+
+Owner 2026-10-26: own domain **onpath.earth** (bought at all-inkl, DNS at Cloudflare; .earth is not sold by
+Cloudflare). Proposed: `onpath.earth` home + help, `planer.onpath.earth` the planner, later `maps.onpath.earth`.
+The planner host name is also the App Link host (§8, A-005).
+
+**Map from cells** (`web/app/src/cells.ts`): the page reads the map server's format-2 cells in place – a cell is one
+z10 tile holding only its own z ≥ 10 tiles, so a maplibre protocol `cell://<layer>/{z}/{x}/{y}` sends every tile to the
+archive of its z10 parent (`cells/f2/10/<x>/<y>/current.json` → version folder). Nothing is merged (the phone joins
+cells into one file per layer, map-cells.md §19). Missing tiles: empty vector tile, flat Terrarium tile for terrain.
+POIs: the cells in view are merged into the style's one geojson source. Below z10 the page shows nothing yet (the app
+has its bundled overview map there). `?map=folder` keeps the old single-folder mode (packed preview).
+
+**Host** (`web/host/`, a Cloudflare Worker with static assets): one hostname for everything, so no CORS and no app key
+in the browser.
+- `/data/<key>` → the maps R2 bucket, read only, cell files only – the doorman's own `serveFile` (Range, ETag, cache
+  rules), imported, not copied.
+- `/segments/<rd5>` → brouter.de passed through with Range (brouter.de has no CORS header; the app also downloads from
+  there). Only rd5 file names go upstream.
+- everything else → the built page.
+- `workers_dev` and preview URLs off: the only address is the custom domain, which **Cloudflare Access** guards
+  (e-mail one-time code, free up to 50 users). Tests: `web/host/test` (CI); `wrangler deploy --dry-run` bundles 4 KiB.
+
+**Owner setup, once (in this order):**
+1. onpath.earth active in Cloudflare (nameservers at all-inkl → Cloudflare).
+2. Zero Trust → Access → Applications → Add → *Self-hosted*: domain `planer.onpath.earth`; policy *Allow*, include the
+   testers' e-mail addresses; login method *One-time PIN*. (First visit: choose a team name and the Free plan.)
+3. API token (My Profile → API Tokens → Create → Custom): Account · Workers Scripts · Edit; Zone onpath.earth ·
+   Workers Routes · Edit and DNS · Edit. In GitHub: secret `CLOUDFLARE_PLANNER_TOKEN`, variable
+   `PLANNER_HOST_TEST` = `planer.onpath.earth` (`CLOUDFLARE_ACCOUNT_ID` exists).
+4. Actions → Web spike → Run workflow (branch web-spike) → tick *deploy*.
+
+Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
+there first; requesting new cells from the web (needs the doorman without app key – map-access.md).

@@ -7,6 +7,11 @@ on:
   push:
     branches: [web-spike]
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy the planner host to Cloudflare (test) after the checks"
+        type: boolean
+        default: false
 
 concurrency:
   group: web-spike-${{ github.ref }}
@@ -72,6 +77,28 @@ jobs:
       - name: Plan per link and QR code (the app's code opens; same code written back; QR dialog)
         working-directory: web/app
         run: node test/share-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Planner host tests (web/host)
+        working-directory: web/host
+        run: node --test
+
+      # Deploy (manual only): Actions → Web spike → Run workflow → deploy. Needs the repository secret
+      # CLOUDFLARE_PLANNER_TOKEN (Workers scripts + the planner zone's routes/DNS, nothing else), the repository
+      # variables CLOUDFLARE_ACCOUNT_ID (exists) and PLANNER_HOST_TEST (e.g. planer.onpath.earth), and Cloudflare Access
+      # on that host set up first (web-planner.md §9) – the host has no other lock.
+      - name: Deploy the planner host (test)
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        working-directory: web/host
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          HOST: ${{ vars.PLANNER_HOST_TEST }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$HOST" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_PLANNER_TOKEN / PLANNER_HOST_TEST / CLOUDFLARE_ACCOUNT_ID missing – see web-planner.md §9"; exit 1
+          fi
+          sed -i "s/__PLANNER_HOST_TEST__/$HOST/" wrangler.toml
+          npx --yes wrangler@4.141.0 deploy --env test
 
       - name: Sizes
         if: always()

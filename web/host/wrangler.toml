@@ -1,0 +1,23 @@
+# OnPath web planner host – docs/design/web-planner.md §9. Deployed by .github/workflows/web-spike.yml (manual).
+# No secrets here. The maps bucket is only read (map cells), never written.
+name = "onpath-planner"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false        # only the custom domain, which Cloudflare Access guards
+preview_urls = false
+
+[assets]
+directory = "../app/dist"
+binding = "ASSETS"
+run_worker_first = ["/data/*", "/segments/*"]
+
+[env.test]
+name = "onpath-planner-test"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "__PLANNER_HOST_TEST__", custom_domain = true }]
+
+[[env.test.r2_buckets]]
+binding = "MAPS"
+bucket_name = "onpath-maps-test"
+jurisdiction = "eu"

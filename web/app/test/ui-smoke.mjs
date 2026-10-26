@@ -1,5 +1,5 @@
 // Clicks two points on the planner page in headless Chromium and checks that a route + profile appear.
-// Usage: node test/ui-smoke.mjs [segmentsDir] [mapDataDir] [screenshot.png]
+// Usage: node test/ui-smoke.mjs [segmentsDir] [mapStoreDir (cells/f2/…, like the R2 bucket)] [screenshot.png]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -7,9 +7,9 @@ import { serve } from './serve.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const segments = path.resolve(process.argv[2] ?? '/home/user/build/routing-test/segments');
-const mapDir = process.argv[3] ? path.resolve(process.argv[3]) : null;
+const dataDir = process.argv[3] ? path.resolve(process.argv[3]) : null;
 const shot = process.argv[4] ?? path.join(here, '../../engine/build/planner.png');
-const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments, mapDir });
+const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments, dataDir });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];

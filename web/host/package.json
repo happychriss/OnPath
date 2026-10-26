@@ -1,0 +1,11 @@
+{
+  "name": "onpath-planner-host",
+  "private": true,
+  "type": "module",
+  "description": "OnPath web planner host (Cloudflare Worker): the page, map cells from R2, routing data – docs/design/web-planner.md §9",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test",
+    "dry-run": "npx --yes wrangler@4.141.0 deploy --dry-run --outdir dist --env test"
+  }
+}
