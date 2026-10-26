@@ -1,5 +1,7 @@
 # OnPath – UI text review (2026-10-23)
 
+> Historical – owner answers Q1–Q10 built and merged 2026-10-23 (backlog "Done"); kept for the reasoning.
+
 Paths are relative to `app/src/main/java/com/onpath/app/`. Read-only review; nothing edited.
 "(being reworked)" = map-download indicator texts the cloud session is changing right now.
 

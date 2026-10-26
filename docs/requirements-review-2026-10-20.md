@@ -1,5 +1,7 @@
 # OnPath – Review nach deinen Anforderungen (19.–20.10.)
 
+> Historical (review of 0.7.20) – findings fixed in 0.7.21–0.7.26 or moved to `docs/backlog.md` (checked 2026-10-26).
+
 Status: review of main 0.7.20; follow-up fixes in 0.7.21 (camera revert, point at finger-down) and 0.7.22 (guard removed, compass after free look, no extra north move, label). Open: owner decision 2.1 (Plan turning by itself after locate), "where I face" arrow as own symbol (2.2).
 
 Geprüft wurde der Stand `main` 0.7.20 (bef6b65). **Achtung:** Im Arbeitsordner liegt gerade eine *nicht committete* Änderung

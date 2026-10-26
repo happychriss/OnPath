@@ -1,5 +1,7 @@
 # Field test 2026-10-19 (Ultental / Zoggler Stausee) – complete status
 
+> Historical (0.6.x field test) – fixes released 0.6.2–0.6.9; anything open is in `docs/backlog.md`.
+
 Owner hiked with the app; the cloud session fixed and released during the day (0.6.2 → 0.6.9).
 Open items also live in `docs/backlog.md`.
 

@@ -1,5 +1,7 @@
 # POI search + adding places to the route – 3 UX proposals (2026-10-18, cloud)
 
+> Historical – superseded by `docs/ux-two-modes.md` and the mixed search built in 0.10.0; the "waiting" status below is old.
+
 Visual mockups (8 phone screens): https://claude.ai/artifact/KNThqwa1Qj7ZYJK8Ca2gp1 (owner's canvas).
 Status: **waiting for the owner's choice.** Nothing implemented yet.
 

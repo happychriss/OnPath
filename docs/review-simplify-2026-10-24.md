@@ -1,5 +1,7 @@
 # OnPath – simplify messages, UX and text sizes (review 2026-10-24, read-only, main @ 08505a9)
 
+> Historical – decided and built in 0.10.3; section A is the reasoning behind the message rules in `CLAUDE.md`.
+
 Paths are relative to `app/src/main/java/com/onpath/app/`. Nothing was edited. Proposals already decided in
 `review-texts-2026-10-23.md` / `review-ux-2026-10-23.md` are not repeated. Language (EN + DE) is not covered.
 
