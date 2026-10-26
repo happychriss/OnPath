@@ -10,6 +10,7 @@ object Problems {
     fun info(area: String, message: String, t: Throwable? = null) = report(area, message, t, "INFO")
     fun warn(area: String, message: String, t: Throwable? = null) = report(area, message, t, "WARN")
     fun error(area: String, message: String, t: Throwable? = null) = report(area, message, t, "ERROR")
+    fun trace(area: String, message: String) = report(area, message, null, "TRACE")
     fun report(area: String, message: String, t: Throwable? = null, level: Any = "WARN") {
         val line = "$level $area: $message" + (t?.let { " ($it)" } ?: "")
         System.err.println("[Problems] $line")

@@ -36,6 +36,6 @@ console.log('status:', status);
 if (errors.length) console.log('errors:', errors);
 // Fail on page errors and console errors, except missing map files (404, no map data in CI) and the app's own
 // Problems log at INFO / WARN (the known reflection warning, docs/design/web-planner.md §7 finding 2).
-const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN) /.test(e));
+const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) console.log('FAILED on:', real);
 process.exit(real.length ? 1 : 0);

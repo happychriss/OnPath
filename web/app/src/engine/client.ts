@@ -1,5 +1,5 @@
 // Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
-import type { Activity, EngineReply, EngineRequest } from './types';
+import type { Activity, EngineReply, EngineRequest, SharedPlan } from './types';
 
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
@@ -30,8 +30,22 @@ export class EngineClient {
     return this.ask({ type: 'route', points: enc(points), activity, sac });
   }
 
-  plan(points: [number, number][], activity: Activity, sac: number) {
-    return this.ask({ type: 'plan', points: enc(points), activity, sac });
+  /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner. */
+  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = []) {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(',') });
+  }
+
+  /** The plan code (QR code, link) – the app's PlanCode. */
+  async encode(plan: SharedPlan): Promise<string> {
+    const r = await this.ask({ type: 'encode', plan });
+    if (!r.ok || r.code == null) throw new Error(r.error ?? 'no plan code');
+    return r.code;
+  }
+
+  /** The plan in a link or code, or null when there is none. */
+  async parse(text: string): Promise<SharedPlan | null> {
+    const r = await this.ask({ type: 'parse', text });
+    return r.ok ? r.shared ?? null : null;
   }
 
   /** Index where a clicked point goes (the app's WaypointInsertion rule). */

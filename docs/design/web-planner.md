@@ -154,7 +154,7 @@ alternative to TeaVM but still experimental – watch, not use.
 types, so binaries are published as base64 text and decoded in the browser (`VITE_PACKED=1` build, `src/packed.ts`);
 the normal build reads the files directly. Not tested inside the claude.ai frame by the cloud (only headless).
 
-**Status 2026-10-24: paused by the owner after the spike report** (branch stays as it is).
+**Status 2026-10-24: paused by the owner after the spike report.** Restarted 2026-10-26 with phase 1 – see §8.
 
 **Owner TODO (2026-10-24):** delete the GitHub branch `marketing` (GitHub → Branches → trash icon); it holds
 nothing any more – marketing stays in the chat, not on GitHub.
@@ -162,3 +162,52 @@ nothing any more – marketing stays in the chat, not on GitHub.
 **Next (if the owner says yes):** move the pure helpers out of UI files, the reflection-free matched points
 (finding 2), a plan link / QR the app opens, rd5 + areas for the web on R2 with CORS (needs the map-access decision),
 then a minimal planner for purpose A.
+
+## 8. Phase 1 – plan per QR code and link (owner decision 2026-10-26)
+
+The owner restarted the web planner with two phases (details and why: private notes, not in this repo):
+**Phase 1** – plan in the browser, bring the plan to the phone by QR code, share it as a link.
+**Phase 2** – pair phone and browser once (QR, like WhatsApp Web); then plans sync both ways by themselves, end-to-end
+encrypted through a small mailbox (Worker + D1/R2). No login. Not started.
+
+Split agreed with the owner: **cloud** builds the plan format, the web part and the test page; **the desktop session
+(donald, phone on USB)** builds the app part – many short tries with the camera are seconds with adb, ~20 min per
+round through the update channel.
+
+### Plan code (done, branch `feat/plan-code`, merged into `web-spike`)
+`app/src/main/java/com/onpath/app/routing/PlanCode.kt` – `SharedPlan` (points, activity, SAC, pinned points, names,
+title) ⇄ compact URL-safe text. Pure Kotlin (SharedCoreRuleTest), no platform Base64; the web engine compiles the same
+file to Wasm, so app and browser can never disagree. Tests: `PlanCodeTest` (14, incl. a frozen version-1 code that the
+browser test also checks). The app's Gradle build needs an Android SDK; `./gradlew -p web/engine test` runs the same
+test on the plain JVM (web CI does).
+
+- **Link:** `<planner page>#p=<code>` – the plan sits after "#", so it never reaches a server. `PlanCode.parse`
+  accepts the whole link, `p=<code>` or the bare code; anything else → null (never throws).
+- **Format v1:** version, activity (fixed table, not the enum order), SAC; varint point count; lat/lon in 1e-5° as
+  zigzag varint deltas; pinned bitset; optional tagged fields (1 title, 2 point name) – unknown tags are skipped, so
+  newer codes still open in older apps. Limits 500 points, 100 chars per name. 20 points ≈ 110 characters.
+
+### Web (done on `web-spike`)
+- "Send to phone · Share" (from 2 points): dialog with QR code of the link (`qrcode-generator`, MIT), Copy link,
+  system Share where the browser has it.
+- The address bar always holds the current plan (`#p=…`, `history.replaceState`): reload / bookmark keep it.
+- Opening a link loads points, activity, T level, names and pinned points (pinned → passed exactly, the app's
+  `Planner(pinned)`); a broken link says so in plain words.
+- Test: `web/app/test/share-smoke.mjs` (CI) – opens the frozen code, checks the browser writes the identical code back,
+  the QR dialog, edit + reload, broken link. The QR image was decoded once with jsQR: it holds the link.
+
+### App part (to do – desktop session with the phone)
+1. Open plan links: intent filter for the planner's https links (`#p=`) → `PlanCode.parse` → load as the current
+   plan, "Save first?" like opening a saved route when the plan has unsaved changes. Until App Links are verified
+   (`/.well-known/assetlinks.json` on the planner host with the signing key's SHA-256), the web page on a phone can
+   offer "Open in OnPath" with an `intent://…;package=com.onpath.app;end` link.
+2. Scanning: the phone's own camera already reads the QR code and opens the link (1). An in-app scanner (☰ → Scan
+   plan) only if the owner wants it – then ZXing (Apache-2.0) without Google Play Services, and the CAMERA permission
+   asked only on that tap.
+3. "Share plan" in the app writes the same link (`PlanCode.link`) – the web opens it.
+4. Core-feature style tests: link → plan (incl. round trip, pinned, names), broken link → plain message.
+
+### Test page (to do, needs the owner once)
+Cloudflare Pages for the page; rd5 parts and map areas from the existing R2 bucket through the Worker with CORS
+(brouter.de has no CORS); access during the test by Cloudflare Access (e-mail code, free up to 50) – no app key in the
+browser (map-access.md). The planner host name is also the App Link host above.

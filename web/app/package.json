@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "maplibre-gl": "6.13.0",
-    "pmtiles": "4.5.0"
+    "pmtiles": "4.5.0",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

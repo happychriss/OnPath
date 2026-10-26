@@ -6,7 +6,9 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
+import com.onpath.app.routing.PlanCode
 import com.onpath.app.routing.Planner
+import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.WaypointInsertion
 import com.onpath.app.routing.Rd5Parts
@@ -131,12 +133,12 @@ object Engine {
      * Plans like the phone's plan sheet: the app's [Planner] (leg by leg, a failed leg becomes a straight dashed
      * line with a plain message), times from [RouteTimes], difficulty from [RouteSummary].
      */
-    fun plan(points: String, activity: String, sac: Int): String {
+    fun plan(points: String, activity: String, sac: Int, pinned: String = ""): String {
         val t0 = System.currentTimeMillis()
         return try {
             val wps = parsePoints(points)
             val act = Activity.valueOf(activity)
-            val p = Planner(engine()).plan(wps, act, sac)
+            val p = Planner(engine()).plan(wps, act, sac, parseIndices(pinned))
             lastPlan = wps to p
             val times = if (p.points.size >= 2) RouteTimes.of(p.points, act).total() else 0.0
             buildString {
@@ -200,6 +202,37 @@ object Engine {
         append(']')
     }
 
+    private fun parseIndices(s: String): Set<Int> = s.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
+
+    /**
+     * The plan code ([PlanCode], the app's own) for the page's plan. [names] = lines "index<TAB>name" (names never
+     * hold control characters, PlanCode drops them).
+     */
+    fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
+        PlanCode.encode(SharedPlan(
+            parsePoints(points), Activity.valueOf(activity), sac, parseIndices(pinned),
+            names.split('\n').mapNotNull { l ->
+                val i = l.substringBefore('\t').toIntOrNull() ?: return@mapNotNull null
+                i to l.substringAfter('\t')
+            }.toMap(),
+            title.ifBlank { null },
+        ))
+
+    /** The plan in a link or code as JSON (points, activity, sac, pinned, names, title), or "null". */
+    fun planParse(text: String): String {
+        val p = PlanCode.parse(text) ?: return "null"
+        return buildString {
+            append("{\"points\":[")
+            p.points.forEachIndexed { i, q -> if (i > 0) append(','); append('[').append(num(q.lat, 5)).append(',').append(num(q.lon, 5)).append(']') }
+            append("],\"activity\":").append(str(p.activity.name))
+            append(",\"sac\":").append(p.sac)
+            append(",\"pinned\":").append(p.pinned.sorted().joinToString(",", "[", "]"))
+            append(",\"names\":").append(p.names.toSortedMap().entries.joinToString(",", "{", "}") { str(it.key.toString()) + ":" + str(it.value) })
+            append(",\"title\":").append(p.title?.let { str(it) } ?: "null")
+            append('}')
+        }
+    }
+
     fun problems(): String = Problems.drain().joinToString(",", "[", "]") { str(it) }
 
     private fun shares(s: List<Share>) = s.joinToString(",", "[", "]") { "[" + str(it.key) + "," + num(it.meters, 1) + "]" }
@@ -249,7 +282,13 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
 
-@JSExport fun plan(points: String, activity: String, sac: Int): String = Engine.plan(points, activity, sac)
+@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String): String =
+    Engine.plan(points, activity, sac, pinned)
+
+@JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
+    Engine.planCode(points, activity, sac, pinned, names, title)
+
+@JSExport fun planParse(text: String): String = Engine.planParse(text)
 
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)

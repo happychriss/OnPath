@@ -11,7 +11,9 @@ interface WasmEngine {
   putLayout(tile: string, index: Int8Array, tail: Int8Array): void;
   putPart(tile: string, index: number, data: Int8Array): boolean;
   route(points: string, activity: string, sac: number): string;
-  plan(points: string, activity: string, sac: number): string;
+  plan(points: string, activity: string, sac: number, pinned: string): string;
+  planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string): string;
+  planParse(text: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
   problems(): string;
 }
@@ -120,6 +122,17 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const e = await getEngine();
+    if (req.type === 'encode') {
+      const p = req.plan;
+      const names = Object.entries(p.names).map(([i, n]) => `${i}\t${n.replace(/[\t\n]/g, ' ')}`).join('\n');
+      const pts = p.points.map(([la, lo]) => `${la.toFixed(6)},${lo.toFixed(6)}`).join(';');
+      reply({ id: req.id, ok: true, code: e.planCode(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '') });
+      return;
+    }
+    if (req.type === 'parse') {
+      reply({ id: req.id, ok: true, shared: JSON.parse(e.planParse(req.text)) });
+      return;
+    }
     if (req.type === 'insert') {
       reply({ id: req.id, ok: true, index: e.insertIndex(req.points, req.lat, req.lon, req.lineSnapM) });
       return;
@@ -127,7 +140,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points);
     const t1 = performance.now();
-    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac) : e.route(req.points, req.activity, req.sac);
+    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '') : e.route(req.points, req.activity, req.sac);
     const t2 = performance.now();
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),

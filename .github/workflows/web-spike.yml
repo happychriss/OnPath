@@ -48,7 +48,7 @@ jobs:
           ls -la segments
 
       - name: Build the Wasm engine (TeaVM)
-        run: ./gradlew -p web/engine --no-daemon generateWasmGC copyWasmGCRuntime
+        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest
 
       - name: Routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
@@ -69,6 +69,10 @@ jobs:
         working-directory: web/app
         run: node test/ui-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Plan per link and QR code (the app's code opens; same code written back; QR dialog)
+        working-directory: web/app
+        run: node test/share-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Sizes
         if: always()
         run: |
@@ -84,3 +88,4 @@ jobs:
             web/engine/build/browser-results.json
             web/engine/build/compare-summary.json
             web/engine/build/planner.png
+            web/engine/build/share.png

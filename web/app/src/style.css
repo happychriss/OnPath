@@ -26,3 +26,14 @@ ol { margin: 0; padding-left: 20px; } li { margin: 2px 0; }
   border: 2px solid #fff; /* pins sit on the map, which stays light */ box-shadow: 0 1px 4px rgba(0,0,0,.35); background: var(--route); }
 .pin.start { background: var(--green); } .pin.end { background: var(--end); }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
+
+/* ---- share dialog ---- */
+button.primary { background: var(--green); color: #fff; border-color: transparent; }
+button:disabled { opacity: .5; cursor: default; }
+dialog.share { width: min(380px, calc(100vw - 32px)); border: none; border-radius: 14px; padding: 18px;
+  background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px var(--shadow); }
+dialog.share::backdrop { background: rgba(0,0,0,.45); }
+dialog.share h2 { margin: 0 0 12px; font-size: 1.1rem; }
+dialog.share .qr { background: #fff; border-radius: 8px; padding: 8px; }
+dialog.share .qr svg { display: block; width: 100%; height: auto; }
+dialog.share input { width: 100%; box-sizing: border-box; font: inherit; font-size: .85rem; padding: 6px 8px; margin: 4px 0 10px; }

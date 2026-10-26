@@ -13,7 +13,12 @@ val appFiles = listOf(
     "routing/BRouterEngine.kt", "routing/StraightLineEngine.kt", "routing/RouteTimeLimit.kt", "routing/TurnDetector.kt",
     "routing/Junctions.kt", "routing/Planner.kt", "routing/WaypointInsertion.kt", "routing/PlanEdits.kt",
     "routing/RouteSummary.kt", "navigation/JunctionCues.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
+    "routing/PlanCode.kt",
 )
+
+// The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
+// the plain JVM here, so web CI checks them too).
+val appTests = listOf("routing/PlanCodeTest.kt")
 
 sourceSets {
     main {
@@ -31,6 +36,7 @@ kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget
 dependencies {
     implementation(files(root.resolve("app/libs").listFiles { f -> f.name.endsWith(".jar") }!!.sorted()))
     implementation(teavm.libs.jsoApis)
+    testImplementation("junit:junit:4.13.2")
 }
 
 teavm {
@@ -40,11 +46,14 @@ teavm {
 }
 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") { source(appFiles.map { app.resolve(it) }) }
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
+    source(appTests.map { root.resolve("app/src/test/java/com/onpath/app").resolve(it) })
+}
 
 // Our few web replacements (src/main/java: btools.util.StackSampler, TeaVM's java.lang.Package, ReentrantLock) must
 // win over the BRouter jars and TeaVM's class library: project classes first on the TeaVM classpath.
 tasks.withType<org.teavm.gradle.tasks.TeaVMTask>().configureEach {
-    val rest = classpath.files.toList()
+    val rest = files(classpath.from.toList()) // keeps the task dependencies (resolving to files would drop them)
     classpath.setFrom(sourceSets["main"].output, rest)
 }
 
