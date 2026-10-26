@@ -1,4 +1,4 @@
-// node --test  (Node ≥ 22.13: node:sqlite, JSON import attributes) – no npm packages needed.
+// node --test  (Node ≥ 24 as in CI – node:sqlite of 22.14 rejects the ?1 parameters) – no npm packages needed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { verify } from "node:crypto";
@@ -429,6 +429,74 @@ for (const [old, why] of [["s4", "router classes of the old bike profiles"], ["s
     assert.deepEqual({ ...row }, { job: "queued", priority: 3 });
   });
 }
+
+// ------------------------------------------------------------------------------------------------ fast lane (§7h)
+/** What tools/dev/publish_cells.sh (job_build.py publish) leaves in R2: files, manifest, current.json. */
+async function publishCurrent(env, id, version, osmDate, size = 4321) {
+  const [z, x, y] = id.split("-");
+  const base = `cells/f2/${z}/${x}/${y}`;
+  await env.BUCKET.put(`${base}/${version}/base.pmtiles`, new Uint8Array(size));
+  await env.BUCKET.put(`${base}/${version}/manifest.json`, JSON.stringify({ cell: id, format: 2, version, osm_date: osmDate,
+    total_size: size, files: [{ name: "base.pmtiles", size }] }));
+  await env.BUCKET.put(`${base}/current.json`, JSON.stringify({ version }));
+}
+
+const NOW = Date.parse("2026-10-26T12:00:00Z");
+const row = async (env, id) => ({ ...(await env.DB.prepare("SELECT version, osm_date, size, job FROM cells WHERE id = ?").bind(id).first()) });
+
+test("fast lane: a current version published outside a job is taken at request time (s5 → s6, no build)", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  const g = fakeGoogle();
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES (?, 2, '2026-10-20-s5', '2026-10-20', 5, 3, 1)`).bind(MERAN).run();
+  await publishCurrent(env, MERAN, "2026-10-25-s6", "2026-10-25");
+  await publishCurrent(env, BOZEN, "2026-10-25-s6", "2026-10-25"); // never asked for before
+  const j = await requestCells(env, cfg, { cells: [MERAN, BOZEN], reason: "refresh" }, NOW);
+  for (const c of j.cells) {
+    assert.equal(c.state, "ready", c.id);
+    assert.equal(c.version, "2026-10-25-s6");
+    assert.equal(c.updating, undefined);
+  }
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s6", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.deepEqual(await row(env, BOZEN), { version: "2026-10-25-s6", osm_date: "2026-10-25", size: 4321, job: null });
+  await pump(env, cfg, NOW + 1000, g);
+  assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, 0); // nothing to build
+});
+
+test("fast lane: an old-schema or OSM-old published version is not taken – the cell is built", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  await publishCurrent(env, MERAN, "2026-10-25-s5", "2026-10-25"); // older schema
+  await publishCurrent(env, BOZEN, "2026-01-02-s6", "2026-01-02"); // older than REFRESH_DAYS
+  const j = await requestCells(env, cfg, { cells: [MERAN, BOZEN], reason: "point" }, NOW);
+  assert.deepEqual(j.cells.map((c) => c.state), ["queued", "queued"]);
+  assert.equal((await row(env, MERAN)).job, "queued");
+});
+
+test("fast lane: the pump takes a version published while the cell waited in the queue, not one being built", async () => {
+  const env = testEnv({ PARALLEL_BUILDS: "1" });
+  const cfg = config(env);
+  const g = fakeGoogle();
+  const busy = "10-600-300";
+  await requestCells(env, cfg, { cells: [busy], reason: "point" }, NOW);
+  await pump(env, cfg, NOW + 1000, g); // the only slot builds `busy`
+  await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, NOW + 2000);
+  assert.equal((await row(env, MERAN)).job, "queued");
+  await publishCurrent(env, MERAN, "2026-10-25-s6", "2026-10-25");
+  await publishCurrent(env, busy, "2026-10-25-s6", "2026-10-25");
+  await pump(env, cfg, NOW + 3000, g);
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s6", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.equal((await row(env, busy)).job, "building"); // the running job finishes and publishes itself
+  const s = await statusFor(env, cfg, [MERAN], 2, NOW + 4000);
+  assert.equal(s.cells[0].state, "ready");
+  // also while builds are switched off
+  const off = testEnv({ BUILDS_ENABLED: "false" });
+  await requestCells(off, config(off), { cells: [BOZEN], reason: "point" }, NOW);
+  await publishCurrent(off, BOZEN, "2026-10-25-s6", "2026-10-25");
+  await pump(off, config(off), NOW + 1000, g);
+  assert.equal((await row(off, BOZEN)).version, "2026-10-25-s6");
+});
 
 test("scheduled handler runs the pump", async () => {
   const env = testEnv({ BUILDS_ENABLED: "false" });

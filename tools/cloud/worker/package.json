@@ -4,7 +4,7 @@
   "type": "module",
   "description": "OnPath map-cell doorman (Cloudflare Worker) – docs/design/map-hosting.md",
   "license": "Apache-2.0",
-  "engines": { "node": ">=22.13" },
+  "engines": { "node": ">=24" },
   "scripts": {
     "test": "node --test",
     "dev": "npx --yes wrangler@4.141.0 dev",

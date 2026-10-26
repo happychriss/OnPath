@@ -227,7 +227,7 @@ done
 | `app/…/data/MapServer.kt` | Server URL + key per build type, shown in Settings → Diagnostics |
 
 Local checks: `cd tools/cloud && python3 -m unittest test_cloud`; `cd tools/cloud/worker && node --test`
-(Node ≥ 22.13, no npm install); `tools/cloud/worker/smoke.sh` (local `wrangler dev`, needs npm access).
+(Node ≥ 24 as in CI – 22.14 fails on node:sqlite parameters; no npm install); `tools/cloud/worker/smoke.sh` (local `wrangler dev`, needs npm access).
 
 ## 7b. First cloud builds (2026-10-21, test)
 
@@ -438,6 +438,25 @@ joins it at start like a download finished before a crash. ~3–4 min per cell, 
 - A dev version is never a server name (`CellApi.isDevVersion`), and a **refresh does not replace it for 24 h**
   (`MapCells.DEV_KEEP_MS` – the restored plan's route asks for a refresh at every start). After that the next refresh
   loads the server's version; at once: Settings → Offline maps → delete the area. Other cells are not touched.
+
+**Fast lane – `tools/dev/publish_cells.sh <cells…>`** (owner 2026-10-26: "build here and push to the cloud" – TEST
+only): builds the cells from **origin/main** (`git archive`, a dirty working tree is refused, manifest pipeline =
+the origin/main commit) with the same job image, ≤ 2 containers at once, and `job_build.py` uploads them to R2 exactly
+like a Cloud Run execution (files → manifest → `current.json`, status file with execution `donald-…`). A cell whose
+status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` = everything but the upload.
+- **Doorman "adopt"** (`queue.js adoptable` / `adoptQueued`): D1 does not know such a version. Before the doorman
+  queues a build (request) and before it starts one (every pump, first 40 queued cells, also with builds off), it
+  reads the cell's `current.json` + manifest; a version that is current – schema ≥ `CELL_SCHEMA`, OSM date younger than
+  `REFRESH_DAYS`, other than the D1 row's – is taken as it is: row ready (`version`, `osm_date`, `size`), no build.
+  Never while a Cloud Run job builds the cell (that job finishes and publishes its own). Logged as `{"ev":"adopted"}`.
+- **Credentials:** one R2 API token, **Object Read & Write on bucket `onpath-maps-test` only** (owner, Cloudflare
+  dashboard → R2 → Manage API tokens), in `~/.config/onpath/r2-test.env` on donald (0600, outside the repo; keys
+  `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_JURISDICTION`), passed only as
+  `docker --env-file` and never printed. The script refuses any other bucket, an `R2_ENDPOINT` override, or a file that
+  is not 0600. No D1 or Cloudflare API token is needed (adoption happens in the Worker). Production stays cloud-only.
+  Revoke: dashboard → R2 → Manage API tokens → delete the donald token.
+- Expected: 6 dense cells ≈ 10 min (2 at once, ~3 min each warm) + upload (~130 MB); the phone loads them at its
+  next refresh / request for them.
 
 ## 8. Open points
 

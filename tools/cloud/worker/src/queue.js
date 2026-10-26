@@ -47,6 +47,72 @@ function isStale(osmDate, cfg, now) {
   return !Number.isFinite(t) || now - t > cfg.refreshDays * DAY;
 }
 
+// ------------------------------------------------------------------------------------------------ fast lane
+// A version can be published into R2 outside a Cloud Run job: tools/dev/publish_cells.sh on a developer PC uploads
+// exactly what job_build.py would (files, manifest, then current.json) – test bucket only (map-hosting.md §7h). D1
+// does not know it; before a build is queued or started, the doorman therefore looks at the cell's current.json and
+// takes a current version as it is ("adopt": no build, the app gets it at once).
+
+/** {version, osm_date, size} of the version current.json points at (its manifest must exist), or null. */
+async function published(env, format, id) {
+  const c = parseCellId(id);
+  if (!c) return null;
+  const base = `cells/f${format}/${c.z}/${c.x}/${c.y}`;
+  try {
+    const cur = await env.BUCKET.get(`${base}/current.json`);
+    if (!cur) return null;
+    const version = JSON.parse(await cur.text())?.version;
+    if (typeof version !== "string" || !version) return null;
+    const m = await env.BUCKET.get(`${base}/${version}/manifest.json`);
+    if (!m) return null;
+    const man = JSON.parse(await m.text());
+    return { version, osm_date: man.osm_date ?? null, size: man.total_size ?? null };
+  } catch (e) {
+    log({ ev: "published-unreadable", id, format, err: String(e).slice(0, 200) }); // then it is simply built
+    return null;
+  }
+}
+
+/** The published version when it is current (schema ≥ cellSchema, not OSM-stale) and not the one D1 knows. */
+export async function adoptable(env, cfg, format, id, row, now) {
+  const p = await published(env, format, id);
+  if (!p || p.version === row?.version) return null;
+  if (schemaOf(p.version) < cfg.cellSchema || isStale(p.osm_date, cfg, now)) return null;
+  return p;
+}
+
+/** Marks the cell ready with the published version – never while a Cloud Run job builds it (that one finishes). */
+function adoptStmt(db, id, format, p, now) {
+  return db.prepare(`INSERT INTO cells (id, format, version, osm_date, size, job, priority, requested_at, last_request,
+        requests, attempts, error, permanent, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, NULL, 3, ?6, ?6, 1, 0, NULL, 0, ?6)
+      ON CONFLICT (id, format) DO UPDATE SET version = ?3, osm_date = ?4, size = ?5, job = NULL, attempts = 0,
+        error = NULL, permanent = 0, execution = NULL, eta_at = NULL, eta_seen = NULL, updated_at = ?6,
+        last_request = ?6, requests = requests + 1
+      WHERE cells.job IS NULL OR cells.job IN ('queued', 'failed')`).bind(id, format, p.version, p.osm_date, p.size, now);
+}
+
+/** Pump: queued cells (first ADOPT_SCAN in queue order) whose current version is already published → ready. */
+const ADOPT_SCAN = 40;
+
+async function adoptQueued(env, cfg, now) {
+  const db = env.DB;
+  const { results } = await db.prepare(`SELECT id, format, version FROM cells WHERE job = 'queued'
+      ORDER BY priority, requested_at LIMIT ?`).bind(ADOPT_SCAN).all();
+  const found = await Promise.all(results.map((r) => adoptable(env, cfg, r.format, r.id, r, now)));
+  const writes = [];
+  const ids = [];
+  results.forEach((r, i) => {
+    if (!found[i]) return;
+    ids.push(r.id);
+    writes.push(adoptStmt(db, r.id, r.format, found[i], now));
+  });
+  if (writes.length) {
+    await db.batch(writes);
+    log({ ev: "adopted", how: "pump", cells: ids });
+  }
+  return ids.length;
+}
+
 /** POST /v1/cells/request */
 export async function requestCells(env, cfg, body, now = Date.now()) {
   if (!body || !Array.isArray(body.cells) || body.cells.length === 0) throw new HttpError(400, "cells: list of cell ids expected");
@@ -66,16 +132,12 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
   const rows = await rowsFor(db, cells.map((c) => c.id), format);
   const prio = PRIORITY[reason];
   const writes = [];
-  let added = 0;
+  const want = []; // cells that need a build – unless a current version is already published (adopt)
   for (const c of cells) {
     const r = rows.get(c.id);
     const queue = (p) => {
-      added++;
-      return db.prepare(`INSERT INTO cells (id, format, job, priority, requested_at, last_request, requests, attempts, error,
-          permanent, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4, 1, 0, NULL, 0, ?4)
-        ON CONFLICT (id, format) DO UPDATE SET job = 'queued', priority = ?3, requested_at = ?4, last_request = ?4,
-          requests = requests + 1, error = NULL, execution = NULL, updated_at = ?4, eta_at = NULL, eta_seen = NULL,
-          attempts = CASE WHEN ?5 = 1 THEN 0 ELSE attempts END`).bind(c.id, format, p, now, r && r.rev !== cfg.buildRev ? 1 : 0);
+      want.push({ c, r, p });
+      return null;
     };
     const touch = (p) => db.prepare(`UPDATE cells SET last_request = ?3, requests = requests + 1, priority = MIN(priority, ?4)
         WHERE id = ?1 AND format = ?2`).bind(c.id, format, now, p);
@@ -94,10 +156,29 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
     else if (r.version) writes.push(touch(PRIORITY.refresh));
     else writes.push(queue(prio));
   }
+  // fast lane (map-hosting.md §7h): a current version published into R2 outside a Cloud Run job is taken as it is
+  const found = await Promise.all(want.map((w) => adoptable(env, cfg, format, w.c.id, w.r, now)));
+  let added = 0;
+  const adopted = [];
+  want.forEach((w, i) => {
+    if (found[i]) {
+      adopted.push(w.c.id);
+      writes.push(adoptStmt(db, w.c.id, format, found[i], now));
+      return;
+    }
+    added++;
+    writes.push(db.prepare(`INSERT INTO cells (id, format, job, priority, requested_at, last_request, requests, attempts, error,
+        permanent, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4, 1, 0, NULL, 0, ?4)
+      ON CONFLICT (id, format) DO UPDATE SET job = 'queued', priority = ?3, requested_at = ?4, last_request = ?4,
+        requests = requests + 1, error = NULL, execution = NULL, updated_at = ?4, eta_at = NULL, eta_seen = NULL,
+        attempts = CASE WHEN ?5 = 1 THEN 0 ELSE attempts END`).bind(w.c.id, format, w.p, now, w.r && w.r.rev !== cfg.buildRev ? 1 : 0));
+  });
+  if (adopted.length) log({ ev: "adopted", how: "request", format, cells: adopted });
   if (added && pending.n + added > cfg.maxQueue) {
     throw new HttpError(429, "The map server is busy – please try again later.", { "retry-after": "600" });
   }
-  if (writes.length) await db.batch(writes);
+  const batch = writes.filter(Boolean); // queue() placeholders were replaced by the inserts / adoptions above
+  if (batch.length) await db.batch(batch);
   if (added) log({ ev: "request", reason, format, cells: cells.map((c) => c.id), added });
   return statusFor(env, cfg, cells.map((c) => c.id), format, now);
 }
@@ -295,6 +376,7 @@ export async function pump(env, cfg, now = Date.now(), fetchImpl = globalFetch) 
     const { results: running } = await db.prepare("SELECT * FROM executions WHERE state = 'running'").all();
     let stillRunning = 0;
     for (const ex of running) if (!(await checkExecution(env, cfg, ex, now, fetchImpl))) stillRunning++;
+    await adoptQueued(env, cfg, now); // also while builds are off: published versions need no builder
     if (!cfg.buildsEnabled) return { disabled: true, running: stillRunning };
     const slots = await slotCount(db, cfg, now);
     const started = [];
