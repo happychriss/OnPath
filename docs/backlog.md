@@ -6,7 +6,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
 - [desktop] finish + merge bike routing (v_rough, nits, cell schema 5) – since 2026-10-26
-- [desktop] GPX import keeps T level + says when the activity changes – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -132,7 +131,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **Komoot GPX activity – questions from the review (desktop, 2026-10-26):** (1) and (2) decided by the captain
   (2026-10-26, "no surprises"): keep the user's T level when it is inside the type's band (hike T1–T2, mountaineering
   T3–T5), else the band's default; one grey line "Activity set to MTB from the file" when the import changes the
-  activity – being built. Still open: (3) opening an *imported* tour later from My routes does not switch the
+  activity – done (see Done). Still open: (3) opening an *imported* tour later from My routes does not switch the
   activity (only recorded tours do); older imports carry the activity that happened to be chosen, so switching
   needs a "came from the file" flag – wanted?
 - **Bike profiles tuned – branch `feat/bike-routing`, green, not merged (desktop, 2026-10-26):**
@@ -209,6 +208,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **GPX import keeps the T level + says when the activity changes (desktop, 2026-10-26, captain "no surprises"):**
+  `SportType.forImport` keeps the remembered T level inside the type's band (hike / jogging T1–T2, mountaineering
+  T3–T5; else T2 / T3); `SportType.importChoice` decides the switch (not during a tour) and the grey INFO line
+  "Activity set to Hike T3 from the file" in the track panel (`ShownTrack.note`), gone when the track is closed /
+  replaced or the activity / T level changes. Tests `SportTypeTest`, snapshot `trackImportedActivityNote`.
 - **Review of difficulty + Komoot GPX type (desktop, 2026-10-26):** formula used everywhere the label shows (plan sheet,
   Route details; nowhere else shows one), no old call left. Fixed: unit tests run in UTC (`app/build.gradle.kts`) – the
   recycleBin snapshot had changed only by the machine's time zone, not the date; clearer import diagnostics line;
