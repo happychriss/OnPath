@@ -59,13 +59,18 @@ data class WayAttrs(
      * route is ridden, not pushed (owner 2026-10-25; touring.brf / trekking.brf cost it so). Added 2026-10-25.
      */
     val cycleRoute: Boolean = false,
+    /**
+     * highway=pedestrian (a pedestrian zone; [wayType] says "footway" for it too). No cycling there unless signed
+     * (bicycle=yes / designated), also on a cycle route (German law) – stays "pushing". Added 2026-10-26.
+     */
+    val pedestrian: Boolean = false,
 ) {
     /**
-     * Compact text form for files ("path|natural_trail|3|-1||bad||yes|r"); [parse] reads it back (older codes: no bike
-     * access, not on a cycle route).
+     * Compact text form for files ("path|natural_trail|3|-1||bad||yes|r"; last field = flags: r cycle route, p pedestrian
+     * zone); [parse] reads it back (older codes: no bike access, not on a cycle route, no pedestrian zone).
      */
     fun code(): String = listOf(wayType, surface, sac.toString(), mtb.toString(), smoothness.orEmpty(), visibility.orEmpty(),
-        rough.orEmpty(), bicycle.orEmpty(), if (cycleRoute) "r" else "").joinToString("|")
+        rough.orEmpty(), bicycle.orEmpty(), (if (cycleRoute) "r" else "") + (if (pedestrian) "p" else "")).joinToString("|")
 
     companion object {
         fun parse(code: String?): WayAttrs? = try {
@@ -73,7 +78,7 @@ data class WayAttrs(
             if (c == null || c.size < 4 || c[0].isEmpty()) null
             else WayAttrs(c[0], c[1], c[2].toIntOrNull() ?: 0, c[3].toIntOrNull() ?: -1,
                 c.getOrNull(4)?.ifEmpty { null }, c.getOrNull(5)?.ifEmpty { null }, c.getOrNull(6)?.ifEmpty { null },
-                c.getOrNull(7)?.ifEmpty { null }, c.getOrNull(8) == "r")
+                c.getOrNull(7)?.ifEmpty { null }, c.getOrNull(8)?.contains('r') == true, c.getOrNull(8)?.contains('p') == true)
         } catch (_: Exception) { null } // expected: an unknown / old code = no attributes
     }
 }

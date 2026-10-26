@@ -119,6 +119,33 @@ class RouteWarningsTest {
         }
     }
 
+    /**
+     * Review 2026-10-26: the exception follows the routing profile. mtb.brf still costs a footway on a cycle route as
+     * pushing, so MTB / e-MTB keep the warning there (the line says what the router assumed).
+     */
+    @Test fun footwayOnACycleRouteStaysPushingForMtb() {
+        val onRoute = route(p(road, 300), p(WayAttrs("footway", "paved", cycleRoute = true), 300), p(road, 300))
+        for (a in listOf(Activity.MTB, Activity.EMTB)) {
+            assertEquals("$a", SpotKind.PUSH, RouteWarnings.detect(onRoute, a, 3).single().kind)
+        }
+    }
+
+    /**
+     * Review 2026-10-26: a pedestrian zone (highway=pedestrian) is no footway to ride on a cycle route – no cycling there
+     * unless signed (German law). Without bicycle=yes / designated it stays "pushing", with it it is ridden.
+     */
+    @Test fun pedestrianZoneOnACycleRouteStaysPushing() {
+        val zone = WayAttrs("footway", "paving_stones", cycleRoute = true, pedestrian = true)
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)) {
+            val r = route(p(road, 300), p(zone, 300), p(road, 300))
+            assertEquals("$a", SpotKind.PUSH, RouteWarnings.detect(r, a, 3).single().kind)
+            for (b in listOf("yes", "designated")) {
+                val open = route(p(road, 300), p(zone.copy(bicycle = b), 300), p(road, 300))
+                assertTrue("$a $b", RouteWarnings.detect(open, a, 3).isEmpty())
+            }
+        }
+    }
+
     @Test fun gapsBelowThirtyMetresJoin() {
         val r = route(p(road, 300), p(footway, 100), p(road, 20), p(footway, 100), p(road, 300))
         val s = RouteWarnings.detect(r, Activity.EBIKE, 3).single()

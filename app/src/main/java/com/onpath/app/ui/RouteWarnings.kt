@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -24,7 +25,8 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  *
  * What counts (only what the route's way attributes – BRouter way tags per span – and its elevations reliably give):
  * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no; footway / pedestrian without bike
- *   access (not on a signed cycle route, owner 2026-10-25); touring / trekking / e-bike also paths of SAC ≥ T2 or
+ *   access (touring / trekking / e-bike: not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian zone stays
+ *   pushing); touring / trekking / e-bike also paths of SAC ≥ T2 or
  *   mtb:scale ≥ S2, MTB / e-MTB only paths of SAC ≥ T4
  *   or mtb:scale ≥ S4. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing. Sections
  *   < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
@@ -47,6 +49,13 @@ object RouteWarnings {
 
     /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
     val BIKES_ALLOWED = setOf("yes", "designated", "permissive", "mtb")
+
+    /**
+     * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0, owner
+     * 2026-10-25); mtb.brf still costs it as pushing, so the warning stays there for MTB / e-MTB.
+     */
+    private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
+    private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
 
     /** Grade (%) above which a section is "steep" for [a]. */
     fun steepPercent(a: Activity): Double = when (a) {
@@ -82,8 +91,10 @@ object RouteWarnings {
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
-                // a footway on a signed cycle route is ridden (owner 2026-10-25; the profiles cost it so)
-                w.wayType == "footway" -> !w.cycleRoute
+                // a footway on a signed cycle route is ridden (owner 2026-10-25) – only where the profile costs
+                // it so: touring.brf / trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling
+                // there unless signed, German law)
+                w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a))
                 a == Activity.MTB || a == Activity.EMTB -> w.sac >= 4 || w.mtb >= 4
                 else -> w.sac >= 2 || w.mtb >= 2
             }

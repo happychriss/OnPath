@@ -109,6 +109,14 @@ class BRouterWayStatsTest {
         assertFalse(BRouterWayStats.attrs(t("highway=footway")).cycleRoute)
     }
 
+    @Test fun pedestrianZoneIsMarked() {
+        val zone = BRouterWayStats.attrs(t("highway=pedestrian route_bicycle_lcn=yes"))
+        assertEquals("footway", zone.wayType)
+        assertTrue(zone.pedestrian)
+        assertTrue(zone.cycleRoute)
+        assertFalse(BRouterWayStats.attrs(t("highway=footway route_bicycle_lcn=yes")).pedestrian)
+    }
+
     /**
      * Field data 2026-10-25 (22 % of 296 planned test routes): BRouter can open the message list with a
      * zero-length run reported AT the first node. The matcher searched from the next node, found nothing and dropped

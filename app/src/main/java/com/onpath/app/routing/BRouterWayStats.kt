@@ -73,6 +73,7 @@ object BRouterWayStats {
         rough = tags["surface"]?.takeIf { it in ROUGH },
         bicycle = tags["bicycle"]?.trim()?.ifEmpty { null },
         cycleRoute = CYCLE_ROUTES.any { tags[it] == "yes" },
+        pedestrian = tags["highway"] == "pedestrian",
     )
 
     /**
