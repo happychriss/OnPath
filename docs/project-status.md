@@ -1,10 +1,20 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.2** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-26 – current release **0.11.3** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **desktop (donald, captain), 2026-10-26 evening – 0.11.3.** Map look tuned with the owner on the phone (fast loop:
+  `tools/dev/push_style.sh` test style in developer tools, `tools/dev/push_cell.sh` local cells): town contrast,
+  bike view like hiking (green good ways, mint route band + names, pink-green long-distance, quiet tracks, dotted loose
+  edge), zoomed-out overview (thin route lines, paths hidden / faint for hike), one-way arrows dark / green ⟷, calmer
+  forbidden ways, street areas + sidewalk outlines, underpasses (`tn` p/t). Map data schema 7 (signed cycle networks
+  only, route name label lines `lb`, bicycle streets `bs`, footbridges `br`, `areas` layer, `fw`, hidden footway
+  stubs). Faster refresh: doorman adopts cells built on donald (`tools/dev/publish_cells.sh`, TEST bucket only, token in
+  ~/.config/onpath/r2-test.env), background rebuilds spread, pre-warm after a schema bump, app polls updating cells.
+  - **Next (in progress):** routes by zoom tier (only long-distance zoomed out, regional from z11, local from z12.5 –
+    needs a new APK); coarse region-view data z6–9 (measuring sizes; owner decides).
 - **desktop (donald, captain), 2026-10-26 – 0.11.2.** All on `main`: quiet town map + path gap links + calmer
   forbidden ways + thin cycle-route lines (cell schema 6, look-only – also refreshes router classes; maps-deploy test
   done), compacted counts as firm / cheap footway only without a bicycle tag (Hilden Itter, `ItterPathTest`), Trekking
