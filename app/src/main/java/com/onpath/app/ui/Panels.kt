@@ -158,6 +158,8 @@ fun TrackPanel(
         }
         Text("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        // "Activity set to MTB from the file": an import changed the activity – said, never silent (captain 2026-10-26)
+        track.note?.let { InfoLine(it) }
         Spacer(Modifier.height(8.dp))
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))

@@ -613,6 +613,15 @@ class ScreenshotTest {
         }
     }
 
+    /** A Komoot import switched the activity: one grey INFO line says so (captain 2026-10-26, "no surprises"). */
+    @Test fun trackImportedActivityNote() = paparazzi.snapshot {
+        Frame {
+            TrackPanel(ShownTrack(1, "Komoot – Hirzer Bergtour", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600,
+                note = "Activity set to Hike T3 from the file"),
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+        }
+    }
+
     private val viaPts = listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null), com.onpath.app.gpx.GpxWaypoint(46.70, 11.20, null))
     private val tourList = listOf(
         Tour(1, TourKind.PLANNED, "Route Meran – Hirzer", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 300.0, 6.1 * 3600, "done", viaPts),

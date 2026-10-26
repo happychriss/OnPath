@@ -45,7 +45,58 @@ class SportTypeTest {
             assertNull(t.toString(), SportType.activityOf(t))
         assertEquals(Pick(Activity.MTB, 4), SportType.forImport("nordic_walking", Activity.MTB, 4))
         assertEquals(Pick(Activity.HIKE, 4), SportType.forImport(null, Activity.HIKE, 4))
-        assertEquals(Pick(Activity.HIKE, 3), SportType.forImport("mountaineering", Activity.MTB, 5))
+        assertEquals(Pick(Activity.HIKE, 3), SportType.forImport("mountaineering", Activity.MTB, 2))
+    }
+
+    /**
+     * Captain 2026-10-26 ("no surprises"): a Komoot hiking type covers a band of T levels – `hike` (and `jogging`) T1–T2,
+     * `mountaineering` T3–T5. The user's own T level is kept when it is inside the band, else the band's default.
+     */
+    @Test fun theUsersTLevelIsKeptInsideTheTypesBand() {
+        for (own in 1..5) {
+            assertEquals("hike, own T$own", Pick(Activity.HIKE, if (own <= 2) own else 2),
+                SportType.forImport("hike", Activity.HIKE, own))
+            assertEquals("jogging, own T$own", Pick(Activity.HIKE, if (own <= 2) own else 2),
+                SportType.forImport("jogging", Activity.HIKE, own))
+            assertEquals("mountaineering, own T$own", Pick(Activity.HIKE, if (own >= 3) own else 3),
+                SportType.forImport("mountaineering", Activity.HIKE, own))
+        }
+        // the remembered T level counts also when a bike is chosen at the moment
+        assertEquals(Pick(Activity.HIKE, 4), SportType.forImport("mountaineering", Activity.MTB, 4))
+        assertEquals(Pick(Activity.HIKE, 1), SportType.forImport("hike", Activity.EBIKE, 1))
+        // bikes carry no level: the pick is the plain activity
+        assertEquals(Pick(Activity.MTB), SportType.forImport("mtb", Activity.HIKE, 4))
+    }
+
+    @Test fun anImportThatChangesTheActivitySaysSo() {
+        val mtb = SportType.importChoice("mtb", Activity.HIKE, 2, touring = false)
+        assertTrue(mtb.switch)
+        assertEquals("Activity set to MTB from the file", mtb.note)
+        assertEquals("Activity set to Touring bike from the file",
+            SportType.importChoice("touring_bicycle", Activity.MTB, 2, touring = false).note)
+        // Hike names its T level
+        val berg = SportType.importChoice("mountaineering", Activity.MTB, 2, touring = false)
+        assertEquals(Pick(Activity.HIKE, 3), berg.pick)
+        assertEquals("Activity set to Hike T3 from the file", berg.note)
+        // only the T level changes (hike at T4 → T2): said too
+        assertEquals("Activity set to Hike T2 from the file",
+            SportType.importChoice("hike", Activity.HIKE, 4, touring = false).note)
+    }
+
+    @Test fun noChangeNoLine() {
+        // same activity, T level inside the band, a bike with another remembered level, unknown / missing type
+        for ((type, act, sac) in listOf(Triple("mtb", Activity.MTB, 4), Triple("hike", Activity.HIKE, 1),
+                Triple("mountaineering", Activity.HIKE, 5), Triple("nordic_walking", Activity.EMTB, 3),
+                Triple(null, Activity.HIKE, 4))) {
+            val c = SportType.importChoice(type, act, sac, touring = false)
+            assertTrue("$type", !c.switch)
+            assertNull("$type", c.note)
+        }
+        // during a tour the followed route keeps its activity: no switch, no line
+        val t = SportType.importChoice("mtb", Activity.HIKE, 2, touring = true)
+        assertEquals(Pick(Activity.MTB), t.pick)
+        assertTrue(!t.switch)
+        assertNull(t.note)
     }
 
     @Test fun parserReadsTheTrackType() {
@@ -107,10 +158,10 @@ class SportTypeTest {
         val seg = listOf(listOf(TrackPoint(46.67, 11.15, 400.0), TrackPoint(46.68, 11.16, 420.0)))
         for (a in Activity.entries) for (sac in if (a == Activity.HIKE) 1..5 else 2..2) {
             val text = GpxWriter.write("Tour", seg, type = SportType.typeOf(a, sac))
-            val back = SportType.forImport(GpxParser.parse(text).type, Activity.BIKE_TOURING, 1)
-            assertEquals("$a T$sac", a, back.activity)
-            // the T level comes back by band: T1–T2 → T2 (Komoot hike), T3–T5 → T3 (Komoot mountaineering)
-            if (a == Activity.HIKE) assertEquals("T$sac", if (sac >= 3) 3 else 2, back.sac)
+            val type = GpxParser.parse(text).type
+            assertEquals("$a T$sac", a, SportType.forImport(type, Activity.BIKE_TOURING, 1).activity)
+            // the T level comes back by band: T1–T2 → Komoot hike, T3–T5 → mountaineering; the same user gets it back
+            if (a == Activity.HIKE) assertEquals("T$sac", sac, SportType.forImport(type, Activity.HIKE, sac).sac)
         }
     }
 

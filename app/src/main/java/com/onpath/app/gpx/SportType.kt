@@ -11,6 +11,10 @@ import com.onpath.app.routing.Activity
  * Komoot has more sports than OnPath has activities; the closest one is taken (no seventh activity, owner): road bike →
  * Touring, Gravel (`mtb_easy`) → Trekking, Enduro (`mtb_advanced`) → MTB, running (`jogging`) → Hike, Bergtour
  * (`mountaineering`) → Hike T3.
+ *
+ * No surprises (captain 2026-10-26): a hiking type covers a band of T levels (`hike` / `jogging` T1–T2,
+ * `mountaineering` T3–T5) – the user's own T level is kept when it is inside the band, else the band's default (T2 / T3).
+ * When the import changes the activity or T level, the track panel says so in one grey line ([importChoice]).
  */
 object SportType {
 
@@ -36,14 +40,44 @@ object SportType {
         "mountaineering" to Pick(Activity.HIKE, 3),
     )
 
+    /** T levels a hiking type covers (normalised key → band); the default inside it is the [komoot] pick's level. */
+    private val bands = mapOf(
+        "hike" to 1..2,
+        "jogging" to 1..2,
+        "mountaineering" to 3..5,
+    )
+
+    private fun key(type: String?): String? =
+        type?.trim()?.lowercase()?.filter { it != '_' && it != '-' && !it.isWhitespace() }?.takeIf { it.isNotEmpty() }
+
     /** The activity a GPX `<type>` stands for; null = unknown / missing (then the last used activity stays). */
-    fun activityOf(type: String?): Pick? {
-        val key = type?.trim()?.lowercase()?.filter { it != '_' && it != '-' && !it.isWhitespace() }
-        return if (key.isNullOrEmpty()) null else komoot[key]
+    fun activityOf(type: String?): Pick? = key(type)?.let { komoot[it] }
+
+    /**
+     * What an import with [type] uses: the type's activity, or the [current] one ([currentSac]) when the type is unknown.
+     * For a hiking type the user's remembered T level [currentSac] is kept when it is inside the type's band.
+     */
+    fun forImport(type: String?, current: Activity, currentSac: Int): Pick {
+        val k = key(type)
+        val pick = k?.let { komoot[it] } ?: return Pick(current, currentSac)
+        val band = bands[k] ?: return pick
+        return if (currentSac in band) pick.copy(sac = currentSac) else pick
     }
 
-    /** What an import with [type] uses: the type's activity, or the [current] one ([currentSac]) when the type is unknown. */
-    fun forImport(type: String?, current: Activity, currentSac: Int): Pick = activityOf(type) ?: Pick(current, currentSac)
+    /**
+     * What an import does to the chosen activity: [pick] is stored with the imported tour; [switch] = the app's activity
+     * (and T level) becomes [pick] – not during a tour ([touring]: the followed route keeps its own); [note] = the grey
+     * line in the track panel when it switched ("Activity set to Hike T3 from the file"), null when nothing changed.
+     */
+    data class ImportChoice(val pick: Pick, val switch: Boolean, val note: String?)
+
+    fun importChoice(type: String?, current: Activity, currentSac: Int, touring: Boolean): ImportChoice {
+        val pick = forImport(type, current, currentSac)
+        val switch = !touring && (pick.activity != current || (pick.activity == Activity.HIKE && pick.sac != currentSac))
+        val note = if (!switch) null
+            else "Activity set to ${pick.activity.label}${if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""} from the file"
+        return ImportChoice(pick, switch, note)
+    }
 
     /**
      * The `<type>` written on export: Komoot's string for [activity] (as Komoot writes it in its own GPX exports), so

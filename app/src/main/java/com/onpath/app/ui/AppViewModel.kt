@@ -75,6 +75,11 @@ data class ShownTrack(
     val durationS: Double,
     /** Rides not counted (vehicle detection): drawn grey dashed (bus / car) or purple dashed (lift) beside the track. */
     val rides: List<Pair<List<GeoPoint>, com.onpath.app.rides.RideKind>> = emptyList(),
+    /**
+     * Grey INFO line in the track panel, e.g. "Activity set to MTB from the file" after an import changed the activity
+     * (captain 2026-10-26, "no surprises"); stays until the track is closed / replaced or the user picks an activity.
+     */
+    val note: String? = null,
 ) {
     val points: List<GeoPoint> get() = segments.flatten()
 }
@@ -1589,7 +1594,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         noteActivityChange()
         nextCause = if (userChange) activityCause() else PlanStatus.Cause.Other
         activity = a; prefs.activity = a; recalc()
+        clearShownNote()
     }
+
+    /** "Activity set to … from the file" is over once the activity / T level changes again (captain 2026-10-26). */
+    private fun clearShownNote() { shown?.let { if (it.note != null) shown = it.copy(note = null) } }
 
     /** Cause of an activity / T level change; a change still being calculated keeps the activity from before it. */
     private fun activityCause(): PlanStatus.Cause =
@@ -1602,6 +1611,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (l == sac) return
         if (activity == Activity.HIKE) { noteActivityChange(); nextCause = activityCause() }
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
+        clearShownNote()
     }
 
     // ---------------- planning ----------------
@@ -3507,8 +3517,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     stream.use { GpxParser.parse(it) } to name
                 }
                 val segs = data.allSegments
-                // Komoot's sport in <trk><type> preselects the activity (owner 2026-10-25); unknown → the current one
-                val pick = SportType.forImport(data.type, activity, sac)
+                // Komoot's sport in <trk><type> preselects the activity (owner 2026-10-25); unknown → the current one;
+                // the user's T level stays when it fits the type's band, and a change is said (captain 2026-10-26)
+                val choice = SportType.importChoice(data.type, activity, sac, touring = recState.value != null)
+                val pick = choice.pick
                 val name = data.name ?: fileName?.removeSuffix(".gpx")?.removeSuffix(".GPX") ?: defaultName("Import")
                 val geo = segs.map { s -> s.map { it.toGeo() } }
                 val dist = geo.sumOf { Geo.length(it) }
@@ -3524,18 +3536,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
                 routesOpen = false // show the imported track on the map
                 refreshTours()
-                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur))
+                // like opening a recorded tour: its activity is chosen (not during a tour – the followed route keeps its own);
+                // before the track is shown: an activity change clears the panel's line, this one sets it
+                if (choice.switch) {
+                    if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
+                    selectActivity(pick.activity, userChange = false)
+                }
+                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
-                // like opening a recorded tour: its activity is chosen (not during a tour – the followed route keeps its own)
                 // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
                 data.type?.let { t ->
                     val to = if (SportType.activityOf(t) == null) "unknown, kept ${pick.activity.name}"
                         else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""
                     Problems.info("gpx", "GPX import “$name”: type “${t.take(40)}” → $to")
-                }
-                if (recState.value == null && (pick.activity != activity || (pick.activity == Activity.HIKE && pick.sac != sac))) {
-                    if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
-                    selectActivity(pick.activity, userChange = false)
                 }
                 // The track panel with its name is the feedback; a message (until OK) only when something was odd –
                 // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
