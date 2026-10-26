@@ -597,8 +597,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // format 2: soft glow under the ways good for the bike, and under roads with a cycle lane (2026-10-26)
                 "greenway-bike-glow" to trekking, "greenway-touring-glow" to touring, "greenway-mtb-glow" to mtb,
                 "bike-lane-glow" to !walking)) {
-            runCatching { style.getLayer(id)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
-                .onFailure { if (live()) Problems.warn("map", "Map layer $id not switched for the activity", it) }
+            // "<id>-town": the town part of a layer, drawn below the streets (tools/make_style.py town_below_streets) –
+            // switched with it; a style without it is skipped
+            for (lid in listOf(id, "$id-town")) {
+                runCatching { style.getLayer(lid)?.setProperties(PF.visibility(if (on) Property.VISIBLE else Property.NONE)) }
+                    .onFailure { if (live()) Problems.warn("map", "Map layer $lid not switched for the activity", it) }
+            }
         }
         for (id in listOf("routes-hike", "routes-bike")) {
             val vis = PF.visibility(if (enabled && id == want) Property.VISIBLE else Property.NONE)
