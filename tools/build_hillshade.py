@@ -270,19 +270,21 @@ def main(argv=None):
     print(f"DEM tiles: {len(fetch_set)}, tiles to shade: {sum(map(len, need.values()))} (z{a.minzoom}-{top})",
           flush=True)
     with ThreadPoolExecutor(16) as ex:
-        for k, _ in enumerate(ex.map(lambda t: fetch(t, CACHE), sorted(fetch_set))):
-            if k % 2000 == 0:
-                print(f"  fetched {k}", flush=True)
+        # loop counters must not be called k: k (tile size factor) is used below to build the jobs (bug until
+        # 2026-10-26: after the loop k was the last fetch index, so every job shaded the wrong DEM zoom / size)
+        for n_done, _ in enumerate(ex.map(lambda t: fetch(t, CACHE), sorted(fetch_set))):
+            if n_done % 2000 == 0:
+                print(f"  fetched {n_done}", flush=True)
     print(f"downloaded / cached in {time.time() - t0:.0f} s", flush=True)
 
     out = {}
     jobs = [(z, x, y, a.quality, a.strength * a.level_gain ** (top - z), a.blur, k) for z in need for (_, x, y) in need[z]]
     with Pool(a.workers, initializer=set_cache, initargs=(CACHE, BACKGROUND)) as pool:  # Python 3.14: workers do not fork the globals
-        for k, (t, data) in enumerate(pool.imap_unordered(job_shade, jobs, chunksize=8)):
+        for n_done, (t, data) in enumerate(pool.imap_unordered(job_shade, jobs, chunksize=8)):
             if data is not None:
                 out[t] = data
-            if k % 4000 == 0:
-                print(f"  shaded {k}", flush=True)
+            if n_done % 4000 == 0:
+                print(f"  shaded {n_done}", flush=True)
     print(f"shaded {len(jobs)} tiles in {time.time() - t0:.0f} s", flush=True)
 
     tmp = a.out + ".tmp"
