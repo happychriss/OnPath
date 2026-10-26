@@ -10,9 +10,9 @@
     "area": "Settings list",
     "context": "Topic: which POI kinds the map shows",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Glossary says POIs; \"Interessante Orte\" is clearer for non-technical users",
-    "max": 28
+    "confidence": "sicher",
+    "max": 28,
+    "decided": "Owner 2026-10-26: Interessante Orte"
   },
   "settings_page_map": {
     "area": "Settings list",
@@ -117,9 +117,9 @@
     "area": "Settings list",
     "context": "Summary under \"Map\". %1$s / %2$s = on/off, %3$s = \"Direction of travel\" or \"North up\"",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Long line (2 lines max); \"Schummerung\" is the cartographic word",
-    "max": 80
+    "confidence": "sicher",
+    "max": 80,
+    "decided": "Owner 2026-10-26: Relief (not Schummerung)"
   },
   "settings_on": {
     "area": "Settings list",
@@ -382,9 +382,9 @@
     "area": "Settings · Map",
     "context": "Switch: hill shading (relief) on the map",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "\"Schummerung\" (cartography) vs \"Reliefschattierung\"",
-    "max": 30
+    "confidence": "sicher",
+    "max": 30,
+    "decided": "Owner 2026-10-26: Relief (not Schummerung)"
   },
   "settings_map_direction": {
     "area": "Settings · Map",

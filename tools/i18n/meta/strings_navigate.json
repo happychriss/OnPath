@@ -719,9 +719,9 @@
     "area": "Tour card (Plan)",
     "context": "Main button of the tour card: %1$s = activity ('Continue · Gravel bike')",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Long activity names ('E-Mountainbike') are cut on narrow phones",
-    "max": 30
+    "confidence": "sicher",
+    "max": 30,
+    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
   "nav_tour_running": {
     "area": "Tour card (Plan)",

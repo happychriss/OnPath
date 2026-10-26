@@ -16,7 +16,7 @@
     <string name="settings_sum_poi_all_shown">Alle angezeigt</string>
     <string name="settings_sum_poi_all_hidden">Alle ausgeblendet</string>
     <string name="settings_sum_poi_groups">%1$d von %2$d Gruppen angezeigt</string>
-    <string name="settings_sum_map">Höhenlinien %1$s · Schummerung %2$s · %3$s</string>
+    <string name="settings_sum_map">Höhenlinien %1$s · Relief %2$s · %3$s</string>
     <string name="settings_on">an</string>
     <string name="settings_off">aus</string>
     <string name="settings_sum_nav_off">Warnung abseits der Route aus · Vibration an Abzweigungen %1$s</string>
@@ -53,7 +53,7 @@
     <string name="settings_poi_group_other">Sonstiges</string>
     <string name="settings_map_style">Kartenstil</string>
     <string name="settings_map_contours">Höhenlinien</string>
-    <string name="settings_map_hillshade">Schummerung</string>
+    <string name="settings_map_hillshade">Relief</string>
     <string name="settings_map_direction">Kartenausrichtung (Planen und Navigation)</string>
     <string name="settings_map_travel">In Bewegungsrichtung</string>
     <string name="settings_map_north">Norden oben</string>

@@ -340,17 +340,17 @@
     "area": "Plan sheet",
     "context": "Main button of the plan sheet; names the activity (a wrong activity is a disaster). %1$s = activity name (\"Gravel bike\")",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "With long German names (\"Navigation starten · E-Mountainbike\") the button cuts the end; short activity names?",
-    "max": 34
+    "confidence": "sicher",
+    "max": 34,
+    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
   "plan_continue_navigation_for": {
     "area": "Plan sheet",
     "context": "Main button while a tour records. %1$s = activity name",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Long with long activity names",
-    "max": 34
+    "confidence": "sicher",
+    "max": 34,
+    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
   "plan_route_options": {
     "area": "Plan sheet",
@@ -948,15 +948,15 @@
     "area": "Dialogs",
     "context": "Stat label (tour summary)",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Glossary: bergauf / bergab; \"Aufstieg\" for hikers"
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26: Aufstieg / Abstieg"
   },
   "plan_stat_descent": {
     "area": "Dialogs",
     "context": "Stat label (tour summary)",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "See plan_stat_ascent"
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26: Aufstieg / Abstieg"
   },
   "plan_stat_time": {
     "area": "Dialogs",

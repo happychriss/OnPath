@@ -111,7 +111,7 @@ def collect():
                 "Key": row_key(key, form), "Priorität": m.get("priority", 3),
                 "Sicherheit": m.get("confidence", "bitte prüfen"), "Bereich": m.get("area", fname[8:-4]),
                 "Kontext": ctx.strip(), "English": text, "Deutsch (Vorschlag)": de_map.get(row_key(key, form), ""),
-                "EN neu (Owner)": "", "DE neu (Owner)": "", "Kommentar (Owner)": "", "Status": "",
+                "EN neu (Owner)": "", "DE neu (Owner)": "", "Kommentar (Owner)": "", "Status": ("entschieden – " + m["decided"]) if m.get("decided") else "",
                 "_file": fname, "_order": order,
             })
     rows.sort(key=lambda r: (int(r["Priorität"]), r["Bereich"].lower(), r["_file"], r["_order"]))

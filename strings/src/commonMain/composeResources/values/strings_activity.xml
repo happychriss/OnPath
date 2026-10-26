@@ -21,4 +21,10 @@
     <string name="activity_hike_chip">Hike</string>
     <string name="activity_with_level">%1$s T%2$d</string>
     <string name="activity_chip_with_level">%1$s · T%2$d</string>
+    <string name="activity_bike_touring_button">Bike</string>
+    <string name="activity_bike_trekking_button">Gravel bike</string>
+    <string name="activity_ebike_button">E-bike</string>
+    <string name="activity_mtb_button">MTB</string>
+    <string name="activity_emtb_button">E-MTB</string>
+    <string name="activity_hike_button">Hike</string>
 </resources>

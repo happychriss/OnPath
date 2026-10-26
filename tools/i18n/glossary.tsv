@@ -2,9 +2,9 @@ English	Deutsch	Note
 Bike	Fahrrad	Activity (touring / city bike on paved ways). Chip: Fahrrad
 Gravel bike	Gravel-Rad	Activity. Chip: Gravel (short, bitte prüfen)
 E-bike	E-Bike	Activity (pedelec 25 km/h)
-MTB	Mountainbike	Activity. Chip and tight buttons: MTB (bitte prüfen)
-E-MTB	E-Mountainbike	Activity. Chip and tight buttons: E-MTB (bitte prüfen)
-Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon (bitte prüfen)
+MTB	Mountainbike	Activity: full name in the picker; on buttons MTB ("Navigation starten · MTB") – Owner 2026-10-26
+E-MTB	E-Mountainbike	Activity: full name in the picker; on buttons E-MTB – Owner 2026-10-26
+Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon – Owner 2026-10-26
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
 route	Route	The planned line from start to destination
@@ -28,7 +28,7 @@ steep	steil	"Steil, bis 28 %"
 hint (route hint)	Hinweis	Amber line on the plan sheet
 difficulty	Schwierigkeit
 Easy / Moderate / Difficult	Leicht / Mittel / Schwer	Difficulty label of a route
-ascent / descent	bergauf / bergab	Elevation gain / loss (bitte prüfen: "Aufstieg / Abstieg" for hiking only)
+ascent / descent	Aufstieg / Abstieg	Elevation gain / loss, everywhere the same – Owner 2026-10-26 ("bergauf / bergab" only as direction words in the pace note)
 elevation profile	Höhenprofil
 way type / surface	Wegtyp / Untergrund	Route breakdown bars
 path / track / road	Pfad / Fahrweg / Straße	Way types (track = forest/farm track: "Forstweg/Feldweg" → "Fahrweg" as general word, bitte prüfen)
@@ -46,7 +46,7 @@ Overview only	Nur Übersicht	Hint when zoomed in where no detailed map is instal
 pace	Tempo	Settings → Pace
 time estimate	Zeitschätzung	Moving time of a route
 break	Pause
-POIs (points of interest)	POIs	Settings topic; "Orte" in sentences (bitte prüfen)
+POIs (points of interest)	Interessante Orte	Settings topic and wherever POIs are meant – Owner 2026-10-26
 settings	Einstellungen
 backup	Sicherung	"Backup" topic = "Sicherung"
 recycle bin	Papierkorb
@@ -56,3 +56,5 @@ Wi-Fi / mobile data	WLAN / mobile Daten
 position / location	Standort	"your location" = "dein Standort"; GPS stays GPS
 bus / car / lift	Bus / Auto / Lift	Rides inside a tour (lift = Seilbahn / Sessellift; "Lift" is usual in Tyrol)
 you (address)	du	Friendly, factual; imperative "Tippe …", "Prüfe …"; buttons in the infinitive ("Speichern")
+time (duration)	1 h 05 min	Same as English (as on Alpine signposts), not "1 Std. 5 Min." – Owner 2026-10-26
+hill shading	Relief	Map switch "Relief"; not "Schummerung" – Owner 2026-10-26

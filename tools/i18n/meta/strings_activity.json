@@ -68,9 +68,9 @@
     "area": "Activity picker",
     "context": "Activity name: mountain bike (picker, buttons, messages)",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Owner wording 'Mountainbike' is long on buttons ('Navigation starten · Mountainbike'); 'MTB' is also usual in German",
-    "max": 16
+    "confidence": "sicher",
+    "max": 16,
+    "decided": "Owner 2026-10-26: full name in the picker, MTB on buttons"
   },
   "activity_mtb_line": {
     "area": "Activity picker",
@@ -91,9 +91,9 @@
     "area": "Activity picker",
     "context": "Activity name: e-mountain bike",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "'E-Mountainbike' is long on buttons; 'E-MTB' is also usual",
-    "max": 16
+    "confidence": "sicher",
+    "max": 16,
+    "decided": "Owner 2026-10-26: full name in the picker, E-MTB on buttons"
   },
   "activity_emtb_line": {
     "area": "Activity picker",
@@ -142,8 +142,56 @@
     "area": "Plan sheet",
     "context": "Activity chip for hiking on the plan sheet: 'Hike · T2' next to time and distance. %1$s = chip name, %2$d = SAC level",
     "priority": 1,
-    "confidence": "bitte prüfen",
+    "confidence": "sicher",
     "max": 14,
-    "doubt": "German shows only 'T2' next to the hiking icon: 'Wandern · T2' (and 'Wandern T2') cut the route's distance on the plan sheet ('12,…'). The German may leave out %1$s here."
+    "decided": "Owner 2026-10-26: \"T2\" alone next to the hiking icon"
+  },
+  "activity_bike_touring_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · Bike', 'Continue · Bike', 'Navigate this track · Bike', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
+  },
+  "activity_bike_trekking_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · Gravel bike', 'Continue · Gravel bike', 'Navigate this track · Gravel bike', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
+  },
+  "activity_ebike_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · E-bike', 'Continue · E-bike', 'Navigate this track · E-bike', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
+  },
+  "activity_mtb_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · MTB', 'Continue · MTB', 'Navigate this track · MTB', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
+  },
+  "activity_emtb_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · E-MTB', 'Continue · E-MTB', 'Navigate this track · E-MTB', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
+  },
+  "activity_hike_button": {
+    "area": "Plan sheet",
+    "context": "Activity name on buttons: 'Start navigation · Hike', 'Continue · Hike', 'Navigate this track · Hike', 'Cycling · …' in Settings → Pace. Short MTB / E-MTB in German (Owner 2026-10-26); full names in the picker",
+    "priority": 1,
+    "max": 16,
+    "confidence": "sicher",
+    "decided": "Owner 2026-10-26"
   }
 }

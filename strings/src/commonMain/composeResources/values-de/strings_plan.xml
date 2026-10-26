@@ -172,8 +172,8 @@
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>
-    <string name="plan_stat_ascent">Bergauf</string>
-    <string name="plan_stat_descent">Bergab</string>
+    <string name="plan_stat_ascent">Aufstieg</string>
+    <string name="plan_stat_descent">Abstieg</string>
     <string name="plan_stat_time">Zeit</string>
     <string name="plan_close_track">Track schließen</string>
     <string name="plan_navigate_track_for">Track navigieren · %1$s</string>
