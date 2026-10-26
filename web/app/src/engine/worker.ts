@@ -14,6 +14,13 @@ interface WasmEngine {
   plan(points: string, activity: string, sac: number, pinned: string): string;
   planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string): string;
   planParse(text: string): string;
+  edit(op: string, points: string, index: number, to: number): string;
+  rows(points: string, names: string): string;
+  placePreview(points: string, lat: number, lon: number): string;
+  searchAddArea(key: string, dir: string): number;
+  searchHasArea(key: string): boolean;
+  search(text: string, lat: number, lon: number, route: string): string;
+  searchOnline(text: string, photonJson: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
   problems(): string;
 }
@@ -112,6 +119,38 @@ async function ensureParts(e: WasmEngine, points: string): Promise<number> {
   return bytes;
 }
 
+/** A whole file (the packed preview host keeps binaries as base64 text). Null when it is not there. */
+async function fileBytes(url: string): Promise<Uint8Array | null> {
+  if (packed && !url.endsWith('.geojson')) {
+    const r = await fetch(url + '.b64.txt');
+    if (!r.ok) return null;
+    const bin = atob((await r.text()).replace(/\s+/g, ''));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  const r = await fetch(url);
+  return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+}
+
+const indexing = new Map<string, Promise<void>>();
+/** One map area into the app's search index: its POIs, base map (peaks, places) and overlays (trail names). */
+function indexArea(e: WasmEngine, key: string, dir: string): Promise<void> {
+  let p = indexing.get(key);
+  if (!p) {
+    p = (async () => {
+      const folder = 'search/' + key.replace(/[^\w-]/g, '_');
+      await Promise.all(['pois.geojson', 'base.pmtiles', 'overlays.pmtiles'].map(async (f) => {
+        const b = await fileBytes(dir + f);
+        if (b) e.putFile(folder + '/' + f, new Int8Array(b.buffer, b.byteOffset, b.length));
+      }));
+      e.searchAddArea(key, '/onpath/' + folder);
+    })();
+    indexing.set(key, p);
+  }
+  return p;
+}
+
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
   try {
@@ -133,6 +172,16 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       reply({ id: req.id, ok: true, shared: JSON.parse(e.planParse(req.text)) });
       return;
     }
+    if (req.type === 'edit') { reply({ id: req.id, ok: true, text: e.edit(req.op, req.points, req.index, req.to) }); return; }
+    if (req.type === 'rows') { reply({ id: req.id, ok: true, text: e.rows(req.points, req.names) }); return; }
+    if (req.type === 'placePreview') { reply({ id: req.id, ok: true, text: e.placePreview(req.points, req.lat, req.lon) }); return; }
+    if (req.type === 'searchAreas') {
+      for (const a of req.areas) await indexArea(e, a.key, a.dir);
+      reply({ id: req.id, ok: true });
+      return;
+    }
+    if (req.type === 'search') { reply({ id: req.id, ok: true, text: e.search(req.text, req.lat, req.lon, req.route) }); return; }
+    if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon) }); return; }
     if (req.type === 'insert') {
       reply({ id: req.id, ok: true, index: e.insertIndex(req.points, req.lat, req.lon, req.lineSnapM) });
       return;

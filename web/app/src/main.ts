@@ -13,11 +13,14 @@ import { shareDialog } from './share';
 import { profileSvg } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
+import { setupSearch, type PlaceRole } from './search';
+import type { Hit } from './engine/types';
 import './style.css';
 
+// names as in the app (Activity.label, owner 2026-10-26); the stored form is the enum name
 const ACTIVITIES: [Activity, string][] = [
-  ['BIKE_TOURING', 'Bike touring'], ['BIKE_TREKKING', 'Bike trekking'], ['EBIKE', 'E-bike'],
-  ['MTB', 'MTB'], ['EMTB', 'MTB e-bike'], ['HIKE', 'Hike'],
+  ['BIKE_TOURING', 'Bike'], ['BIKE_TREKKING', 'Gravel bike'], ['EBIKE', 'E-bike'],
+  ['MTB', 'MTB'], ['EMTB', 'E-MTB'], ['HIKE', 'Hike'],
 ];
 const ROUTE = '#1E3FAE';
 const base = new URL('./', location.href).href;
@@ -38,13 +41,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="map"></div>
   <aside id="panel">
     <header><b>OnPath</b> <span class="muted">web planner · test</span></header>
+    <div id="searchbox"></div>
     <label>Activity <select id="activity">${ACTIVITIES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
     <label id="sacRow">Trail difficulty <select id="sac">${[1, 2, 3, 4, 5].map((t) => `<option value="${t}">T${t}</option>`).join('')}</select></label>
     <div id="summary" class="summary muted">Click the map to set a start point.</div>
     <div id="profile"></div>
     <ol id="points"></ol>
     <div class="row"><button id="share" class="primary" disabled>Send to phone · Share</button></div>
-    <div class="row"><button id="reverse">Reverse</button><button id="clear">Clear</button></div>
+    <div class="row"><button id="reverse">Reverse</button><button id="roundTrip">Round trip</button><button id="clear">Clear</button></div>
     <div id="status" class="status muted"></div>
   </aside>`;
 
@@ -60,6 +64,7 @@ maplibregl.addProtocol('pmtiles', pmtiles.tile);
 // Map: the map server's cells (default), or one flat map folder (?map=folder, and the packed preview)
 const useCells = !PACKED && params.get('map') !== 'folder';
 const cells = new Cells(params.get('data') ?? base + 'data/');
+const mapFolder = params.get('data') ?? base + 'map/'; // folder mode only
 if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 const map = new maplibregl.Map({
   container: 'map', style: await loadStyle(), center: [11.16, 46.67], zoom: 12, attributionControl: false,
@@ -90,7 +95,7 @@ async function loadStyle(): Promise<StyleSpecification> {
     s.sprite = base + 'sprites/onpath';
     return cells.style(s);
   }
-  const data = params.get('data') ?? base + 'map/';
+  const data = mapFolder;
   const fix = (u: string) => u.replace('pmtiles://file://{DATA_DIR}/', 'pmtiles://' + data).replace('file://{DATA_DIR}/', data);
   s.glyphs = PACKED ? packedGlyphs(base) : base + 'fonts/{fontstack}/{range}.pbf';
   s.sprite = base + 'sprites/onpath';
@@ -122,22 +127,72 @@ map.on('click', async (e: MapMouseEvent) => {
   changed();
 });
 
-function drawMarkers() {
+const key = ([lat, lon]: [number, number]) => `${lat.toFixed(6)},${lon.toFixed(6)}`;
+const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.replace(/[\t\n]/g, ' ')}` : '')).filter(Boolean).join('\n');
+let roundTrip = false;
+
+/** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
+async function drawPoints() {
+  const r = await engine.rows(state.points, namesText());
+  roundTrip = r.roundTrip;
   markers.splice(0).forEach((m) => m.remove());
+  const last = state.points.length - 1;
   state.points.forEach(([lat, lon], i) => {
+    if (roundTrip && i === last) return; // the closing point sits on the start
     const el = document.createElement('div');
-    el.className = 'pin ' + (i === 0 ? 'start' : i === state.points.length - 1 ? 'end' : 'via');
-    el.textContent = i === 0 ? 'S' : i === state.points.length - 1 ? 'Z' : String(i);
-    el.title = 'Drag to move, click to delete';
+    el.className = 'pin ' + (i === 0 ? 'start' : i === last ? 'end' : 'via');
+    el.textContent = i === 0 ? (roundTrip ? '↺' : 'S') : i === last ? 'Z' : String(i + 1);
+    el.title = 'Drag to move, click for options';
     const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([lon, lat]).addTo(map);
-    // a dragged point is a new place: no longer pinned or named (as in the app)
-    m.on('dragend', () => { const p = m.getLngLat(); state.points[i] = [p.lat, p.lng]; state.meta[i] = { pinned: false }; changed(); });
-    el.addEventListener('click', (ev) => { ev.stopPropagation(); state.points.splice(i, 1); state.meta.splice(i, 1); changed(); });
+    // a dragged point is a new place: no longer pinned or named (as in the app); a loop's start moves its end too
+    m.on('dragend', () => {
+      const p = m.getLngLat();
+      state.points[i] = [p.lat, p.lng]; state.meta[i] = { pinned: false };
+      if (roundTrip && i === 0) { state.points[last] = [p.lat, p.lng]; state.meta[last] = { pinned: false }; }
+      changed();
+    });
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); pointMenu(i, m); });
     markers.push(m);
   });
-  $('points').innerHTML = state.points.map(([lat, lon], i) =>
-    `<li>${state.meta[i]?.name ? escapeHtml(state.meta[i].name!) : i === 0 ? 'Start' : i === state.points.length - 1 ? 'Destination' : 'Via ' + i}` +
-    ` <span class="muted">${lat.toFixed(4)}, ${lon.toFixed(4)}</span></li>`).join('');
+  $('points').innerHTML = r.rows.map((row) =>
+    `<li data-i="${row.i}">${row.loop ? '↺ ' : ''}${escapeHtml(row.name)}` +
+    (row.legM != null ? ` <span class="muted">${row.approx ? '~' : ''}${(row.legM / 1000).toFixed(1)} km</span>` : '') + '</li>').join('');
+  ($('roundTrip') as HTMLButtonElement).disabled = state.points.length < 2 || roundTrip;
+  ($('reverse') as HTMLButtonElement).disabled = state.points.length < 2;
+}
+
+/**
+ * Point menu, the app's rule (ui/MapGestures.pointMenu – in an Android file, so mirrored here, 6 lines): a middle
+ * point of a normal route "Start here"; of a round trip "Start & finish here"; "Delete" always.
+ */
+let menu: maplibregl.Popup | null = null;
+function pointMenu(i: number, m: maplibregl.Marker) {
+  menu?.remove();
+  const count = state.points.length - (roundTrip ? 0 : 0);
+  const middle = i >= 1 && i < count - 1;
+  const box = document.createElement('div');
+  box.className = 'pointmenu';
+  const item = (label: string, act: () => void, danger = false) => {
+    const b = document.createElement('button');
+    b.textContent = label; if (danger) b.className = 'danger';
+    b.onclick = () => { menu?.remove(); act(); };
+    box.append(b);
+  };
+  if (middle) item(roundTrip ? 'Start & finish here' : 'Start here', () => applyEdit('startHere', i));
+  item('Delete', () => {
+    // deleting a loop's start deletes the loop's closing copy too (the app shows them as one point)
+    if (roundTrip && i === 0) { applyEdit('delete', state.points.length - 1).then(() => applyEdit('delete', 0)); }
+    else applyEdit('delete', i);
+  }, true);
+  menu = new maplibregl.Popup({ offset: 18, closeButton: false }).setDOMContent(box).setLngLat(m.getLngLat()).addTo(map);
+}
+
+/** One of the app's plan edits (PlanEdits, in the engine); names and pins follow their points. */
+async function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move', index = 0, to = 0) {
+  const byKey = new Map(state.points.map((p, i) => [key(p), state.meta[i]]));
+  state.points = await engine.edit(op, state.points, index, to);
+  state.meta = state.points.map((p) => ({ ...(byKey.get(key(p)) ?? { pinned: false }) }));
+  await changed();
 }
 
 // ---- planning ----
@@ -188,7 +243,7 @@ async function rememberInAddress() {
 }
 
 async function changed() {
-  drawMarkers();
+  await drawPoints();
   ($('share') as HTMLButtonElement).disabled = state.points.length < 2;
   rememberInAddress();
   $('sacRow').style.display = state.activity === 'HIKE' ? '' : 'none';
@@ -200,7 +255,7 @@ async function changed() {
   if (!r.ok || !r.plan) { status(`Planning failed: ${r.error}`); return; }
   state.plan = r.plan;
   const s = r.stats!;
-  status(`Planned in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
+  status(`Planned for ${ACTIVITIES.find(([k]) => k === state.activity)?.[1]}${state.activity === "HIKE" ? " T" + state.sac : ""} in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
   render();
 }
 
@@ -222,7 +277,37 @@ function render() {
 
 actSel.onchange = () => { state.activity = actSel.value as Activity; localStorageSet('activity', state.activity); changed(); };
 sacSel.onchange = () => { state.sac = Number(sacSel.value); localStorageSet('sac', String(state.sac)); changed(); };
-$('reverse').onclick = () => { state.points.reverse(); state.meta.reverse(); changed(); };
+// ---- search (the app's search code in the engine, search.ts) ----
+setupSearch({
+  map, engine,
+  areas: async () => (useCells ? cells.searchAreas(map) : [{ key: 'map', dir: mapFolder }]),
+  points: () => state.points,
+  route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as [number, number])) ?? [],
+  add: (h, role) => addPlace(h, role),
+}, $('searchbox'));
+
+/**
+ * The place card's actions, as the app's addPlace: a pinned stop named after the place (passed exactly). "Add to
+ * route" goes where the card said (WaypointInsertion via AddPreview); a place already planned: "As start" = the point
+ * menu's Start here, "As destination" moves it to the end.
+ */
+async function addPlace(h: Hit, role: PlaceRole) {
+  const p: [number, number] = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
+  const pv = await engine.placePreview(state.points, p[0], p[1]);
+  const meta = { pinned: true, name: h.title };
+  if (pv.existing != null) {
+    if (role === 'START') await applyEdit('startHere', pv.existing);
+    else if (role === 'DESTINATION') await applyEdit('move', pv.existing, state.points.length - 1);
+    return;
+  }
+  const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : pv.index ?? state.points.length;
+  state.points.splice(at, 0, p);
+  state.meta.splice(at, 0, meta);
+  await changed();
+}
+
+$('reverse').onclick = () => applyEdit('reverse');
+$('roundTrip').onclick = () => applyEdit('roundTrip');
 $('clear').onclick = () => { state.points = []; state.meta = []; state.title = null; changed(); };
 $('share').onclick = async () => {
   const link = location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan());

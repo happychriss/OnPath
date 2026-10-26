@@ -78,6 +78,10 @@ jobs:
         working-directory: web/app
         run: node test/share-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Plan edits with the app's PlanEdits / PlanPoints, activity switch re-plans
+        working-directory: web/app
+        run: node test/edit-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Planner host tests (web/host)
         working-directory: web/host
         run: node --test

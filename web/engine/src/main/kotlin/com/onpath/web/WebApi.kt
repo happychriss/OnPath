@@ -7,6 +7,8 @@ import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanCode
+import com.onpath.app.routing.PlanEdits
+import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
@@ -202,6 +204,58 @@ object Engine {
         append(']')
     }
 
+    /**
+     * The app's plan edits ([PlanEdits]) on the page's points: "reverse", "roundTrip", "startHere" (point menu "Start
+     * here" / round trip "Start & finish here"), "delete", "move" ([index] → [to]). Returns the new point list in the
+     * same text form (coordinates unchanged, so the page keeps names and pins by value).
+     */
+    fun edit(op: String, points: String, index: Int, to: Int): String {
+        val w = parsePoints(points)
+        val out = when (op) {
+            "reverse" -> PlanEdits.reverse(w)
+            "roundTrip" -> PlanEdits.roundTrip(w)
+            "startHere" -> PlanEdits.startHere(w, index)
+            "delete" -> if (index in w.indices) w.filterIndexed { i, _ -> i != index } else w
+            "move" -> PlanEdits.move(w, index, to)
+            else -> w
+        }
+        return out.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }
+    }
+
+    /**
+     * The plan sheet's Points rows ([PlanPoints.rows]: names, leg distances along the route, round trip shown once
+     * with ↺) as JSON. [names] = lines "index<TAB>name". The line is the last plan's when it belongs to these points.
+     */
+    fun rows(points: String, names: String): String {
+        val w = parsePoints(points)
+        val n = parseNames(names)
+        val line = lastPlan?.takeIf { it.first == w }?.second?.points
+        return PlanPoints.rows(w, line) { n[it] }.joinToString(",", "[", "]") { r ->
+            "{\"i\":" + r.planIndex + ",\"role\":" + str(r.role.name) + ",\"name\":" + str(r.name) +
+                ",\"legM\":" + (r.legM?.let { num(it, 0) } ?: "null") + ",\"approx\":" + r.approx + ",\"loop\":" + r.loop + "}"
+        } .let { "{\"roundTrip\":" + PlanEdits.isRoundTrip(w) + ",\"rows\":" + it + "}" }
+    }
+
+    /**
+     * The place card's line for a search result (the app's [com.onpath.app.search.AddPreview]: what "Add to route"
+     * will do, with the same WaypointInsertion as a map click) and the index it would take. JSON.
+     */
+    fun placePreview(points: String, lat: Double, lon: Double): String {
+        val w = parsePoints(points)
+        val p = GeoPoint(lat, lon)
+        val idx = w.indexOfFirst { Geo.distance(it, p) < 1.0 }
+        if (idx >= 0) return "{\"existing\":" + idx + ",\"subtitle\":" + str(com.onpath.app.search.AddPreview.existingRole(idx, w.size)) + "}"
+        val plan = lastPlan?.takeIf { it.first == w }?.second
+        val speed = plan?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }
+        val pr = com.onpath.app.search.AddPreview.of(w, p, plan?.points, speed)
+        return "{\"index\":" + pr.decision.index + ",\"subtitle\":" + str(pr.subtitle) + "}"
+    }
+
+    private fun parseNames(names: String): Map<Int, String> = names.split('\n').mapNotNull { l ->
+        val i = l.substringBefore('\t').toIntOrNull() ?: return@mapNotNull null
+        i to l.substringAfter('\t')
+    }.toMap()
+
     private fun parseIndices(s: String): Set<Int> = s.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
 
     /**
@@ -211,10 +265,7 @@ object Engine {
     fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
         PlanCode.encode(SharedPlan(
             parsePoints(points), Activity.valueOf(activity), sac, parseIndices(pinned),
-            names.split('\n').mapNotNull { l ->
-                val i = l.substringBefore('\t').toIntOrNull() ?: return@mapNotNull null
-                i to l.substringAfter('\t')
-            }.toMap(),
+            parseNames(names),
             title.ifBlank { null },
         ))
 
@@ -289,6 +340,20 @@ class WebContext(private val dir: File) : android.content.Context() {
     Engine.planCode(points, activity, sac, pinned, names, title)
 
 @JSExport fun planParse(text: String): String = Engine.planParse(text)
+
+@JSExport fun edit(op: String, points: String, index: Int, to: Int): String = Engine.edit(op, points, index, to)
+
+@JSExport fun rows(points: String, names: String): String = Engine.rows(points, names)
+
+@JSExport fun placePreview(points: String, lat: Double, lon: Double): String = Engine.placePreview(points, lat, lon)
+
+@JSExport fun searchAddArea(key: String, dir: String): Int = WebSearch.addArea(key, dir)
+
+@JSExport fun searchHasArea(key: String): Boolean = WebSearch.hasArea(key)
+
+@JSExport fun search(text: String, lat: Double, lon: Double, route: String): String = WebSearch.search(text, lat, lon, route)
+
+@JSExport fun searchOnline(text: String, photonJson: String): String = WebSearch.online(text, photonJson)
 
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)

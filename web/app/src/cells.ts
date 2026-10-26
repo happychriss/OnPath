@@ -74,19 +74,28 @@ export class Cells {
     return s;
   }
 
+  /** The z10 tiles (cells) in view, nearest to the centre first. */
+  private inView(map: maplibregl.Map): [number, number][] {
+    const b = map.getBounds();
+    const c = map.getCenter();
+    const want: [number, number][] = [];
+    for (let x = tileX(b.getWest()); x <= tileX(b.getEast()); x++)
+      for (let y = tileY(b.getNorth()); y <= tileY(b.getSouth()); y++) want.push([x, y]);
+    const cx = tileX(c.lng), cy = tileY(c.lat);
+    return want.sort((a, b2) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b2[0] - cx, b2[1] - cy));
+  }
+
+  /** Search areas: the existing cells in view (at most [max], nearest first) as {key, folder URL}. */
+  async searchAreas(map: maplibregl.Map, max = 4): Promise<{ key: string; dir: string }[]> {
+    const near = this.inView(map).slice(0, max);
+    const cells = await Promise.all(near.map(([x, y]) => this.cell(x, y)));
+    return cells.filter((c): c is Cell => c != null).map((c) => ({ key: `cell-10-${c.x}-${c.y}`, dir: c.dir }));
+  }
+
   /** Loads the POIs of the cells in view (z >= 10) into the style's single POI source, like the app's merged file. */
   async loadPois(map: maplibregl.Map) {
     if (map.getZoom() < CELL_Z - 0.5) return;
-    const b = map.getBounds();
-    const n = 2 ** CELL_Z;
-    const tx = (lon: number) => Math.floor(((lon + 180) / 360) * n);
-    const ty = (lat: number) => {
-      const r = (lat * Math.PI) / 180;
-      return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n);
-    };
-    const want: [number, number][] = [];
-    for (let x = tx(b.getWest()); x <= tx(b.getEast()); x++)
-      for (let y = ty(b.getNorth()); y <= ty(b.getSouth()); y++) want.push([x, y]);
+    const want = this.inView(map);
     if (want.length > 16) return; // zoomed far out: skip
     let added = false;
     await Promise.all(want.map(async ([x, y]) => {
@@ -104,6 +113,12 @@ export class Cells {
     if (added) (map.getSource('pois') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: this.pois });
   }
 }
+
+const tileX = (lon: number) => Math.floor(((lon + 180) / 360) * 2 ** CELL_Z);
+const tileY = (lat: number) => {
+  const r = (lat * Math.PI) / 180;
+  return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** CELL_Z);
+};
 
 let flat: Promise<Uint8Array> | null = null;
 /** A 256 px Terrarium tile at 0 m (R=128, G=0, B=0): no relief, no shading. */

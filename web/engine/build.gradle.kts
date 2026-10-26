@@ -13,7 +13,10 @@ val appFiles = listOf(
     "routing/BRouterEngine.kt", "routing/StraightLineEngine.kt", "routing/RouteTimeLimit.kt", "routing/TurnDetector.kt",
     "routing/Junctions.kt", "routing/Planner.kt", "routing/WaypointInsertion.kt", "routing/PlanEdits.kt",
     "routing/RouteSummary.kt", "navigation/JunctionCues.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
-    "routing/PlanCode.kt",
+    "routing/PlanCode.kt", "routing/PlanPoints.kt",
+    // search (docs/design/web-planner.md §10): the app's index, ranking and Photon parsing
+    "search/Place.kt", "search/SearchText.kt", "search/OfflineIndex.kt", "search/OnlineSearch.kt", "search/BaseMapPlaces.kt",
+    "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -23,7 +26,7 @@ val appTests = listOf("routing/PlanCodeTest.kt")
 sourceSets {
     main {
         java.setSrcDirs(listOf("src/main/java", stubs, root.resolve("app/src/main/java/btools/router")))
-        java.include("android/**", "org/**", "btools/**", "OnPathHints.java")
+        java.include("android/**", "org/**", "btools/**", "com/google/**", "OnPathHints.java")
     }
 }
 kotlin {
@@ -36,6 +39,7 @@ kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget
 dependencies {
     implementation(files(root.resolve("app/libs").listFiles { f -> f.name.endsWith(".jar") }!!.sorted()))
     implementation(teavm.libs.jsoApis)
+    implementation("com.google.code.gson:gson:2.11.0") // the app gets it with MapLibre; search reads GeoJSON with it
     testImplementation("junit:junit:4.13.2")
 }
 
@@ -69,4 +73,11 @@ tasks.register<JavaExec>("runJvm") {
     args((project.findProperty("cases") as String?) ?: "../test/cases.json",
         (project.findProperty("segments") as String?) ?: "/home/user/build/routing-test/segments",
         (project.findProperty("out") as String?) ?: "build/jvm-results.json")
+}
+// A small rd5 with only some parts (previews / tests): -Ptile=E5_N50.rd5 -Pdir=<head/tail/part files> -Pout=<file>
+tasks.register<JavaExec>("partialRd5") {
+    classpath = jvm.runtimeClasspath
+    mainClass = "com.onpath.web.PartialRd5Kt"
+    args(project.findProperty("tile") as String? ?: "", project.findProperty("dir") as String? ?: "",
+        project.findProperty("out") as String? ?: "")
 }

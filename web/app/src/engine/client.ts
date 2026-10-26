@@ -1,5 +1,5 @@
 // Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
-import type { Activity, EngineReply, EngineRequest, SharedPlan } from './types';
+import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, SharedPlan } from './types';
 
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
@@ -42,6 +42,39 @@ export class EngineClient {
     return r.code;
   }
 
+  /** One of the app's plan edits (PlanEdits): the new point list. */
+  async edit(op: string, points: [number, number][], index = 0, to = 0): Promise<[number, number][]> {
+    const r = await this.ask({ type: 'edit', op, points: enc(points), index, to });
+    if (!r.ok || r.text == null) return points;
+    return dec(r.text);
+  }
+
+  /** The Points list rows (the app's PlanPoints.rows); [names] = lines "index<TAB>name". */
+  async rows(points: [number, number][], names: string): Promise<PointRows> {
+    const r = await this.ask({ type: 'rows', points: enc(points), names });
+    return r.ok && r.text ? JSON.parse(r.text) : { roundTrip: false, rows: [] };
+  }
+
+  /** Indexes the map areas (cells) not indexed yet; [dir] = folder URL with pois.geojson, base/overlays.pmtiles. */
+  async searchAreas(areas: { key: string; dir: string }[]): Promise<void> { await this.ask({ type: 'searchAreas', areas }); }
+
+  /** Offline hits (the app's index + ranking). */
+  async search(text: string, lat: number, lon: number, route: [number, number][]): Promise<Hit[]> {
+    const r = await this.ask({ type: 'search', text, lat, lon, route: enc(route) });
+    return r.ok && r.text ? JSON.parse(r.text) : [];
+  }
+
+  /** Offline + online hits for the last query, given Photon's answer (the app's merge). */
+  async searchOnline(text: string, photon: string): Promise<Hit[] | null> {
+    const r = await this.ask({ type: 'searchOnline', text, photon });
+    return r.ok && r.text ? JSON.parse(r.text) : null;
+  }
+
+  async placePreview(points: [number, number][], lat: number, lon: number): Promise<PlacePreview> {
+    const r = await this.ask({ type: 'placePreview', points: enc(points), lat, lon });
+    return r.ok && r.text ? JSON.parse(r.text) : { subtitle: '' };
+  }
+
   /** The plan in a link or code, or null when there is none. */
   async parse(text: string): Promise<SharedPlan | null> {
     const r = await this.ask({ type: 'parse', text });
@@ -56,3 +89,5 @@ export class EngineClient {
 }
 
 const enc = (points: [number, number][]) => points.map(([lat, lon]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join(';');
+const dec = (text: string): [number, number][] =>
+  text ? text.split(';').map((p) => p.split(',').map(Number) as [number, number]) : [];
