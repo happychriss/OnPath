@@ -6,6 +6,7 @@ import * as maplibregl from 'maplibre-gl';
 import type { StyleSpecification, GeoJSONSource } from 'maplibre-gl';
 import type { Feature, FeatureCollection } from 'geojson';
 import { PMTiles } from 'pmtiles';
+import { PACKED, MemorySource } from './packed';
 
 const CELL_Z = 10;
 const LAYERS = ['base', 'overlays', 'terrain', 'contours'] as const;
@@ -43,7 +44,9 @@ export class Cells {
   }
 
   private archive(c: Cell, layer: Layer): PMTiles {
-    return (c.archives[layer] ??= new PMTiles(`${c.dir}${layer}.pmtiles`));
+    const url = `${c.dir}${layer}.pmtiles`;
+    // the preview host has no HTTP range: there the whole file is fetched once (base64) and read from memory
+    return (c.archives[layer] ??= new PMTiles(PACKED ? new MemorySource(url) : url));
   }
 
   /** maplibre protocol "cell://<layer>/{z}/{x}/{y}". */

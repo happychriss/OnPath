@@ -3,6 +3,7 @@
 // It fetches what BRouter reads – the profiles once, the rd5 1° parts a plan needs via HTTP range (the phone's rule,
 // Rd5Parts.forCorridor, decided inside the engine) – then routes. The page never blocks while it computes.
 import type { EngineRequest, EngineReply, RouteStats } from './types';
+import { fetchPacked } from '../b64';
 
 interface WasmEngine {
   init(root: string): void;
@@ -60,12 +61,9 @@ const whole = new Map<string, Uint8Array>();
 async function range(url: string, from: number, to: number): Promise<{ bytes: Uint8Array; total: number } | null> {
   let all = whole.get(url);
   if (!all && packed) {
-    const r = await fetch(url + '.b64.txt');
-    if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
-    const bin = atob((await r.text()).replace(/\s+/g, ''));
-    all = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) all[i] = bin.charCodeAt(i);
+    const b = await fetchPacked(url);
+    if (!b) return null;
+    all = b;
     whole.set(url, all);
   }
   if (!all) {
@@ -121,14 +119,7 @@ async function ensureParts(e: WasmEngine, points: string): Promise<number> {
 
 /** A whole file (the packed preview host keeps binaries as base64 text). Null when it is not there. */
 async function fileBytes(url: string): Promise<Uint8Array | null> {
-  if (packed && !url.endsWith('.geojson')) {
-    const r = await fetch(url + '.b64.txt');
-    if (!r.ok) return null;
-    const bin = atob((await r.text()).replace(/\s+/g, ''));
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
+  if (packed && !url.endsWith('.geojson')) return fetchPacked(url);
   const r = await fetch(url);
   return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
 }

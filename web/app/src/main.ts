@@ -25,6 +25,7 @@ const ACTIVITIES: [Activity, string][] = [
 const ROUTE = '#1E3FAE';
 const base = new URL('./', location.href).href;
 const params = new URLSearchParams(location.search);
+const startAt = (params.get('at') ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
 
 const state = {
   points: [] as [number, number][],
@@ -62,12 +63,13 @@ maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's modul
 const pmtiles = new Protocol();
 maplibregl.addProtocol('pmtiles', pmtiles.tile);
 // Map: the map server's cells (default), or one flat map folder (?map=folder, and the packed preview)
-const useCells = !PACKED && params.get('map') !== 'folder';
+const useCells = params.get('map') !== 'folder' && import.meta.env.VITE_MAP !== 'folder';
 const cells = new Cells(params.get('data') ?? base + 'data/');
 const mapFolder = params.get('data') ?? base + 'map/'; // folder mode only
 if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 const map = new maplibregl.Map({
-  container: 'map', style: await loadStyle(), center: [11.16, 46.67], zoom: 12, attributionControl: false,
+  // start view: ?at=lon,lat,zoom, else the build's VITE_START (preview), else Meran
+  container: 'map', style: await loadStyle(), center: [startAt[0], startAt[1]], zoom: startAt[2], attributionControl: false,
 });
 (window as unknown as { __map: maplibregl.Map }).__map = map; // for the browser tests
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
@@ -91,7 +93,7 @@ map.on('load', () => {
 async function loadStyle(): Promise<StyleSpecification> {
   const s: StyleSpecification = await (await fetch(base + 'style/onpath.json')).json();
   if (useCells) {
-    s.glyphs = base + 'fonts/{fontstack}/{range}.pbf';
+    s.glyphs = PACKED ? packedGlyphs(base) : base + 'fonts/{fontstack}/{range}.pbf';
     s.sprite = base + 'sprites/onpath';
     return cells.style(s);
   }

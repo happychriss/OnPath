@@ -6,21 +6,16 @@ import * as maplibregl from 'maplibre-gl';
 
 export const PACKED = import.meta.env.VITE_PACKED === '1';
 
-export function decodeBase64(text: string): Uint8Array {
-  const bin = atob(text.replace(/\s+/g, ''));
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
+import { fetchPacked as fetchMaybe } from './b64';
 
 async function fetchPacked(url: string): Promise<Uint8Array> {
-  const r = await fetch(url + '.b64.txt');
-  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
-  return decodeBase64(await r.text());
+  const b = await fetchMaybe(url);
+  if (!b) throw new Error(`${url}: not on the preview host`);
+  return b;
 }
 
 /** A whole PMTiles file held in memory, as pmtiles' Source. */
-class MemorySource implements Source {
+export class MemorySource implements Source {
   private bytes: Promise<Uint8Array>;
   constructor(private url: string) { this.bytes = fetchPacked(url); }
   getKey() { return this.url; }
