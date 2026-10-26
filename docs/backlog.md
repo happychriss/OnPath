@@ -5,10 +5,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] E2E swipeTheSheetHalfFullHalf flaky (half sheet after swipe down) – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **[laptop] Does the plan sheet follow the finger 1:1 on the phone? (desktop, 2026-10-26)** On the CI emulator it moves
+  only 0.69–0.80 of the injected finger travel (see Done: E2E swipe flake). Every release now writes "Sheet let go at
+  X px (steps a / b / c px, v px/s) → step N" to the events trace: drag the handle a measured distance on the Pixel 8
+  and compare. If the phone trails too, the sheet lags the finger (field 0.8.9 "the swipe is jumping").
 - **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) and (2) done (see Done); (3) requirements.md –
   see "requirements.md sync" below; (4) owner question kept: long timetabled ferries only with a via point (today) or
   automatic?
@@ -213,6 +216,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **E2E CorePointsListE2ETest.swipeTheSheetHalfFullHalf flaky – "half sheet after a swipe down" (desktop, 2026-10-26,
+  red once on 687745a, rerun green):** the message said nothing more, so StepSheet now writes one events line per
+  release ("Sheet let go at X px (steps 536 / 938 / 1602 px, 0 px/s) → step N", `SheetDrag.describe`, unit tested) and
+  the test's size waits fail with size, state, events and a screenshot. Those lines showed the cause: on the CI
+  emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel, release speed 0. The last
+  swipe (480 px, 20 % of the screen) thus stopped 317–367 px below the points against a 332 px midpoint – a coin toss;
+  the swipe up to the points (600 px) needed a ratio ≥ 0.57. Now: up to the points 35 % of the screen (top step, only
+  rubber-bands), back down 110 % of the measured points → profile gap (settles on the profile for ratios 0.47–1.22;
+  CI let go at 1088–1113 px, ≥ 157 px past the midpoint). Same checks and timeouts. Why the sheet trails the injected
+  finger is open (Next: check on the phone). E2E full runs 40261092003 (908cc1e) and 40262661152 (aa8307c) green; class only 40261157640,
+  40261159593, 40261161546 (908cc1e) and 40262675663, 40262677839, 40262680045 (aa8307c) green.
 - **One time model for imported tracks (desktop, 2026-10-26, captain decision):** `Geo.estimateSeconds` and its own
   bike speeds are gone – imported GPX without timestamps (import, My routes, the shown track; re-timed with the pace
   level like planned routes), straight-line fallbacks and the "longer than a day?" question use `PaceModel` /
