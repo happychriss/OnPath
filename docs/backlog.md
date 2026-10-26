@@ -22,6 +22,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   MTB, E-MTB, Hike); (b) F-GPX-08 / a new F-GPX id: Komoot's `<trk><type>` preselects the activity on import (T level
   kept inside the type's band), OnPath writes `<type>` on export; (c) F-PLAN-06 "difficulty": the label counts distance
   + ascent and trail technique (hike T3+, bike S2+ / T3+), hike bands like Komoot (easy ≈ 2 h and ≤ 300 m up).
+- **[for the cloud / owner] requirements.md: activity names Bike / Gravel bike (owner decision 2026-10-26)** – the app
+  now says Bike (was Touring bike), Gravel bike (was Trekking bike), E-bike, MTB, E-MTB, Hike; the shared doc's
+  activity table still uses the old names (see (a) above).
 - **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
   footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
   own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
@@ -221,6 +224,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Clearer bike activity names (desktop, 2026-10-26, owner decision, labels only):** picker rows name + one line –
+  Bike "Paved cycleways, quiet roads", Gravel bike "Gravel tracks welcome", E-bike "Bike with motor, 25 km/h", MTB
+  "Trails and singletrails", E-MTB "MTB with motor", Hike "T1 … T5" (T row unchanged). One source `Activity.label` /
+  `line` (RoutingContract.kt); buttons, messages, "not suited for gravel bikes" (`ActivityCheck.who`, now the
+  plural of the name) follow it. Plan sheet chip says "Gravel" (`Activity.chip`): with "Gravel bike" a 112 km tour
+  showed "11…" (rule 2026-10-22: time and distance in full). Enum names, stored values, GPX `<type>`, profiles and
+  routing unchanged.
 - **Quiet towns + path gap fix + forbidden ways (desktop, 2026-10-26, branch `map-quiet-towns`, owner/captain picks
   after the Phase A renders):**
   - Pipeline, `extract_overlays.py`:

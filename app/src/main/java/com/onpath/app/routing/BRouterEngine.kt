@@ -509,7 +509,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         )
 
         /**
-         * Profile per activity. Touring bike and E-bike = touring.brf, OnPath's copy of trekking.brf for a normal bike
+         * Profile per activity. Bike (BIKE_TOURING) and E-bike = touring.brf, OnPath's copy of trekking.brf for a normal bike
          * (owner 2026-10-25: paved bike ways and quiet ways, traffic and rough
          * gravel avoided; replaces the road-bike fastbike profile). E-bike changes only power, speed and mass (keyValues).
          */

@@ -123,7 +123,7 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
     EndTourDialog(onSave, onDelete, onKeepGoing, title = "You have arrived – end tour?", cancelLabel = "Keep going")
 
 
-/** "Continue · Trekking bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
+/** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
 internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
     if (activity == null) "Continue" else "Continue · ${activity.navName}"
 

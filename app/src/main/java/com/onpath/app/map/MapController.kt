@@ -563,7 +563,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
-        // touring.brf family: Touring bike and E-bike (owner 2026-10-25; BRouterEngine.profileFile)
+        // touring.brf family: Bike (BIKE_TOURING) and E-bike (owner 2026-10-25; BRouterEngine.profileFile)
         val touring = BRouterEngine.profileFile(activity) == "touring.brf"
         val trekking = !walking && !mtb && !touring
         // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions

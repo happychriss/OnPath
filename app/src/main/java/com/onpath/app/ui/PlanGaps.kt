@@ -14,7 +14,7 @@ data class PlanGap(val index: Int, val point: GeoPoint, val routeEnd: GeoPoint, 
 /**
  * Unreachable plan points (owner 2026-10-22): no message box – the map draws the missing piece grey dashed and the point
  * grey and hollow; the plan sheet shows ONE red line while it holds, e.g. `Last 180 m to "Taser Alm" not possible by
- * trekking bike` (+ "Show"). One reason only: the ways near the point are not known to the app, so it says just "not
+ * gravel bike` (+ "Show"). One reason only: the ways near the point are not known to the app, so it says just "not
  * possible by <activity>". Pure, unit tested (PlanGapsTest).
  */
 object PlanGaps {
@@ -35,11 +35,11 @@ object PlanGaps {
     /** Indices with a gap of at least [FAR_M] (they keep their place – no snapping onto a far way). */
     fun farIndices(waypoints: List<GeoPoint>, snapped: List<GeoPoint?>): Set<Int> = of(waypoints, snapped).map { it.index }.toSet()
 
-    /** Plain activity name inside a sentence ("by trekking bike"). */
+    /** Plain activity name inside a sentence ("by gravel bike"). */
     fun activityWords(a: Activity): String = a.label
 
     /**
-     * The sheet line for the first gap, or null without gaps: `Last 180 m to "Taser Alm" not possible by trekking bike`;
+     * The sheet line for the first gap, or null without gaps: `Last 180 m to "Taser Alm" not possible by gravel bike`;
      * the start: `First 180 m from point 1 …`; more gaps: ` (+2 more)`. [nameOf] = a point's name (index), or null.
      */
     fun text(gaps: List<PlanGap>, activity: Activity, nameOf: (Int) -> String?): String? {

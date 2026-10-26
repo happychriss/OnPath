@@ -83,7 +83,7 @@ class Planner(
         require(waypoints.size >= 2)
         val first = planPinned(waypoints, activity, sac, pinned)
         // Field bug Hilden 2026-10-24: a point ON a way, reachable only there and back, was cut out by BRouter's
-        // via correction (up to 400 m for bikes) and then shown as "no way for Trekking bike". Owner: a point on a way
+        // via correction (up to 400 m for bikes) and then shown as "no way for Gravel bike". Owner: a point on a way
         // is always visited – route again with it as a chunk end (chunk ends are never corrected).
         val spurs = first.spurs - pinned
         if (spurs.isEmpty()) return first

@@ -164,7 +164,7 @@ fun TrackPanel(
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Export as a square icon button: at 16 sp "Start navigation · Trekking bike" needs the room
+            // Export as a square icon button: at 16 sp "Start navigation · Gravel bike" needs the room
             OutlinedButton(onClick = onExport, modifier = Modifier.size(56.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Icon(Icons.Filled.Share, "Export GPX")

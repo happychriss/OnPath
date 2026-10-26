@@ -1078,7 +1078,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
     /**
-     * "Route changed for trekking bike – please check": the activity / T level changed and the new route differs
+     * "Route changed for gravel bike – please check": the activity / T level changed and the new route differs
      * noticeably ([RouteWarnings.changedNoticeably]). Stays until the amber line is tapped or the plan changes – never
      * dismissed by time.
      */

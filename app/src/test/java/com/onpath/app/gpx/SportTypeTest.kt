@@ -72,7 +72,7 @@ class SportTypeTest {
         val mtb = SportType.importChoice("mtb", Activity.HIKE, 2, touring = false)
         assertTrue(mtb.switch)
         assertEquals("Activity set to MTB from the file", mtb.note)
-        assertEquals("Activity set to Touring bike from the file",
+        assertEquals("Activity set to Bike from the file",
             SportType.importChoice("touring_bicycle", Activity.MTB, 2, touring = false).note)
         // Hike names its T level
         val berg = SportType.importChoice("mountaineering", Activity.MTB, 2, touring = false)

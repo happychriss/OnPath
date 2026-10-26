@@ -10,7 +10,7 @@ import com.onpath.app.routing.Activity
  * keeps the last used activity. On export OnPath writes the Komoot string for the activity, so a round trip keeps it.
  *
  * Komoot has more sports than OnPath has activities; the closest one is taken (no seventh activity, owner): road bike →
- * Touring, Gravel (`mtb_easy`) → Trekking, Enduro (`mtb_advanced`) → MTB, running (`jogging`) → Hike, Bergtour
+ * Bike, Gravel (`mtb_easy`) → Gravel bike, Enduro (`mtb_advanced`) → MTB, running (`jogging`) → Hike, Bergtour
  * (`mountaineering`) → Hike T3.
  *
  * No surprises (captain 2026-10-26): a hiking type covers a band of T levels (`hike` / `jogging` T1–T2,

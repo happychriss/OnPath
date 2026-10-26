@@ -6,13 +6,20 @@ import com.onpath.app.debug.Problems
  * Shared contract between the app UI and the on-device routing engine.
  * Do not change without updating docs/architecture-contract.md.
  */
-enum class Activity(val label: String) {
-    BIKE_TOURING("Touring bike"),
-    BIKE_TREKKING("Trekking bike"),
-    EBIKE("E-bike"),
-    MTB("MTB"),
-    EMTB("E-MTB"),
-    HIKE("Hike"),
+/**
+ * The six activities. [label] is the one name the user sees (picker, chip, button, messages) and [line] the one short
+ * explaining line under it in the activity picker (owner 2026-10-26: names only, routing unchanged); [chip] = the name on
+ * the plan sheet's activity chip, shorter only where the full name would cut the route's distance ("Gravel": with
+ * "Gravel bike" a 112 km day tour showed "11…", owner rule 2026-10-22: time and distance in full). Stored values
+ * (prefs, DB, nav session, backups) use the enum name, never [label].
+ */
+enum class Activity(val label: String, val line: String, val chip: String = label) {
+    BIKE_TOURING("Bike", "Paved cycleways, quiet roads"),
+    BIKE_TREKKING("Gravel bike", "Gravel tracks welcome", chip = "Gravel"),
+    EBIKE("E-bike", "Bike with motor, 25 km/h"),
+    MTB("MTB", "Trails and singletrails"),
+    EMTB("E-MTB", "MTB with motor"),
+    HIKE("Hike", "T1 … T5"),
 }
 
 /**

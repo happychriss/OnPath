@@ -453,7 +453,7 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     }
 }
 
-/** "Start navigation · Hike" / "Continue navigation · Trekking bike". */
+/** "Start navigation · Hike" / "Continue navigation · Gravel bike". */
 internal fun primaryLabel(ui: PlanUi): String =
     (if (ui.tourRunning) "Continue navigation" else "Start navigation") + " · " + ui.activity.navName
 
@@ -496,7 +496,7 @@ private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit) {
         modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Activity: $name. Tap to change" }) {
         Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
-            // short names ("Trekking", "E-MTB") so time and distance keep their room (owner 2026-10-22)
+            // short names ("Gravel", "E-MTB"; Activity.chip) so time and distance keep their room (owner 2026-10-22)
             Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }

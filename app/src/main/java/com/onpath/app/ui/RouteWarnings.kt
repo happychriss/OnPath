@@ -168,7 +168,7 @@ object RouteWarnings {
         return items.take(MAX_ITEMS).joinToString(" · ") + if (more > 0) " +$more" else ""
     }
 
-    /** INFO line "New route for Trekking bike – check it" (hike with its level: "for Hike T4"); grey, not amber. */
+    /** INFO line "New route for Gravel bike – check it" (hike with its level: "for Hike T4"); grey, not amber. */
     fun changedText(a: Activity, sac: Int): String =
         "New route for ${com.onpath.app.data.LastActivity.name(a, sac)} – check it"
 

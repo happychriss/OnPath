@@ -36,7 +36,7 @@ Test region bbox: 10.85, 46.35, 11.60, 46.85 (Bozen / Meran / Algund).
 
 ## Routing
 - Contract in `RoutingContract.kt`. Implementation `BRouterEngine(context: Context, segmentsDir: File)`; profiles shipped in `assets/brouter/`.
-- Activity → profile: BIKE_TOURING → touring, EBIKE → touring (higher power), BIKE_TREKKING → trekking, MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit. touring.brf = OnPath's trekking.brf copy for a normal bike (owner 2026-10-25; replaced the road-bike fastbike-verylowtraffic; `TouringProfileTest` pins the differences, `docs/design/bike-routing.md`).
+- Activity → profile: BIKE_TOURING → touring, EBIKE → touring (higher power), BIKE_TREKKING → trekking, MTB → mtb, EMTB → mtb (higher power), HIKE → hiking-mountain with SAC limit. touring.brf = OnPath's trekking.brf copy for a normal bike (owner 2026-10-25; replaced the road-bike fastbike-verylowtraffic; `TouringProfileTest` pins the differences, `docs/design/bike-routing.md`). Names the user sees (`Activity.label` + `line`, owner 2026-10-26): BIKE_TOURING "Bike", BIKE_TREKKING "Gravel bike", EBIKE "E-bike", MTB "MTB", EMTB "E-MTB", HIKE "Hike"; stored values keep the enum names.
 
 ## Build 2 additions (night work)
 | Area | Owner | Paths |

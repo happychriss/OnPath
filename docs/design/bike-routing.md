@@ -5,11 +5,15 @@ must not miss good bike ways". This page holds the bike-profile decisions as shi
 and the tests that guard them. Each rule is marked `OnPath` in the profile files (`app/src/main/assets/brouter/`);
 change a rule here and there together.
 
+Activity names (owner 2026-10-26, names only – routing unchanged): **Bike** (`BIKE_TOURING`, touring.brf – paved cycleways,
+quiet roads), **Gravel bike** (`BIKE_TREKKING`, trekking.brf – gravel tracks welcome), **E-bike** (touring.brf), **MTB** /
+**E-MTB** (mtb.brf). Notes below from before that day say "Touring (bike)" for Bike and "Trekking (bike)" for Gravel bike.
+
 ## Decisions
 
 | # | Decision | Why | Profiles |
 | --- | --- | --- | --- |
-| 1 | "Touring bike" = a normal touring bike: `touring.brf` (trekking + unpavedPenalty 2.5 + "v_rough", decision 5) replaces the road-bike profile fastbike | fastbike is a road-bike profile: on 60 random routes around Hilden it rode 21 % bike ways and 43 % roads / busy roads (trekking: 50 % bike ways); busy roads on the Hilden random pairs 32 % → about 3 % | touring |
+| 1 | "Bike" (then "Touring bike") = a normal touring bike: `touring.brf` (trekking + unpavedPenalty 2.5 + "v_rough", decision 5) replaces the road-bike profile fastbike | fastbike is a road-bike profile: on 60 random routes around Hilden it rode 21 % bike ways and 43 % roads / busy roads (trekking: 50 % bike ways); busy roads on the Hilden random pairs 32 % → about 3 % | touring |
 | 2 | E-bike routes like Touring (only power, speed and mass differ) | owner choice 2026-10-25 | touring |
 | 3 | Traffic penalty on busy traffic classes 4+ only (+0.2 / +0.4 / +0.8); quiet roads free – in Touring and, since 2026-10-26, Trekking | BRouter's upstream table also charges quiet roads (class 1–2), which pushes routes off quiet side roads. Trekking (captain 2026-10-26): busy roads on the Hilden random pairs 7.3 → 2.4 %; on the owner's recorded rides (21 rides, 1,134 km, DE / FR / BE) main-road share 6.1 → 3.3 %, routes follow the rides a little more closely, ~2.7 % longer | touring, trekking |
 | 4 | A busy road is not "perfect" just because a cycle route runs on it | a secondary with traffic class 5–6 on a local cycle route beat the parallel signed cycleway | touring, trekking |

@@ -213,7 +213,7 @@ class ScreenshotTest {
      */
     @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(plan = stops.take(2))).copy(
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
@@ -410,9 +410,9 @@ class ScreenshotTest {
 
     private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
         ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
-            listOf("2.3 km not suited for touring bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
+            listOf("2.3 km not suited for bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
         ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
-            listOf("1.4 km not suited for trekking bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
+            listOf("1.4 km not suited for gravel bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
         ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
         ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
         ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
@@ -441,10 +441,13 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi().copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
-    /** Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full. */
+    /**
+     * Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full – with
+     * the longest bike name, Gravel bike (names of 2026-10-26; its chip says "Gravel" so the distance fits).
+     */
     @Test fun planChipLongBikeTour() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 112_480.0, durationS = 12.6 * 3600))
-            .copy(activity = Activity.BIKE_TOURING), PlanCallbacks()) }
+            .copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
     @Test fun arrival() = paparazzi.snapshot {
@@ -489,13 +492,13 @@ class ScreenshotTest {
     /** Owner 2026-10-22: a point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike"), PlanCallbacks()) }
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike"), PlanCallbacks()) }
     }
 
     /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
     @Test fun planWarningsWithGap() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
-            gapText = "Last 180 m to “Taser Alm”: no way for Trekking bike",
+            gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 

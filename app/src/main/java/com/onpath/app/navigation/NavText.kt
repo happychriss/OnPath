@@ -36,7 +36,7 @@ object NavText {
         NavPrompt.Kept -> "Following the original route"
     }
 
-    /** "New route for Trekking bike" / "New route for Hike T3". */
+    /** "New route for Gravel bike" / "New route for Hike T3". */
     fun switchTitle(sw: ActivitySwitch): String = "New route for " + activityName(sw.activity, sw.sac)
 
     /** "Hike T3" / "MTB" ([com.onpath.app.data.LastActivity.name]). */

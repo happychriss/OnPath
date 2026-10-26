@@ -122,6 +122,6 @@ val Activity.icon: ImageVector
         Activity.HIKE -> Icons.Filled.Hiking
     }
 
-/** Name on the primary button: "Start navigation · Trekking bike". */
+/** Name on the primary button: "Start navigation · Gravel bike". */
 val Activity.navName: String
     get() = label

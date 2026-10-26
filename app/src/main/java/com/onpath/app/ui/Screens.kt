@@ -180,7 +180,7 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 // ------------------------------------------------------------------ activity picker
 
 /**
- * Activity picker (plan sheet chip). A bike activity applies and closes; Hike applies and stays open with the
+ * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and closes; Hike applies and stays open with the
  * T1–T5 row (SAC level, owner 2026-10-22: moved here from Settings) and the selected level's description; a level
  * applies at once (the route is planned again) and closes. Both are remembered across sessions.
  */
@@ -210,7 +210,11 @@ fun ActivityDialog(
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(14.dp))
-                        Text(a.label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                        // name + one short explaining line (owner 2026-10-26: "Gravel bike" / "Gravel tracks welcome")
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            Text(a.label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 if (hike) {

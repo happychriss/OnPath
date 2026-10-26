@@ -38,8 +38,8 @@ data class ActivitySwitch(val activity: Activity, val sac: Int, val session: Nav
  * "does it fit" is read from what the router does for that activity:
  * - parts of the followed rest the new route does not use ([avoidedM]) = not suited for that activity (no access,
  *   too hard, steps, above the SAC limit – the router's profile avoids them);
- * - the new route's own way types / surfaces: steps for bikes, unpaved for touring.brf (Touring bike, E-bike), rough
- *   trail for trekking.brf (Trekking bike), busy roads for hiking.
+ * - the new route's own way types / surfaces: steps for bikes, unpaved for touring.brf (Bike, E-bike), rough
+ *   trail for trekking.brf (Gravel bike), busy roads for hiking.
  * The same result is the proposal when the user switches.
  */
 object ActivityCheck {
@@ -113,8 +113,8 @@ object ActivityCheck {
             val steps = way("steps")
             if (steps >= STEPS_MIN_M) problems += "steps ${Format.distance(round10(steps))}"
         }
-        // the surface check follows the routing profile (review 2026-10-25: E-bike was checked like Touring but routed
-        // like Trekking) – touring.brf avoids gravel, trekking.brf only rough trails
+        // the surface check follows the routing profile (review 2026-10-25: E-bike was checked like BIKE_TOURING but routed
+        // like BIKE_TREKKING) – touring.brf avoids gravel, trekking.brf only rough trails
         when {
             activity == Activity.HIKE -> {
                 val busy = way("busy_road")
@@ -153,14 +153,11 @@ object ActivityCheck {
         return off.coerceAtMost(r.lengthM)
     }
 
-    /** "trekking bikes" / "hiking (T3)". */
-    fun who(activity: Activity, sac: Int): String = when (activity) {
-        Activity.HIKE -> "hiking (T${sac.coerceIn(1, 5)})"
-        Activity.BIKE_TOURING -> "touring bikes"
-        Activity.BIKE_TREKKING -> "trekking bikes"
-        Activity.EBIKE -> "e-bikes"
-        Activity.MTB -> "mountain bikes"
-        Activity.EMTB -> "e-MTBs"
+    /** "gravel bikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
+    fun who(activity: Activity, sac: Int): String = when {
+        activity == Activity.HIKE -> "hiking (T${sac.coerceIn(1, 5)})"
+        activity.label.endsWith("bike", ignoreCase = true) -> activity.label.lowercase() + "s"
+        else -> activity.label + "s"
     }
 
     private fun round10(m: Double) = Math.round(m / 10) * 10.0

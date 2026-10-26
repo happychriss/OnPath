@@ -23,18 +23,12 @@ object LastActivity {
     fun sac(vararg stored: Int?): Int = (stored.firstOrNull { it != null } ?: DEFAULT_SAC).coerceIn(1, 5)
 
     /**
-     * The activity in a sentence: "Hike T3" / "Trekking bike" – one form for every message (Navigate's switch sheet,
+     * The activity in a sentence: "Hike T3" / "Gravel bike" – one form for every message (Navigate's switch sheet,
      * "New route for …", "Activity set to … from the file"; review 2026-10-26: they said "Hike (T3)" and "Hike T3").
      */
     fun name(a: Activity, sac: Int): String = if (a == Activity.HIKE) "${a.label} T${sac.coerceIn(1, 5)}" else a.label
 
-    /** The activity chip in the plan sheet: "Hike · T2"; bike activities by a short name (owner 2026-10-22). */
-    fun chipText(a: Activity, sac: Int): String = when (a) {
-        Activity.HIKE -> "${a.label} · T${sac.coerceIn(1, 5)}"
-        Activity.BIKE_TOURING -> "Touring"
-        Activity.BIKE_TREKKING -> "Trekking"
-        Activity.EBIKE -> "E-bike"
-        Activity.MTB -> "MTB"
-        Activity.EMTB -> "E-MTB"
-    }
+    /** The activity chip in the plan sheet: "Hike · T2", bike activities by their chip name (owner 2026-10-22). */
+    fun chipText(a: Activity, sac: Int): String =
+        if (a == Activity.HIKE) "${a.chip} · T${sac.coerceIn(1, 5)}" else a.chip
 }
