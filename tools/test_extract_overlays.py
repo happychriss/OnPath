@@ -1,4 +1,5 @@
-"""Towns and path links in the format-2 overlay (extract_overlays.py TownIndex / link_pieces, "quiet towns" 2026-10-26):
+"""Format-2 overlay data of extract_overlays.py: towns and path links (TownIndex / link_pieces, "quiet towns" 2026-10-26)
+and the bike map attributes of schema 7 (cycle networks, route labels, bicycle streets, footbridges):
 cd tools && python3 -m unittest -v test_extract_overlays
 
 Runs extract_overlays.py on a tiny made-up OSM file. Needs pyosmium + shapely (the pipeline's packages); skipped
@@ -26,7 +27,7 @@ def at(x, y):
 
 class Osm:
     def __init__(self):
-        self.nodes, self.ways, self.ids = [], [], {}
+        self.nodes, self.ways, self.rels, self.ids = [], [], [], {}
 
     def node(self, x, y):
         key = (x, y)
@@ -46,9 +47,35 @@ class Osm:
     def area(self, x0, y0, x1, y1, **tags):
         return self.way([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)], **tags)
 
+    def route(self, way_ids, **tags):
+        """A route relation over these ways (type=route added)."""
+        mem = "".join(f'<member type="way" ref="{w}" role=""/>' for w in way_ids)
+        tg = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in {"type": "route", **tags}.items())
+        self.rels.append(f'<relation id="{len(self.rels) + 1}" version="1">{mem}{tg}</relation>')
+
     def xml(self):
         return ('<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="test">\n'
-                + "\n".join(self.nodes + self.ways) + "\n</osm>\n")
+                + "\n".join(self.nodes + self.ways + self.rels) + "\n</osm>\n")
+
+
+def run_extract(osm, tmp, x0=-50, y0=-50, x1=550, y1=350):
+    """extract_overlays.py --tiles on the made-up file -> {layer: [features]} of the tile inputs."""
+    src = os.path.join(tmp, "t.osm")
+    with open(src, "w") as f:
+        f.write(osm.xml())
+    out = os.path.join(tmp, "tiles")
+    lo, la = at(x0, y0)
+    hi, ha = at(x1, y1)
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extract_overlays.py")
+    res = subprocess.run([sys.executable, script, src, tmp, str(lo), str(la), str(hi), str(ha),
+                          "--tiles", out, "--no-geojson", "--smooth"], capture_output=True, text=True)
+    if res.returncode:
+        raise AssertionError(res.stdout + res.stderr)
+    layers = {}
+    for name in ("paths", "streets", "routes"):
+        with open(os.path.join(out, name + ".ndjson")) as f:
+            layers[name] = [json.loads(line) for line in f]
+    return layers
 
 
 @unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
@@ -72,22 +99,8 @@ class TownsAndLinks(unittest.TestCase):
         o.way([(300, 250), (500, 250)], highway="unclassified", name="country road")
         o.area(10, 150, 40, 180, highway="pedestrian", area="yes")
         cls.tmp = tempfile.TemporaryDirectory()
-        src = os.path.join(cls.tmp.name, "t.osm")
-        with open(src, "w") as f:
-            f.write(o.xml())
-        out = os.path.join(cls.tmp.name, "tiles")
-        lo, la = at(-50, -50)
-        hi, ha = at(550, 350)
-        script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extract_overlays.py")
-        res = subprocess.run([sys.executable, script, src, cls.tmp.name, str(lo), str(la), str(hi), str(ha),
-                              "--tiles", out, "--no-geojson", "--smooth"], capture_output=True, text=True)
-        if res.returncode:
-            raise AssertionError(res.stdout + res.stderr)
-
-        def read(name):
-            with open(os.path.join(out, name + ".ndjson")) as f:
-                return [json.loads(line) for line in f]
-        cls.paths, cls.streets = read("paths"), read("streets")
+        layers = run_extract(o, cls.tmp.name)
+        cls.paths, cls.streets = layers["paths"], layers["streets"]
 
     @classmethod
     def tearDownClass(cls):
@@ -128,6 +141,91 @@ class TownsAndLinks(unittest.TestCase):
     def test_pedestrian_square_marked(self):
         sq = [f["properties"] for f in self.exact("x") if f["properties"].get("sub") == "pedestrian"]
         self.assertEqual(sq, [{"k": "x", "sub": "pedestrian", "ar": 1, "u": 1}])
+
+
+@unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
+class BikeMap(unittest.TestCase):
+    """Schema 7 (Hilden field review 2026-10-26): only signed cycle networks, labels for named local routes, bicycle
+    streets, footbridges. Every line runs west -> east at its own y (metres north), so a feature is found by its y."""
+
+    @classmethod
+    def setUpClass(cls):
+        o = Osm()
+
+        def street(y, x0=0, x1=200, **tags):
+            return o.way([(x0, y), (x1, y)], highway="residential", **tags)
+        # unknown networks: no route line (relation 12129864 network=bcn on "An den Gölden", 12129863, 12105768)
+        o.route([street(0, name="An den Gölden")], route="bicycle", network="bcn", cycle_network="Kreis Mettmann")
+        o.route([street(50)], route="bicycle", network="bicycle")
+        o.route([street(100)], route="bicycle")
+        # a named local route over two ways: one label line
+        o.route([o.way([(0, 150), (100, 150)], highway="cycleway"), o.way([(100, 150), (200, 150)], highway="cycleway")],
+                route="bicycle", network="lcn", name="Radweg Rund um Hilden")
+        # an unnamed regional route over a named local one: the highlight stays regional, the label is the local name
+        under, both = street(200), street(250)
+        o.route([under, both], route="bicycle", network="rcn", ref="R19")
+        o.route([under], route="bicycle", network="lcn", name="Local Loop")
+        # a named regional route over a named local one: its "majoronly" piece has the name, no label copy
+        o.route([both], route="bicycle", network="rcn", name="Big Route")
+        o.route([both], route="bicycle", network="lcn", name="Other Loop")
+        # a network's name is no route name
+        o.route([street(300)], route="bicycle", network="lcn", name="Radverkehrsnetz NRW, Stadt Solingen Restnetz")
+        # bicycle streets
+        street(50, 300, 500, bicycle_road="yes", name="Fahrradstraße")
+        street(100, 300, 500, cyclestreet="yes")
+        street(150, 300, 500)
+        # a footbridge; a hiking route on a path (no label copies for hiking)
+        o.way([(300, 200), (400, 200)], highway="footway", bridge="yes")
+        o.route([o.way([(300, 250), (500, 250)], highway="path")], route="hiking", network="lwn", name="Waalweg")
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.layers = run_extract(o, cls.tmp.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    @staticmethod
+    def y_of(feat):
+        """The y (metres) of a west-east line, or None when it is not level."""
+        ys = {round((p[1] - LAT0) / M_LAT) for p in feat["geometry"]["coordinates"]}
+        return ys.pop() if len(ys) == 1 else None
+
+    @staticmethod
+    def x_range(feat):
+        xs = [round((p[0] - LON0) / M_LON) for p in feat["geometry"]["coordinates"]]
+        return min(xs), max(xs)
+
+    def bike(self):
+        return [f for f in self.layers["routes"] if f["properties"]["kind"] == "bike"]
+
+    def test_only_signed_networks_draw_a_route(self):
+        band = {self.y_of(f) for f in self.bike() if "majoronly" not in f["properties"]}
+        self.assertEqual(band, {150, 200, 250, 300})
+
+    def test_label_copies(self):
+        lb = sorted((self.y_of(f), self.x_range(f), f["properties"]) for f in self.bike() if "lb" in f["properties"])
+        self.assertEqual(lb, [
+            (150, (0, 200), {"kind": "bike", "name": "Radweg Rund um Hilden", "lb": 1, "majoronly": 1}),
+            (200, (0, 200), {"kind": "bike", "name": "Local Loop", "lb": 1, "majoronly": 1})])
+
+    def test_highlight_keeps_the_highest_ranked_route(self):
+        major = sorted((self.y_of(f), f["properties"]) for f in self.bike()
+                       if "majoronly" in f["properties"] and "lb" not in f["properties"])
+        self.assertEqual(major, [(200, {"kind": "bike", "ref": "R19", "net": 2, "majoronly": 1}),
+                                 (250, {"kind": "bike", "name": "Big Route", "net": 2, "majoronly": 1})])
+
+    def test_no_label_copies_for_hiking(self):
+        hike = [f["properties"] for f in self.layers["routes"] if f["properties"]["kind"] == "hike"]
+        self.assertEqual(hike, [{"kind": "hike"}])
+
+    def test_bicycle_streets(self):
+        bs = {self.y_of(f): f["properties"].get("bs") for f in self.layers["streets"] if self.x_range(f) == (300, 500)}
+        self.assertEqual(bs, {50: 1, 100: 1, 150: None})
+
+    def test_footbridge(self):
+        br = {self.y_of(f): f["properties"].get("br") for f in self.layers["paths"]
+              if f["tippecanoe"]["minzoom"] == 13 and self.x_range(f)[0] == 300}
+        self.assertEqual(br, {200: 1, 250: None})
 
 
 if __name__ == "__main__":

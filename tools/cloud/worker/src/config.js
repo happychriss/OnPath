@@ -36,7 +36,7 @@ export function config(env) {
     buildRev: env.BUILD_REV || "",
     // content schema the current pipeline builds (tools/cells/cells.py CELL_SCHEMA); older published cells are
     // rebuilt when someone asks for them
-    cellSchema: num(env.CELL_SCHEMA, 6),
+    cellSchema: num(env.CELL_SCHEMA, 7),
     // older published cells of at least this schema are still served ("ready" + updating) while their rebuild runs:
     // the style works with them, they only look less good (4 = POI priority "pr"); below it the map lacks data
     cellSchemaServe: num(env.CELL_SCHEMA_SERVE, 3),

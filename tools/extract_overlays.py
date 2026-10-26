@@ -3,7 +3,9 @@
 
 Output (in OUT_DIR):
   routes.geojson  - official hiking / bicycle / mtb route relations, merged per kind into continuous lines (the
-      band is transparent); major routes (net >= 2) again as original pieces with "majoronly": 1, ref, name, net
+      band is transparent); major routes (net >= 2) again as original pieces with "majoronly": 1, ref, name, net;
+      named cycle routes not named by such a piece as label lines "lb": 1, "majoronly": 1, name, ref (no net).
+      Cycle routes only of the networks lcn / rcn / ncn / icn (BIKE_NETWORKS)
   trails.geojson  - paths with SAC scale (hiking difficulty), mtb:scale and/or poor trail_visibility.
       Props: sac 0-6 (always), mtb "0".."6" (first char of mtb:scale), vis 0-5 (trail_visibility, if tagged)
   ways.geojson    - OPTIONAL way quality (docs/map-pipeline.md "Way quality"): tracks with tracktype, and
@@ -97,6 +99,15 @@ SMOOTH = {"excellent": 0, "good": 1, "intermediate": 2, "bad": 3, "very_bad": 4,
           "very_horrible": 6, "impassable": 7}
 WAY_KIND = {"track": "t", "path": "p", "footway": "p", "bridleway": "p", "cycleway": "c"}
 ROUTE_KIND = {"hiking": "hike", "foot": "hike", "bicycle": "bike", "mtb": "mtb"}
+# Cycle routes drawn on the map (owner field review, Hilden 2026-10-26): only the four signed networks. Relations with
+# another network (network=bcn / bicycle, or none – unnamed collections such as "cycle_network=Kreis Mettmann") drew a
+# route line along ways that carry no signposted route. The router's route pseudo-tags (--wayclass) are not affected.
+BIKE_NETWORKS = {"lcn", "rcn", "ncn", "icn"}
+# Route names on the map (owner 2026-10-26): a way keeps the name of its best NAMED route of these kinds even where a
+# higher-ranked route gives it the highlight; merged_routes writes them as label copies (lb). Names of whole networks
+# ("Radverkehrsnetz NRW, Stadt Solingen Restnetz") are no route names.
+LABEL_KINDS = {"bike"}
+NETWORK_NAME = re.compile(r"(verkehrsnetz|restnetz)", re.I)
 
 
 
@@ -264,6 +275,8 @@ def street_attrs(tags, hw):
     for key in ("foot", "bicycle"):
         if tags.get(key):
             a[key] = tags.get(key)
+    if tags.get("bicycle_road") == "yes" or tags.get("cyclestreet") == "yes":
+        a["bs"] = 1  # bicycle street (Fahrradstraße, schema 7): the bike map draws it as a bike way
     return a
 
 
@@ -293,6 +306,8 @@ def tile_attrs(tags, hw):
         a["sub"] = hw  # footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class
     if tags.get("tunnel", "no") != "no":
         a["tn"] = 1
+    if tags.get("bridge", "no") != "no":
+        a["br"] = 1  # bridge (schema 7): a town footbridge stays above the streets it crosses
     if tags.get("area") == "yes":
         a["ar"] = 1  # outline of a pedestrian square: not drawn as a street-like lane or a green way
     if tags.get("access") in ("no", "private"):
@@ -363,6 +378,8 @@ class RelationPass(osmium.SimpleHandler):
         kind = ROUTE_KIND.get(r.tags.get("route", ""))
         if not kind or r.tags.get("state") == "proposed":
             return
+        if kind == "bike" and r.tags.get("network", "").strip().lower() not in BIKE_NETWORKS:
+            return  # unknown cycle network (BIKE_NETWORKS): no route line
         ref = r.tags.get("ref", "")
         name = r.tags.get("name", "")
         rank = net_rank(r.tags.get("network", ""))
@@ -735,7 +752,10 @@ class WayPass(osmium.SimpleHandler):
                 props = {"kind": kind, "ref": ref, "name": name, "net": rank}
                 if kind == "hike" and sac:
                     props["sac"] = sac  # the app greys the band above the user's T level (MapController.setSacLimit)
-                self.routes.append({"type": "Feature", "geometry": g, "properties": props, "cid": self._cid})
+                feat = {"type": "Feature", "geometry": g, "properties": props, "cid": self._cid}
+                if kind in LABEL_KINDS:
+                    feat["label"] = route_label_of(kind, routes, name if rank >= 2 else "")
+                self.routes.append(feat)
         # Trails and way quality are drawn right over the base map's own path / track lines, so they keep a
         # near-exact geometry (~0.5 m); a 3 m simplification shows as a second line beside the path at z17+.
         if fine is None and (sac or mtb or faint or quality):
@@ -839,10 +859,25 @@ def rounded(geom, digits=5):
     return geom
 
 
+def route_label_of(kind, routes, shown):
+    """(name, ref) of the best-ranked NAMED route of `kind` on a way (LABEL_KINDS), or None when it has none or its name
+    is already `shown` by the way's "majoronly" copy."""
+    named = [(rank, name, ref) for k, ref, name, rank in routes
+             if k == kind and name and not NETWORK_NAME.search(name)]
+    if not named:
+        return None
+    _, name, ref = max(named, key=lambda t: t[0])
+    return None if name == shown else (name, ref)
+
+
 def merged_routes(routes):
     """Route bands are drawn transparent: where two pieces meet the band would get darker. So every route kind
     becomes as few continuous lines as possible. The original pieces of major routes (net >= 2) follow as
-    "majoronly" copies for the pink highlight and the route name (make_style.py route_bands)."""
+    "majoronly" copies for the pink highlight and the route name (make_style.py route_bands). Last the label copies
+    (LABEL_KINDS, schema 7): every way whose best named route is not already named by its "majoronly" copy (a local
+    route such as "Radweg Rund um Hilden", or a named route under an unnamed higher-ranked one), merged per name into
+    lines with "lb": 1, name, ref and no "net" – plus "majoronly": 1, so a style that predates lb keeps them out of the
+    band and (no net) out of the major layers."""
     out, by_kind = [], {}
     for f in routes:
         # hiking pieces per SAC grade (where graded): the app greys the band above the user's T level
@@ -860,6 +895,15 @@ def merged_routes(routes):
     for f in routes:
         if f["properties"].get("net", 0) >= 2:
             out.append({"type": "Feature", "geometry": f["geometry"], "properties": {**f["properties"], "majoronly": 1}})
+    labels = {}
+    for f in routes:
+        if f.get("label"):
+            labels.setdefault((f["properties"]["kind"], *f["label"]), []).append(shape_of(f["geometry"]))
+    for (kind, name, ref), lines in labels.items():
+        m = linemerge(MultiLineString(lines)) if len(lines) > 1 else lines[0]
+        for g in (m.geoms if hasattr(m, "geoms") else [m]):
+            out.append({"type": "Feature", "geometry": rounded(mapping(g)),
+                        "properties": {"kind": kind, "name": name, "ref": ref, "lb": 1, "majoronly": 1}})
     return out
 
 
