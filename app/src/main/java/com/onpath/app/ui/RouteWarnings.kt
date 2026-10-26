@@ -10,9 +10,10 @@ import kotlin.math.roundToInt
 
 /**
  * What a spot on the route is (order = order in the amber line and its "+N" cut: what to check before going – ferry
- * times, a closed way – first, then the existing way warnings, the rarer point hints, steep last).
+ * times, a closed way, a way closed to bikes (MTB) – first, then the existing way warnings, the rarer point hints,
+ * steep last).
  */
-enum class SpotKind { FERRY, CONSTRUCTION, PUSH, STEPS, ABOVE_T, FORD, BARRIER, STEEP }
+enum class SpotKind { FERRY, CONSTRUCTION, NO_BIKES, DISMOUNT, PUSH, STEPS, ABOVE_T, FORD, BARRIER, STEEP }
 
 /**
  * One spot worth knowing on the planned route: points [from]..[to] of the route line, [fromM]..[toM] along it.
@@ -35,12 +36,14 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  *   after rain. The bike profiles do not avoid fords, mtb.brf and hiking-mountain.brf only make them costly.
  * - BARRIER (bikes): a stile, kissing gate or turnstile on the way ([WayAttrs.barrier]) – the bike has to be lifted over
  *   or may not fit. Bollards, gates, lift gates and cycle barriers are passable and on 12–67 % of routes: not listed.
- * - PUSH (bikes): any way signed bicycle=dismount; footway / path with bicycle=no. Bike / Gravel bike / E-bike also a
- *   footway / pedestrian without bike access (not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian
- *   zone stays pushing) and paths of SAC ≥ T2 or mtb:scale ≥ S2. MTB / e-MTB: only the signed cases (owner 2026-10-26,
- *   "remove the rules for MTB – we don't want to look stupid": footways and hard trails are what they ride; the line
- *   was on 87 % of MTB routes). A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing.
- *   Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
+ * - PUSH (Bike / Gravel bike / E-bike): any way signed bicycle=dismount; footway / path with bicycle=no; footway /
+ *   pedestrian without bike access (not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian zone stays
+ *   pushing); paths of SAC ≥ T2 or mtb:scale ≥ S2. A footway / path with bicycle=yes / designated / permissive (/ mtb)
+ *   is never pushing. Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
+ * - NO_BIKES / DISMOUNT (MTB / e-MTB instead of PUSH): only the signed cases, worded as legal information – footway /
+ *   path with bicycle=no ("no bikes allowed"), any way with bicycle=dismount ("dismount (sign)"); same [PUSH_MIN_M].
+ *   Owner 2026-10-26, "remove the rules for MTB – we don't want to look stupid": footways and hard trails are what
+ *   they ride (the line was on 87 % of MTB routes, 75 % "pushing"); a sign on the way stays worth knowing.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
  * - ABOVE_T (hike): SAC level above the chosen T level, sections ≥ [ABOVE_T_MIN_M].
  * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, bikes 15 % – up or
@@ -58,7 +61,7 @@ object RouteWarnings {
 
     fun isBike(a: Activity) = a != Activity.HIKE
 
-    /** MTB / e-MTB: no "pushing" for unsigned footways / hard trails and no "steep" (owner 2026-10-26). */
+    /** MTB / e-MTB: no "pushing" (signed ways: [SpotKind.NO_BIKES] / [SpotKind.DISMOUNT]) and no "steep" (owner 2026-10-26). */
     fun isMtb(a: Activity) = a == Activity.MTB || a == Activity.EMTB
 
     /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
@@ -66,7 +69,7 @@ object RouteWarnings {
 
     /**
      * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0, owner
-     * 2026-10-25). mtb.brf costs it as pushing, but MTB / e-MTB get no unsigned pushing at all ([isMtb]).
+     * 2026-10-25). mtb.brf costs it as pushing, but MTB / e-MTB get no pushing hint at all ([isMtb]).
      */
     private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
     private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
@@ -107,7 +110,12 @@ object RouteWarnings {
                     else -> 0
                 }
             }
-            val found = spans(hits, cum, kind, worst, when (kind) { SpotKind.PUSH -> PUSH_MIN_M; SpotKind.ABOVE_T -> ABOVE_T_MIN_M; else -> 0.0 })
+            val minM = when (kind) {
+                SpotKind.PUSH, SpotKind.NO_BIKES, SpotKind.DISMOUNT -> PUSH_MIN_M
+                SpotKind.ABOVE_T -> ABOVE_T_MIN_M
+                else -> 0.0
+            }
+            val found = spans(hits, cum, kind, worst, minM)
             // a ford node / a barrier sits at the end of the span leading to it (BRouterWayStats.withNode): a point there
             out += if (kind in POINT_KINDS) found.map { it.copy(from = it.to, fromM = it.toM) } else found
         }
@@ -127,12 +135,13 @@ object RouteWarnings {
             SpotKind.FORD -> w.ford
             SpotKind.BARRIER -> isBike(a) && w.barrier in BARRIERS
             SpotKind.STEPS -> isBike(a) && w.wayType == "steps"
-            SpotKind.PUSH -> isBike(a) && w.wayType != "steps" && when {
+            SpotKind.NO_BIKES -> isMtb(a) && w.bicycle == "no" && (w.wayType == "footway" || w.wayType == "path")
+            SpotKind.DISMOUNT -> isMtb(a) && w.bicycle == "dismount" && w.wayType != "steps"
+            SpotKind.PUSH -> isBike(a) && !isMtb(a) && w.wayType != "steps" && when {
                 w.bicycle == "dismount" -> true // signed: get off and push, on any way
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
-                isMtb(a) -> false // MTB / e-MTB: only signed pushing (owner 2026-10-26)
                 // a footway on a signed cycle route is ridden (owner 2026-10-25) – only where the profile costs
                 // it so: touring.brf / trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling
                 // there unless signed, German law)
@@ -196,6 +205,8 @@ object RouteWarnings {
         if (s.isEmpty()) null else when (k) {
             SpotKind.FERRY -> if (s.size == 1) "Ferry ${rounded(s[0].lengthM)} – check times" else "${s.size} ferries – check times"
             SpotKind.CONSTRUCTION -> if (s.size == 1) "construction site" else "${s.size} construction sites"
+            SpotKind.NO_BIKES -> "${rounded(s.sumOf { it.lengthM })} no bikes allowed"
+            SpotKind.DISMOUNT -> "${rounded(s.sumOf { it.lengthM })} dismount (sign)"
             SpotKind.FORD -> if (s.size == 1) "ford" else "${s.size} fords"
             SpotKind.BARRIER -> if (s.size == 1) barrierName(s[0].worst) else "${s.size} barriers"
             SpotKind.PUSH -> "${rounded(s.sumOf { it.lengthM })} pushing"
@@ -221,6 +232,8 @@ object RouteWarnings {
     fun rowTitle(s: RouteSpot, sac: Int): String = when (s.kind) {
         SpotKind.FERRY -> "Ferry – check times"
         SpotKind.CONSTRUCTION -> "Construction – may be closed"
+        SpotKind.NO_BIKES -> "No bikes allowed – sign on the way"
+        SpotKind.DISMOUNT -> "Dismount – sign on the way"
         SpotKind.FORD -> "Ford – water to cross"
         SpotKind.BARRIER -> when (BARRIERS.getOrNull(s.worst)) {
             "kissing_gate" -> "Kissing gate – tight with a bike"

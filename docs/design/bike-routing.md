@@ -18,7 +18,7 @@ quiet roads), **Gravel bike** (`BIKE_TREKKING`, trekking.brf – gravel tracks w
 | 3 | Traffic penalty on busy traffic classes 4+ only (+0.2 / +0.4 / +0.8); quiet roads free – in Touring and, since 2026-10-26, Trekking | BRouter's upstream table also charges quiet roads (class 1–2), which pushes routes off quiet side roads. Trekking (captain 2026-10-26): busy roads on the Hilden random pairs 7.3 → 2.4 %; on the owner's recorded rides (21 rides, 1,134 km, DE / FR / BE) main-road share 6.1 → 3.3 %, routes follow the rides a little more closely, ~2.7 % longer | touring, trekking |
 | 4 | A busy road is not "perfect" just because a cycle route runs on it | a secondary with traffic class 5–6 on a local cycle route beat the parallel signed cycleway | touring, trekking |
 | 5 | Rough way on a cycle route is not "perfect" (track grade 3–5, smoothness bad or worse, ground / dirt / sand / grass / mud / earth / rock) – "v_rough" | the other-region check found Touring on 11–13 km of rough gravel in the Alps where a signed cycle route ran over it; loose share there 10.4 → 5.6 % (owner confirmed 2026-10-26) | touring |
-| 6 | A footway on a signed cycle route is ridden; another paved / firm footway without a bicycle tag only +1 (decision 11); sidewalks, crossings, pedestrian zones stay "pushing" | footways are normal parts of signed cycle routes (owner 2026-10-25, Hilden Itter path); the plan shows "… m pushing" for the rest (MTB / E-MTB: only signed bicycle=no / dismount, owner 2026-10-26) | touring, trekking (mtb.brf still costs it as pushing) |
+| 6 | A footway on a signed cycle route is ridden; another paved / firm footway without a bicycle tag only +1 (decision 11); sidewalks, crossings, pedestrian zones stay "pushing" | footways are normal parts of signed cycle routes (owner 2026-10-25, Hilden Itter path); the plan shows "… m pushing" for the rest (MTB / E-MTB: no pushing; signed bicycle=no / dismount read "no bikes allowed" / "dismount (sign)", owner 2026-10-26) | touring, trekking (mtb.brf still costs it as pushing) |
 | 7 | Ferry costs 1 km instead of 10 km; a ferry without bike access is forbidden | a 70 m canal ferry gave a 7 km detour; `FerryTest`: 56 of 208 routes used ferries that do not take bikes | touring, trekking, mtb |
 | 8 | Off-route add 0.15 (was 0.05) – cycle routes slightly preferred | 0.20 sent a Meran route over 2.7 km more SAC T2 path (`SafetyTest`) | touring, trekking |
 | 9 | Never against a one-way (×100) | owner rule 2026-10-20 (`OnewayTest`) | all bike |
@@ -137,9 +137,10 @@ fixed on main 802e7f9, `BRouterWayStatsTest`).
   not in BRouter's data. The amber line already shows on 54 % of Bike, 87 % of MTB and 33 % of Hike routes (pushing,
   steep) – the new hints add little to that.
   MTB / E-MTB (owner 2026-10-26, "remove the rules for MTB – we don't want to look stupid"): no "steep" and no
-  "pushing" except where signed (bicycle=no / dismount). Same 90 MTB routes: amber line 87 → 55 %, pushing 75 → 44 %
-  (all of it bicycle=no ways mtb.brf routes over, mostly Meran), steep 28 → 0 %; ferry / ford / stile / steps unchanged.
-  Without the signed cases the line would be on 24 % (ferry, ford, barriers only).
+  "pushing"; a signed way stays as legal information – bicycle=no on a footway / path → "… no bikes allowed",
+  bicycle=dismount → "… dismount (sign)" (owner: keep them, worded as legal info). Same 90 MTB routes: amber line
+  87 → 55 %, pushing 75 → 0 %, "no bikes allowed" 43 % + "dismount" 1 % (signed ways mtb.brf routes over, mostly Meran), steep
+  28 → 0 %; ferry / ford / stile / steps unchanged. Without the signed ways the line would be on 24 %.
 
 ## Map drawing: paths interrupted at streets (separate problem)
 Sidewalks and crossings (`footway=sidewalk|crossing`) are not drawn (k="x" in format 2), so ~18 % of path ends in a

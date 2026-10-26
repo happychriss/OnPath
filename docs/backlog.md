@@ -234,11 +234,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 ## Done (recent)
 - **[desktop] No pushing / steep hints for MTB and E-MTB (owner 2026-10-26: "remove the rules for MTB – we don't want to
   look stupid"):** the amber line was on 87 % of MTB routes, 75 % "… m pushing". `RouteWarnings`: MTB / E-MTB get no
-  "steep" and "pushing" only where signed (bicycle=no / dismount – a forbidden way stays a hint); unsigned footways and
-  T4+ / S4+ trails are no longer pushing. Ferry, ford, construction, stile / kissing gate / turnstile and steps stay.
-  `HintInventory.kt` (same 90 MTB routes): amber line 87 → 55 %, pushing 75 → 44 % (bicycle=no ways), steep 28 → 0 %;
-  dropping the signed cases too would give 24 % (one line, `wayHit` PUSH). Other activities unchanged. Tests
-  `RouteWarningsTest.mtbHasNoPushingOrSteepHint` / `mtbKeepsTheHintsToCheck`.
+  "steep" and no "pushing" (unsigned footways, T4+ / S4+ trails). Signed ways stay as legal information (owner, same
+  day: keep them, not as pushing): `SpotKind.NO_BIKES` bicycle=no on a footway / path → "1.2 km no bikes allowed" (row
+  "No bikes allowed – sign on the way"), `SpotKind.DISMOUNT` bicycle=dismount → "300 m dismount (sign)". Ferry, ford,
+  construction, stile / kissing gate / turnstile and steps stay. Other bikes keep "pushing". `HintInventory.kt` (same
+  90 MTB routes): amber line 87 → 55 %, pushing 75 → 0 %, no bikes allowed 43 %, dismount 1 %, steep 28 → 0 %. Tests
+  `RouteWarningsTest.mtbHasNoPushingOrSteepHint` / `mtbSignedWaysAreLegalInfoNotPushing` / `mtbKeepsTheHintsToCheck`.
 - **[desktop] Difficulty raised by long T2 and by unpaved Bike routes (owner 2026-10-26):** `RouteSummary.technique`
   – Hike: ≥ 2 km at T2 or harder (summed) → at least Moderate, badge "Moderate · T2". Bike and E-bike only: ≥ 25 %
   of the route unpaved (gravel, unpaved, ground, trail, alpine; whole %, ≥ 100 m) or ≥ 5 km on loose ground (not
