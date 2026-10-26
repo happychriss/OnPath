@@ -30,11 +30,11 @@ class OfflineResultTest {
         }
         for (fn in listOf("clearAllMaps", "confirmCleanup")) {
             val b = body(fn)
-            assertTrue("$fn: no map message on success", "message =" !in b)
+            assertTrue("$fn: no map message on success", "message =" !in b && "showError(" !in b)
             assertTrue("$fn: result line", "offlineResult = OfflineResult.removed(" in b)
             assertTrue("$fn: failures stay visible (removeAreas)", "removeAreas(" in b)
         }
-        assertTrue("a failure keeps a persistent message", "message = " in body("removeAreas"))
+        assertTrue("a failure keeps a persistent message", "showError(" in body("removeAreas"))
         assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(src))
     }
 }
