@@ -5,10 +5,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] finish + merge bike routing (v_rough, nits, cell schema 5) – since 2026-10-26
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Bike routing follow-ups (desktop, 2026-10-26, after the merge):** (1) Köln Dom → Neumarkt (~1 km) finds no bike
+  route – on main before the merge too, look separately; (2) a ferry tagged bicycle=no is not forbidden in the bike
+  profiles (unchanged, upstream behaviour); (3) `docs/requirements.md` E-bike row still says "same as trekking" (E-bike
+  now uses touring.brf) – shared doc, owner / cloud updates it; (4) owner question kept: long timetabled ferries only
+  with a via point (today) or automatic?
 - **Map: paths look interrupted at junctions (owner 2026-10-25, Hilden screenshots vs Komoot)** – the drawn
   footways / sidewalks stop short at streets, Komoot draws them connected. Routing is not affected (the router has its
   own data, fully connected). Leads: Hilden has many `footway=crossing` / `sidewalk` pieces (in one 1.3 × 1.3 km box: 162
@@ -134,14 +138,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   activity – done (see Done). Still open: (3) opening an *imported* tour later from My routes does not switch the
   activity (only recorded tours do); older imports carry the activity that happened to be chosen, so switching
   needs a "came from the file" flag – wanted?
-- **Bike profiles tuned – branch `feat/bike-routing`, green, not merged (desktop, 2026-10-26):**
-  Touring bike + E-bike → new touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes), trekking.brf
-  tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), "pushing" not on a footway
-  of a signed cycle route, Touring time ~21.7 km/h, WayClass threshold 1.20. Measured on test routes
-  (Hilden busy roads Touring
-  32 → 2.7 %, Trekking 11.8 → 7.3 %; Meran guard rails unchanged) – `docs/design/bike-routing.md` on the
-  branch. Owner: merge? Long timetabled ferries only with a via (current) or automatic? Map router classes follow
-  with the next map build; requirements.md E-bike row ("same as trekking") to update in the shared doc.
 - **Map server access before the public launch** (owner discussion 2026-10-23, laptop): today one shared app key
   (readable from the APK) + IP rate limit + build caps. Proposal in `docs/design/map-access.md`: anonymous per-phone
   quota of *new* areas per month (hashed Android ID, no registration), no region lock, supporter code raises the limit,
@@ -208,6 +204,16 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Bike routing tuned, merged (desktop, 2026-10-26; branch `feat/bike-routing`, verified,
+  then deleted):** Touring bike + E-bike → touring.brf (trekking copy: unpavedPenalty 2.5, traffic on busy classes),
+  trekking.brf tuned (ferry 1 km, footway rule, busy road on a cycle route not "perfect", off-route 0.15), Touring time
+  ~21.7 km/h, WayClass threshold 1.20. **v_rough** (captain): on a cycle route a rough track (grade 3–5, smoothness bad+,
+  ground / dirt / sand / grass / mud / earth / rock) is not "perfect" in touring.brf –
+  Alps loose 10.4 → 5.6 %, Hilden busy roads 2.7 → 3.2 %, Meran guard rails unchanged. Review nits:
+  "pushing" on a footway of a cycle route is left out only for touring.brf / trekking.brf activities (MTB keeps it,
+  mtb.brf costs it as pushing), a pedestrian zone without bicycle=yes / designated stays pushing (`WayAttrs.pedestrian`);
+  the old fastbike-verylowtraffic.brf is deleted from the phone on profile install. **Cell schema 5** (look-only, app
+  stays 3): map router classes are rebuilt once with the new profiles. `docs/design/bike-routing.md`.
 - **GPX import keeps the T level + says when the activity changes (desktop, 2026-10-26, captain "no surprises"):**
   `SportType.forImport` keeps the remembered T level inside the type's band (hike / jogging T1–T2, mountaineering
   T3–T5; else T2 / T3); `SportType.importChoice` decides the switch (not during a tour) and the grey INFO line
