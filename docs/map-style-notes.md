@@ -74,6 +74,22 @@ light cover that hides the base map's own edges (format 1; format 2 draws tracks
 `track.dash.compact / medium / loose / soft`, `tools/make_style.py track_edges`; the old `track.edge` / `track.cover` /
 `track.fill` theme tokens were removed 2026-10-26).
 
+## Test style on the phone (2026-10-26, owner: "the test cycle is too slow")
+A style tweak used to need a release and an install. Now it takes about a minute:
+- `tools/dev/push_style.sh` builds the classic theme of the checkout (`make_style.py --format 2 --out`) and pushes it
+  with adb to `<data dir>/dev/style.json`. Then it force-stops and starts OnPath.
+- `tools/dev/push_style.sh variant.json` takes a theme file outside `tools/themes`, for example
+  `{"extends": "classic", "street.town.edge.color.z17": "#7d766d"}`. A ready style (a JSON with `layers`, e.g. from a
+  render test) is pushed as it is.
+- `tools/dev/push_style.sh --remove` deletes the test style.
+- The app reads `dev/style.json` only while the developer tools are shown: debug builds, or after 7 taps on the version
+  (`StyleLoader.devStyleFile`). Normal users never get it.
+- Settings → Diagnostics → Developer tools → "Map style" shows "Test style active (dev/style.json, time)" with
+  **Remove**, and a **Reload map style** button.
+- A file that is not JSON or is written for format 1 is skipped with a warning in the problem list. A style that
+  MapLibre rejects is a warning too: the normal style loads, and the file stays skipped until a new one is pushed.
+- Map cells are not part of this. Another session owns the speed-up for cells (building one cell locally and pushing it).
+
 ## Checking the style without a phone (headless render)
 
 Used for every map decision on 2026-10-19 (renders in `docs/design/`):

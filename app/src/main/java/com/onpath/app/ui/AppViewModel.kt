@@ -1517,6 +1517,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     @androidx.annotation.VisibleForTesting
     fun reloadMapStyleForTest() { styleVersion++ }
 
+    /** Settings → Diagnostics → Developer tools → "Reload map style" (after tools/dev/push_style.sh). */
+    fun reloadMapStyle() {
+        Problems.info("map", "Map style reloaded by hand (developer tools)")
+        styleVersion++
+    }
+
+    /** Developer tools → test style "Remove": deletes dev/style.json, the normal style loads again. */
+    fun removeTestStyle() {
+        com.onpath.app.map.StyleLoader.removeDevStyle(dataFiles.dir)
+        styleVersion++
+    }
+
     /** Imports the onpath-data zip or a single data/style file picked by the user. */
     fun importData(uri: Uri) {
         if (dataBusy != null) return

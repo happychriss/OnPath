@@ -6,6 +6,8 @@
   python3 tools/make_style.py --theme NAME     tools/themes/NAME.json -> .../style/onpath-NAME.json (+ f2/)
   python3 tools/make_style.py --all            every theme in tools/themes/
   python3 tools/make_style.py --format 1|2     only one map package format (default: both)
+  python3 tools/make_style.py --theme T --format 2 --out FILE   one style to FILE (tools/dev/push_style.sh); T may
+                                               also be a path to a theme .json (e.g. {"extends": "classic", ...})
 
 Two map package formats (docs/design/map-data-size.md, docs/map-pipeline.md):
   format 1  overlays as GeoJSON files (routes, trails, ways, lowways, paths, trailnames .geojson)
@@ -1236,7 +1238,7 @@ def pois():
         layer(**kw)
 
 
-def build(theme=DEFAULT_THEME, fmt=1):
+def build(theme=DEFAULT_THEME, fmt=1, out=None):
     global FMT
     FMT = fmt
     style_theme.use(theme)
@@ -1289,8 +1291,8 @@ def build(theme=DEFAULT_THEME, fmt=1):
         "sources": sources,
         "layers": list(L),
     }
-    out = out_path(theme, FMT)
-    os.makedirs(os.path.dirname(out), exist_ok=True)
+    out = out or out_path(theme, FMT)
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w") as f:
         json.dump(style, f, ensure_ascii=False, indent=1)
     print("wrote", os.path.abspath(out), len(L), "layers")
@@ -1321,12 +1323,16 @@ def main():
     ap.add_argument("--theme", default=DEFAULT_THEME, help="theme name in tools/themes/ (default classic)")
     ap.add_argument("--all", action="store_true", help="build every theme in tools/themes/")
     ap.add_argument("--format", choices=["1", "2", "all"], default="all", help="map package format (default: both)")
+    ap.add_argument("--out", help="write the one style to this file instead of the app assets (needs one theme and "
+                                  "--format 1 or 2; tools/dev/push_style.sh)")
     a = ap.parse_args()
     themes = sorted(f[:-5] for f in os.listdir(style_theme.THEMES_DIR) if f.endswith(".json")) if a.all else [a.theme]
     fmts = [1, 2] if a.format == "all" else [int(a.format)]
+    if a.out and (a.all or len(fmts) != 1):
+        ap.error("--out writes one style: give one --theme and --format 1 or 2")
     for t in themes:
         for fmt in fmts:
-            build(t, fmt)
+            build(t, fmt, out=a.out)
 
 
 if __name__ == "__main__":

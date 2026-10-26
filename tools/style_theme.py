@@ -24,7 +24,8 @@ _active_name = None
 def load(name, _seen=()):
     if name in _seen:
         raise ValueError(f"theme 'extends' loop: {' -> '.join(_seen + (name,))}")
-    path = os.path.join(THEMES_DIR, f"{name}.json")
+    # a name, or a path to a theme file outside tools/themes (a test variant: tools/dev/push_style.sh)
+    path = name if name.endswith(".json") else os.path.join(THEMES_DIR, f"{name}.json")
     with open(path) as f:
         data = json.load(f)
     parent = data.pop("extends", None)

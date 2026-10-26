@@ -53,6 +53,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   `GpxCompare.kt` + `gpx_compare_report.py`: our route vs a reference GPX line – aggregate numbers only in the repo).
 - Map ↔ router classes (format 2 overlays): `tools/routing/wayclass/build.sh` (classifier jar, needs a JDK) and
   `tools/routing/wayclass/consistency.py <package> <segmentsDir>` (routes never cross a way the map shows forbidden).
+- Map style on the phone in a minute: `tools/dev/push_style.sh [theme.json | style.json | --remove]` (make_style.py →
+  `dev/style.json` in the data folder + app restart; used only with developer tools on – Diagnostics shows it, Remove /
+  Reload map style; `docs/map-style-notes.md` "Test style on the phone").
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium
   (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
 

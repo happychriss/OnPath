@@ -201,6 +201,12 @@ class MainActivity : ComponentActivity() {
                             diagnostics = true,
                             devTools = vm.devToolsShown,
                             onUnlockDevTools = vm::unlockDevTools,
+                            testStyle = com.onpath.app.ui.TestStyleUi(
+                                // a file check per composition: cheap, and fresh after a push or reload
+                                status = com.onpath.app.map.StyleLoader.devStyleStatus(vm.dataFiles.dir, vm.devToolsShown),
+                                onRemove = vm::removeTestStyle,
+                                onReload = vm::reloadMapStyle,
+                            ),
                             diagnosticsSeenMs = vm.diagnosticsSeenMs,
                             diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
                             onExportDiagnostics = ::exportDiagnostics,

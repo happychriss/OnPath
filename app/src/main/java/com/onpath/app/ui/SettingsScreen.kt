@@ -148,6 +148,8 @@ fun SettingsScreen(
     diagnosticsSeenMs: Long = 0L,
     /** Developer tools: the map server line (MapServer.describe; fixed in screenshots). */
     mapServer: String = com.onpath.app.data.MapServer.describe(),
+    /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
+    testStyle: TestStyleUi? = null,
     now: Long = System.currentTimeMillis(),
 ) {
     val topics = SettingsPage.entries.filter {
@@ -219,7 +221,7 @@ fun SettingsScreen(
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas)
+                                    onTimeFormulas, testStyle)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -422,6 +424,7 @@ private fun DeveloperTools(
     initiallyOpen: Boolean, mapServer: String, mapCells: MapCellsDebug?, dataBusy: String?, onDownloadRouting: () -> Unit, onImportData: () -> Unit,
     checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String,
     onTimeFormulas: (() -> Unit)? = null,
+    testStyle: TestStyleUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -443,6 +446,7 @@ private fun DeveloperTools(
                 OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                testStyle?.let { TestStyleRow(it) }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
@@ -469,6 +473,24 @@ private fun DeveloperTools(
             }
         }
     }
+}
+
+/**
+ * Developer tools: the map test style (StyleLoader.DEV_STYLE, pushed by tools/dev/push_style.sh). [status] null = no
+ * test style file (only the reload action shows).
+ */
+data class TestStyleUi(val status: String?, val onRemove: () -> Unit, val onReload: () -> Unit)
+
+@Composable
+private fun TestStyleRow(t: TestStyleUi) {
+    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    Text("Map style", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    if (t.status != null) Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(t.status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = t.onRemove, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove") }
+    } else Text("No test style (tools/dev/push_style.sh puts one in ${com.onpath.app.map.StyleLoader.DEV_STYLE}).",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    OutlinedButton(onClick = t.onReload, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reload map style") }
 }
 
 /** Data of the "Map areas (debug)" block: installed areas, areas in progress, two actions (end-to-end test only). */
