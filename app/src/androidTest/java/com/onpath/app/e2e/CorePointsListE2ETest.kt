@@ -124,6 +124,12 @@ class CorePointsListE2ETest : E2EBase() {
     /**
      * Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): the sheet follows a slow drag of its
      * handle and settles at the nearest step – small → profile (first swipe) → points (second swipe) → profile.
+     *
+     * Swipe lengths: on the CI emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel
+     * (StepSheet's "Sheet let go at …" lines, 3 runs 2026-10-26; steps 536 / 938 / 1602 px high). So every swipe that
+     * must stop at a middle step lands well inside it for any ratio from about 0.45 to 1.2, and swipes to an end step
+     * go far (the sheet only rubber-bands there). The old last swipe (20 % of the screen) needed a ratio ≥ 0.72 – it
+     * failed once at "half sheet after a swipe down".
      */
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
@@ -150,20 +156,18 @@ class CorePointsListE2ETest : E2EBase() {
         assertNotNull("profile shown", findFresh(By.desc("Elevation profile"), 5_000))
         assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
         Thread.sleep(600)
-        // second swipe up: the points
-        dragHandle(-(h * 0.25f).toInt())
+        // second swipe up: the points – the top step, so a long swipe only rubber-bands (25 % needed a ratio ≥ 0.57)
+        dragHandle(-(h * 0.35f).toInt())
         waitForSize("full sheet after the second swipe up", PlanSize.FULL)
         if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
             shot("no-points-full")
             throw AssertionError("points shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")
         }
         Thread.sleep(600)
-        // swipe down 90 % of the way to where the profile step rests: clearly nearer the profile than the points.
-        // It was a fixed 20 % of the screen and failed once on CI (2026-10-26): the points → profile gap is 664 px on the
-        // CI phone, so 480 px less the 21 px touch slop ended only 127 px past the midpoint – the narrowest of the four
-        // swipes (the others ≥ 247 px).
+        // swipe down to a little past where the profile step rests (110 % of the measured gap): with the sheet moving
+        // 0.47–1.2 of the finger it stops nearer the profile than the points (above the midpoint) and than the small step
         val fullY = handle().y
-        dragHandle(((profileY - fullY) * 0.9f).toInt())
+        dragHandle(((profileY - fullY) * 1.1f).toInt())
         waitForSize("half sheet after a swipe down", PlanSize.COMPACT)
         // the list leaves with the sheet's animation: wait until it is gone (a single look found a stale node, CI 2026-10-22)
         if (!goneFresh(By.descStartsWith("Delete point"), 8_000)) {
