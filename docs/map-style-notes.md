@@ -82,6 +82,9 @@ A style tweak used to need a release and an install. Now it takes about a minute
   `{"extends": "classic", "street.town.edge.color.z17": "#7d766d"}`. A ready style (a JSON with `layers`, e.g. from a
   render test) is pushed as it is.
 - `tools/dev/push_style.sh --remove` deletes the test style.
+- The restart would stop a running tour: the script refuses (exit 3) while OnPath's `RecordingService` runs, and also
+  when adb gives no answer (unknown = refuse). `--check` only asks; `--force` (first argument) skips the check – only
+  when you know nobody records (2026-10-26: a push interrupted a tour on the owner's phone).
 - The app reads `dev/style.json` only while the developer tools are shown: debug builds, or after 7 taps on the version
   (`StyleLoader.devStyleFile`). Normal users never get it.
 - Settings → Diagnostics → Developer tools → "Map style" shows "Test style active (dev/style.json, time)" with
