@@ -27,10 +27,10 @@ def terrarium_png(height):
     return buf.getvalue()
 
 
-def write_cache(root, maxzoom):
-    """A cone-shaped mountain over every tile of z0..maxzoom (so every tile has shade)."""
+def write_cache(root, maxzoom, flat=False):
+    """A cone-shaped mountain over every tile of z0..maxzoom (so every tile has shade); flat: 1 m everywhere."""
     yy, xx = np.mgrid[0:256, 0:256]
-    cone = np.maximum(0, 2500 - 25 * np.hypot(xx - 128, yy - 128))
+    cone = np.full((256, 256), 1.0) if flat else np.maximum(0, 2500 - 25 * np.hypot(xx - 128, yy - 128))
     for z in range(maxzoom + 1):
         for x in range(2 ** z):
             for y in range(2 ** z):
@@ -86,6 +86,19 @@ class TileSize(unittest.TestCase):
         self.assertEqual(sorted(t for t in tiles), [(0, 0, 0), (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)])
         for t, data in tiles.items():
             self.assertEqual(Image.open(io.BytesIO(data)).size, (256, 256), t)
+
+    def test_keep_flat_writes_every_tile_as_background(self):
+        # region packages: the opaque relief must cover the whole package, also flat land and sea
+        flat = os.path.join(self.tmp.name, "flat")
+        write_cache(flat, 1, flat=True)
+        out = os.path.join(self.tmp.name, "flat.pmtiles")
+        # without --keep-flat these tiles have no shade and are left out (here: nothing to write at all)
+        self.bh.main([out, "--maxzoom", "1", "--cache", flat, "--workers", "1", "--keep-flat"])
+        tiles = self.tiles(out)
+        self.assertEqual(len(tiles), 5)
+        px = Image.open(io.BytesIO(tiles[(1, 0, 0)])).convert("RGB").getpixel((128, 128))
+        for got, want in zip(px, (0xf6, 0xf4, 0xec)):  # the style background (WebP lossy: a few levels off)
+            self.assertLessEqual(abs(got - want), 4, px)
 
 
 if __name__ == "__main__":
