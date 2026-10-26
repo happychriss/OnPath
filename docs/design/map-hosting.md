@@ -269,6 +269,8 @@ same OSM date would have had the same (immutable, cached) name. Now:
   app stays at 3 (s3 cells work, same-kind POIs just tie). Doorman `CELL_SCHEMA_SERVE` = 3: a published cell of schema
   ≥ 3 stays `ready` (+ `updating`) while its s4 rebuild runs, queued at refresh priority; below 3 as before (not
   served, asked priority). Phones get s4 through the normal refresh / after-routing check.
+- **Schema 5 (2026-10-26, router classes from the tuned bike profiles: `cf` from touring.brf, `ct` from the tuned
+  trekking.brf) is look-only too:** same pattern – builder and doorman 5, `CELL_SCHEMA_SERVE` and the app stay at 3.
 
 ## 7d. Released APKs, loading overlay, fresh-install reset (2026-10-21, cloud)
 
