@@ -61,8 +61,8 @@ Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`)
 | Way | Look | Shown |
 | --- | --- | --- |
 | track grade1–2 (compact) | solid brown edges | always |
-| track grade3 | fine dotted edges (`track.edge.dash`) | always |
-| track grade4–5 (soft / grass) | sparse dotted edges (`track.soft.dash`) | always |
+| track grade3 | fine dotted edges (`track.dash.loose`) | always |
+| track grade4–5 (soft / grass) | sparse dotted edges (`track.dash.soft`) | always |
 | track without tracktype | as before: solid if OpenMapTiles says paved, else fine dots | always |
 | trail with `trail_visibility` bad / horrible / no | same rhythm, sparser and lighter dots (`trail.faint.*`); T1/untagged faint paths get the T2 dot rhythm | always |
 | SAC label "T1"…"T6" | small black text along the way (`trails-sac-label`) | every activity but MTB (bikes since 2026-10-21) |
@@ -70,7 +70,9 @@ Data: `trails.geojson` (`vis`), optional `ways.geojson` (`tt`, `surf`, `smooth`)
 | loose surface (gravel, stony, dirt, ground, grass, sand, …) or smoothness bad or worse | thin warm-brown edge on both sides (`surface.loose.*`, `line-gap-width`) | **bike activities only** |
 Compacted and fine gravel do not count as loose (fine on any bike). The app switches the activity-dependent layers
 in `MapController.setOverlay`. Tracktype edges come from `ways.geojson`, drawn over the base map's track with a
-light cover (`track.cover.width`) that hides the base map's own edges.
+light cover that hides the base map's own edges (format 1; format 2 draws tracks from the overlay `paths` with `tt` →
+`track.dash.compact / medium / loose / soft`, `tools/make_style.py track_edges`; the old `track.edge` / `track.cover` /
+`track.fill` theme tokens were removed 2026-10-26).
 
 ## Checking the style without a phone (headless render)
 
