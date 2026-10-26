@@ -323,23 +323,103 @@ Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overl
 - **Zoomed out:** `trails-low` leaves out paths with any `u`. Format 2 has no `path-low` / `track-low` any more (the base
   map's copy drew town footways twice).
 - **Streets:**
-  - Overlay `streets` layers (z13+) read `u`: white lane, light edges, a little wider (`town_street_paint()`).
+  - Overlay `streets` layers (z13+) read `u`: white lane, a little wider, edges light at z13 and mid-grey close in
+    (`street.town.edge.color` / `.width`, `town_street_paint()`). Built-up land gets lighter from z14 to z16
+    (`residential.color.z14/z16`).
   - The base-map `-low` layers (z11–12) get their own `street.low.*` paint.
   - Private driveways / parking aisles: opacity 0 below z17 (`street_opacity()`).
-- **Pedestrian:** `pedestrian-town` is a lane in `lanes()`, before the street lanes. `pedestrian-line` and the green ways
-  skip squares (`ar`).
+- **Pedestrian:** `pedestrian-town` is a lane in `lanes()`, before the street lanes; `pedestrian-town-casing` (same
+  filter `PEDESTRIAN_TOWN`) is its edge, after the road casings. `pedestrian-line` and the green ways skip squares (`ar`).
+- **Street endings** (2026-10-26, owner on 0.11.2): `town_below_streets()` runs last in `build()`. Each layer in
+  `TOWN_BELOW_STREETS` (`paths-own`, `paths-link`, `cycleway`, `cycleway-unpaved`, `path-steps`, `greenway-bike`,
+  `greenway-touring`, `greenway-mtb`) gets a copy `<id>-town` (filter + `u = 1` and no `br`), moved just below the
+  first road casing (above the bike route band). The original keeps the rest. `MapController.setOverlay` switches
+  `<id>-town` with `<id>`. Town passages (`tn`) are left out of `paths-own` and drawn by `paths-tunnel-town`, dashed
+  from z16. `br` (path bridge) is not in the cells yet – until then a footbridge in town is drawn below the street it
+  crosses. Guard: `StyleFormatTest.format2TownWaysEndAtTheStreet`.
 - **Green ways:**
   - `greenway-foot` skips `u = 1`.
-  - The bike green ways fade in at z14 in towns.
-  - New for bike activities, hidden by default and switched by `MapController.setOverlay`: `greenway-bike-glow`,
-    `greenway-touring-glow`, `greenway-mtb-glow`, `bike-lane-glow`. `bike_glow()` builds them after `green_ways()`
-    (it needs the same filters) and moves them below the first road casing.
-- **Cycle routes:** `bike_route_lines()` – `routes-bike` thin teal, `routes-bike-major-low` violet for net ≥ 3 (no
-  maxzoom), `routes-bike-major-label`. `routes-bike-major` (pink dashes) is gone; `setOverlay` skips a missing layer.
-  Hiking keeps its band.
+  - The bike green ways fade in at z14 in towns and use `greenway.bike.width`, a little wider than the hiking line.
+  - The soft bike glow of 0.11.2 (`*-glow` layers) is gone (owner, later the same day): for bikes, as for hiking, the
+    green line marks a good way and the band marks a signed route.
+- **Cycle routes:** `bike_route_lines()`.
+  - `routes-bike` is a mint band (`route.bike.*`) moved just below `FIRST_LANE`, so it sits above every casing / track
+    edge and below every lane. A street on a route gets a mint border, also a wide main road (below the casing it hardly
+    showed there). On a cycleway the path line runs inside it. Light zoomed out. The town path copies sit above it.
+  - Long distance (net ≥ 3, only on the `majoronly` pieces) looks exactly like a hiking major route: `routes-bike-over`
+    is the green band (bikes have no T-level pieces, so the `-over` slot is free), then `routes-bike-major-low` (thin
+    pink line below z13.5) and `routes-bike-major` (pink dashes).
+  - `routes-bike-major-label`: every named piece. Schema 7 cells add label lines (`lb`) for named local routes; the
+    pipeline leaves out names a major piece already carries. It is the last layer of the style, so it is placed first:
+    lower down, the street and POI labels took every place along a street.
+  - Bicycle streets (schema 7 streets `bs`): `bike-street-bikeview`, the green bike line along the street.
+  - Footbridges (schema 7 paths `br`): `town_below_streets()` leaves them in the upper layer, above the streets.
+  - Guard: `StyleFormatTest.bikeRoutesAsBands`.
+- **Bike view / hike view** (owner 2026-10-26, "the brown ways look very dominant"):
+  - Layer ids ending in `-bikeview` show only for bike activities, ids ending in `-hikeview` only for hiking.
+    `MapController.setOverlay` switches them by suffix. The style ships the hiking look, so an older app shows that.
+  - Tracks for bikes: `track-bike-edges-bikeview` (thin `track.bike.edge.*`) and `track-bike-lane-bikeview` (lane colour
+    by tracktype, `track.bike.lane.*`), from z13.
+  - Hiking keeps `track-own-single/compact/medium/loose/soft/lane-hikeview`.
+  - Loose surface (`surface-loose-*`, bike only): `surface.loose.mode` `edge` is a thin dotted edge from
+    `surface.loose.minzoom` 15; `line` draws the path brown and the bike track's edges brown.
+  - Closed paths / tracks for bikes: `forbidden.bike.*`, quieter than the hiking dash.
+  - Guard: `StyleFormatTest.bikeAndHikeViews`.
 - **Forbidden:**
   - `access-no-tint-*` removed. `setOverlay` detects the per-profile style by `access-no-dash-touring`.
   - Path / track dash from z13, town paths from z15.
   - Service dash: thin, muted, from z14.
   - Signs: from z15 (paths, spacing 250–400) / z17 (service, 600–800).
   - `StyleFormatTest.forbiddenNeverLouderThanAStreet` checks the widths at z14–18.
+
+## Overview when zoomed out (2026-10-26, owner; every activity)
+- Theme `lowzoom.*`: from = 13.5, to = 14.5. Up to `from` the map is an overview; from `from` to `to` everything fades
+  and widens into the close-up look; from `to` on it is the close-up map.
+- One helper set in `make_style.py`, used for hiking and bikes:
+  - `low_fade(close_opacity, low)`: opacity `low` up to `from`, the layer's own opacity from `to`.
+  - `low_to_close(low_key, close)`: widths that grow from the thin overview value into the close-up curve.
+  - `route_band_paint()`: the hiking band and a long-distance cycle route's band.
+- Routes in the overview: a thin solid line (`route.low.width`, opacity `route.low.opacity`), no band.
+  - Hiking band: a single layer that changes with zoom.
+  - Bikes: the mint band sits below the lanes, where a street lane would hide a thin line. So `routes-bike-low` (dark
+    green `route.bike.low.color`, above the lanes) fades out while `routes-bike` fades in.
+  - `MapController` switches the `-low` suffix together with the route layers.
+- Paths / tracks / trails / closed-way dashes (`low_zoom_view()`, lists `LOW_SHARED` / `LOW_HIKE` / `LOW_BIKE`) use
+  `lowzoom.path.opacity.hike` (0.35, faint – the trail network stays readable in the mountains) and
+  `lowzoom.path.opacity.bike` (0, hidden).
+  - When the two differ, each shared layer gets a `<id>-bikeview` twin. `MapController.setOverlay` shows the twin
+    instead of its base layer for bike activities.
+  - The green good-way lines use `lowzoom.goodway.opacity`.
+- Guard: `StyleFormatTest.overviewZoomedOut`.
+- Main roads on a route (bike5b): `road-<tertiary|secondary|primary|motorway>-edge` is a thin line in the casing colour
+  (`road.edge.width`). `road_edges_on_top()` moves it just below `FIRST_LANE`, above the bike route band, so an orange
+  road keeps its edge inside the mint band.
+- Slim band close in and bike lanes at the road edge (bike5c): `route.bike.width` 20 / 18 / 22 px at z15 / 16 / 18 (was
+  28 / 44 at z16 / 18). The cycle-lane offset in `bike_map()` puts the stripe just inside the road's edge. Before, it
+  sat on the sidewalk.
+
+## One-way arrows, forbidden ways, street space, underpasses (2026-10-26, owner; bike5d / bike5e)
+- **Arrows** (`bike_map()`, bike activities; sprites `tools/make_sprite.py` – new sprites need a new APK):
+  - dark `oneway-arrow`: one-way for everyone, bikes too;
+  - green `bike-both-ways` (two-headed): one-way for cars, bikes both ways;
+  - green `bike-oneway-arrow`: one-way only for bikes, or a one-way cycleway.
+  - Streets read the router class: `cr` = the bike profiles' one-way (absent = bikes both ways). Without classes the
+    tags are used (`oneway`, `ow` / `owb`).
+  - Layers: `bike-oneway`, `bike-oneway-streets`, `bike-oneway-paths` (dark); `…-green-bikeview` (green single);
+    `bike-both-ways`, `bike-both-ways-streets-bikeview` (green ⟷, not on access-no streets).
+  - All arrows have a white outline and `icon-allow-overlap` (P icons hid them).
+- **Forbidden ways:** dash opacity × `forbidden.fade.bike` (0.65, softer red `forbidden.bike.color`) /
+  `forbidden.fade.hike` (0.8). Signs: `forbidden.sign.size` 0.7, `forbidden.sign.opacity.bike|hike` (0.7 / 0.85),
+  spacing 600–900 px (service 900–1200), paths from `forbidden.sign.minzoom` 16, service roads from z17.
+- **Street space** (`street_space()`, between `buildings()` and `roads()`, format 2, from z16, every activity):
+  - overlay `areas` (schema 7, `a` = foot / square / island / platform / bridge): fill `street.area.color`, outline
+    `street.area.outline.*`;
+  - hidden sidewalk / crossing / traffic-island ways (paths `k = "x"`, `fw` = s / c / t): thin lines
+    `street.space.line.*`.
+  - The street space between the blocks is the plain background (`land.color`), already lighter and warmer than
+    built-up land close in, so it needs no colour of its own (a colour there would tint open country too).
+- **Underpasses** (`paths-underpass`, `paths-underpass-edge`, from z15, every activity): paths with `tn = "t"` (pipeline:
+  tunnel = yes / layer < 0 under a railway or road) are a clear path line with thin dashed tunnel edges, above the
+  railway. `paths-tunnel-town` keeps the faint dashed look for covered passages (`tn = "p"`) and for the old flag
+  `tn = 1`.
+- Guard: `StyleFormatTest.arrowsForbiddenStreetSpaceUnderpass`.
