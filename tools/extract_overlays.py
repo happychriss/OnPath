@@ -342,6 +342,28 @@ def tile_extra(tags, hw):
     return hw in ROADS and (any(cycle_sides(tags)) or "oneway:bicycle" in tags)
 
 
+def tunnel_kind(tags):
+    """Attribute tn of a "paths" tile feature (schema 7; 1 before): "t" a real underpass – any tunnel value but
+    building_passage (yes, culvert …), or an OSM layer below 0 on a way that is no bridge (by the tag alone, not checked
+    against a crossing road or railway); "p" a building passage – tunnel=building_passage, or covered=yes / indoor=yes
+    without either of those. A tunnel tag wins over indoor / covered: the footways of the Hilden station underpass are
+    tunnel=yes + indoor=yes + layer=-1. Else None."""
+    tunnel = tags.get("tunnel", "no")
+    if tunnel == "building_passage":
+        return "p"
+    if tunnel != "no":
+        return "t"
+    try:
+        layer = float(tags.get("layer", "0").split(";")[0].strip())
+    except ValueError:  # expected: odd layer values in OSM ("ground", "") – treated as 0
+        layer = 0
+    if layer < 0 and tags.get("bridge", "no") == "no":
+        return "t"
+    if tags.get("covered") == "yes" or tags.get("indoor") == "yes":
+        return "p"
+    return None
+
+
 def tile_attrs(tags, hw):
     """Format-2 attributes added to a "paths" tile feature (short keys, only when they say something)."""
     a = {}
@@ -350,8 +372,9 @@ def tile_attrs(tags, hw):
     fw = tags.get("footway")
     if fw in HIDDEN_FOOTWAY:
         a["fw"] = fw[:1]  # s sidewalk / c crossing / t traffic island (schema 7): thin outlines of the street space
-    if tags.get("tunnel", "no") != "no":
-        a["tn"] = 1
+    tn = tunnel_kind(tags)
+    if tn:
+        a["tn"] = tn
     if tags.get("bridge", "no") != "no":
         a["br"] = 1  # bridge (schema 7): a town footbridge stays above the streets it crosses
     if tags.get("area") == "yes":

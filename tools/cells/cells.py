@@ -35,7 +35,7 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 # "u" on paths / streets, link pieces k="l" for path ends at hidden sidewalks / crossings, "ar" on pedestrian squares –
 # extract_overlays.py TownIndex / link_pieces, "quiet towns" 2026-10-26, plus the router classes of the bike footway
 # cost fix of the same day; 7 = bike map: cycle routes only of the networks lcn / rcn / ncn / icn, label lines "lb" for
-# named local cycle routes, "bs" on bicycle streets, "br" / "fw" in "paths", street areas (layer "areas"), short town
+# named local cycle routes, "bs" on bicycle streets, "br" / "fw" / tn "p" | "t" in "paths", street areas (layer "areas"), short town
 # sidewalk stubs hidden – Hilden field review 2026-10-26). The
 # version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the doorman rebuilds
 # cells of an older schema when asked (wrangler.toml CELL_SCHEMA; older cells from CELL_SCHEMA_SERVE on are served while

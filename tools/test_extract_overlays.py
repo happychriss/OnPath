@@ -176,6 +176,13 @@ class BikeMap(unittest.TestCase):
         street(150, 300, 500)
         # a footbridge; a hiking route on a path (no label copies for hiking)
         o.way([(300, 200), (400, 200)], highway="footway", bridge="yes")
+        # building passages vs underpasses (tn): short footways at x 520-540, one per y
+        for y, tags in ((0, {"tunnel": "building_passage"}), (20, {"covered": "yes"}), (40, {"indoor": "yes"}),
+                        (60, {"tunnel": "yes"}), (80, {"tunnel": "culvert"}), (100, {"layer": "-1"}),
+                        (120, {"layer": "-1", "bridge": "yes"}), (140, {}), (160, {"layer": "1"}),
+                        (180, {"tunnel": "yes", "indoor": "yes", "layer": "-1"}),   # Hilden station underpass
+                        (200, {"covered": "yes", "layer": "-1"})):
+            o.way([(520, y), (540, y)], highway="footway", **tags)
         o.route([o.way([(300, 250), (500, 250)], highway="path")], route="hiking", network="lwn", name="Waalweg")
         cls.tmp = tempfile.TemporaryDirectory()
         cls.layers = run_extract(o, cls.tmp.name)
@@ -226,6 +233,12 @@ class BikeMap(unittest.TestCase):
         br = {self.y_of(f): f["properties"].get("br") for f in self.layers["paths"]
               if f["tippecanoe"]["minzoom"] == 13 and self.x_range(f)[0] == 300}
         self.assertEqual(br, {200: 1, 250: None})
+
+    def test_passage_or_underpass(self):
+        tn = {self.y_of(f): f["properties"].get("tn") for f in self.layers["paths"]
+              if f["tippecanoe"]["minzoom"] == 13 and self.x_range(f) == (520, 540)}
+        self.assertEqual(tn, {0: "p", 20: "p", 40: "p", 60: "t", 80: "t", 100: "t", 120: None, 140: None, 160: None,
+                              180: "t", 200: "t"})
 
 
 @unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
