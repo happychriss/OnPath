@@ -104,6 +104,7 @@ class MainActivity : ComponentActivity() {
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
+        com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
         if (savedInstanceState == null) handleIntent(intent)
@@ -212,6 +213,8 @@ class MainActivity : ComponentActivity() {
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
+                            language = com.onpath.app.ui.LanguageUi(com.onpath.app.data.AppLanguage.choice(this@MainActivity),
+                                com.onpath.app.data.AppLanguage.describe(this@MainActivity), ::setLanguage),
                             mapCells = run {
                                 val installed by vm.cells.installed.collectAsState()
                                 val states by vm.cells.states.collectAsState()
@@ -356,7 +359,20 @@ class MainActivity : ComponentActivity() {
         i.action, i.data?.scheme, i.type, i.categories, i.flags, i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0,
         try { referrer?.host } catch (e: Exception) { null }) // expected: referrer is best effort (event log only)
 
+    /** Android may reset the default locale to the phone's on a configuration change: keep the chosen language. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.onpath.app.data.AppLanguage.apply(this)
+    }
+
+    /** Developer tools → language: store it, then build the screen again in that language. */
+    private fun setLanguage(c: com.onpath.app.data.LanguageChoice) {
+        com.onpath.app.data.AppLanguage.set(this, c)
+        recreate()
+    }
+
     override fun onStart() {
+        com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
         vm.tracker.start()
         vm.recheckData()

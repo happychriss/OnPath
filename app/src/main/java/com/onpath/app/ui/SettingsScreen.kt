@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TriStateCheckbox
@@ -150,6 +151,8 @@ fun SettingsScreen(
     mapServer: String = com.onpath.app.data.MapServer.describe(),
     /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
     testStyle: TestStyleUi? = null,
+    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch (owner 2026-10-26). */
+    language: LanguageUi = LanguageUi(),
     now: Long = System.currentTimeMillis(),
 ) {
     val topics = SettingsPage.entries.filter {
@@ -218,10 +221,10 @@ fun SettingsScreen(
                             Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
-                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas, testStyle)
+                                    onTimeFormulas, testStyle, language)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -401,7 +404,8 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
 /** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
-                               problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit) {
+                               problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
+                               language: String = "English (phone language)") {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -409,8 +413,32 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
             }
             Text("Leave the map at the problem spot first.", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("App language: $language", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ProblemList(problems, onClearProblems)
+        }
+    }
+}
+
+/** Developer tools → app language (owner 2026-10-26): the phone's, or fixed to English / Deutsch; kept across restarts. */
+data class LanguageUi(
+    val choice: com.onpath.app.data.LanguageChoice = com.onpath.app.data.LanguageChoice.SYSTEM,
+    val active: String = "English (phone language)",
+    val onChoose: (com.onpath.app.data.LanguageChoice) -> Unit = {},
+)
+
+@Composable
+private fun LanguageRow(l: LanguageUi) {
+    Text("App language", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val all = com.onpath.app.data.LanguageChoice.entries
+    androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        all.forEachIndexed { i, c ->
+            SegmentedButton(
+                selected = c == l.choice, onClick = { if (c != l.choice) l.onChoose(c) },
+                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, all.size),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(c.label, style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
@@ -425,6 +453,7 @@ private fun DeveloperTools(
     checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String,
     onTimeFormulas: (() -> Unit)? = null,
     testStyle: TestStyleUi? = null,
+    language: LanguageUi = LanguageUi(),
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -447,6 +476,7 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 testStyle?.let { TestStyleRow(it) }
+                LanguageRow(language)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",

@@ -1,6 +1,8 @@
 package com.onpath.app.routing
 
 import com.onpath.app.debug.Problems
+import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Shared contract between the app UI and the on-device routing engine.
@@ -13,13 +15,18 @@ import com.onpath.app.debug.Problems
  * "Gravel bike" a 112 km day tour showed "11…", owner rule 2026-10-22: time and distance in full). Stored values
  * (prefs, DB, nav session, backups) use the enum name, never [label].
  */
-enum class Activity(val label: String, val line: String, val chip: String = label) {
-    BIKE_TOURING("Bike", "Paved cycleways, quiet roads"),
-    BIKE_TREKKING("Gravel bike", "Gravel tracks welcome", chip = "Gravel"),
-    EBIKE("E-bike", "Bike with motor, 25 km/h"),
-    MTB("MTB", "Trails and singletrails"),
-    EMTB("E-MTB", "MTB with motor"),
-    HIKE("Hike", "T1 … T5"),
+enum class Activity(private val labelRes: StringResource, private val lineRes: StringResource, private val chipRes: StringResource) {
+    BIKE_TOURING(Res.string.activity_bike_touring, Res.string.activity_bike_touring_line, Res.string.activity_bike_touring_chip),
+    BIKE_TREKKING(Res.string.activity_bike_trekking, Res.string.activity_bike_trekking_line, Res.string.activity_bike_trekking_chip),
+    EBIKE(Res.string.activity_ebike, Res.string.activity_ebike_line, Res.string.activity_ebike_chip),
+    MTB(Res.string.activity_mtb, Res.string.activity_mtb_line, Res.string.activity_mtb_chip),
+    EMTB(Res.string.activity_emtb, Res.string.activity_emtb_line, Res.string.activity_emtb_chip),
+    HIKE(Res.string.activity_hike, Res.string.activity_hike_line, Res.string.activity_hike_chip);
+
+    /** Texts in the app's language (strings_activity.xml; German: Fahrrad, Gravel-Rad, …). */
+    val label: String get() = Txt.s(labelRes)
+    val line: String get() = Txt.s(lineRes)
+    val chip: String get() = Txt.s(chipRes)
 }
 
 /**
