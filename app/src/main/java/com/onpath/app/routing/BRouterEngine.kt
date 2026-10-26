@@ -272,6 +272,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                     }
                 }
             }
+            // a profile the app no longer ships (fastbike-verylowtraffic.brf before 2026-10-26) is removed
+            for (name in removeObsoleteProfiles(profileDir)) Problems.warn("routing", "Old routing profile could not be deleted: $name")
         } catch (e: RoutingException) {
             throw e
         } catch (e: Exception) {
@@ -437,6 +439,16 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             Activity.MTB, Activity.EMTB -> "mtb.brf"
             Activity.HIKE -> "hiking-mountain.brf"
         }
+
+        /**
+         * Deletes the profiles in [dir] that the app no longer ships (*.brf not in [PROFILE_ASSETS], e.g. the road-bike
+         * fastbike-verylowtraffic.brf replaced by touring.brf on 2026-10-26). Returns the names that could not be deleted.
+         */
+        internal fun removeObsoleteProfiles(dir: File): List<String> =
+            (dir.listFiles() ?: emptyArray())
+                .filter { it.isFile && it.name.endsWith(".brf") && it.name !in PROFILE_ASSETS }
+                .filter { !it.delete() }
+                .map { it.name }
 
         init {
             // keep parsed profiles of several activities in memory

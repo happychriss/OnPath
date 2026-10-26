@@ -41,6 +41,21 @@ class TouringProfileTest {
         assertFalse(File(dir, "fastbike-verylowtraffic.brf").exists())
     }
 
+    /** The phone's profile folder keeps only shipped profiles: the old road-bike profile goes on the next install. */
+    @Test fun obsoleteProfilesAreRemovedOnInstall() {
+        val d = kotlin.io.path.createTempDirectory("profiles").toFile()
+        try {
+            for (n in BRouterEngine.PROFILE_ASSETS + "fastbike-verylowtraffic.brf" + "notes.txt") File(d, n).writeText("x")
+            assertEquals(emptyList<String>(), BRouterEngine.removeObsoleteProfiles(d))
+            assertFalse(File(d, "fastbike-verylowtraffic.brf").exists())
+            for (n in BRouterEngine.PROFILE_ASSETS) assertTrue(n, File(d, n).isFile)
+            assertTrue("not a profile: left alone", File(d, "notes.txt").isFile)
+            assertEquals(emptyList<String>(), BRouterEngine.removeObsoleteProfiles(File(d, "missing")))
+        } finally {
+            d.deleteRecursively()
+        }
+    }
+
     companion object {
         /** trekking.brf line → touring.brf line, in file order. */
         val EXPECTED = listOf(
