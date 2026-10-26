@@ -14,15 +14,17 @@ change a rule here and there together.
 | 3 | Traffic penalty on busy traffic classes 4+ only (+0.2 / +0.4 / +0.8); quiet roads free | BRouter's upstream table also charges quiet roads (class 1–2), which pushes routes off quiet side roads | touring |
 | 4 | A busy road is not "perfect" just because a cycle route runs on it | a secondary with traffic class 5–6 on a local cycle route beat the parallel signed cycleway | touring, trekking |
 | 5 | Rough way on a cycle route is not "perfect" (track grade 3–5, smoothness bad or worse, ground / dirt / sand / grass / mud / earth / rock) – "v_rough" | the other-region check found Touring on 11–13 km of rough gravel in the Alps where a signed cycle route ran over it; loose share there 10.4 → 5.6 % (owner confirmed 2026-10-26) | touring |
-| 6 | A footway on a signed cycle route is ridden; another paved footway only +1; sidewalks, crossings, pedestrian zones stay "pushing" | footways are normal parts of signed cycle routes (owner 2026-10-25, Hilden Itter path); the plan shows "… m pushing" for the rest | touring, trekking (mtb still pushing) |
+| 6 | A footway on a signed cycle route is ridden; another paved / firm footway without a bicycle tag only +1 (decision 11); sidewalks, crossings, pedestrian zones stay "pushing" | footways are normal parts of signed cycle routes (owner 2026-10-25, Hilden Itter path); the plan shows "… m pushing" for the rest | touring, trekking (mtb still pushing) |
 | 7 | Ferry costs 1 km instead of 10 km; a ferry without bike access is forbidden | a 70 m canal ferry gave a 7 km detour; `FerryTest`: 56 of 208 routes used ferries that do not take bikes | touring, trekking, mtb |
 | 8 | Off-route add 0.15 (was 0.05) – cycle routes slightly preferred | 0.20 sent a Meran route over 2.7 km more SAC T2 path (`SafetyTest`) | touring, trekking |
 | 9 | Never against a one-way (×100) | owner rule 2026-10-20 (`OnewayTest`) | all bike |
 | 10 | Touring time model ~21.7 km/h on asphalt, the same rider as Trekking | the old 120 W gave ~24 km/h, a road-bike pace | app (`time/PaceModel`) |
+| 11 | A compacted surface is firm (counts like fine_gravel): a compacted bike path costs like a paved one (1.15, was 5.15 – Touring 11.15); only a footway **without** a bicycle tag gets the cheap +1, bicycle=no / dismount keep +4 | owner field report 2026-10-26: Hilden, Trekking bike, the shared foot / cycle path along the Itter (path, bicycle=designated, surface=compacted, sign DE:240) was left for 700 m of side streets even with plan points on it; "compacted" was treated like loose ground, so the path cost more than a primary road. The +4 guard: with compacted firm, a 592 m bicycle=no promenade in Meran became a shortcut (+1 was meant for untagged footways only) | touring, trekking (mtb, hike unchanged) |
 
 Guard rails for every profile change: Meran `SafetyTest` / `OnewayTest` (no T3+, no via ferrata, no wrong-way metres),
 `RandomPairsTest` (60 random pairs 2–8 km, seed 42, Düsseldorf / Hilden / Solingen: busy-road share), `FerryTest`,
-`IslandTest`, `TouringProfileTest` (touring.brf stays a trekking copy with only the intended differences), and a check in
+`IslandTest`, `ItterPathTest`, `TouringProfileTest` (touring.brf stays a trekking copy with only the intended differences),
+`BikeProfileCostTest` (way costs per tag set, unit test), and a check in
 other regions (Alps, Black Forest, Bodensee, Netherlands, Ruhr, cities) for surprises such as rough gravel.
 
 Open (owner, `docs/backlog.md`): long timetabled ferries (22 km IJsselmeer) only with a via point (today) or automatic.
@@ -89,6 +91,22 @@ fixed on main 802e7f9, `BRouterWayStatsTest`).
   40 m away and every activity gets a route (bikes 1.4 km, ~300 m of it footway, shown as pushing where bikes have no
   access). `tools/routing/jvm-test/IslandTest.kt`, `IslandPointTest`.
 - The map's router classes (`cf`, now touring.brf) follow with cell schema 5 (`docs/design/map-hosting.md` §7c).
+
+- *Compacted shared paths (Hilden Itter, owner 2026-10-26, decision 11).* The path the owner rides
+  (OSM ways 26650741 / 891696635: highway=path, bicycle=designated, foot=designated, surface=compacted) cost 5.15 per
+  metre in trekking.brf (11.15 in touring.brf): no tracktype, and `isunpaved` listed only fine_gravel / cobblestone as
+  firm, so "compacted" fell into the "not probably good" branch (1 + 4 × unpavedPenalty) – the same path without a
+  surface tag cost 1.15. Residential streets (1.25) won, the leg 3 → 4 went 700 m through side streets (406 m of them
+  streets) instead of 460 m on the path. Now compacted is firm in touring / trekking.brf. Access is unchanged: the plan
+  still shows "… m pushing" wherever bikes have no access (the field plan's 160 m was a footway without a bicycle tag
+  at the destination, not on the Itter path; it stays). Checked: Itter leg 3 → 4 696 → 459 m, 0 m of streets, for
+  Trekking / Touring / E-bike (`tools/routing/jvm-test/ItterPathTest.kt`); 60 random pairs (Hilden / Düsseldorf /
+  Solingen): 8–10 of 60 routes per activity change, busy roads unchanged (Touring 3.2 %, Trekking 7.3 %), footway
+  without bicycle tag Touring 0.6 → 0.7 %, Trekking 0.8 → 0.8 %, bike ways Trekking 42.1 → 42.5 %; Meran
+  `SafetyTest` identical, `OnewayTest` wrong-way metres unchanged; `FerryTest` 0 forbidden ferries; `IslandTest` OK.
+  In Meran, routes to the Rennweg point now push along a 475–592 m bicycle=no promenade instead of carrying the bike
+  up 148 m of steps (both shown as pushing). The map's router classes follow with the next cell rebuild (profile hash
+  changes; a look-only cell schema bump like schema 5 is needed to refresh published cells).
 
 ## Map drawing: paths interrupted at streets (separate problem)
 Sidewalks and crossings (`footway=sidewalk|crossing`) are not drawn (k="x" in format 2), so ~18 % of path ends in a

@@ -216,6 +216,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Hilden Itter path: bike route left the shared path between plan points 3 and 4 (owner field report 2026-10-26,
+  [desktop]):** the path (highway=path, bicycle=designated, surface=compacted) cost 5.15 (Touring 11.15) because the
+  profiles treated "compacted" as loose ground; side streets were cheaper. trekking.brf / touring.brf: compacted is
+  firm like fine_gravel; the +1 for a footway is now only for footways without a bicycle tag (bicycle=no / dismount
+  keep +4). Leg 3 → 4 696 → 459 m on the path; guard rails held (docs/design/bike-routing.md decision 11).
+  Tests: `BikeProfileCostTest` (unit), `tools/routing/jvm-test/ItterPathTest.kt`, WayClass selftest. **Open (cloud):**
+  the map's router classes change (the Itter path becomes "good" = green for bikes) – needs a look-only cell schema
+  bump to reach published cells.
 - **E2E CorePointsListE2ETest.swipeTheSheetHalfFullHalf flaky – "half sheet after a swipe down" (desktop, 2026-10-26,
   red once on 687745a, rerun green):** the message said nothing more, so StepSheet now writes one events line per
   release ("Sheet let go at X px (steps 536 / 938 / 1602 px, 0 px/s) → step N", `SheetDrag.describe`, unit tested) and

@@ -107,7 +107,10 @@ assign hascycleway = not
 assign isbike = or hasbikerouteoraccess hascycleway
 
 assign ispaved = or surface=paved|asphalt|concrete|paving_stones|sett smoothness=excellent|good
-assign isunpaved = not or ispaved or ( and surface= smoothness= ) or surface=fine_gravel|cobblestone smoothness=intermediate|bad
+# OnPath: compacted (a firm, water-bound surface, typical of shared foot / cycle paths) is not loose ground – it
+# counts like fine_gravel (2026-10-26, Hilden Itter path: a compacted bicycle=designated path cost 5.15, more than a
+# primary road; routes zig-zagged through side streets)
+assign isunpaved = not or ispaved or ( and surface= smoothness= ) or surface=fine_gravel|compacted|cobblestone smoothness=intermediate|bad
 assign probablyGood = or ispaved and ( or isbike highway=footway ) not isunpaved
 
 
@@ -175,10 +178,11 @@ assign footaccess =
 #
 assign accesspenalty =
        if bikeaccess then 0
-       # OnPath (owner 2026-10-25): a footway on a signed cycle route is ridden; a paved / firm footway
-       # (not a sidewalk / crossing) is only slightly dearer (+1); the app shows "… m pushing" for the rest
+       # OnPath (owner 2026-10-25): a footway on a signed cycle route is ridden; a paved / firm footway without a
+       # bicycle tag (not a sidewalk / crossing) is only slightly dearer (+1); the app shows "… m pushing" for the rest.
+       # bicycle=no / dismount keep +4 (2026-10-26: a 592 m bicycle=no promenade in Meran became a shortcut)
        else if and any_cycleroute and bicycle= footaccess then 0
-       else if footaccess then ( if ( and highway=footway and not footway=sidewalk|crossing not isunpaved ) then 1 else 4 )
+       else if footaccess then ( if ( and highway=footway and not footway=sidewalk|crossing and bicycle= not isunpaved ) then 1 else 4 )
        else if any_cycleroute then 15
        else if bicycle=use_sidepath then 25
        else 10000

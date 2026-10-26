@@ -70,7 +70,7 @@ public class WayClass {
    *                   on one ≈ 1.16, pedestrian 1.2); foot=no (+4 → 6.2), bad trail visibility (+1.5), informal,
    *                   fords and steps (3.6) are "possible".
    *   trekking  1.20: cycleways and bicycle=yes|designated paths / footways (1.15 off a cycle route, 1.0 on one);
-   *                   residential 1.25, untagged paths 5.15 (pushing). Was 1.10 while the off-route add was 0.05
+   *                   residential 1.25, untagged paths 5.15 (pushing); compacted counts as firm (2026-10-26). Was 1.10 while the off-route add was 0.05
    *                   (trekking.brf 0.15 since 2026-10-25).
    *   touring   1.20: as trekking (touring.brf = trekking.brf with other surface / traffic weights, 2026-10-25;
    *                   before: fastbike, 2.00).
@@ -271,6 +271,11 @@ public class WayClass {
       {t("highway=path", "route_hiking_lwn=yes"), "0 1 1 1 0"},
       {t("highway=path", "bicycle=designated"), "0 0 0 0 0"},
       {t("highway=path", "bicycle=yes"), "0 0 0 0 0"},  // touring.brf = trekking (fastbike: 1)
+      // compacted = firm (2026-10-26, Hilden Itter path): a bike path with it is good; a footway without a bicycle tag
+      // stays "possible" (+1 pushing), whatever its surface
+      {t("highway=path", "bicycle=designated", "foot=designated", "surface=compacted"), "0 0 0 0 0"},
+      {t("highway=footway", "surface=compacted"), "0 1 1 1 0"},
+      {t("highway=footway", "bicycle=no", "surface=asphalt"), "0 1 1 1 0"},
       {t("highway=path", "sac_scale=alpine_hiking"), "0 3 3 3 0"},
       {t("highway=path", "sac_scale=demanding_mountain_hiking"), "0 3 3 1 0"},
       {t("highway=path", "sac_scale=alpine_hiking", "access=private"), "2 2 2 2 0"},
