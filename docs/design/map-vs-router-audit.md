@@ -134,8 +134,8 @@ Counted by row: 7 H rows, 12 M rows, 11 L rows.
 - Route membership by network: the router uses `route_hiking_*` / `route_foot_*` (any network) and
   `route_bicycle_{icn,ncn,rcn,lcn}`. The map has `net` rank but not whether it is a "BRouter cycle route".
 - The user's SAC limit is runtime state. The style never sees it (#4).
-- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for Touring
-  (consider_traffic = true on primary / secondary / tertiary roads).
+- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for Touring and
+  Trekking (consider_traffic = true, busy classes 4+ only, since 2026-10-26 in both).
 
 The map uses these, but the router ignores them:
 - route=mtb relations (#7) and bicycle routes without a network (#29)

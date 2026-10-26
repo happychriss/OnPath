@@ -9,9 +9,9 @@ change a rule here and there together.
 
 | # | Decision | Why | Profiles |
 | --- | --- | --- | --- |
-| 1 | "Touring bike" = a normal touring bike: `touring.brf` (trekking + unpavedPenalty 2.5 + traffic) replaces the road-bike profile fastbike | fastbike is a road-bike profile: on 60 random routes around Hilden it rode 21 % bike ways and 43 % roads / busy roads (trekking: 50 % bike ways); busy roads on the Hilden random pairs 32 % → about 3 % | touring |
+| 1 | "Touring bike" = a normal touring bike: `touring.brf` (trekking + unpavedPenalty 2.5 + "v_rough", decision 5) replaces the road-bike profile fastbike | fastbike is a road-bike profile: on 60 random routes around Hilden it rode 21 % bike ways and 43 % roads / busy roads (trekking: 50 % bike ways); busy roads on the Hilden random pairs 32 % → about 3 % | touring |
 | 2 | E-bike routes like Touring (only power, speed and mass differ) | owner choice 2026-10-25 | touring |
-| 3 | Traffic penalty on busy traffic classes 4+ only (+0.2 / +0.4 / +0.8); quiet roads free | BRouter's upstream table also charges quiet roads (class 1–2), which pushes routes off quiet side roads | touring |
+| 3 | Traffic penalty on busy traffic classes 4+ only (+0.2 / +0.4 / +0.8); quiet roads free – in Touring and, since 2026-10-26, Trekking | BRouter's upstream table also charges quiet roads (class 1–2), which pushes routes off quiet side roads. Trekking (captain 2026-10-26): busy roads on the Hilden random pairs 7.3 → 2.4 %; on the owner's recorded rides (21 rides, 1,134 km, DE / FR / BE) main-road share 6.1 → 3.3 %, routes follow the rides a little more closely, ~2.7 % longer | touring, trekking |
 | 4 | A busy road is not "perfect" just because a cycle route runs on it | a secondary with traffic class 5–6 on a local cycle route beat the parallel signed cycleway | touring, trekking |
 | 5 | Rough way on a cycle route is not "perfect" (track grade 3–5, smoothness bad or worse, ground / dirt / sand / grass / mud / earth / rock) – "v_rough" | the other-region check found Touring on 11–13 km of rough gravel in the Alps where a signed cycle route ran over it; loose share there 10.4 → 5.6 % (owner confirmed 2026-10-26) | touring |
 | 6 | A footway on a signed cycle route is ridden; another paved / firm footway without a bicycle tag only +1 (decision 11); sidewalks, crossings, pedestrian zones stay "pushing" | footways are normal parts of signed cycle routes (owner 2026-10-25, Hilden Itter path); the plan shows "… m pushing" for the rest | touring, trekking (mtb still pushing) |
@@ -23,7 +23,7 @@ change a rule here and there together.
 
 Guard rails for every profile change: Meran `SafetyTest` / `OnewayTest` (no T3+, no via ferrata, no wrong-way metres),
 `RandomPairsTest` (60 random pairs 2–8 km, seed 42, Düsseldorf / Hilden / Solingen: busy-road share), `FerryTest`,
-`IslandTest`, `ItterPathTest`, `TouringProfileTest` (touring.brf stays a trekking copy with only the intended differences),
+`IslandTest`, `ItterPathTest`, `TouringProfileTest` (touring.brf stays a trekking copy; since 2026-10-26 the only differences are unpavedPenalty 2.5 vs 1.0 and "v_rough" – keep it that way),
 `BikeProfileCostTest` (way costs per tag set, unit test), and a check in
 other regions (Alps, Black Forest, Bodensee, Netherlands, Ruhr, cities) for surprises such as rough gravel.
 
@@ -107,6 +107,19 @@ fixed on main 802e7f9, `BRouterWayStatsTest`).
   In Meran, routes to the Rennweg point now push along a 475–592 m bicycle=no promenade instead of carrying the bike
   up 148 m of steps (both shown as pushing). The map's router classes follow with the next cell rebuild (profile hash
   changes; a look-only cell schema bump like schema 5 is needed to refresh published cells).
+- *Trekking gets the busy-traffic penalty (captain 2026-10-26, decision 3).* trekking.brf now has Touring's
+  `consider_traffic` with the busy-classes-only table, so Touring and Trekking differ only in unpavedPenalty (2.5 vs
+  1.0) and the rough-way rule "v_rough" (`TouringProfileTest`; `BikeProfileCostTest` pins the penalty in both). Why:
+  left alone (start and end only), Trekking used busier roads than the owner's recorded rides (Germany, Belgium).
+  Checked: 60 random pairs (Hilden / Düsseldorf / Solingen), Trekking: 35 of 60 routes change, busy roads 7.3 → 2.4 %,
+  roads 6.2 → 3.4 %, bike ways 42.5 → 48.0 %, footway without bicycle tag 0.8 → 0.7 %, 451.1 → 462.3 km (+2.5 %);
+  Touring / E-bike identical. Meran `SafetyTest` identical, `OnewayTest` wrong-way metres unchanged (Trekking 4 m in
+  7 routes); `FerryTest` 0 forbidden ferries; `IslandTest`, `ItterPathTest` all OK and identical. The map's router
+  classes do not change (the traffic estimate is BRouter data, not an OSM tag: WayClass gives the same classes on
+  1,522 tag sets); only the profile hash does.
+- *GpxCompare trace gaps.* A trace run that timed out returned an empty track that was not counted as a gap, so some
+  pieces looked traced when they were not (63–83 % traced). The tracer now counts an error or an empty track as a
+  failed run (split, then a gap).
 
 ## Map drawing: paths interrupted at streets (separate problem)
 Sidewalks and crossings (`footway=sidewalk|crossing`) are not drawn (k="x" in format 2), so ~18 % of path ends in a

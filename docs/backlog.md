@@ -216,6 +216,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **Trekking gets Touring's busy-traffic penalty (captain decision 2026-10-26, [desktop]):** trekking.brf charges
+  busy traffic classes 4+ only (+0.2 / +0.4 / +0.8), as touring.brf does; the two profiles now differ only in
+  unpavedPenalty and "v_rough" (`TouringProfileTest`, `BikeProfileCostTest`). Hilden random pairs, Trekking: busy roads
+  7.3 → 2.4 %, bike ways 42.5 → 48.0 %, +2.5 % length; Meran SafetyTest / OnewayTest, FerryTest, IslandTest,
+  ItterPathTest unchanged (docs/design/bike-routing.md decision 3). Map router classes unchanged (profile hash only).
+  Also: `GpxCompare` counts a timed-out / empty trace run as a gap (pieces looked traced when they were not).
 - **Hilden Itter path: bike route left the shared path between plan points 3 and 4 (owner field report 2026-10-26,
   [desktop]):** the path (highway=path, bicycle=designated, surface=compacted) cost 5.15 (Touring 11.15) because the
   profiles treated "compacted" as loose ground; side streets were cheaper. trekking.brf / touring.brf: compacted is

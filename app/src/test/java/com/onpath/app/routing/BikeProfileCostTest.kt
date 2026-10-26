@@ -9,8 +9,8 @@ import java.io.File
 
 /**
  * Way costs of the shipped bike profiles (trekking.brf; touring.brf = Touring bike + E-bike), evaluated per tag set
- * with BRouter's own expression engine – no routing, no map data. Pins the footway / surface rules of
- * docs/design/bike-routing.md (decisions 6 and 11).
+ * with BRouter's own expression engine – no routing, no map data. Pins the footway / surface / traffic rules of
+ * docs/design/bike-routing.md (decisions 3, 6 and 11).
  *
  * Field case (owner 2026-10-26, Hilden, Trekking bike): the shared foot / cycle path along the Itter
  * (highway=path, bicycle=designated, foot=designated, surface=compacted, sign DE:240) cost 5.15 per metre – more than
@@ -75,6 +75,23 @@ class BikeProfileCostTest {
             assertEquals("$p footway untagged surface", paved, cost(w, "highway=footway"), 0.001f)
             assertEquals("$p footway compacted", paved, cost(w, "highway=footway", "surface=compacted"), 0.001f)
             assertEquals("$p footway: +1 (pushing, shown in the plan)", cycleway + 1f, paved, 0.001f)
+        }
+    }
+
+    /**
+     * Busy traffic costs extra in both profiles (decision 3, Trekking too since 2026-10-26): BRouter's traffic estimate
+     * class 4 +0.2, 5 +0.4, 6–7 +0.8; quiet classes 1–3 free (upstream charges them too, which pushes routes off quiet
+     * side roads).
+     */
+    @Test fun busyTrafficPenaltyIsTheSameInTouringAndTrekking() {
+        val extra = mapOf(1 to 0f, 2 to 0f, 3 to 0f, 4 to 0.2f, 5 to 0.4f, 6 to 0.8f, 7 to 0.8f)
+        for (p in profiles) {
+            val w = ctx(p)
+            for (hw in listOf("residential", "unclassified", "secondary")) {
+                val none = cost(w, "highway=$hw")
+                for ((c, add) in extra)
+                    assertEquals("$p $hw class $c", none + add, cost(w, "highway=$hw", "estimated_traffic_class=$c"), 0.001f)
+            }
         }
     }
 

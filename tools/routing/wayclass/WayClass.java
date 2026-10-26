@@ -72,7 +72,7 @@ public class WayClass {
    *   trekking  1.20: cycleways and bicycle=yes|designated paths / footways (1.15 off a cycle route, 1.0 on one);
    *                   residential 1.25, untagged paths 5.15 (pushing); compacted counts as firm (2026-10-26). Was 1.10 while the off-route add was 0.05
    *                   (trekking.brf 0.15 since 2026-10-25).
-   *   touring   1.20: as trekking (touring.brf = trekking.brf with other surface / traffic weights, 2026-10-25;
+   *   touring   1.20: as trekking (touring.brf = trekking.brf with unpavedPenalty 2.5 and "v_rough", 2026-10-26;
    *                   before: fastbike, 2.00).
    *   MTB       7.00: unpaved cycleways and bicycle=yes|designated paths (6.67), easy trails; plain paths 10.05, paved
    *                   cycleways 9.6 (mtb.brf path_preference 20), streets 13+.

@@ -1,3 +1,7 @@
+# *** OnPath trekking.brf – "Trekking bike": BRouter's trekking profile with OnPath's rules (marked "OnPath";
+# *** why each: docs/design/bike-routing.md). touring.brf is a copy that differs only in unpavedPenalty (2.5) and the
+# *** rough-way rule "v_rough" (TouringProfileTest pins the differences; change both files together).
+#
 # *** The trekking profile is for slow travel
 # *** and avoiding car traffic, but still with
 # *** a focus on approaching your destination
@@ -22,7 +26,7 @@ assign   consider_noise           = false  # %consider_noise% | Activate to pref
 assign   consider_river           = false  # %consider_river% | Activate to prefer a route along rivers, lakes, etc. | boolean
 assign   consider_forest          = false  # %consider_forest% | Activate to prefer a route in forest or parks | boolean
 assign   consider_town            = false  # %consider_town% | Activate to bypass cities / big towns as far as possible | boolean
-assign   consider_traffic         = false  # %consider_traffic% | Activate to consider traffic estimates | boolean
+assign   consider_traffic         = true   # %consider_traffic% | Activate to consider traffic estimates | boolean
 
 
 
@@ -225,11 +229,11 @@ assign onewaypenalty =
 assign traffic_penalty
    switch consider_traffic
       switch estimated_traffic_class=       0
-      switch estimated_traffic_class=1|2    0.2
-      switch estimated_traffic_class=3      0.4
-      switch estimated_traffic_class=4      0.6
-      switch estimated_traffic_class=5      0.8
-      switch estimated_traffic_class=6|7    1 99 0
+      switch estimated_traffic_class=1|2    0      # OnPath: quiet classes free (upstream 0.2 / 0.4 / 0.6 / 0.8 / 1)
+      switch estimated_traffic_class=3      0
+      switch estimated_traffic_class=4      0.2
+      switch estimated_traffic_class=5      0.4
+      switch estimated_traffic_class=6|7    0.8 99 0
 
 
 assign noise_penalty

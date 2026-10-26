@@ -1,8 +1,8 @@
 # *** OnPath touring.brf – "Touring bike" and "E-bike" (owner 2026-10-25: a normal bike:
 # *** paved bike ways and quiet ways preferred, traffic and rough gravel avoided). A copy of OnPath's trekking.brf with
-# *** only these values changed (TouringProfileTest pins them; change both files together):
-# ***   unpavedPenalty 2.5 (trekking 1.0), consider_traffic true with a penalty on busy traffic classes only
-# ***   (class 4 +0.2, 5 +0.4, 6–7 +0.8). Why each rule:
+# *** only these rules changed (TouringProfileTest pins them; change both files together):
+# ***   unpavedPenalty 2.5 (trekking 1.0) and a rough way on a cycle route is not "perfect" ("v_rough", ldcr_rough).
+# ***   The busy-traffic penalty (classes 4+ only) is the same in both since 2026-10-26. Why each rule:
 # ***   docs/design/bike-routing.md. Replaces BRouter's road-bike profile fastbike-verylowtraffic.brf.
 #
 # *** The trekking profile is for slow travel
@@ -232,7 +232,7 @@ assign onewaypenalty =
 assign traffic_penalty
    switch consider_traffic
       switch estimated_traffic_class=       0
-      switch estimated_traffic_class=1|2    0      # OnPath touring: quiet classes free (upstream 0.2 / 0.4 / 0.6 / 0.8 / 1)
+      switch estimated_traffic_class=1|2    0      # OnPath: quiet classes free (upstream 0.2 / 0.4 / 0.6 / 0.8 / 1)
       switch estimated_traffic_class=3      0
       switch estimated_traffic_class=4      0.2
       switch estimated_traffic_class=5      0.4

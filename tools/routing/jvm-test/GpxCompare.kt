@@ -22,6 +22,8 @@ import kotlin.math.sqrt
  *    reference points, i.e. on a way.
  * 3. Traces the reference line once per piece (via points every CMP_TRACE_M along it, profile trace.brf: every way
  *    costs the same) to learn its BRouter way tags; cached in CMP_TRACE_DIR, reused by later runs (variants).
+ *    A trace run that times out or returns an empty track counts as failed: its chunk is split, a leg that still fails
+ *    is a gap (traceGaps). Caches made before 2026-10-26 could count such legs as traced – delete them to re-trace.
  * 4. Samples every line every 10 m and writes, per sample: arc position, lat, lon, way tags (id into the file's tag
  *    table), distance to the other line and the arc position of the nearest point there. The report script derives
  *    overlap, way-type / surface mixes and deviations from these files.
@@ -206,7 +208,11 @@ class Tracer(private val segs: File, private val profile: File) {
         val e = btools.router.RoutingEngine(null, null, segs, nodes, rc)
         e.quite = true
         e.doRun(120_000)
-        val track = e.foundTrack ?: error(e.errorMessage ?: "no track")
+        // a timed-out run can leave an error and a degenerate (empty) track: count it as a failure, so the chunk is
+        // split and a leg that still fails is counted as a gap – not as a traced piece
+        if (e.errorMessage != null) error(e.errorMessage!!)
+        val track = e.foundTrack ?: error("no track")
+        if (track.nodes.size < 2) error("empty track")
         val els = track.nodes
         val lon = IntArray(els.size) { els[it].getILon() - 180_000_000 }; val lat = IntArray(els.size) { els[it].getILat() - 90_000_000 }
         val m = HashMap<Pair<Long, Long>, String>()
