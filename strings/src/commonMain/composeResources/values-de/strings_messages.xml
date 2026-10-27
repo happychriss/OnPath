@@ -86,4 +86,6 @@
         <item quantity="one">%1$d Kartengebiet wird auf eine neuere Version geprüft. Einstellung: „Karten nur über WLAN laden“.</item>
         <item quantity="other">%1$d Kartengebiete werden auf eine neuere Version geprüft. Einstellung: „Karten nur über WLAN laden“.</item>
     </plurals>
+    <string name="msg_plan_link_unreadable">Dieser Plan-Link ist nicht lesbar. Teile oder kopiere den ganzen Link noch einmal.</string>
+    <string name="msg_plan_link_after_tour">Plan-Links öffnen sich nach der Tour – beende die Tour und öffne den Link dann noch einmal.</string>
 </resources>

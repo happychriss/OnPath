@@ -87,4 +87,6 @@
         <item quantity="one">Checking %1$d map area for a newer version. Settings: “Download maps only on Wi-Fi”.</item>
         <item quantity="other">Checking %1$d map areas for a newer version. Settings: “Download maps only on Wi-Fi”.</item>
     </plurals>
+    <string name="msg_plan_link_unreadable">This plan link can't be read. Share or copy the whole link again.</string>
+    <string name="msg_plan_link_after_tour">Plan links open after the tour – end the tour, then open the link again.</string>
 </resources>

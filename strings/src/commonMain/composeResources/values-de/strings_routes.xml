@@ -59,4 +59,5 @@
     <string name="routes_gpx_empty">Die Datei ist leer oder keine GPX-Datei.</string>
     <string name="routes_gpx_nothing">In dieser Datei wurde kein Track, keine Route und kein Wegpunkt gefunden.</string>
     <string name="routes_gpx_too_large">Die Datei ist größer als %1$d MB.</string>
+    <string name="routes_replace_text_link">Deine aktuelle Route ist nicht gespeichert. Speichere sie zuerst oder ersetze sie durch die Route aus dem Link.</string>
 </resources>

@@ -392,6 +392,12 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         // Reopened from recents: that share was handled already.
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        // a plan link (planer.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
+        planLinkOf(intent)?.let { found ->
+            vm.dataScreenDismissed = true
+            vm.receivePlanLink(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
+            return
+        }
         sharedPlaceOf(intent)?.let { place ->
             vm.dataScreenDismissed = true
             vm.receiveSharedPlace(place)
@@ -406,6 +412,21 @@ class MainActivity : ComponentActivity() {
             vm.dataScreenDismissed = true
             vm.importGpx(uri)
         }
+    }
+
+    /** A plan link opened (VIEW) or shared as text (SEND); null for everything else (PlanLinks.fromIntent). */
+    private fun planLinkOf(intent: Intent): com.onpath.app.routing.PlanLinks.Found? = try {
+        com.onpath.app.routing.PlanLinks.fromIntent(when (intent.action) {
+            Intent.ACTION_VIEW -> com.onpath.app.routing.PlanLinks.Via.OPENED
+            Intent.ACTION_SEND -> com.onpath.app.routing.PlanLinks.Via.SHARED
+            else -> null
+        }, intent.dataString, intent.type,
+            intent.getStringExtra(Intent.EXTRA_TEXT),
+            hasStream = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) != null)
+    } catch (e: Exception) {
+        // a malformed intent from another app (bad extras): not a plan link – the other handlers decide
+        com.onpath.app.debug.Problems.warn("plan", "Intent could not be checked for a plan link", e)
+        null
     }
 
     /** A place shared as text (Google Maps "Share") or opened as a `geo:` link; null for files and everything else. */

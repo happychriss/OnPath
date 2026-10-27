@@ -31,8 +31,9 @@ fun RouteDialogs(vm: AppViewModel) {
             onDone = { vm.saveFirstDone(it) }, onDismiss = { vm.saveFirst = null },
             suggestion = vm.suggestedName.takeIf { vm.savedName == null })
     }
-    vm.replaceAsk?.let { _ ->
-        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null })
+    vm.replaceAsk?.let { t ->
+        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
+            fromLink = t is PlanToOpen.Shared)
     }
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->

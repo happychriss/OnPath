@@ -92,6 +92,12 @@ sealed interface EndAsk {
     data class Rides(val tourId: Long, val summary: com.onpath.app.rides.RideView.Summary) : EndAsk
 }
 
+/** What "Replace current route?" / "Save first" loads afterwards: a saved route or a plan from a link (A-005). */
+sealed interface PlanToOpen {
+    data class Saved(val tour: Tour) : PlanToOpen
+    data class Shared(val plan: com.onpath.app.routing.SharedPlan) : PlanToOpen
+}
+
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
@@ -1154,11 +1160,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * is the route to load afterwards ("Save first" before loading), else null.
      */
     var saveChoice by mutableStateOf<SaveChoice?>(null)
-    class SaveChoice(val thenOpen: Tour?)
-    /** "Replace current plan?" is open for this route. */
-    var replaceAsk by mutableStateOf<Tour?>(null)
+    class SaveChoice(val thenOpen: PlanToOpen?)
+    /** "Replace current plan?" is open for this route (a saved one or one from a plan link). */
+    var replaceAsk by mutableStateOf<PlanToOpen?>(null)
     /** "Save first" was chosen: the name dialog saves the plan, then loads this route. */
-    var saveFirst by mutableStateOf<Tour?>(null)
+    var saveFirst by mutableStateOf<PlanToOpen?>(null)
     /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
     var routesProblem by mutableStateOf<String?>(null)
 
@@ -2488,6 +2494,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
+        linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
         val moves = WaypointSnap.moves(routed, snapped)
         history.replacePoints(moves)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
@@ -2628,7 +2635,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveChoiceOverwrite() {
         val choice = saveChoice ?: return
         saveChoice = null
-        val then: (() -> Unit)? = choice.thenOpen?.let { t -> { openTour(t) } }
+        val then: (() -> Unit)? = choice.thenOpen?.let { t -> { open(t) } }
         val pts = waypoints.toList()
         val name = savedName
         val id = savedId
@@ -2697,10 +2704,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
     fun requestOpen(t: Tour) {
         if (!RouteRules.canOpen(t.kind, t.waypoints.size, navigating(recState.value != null))) return
-        if (RouteRules.askBeforeLoading(t.kind, t.waypoints.size, waypoints, savedPoints)) replaceAsk = t else openTour(t)
+        if (RouteRules.askBeforeLoading(t.kind, t.waypoints.size, waypoints, savedPoints)) replaceAsk = PlanToOpen.Saved(t) else openTour(t)
     }
 
-    fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; openTour(t) }
+    fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; open(t) }
+
+    /** Loads what "Replace current plan?" / "Save first" was about. */
+    private fun open(t: PlanToOpen) = when (t) {
+        is PlanToOpen.Saved -> openTour(t.tour)
+        is PlanToOpen.Shared -> openSharedPlan(t.plan)
+    }
 
     /** "Save first": name dialog, then save and load [replaceAsk]. */
     fun replaceSaveFirst() {
@@ -2712,7 +2725,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveFirstDone(name: String) {
         val t = saveFirst ?: return
         saveFirst = null
-        saveRoute(name) { openTour(t) }
+        saveRoute(name) { open(t) }
     }
 
     /**
@@ -2729,6 +2742,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         nameJob?.cancel()
         val pts = waypoints.toList()
         if (pts.size < 2) return
+        // a plan from a link brings its name while its points are unchanged
+        linkTitle?.let { (title, at) -> if (at == pts) { suggestedName = title; return } }
         val line = route?.points?.takeIf { it.size >= 2 } ?: pts
         val startName = stopName(pts.first()); val endName = stopName(pts.last())
         val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
@@ -3312,10 +3327,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 sac = t.sac
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
-                change { clear(); addAll(pts) }
-                // stop names and POI pins saved with the plan (since the backup, 2026-10-21) come back too
-                t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
+                // stop names and POI pins saved with the plan (since the backup, 2026-10-21) come back too – the pins
+                // before the points, so the first route already passes them exactly (recalc reads them at once)
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
+                change { clear(); addAll(pts) }
+                t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
@@ -3340,6 +3356,89 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     note = choice.note))
             }
         }
+    }
+
+    // ---------------- plan links (web planner phase 1, A-005: routing/PlanLinks, docs/core-features.md C15) ----------------
+
+    /** Name a plan link brought, for the Save dialog while the plan still has the link's points. */
+    private var linkTitle: Pair<String, List<GeoPoint>>? = null
+
+    /**
+     * A plan link opened in OnPath (camera / QR code, a tapped link, shared text, pasted into the search box; [via] for
+     * the log): back to the map in Plan and loaded like a saved route – "Replace current route?" first when the plan has
+     * unsaved changes. During a tour it is not loaded (the followed route stays) and a grey line says so. A broken link
+     * changes nothing and says so in one red line.
+     */
+    fun receivePlanLink(found: com.onpath.app.routing.PlanLinks.Found, via: String) {
+        routesOpen = false; showSettings = false; offlineResult = null; timeDetails = null; routeDetailsOpen = false; searchOpen = false
+        closeMapOverlays()
+        val plan = when (found) {
+            is com.onpath.app.routing.PlanLinks.Found.Broken -> {
+                Problems.warn("plan", "Plan link ($via) could not be read: cut off, damaged or a newer format")
+                showError(Txt.s(Res.string.msg_plan_link_unreadable))
+                return
+            }
+            is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
+        }
+        viewModelScope.launch {
+            // Cold start: the start mode (Plan / Navigate, an unfinished tour) is decided after a database check
+            if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
+            when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points)) {
+                LinkOpen.AFTER_TOUR -> {
+                    Problems.info("plan", "Plan link ($via, ${plan.points.size} points) not opened: a tour is running")
+                    message = Txt.s(Res.string.msg_plan_link_after_tour)
+                }
+                LinkOpen.ASK_FIRST -> {
+                    if (shown != null) closeShown()
+                    Problems.trace("plan", "Plan link ($via, ${plan.points.size} points): asking to replace the unsaved plan first")
+                    replaceAsk = PlanToOpen.Shared(plan)
+                }
+                LinkOpen.NOW -> openSharedPlan(plan, via)
+            }
+        }
+    }
+
+    /** Text pasted into the search box: a plan link opens the plan (true); anything else is a search (false). */
+    fun pastedPlanLink(text: String): Boolean {
+        val found = com.onpath.app.routing.PlanLinks.fromText(text) ?: return false
+        search.clear()
+        receivePlanLink(found, "pasted")
+        return true
+    }
+
+    /** Puts a plan from a link into the plan: points, activity, T level, point names, pinned points – a new, unsaved plan. */
+    private fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking") {
+        val load = com.onpath.app.routing.PlanLinks.load(plan)
+        if (mode != AppMode.PLAN) enter(AppMode.PLAN)
+        shown = null
+        activity = plan.activity; prefs.activity = plan.activity
+        sac = plan.sac.coerceIn(1, 5); prefs.sac = sac
+        // pins before the points: the first route already passes them exactly (recalc reads them at once)
+        if (load.pinned.isNotEmpty()) { pinned += load.pinned; prefs.planPinned = pinned }
+        change { clear(); addAll(load.points) }
+        load.names.forEach { (p, n) -> rememberPlaceName(p, n) }
+        setSaved(null, -1, null) // not in My routes yet: Save asks for a name
+        linkTitle = plan.title?.let { it to load.points }
+        Problems.info("plan", "Plan link opened ($via): ${load.points.size} points, ${plan.activity.name}" +
+            (if (plan.activity == Activity.HIKE) " T${plan.sac}" else "") + ", ${load.pinned.size} pinned, ${load.names.size} names")
+        events += UiEvent.Fit(load.points)
+    }
+
+    /** Sheet ⋯ → Share plan: the plan as a planer.onpath.earth link (PlanLinks) in the share sheet; from two points. */
+    fun sharePlan() {
+        if (waypoints.size < 2) return
+        val pts = waypoints.toList()
+        // the route's name: as saved, else the name a link brought while its points are unchanged
+        val title = savedName ?: linkTitle?.takeIf { it.second == pts }?.first
+        val plan = com.onpath.app.routing.PlanLinks.share(pts, activity, sac, pinnedIndices(), ::stopName, title)
+        val link = com.onpath.app.routing.PlanLinks.link(plan)
+        Problems.trace("plan", "Plan shared as a link: ${pts.size} points, ${link.length} characters")
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, link)
+            title?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+        }
+        events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.plan_share_plan)))
     }
 
     private fun showTrack(s: ShownTrack) {

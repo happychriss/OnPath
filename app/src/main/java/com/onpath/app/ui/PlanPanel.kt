@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
@@ -99,6 +100,8 @@ class PlanCallbacks(
     /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
     val onSave: () -> Unit = {},
     val onExport: () -> Unit = {},
+    /** Route ⋯ → Share plan: the plan as a planer.onpath.earth link (A-005), from two points. */
+    val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
     val onDetails: () -> Unit = {},
     /** Route ⋯ → Time details (how the time was calculated). */
@@ -479,6 +482,7 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     // About this route: save / export, time details, clear.
     MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Share, str(Res.string.common_export_gpx), enabled = ui.route != null, onClick = run(cb.onExport))
+    MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
     MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
     HorizontalDivider()

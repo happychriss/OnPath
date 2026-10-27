@@ -217,4 +217,5 @@
     <string name="plan_leg_took_too_long">took too long</string>
     <string name="plan_leg_too_long">too long – add a point between</string>
     <string name="plan_leg_no_path">no path found</string>
+    <string name="plan_share_plan">Share plan</string>
 </resources>

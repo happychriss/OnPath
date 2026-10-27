@@ -357,12 +357,12 @@ fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
 
 /** Loading would overwrite a plan that is not saved: stays until answered (tap outside / Back = cancel). */
 @Composable
-fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: () -> Unit) {
+fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: () -> Unit, fromLink: Boolean = false) {
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Filled.Route, null) },
         title = { Text(str(Res.string.routes_replace_title)) },
-        text = { DialogText(str(Res.string.routes_replace_text)) },
+        text = { DialogText(str(if (fromLink) Res.string.routes_replace_text_link else Res.string.routes_replace_text)) },
         confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
         dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
     )

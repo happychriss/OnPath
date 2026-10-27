@@ -81,4 +81,19 @@ object RouteRules {
     /** Ask "Replace current plan?" before loading this item. */
     fun askBeforeLoading(kind: TourKind, waypointCount: Int, points: List<GeoPoint>, saved: List<GeoPoint>?): Boolean =
         replacesPlan(kind, waypointCount) && isUnsaved(points, saved)
+
+    /**
+     * A plan from a link (planer.onpath.earth, QR code, share, paste – A-005): during a tour it waits (the followed plan
+     * stays), unsaved changes ask "Replace current route?" like loading a saved route, else it opens at once. The same
+     * link opened twice never asks.
+     */
+    fun linkOpen(navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?, incoming: List<GeoPoint>): LinkOpen =
+        when {
+            navigating -> LinkOpen.AFTER_TOUR
+            isUnsaved(points, saved) && isUnsaved(points, incoming) -> LinkOpen.ASK_FIRST
+            else -> LinkOpen.NOW
+        }
 }
+
+/** What happens with a plan from a link ([RouteRules.linkOpen]). */
+enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }

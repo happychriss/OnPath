@@ -357,5 +357,11 @@
     "context": "Error when the file is too large. %1$d = size limit in MB (60)",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "routes_replace_text_link": {
+    "area": "Dialogs",
+    "context": "Text of the 'Replace current route?' dialog when a plan link (QR code, shared link) is opened while the plan has unsaved changes. Buttons: Save first / Replace.",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

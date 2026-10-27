@@ -216,4 +216,5 @@
     <string name="plan_leg_took_too_long">dauerte zu lange</string>
     <string name="plan_leg_too_long">zu lang – setze einen Punkt dazwischen</string>
     <string name="plan_leg_no_path">kein Weg gefunden</string>
+    <string name="plan_share_plan">Plan teilen</string>
 </resources>
