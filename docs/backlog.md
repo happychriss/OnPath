@@ -232,6 +232,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] No dark message bar (owner 2026-10-27: "die komischen schwarzen Status-Codes … rausnehmen"):** the ~45
+  producers of the old top bar now say where the user acted – `vm.say(text, NoticeKind, NoticePlace)`, pure
+  `NoticeRouting`: a grey INFO / red ERROR line at the top of My routes or the open Settings page (gone when the screen
+  is left); an ERROR without its place (recording / backup in the background, a crash, a plan link / shared place / GPX
+  opened from another app, map buttons) → the one light `ErrorCard` (red edge, ⚠, OK, never by itself); an INFO without
+  a place → problem log. Dropped: "Track saved to My routes" (it is in My routes), "moved to the recycle bin", "Copied",
+  "route already ends at the start" (⋯ hides Round trip then). Route changed by newer routing data → the plan sheet's
+  grey "changed" line (tap = whole route); GPX parts skipped → grey line in the track panel; "Update maps now" → the
+  Offline maps result line; restore from the first-start offer opens My routes with "… restored". Tests `NoticesTest`.
 - **[desktop] Plan links (A-005, web planner phase 1, core feature C15):** `https://plan.onpath.earth/#p=<code>`
   (PlanCode v1 from `feat/plan-code`) opens as the plan – camera / QR code and tapped links (intent filter, App Link
   `autoVerify`, path `/`), text shared to OnPath, a link pasted into the search box; loaded like a saved route (points,

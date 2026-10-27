@@ -51,7 +51,7 @@ class CorePlanLinkE2ETest : E2EBase() {
             assertEquals(GeoPoint(46.6879, 11.1111), vm.waypoints[1])
             assertEquals("Vellau", vm.stopName(vm.waypoints[1]))
             assertNull("a link is not a saved route", vm.savedName)
-            assertNull(vm.message)
+            assertNull(vm.errorCard)
         }
     }
 
@@ -59,10 +59,10 @@ class CorePlanLinkE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         val before = points()
         open(frozenLink.dropLast(9))
-        waitUntil("message") { var m: String? = null; scenario.onActivity { m = vm(it).message }; m != null }
+        waitUntil("error card") { var m: String? = null; scenario.onActivity { m = vm(it).errorCard }; m != null }
         scenario.onActivity { a ->
-            assertTrue(vm(a).messageIsError)
-            assertTrue(vm(a).message!!, vm(a).message!!.startsWith("This plan link can't be read"))
+            // no place for it (the link came from outside): the light error card, never the old dark bar (owner 2026-10-27)
+            assertTrue(vm(a).errorCard!!, vm(a).errorCard!!.startsWith("This plan link can't be read"))
             assertNull(vm(a).replaceAsk)
         }
         assertEquals(before, points())

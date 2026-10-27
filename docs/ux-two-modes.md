@@ -96,7 +96,7 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   the place card. The empty plan sheet says how it works: "Hold the map to start there – or to go there from your
   location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
-  "hold to add" hint, no timed bubbles; the general message bar stays until OK is tapped.
+  "hold to add" hint, no timed bubbles; the error card stays until OK is tapped (no dark message bar since 2026-10-27).
 
 
 ## Layout rule (owner, 2026-10-18)

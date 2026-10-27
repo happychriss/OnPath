@@ -29,7 +29,6 @@
     <string name="msg_import_failed_damaged">Import fehlgeschlagen – die Datei ist vielleicht beschädigt oder der Speicher voll. Deine vorhandenen Kartendaten sind unverändert.</string>
     <string name="msg_route_back_no_position">Noch keine GPS-Position, daher keine Route zurück. Die Tour wird weiter aufgezeichnet; du kannst jederzeit ein neues Ziel setzen.</string>
     <string name="msg_shared_place_not_found">Dieser Ort wurde nicht gefunden. Versuche es noch einmal, wenn du Internet hast.</string>
-    <string name="msg_round_trip_already">Die Route endet schon am Start.</string>
     <string name="msg_routing_failed">Routenberechnung fehlgeschlagen.</string>
     <string name="msg_no_new_route">Keine neue Route gefunden – du folgst weiter der bisherigen.</string>
     <string name="msg_route_save_failed">Die Route konnte nicht gespeichert werden. Deine Route ist noch da – versuche es bitte noch einmal.</string>
@@ -49,11 +48,9 @@
     <string name="msg_check_no_route">Keine Route dafür gefunden</string>
     <string name="msg_rides_read_failed">Die Fahrten dieses Tracks konnten nicht gelesen werden.</string>
     <string name="msg_rides_change_failed">Die Fahrten konnten nicht geändert werden. Versuche es bitte noch einmal.</string>
-    <string name="msg_track_saved">Track in „Meine Routen“ gespeichert.</string>
-    <string name="msg_track_to_bin">Track in den Papierkorb verschoben (Meine Routen → ⋮ → Papierkorb).</string>
     <string name="msg_track_delete_failed">Der Track konnte nicht gelöscht werden – er ist in „Meine Routen“, lösche ihn dort.</string>
     <string name="msg_track_recording_now">Dieser Track wird gerade aufgezeichnet – beende zuerst die Tour.</string>
-    <string name="msg_gpx_imported_skipped">„%1$s“ importiert – einige Teile wurden übersprungen.</string>
+    <string name="msg_gpx_parts_skipped">Einige Teile der Datei wurden übersprungen.</string>
     <string name="msg_export_all_chooser">Alle exportieren</string>
     <string name="msg_export_reason">Export: %1$s.</string>
     <string name="msg_export_failed">Export fehlgeschlagen – vielleicht ist der Speicher voll. Deine Tracks und Routen sind unverändert.</string>
@@ -77,7 +74,6 @@
     <string name="msg_shared_unreadable">OnPath konnte den geteilten Ort nicht lesen.</string>
     <string name="msg_no_file_picker">Keine Dateiauswahl verfügbar.</string>
     <string name="msg_crash_last_time">OnPath wurde beim letzten Mal unerwartet beendet. Details: Einstellungen → Diagnose.</string>
-    <string name="msg_copied">Kopiert.</string>
     <plurals name="msg_maps_checking">
         <item quantity="one">%1$d Kartengebiet wird auf eine neuere Version geprüft.</item>
         <item quantity="other">%1$d Kartengebiete werden auf eine neuere Version geprüft.</item>

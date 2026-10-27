@@ -82,6 +82,8 @@ data class ShownTrack(
      * (owner 2026-10-26); stays until the track is closed / replaced or the user picks an activity.
      */
     val note: String? = null,
+    /** Grey INFO line after a GPX import that skipped parts of the file (the details are in Diagnostics); stays with the track. */
+    val skippedNote: String? = null,
 ) {
     val points: List<GeoPoint> get() = segments.flatten()
 }
@@ -132,7 +134,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             val note = packageNote()
             val p = dataFiles.packageCheck()
-            withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && message == null) message = note.trim() }
+            withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && errorCard == null) sayError(note.trim(), NoticePlace.BACKGROUND) }
         }
     }
     var dataScreenDismissed by mutableStateOf(false)
@@ -147,8 +149,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
 
     // --- screens and mode ---
+    // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
+    /** The light error card over the map (⚠, red edge, OK); null = none. Never cleared by itself. */
+    var errorCard by mutableStateOf<String?>(null)
+    /** The line at the top of My routes; goes when My routes is left. */
+    var routesNote by mutableStateOf<Notice?>(null)
+    /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
+    var settingsNote by mutableStateOf<Notice?>(null)
+    private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
-    var routesOpen by mutableStateOf(false)
+    var routesOpen: Boolean
+        get() = routesShown
+        set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -171,13 +183,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
         private set
-    var showSettings by mutableStateOf(false)
+    private var settingsShown by mutableStateOf(false)
+    var showSettings: Boolean
+        get() = settingsShown
+        set(v) { if (!v) settingsNote = null; settingsShown = v } // the line lasts until Settings is left
     /** Open topic of Settings (owner 2026-10-22: list of topics → pages); null = the list. */
     private var page by mutableStateOf<SettingsPage?>(null)
     var settingsPage: SettingsPage?
         get() = page
         set(v) {
             if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
+            if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             page = v
         }
@@ -242,7 +258,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // make MapLibre drop the following again (it ends tracking on every app camera move).
                 if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
             }
-            !hasFix -> message = Txt.s(Res.string.msg_no_position_turn)
+            !hasFix -> sayError(Txt.s(Res.string.msg_no_position_turn), NoticePlace.MAP) // a tap must not do nothing
             else -> { setHeadingUp(true); followMe = true; recentreTick++ }
         }
     }
@@ -326,7 +342,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val (lat, lon, _) = initialCamera()
         val c = com.onpath.app.cells.CellId.at(lat, lon) ?: return
         val added = cells.request(listOf(c), com.onpath.app.cells.CellReason.POINT)
-        message = if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see Settings → Diagnostics."
+        sayInfo(if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see the list below.",
+            NoticePlace.SETTINGS)
     }
 
     // ---------------- map cell triggers + card (map-cells.md §9: the map comes where you plan or where you are) ----
@@ -536,14 +553,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when {
             s == null || name !in s.names -> {
                 manualRouting = null; dataBusy = null
-                message = Txt.s(if (routingData.exists(name)) Res.string.msg_routing_data_ready else Res.string.msg_routing_data_stopped)
+                if (routingData.exists(name)) sayInfo(Txt.s(Res.string.msg_routing_data_ready), NoticePlace.SETTINGS)
+                else sayError(Txt.s(Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
             s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING ->
                 dataBusy = Txt.s(Res.string.msg_routing_data_progress, s.percent, mb(s.totalBytes))
             else -> {
                 manualRouting = null; dataBusy = null
-                message = Txt.s(if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE) Res.string.msg_routing_data_offline
-                    else Res.string.msg_routing_data_stopped)
+                sayError(Txt.s(if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE) Res.string.msg_routing_data_offline
+                    else Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
         }
     }
@@ -721,7 +739,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try { block() } catch (e: Exception) {
             Problems.error("cells", "Offline maps: $what failed", e)
             offlineResult = null
-            showError(Txt.s(Res.string.msg_maps_remove_failed))
+            sayError(Txt.s(Res.string.msg_maps_remove_failed), NoticePlace.SETTINGS)
         }
     }
 
@@ -763,7 +781,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.error("cells", "Clean up could not work out which map areas are needed; nothing removed", e)
-                showError(Txt.s(Res.string.msg_cleanup_not_possible))
+                sayError(Txt.s(Res.string.msg_cleanup_not_possible), NoticePlace.SETTINGS)
                 return@launch
             }
             Problems.trace("cells", "Clean up preview: ${preview.remove.size} region(s) could go (${preview.bytes / 1_048_576} MB); keeps " +
@@ -1018,7 +1036,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun updateMapsNow() = safeCells("update") {
         val all = cells.installed.value.map { it.id }
         val asked = cells.request(all, com.onpath.app.cells.CellReason.REFRESH, ownPoint = false)
-        message = if (asked.isEmpty()) Txt.s(Res.string.msg_maps_already_checking)
+        // the page's own result line (like a removal), not a message
+        offlineResult = if (asked.isEmpty()) Txt.s(Res.string.msg_maps_already_checking)
             else Txt.p(if (settings.mapsWifiOnly) Res.plurals.msg_maps_checking_wifi else Res.plurals.msg_maps_checking, asked.size, asked.size)
     }
 
@@ -1258,18 +1277,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- dialogs / messages ---
     /**
-     * The message bar (until OK): a result that is not visible elsewhere, or an error (MessageBar). Its look (ERROR =
-     * ⚠ + red edge) is decided where it is said: [showError] for a failure; a plain `message =` uses the English wording
-     * check ([MessageKind]) – German texts never match it, so every failure goes through [showError] (EN + DE, 2026-10-26).
+     * Says [text] where it belongs (owner 2026-10-27: no dark bar): a line in My routes / the open Settings page where the
+     * user acted ([place]); an error without such a place on the light [errorCard] (stays until OK); an INFO without a
+     * place only in the problem log. Routing: [NoticeRouting].
      */
-    private var messageState by mutableStateOf<Pair<String, Boolean>?>(null)
-    var message: String?
-        get() = messageState?.first
-        set(v) { messageState = v?.let { it to MessageKind.isError(it) } }
-    /** The current message is an error (⚠ + red edge). */
-    val messageIsError: Boolean get() = messageState?.second == true
-    /** Says [text] as an error (⚠ + red edge) in any language. */
-    fun showError(text: String) { messageState = text to true }
+    fun say(text: String, kind: NoticeKind, place: NoticePlace) {
+        when (NoticeRouting.surface(kind, place, routesOpen, showSettings)) {
+            NoticeSurface.ROUTES_LINE -> routesNote = Notice(text, kind)
+            NoticeSurface.SETTINGS_LINE -> settingsNote = Notice(text, kind)
+            NoticeSurface.ERROR_CARD -> errorCard = text
+            NoticeSurface.LOG_ONLY -> Problems.trace("ui", "${kind.name} for ${place.name.lowercase()} not shown (place closed): $text")
+        }
+    }
+    fun sayError(text: String, place: NoticePlace) = say(text, NoticeKind.ERROR, place)
+    fun sayInfo(text: String, place: NoticePlace) = say(text, NoticeKind.INFO, place)
+    /** Settings → Updates, or the update banner on the map. */
+    private fun updatePlace() = if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP
+
     /** Work the user started that takes a moment: a spinner where it was started (review 2026-10-24 C9). */
     var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
@@ -1342,7 +1366,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
         viewModelScope.launch {
             RecordingService.startFailed.collect { why ->
-                if (why != null) { RecordingService.startFailed.value = null; message = why; if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
+                if (why != null) { RecordingService.startFailed.value = null; sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
             }
         }
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
@@ -1358,7 +1382,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (st?.saveFailed == true && !saveFailedShown) {
                     saveFailedShown = true
-                    showError(Txt.s(Res.string.msg_track_save_failing))
+                    sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
                 } else if (st?.saveFailed == false) saveFailedShown = false
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
@@ -1377,7 +1401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                                 .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
                         }
                         finishedTour = null; finishedTimes = null
-                        if (!ok) showError(Txt.s(Res.string.msg_track_delete_failed_here))
+                        if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed_here), NoticePlace.MAP)
                     } else {
                         finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                         finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
@@ -1499,7 +1523,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         val rel = (update as? UpdateState.Available)?.release ?: return
         if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
-            message = Txt.s(Res.string.msg_update_allow_install)
+            sayInfo(Txt.s(Res.string.msg_update_allow_install), updatePlace())
             try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (e: Exception) {
                 Problems.warn("update", "Install-permission settings screen could not be opened", e)
             }
@@ -1519,7 +1543,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.warn("update", "Update download or installer start failed; current version kept", e)
                 withContext(Dispatchers.Main) {
                     update = UpdateState.Available(rel)
-                    showError(Txt.s(Res.string.msg_update_download_failed))
+                    sayError(Txt.s(Res.string.msg_update_download_failed), updatePlace())
                 }
             }
         }
@@ -1581,8 +1605,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             withContext(Dispatchers.Main) {
                 dataBusy = null
-                // the success summary keeps the English wording check (it may report a partial import)
-                if (msg.second) showError(msg.first) else message = msg.first
+                say(msg.first, if (msg.second) NoticeKind.ERROR else NoticeKind.INFO, NoticePlace.SETTINGS)
             }
         }
     }
@@ -1598,7 +1621,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val miss = try { routingData.missing(keys) } catch (e: Exception) {
             Problems.warn("routing", "Routing data check failed", e); keys
         }
-        if (miss.isEmpty()) { message = Txt.s(Res.string.msg_routing_data_present); return }
+        if (miss.isEmpty()) { sayInfo(Txt.s(Res.string.msg_routing_data_present), NoticePlace.SETTINGS); return }
         // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
         manualRouting = miss.first()
         dataBusy = Txt.s(Res.string.msg_routing_data_busy)
@@ -1711,7 +1734,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             recalc()
             return
         }
-        if (yes) message = Txt.s(Res.string.msg_route_back_no_position)
+        if (yes) sayError(Txt.s(Res.string.msg_route_back_no_position), NoticePlace.MAP)
         Problems.trace("plan", "Route back to the start: " + (if (yes) "yes, but no position" else "no") +
             " – route guidance ended, recording continues (Undo brings it back)")
         if (followLine != null && !followIsTrack) { clearFollow(); guidanceEndedByEmptyPlan = true }
@@ -2148,7 +2171,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             val found = search.findOne(p.searchTexts())
             // Stays until OK (owner rule: no message disappears by itself).
-            if (found == null) { showError(Txt.s(Res.string.msg_shared_place_not_found)); return@launch }
+            if (found == null) { sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP); return@launch }
             val (place, from) = found
             Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
             showSharedPlace(place.copy(name = p.name ?: place.name,
@@ -2187,7 +2210,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
     fun roundTrip() {
         val w = PlanEdits.roundTrip(waypoints)
-        if (w.size != waypoints.size) set(w) else if (waypoints.size >= 2) message = Txt.s(Res.string.msg_round_trip_already)
+        // the sheet offers Round trip only when the route does not end at the start yet (PlanPanel canRoundTrip)
+        if (w.size != waypoints.size) set(w) else Problems.trace("plan", "Round trip: the route already ends at the start")
     }
 
     fun undoStep() = step(history.undo(waypoints), "Undo")
@@ -2377,7 +2401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             if (followNextRoute) {
                 followNextRoute = false
-                if (route != null) followPlanned(checkNow = true) else message = Txt.s(Res.string.msg_no_new_route)
+                if (route != null) followPlanned(checkNow = true) else sayError(Txt.s(Res.string.msg_no_new_route), NoticePlace.MAP)
             } else if (planEditPending && result.isSuccess) {
                 // an edit of the plan during a tour: the tour follows the new plan (owner rule 2026-10-19, no question)
                 planEditPending = false
@@ -2828,7 +2852,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
             if (started) enter(AppMode.NAVIGATE)
-            else if (message == null) showError(Txt.s(Res.string.msg_recording_not_started))
+            else if (errorCard == null) sayError(Txt.s(Res.string.msg_recording_not_started), NoticePlace.MAP)
         }
     }
 
@@ -3105,7 +3129,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.rides.RideView.summary(db.loadSegments(t.id), rec.rides, onFoot, allowSplit = false)
                 }.onFailure { Problems.warn("rides", "Rides of a tour could not be shown", it) }.getOrNull()
             }
-            if (s == null) { showError(Txt.s(Res.string.msg_rides_read_failed)); return@launch }
+            if (s == null) { sayError(Txt.s(Res.string.msg_rides_read_failed), NoticePlace.ROUTES); return@launch }
             editRides = t to s
         }
     }
@@ -3118,7 +3142,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     .onFailure { Problems.error("rides", "Changing the rides of a tour failed; it stays as it was", it) }.isSuccess
                     .also { if (it) Backups.tourChanged(getApplication(), t.id) }
             }
-            if (!ok) showError(Txt.s(Res.string.msg_rides_change_failed))
+            if (!ok) sayError(Txt.s(Res.string.msg_rides_change_failed), NoticePlace.ROUTES)
             refreshTours()
             if (shown?.tourId == t.id) withContext(Dispatchers.IO) { db.getTour(t.id) }?.let { openTour(it) }
         }
@@ -3276,7 +3300,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.onpath.app.rides.TourStats(t.distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
             Backups.tourChanged(getApplication(), t.id)
             parts.forEach { Backups.tourChanged(getApplication(), it) }
-            withContext(Dispatchers.Main) { message = Txt.s(Res.string.msg_track_saved); refreshTours() }
+            // the track is in My routes – no message (owner 2026-10-27: no dark "Track saved" bar)
+            withContext(Dispatchers.Main) { refreshTours() }
         }
     }
 
@@ -3294,7 +3319,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }.onFailure { Problems.error("db", "The unfinished tour could not be moved to the recycle bin", it) }.getOrDefault(false)
             if (ok) Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) {
-                if (ok) message = Txt.s(Res.string.msg_track_to_bin) else showError(Txt.s(Res.string.msg_track_delete_failed))
+                // the dialog closing is the result; only a failure is said
+                if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed), NoticePlace.MAP)
                 refreshTours()
             }
         }
@@ -3379,7 +3405,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val plan = when (found) {
             is com.onpath.app.routing.PlanLinks.Found.Broken -> {
                 Problems.warn("plan", "Plan link ($via) could not be read: cut off, damaged or a newer format")
-                showError(Txt.s(Res.string.msg_plan_link_unreadable))
+                sayError(Txt.s(Res.string.msg_plan_link_unreadable), NoticePlace.MAP)
                 return
             }
             is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
@@ -3390,7 +3416,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points, linkPoints)) {
                 LinkOpen.AFTER_TOUR -> {
                     Problems.info("plan", "Plan link ($via, ${plan.points.size} points) not opened: a tour is running")
-                    message = Txt.s(Res.string.msg_plan_link_after_tour)
+                    sayError(Txt.s(Res.string.msg_plan_link_after_tour), NoticePlace.MAP)
                 }
                 LinkOpen.ASK_FIRST -> {
                     if (shown != null) closeShown()
@@ -3457,7 +3483,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
-        if (recState.value?.tourId == t.id) { message = Txt.s(Res.string.msg_track_recording_now); return }
+        if (recState.value?.tourId == t.id) { sayError(Txt.s(Res.string.msg_track_recording_now), NoticePlace.ROUTES); return }
         viewModelScope.launch(Dispatchers.IO) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
@@ -3509,8 +3535,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** "Imported “Name” – some parts were skipped." (the parser's warnings are in Diagnostics). */
-    internal fun importedMessage(name: String) = Txt.s(Res.string.msg_gpx_imported_skipped, name)
+    /** "Some parts of the file were skipped." – a line in the imported track's panel (the parser's warnings are in Diagnostics). */
+    internal fun importedNote(warnings: List<String>): String? = if (warnings.isEmpty()) null else Txt.s(Res.string.msg_gpx_parts_skipped)
 
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
@@ -3531,11 +3557,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.msg_export_all_chooser)))
             } catch (e: com.onpath.app.backup.BackupException) {
-                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; message = Txt.s(Res.string.msg_export_reason, e.reason)
+                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; sayError(Txt.s(Res.string.msg_export_reason, e.reason), NoticePlace.ROUTES)
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
                 busy = null
-                showError(Txt.s(Res.string.msg_export_failed))
+                sayError(Txt.s(Res.string.msg_export_failed), NoticePlace.ROUTES)
             }
         }
     }
@@ -3568,8 +3594,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
-                while (message != null) delay(500) // after the current message
-                showError(Txt.s(Res.string.msg_backup_failed, text))
+                while (errorCard != null) delay(500) // after the current error card
+                sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }
         }
@@ -3588,7 +3614,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
             }
             restoreProgress = null
-            if (r != null) message = com.onpath.app.backup.BackupRestore.summary(r) else showError(Txt.s(Res.string.msg_restore_folder_unreadable))
+            // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
+            // offered at the first start); a failure there → the error card
+            if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
+                if (showSettings) NoticePlace.SETTINGS else { routesOpen = true; NoticePlace.ROUTES })
+            else sayError(Txt.s(Res.string.msg_restore_folder_unreadable), if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP)
             refreshTours()
         }
     }
@@ -3641,7 +3671,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.common_export_gpx)))
         } catch (e: Exception) {
             Problems.error("gpx", "GPX export failed", e)
-            showError(Txt.s(Res.string.msg_export_failed))
+            sayError(Txt.s(Res.string.msg_export_failed), NoticePlace.ROUTES)
         }
     }
 
@@ -3686,7 +3716,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
                     selectActivity(pick.activity, userChange = false)
                 }
-                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note))
+                // something odd in the file: a grey line in the track panel, never a message (owner 2026-10-27)
+                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note,
+                    skippedNote = importedNote(data.warnings)))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
                 data.type?.let { t ->
@@ -3694,21 +3726,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""
                     Problems.info("gpx", "GPX import “$name”: type “${t.take(40)}” → $to")
                 }
-                // The track panel with its name is the feedback; a message (until OK) only when something was odd –
-                // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
+                // The track panel with its name is the feedback (+ its "parts skipped" line); the details go to
+                // Diagnostics (review 2026-10-24 B28)
                 busy = null
                 if (data.warnings.isNotEmpty()) {
                     Problems.info("gpx", "GPX import “$name”: ${data.pointCount} points, ${data.waypoints.size} waypoints; " +
                         data.warnings.joinToString("; "))
-                    message = importedMessage(name)
                 }
             } catch (e: Exception) {
                 busy = null
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")
-                showError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
-                    else Txt.s(Res.string.msg_gpx_import_failed))
+                // My routes when the import was started there; a file opened from another app → the error card
+                sayError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
+                    else Txt.s(Res.string.msg_gpx_import_failed), NoticePlace.ROUTES)
             }
         }
     }
@@ -3762,7 +3794,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingDataRouteChanged(r: com.onpath.app.routing.PlannedRoute) {
         val before = routingDataBefore ?: return
         routingDataBefore = null
-        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = Txt.s(Res.string.msg_route_updated_newer_data)
+        // the plan sheet's grey "changed" line (a tap shows the whole route), not a message (owner 2026-10-27)
+        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
     }
 
     /** This ViewModel's [com.onpath.app.cells.MapCells.relevance] – onCleared removes only its own (two screens at start, 0.10.1). */

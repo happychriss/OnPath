@@ -33,6 +33,9 @@ Rules
    - Everything the user did not trigger and cannot change (internal problems, why a map area loads) → Settings only.
    - General message bar (top, "OK") → only for results of something the user just did that are not visible
      elsewhere, and errors. Errors get the ⚠ icon + red accent.
+     **Superseded (owner 2026-10-27: "die komischen schwarzen Status-Codes … rausnehmen"):** the dark bar is gone. A
+     result shows where the user acted (a grey / red line at the top of My routes or the open Settings page); results
+     visible anyway are not said; only an error without such a place gets the light error card (red edge, ⚠, OK).
 3. **Dialogs only for decisions that can lose something** (delete, end tour, replace an unsaved route, a route that is
    very long / partly straight lines, take a new route). Buttons are verbs ("Route back", not "Yes"). No body text
    that repeats the buttons.
@@ -157,6 +160,8 @@ to go, arrival – in Title/Display; everything else Small or in the opened card
   move into the place where the user started it (spinner on the button / row) instead of the bar.
 - **Why:** a storage error must not look like "Copied."
 - `MainActivity.kt:285–293` (bar), `:261, 482`; `ui/AppViewModel.kt:3334, 3458`
+- **Done, then replaced (owner 2026-10-27):** no dark bar at all – `ui/Notices.kt` (`NoticeRouting`: line in My routes /
+  Settings where the user acted, light `ErrorCard` only for errors without a place, INFO without a place → problem log).
 
 ### 11. Dialog buttons as verbs, no repeated body text
 - "Route back to the start?" – **Yes / No** → **Route back / Just record**; body → "You deleted the destination.

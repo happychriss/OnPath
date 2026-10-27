@@ -49,11 +49,10 @@ class BackgroundDownloadScreenshotTest {
                     PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     BackgroundDownloadChip(u, onClick = {},
                         modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.STRIP_TOP_DP.dp, end = 12.dp))
-                    // the message bar goes below the chip (MessagePlacement), never over it
-                    androidx.compose.material3.Snackbar(Modifier.align(Alignment.TopCenter)
-                        .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp),
-                        action = { androidx.compose.material3.TextButton(onClick = {}) { androidx.compose.material3.Text("OK") } },
-                    ) { androidx.compose.material3.Text("Route saved as \"Taser Alm\".") }
+                    // the error card goes below the chip (MessagePlacement), never over it
+                    ErrorCard("Couldn't find this place. Try again when you have internet.", onOk = {},
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp))
                 }
             }
         }

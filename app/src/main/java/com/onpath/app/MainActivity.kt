@@ -59,7 +59,9 @@ class MainActivity : ComponentActivity() {
         vm.locationAsking = false
         vm.tracker.start()
         if (vm.tracker.hasPermission()) afterPermission?.invoke()
-        else vm.message = Txt.s(Res.string.msg_no_location_permission)
+        // asked for an action (Start): it did not happen – say why; the plain start-up ask needs no message
+        else if (afterPermission != null) vm.sayError(Txt.s(Res.string.msg_no_location_permission), com.onpath.app.ui.NoticePlace.MAP)
+        else com.onpath.app.debug.Problems.info("gps", "Location permission not given at the start-up ask")
         afterPermission = null
     }
 
@@ -86,13 +88,13 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.showError(Txt.s(Res.string.msg_no_storage_permission))
+        else vm.sayError(Txt.s(Res.string.msg_no_storage_permission), com.onpath.app.ui.NoticePlace.SETTINGS)
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
         try { launcher.launch(com.onpath.app.backup.BackupFolder.initialUri) } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("backup", "No folder picker available", e)
-            vm.showError(Txt.s(Res.string.msg_no_folder_picker))
+            vm.sayError(Txt.s(Res.string.msg_no_folder_picker), com.onpath.app.ui.NoticePlace.SETTINGS)
         }
     }
 
@@ -117,10 +119,10 @@ class MainActivity : ComponentActivity() {
             // A new serious problem (error / crash) is said once per run – nothing stays unseen (owner).
             val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
-            LaunchedEffect(serious, vm.message == null) {
+            LaunchedEffect(serious, vm.errorCard == null) {
                 if (serious == null) return@LaunchedEffect
-                if (vm.message != null) return@LaunchedEffect // wait until the current message is gone
-                vm.showError(Txt.s(Res.string.msg_something_wrong))
+                if (vm.errorCard != null) return@LaunchedEffect // wait until the current error card is gone
+                vm.sayError(Txt.s(Res.string.msg_something_wrong), com.onpath.app.ui.NoticePlace.BACKGROUND)
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
@@ -164,6 +166,7 @@ class MainActivity : ComponentActivity() {
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
                                 busy = vm.busy,
+                                note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                             )
@@ -254,6 +257,7 @@ class MainActivity : ComponentActivity() {
                             onDownloadRouting = { vm.downloadRoutingData() },
                             onTimeFormulas = if (vm.route != null) ({ vm.openTimeDetails(technical = true) }) else null,
                             dataBusy = vm.dataBusy,
+                            note = vm.settingsNote,
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
                             onInstallUpdate = { vm.installUpdate() },
@@ -289,10 +293,10 @@ class MainActivity : ComponentActivity() {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
+                    // The one error card (owner 2026-10-27: no dark bar; results go where the user acted – vm.say).
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
-                    vm.message?.let { msg ->
-                        // errors get ⚠ and a red edge (review 2026-10-24 B10)
-                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null }, error = vm.messageIsError,
+                    vm.errorCard?.let { msg ->
+                        com.onpath.app.ui.ErrorCard(msg, onOk = { vm.errorCard = null },
                             // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
@@ -438,13 +442,13 @@ class MainActivity : ComponentActivity() {
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) == null ->
                 com.onpath.app.search.SharedPlaceParser.fromText(intent.getStringExtra(Intent.EXTRA_TEXT),
                     intent.getStringExtra(Intent.EXTRA_SUBJECT)).also {
-                    if (it == null) vm.message = Txt.s(Res.string.msg_shared_no_place)
+                    if (it == null) vm.sayError(Txt.s(Res.string.msg_shared_no_place), com.onpath.app.ui.NoticePlace.MAP)
                 }
             else -> null
         }
     } catch (e: Exception) {
         com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
-        vm.showError(Txt.s(Res.string.msg_shared_unreadable))
+        vm.sayError(Txt.s(Res.string.msg_shared_unreadable), com.onpath.app.ui.NoticePlace.MAP)
         null
     }
 
@@ -453,7 +457,7 @@ class MainActivity : ComponentActivity() {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
         } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("ui", "No file picker available for GPX import", e)
-            vm.showError(Txt.s(Res.string.msg_no_file_picker))
+            vm.sayError(Txt.s(Res.string.msg_no_file_picker), com.onpath.app.ui.NoticePlace.ROUTES)
         }
     }
 
@@ -485,7 +489,7 @@ class MainActivity : ComponentActivity() {
         val shown = sp.getLong("crashShownUntil", 0)
         val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
         sp.edit().putLong("crashShownUntil", crash.last).apply()
-        if (vm.message == null) vm.showError(Txt.s(Res.string.msg_crash_last_time))
+        if (vm.errorCard == null) vm.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
     }
 
     /**
@@ -511,11 +515,11 @@ class MainActivity : ComponentActivity() {
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     try { startActivity(Intent.createChooser(send, "Send diagnostics")) } catch (e: Exception) {
                         com.onpath.app.debug.Problems.warn("ui", "No app to share the diagnostics file", e)
-                        vm.message = "No app found to send the file with."
+                        vm.sayError("No app found to send the file with.", com.onpath.app.ui.NoticePlace.SETTINGS)
                     }
                 }.onFailure {
                     com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)
-                    vm.message = "Diagnostics could not be created – the phone's storage may be full. Please try again."
+                    vm.sayError("Diagnostics could not be created – the phone's storage may be full. Please try again.", com.onpath.app.ui.NoticePlace.SETTINGS)
                 }
             }
         }.start()
@@ -554,7 +558,6 @@ class MainActivity : ComponentActivity() {
     private fun copy(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("adb", text))
-        // Android 13+ confirms a copy itself; an extra message would only need another tap.
-        if (Build.VERSION.SDK_INT < 33) vm.message = Txt.s(Res.string.msg_copied)
+        // Android 13+ confirms a copy itself; below that the copied path is simply there – no message (owner 2026-10-27)
     }
 }

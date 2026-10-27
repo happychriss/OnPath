@@ -996,8 +996,8 @@
     "confidence": "sicher"
   },
   "plan_error": {
-    "area": "Message bar",
-    "context": "Accessibility of the ⚠ in an error message",
+    "area": "Messages",
+    "context": "Accessibility of the ⚠ in an error message (error card, red lines in My routes / Settings)",
     "priority": 3,
     "confidence": "sicher"
   },

@@ -114,6 +114,8 @@ fun SettingsScreen(
     /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
     onTimeFormulas: (() -> Unit)? = null,
     dataBusy: String? = null,
+    /** The result of something done on the open page (restored, a failure …): a line at its top (owner 2026-10-27). */
+    note: Notice? = null,
     /** null = updates handled elsewhere (installed from Google Play) – topic hidden. */
     update: AppViewModel.UpdateState? = null,
     onCheckUpdate: () -> Unit = {},
@@ -173,6 +175,7 @@ fun SettingsScreen(
                 }
                 Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
+            note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
                     // two groups (owner C7 2026-10-24): what the user sets, then the smaller "App" group

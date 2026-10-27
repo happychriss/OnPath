@@ -293,6 +293,8 @@ fun RoutesScreen(
     onEditRides: (Tour) -> Unit = {},
     /** Import / Export all running: a spinner on the Import button / a line under the title (review 2026-10-24 C9). */
     busy: Busy? = null,
+    /** The result of something done here (restored, export / import failed …): a line under the title (owner 2026-10-27). */
+    note: Notice? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -309,6 +311,7 @@ fun RoutesScreen(
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
+            note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(str(Res.string.routes_empty),

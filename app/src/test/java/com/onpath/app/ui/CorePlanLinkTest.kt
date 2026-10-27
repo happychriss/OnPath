@@ -58,7 +58,7 @@ class CorePlanLinkTest {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         val receive = vm.substringAfter("fun receivePlanLink(").substringBefore("fun pastedPlanLink(")
         val broken = receive.substringAfter("Found.Broken ->").substringBefore("Found.Plan ->")
-        assertTrue(broken, "showError(Txt.s(Res.string.msg_plan_link_unreadable))" in broken)
+        assertTrue(broken, "sayError(Txt.s(Res.string.msg_plan_link_unreadable), NoticePlace.MAP)" in broken)
         assertTrue(broken, "Problems.warn(" in broken)
         assertTrue(broken, "return" in broken && "change" !in broken && "waypoints" !in broken)
         // MainActivity checks for a plan link before the place / GPX handling (a planner link is no Google place)
