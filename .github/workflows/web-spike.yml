@@ -113,7 +113,8 @@ jobs:
       # sync database, web-sync.md §10), and Cloudflare Access on that host set up first (web-planner.md §9; /sync/*
       # bypasses Access, the mailbox token guards it).
       - name: Deploy the planner host (test)
-        if: inputs.deploy
+        # owner 2026-10-27: every green push to web-spike goes online (the test site is behind Cloudflare Access)
+        if: inputs.deploy || (github.event_name == 'push' && github.ref == 'refs/heads/web-spike')
         working-directory: web/host
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
