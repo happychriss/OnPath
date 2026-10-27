@@ -23,6 +23,9 @@ const clickAt = async (lon, lat) => {
   await page.mouse.click(p[0], p[1]);
 };
 await clickAt(11.1600, 46.6700);
+// the first click on an empty plan asks like the app's first hold: Start here · Go here
+await page.waitForSelector('.pointmenu');
+await page.click('.pointmenu button:first-of-type');
 await page.waitForTimeout(300);
 await clickAt(11.1900, 46.6900);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });

@@ -30,7 +30,9 @@ const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
   await page.mouse.click(p[0], p[1]);
 };
-await clickAt(11.1600, 46.6700); await page.waitForTimeout(300);
+await clickAt(11.1600, 46.6700);
+await page.waitForSelector('.pointmenu'); // first click: New route – Start here · Go here
+await page.click('.pointmenu button:first-of-type'); await page.waitForTimeout(300);
 await clickAt(11.1350, 46.6840); await page.waitForTimeout(300);
 await clickAt(11.1500, 46.6950);
 await planned('');
@@ -38,12 +40,15 @@ const hike = await summary();
 console.log('hike:', hike);
 
 // activity switch re-plans
-await page.selectOption('#activity', 'BIKE_TOURING');
+await page.click('#activityChip');
+await page.click('[data-act=BIKE_TOURING]');
+check(!(await page.isVisible('#sacRow')), 'T level hidden for Bike');
+await page.click('#activityDone');
 await planned(hike);
 const bike = await summary();
 console.log('bike:', bike);
 check(bike !== hike, 'switching Hike → Bike plans again (summary changed)');
-check(!(await page.isVisible('#sacRow')), 'T level hidden for Bike');
+check((await page.textContent('#activityChip')).includes('Bike'), 'chip shows Bike');
 
 // round trip: loop shown once with ↺
 await page.click('#roundTrip');
@@ -56,9 +61,9 @@ check(await page.isDisabled('#roundTrip'), 'Round trip greyed out once it is one
 const loopBefore = await page.textContent('#points');
 await page.locator('.pin').nth(1).click();
 await page.waitForSelector('.pointmenu');
-const items = await page.$$eval('.pointmenu button', (b) => b.map((x) => x.textContent));
+const items = await page.$$eval('.pointmenu button .txt > span:first-child', (b) => b.map((x) => x.textContent));
 check(items.join('|') === 'Start & finish here|Delete', 'point menu of a loop point: Start & finish here · Delete');
-await page.click('.pointmenu button:first-child');
+await page.click('.pointmenu button:first-of-type');
 await page.waitForFunction((b) => document.getElementById('points').textContent !== b, loopBefore, { timeout: 10_000 }).catch(() => {});
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');
 await page.screenshot({ path: shot });

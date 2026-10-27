@@ -24,6 +24,10 @@ export interface SharedPlan {
 export interface PlanResult {
   error: string | null;
   distanceM: number; ascentM: number; descentM: number; timeS: number; difficulty: string; ms: number;
+  /** Why the badge is raised (RouteSummary.Rating.because), or null. */
+  because: string | null;
+  /** The plan sheet's texts from the app's Format: "4 h 36 min", "12.5 km", "↑ 842 m  ↓ 310 m  ·  max 954 m". */
+  texts: { time: string; distance: string; climb: string };
   wayTypes: [string, number][]; surfaces: [string, number][];
   legs: { straight: boolean; points: [number, number, number | null][] }[];
   profile: { dist: number[]; ele: number[]; steep: number[] };

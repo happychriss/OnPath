@@ -1,12 +1,13 @@
 // Search like the app's (ui/search/SearchSession): offline on every keystroke – the app's index and ranking in the
 // engine, over the map areas in view – and online (Photon, OpenStreetMap data) after 350 ms without typing for 3+
 // letters, mixed in below the rows already shown. A pick opens the place card: "Add to route" (where it goes is said
-// before the click – the app's AddPreview), "As start", "As destination".
+// before the click – the app's AddPreview), "As start", "As destination", "Google" (ui/search/PlaceCard).
 import * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import type { Hit } from './engine/types';
+import { icon } from './icons';
 
-export type PlaceRole = 'SMART' | 'START' | 'DESTINATION';
+export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
 
 export interface SearchHost {
   map: maplibregl.Map;
@@ -16,6 +17,8 @@ export interface SearchHost {
   points(): [number, number][];
   route(): [number, number][];
   add(hit: Hit, role: PlaceRole): void;
+  /** "Google": the app's Google Maps link-out for this place (a new tab). */
+  google(hit: Hit): void;
 }
 
 const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
@@ -29,8 +32,8 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
 
 export function setupSearch(host: SearchHost, box: HTMLElement) {
   box.innerHTML = `
-    <div class="searchrow"><input id="q" type="text" placeholder="Search places or addresses" autocomplete="off" aria-label="Search">
-      <button id="qclear" aria-label="Clear search" hidden>✕</button></div>
+    <div class="searchrow">${icon('search')}<input id="q" type="search" placeholder="Search places or addresses" autocomplete="off" aria-label="Search places or addresses">
+      <button id="qclear" class="iconbtn" aria-label="Clear search" hidden>${icon('close', 20)}</button></div>
     <div id="results" hidden></div>
     <div id="card" hidden></div>`;
   const q = box.querySelector<HTMLInputElement>('#q')!;
@@ -94,15 +97,19 @@ export function setupSearch(host: SearchHost, box: HTMLElement) {
       <div class="cardhead"><span class="glyph" style="background:${h.color}">${esc(h.glyph)}</span>
         <span class="txt"><b>${esc(h.title)}</b><span class="muted">${esc(h.subtitle)}</span>
         ${h.address ? `<span class="muted small">${esc(h.address)}</span>` : ''}</span>
-        <button id="cclose" aria-label="Close">✕</button></div>
-      ${pv.existing == null ? `<button id="cadd" class="primary wide">Add to route <span class="small">${esc(pv.subtitle)}</span></button>`
-        : `<div class="muted pad">This place ${esc(pv.subtitle)}.</div>`}
-      <div class="row"><button id="cstart" ${atStart ? 'disabled' : ''}>As start</button>
-        <button id="cdest" ${atEnd ? 'disabled' : ''}>As destination</button></div>`;
+        <button id="cclose" class="iconbtn" aria-label="Close">${icon('close', 20)}</button></div>
+      ${pv.existing == null
+        ? `<button id="cadd" class="primary wide twoline">${icon('addLocation')}<span class="txt"><span>Add to route</span>${pv.subtitle ? `<span class="small">${esc(pv.subtitle)}</span>` : ''}</span></button>`
+        : `<button id="cremove" class="primary wide twoline">${icon('delete')}<span class="txt"><span>Remove from route</span><span class="small">${esc(pv.subtitle)}</span></span></button>`}
+      <div class="row three"><button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>As start</button>
+        <button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>As destination</button>
+        <button id="cgoogle" class="outline" title="Open in Google Maps (new tab)">${icon('map', 18)}Google</button></div>`;
     const done = (role: PlaceRole) => { host.add(h, role); close(); };
     card.querySelector<HTMLButtonElement>('#cadd')?.addEventListener('click', () => done('SMART'));
+    card.querySelector<HTMLButtonElement>('#cremove')?.addEventListener('click', () => done('REMOVE'));
     card.querySelector<HTMLButtonElement>('#cstart')!.onclick = () => done('START');
     card.querySelector<HTMLButtonElement>('#cdest')!.onclick = () => done('DESTINATION');
+    card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => host.google(h);
     card.querySelector<HTMLButtonElement>('#cclose')!.onclick = close;
   };
 

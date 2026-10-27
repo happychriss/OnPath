@@ -23,7 +23,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 check((await page.textContent('#points')).includes('Vellau'), 'point name from the code is shown');
-check(await page.inputValue('#activity') === 'HIKE' && await page.inputValue('#sac') === '3', 'activity Hike, T3');
+check((await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T3'), 'activity Hike, T3');
 check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 2, 'two points on the map');
 await page.waitForFunction((c) => location.hash === '#p=' + c, CODE, { timeout: 10_000 }).catch(() => {});
 check(await page.evaluate(() => location.hash) === '#p=' + CODE, 'browser writes the same code as the app (address bar)');
@@ -44,7 +44,7 @@ await page.waitForFunction((b) => location.hash !== b, before, { timeout: 10_000
 check(await page.evaluate(() => location.hash) !== before, 'reversed plan → new code in the address');
 await page.reload();
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
-check((await page.textContent('#points')).trim().startsWith('Vellau'), 'reload keeps the reversed plan (Vellau first)');
+check((await page.textContent('#points li:first-child .txt > span:first-child')).trim().startsWith('Vellau'), 'reload keeps the reversed plan (Vellau first)');
 
 // 4. a broken link is a plain message, no crash
 await page.goto(url + 'index.html#p=AQ');
