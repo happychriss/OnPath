@@ -21,6 +21,8 @@ import { icon, activityIcon, needle } from './icons';
 import { ActivityPicker, type ActivityRow } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
+import { PlanSync } from './sync';
+import { myPlansDialog, pairDialog, joinDialog } from './plans';
 import './style.css';
 
 const ROUTE = '#1E3FAE';
@@ -36,6 +38,8 @@ const state = {
   /** Per point: pinned to a POI / place (passed exactly) and its name – kept from a received plan. */
   meta: [] as Meta[],
   title: null as string | null,
+  /** The saved plan (My plans) the page shows, so "Save" writes a new version of it. */
+  savedId: null as string | null,
   activity: (localStorageGet('activity') as Activity) ?? 'HIKE',
   sac: Number(localStorageGet('sac') ?? 2),
   plan: null as PlanResult | null,
@@ -47,6 +51,9 @@ const state = {
 };
 /** Names and pins by point value, also for points only undo / redo can bring back (the app: PlanHistory.allPoints). */
 const known = new Map<string, Meta>();
+/** A pairing link (#pair=…) this page was opened with – taken out of the address at once (it holds the secret). */
+const pairLink = /[#&]pair=/.test(location.hash) ? location.href : null;
+if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="map"></div>
@@ -54,6 +61,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div id="searchbox"></div>
     <button id="menuBtn" class="round" aria-label="Menu" aria-haspopup="menu">${icon('menu')}</button>
     <div id="mainMenu" class="menu" role="menu" hidden>
+      <button id="menuPlans" role="menuitem">${icon('folder')}My plans</button>
+      <button id="menuPair" role="menuitem">${icon('sync')}Pair phone</button>
       <button id="menuShare" role="menuitem">${icon('phone')}Send to phone · Share</button>
       <hr><button id="menuAbout" role="menuitem">${icon('info')}About &amp; credits</button>
     </div>
@@ -73,6 +82,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="Route actions" aria-haspopup="menu">${icon('more')}</button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
+        <button id="menuSavePlan" role="menuitem">${icon('folder')}Save to My plans</button>
         <button id="exportGpx" role="menuitem">${icon('download')}Export GPX</button>
         <hr><button id="clear" role="menuitem">${icon('delete')}Clear route</button>
       </div>
@@ -162,6 +172,14 @@ const ready = engine.configure(base, params.get('segments') ?? base + 'segments/
   return r.ok;
 });
 ready.then((ok) => { if (ok) { openFromLink(); prefetchView(); } });
+// plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
+const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
+(window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
+ready.then(async (ok) => {
+  if (!ok) return;
+  await sync.init();
+  if (pairLink) joinDialog(sync, pairLink);
+});
 addEventListener('hashchange', () => openFromLink());
 // The routing data around the map view is fetched while the user looks at the map, so the first plan starts at once
 // (docs/design/web-planner.md §11.2). Only from zoom 9: one 1° part is 2–10 MB.
@@ -425,6 +443,12 @@ async function openFromLink() {
   const shared = await engine.parse(location.href);
   if (!shared) { status('This link does not contain a readable plan.', 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
+  state.savedId = null;
+  await loadShared(shared);
+}
+
+/** Shows [shared] as the plan (from a link or from My plans). */
+async function loadShared(shared: SharedPlan) {
   state.title = shared.title;
   setActivity(shared.activity, shared.sac, false);
   if (shared.points.length) {
@@ -630,7 +654,21 @@ document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).close
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
-$('clear').onclick = () => { closeMenus(); state.title = null; commit([], []); };
+$('clear').onclick = () => { closeMenus(); state.title = null; state.savedId = null; commit([], []); };
+const plansHost = {
+  current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
+  openId: () => state.savedId,
+  open: async (p: { id: string; plan: string; title: string | null }) => {
+    const shared = await engine.parse('p=' + p.plan);
+    if (!shared) { status('This saved plan could not be read.', 'error'); return; }
+    state.savedId = p.id;
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; return; }
+    await loadShared({ ...shared, title: p.title });
+  },
+};
+$('menuPlans').onclick = () => { closeMenus(); myPlansDialog(sync, plansHost); };
+$('menuSavePlan').onclick = () => { closeMenus(); myPlansDialog(sync, plansHost); };
+$('menuPair').onclick = () => { closeMenus(); pairDialog(sync, location.href); };
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));

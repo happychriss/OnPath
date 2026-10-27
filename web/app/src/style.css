@@ -159,3 +159,22 @@ dialog.share .row button.primary { border: none; background: var(--green); }
   #footer { left: 12px; bottom: calc(var(--sheet-h) + 12px); }
   #results, #card { max-height: 50vh; }
 }
+
+/* ---- My plans, Pair phone (docs/design/web-sync.md) ---- */
+dialog.plans .saveRow { display: flex; gap: 8px; align-items: center; }
+dialog.plans .saveRow input { flex: 1; margin: 0; }
+dialog.plans .saveRow button { padding: 8px 16px; }
+.planlist { list-style: none; margin: 12px 0; padding: 0; max-height: 45vh; overflow: auto; }
+.planlist li { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--line); padding: 4px 0; }
+.planlist li:first-child { border-top: none; }
+.planlist .open { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left;
+  border: none; background: none; color: var(--fg); padding: 6px 4px; border-radius: 8px; }
+.planlist .open:hover { background: var(--surface2); }
+.planlist .name { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.status.warning { color: var(--warn); }
+dialog .confirm { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface2); }
+dialog .confirm p { margin: 0 0 8px; }
+dialog.share .row button.danger { color: var(--error); }
+dialog.share .row button.danger.primary { color: #fff; background: var(--error); border: none; }
+dialog.pair .check { font-size: 16px; }
+dialog.pair .check b { letter-spacing: .08em; }

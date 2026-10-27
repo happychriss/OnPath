@@ -7,9 +7,13 @@ import path from 'node:path';
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm',
   '.json': 'application/json', '.css': 'text/css', '.pmtiles': 'application/octet-stream' };
 
-/** [dataDir] = a map store root (cells/f2/10/<x>/<y>/…, like the R2 bucket), served at /data/. */
-export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0 }) {
+/**
+ * [dataDir] = a map store root (cells/f2/10/<x>/<y>/…, like the R2 bucket), served at /data/.
+ * [sync] = (Request) => Promise<Response> for /sync/ (the host's mailbox on a fake D1, see sync-smoke.mjs).
+ */
+export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null }) {
   const server = http.createServer((req, res) => {
+    if (sync && req.url.startsWith('/sync/')) { forward(sync, req, res); return; }
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file;
     if (url.startsWith('/segments/')) file = path.join(segments, path.basename(url));
@@ -33,4 +37,16 @@ export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {
     });
   });
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}/` })));
+}
+
+/** A node request → a fetch Request → [handler] → back to node (only for the small sync mailbox). */
+async function forward(handler, req, res) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const body = chunks.length ? Buffer.concat(chunks) : undefined;
+  const r = await handler(new Request('http://127.0.0.1' + req.url, {
+    method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body,
+  }));
+  res.writeHead(r.status, Object.fromEntries(r.headers));
+  res.end(Buffer.from(await r.arrayBuffer()));
 }

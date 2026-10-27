@@ -42,6 +42,7 @@ check(await page.isHidden('#undo'), 'no undo before the first change');
 await page.click('.pointmenu button:first-of-type');
 await waitPins(1);
 check(await pins() === 1, 'Start here sets the start');
+await page.waitForSelector('#undo', { state: 'visible', timeout: 10_000 }).catch(() => {}); // the state comes back from the engine worker
 check(await page.isVisible('#undo') && await page.isHidden('#redo'), 'undo shown, redo hidden');
 await clickAt(11.1350, 46.6840);
 await planned();

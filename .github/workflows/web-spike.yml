@@ -53,7 +53,10 @@ jobs:
           ls -la segments
 
       - name: Build the Wasm engine (TeaVM)
-        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest, PlanStateTest, MapGesturesTest
+        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest, PlanStateTest, MapGesturesTest, sync tests
+
+      - name: Plan sync in Wasm = the JVM's frozen bytes (keys, blob)
+        run: node web/app/test/sync-engine.mjs
 
       - name: Routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
@@ -86,6 +89,10 @@ jobs:
         working-directory: web/app
         run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Plan sync (phase 2) – two browsers pair, sync both ways, offline + conflict copy, delete, unpair
+        working-directory: web/app
+        run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Where the time goes (numbers only, nothing checked)
         working-directory: web/app
         run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
@@ -95,9 +102,10 @@ jobs:
         run: node --test
 
       # Deploy (manual only): Actions → Web spike → Run workflow → deploy. Needs the repository secret
-      # CLOUDFLARE_PLANNER_TOKEN (Workers scripts + the planner zone's routes/DNS, nothing else), the repository
-      # variables CLOUDFLARE_ACCOUNT_ID (exists) and PLANNER_HOST_TEST (e.g. plan.onpath.earth), and Cloudflare Access
-      # on that host set up first (web-planner.md §9) – the host has no other lock.
+      # CLOUDFLARE_PLANNER_TOKEN (Workers scripts, D1 edit + the planner zone's routes/DNS, nothing else), the repository
+      # variables CLOUDFLARE_ACCOUNT_ID (exists), PLANNER_HOST_TEST (e.g. plan.onpath.earth) and SYNC_D1_ID_TEST (the
+      # sync database, web-sync.md §10), and Cloudflare Access on that host set up first (web-planner.md §9; /sync/*
+      # bypasses Access, the mailbox token guards it).
       - name: Deploy the planner host (test)
         if: github.event_name == 'workflow_dispatch' && inputs.deploy
         working-directory: web/host
@@ -105,11 +113,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           HOST: ${{ vars.PLANNER_HOST_TEST }}
+          SYNC_D1: ${{ vars.SYNC_D1_ID_TEST }}
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$HOST" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_PLANNER_TOKEN / PLANNER_HOST_TEST / CLOUDFLARE_ACCOUNT_ID missing – see web-planner.md §9"; exit 1
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$HOST" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$SYNC_D1" ]; then
+            echo "::error::CLOUDFLARE_PLANNER_TOKEN / PLANNER_HOST_TEST / CLOUDFLARE_ACCOUNT_ID / SYNC_D1_ID_TEST missing – see web-planner.md §9, web-sync.md §10"; exit 1
           fi
-          sed -i "s/__PLANNER_HOST_TEST__/$HOST/" wrangler.toml
+          sed -i "s/__PLANNER_HOST_TEST__/$HOST/; s/__SYNC_D1_ID_TEST__/$SYNC_D1/" wrangler.toml
+          npx --yes wrangler@4.141.0 d1 migrations apply onpath-sync-test --env test --remote
           npx --yes wrangler@4.141.0 deploy --env test
 
       - name: Sizes
