@@ -492,5 +492,25 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun problems(): String = Engine.problems()
 
+// ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----
+@JSExport fun syncPairNew(random: String): String = WebSync.pairNew(random)
+@JSExport fun syncPairParse(text: String): String = WebSync.pairParse(text)
+@JSExport fun syncKeys(pair: String): String = WebSync.keys(pair)
+@JSExport fun syncNewId(random: String): String = WebSync.newId(random)
+@JSExport fun syncNewDevice(random: String): String = WebSync.newDevice(random)
+@JSExport fun syncList(ledger: String, device: String): String = WebSync.list(ledger, device)
+@JSExport fun syncDevices(ledger: String, device: String): String = WebSync.devices(ledger, device)
+@JSExport fun syncState(ledger: String): String = WebSync.state(ledger)
+@JSExport fun syncSave(ledger: String, id: String, plan: String, title: String, now: Double, device: String): String =
+    WebSync.save(ledger, id, plan, title, now, device)
+@JSExport fun syncRename(ledger: String, id: String, title: String, now: Double, device: String): String =
+    WebSync.rename(ledger, id, title, now, device)
+@JSExport fun syncDelete(ledger: String, id: String, now: Double, device: String): String = WebSync.delete(ledger, id, now, device)
+@JSExport fun syncHello(ledger: String, device: String, name: String, now: Double): String = WebSync.hello(ledger, device, name, now)
+@JSExport fun syncForget(ledger: String): String = WebSync.forget(ledger)
+@JSExport fun syncApply(ledger: String, pair: String, page: String, upTo: Double): String = WebSync.apply(ledger, pair, page, upTo)
+@JSExport fun syncOutbox(ledger: String, pair: String, random: String): String = WebSync.outbox(ledger, pair, random)
+@JSExport fun syncAcked(ledger: String, sent: String, rev: Double): String = WebSync.acked(ledger, sent, rev)
+
 fun main() {}
 

@@ -20,11 +20,14 @@ val appFiles = listOf(
     // page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out
     "ui/PlanState.kt", "ui/MapGestures.kt", "poi/GoogleMapsLink.kt", "ui/RouteWarnings.kt",
     "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",
+    // plan sync, phase 2 (docs/design/web-sync.md): pairing code, keys, crypto, item format, conflict rule, ledger
+    "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
 // the plain JVM here, so web CI checks them too).
-val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt", "ui/RouteWarningsTest.kt")
+val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt", "ui/RouteWarningsTest.kt",
+    "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt")
 
 sourceSets {
     main {

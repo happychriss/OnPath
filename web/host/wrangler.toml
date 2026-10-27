@@ -9,7 +9,7 @@ preview_urls = false
 [assets]
 directory = "../app/dist"
 binding = "ASSETS"
-run_worker_first = ["/data/*", "/segments/*"]
+run_worker_first = ["/data/*", "/segments/*", "/sync/*"]
 
 [env.test]
 name = "onpath-planner-test"
@@ -21,3 +21,21 @@ routes = [{ pattern = "__PLANNER_HOST_TEST__", custom_domain = true }]
 binding = "MAPS"
 bucket_name = "onpath-maps-test"
 jurisdiction = "eu"
+
+# Plan sync mailbox (docs/design/web-sync.md §8): D1, EU. The deploy step fills the id from the repository variable
+# SYNC_D1_ID_TEST; create the database once with `wrangler d1 create onpath-sync-test --jurisdiction eu`.
+[[env.test.d1_databases]]
+binding = "SYNC"
+database_name = "onpath-sync-test"
+database_id = "__SYNC_D1_ID_TEST__"
+migrations_dir = "migrations"
+
+# 120 sync requests per minute per IP (a sync round is 2–5 requests)
+[[env.test.ratelimits]]
+name = "SYNC_RATE"
+namespace_id = "7301"
+simple = { limit = 120, period = 60 }
+
+# daily: delete mailboxes idle for 12 months
+[env.test.triggers]
+crons = ["17 3 * * *"]
