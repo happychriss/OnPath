@@ -217,4 +217,51 @@ class CellStoreTest {
         File(File(store.downloadDir, b.id), "v1.part").mkdirs() // unfinished: not a pending download
         assertEquals(listOf(a), store.pendingDownloads().map { it.manifest.cell })
     }
+
+    private fun pkgDownload(store: CellStore, p: CellId, version: String): CellStore.Download {
+        val dir = File(File(store.downloadDir, p.id), version)
+        return CellStore.Download(CellFixtures.pkg(dir, p, version), dir)
+    }
+
+    /**
+     * Region packages (map-cells.md §20) join the store like cells: a package owns z7-9 under its tile (base, overlays,
+     * relief), cells own z10+; with a package installed the region package's z<10 tiles go (the map draws z7-9 from the
+     * detailed sources then). A store with only packages is not a map folder; packages leave like cells.
+     */
+    @Test fun regionPackagesJoinWithCells() {
+        val data = tmp.newFolder("data")
+        CellFixtures.region(data)
+        val store = CellStore(data)
+        val p = CellId.packageOf(a) // 7-67-45
+        val g1 = store.apply(add = listOf(pkgDownload(store, p, "p1")))
+        assertNull("only packages: not a map folder", store.mapDir())
+        val g2 = store.apply(add = listOf(download(store, a, "v1")))
+        assertEquals(g2.dir, store.mapDir())
+        assertEquals(setOf(a, p), g2.cellIds)
+        // z7-9 from the package, z10+ from the cell, z10+ elsewhere from the region package
+        assertEquals("$p@p1:base.pmtiles:9/${a.x shr 1}/${a.y shr 1}", tileOf(g2.dir, "base.pmtiles", 9, a.x shr 1, a.y shr 1))
+        assertEquals("$p@p1:base.pmtiles:7/${p.x}/${p.y}", tileOf(g2.dir, "base.pmtiles", 7, p.x, p.y))
+        assertEquals("$a@v1:base.pmtiles:10/${a.x}/${a.y}", tileOf(g2.dir, "base.pmtiles", 10, a.x, a.y))
+        assertEquals("region:base.pmtiles:10/${b.x}/${b.y}", tileOf(g2.dir, "base.pmtiles", 10, b.x, b.y))
+        // the region package's own z8-9 tiles are left out while a package is installed (also outside the package)
+        assertFalse(tileOf(g2.dir, "base.pmtiles", 9, b.x shr 1, b.y shr 1).orEmpty().startsWith("region"))
+        PmTiles.Reader(File(g2.dir, "base.pmtiles")).use { assertEquals(7, it.header.minZoom) }
+        PmTiles.Reader(File(g2.dir, "hillshade.pmtiles")).use { r ->
+            assertEquals(4, r.header.tileType); assertEquals(7, r.header.minZoom); assertEquals(9, r.header.maxZoom)
+        }
+        assertTrue(g2.cell(p)!!.bytes.getValue("hillshade.pmtiles") > 0)
+        assertEquals(3, poiNames(g2.dir).count { it.startsWith("$a@v1") }) // packages carry no POIs
+        assertTrue(g1.number < g2.number)
+
+        // a new package version replaces only its tiles; the cell stays
+        val g3 = store.apply(add = listOf(pkgDownload(store, p, "p2")))
+        assertEquals("$p@p2:overlays.pmtiles:8/${a.x shr 2}/${a.y shr 2}", tileOf(g3.dir, "overlays.pmtiles", 8, a.x shr 2, a.y shr 2))
+        assertEquals("$a@v1:base.pmtiles:10/${a.x}/${a.y}", tileOf(g3.dir, "base.pmtiles", 10, a.x, a.y))
+
+        // the package goes: its tiles go, the region package's z<10 tiles come back
+        val g4 = store.remove(setOf(p))
+        assertEquals(setOf(a), g4.cellIds)
+        assertFalse(File(g4.dir, "hillshade.pmtiles").exists())
+        assertEquals("region:base.pmtiles:9/${a.x shr 1}/${a.y shr 1}", tileOf(g4.dir, "base.pmtiles", 9, a.x shr 1, a.y shr 1))
+    }
 }

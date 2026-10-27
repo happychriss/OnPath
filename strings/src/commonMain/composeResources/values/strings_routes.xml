@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- My routes, activity picker, tour dialogs, missing-data screen, GPX import (ui/Screens.kt, data/TourDb.kt, gpx/). Context: tools/i18n/meta/strings_routes.json -->
+<resources>
+    <string name="routes_missing_title">Offline map data is missing</string>
+    <string name="routes_missing_body">OnPath works fully offline. Copy the map package to the phone once, then everything runs without network.</string>
+    <string name="routes_missing_found">found</string>
+    <string name="routes_missing_missing">missing</string>
+    <string name="routes_missing_adb">Or, from a computer with USB debugging on:</string>
+    <string name="routes_missing_copy_command">Copy command</string>
+    <string name="routes_missing_target">Target folder on the phone:\n%1$s</string>
+    <string name="routes_missing_check_again">Check again</string>
+    <string name="routes_missing_continue">Continue without map data</string>
+    <string name="routes_data_import">Import map data (.zip) from this phone</string>
+    <string name="routes_data_download_paths">Download paths for route planning (≈ 10 MB)</string>
+
+    <string name="routes_activity_title">Activity</string>
+    <string name="routes_sac_title">Hiking difficulty (SAC)</string>
+    <string name="routes_sac_button_desc">T%1$d · %2$s</string>
+    <string name="routes_sac_line">T%1$d · %2$s – %3$s</string>
+    <string name="routes_sac_1_name">Hiking</string>
+    <string name="routes_sac_1_text">Well-built path, flat or slightly steep. No fall risk. Trainers are enough.</string>
+    <string name="routes_sac_2_name">Mountain hiking</string>
+    <string name="routes_sac_2_text">Continuous path, steep in places, fall risk not excluded. Some sure-footedness; hiking boots recommended.</string>
+    <string name="routes_sac_3_name">Demanding mountain hiking</string>
+    <string name="routes_sac_3_text">Path not always visible; exposed places may have ropes or chains; hands sometimes needed for balance. Sure-footed, good hiking boots.</string>
+    <string name="routes_sac_4_name">Alpine hiking</string>
+    <string name="routes_sac_4_text">Path not always present; hands needed in places; exposed terrain, steep grass, scree, easy snow fields. Experience in exposed terrain.</string>
+    <string name="routes_sac_5_name">Demanding alpine hiking</string>
+    <string name="routes_sac_5_text">Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed.</string>
+
+    <string name="routes_title">My routes</string>
+    <string name="routes_importing">Importing…</string>
+    <string name="routes_import_gpx">Import GPX</string>
+    <string name="routes_empty">No routes yet.\nSave a planned route, record a tour or import a GPX file.</string>
+    <string name="routes_kind_planned">Planned route</string>
+    <string name="routes_kind_recorded">Recorded track</string>
+    <string name="routes_kind_imported">Imported GPX</string>
+    <string name="routes_rename_planned">Rename planned route</string>
+    <string name="routes_rename_recorded">Rename recorded track</string>
+    <string name="routes_rename_imported">Rename imported gpx</string>
+    <string name="routes_recording_now">Recording now</string>
+    <string name="routes_after_tour">Can be loaded after the tour</string>
+    <string name="routes_export_all">Export all (ZIP)</string>
+    <string name="routes_options_desc">Options for “%1$s”</string>
+    <string name="routes_edit_rides">Edit rides</string>
+    <string name="routes_delete_title">Delete “%1$s”?</string>
+    <string name="routes_replace_title">Replace current route?</string>
+    <string name="routes_replace_text">Your current route is not saved. Save it first, or replace it with the route you picked.</string>
+    <string name="routes_save_first">Save first</string>
+    <string name="routes_name_label">Name</string>
+
+    <string name="routes_unfinished_title">Unfinished tour</string>
+    <string name="routes_unfinished_text">A recording was interrupted (%1$s, %2$s). Nothing was lost.</string>
+    <string name="routes_unfinished_continue">Continue</string>
+    <string name="routes_unfinished_delete_title">Delete this tour?</string>
+    <string name="routes_track_saved">Track saved</string>
+
+    <string name="routes_activity_from_file">Activity set to %1$s from the file</string>
+    <string name="routes_activity_from_tour">Activity set to %1$s from the tour</string>
+    <string name="routes_gpx_empty">The file is empty or not a GPX file.</string>
+    <string name="routes_gpx_nothing">No track, route or waypoint found in this file.</string>
+    <string name="routes_gpx_too_large">The file is larger than %1$d MB.</string>
+    <string name="routes_replace_text_link">Your current route is not saved. Save it first, or replace it with the route from the link.</string>
+</resources>

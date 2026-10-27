@@ -615,3 +615,90 @@ test("cleanup: deletes at most maxDeletes per run", async () => {
   assert.equal(r.f1Objects, 10);
   assert.equal([...env.BUCKET.objects.keys()].length, 20);
 });
+
+// ------------------------------------------------------------------------------------------------ region packages (§7i)
+import { isPackage, PACKAGE_Z } from "../src/cells.js";
+const DUS = "7-66-42"; // z7 region package over Düsseldorf / Hilden
+
+test("package ids: z7 accepted, other zooms rejected", () => {
+  assert.equal(PACKAGE_Z, 7);
+  assert.deepEqual(parseCellId("7/66/42"), { z: 7, x: 66, y: 42, id: DUS });
+  assert.ok(isPackage(DUS) && isPackage(parseCellId(DUS)) && !isPackage(MERAN));
+  for (const bad of ["9-1-1", "8-1-1", "7-128-0", "7-1-128", "11-1-1"]) assert.equal(parseCellId(bad), null, bad);
+  assert.equal(blockOf(parseCellId(DUS)), "66-42");
+  assert.equal(blockOf(parseCellId("10-533-341")), "66-42"); // a cell under the package: the same block
+});
+
+test("package: request (with cells) → queued → built → ready → manifest", async () => {
+  const env = testEnv({ BUILDS_ENABLED: "true" });
+  const g = fakeGoogle();
+  const c = ctx();
+  const r = await handle(req("/v1/cells/request", { method: "POST", body: { cells: ["10-533-341", DUS], reason: "refresh", formats: [2] } }), env, c, g);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.deepEqual(j.cells.map((x) => [x.id, x.state]), [["10-533-341", "queued"], [DUS, "queued"]]);
+  const row0 = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(DUS).first();
+  assert.equal(row0.priority, 3); // refresh priority: never ahead of someone waiting
+  await c.done();
+  const { results } = await env.DB.prepare("SELECT name, cells FROM executions WHERE state = 'running'").all();
+  const ex = results.find((e) => JSON.parse(e.cells).includes(DUS)); // background work is spread over free slots
+  assert.ok(ex);
+  // the builder publishes the package (schema 1) and reports ready
+  await publish(env, DUS, "2026-10-26-s1");
+  await putStatus(env, DUS, { state: "ready", version: "2026-10-26-s1", osm_date: "2026-10-26", size: 1000,
+    execution: gcp.shortName(ex.name) });
+  await pump(env, config(env), Date.now(), g);
+  const s = await (await handle(req(`/v1/cells/status?ids=${DUS}&format=2`), env, ctx(), g)).json();
+  assert.equal(s.cells[0].state, "ready");
+  assert.equal(s.cells[0].version, "2026-10-26-s1");
+  assert.equal(s.cells[0].updating, undefined);
+  const m = await handle(req("/v1/cells/7/66/42/manifest?format=2"), env, ctx(), g);
+  assert.equal(m.status, 200);
+  assert.equal((await m.json()).cell, DUS);
+  const f = await handle(req("/v1/files/cells/f2/7/66/42/2026-10-26-s1/base.pmtiles"), env, ctx(), g);
+  assert.equal(f.status, 200);
+  assert.equal((await handle(req("/v1/cells/9/66/42/manifest?format=2"), env, ctx(), g)).status, 400);
+});
+
+test("package schema is its own: a package s1 is current while CELL_SCHEMA = 7; below PACKAGE_SCHEMA it is rebuilt, served meanwhile", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  assert.equal(cfg.cellSchema, 7);
+  assert.equal(cfg.packageSchema, 1);
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES (?, 2, '2026-10-25-s1', '2026-10-25', 5, 3, 1)`).bind(DUS).run();
+  const j = await requestCells(env, cfg, { cells: [DUS], reason: "refresh" }, NOW);
+  assert.deepEqual([j.cells[0].state, j.cells[0].updating], ["ready", undefined]);
+  assert.equal((await row(env, DUS)).job, null); // not rebuilt
+  // a later package schema: rebuilt in the background, the old one stays "ready" meanwhile
+  const cfg2 = config({ ...env, PACKAGE_SCHEMA: "2" });
+  const k = await requestCells(env, cfg2, { cells: [DUS], reason: "point" }, NOW);
+  assert.deepEqual([k.cells[0].state, k.cells[0].version, k.cells[0].updating], ["ready", "2026-10-25-s1", true]);
+  const r2 = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(DUS).first();
+  assert.deepEqual({ ...r2 }, { job: "queued", priority: 3 });
+});
+
+test("package fast lane: a published current package is adopted (no build); an old-schema one is not", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  const g = fakeGoogle();
+  await publishCurrent(env, DUS, "2026-10-26-s1", "2026-10-26");
+  const j = await requestCells(env, cfg, { cells: [DUS], reason: "refresh" }, NOW);
+  assert.deepEqual([j.cells[0].state, j.cells[0].version], ["ready", "2026-10-26-s1"]);
+  assert.deepEqual(await row(env, DUS), { version: "2026-10-26-s1", osm_date: "2026-10-26", size: 4321, job: null });
+  await pump(env, cfg, NOW + 1000, g);
+  assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, 0);
+  // PACKAGE_SCHEMA 2: the s1 package in R2 is not current → built
+  const env2 = testEnv({ PACKAGE_SCHEMA: "2" });
+  await publishCurrent(env2, DUS, "2026-10-26-s1", "2026-10-26");
+  const k = await requestCells(env2, config(env2), { cells: [DUS], reason: "refresh" }, NOW);
+  assert.equal(k.cells[0].state, "queued");
+});
+
+test("pre-warm after a cell schema bump leaves region packages alone", async () => {
+  const env = testEnv({ BUILDS_ENABLED: "true", PARALLEL_BUILDS: "1" });
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, last_request, requests)
+      VALUES (?, 2, '2026-10-20-s1', '2026-10-20', 5, 0, ?, 1)`).bind(DUS, NOW - 86_400_000).run();
+  await pump(env, config(env), NOW, fakeGoogle());
+  assert.equal((await row(env, DUS)).job, null);
+});

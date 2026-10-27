@@ -1,5 +1,7 @@
 package com.onpath.app.time
 
+import com.onpath.strings.*
+
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.WayAttrs
 
@@ -240,12 +242,15 @@ object Din33466 {
  * [speed] is relative to "Average" (= [Din33466] for hiking, the power model for bikes), steps about 15 % apart;
  * [factor] = 1 / [speed] multiplies the model's times. Every plan and every tour ([TripPace]) starts from it.
  */
-enum class Pace(val label: String, val speed: Double) {
-    RELAXED("Relaxed", 0.75),
-    EASY("Easy", 0.875),
-    AVERAGE("Average", 1.0),
-    FIT("Fit", 1.15),
-    VERY_FIT("Very fit", 1.3);
+enum class Pace(private val res: org.jetbrains.compose.resources.StringResource, val speed: Double) {
+    RELAXED(Res.string.nav_pace_relaxed, 0.75),
+    EASY(Res.string.nav_pace_easy, 0.875),
+    AVERAGE(Res.string.nav_pace_average, 1.0),
+    FIT(Res.string.nav_pace_fit, 1.15),
+    VERY_FIT(Res.string.nav_pace_very_fit, 1.3);
+
+    /** "Relaxed" in the app's language (Settings → Pace). */
+    val label: String get() = Txt.s(res)
 
     /** Factor on time (1 = the model as it is). */
     val factor: Double get() = 1.0 / speed
@@ -275,9 +280,9 @@ enum class Pace(val label: String, val speed: Double) {
         }
         val speedText = if (kmh < 10) {
             val tenths = Math.round(kmh * 10)
-            if (tenths % 10 == 0L) "${tenths / 10}" else "${tenths / 10}.${tenths % 10}"
+            if (tenths % 10 == 0L) "${tenths / 10}" else com.onpath.app.data.Format.number(tenths / 10.0, 1)
         } else "${Math.round(kmh)}"
-        return "about $speedText km/h · ${Math.round(upMh / 10) * 10} m up per hour"
+        return Txt.s(Res.string.nav_pace_meaning, speedText, (Math.round(upMh / 10) * 10).toInt())
     }
 
     companion object {

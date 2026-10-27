@@ -29,7 +29,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.11.3"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.11.5"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
@@ -105,7 +105,15 @@ android {
         unitTests.isReturnDefaultValues = true
         // Every JVM test in UTC, like CI: dates in screenshots (recycle bin, My routes) otherwise depend on the
         // machine's time zone and verifyPaparazziDebug fails on another machine (owner: tests in UTC).
-        unitTests.all { it.systemProperty("user.timezone", "UTC") }
+        unitTests.all {
+            it.systemProperty("user.timezone", "UTC")
+            // English like CI, whatever the machine's language: tests assert English texts and "12.5 km".
+            it.systemProperty("user.language", "en")
+            it.systemProperty("user.country", "US")
+            // Texts in JVM tests and Paparazzi: read straight from the string files (strings/…/Txt.kt) – the Android
+            // asset reader of Compose resources needs a running app.
+            it.systemProperty("onpath.stringsDir", rootProject.file("strings/src/commonMain/composeResources").absolutePath)
+        }
     }
 }
 
@@ -118,6 +126,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(project(":strings"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")

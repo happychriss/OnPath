@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_bin_keep">Gelöschte Tracks und Routen bleiben %1$d Tage hier, dann werden sie entfernt.</string>
+    <string name="backup_bin_empty">Der Papierkorb ist leer.</string>
+    <string name="backup_bin_delete_title">„%1$s“ endgültig löschen?</string>
+    <string name="backup_bin_delete_text">Der Eintrag wird von diesem Handy und aus dem Sicherungsordner entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <string name="backup_bin_deleted">Gelöscht am %1$s · %2$s</string>
+    <string name="backup_bin_removed_next">wird beim nächsten Start entfernt</string>
+    <string name="backup_bin_delete_now">Jetzt löschen</string>
+    <string name="backup_date">d. MMM yyyy</string>
+    <string name="backup_date_time">d. MMM yyyy, HH:mm</string>
+    <string name="backup_intro">Jeder aufgezeichnete Track und jede gespeicherte Route wird auch als GPX-Datei gesichert – sie bleibt erhalten, wenn OnPath entfernt wird, und lässt sich auf einem neuen Handy wiederherstellen.</string>
+    <string name="backup_folder">Ordner: %1$s</string>
+    <string name="backup_not_yet">noch nie</string>
+    <string name="backup_last_failed">Letzte Sicherung fehlgeschlagen – %1$s</string>
+    <string name="backup_allow_storage">Speicherzugriff erlauben</string>
+    <string name="backup_now">Jetzt alles sichern</string>
+    <string name="backup_choose_folder">Anderen Ordner wählen (z. B. Drive, Nextcloud)</string>
+    <string name="backup_use_documents">Wieder Documents/OnPath verwenden</string>
+    <string name="backup_restore_button">Tracks und Routen wiederherstellen</string>
+    <string name="backup_offer_title">Frühere Tracks und Routen?</string>
+    <string name="backup_offer_text">Wenn du OnPath schon früher genutzt hast, liegen deine Tracks und Routen vielleicht in Documents/OnPath. Wiederherstellen? Android zeigt dann den Ordner – tippe auf „Diesen Ordner verwenden“ und „Zulassen“.\n\nSpäter: Einstellungen → Sicherung → Wiederherstellen.</string>
+    <string name="backup_restoring_title">Tracks und Routen werden wiederhergestellt</string>
+    <string name="backup_progress_reading">Sicherungsdateien werden gelesen: %1$d / %2$d</string>
+    <string name="backup_progress_restoring">Wiederherstellen: %1$d / %2$d</string>
+    <string name="backup_restore_none">Keine Tracks oder Routen wiederhergestellt</string>
+    <string name="backup_restore_main">%1$s und %2$s wiederhergestellt</string>
+    <string name="backup_restore_skipped">%1$d schon auf diesem Handy</string>
+    <string name="backup_restore_failed">%1$d nicht lesbar</string>
+    <string name="backup_failed">Sicherung in %1$s fehlgeschlagen – %2$s</string>
+    <string name="backup_folder_chosen">gewählter Ordner</string>
+    <string name="backup_folder_unknown">Sicherungsordner</string>
+    <string name="backup_folder_phone">Handyspeicher</string>
+    <string name="backup_err_not_written">die Sicherung konnte nicht geschrieben werden</string>
+    <string name="backup_err_android10">erfordert Android 10</string>
+    <string name="backup_err_documents">in den Documents-Ordner kann nicht geschrieben werden</string>
+    <string name="backup_err_documents_storage">in den Documents-Ordner kann nicht geschrieben werden (Speicher nicht verfügbar)</string>
+    <string name="backup_err_storage_full">Speicher voll</string>
+    <string name="backup_err_file_storage">die Datei konnte nicht geschrieben werden – der Speicher des Handys ist vielleicht voll</string>
+    <string name="backup_err_no_access">Speicherzugriff nicht erlaubt – Einstellungen → Sicherung → Speicherzugriff erlauben</string>
+    <string name="backup_err_storage_unavailable">Speicher nicht verfügbar</string>
+    <string name="backup_err_create_folder">der Sicherungsordner kann nicht angelegt werden</string>
+    <string name="backup_err_chosen_unavailable">der gewählte Ordner ist nicht verfügbar</string>
+    <string name="backup_err_chosen_write">in den gewählten Ordner kann nicht geschrieben werden</string>
+    <string name="backup_err_chosen_access">kein Zugriff mehr auf den gewählten Ordner – wähle ihn in Einstellungen → Sicherung neu</string>
+    <string name="backup_err_file_folder">die Datei konnte nicht geschrieben werden – der Ordner ist vielleicht voll oder offline</string>
+    <string name="backup_err_nothing">noch nichts zum Exportieren</string>
+    <plurals name="backup_bin_days_left"><item quantity="one">noch %1$d Tag</item><item quantity="other">noch %1$d Tage</item></plurals>
+    <plurals name="backup_last"><item quantity="one">Letzte Sicherung: %1$s · %2$d Datei</item><item quantity="other">Letzte Sicherung: %1$s · %2$d Dateien</item></plurals>
+    <plurals name="backup_n_tracks"><item quantity="one">%1$d Track</item><item quantity="other">%1$d Tracks</item></plurals>
+    <plurals name="backup_n_routes"><item quantity="one">%1$d Route</item><item quantity="other">%1$d Routen</item></plurals>
+</resources>

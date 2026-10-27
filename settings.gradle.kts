@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "OnPath"
 include(":app")
+include(":strings")

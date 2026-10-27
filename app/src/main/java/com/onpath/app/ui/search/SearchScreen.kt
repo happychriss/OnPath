@@ -58,6 +58,7 @@ import com.onpath.app.poi.Poi
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
+import com.onpath.strings.*
 
 /** Callbacks of the search view. */
 data class SearchActions(
@@ -77,7 +78,6 @@ data class SearchActions(
  */
 @Composable
 fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modifier, autoFocus: Boolean = true) {
-    val de = Poi.isGerman()
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     // expected: requestFocus throws if the field is not attached yet (e.g. screen closing); keyboard just stays closed
@@ -87,15 +87,15 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
         Column(Modifier.fillMaxSize().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = actions.onBack, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = str(Res.string.common_back))
                 }
                 TextField(
                     value = ui.query, onValueChange = actions.onQuery,
                     modifier = Modifier.weight(1f).focusRequester(focus),
-                    placeholder = { Text("Search places or addresses") },
+                    placeholder = { Text(str(Res.string.search_placeholder)) },
                     singleLine = true,
                     trailingIcon = {
-                        if (ui.query.isNotEmpty()) IconButton(onClick = actions.onClear) { Icon(Icons.Filled.Close, contentDescription = "Clear") }
+                        if (ui.query.isNotEmpty()) IconButton(onClick = actions.onClear) { Icon(Icons.Filled.Close, contentDescription = str(Res.string.search_clear_query)) }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
@@ -109,7 +109,7 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(SearchKinds.Category.entries) { c ->
                     FilterChip(selected = ui.category == c, onClick = { actions.onCategory(c) },
-                        label = { Text(c.label(de)) }, modifier = Modifier.heightIn(min = 40.dp))
+                        label = { Text(c.label) }, modifier = Modifier.heightIn(min = 40.dp))
                 }
             }
             Spacer(Modifier.size(4.dp))
@@ -126,15 +126,14 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
     if (ui.recent.isEmpty()) {
         item {
-            Hint("Find huts, peaks, villages, trails and addresses. The offline map is searched first; " +
-                "online results are added when you are connected.")
+            Hint(str(Res.string.search_intro))
         }
         return
     }
     item {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Recent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-            TextButton(onClick = actions.onClearRecent) { Text("Clear") }
+            Text(str(Res.string.search_recent), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+            TextButton(onClick = actions.onClearRecent) { Text(str(Res.string.search_clear_recent)) }
         }
     }
     items(ui.recent) { h -> ResultRow(h, actions.onPick, recent = true) }
@@ -146,18 +145,17 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
     items(results) { ResultRow(it, actions.onPick) }
     if (results.isEmpty() && !ui.indexing) {
         item {
-            Hint(if (ui.query.isBlank()) "Nothing of this kind in the offline map."
-            else "No match in the offline map – try online results or Google Maps.")
+            Hint(if (ui.query.isBlank()) str(Res.string.search_nothing_of_kind) else str(Res.string.search_no_match))
         }
     }
     if (ui.online.isNotEmpty()) {
         item {
-            Text("Online results © OpenStreetMap", style = MaterialTheme.typography.bodySmall,
+            Text(str(Res.string.search_online_attribution), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
         }
     } else if (ui.onlineState == OnlineState.LOADING) {
         item {
-            Text("Searching online…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(str(Res.string.search_searching_online), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
         }
     }
@@ -172,8 +170,8 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
                 Icon(Icons.Outlined.Map, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Search “$q” in Google Maps", style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Opens Google Maps – shops, opening times, reviews", style = MaterialTheme.typography.bodySmall,
+                    Text(str(Res.string.search_in_google, q), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(str(Res.string.search_google_line), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -196,7 +194,7 @@ private fun Preparing() {
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
         Spacer(Modifier.width(16.dp))
-        Text("Preparing offline search…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(str(Res.string.search_preparing), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -220,18 +218,17 @@ fun KindIcon(place: Place, size: Int = 36) {
 }
 
 /** "Mountain hut · 2 325 m · 3.4 km", "Address · Lana · 1.2 km" (municipality of a village address), "… · online". */
-fun resultSubtitle(h: SearchHit, german: Boolean = Poi.isGerman()): String = buildString {
-    append(h.place.kindInfo.label(german))
+fun resultSubtitle(h: SearchHit): String = buildString {
+    append(h.place.kindInfo.label)
     h.place.ele?.let { append(" · $it m") }
     h.place.municipality?.let { append(" · ").append(it) }
     append(" · ").append(Format.distance(h.distanceM))
-    if (h.nearRoute) append(" · near your route")
-    if (h.place.source == Place.Source.ONLINE) append(" · online")
+    if (h.nearRoute) append(" · ").append(Txt.s(Res.string.search_near_route))
+    if (h.place.source == Place.Source.ONLINE) append(" · ").append(Txt.s(Res.string.search_online))
 }
 
 @Composable
 private fun ResultRow(h: SearchHit, onPick: (Place) -> Unit, recent: Boolean = false) {
-    val de = Poi.isGerman()
     Row(
         Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 60.dp).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -243,9 +240,9 @@ private fun ResultRow(h: SearchHit, onPick: (Place) -> Unit, recent: Boolean = f
         } else KindIcon(h.place)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(h.place.title(de), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+            Text(h.place.title(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(resultSubtitle(h, de), style = MaterialTheme.typography.bodyMedium,
+            Text(resultSubtitle(h), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             h.place.address?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,

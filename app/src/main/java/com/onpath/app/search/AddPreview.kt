@@ -4,6 +4,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.WaypointInsertion
+import com.onpath.strings.*
 import kotlin.math.roundToInt
 
 /**
@@ -34,10 +35,11 @@ object AddPreview {
             else -> null // on the line: practically no detour
         }
         val text = when (d.kind) {
-            WaypointInsertion.Kind.START -> "as start"
-            WaypointInsertion.Kind.DESTINATION -> if (n <= 1) "as destination" else "as new destination" + extraText(extra, speedMps)
-            WaypointInsertion.Kind.VIA_ON_LINE -> "as stop ${d.index + 1} – on your route"
-            WaypointInsertion.Kind.VIA_BEST_FIT -> "as stop ${d.index + 1} – fits best" + extraText(extra, speedMps)
+            WaypointInsertion.Kind.START -> Txt.s(Res.string.search_add_as_start)
+            WaypointInsertion.Kind.DESTINATION -> if (n <= 1) Txt.s(Res.string.search_add_as_destination)
+                else Txt.s(Res.string.search_add_as_new_destination) + extraText(extra, speedMps)
+            WaypointInsertion.Kind.VIA_ON_LINE -> Txt.s(Res.string.search_add_as_stop_on_route, d.index + 1)
+            WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.search_add_as_stop_best, d.index + 1) + extraText(extra, speedMps)
         }
         return Preview(d, text, extra)
     }
@@ -50,13 +52,13 @@ object AddPreview {
             val min = (m / v / 60).roundToInt()
             if (min < 1) null else ", +" + Format.duration(min * 60.0)
         } ?: ""
-        return " · about $dist$time"
+        return " · " + Txt.s(Res.string.search_add_about, dist + time)
     }
 
     /** Subtitle for a place that already is a route point. */
     fun existingRole(index: Int, count: Int): String = when {
-        index == 0 -> "is the start"
-        index == count - 1 -> "is the destination"
-        else -> "is stop ${index + 1}"
+        index == 0 -> Txt.s(Res.string.search_is_start)
+        index == count - 1 -> Txt.s(Res.string.search_is_destination)
+        else -> Txt.s(Res.string.search_is_stop, index + 1)
     }
 }

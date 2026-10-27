@@ -24,7 +24,7 @@ class PlanGapsTest {
         assertEquals(1, gaps.size)
         assertEquals(1, gaps[0].index)
         assertEquals(b, gaps[0].routeEnd)
-        assertEquals("Last 180 m to “Taser Alm”: no way for Gravel bike",
+        assertEquals("Last 180 m to “Taser Alm”: no way for Gravelbike",
             PlanGaps.text(gaps, Activity.BIKE_TREKKING) { if (it == 1) "Taser Alm" else null })
     }
 
@@ -52,7 +52,7 @@ class PlanGapsTest {
     }
 
     @Test fun plainActivityNames() {
-        assertEquals(listOf("Bike", "Gravel bike", "E-bike", "MTB", "E-MTB", "Hike"),
+        assertEquals(listOf("Bike", "Gravelbike", "E-bike", "MTB", "E-MTB", "Hike"),
             Activity.entries.map { PlanGaps.activityWords(it) })
     }
 

@@ -144,7 +144,8 @@ object StyleLoader {
      * the data folder, or the current generation of downloaded map cells (DataFiles.mapDir, map-cells.md §19).
      */
     fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME, mapDir: File = dataDir,
-             cover: List<DoubleArray> = emptyList(), devTools: Boolean = false): String {
+             cover: List<DoubleArray> = emptyList(), devTools: Boolean = false,
+             packages: List<DoubleArray> = emptyList()): String {
         // a theme that no longer exists (e.g. "high-contrast", removed in 0.7.0) is simply the default – no error
         @Suppress("NAME_SHADOWING")
         val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
@@ -182,7 +183,7 @@ object StyleLoader {
                 if (!json.trimStart().startsWith("{")) error("not JSON")
                 Log.i("OnPath", "Map style: $what")
                 lastLoaded = what
-                return withOverview(json.replace("{DATA_DIR}", dir), Overview.bundled(context), cover = cover)
+                return withOverview(json.replace("{DATA_DIR}", dir), Overview.bundled(context), cover = cover, packages = packages)
             } catch (e: Exception) {
                 Problems.warn("map", "Map style $what not usable, trying the next one", e)
             }
@@ -197,12 +198,14 @@ object StyleLoader {
      * every source whose local file is missing dropped – the base map and relief too (fresh install, no map cell yet,
      * no region package: the overview draws the low zooms, MapLibre never tries to open a file that is not there –
      * phone test 2026-10-21: "Failed to load source terrain … path not found" was announced as a problem).
-     * [cover]: areas with the detailed map (Overview.merge hides the overview there from zoom 10).
+     * [cover]: areas with the detailed map (Overview.merge hides the overview there from zoom 10); [packages]: the
+     * installed region packages (the detailed map from zoom 7 there, map-cells.md §20).
      * Pure apart from file checks ([exists]); unit-tested.
      */
     fun withOverview(styleJson: String, overviewFiles: Set<String>, cover: List<DoubleArray> = emptyList(),
+                     packages: List<DoubleArray> = emptyList(),
                      exists: (String) -> Boolean = { File(it).isFile }): String =
-        OptionalSources.strip(Overview.merge(styleJson, overviewFiles, cover), standIn = { true }, exists = exists)
+        OptionalSources.strip(Overview.merge(styleJson, overviewFiles, cover, packages), standIn = { true }, exists = exists)
 
     /** Small but usable style: base map basics + route overlays, if the data files exist. */
     fun fallback(dataDir: File): String {

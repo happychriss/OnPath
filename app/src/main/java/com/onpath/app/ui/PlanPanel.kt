@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.material.icons.outlined.Delete
 
 import androidx.compose.material.icons.outlined.Place
@@ -7,6 +8,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
@@ -98,6 +100,8 @@ class PlanCallbacks(
     /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
     val onSave: () -> Unit = {},
     val onExport: () -> Unit = {},
+    /** Route ⋯ → Share plan: the plan as a planer.onpath.earth link (A-005), from two points. */
+    val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
     val onDetails: () -> Unit = {},
     /** Route ⋯ → Time details (how the time was calculated). */
@@ -247,7 +251,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
             }
-            androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text("Cancel") }
+            androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text(str(Res.string.common_cancel)) }
         }
     } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
@@ -256,7 +260,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val routeError = ui.error?.takeIf { !loadingNotice }
     when {
         // an unreachable point and a failed leg are the same kind: one red line (+N more)
-        ui.gapText != null -> ErrorLine(ui.gapText + if (routeError != null && !ui.gapText.contains("more)")) " (+1 more)" else "",
+        ui.gapText != null -> ErrorLine(if (routeError != null && !PlanGaps.hasMore(ui.gapText)) PlanGaps.withMore(ui.gapText, 1) else ui.gapText,
             onShow = cb.onShowGap)
         routeError != null -> ErrorLine(routeError)
     }
@@ -270,7 +274,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         SubLine(ui, route, cb.onDetails)
         if (route != null) SavedLine(ui)
         if (route != null && !ui.routing) {
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = "Elevation profile" }) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
                 // the gradient legend lives on Route details only (review 2026-10-24 B21)
@@ -328,7 +332,7 @@ private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
         Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
             color = red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onShow != null) androidx.compose.material3.TextButton(onClick = onShow) {
-            Text("Show", fontWeight = FontWeight.Bold, color = red)
+            Text(str(Res.string.common_show), fontWeight = FontWeight.Bold, color = red)
         }
     }
 }
@@ -360,7 +364,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
 internal fun WarnLine(text: String, onTap: () -> Unit) {
     val amber = OnPathColors.Amber
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(MaterialTheme.shapes.small)
-        .clickable(role = Role.Button, onClickLabel = "Show the spots") { onTap() }
+        .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_warn_show_spots)) { onTap() }
         .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Warning, null, tint = amber, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
@@ -379,7 +383,7 @@ private fun SavedLine(ui: PlanUi) {
         Icon(if (saved) Icons.Outlined.CheckCircle else Icons.Outlined.Edit, null,
             tint = if (saved) OnPathColors.Good else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(if (saved) "Saved as “$name”" else "“$name” · changed, not saved",
+        Text(if (saved) str(Res.string.plan_saved_as, name) else str(Res.string.plan_changed_not_saved, name),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -389,7 +393,7 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?) {
     if (route == null) {
-        Text("Plan a route", style = MaterialTheme.typography.titleLarge, maxLines = 1)
+        Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
     Row(verticalAlignment = Alignment.Bottom) {
@@ -417,14 +421,14 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         val top = route.points.mapNotNull { it.ele }.maxOrNull()
         Text(
             "↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
-                (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""),
+                (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""),
             style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
         )
         if (!ui.routing) {
             Spacer(Modifier.width(8.dp))
             DifficultyBadge(rememberRating(route, ui.activity),
-                Modifier.clickable(role = Role.Button, onClickLabel = "Show route details", onClick = onDetails))
+                Modifier.clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = onDetails))
         }
     }
 }
@@ -455,7 +459,7 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
 
 /** "Start navigation · Hike" / "Continue navigation · Gravel bike". */
 internal fun primaryLabel(ui: PlanUi): String =
-    (if (ui.tourRunning) "Continue navigation" else "Start navigation") + " · " + ui.activity.navName
+    Txt.s(if (ui.tourRunning) Res.string.plan_continue_navigation_for else Res.string.plan_start_navigation_for, ui.activity.navName)
 
 /** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable
@@ -463,7 +467,7 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Filled.MoreHoriz, contentDescription = "Route options")
+            Icon(Icons.Filled.MoreHoriz, contentDescription = str(Res.string.plan_route_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             SheetMenuItems(ui, cb, close = { open = false })
@@ -476,12 +480,13 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
     // About this route: save / export, time details, clear.
-    MenuItem(Icons.Outlined.Save, "Save route", enabled = ui.route != null, onClick = run(cb.onSave))
-    MenuItem(Icons.Outlined.Share, "Export GPX", enabled = ui.route != null, onClick = run(cb.onExport))
-    MenuItem(Icons.Outlined.Schedule, "Time details", enabled = ui.route != null, onClick = run(cb.onTimeDetails))
+    MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
+    MenuItem(Icons.Outlined.Share, str(Res.string.common_export_gpx), enabled = ui.route != null, onClick = run(cb.onExport))
+    MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
+    MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
     HorizontalDivider()
-    MenuItem(Icons.Outlined.DeleteSweep, "Clear route", enabled = RouteRules.canClear(ui.pointCount),
+    MenuItem(Icons.Outlined.DeleteSweep, str(Res.string.plan_clear_route), enabled = RouteRules.canClear(ui.pointCount),
         onClick = run(cb.onClear))
 }
 
@@ -493,7 +498,7 @@ private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit) {
     val name = com.onpath.app.data.LastActivity.chipText(activity, sac) // "Hike · T2" (owner 2026-10-22)
     androidx.compose.material3.Surface(onClick = onClick, shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Activity: $name. Tap to change" }) {
+        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) }) {
         Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
             // short names ("Gravel", "E-MTB"; Activity.chip) so time and distance keep their room (owner 2026-10-22)

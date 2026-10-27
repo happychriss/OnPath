@@ -1,5 +1,8 @@
 package com.onpath.app.poi
 
+import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
+
 /** Category groups; colours match tools/make_style.py (POI_GROUPS). */
 enum class PoiGroup(val argb: Long) {
     FOOD(0xFFD9822B),
@@ -11,41 +14,50 @@ enum class PoiGroup(val argb: Long) {
     OTHER(0xFF777777),
 }
 
-data class PoiKind(val key: String, val group: PoiGroup, val glyph: String, val en: String, val de: String) {
-    fun label(german: Boolean): String = if (german) de else en
+/**
+ * [res] = the kind's name in strings_poi.xml / strings_search.xml (English + German); null for a kind we do not know,
+ * which then shows [raw] (the OSM value made readable, "Ski rental") in both languages.
+ */
+data class PoiKind(val key: String, val group: PoiGroup, val glyph: String, private val res: StringResource?, val raw: String = "") {
+    /** Name in the app's language. */
+    val label: String get() = res?.let { Txt.s(it) } ?: raw
+
+    /** Older form: the app's language decides ([Poi.isGerman] follows it), [german] is not used any more. */
+    @Suppress("UNUSED_PARAMETER")
+    fun label(german: Boolean): String = label
 }
 
 /** Kinds produced by tools/extract_pois.py. Pure Kotlin (unit-testable). */
 object PoiKinds {
     private val list = listOf(
-        PoiKind("viewpoint", PoiGroup.SIGHT, "◉", "Viewpoint", "Aussichtspunkt"),
-        PoiKind("hut", PoiGroup.HUT, "☗", "Mountain hut", "Schutzhütte"),
-        PoiKind("bivouac", PoiGroup.HUT, "☗", "Bivouac / unstaffed hut", "Biwak / Selbstversorgerhütte"),
-        PoiKind("shelter", PoiGroup.HUT, "☂", "Shelter", "Unterstand"),
-        PoiKind("camping", PoiGroup.HUT, "⛺", "Campsite", "Campingplatz"),
-        PoiKind("restaurant", PoiGroup.FOOD, "♨", "Restaurant", "Restaurant / Gasthaus"),
-        PoiKind("cafe", PoiGroup.FOOD, "☕", "Café", "Café"),
-        PoiKind("bar", PoiGroup.FOOD, "▼", "Bar / pub", "Bar / Kneipe"),
-        PoiKind("fast_food", PoiGroup.FOOD, "♨", "Snack bar", "Imbiss"),
-        PoiKind("shop", PoiGroup.FOOD, "■", "Food shop", "Lebensmittel"),
-        PoiKind("water", PoiGroup.WATER, "⛲", "Drinking water", "Trinkwasser"),
-        PoiKind("spring", PoiGroup.WATER, "♒", "Spring", "Quelle"),
-        PoiKind("waterfall", PoiGroup.WATER, "♒", "Waterfall", "Wasserfall"),
-        PoiKind("castle", PoiGroup.SIGHT, "⛫", "Castle", "Burg / Schloss"),
-        PoiKind("ruins", PoiGroup.SIGHT, "⛫", "Ruins", "Ruine"),
-        PoiKind("church", PoiGroup.SIGHT, "⛪", "Church", "Kirche"),
-        PoiKind("chapel", PoiGroup.SIGHT, "⛪", "Chapel", "Kapelle"),
-        PoiKind("cave", PoiGroup.SIGHT, "◖", "Cave", "Höhle"),
-        PoiKind("museum", PoiGroup.SIGHT, "★", "Museum", "Museum"),
-        PoiKind("bus", PoiGroup.TRANSPORT, "⛟", "Bus stop", "Bushaltestelle"),
-        PoiKind("train", PoiGroup.TRANSPORT, "☰", "Train station", "Bahnhof"),
-        PoiKind("lift", PoiGroup.TRANSPORT, "△", "Cable car / lift station", "Seilbahn / Liftstation"),
-        PoiKind("parking", PoiGroup.TRANSPORT, "P", "Parking", "Parkplatz"),
-        PoiKind("toilets", PoiGroup.FACILITY, "WC", "Toilets", "Toiletten"),
-        PoiKind("picnic", PoiGroup.FACILITY, "⛱", "Picnic site", "Rastplatz"),
-        PoiKind("info", PoiGroup.FACILITY, "i", "Tourist information", "Tourismusinformation"),
-        PoiKind("bike_shop", PoiGroup.FACILITY, "⚙", "Bike shop / repair", "Fahrradwerkstatt"),
-        PoiKind("charging", PoiGroup.FACILITY, "⚡", "E-bike charging", "E-Bike-Ladestation"),
+        PoiKind("viewpoint", PoiGroup.SIGHT, "◉", Res.string.poi_kind_viewpoint),
+        PoiKind("hut", PoiGroup.HUT, "☗", Res.string.poi_kind_hut),
+        PoiKind("bivouac", PoiGroup.HUT, "☗", Res.string.poi_kind_bivouac),
+        PoiKind("shelter", PoiGroup.HUT, "☂", Res.string.poi_kind_shelter),
+        PoiKind("camping", PoiGroup.HUT, "⛺", Res.string.poi_kind_camping),
+        PoiKind("restaurant", PoiGroup.FOOD, "♨", Res.string.poi_kind_restaurant),
+        PoiKind("cafe", PoiGroup.FOOD, "☕", Res.string.poi_kind_cafe),
+        PoiKind("bar", PoiGroup.FOOD, "▼", Res.string.poi_kind_bar),
+        PoiKind("fast_food", PoiGroup.FOOD, "♨", Res.string.poi_kind_fast_food),
+        PoiKind("shop", PoiGroup.FOOD, "■", Res.string.poi_kind_shop),
+        PoiKind("water", PoiGroup.WATER, "⛲", Res.string.poi_kind_water),
+        PoiKind("spring", PoiGroup.WATER, "♒", Res.string.poi_kind_spring),
+        PoiKind("waterfall", PoiGroup.WATER, "♒", Res.string.poi_kind_waterfall),
+        PoiKind("castle", PoiGroup.SIGHT, "⛫", Res.string.poi_kind_castle),
+        PoiKind("ruins", PoiGroup.SIGHT, "⛫", Res.string.poi_kind_ruins),
+        PoiKind("church", PoiGroup.SIGHT, "⛪", Res.string.poi_kind_church),
+        PoiKind("chapel", PoiGroup.SIGHT, "⛪", Res.string.poi_kind_chapel),
+        PoiKind("cave", PoiGroup.SIGHT, "◖", Res.string.poi_kind_cave),
+        PoiKind("museum", PoiGroup.SIGHT, "★", Res.string.poi_kind_museum),
+        PoiKind("bus", PoiGroup.TRANSPORT, "⛟", Res.string.poi_kind_bus),
+        PoiKind("train", PoiGroup.TRANSPORT, "☰", Res.string.poi_kind_train),
+        PoiKind("lift", PoiGroup.TRANSPORT, "△", Res.string.poi_kind_lift),
+        PoiKind("parking", PoiGroup.TRANSPORT, "P", Res.string.poi_kind_parking),
+        PoiKind("toilets", PoiGroup.FACILITY, "WC", Res.string.poi_kind_toilets),
+        PoiKind("picnic", PoiGroup.FACILITY, "⛱", Res.string.poi_kind_picnic),
+        PoiKind("info", PoiGroup.FACILITY, "i", Res.string.poi_kind_info),
+        PoiKind("bike_shop", PoiGroup.FACILITY, "⚙", Res.string.poi_kind_bike_shop),
+        PoiKind("charging", PoiGroup.FACILITY, "⚡", Res.string.poi_kind_charging),
     )
     private val byKey = list.associateBy { it.key }
 
@@ -81,8 +93,8 @@ object PoiKinds {
     fun inGroup(g: PoiGroup): List<PoiKind> = list.filter { it.group == g }
 
     fun of(key: String?): PoiKind =
-        byKey[key] ?: PoiKind(key ?: "poi", PoiGroup.OTHER, "•", (key ?: "Place").replace('_', ' ')
-            .replaceFirstChar { it.uppercase() }, (key ?: "Ort").replace('_', ' ').replaceFirstChar { it.uppercase() })
+        byKey[key] ?: if (key == null) PoiKind("poi", PoiGroup.OTHER, "•", Res.string.search_kind_place)
+        else PoiKind(key, PoiGroup.OTHER, "•", null, key.replace('_', ' ').replaceFirstChar { it.uppercase() })
 }
 
 /** Layer ids in the style that carry POIs all start with this prefix. */

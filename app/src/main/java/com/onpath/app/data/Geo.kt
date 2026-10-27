@@ -83,10 +83,22 @@ object Geo {
     }
 }
 
+/**
+ * Numbers and units as the user reads them. Since EN + DE (owner 2026-10-26) decimals follow the text language:
+ * "12.5 km" in English, "12,5 km" in German. Units stay the same in both (km, m, h, min – as on Alpine signposts:
+ * "1 h 05 min"). Machine formats (GPX, file names, logs) never use these.
+ */
 object Format {
+    /** Locale of shown numbers: the phone's German variant when the texts are German, else US English. */
+    fun locale(): java.util.Locale =
+        if (com.onpath.strings.Txt.language() == "de") java.util.Locale.getDefault() else java.util.Locale.US
+
+    /** A decimal number for the user: number(12.46, 1) = "12.5" / "12,5". */
+    fun number(v: Double, decimals: Int): String = String.format(locale(), "%.${decimals}f", v)
+
     fun distance(m: Double): String = when {
         m < 1000 -> "${m.toInt()} m"
-        m < 100_000 -> String.format(java.util.Locale.US, "%.1f km", m / 1000)
+        m < 100_000 -> String.format(locale(), "%.1f km", m / 1000)
         else -> "${(m / 1000).toInt()} km"
     }
 

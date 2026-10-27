@@ -4,6 +4,8 @@ import com.onpath.app.poi.Poi
 import com.onpath.app.poi.PoiGroup
 import com.onpath.app.poi.PoiKind
 import com.onpath.app.poi.PoiKinds
+import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * A place found by the search, or a POI tapped on the map – the shared model behind the place card.
@@ -43,7 +45,9 @@ data class Place(
 
     val kindInfo: PoiKind get() = SearchKinds.of(kind, sub)
 
-    fun title(german: Boolean = Poi.isGerman()): String = name ?: kindInfo.label(german)
+    /** Name, or the kind label (app language) when unnamed; [german] is not used any more. */
+    @Suppress("UNUSED_PARAMETER")
+    fun title(german: Boolean = Poi.isGerman()): String = name ?: kindInfo.label
 
     /** The municipality for line 2 of an address, when it differs from the village in the name; else null. */
     val municipality: String?
@@ -66,20 +70,21 @@ object SearchKinds {
     private const val TRAIL = 0xFFB3541E
 
     private val extra = listOf(
-        PoiKind("peak", PoiGroup.OTHER, "▲", "Peak", "Gipfel"),
-        PoiKind("saddle", PoiGroup.OTHER, "⌒", "Pass / saddle", "Pass / Joch"),
-        PoiKind("place", PoiGroup.OTHER, "●", "Place", "Ort"),
-        PoiKind("trail", PoiGroup.OTHER, "〰", "Trail", "Weg"),
-        PoiKind("address", PoiGroup.OTHER, "⌂", "Address", "Adresse"),
-        PoiKind("street", PoiGroup.OTHER, "═", "Street", "Straße"),
-        PoiKind("store", PoiGroup.FOOD, "■", "Shop", "Geschäft"),
+        PoiKind("peak", PoiGroup.OTHER, "▲", Res.string.search_kind_peak),
+        PoiKind("saddle", PoiGroup.OTHER, "⌒", Res.string.search_kind_saddle),
+        PoiKind("place", PoiGroup.OTHER, "●", Res.string.search_kind_place),
+        PoiKind("trail", PoiGroup.OTHER, "〰", Res.string.search_kind_trail),
+        PoiKind("address", PoiGroup.OTHER, "⌂", Res.string.search_kind_address),
+        PoiKind("street", PoiGroup.OTHER, "═", Res.string.search_kind_street),
+        PoiKind("store", PoiGroup.FOOD, "■", Res.string.search_kind_store),
     ).associateBy { it.key }
 
-    private val placeSub = mapOf(
-        "city" to ("City" to "Stadt"), "town" to ("Town" to "Stadt"), "village" to ("Village" to "Dorf"),
-        "hamlet" to ("Hamlet" to "Weiler"), "suburb" to ("District" to "Stadtteil"),
-        "neighbourhood" to ("District" to "Viertel"), "quarter" to ("District" to "Viertel"),
-        "isolated_dwelling" to ("Farm / house" to "Hof / Einzelhaus"), "locality" to ("Locality" to "Flur / Örtlichkeit"),
+    private val placeSub: Map<String, StringResource> = mapOf(
+        "city" to Res.string.search_place_city, "town" to Res.string.search_place_town,
+        "village" to Res.string.search_place_village, "hamlet" to Res.string.search_place_hamlet,
+        "suburb" to Res.string.search_place_suburb, "neighbourhood" to Res.string.search_place_neighbourhood,
+        "quarter" to Res.string.search_place_quarter, "isolated_dwelling" to Res.string.search_place_isolated_dwelling,
+        "locality" to Res.string.search_place_locality,
     )
 
     /** Colour of a kind's icon (ARGB). */
@@ -91,23 +96,25 @@ object SearchKinds {
     }
 
     fun of(kind: String, sub: String? = null): PoiKind {
-        if (kind == "place" && sub != null) placeSub[sub]?.let { (en, de) -> return PoiKind("place", PoiGroup.OTHER, "●", en, de) }
+        if (kind == "place" && sub != null) placeSub[sub]?.let { return PoiKind("place", PoiGroup.OTHER, "●", it) }
         if (kind == "other") {
-            val l = sub?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } ?: "Place"
-            return PoiKind("other", PoiGroup.OTHER, "•", l, if (sub == null) "Ort" else l)
+            // an OSM value we have no name for ("clothes" -> "Clothes") shows as it is in both languages
+            return if (sub == null) PoiKind("other", PoiGroup.OTHER, "•", Res.string.search_kind_place)
+            else PoiKind("other", PoiGroup.OTHER, "•", null, sub.replace('_', ' ').replaceFirstChar { it.uppercase() })
         }
         return extra[kind] ?: PoiKinds.of(kind)
     }
 
     /** Category chips in the search view, in order. */
-    enum class Category(val en: String, val de: String, val kinds: Set<String>) {
-        HUTS("Huts", "Hütten", setOf("hut", "bivouac", "shelter")),
-        PEAKS("Peaks", "Gipfel", setOf("peak", "saddle")),
-        WATER("Water", "Wasser", setOf("water", "spring", "waterfall")),
-        PLACES("Places", "Orte", setOf("place")),
-        STATIONS("Stations", "Stationen", setOf("train", "lift", "bus")),
+    enum class Category(private val res: StringResource, val kinds: Set<String>) {
+        HUTS(Res.string.search_cat_huts, setOf("hut", "bivouac", "shelter")),
+        PEAKS(Res.string.search_cat_peaks, setOf("peak", "saddle")),
+        WATER(Res.string.search_cat_water, setOf("water", "spring", "waterfall")),
+        PLACES(Res.string.search_cat_places, setOf("place")),
+        STATIONS(Res.string.search_cat_stations, setOf("train", "lift", "bus")),
         ;
-        fun label(german: Boolean) = if (german) de else en
+        /** Chip text in the app's language. */
+        val label: String get() = Txt.s(res)
     }
 
     /** Ranking boost by kind: things hikers and bikers aim for come first. */

@@ -11,12 +11,12 @@ class ActivityLabelsTest {
 
     @Test fun primaryButtonNamesTheActivity() {
         assertEquals("Start navigation · Hike", primaryLabel(ui(Activity.HIKE, false)))
-        assertEquals("Continue navigation · Gravel bike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
+        assertEquals("Continue navigation · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
     }
 
     /** UX review 2026-10-23, problem 14: the tour's Continue names the activity, like the primary button did. */
     @Test fun tourContinueNamesTheActivity() {
-        assertEquals("Continue · Gravel bike", continueLabel(Activity.BIKE_TREKKING))
+        assertEquals("Continue · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
         assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
     }
 
@@ -37,7 +37,7 @@ class ActivityLabelsTest {
 
     /** Owner 2026-10-26: clearer bike names, each with one short line in the picker; the enum names stay (stored). */
     @Test fun activityNamesAndPickerLines() {
-        assertEquals(listOf("Bike", "Gravel bike", "E-bike", "MTB", "E-MTB", "Hike"), Activity.entries.map { it.label })
+        assertEquals(listOf("Bike", "Gravelbike", "E-bike", "MTB", "E-MTB", "Hike"), Activity.entries.map { it.label })
         assertEquals(listOf("Paved cycleways, quiet roads", "Gravel tracks welcome", "Bike with motor, 25 km/h",
             "Trails and singletrails", "MTB with motor", "T1 … T5"), Activity.entries.map { it.line })
         assertEquals(listOf("BIKE_TOURING", "BIKE_TREKKING", "EBIKE", "MTB", "EMTB", "HIKE"), Activity.entries.map { it.name })
@@ -45,7 +45,7 @@ class ActivityLabelsTest {
 
     /** "… not suited for <who>" in the activity switch sheet follows the names. */
     @Test fun activityCheckNamesTheActivityInThePlural() {
-        assertEquals(listOf("bikes", "gravel bikes", "e-bikes", "MTBs", "E-MTBs", "hiking (T3)"),
+        assertEquals(listOf("bikes", "gravelbikes", "e-bikes", "MTBs", "E-MTBs", "hiking (T3)"),
             Activity.entries.map { com.onpath.app.navigation.ActivityCheck.who(it, 3) })
     }
 }

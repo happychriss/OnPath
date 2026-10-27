@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Box
@@ -157,7 +158,7 @@ fun MapScreen(
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-                    androidx.compose.material3.Text("Finding the shared place…")
+                    androidx.compose.material3.Text(str(Res.string.plan_finding_shared_place))
                 }
             }
         }
@@ -369,7 +370,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
+            onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
