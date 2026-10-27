@@ -9,6 +9,12 @@ copy**; unpair on both sides. Not in phase 2: login, payment, quotas, recorded t
 Status: **built and tested in the cloud (branch `web-spike`; the shared Kotlin on `feat/plan-sync`), not deployed.
 The app part is still to do** (§11, desktop session with the phone).
 
+**Branches:** `feat/plan-sync` = one commit with only new files (`app/.../sync/` + tests) on top of main `cf181ae` –
+it can be merged into main (or cherry-picked) as it is. Merging it into `web-spike` also brought main's newer app
+code, which the web engine cannot compile yet (main's string resources `Txt` / `Res`); commit `72a84218` on
+`web-spike` takes that part out again. **When the engine learns the string resources: `git revert 72a84218`, then
+merge origin/main** – otherwise git keeps the old app files on web-spike.
+
 ## 1. Pieces
 
 | Where | What |
@@ -216,6 +222,8 @@ Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and 
    a tombstone → move the route to the recycle bin (C11), never hard-delete. A "… (copy)" item is a normal saved route.
 4. **Pairing:** ☰ → "Pair with browser" → in-app QR scanner (ZXing core, Apache-2.0; CAMERA permission asked only on
    this tap) – **or** the system camera opens the `#pair=` link and the app's link filter (A-005) catches it.
+   The app's plan-link filter (`PlanLinks`, host `plan.onpath.earth`, A-005) already receives these links: send
+   `#pair=` to pairing (`PairCode.parse`), `#p=` stays a plan (the two never mix, tested).
    `PairCode.parse` → show `SyncKeys.check` ("Check: 395 514 – the browser shows the same digits") → Pair / Cancel →
    store the code, `hello(device, Build.MODEL, now)`, sync at once. Already paired → "Unpair first".
 5. **Sync round** (§7) in a `SyncWorker`-like class on a background thread: `HttpURLConnection` to
