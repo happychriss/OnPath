@@ -5,7 +5,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] plan links (A-005): open planer.onpath.earth/#p= links, Share plan – since 2026-10-27
 
 
 ## Next (open, checked against the code 2026-10-23)
@@ -233,6 +232,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Plan links (A-005, web planner phase 1, core feature C15):** `https://planer.onpath.earth/#p=<code>`
+  (PlanCode v1 from `feat/plan-code`) opens as the plan – camera / QR code and tapped links (intent filter, App Link
+  `autoVerify`, path `/`), text shared to OnPath, a link pasted into the search box; loaded like a saved route (points,
+  activity, T level, names, pinned points; "Replace current route?" with unsaved changes; not during a tour – grey
+  line); broken link → red line, nothing changes. Sheet ⋯ → Share plan writes the same link (`PlanLinks`). Open: the
+  cloud publishes `/.well-known/assetlinks.json` on the planner host (test key SHA-256 in the A-005 report); until
+  then Android opens the links in the browser unless "Open by default" allows them for OnPath.
 - **[desktop] No pushing / steep hints for MTB and E-MTB (owner 2026-10-26: "remove the rules for MTB – we don't want to
   look stupid"):** the amber line was on 87 % of MTB routes, 75 % "… m pushing". `RouteWarnings`: MTB / E-MTB get no
   "steep" and no "pushing" (unsigned footways, T4+ / S4+ trails). Signed ways stay as legal information (owner, same
