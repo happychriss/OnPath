@@ -307,6 +307,8 @@ map.on('click', (e) => press(e.lngLat, -1, e.point));
 map.on('contextmenu', (e) => { e.preventDefault(); press(e.lngLat, -1, e.point); }); // right-click / long press: the same
 
 async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Point) {
+  const results = document.getElementById('results');
+  if (results && !results.hidden) { results.hidden = true; return; } // a click beside the search results only closes them
   if (marker < 0 && pt) marker = markerNear(pt);
   const poi = pt && marker < 0 ? poiAt(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
