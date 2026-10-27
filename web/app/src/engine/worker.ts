@@ -28,7 +28,6 @@ interface WasmEngine {
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 
-let engine: WasmEngine | null = null;
 let base = '';
 let segments = '';
 let packed = false; // preview host: rd5 published as <name>.b64.txt (see packed.ts)
@@ -36,20 +35,27 @@ const loadMs = { engine: 0 };
 const missingTiles = new Set<string>();
 const layouts = new Map<string, number[]>();
 
-async function getEngine(): Promise<WasmEngine> {
-  if (engine) return engine;
-  const t0 = performance.now();
-  await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js', base).href);
-  const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm', base).href);
-  exports.init('/onpath');
-  const list: string[] = await (await fetch(new URL('brouter/index.json', base))).json();
-  await Promise.all(list.map(async (f) => {
-    const buf = await (await fetch(new URL('brouter/' + f, base))).arrayBuffer();
-    exports.putFile('assets/brouter/' + f, new Int8Array(buf));
-  }));
-  loadMs.engine = performance.now() - t0;
-  engine = exports;
-  return exports;
+/**
+ * The engine, loaded once. The promise is kept (not only the result): the page's first calls arrive while the Wasm
+ * file is still loading, and each would otherwise load its own engine – parts stored in one were then missing in the
+ * other ("part does not fit its index" on a slow line).
+ */
+let loading: Promise<WasmEngine> | null = null;
+function getEngine(): Promise<WasmEngine> {
+  loading ??= (async () => {
+    const t0 = performance.now();
+    await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js', base).href);
+    const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm', base).href);
+    exports.init('/onpath');
+    const list: string[] = await (await fetch(new URL('brouter/index.json', base))).json();
+    await Promise.all(list.map(async (f) => {
+      const buf = await (await fetch(new URL('brouter/' + f, base))).arrayBuffer();
+      exports.putFile('assets/brouter/' + f, new Int8Array(buf));
+    }));
+    loadMs.engine = performance.now() - t0;
+    return exports;
+  })();
+  return loading;
 }
 
 const whole = new Map<string, Uint8Array>();
@@ -89,6 +95,7 @@ function partEnds(index: Uint8Array): number[] {
 }
 
 /** Fetches the parts a plan needs that the engine does not have yet. Returns bytes downloaded. */
+let storeMs = 0; // time inside the engine storing parts (rd5 rewrite), per request – for the stats
 async function ensureParts(e: WasmEngine, points: string): Promise<number> {
   const need: [string, number][] = JSON.parse(e.partsNeeded(points));
   let bytes = 0;
@@ -111,7 +118,10 @@ async function ensureParts(e: WasmEngine, points: string): Promise<number> {
       const part = await range(url, start, ends[i] - 1);
       if (!part) return;
       bytes += part.bytes.length;
-      if (!e.putPart(tile, i, new Int8Array(part.bytes.buffer))) throw new Error(`${tile} part ${i} does not fit its index`);
+      const s0 = performance.now();
+      const fits = e.putPart(tile, i, new Int8Array(part.bytes.buffer));
+      storeMs += performance.now() - s0;
+      if (!fits) throw new Error(`${tile} part ${i} does not fit its index (${part.bytes.length} bytes, expected ${ends[i] - start})`);
     }));
   }));
   return bytes;
@@ -178,13 +188,14 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const t0 = performance.now();
+    storeMs = 0;
     const fetched = await ensureParts(e, req.points);
     const t1 = performance.now();
     const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '') : e.route(req.points, req.activity, req.sac);
     const t2 = performance.now();
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),
-      stats: { engineLoadMs: loadMs.engine, fetchMs: t1 - t0, routeMs: t2 - t1, bytesFetched: fetched },
+      stats: { engineLoadMs: loadMs.engine, fetchMs: t1 - t0, storeMs, routeMs: t2 - t1, bytesFetched: fetched },
       problems: JSON.parse(e.problems()),
     });
   } catch (err) {

@@ -199,6 +199,7 @@ async function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 
 
 // ---- planning ----
 const engine = new EngineClient();
+(window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 status('Loading the routing engine…');
 const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) => {
   status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`);

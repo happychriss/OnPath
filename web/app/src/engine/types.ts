@@ -34,7 +34,7 @@ export interface RouteResult {
   points: [number, number, number | null][];
 }
 
-export interface RouteStats { engineLoadMs: number; fetchMs: number; routeMs: number; bytesFetched: number }
+export interface RouteStats { engineLoadMs: number; fetchMs: number; storeMs?: number; routeMs: number; bytesFetched: number }
 
 export interface EngineReply { id: number; ok: boolean; result?: RouteResult; plan?: PlanResult; index?: number; code?: string; text?: string; shared?: SharedPlan | null; stats?: RouteStats; problems?: string[]; error?: string }
 
