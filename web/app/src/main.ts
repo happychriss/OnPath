@@ -426,9 +426,16 @@ async function openFromLink() {
   if (shared.points.length) {
     const b = new maplibregl.LngLatBounds();
     shared.points.forEach(([la, lo]) => b.extend([lo, la]));
-    map.fitBounds(b, { padding: 60, maxZoom: 15, duration: 0 });
+    map.fitBounds(b, { padding: fitPadding(), maxZoom: 15, duration: 0 });
   }
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
+}
+
+/** Room for the top bar, the sheet (side panel or bottom sheet) and the map controls when the camera fits a plan. */
+function fitPadding(): maplibregl.PaddingOptions {
+  const sheet = $('sheet').getBoundingClientRect();
+  const phone = matchMedia('(max-width: 700px)').matches;
+  return phone ? { top: 90, bottom: sheet.height + 30, left: 40, right: 80 } : { top: 90, bottom: 50, left: sheet.right + 50, right: 90 };
 }
 
 /** The current plan in the app's format (for the QR code, the link and the address bar). */

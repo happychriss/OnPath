@@ -53,7 +53,7 @@ jobs:
           ls -la segments
 
       - name: Build the Wasm engine (TeaVM)
-        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest
+        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest, PlanStateTest, MapGesturesTest
 
       - name: Routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
@@ -81,6 +81,14 @@ jobs:
       - name: Plan edits with the app's PlanEdits / PlanPoints, activity switch re-plans
         working-directory: web/app
         run: node test/edit-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Phone parity (first-point menu, undo / redo, eye, compass, Google link-out, GPX, bottom sheet)
+        working-directory: web/app
+        run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Where the time goes (numbers only, nothing checked)
+        working-directory: web/app
+        run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
 
       - name: Planner host tests (web/host)
         working-directory: web/host
