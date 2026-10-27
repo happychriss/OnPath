@@ -38,6 +38,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `tools/hetzner/` | Superseded region server (Hetzner): `onpath_hetzner.py` (laptop: creates only its own labelled Hetzner server), `server/` (install.sh, API, worker, web page) – see its README |
 | `strings/` | User texts EN + DE as Compose Multiplatform resources (small KMP module), `Txt` / `str()` – see `docs/i18n.md`; review round trip `tools/i18n/` |
 | `docs/` | Requirements, architecture contract, project status |
+| *(other repo)* | **Website onpath.earth** lives in its own repo `happychriss/onpath.earth` (Cloudflare Pages, owner 2026-10-27) – not in this repo; app sessions don't add website files here. The browser planner (`web/`, branch `web-spike`) is a different thing and stays here. |
 
 ## Build and test
 - Requirements: JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed).
