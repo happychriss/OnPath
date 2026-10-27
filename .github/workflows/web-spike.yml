@@ -12,6 +12,12 @@ on:
         description: "Deploy the planner host to Cloudflare (test) after the checks"
         type: boolean
         default: false
+  # called by cloudflare-setup.yml after the one-time setup (a dispatch needs the file on main; a call does not)
+  workflow_call:
+    inputs:
+      deploy:
+        type: boolean
+        default: false
 
 concurrency:
   group: web-spike-${{ github.ref }}
@@ -107,16 +113,22 @@ jobs:
       # sync database, web-sync.md §10), and Cloudflare Access on that host set up first (web-planner.md §9; /sync/*
       # bypasses Access, the mailbox token guards it).
       - name: Deploy the planner host (test)
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: inputs.deploy
         working-directory: web/host
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          HOST: ${{ vars.PLANNER_HOST_TEST }}
+          HOST: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
           SYNC_D1: ${{ vars.SYNC_D1_ID_TEST }}
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$HOST" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$SYNC_D1" ]; then
-            echo "::error::CLOUDFLARE_PLANNER_TOKEN / PLANNER_HOST_TEST / CLOUDFLARE_ACCOUNT_ID / SYNC_D1_ID_TEST missing – see web-planner.md §9, web-sync.md §10"; exit 1
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_PLANNER_TOKEN / CLOUDFLARE_ACCOUNT_ID missing – see web-planner.md §9, web-sync.md §10"; exit 1
+          fi
+          if [ -z "$SYNC_D1" ]; then # no variable: find the database by its name (cloudflare-setup.yml creates it)
+            SYNC_D1=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database?name=onpath-sync-test" \
+              | jq -r '[.result[]? | select(.name == "onpath-sync-test")][0].uuid // empty')
+            [ -n "$SYNC_D1" ] || { echo "::error::D1 database onpath-sync-test not found – run the Cloudflare setup workflow first"; exit 1; }
           fi
           sed -i "s/__PLANNER_HOST_TEST__/$HOST/; s/__SYNC_D1_ID_TEST__/$SYNC_D1/" wrangler.toml
           npx --yes wrangler@4.141.0 d1 migrations apply onpath-sync-test --env test --remote

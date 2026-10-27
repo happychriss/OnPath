@@ -1,0 +1,155 @@
+# One-time Cloudflare setup for the web planner test site plan.onpath.earth (order A-008; web-planner.md §9,
+# web-sync.md §10) – instead of clicking through the dashboard. Idempotent: what exists is found and kept/updated.
+#
+# Secrets (owner, repository → Settings → Secrets and variables → Actions):
+#   CF_START_TOKEN        short-lived (1 day) Cloudflare token: Account · Access: Apps and Policies · Edit,
+#                         Account · Access: Organizations, Identity Providers, and Groups · Edit, Account · D1 · Edit.
+#                         Delete it (secret + token in Cloudflare) after the setup.
+#   CF_TESTER_EMAILS      comma list of the testers' e-mail addresses (a secret, so they never show in the public logs)
+#   CLOUDFLARE_PLANNER_TOKEN  (optional, for the deploy job) permanent narrow token: Account · Workers Scripts · Edit,
+#                         Account · D1 · Edit, Zone onpath.earth · Workers Routes · Edit, Zone onpath.earth · DNS · Edit
+# Variable: CLOUDFLARE_ACCOUNT_ID (exists).
+# Start: a workflow_dispatch needs the file on main, so a Claude session starts it through the GitHub API on
+# web-spike (or once this file is on main: Actions → Cloudflare setup → Run workflow).
+# Nothing secret is printed; the logs of this public repository are public.
+name: Cloudflare setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only show what would be created or changed"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      deploy: ${{ steps.done.outputs.deploy }}
+    env:
+      T: ${{ secrets.CF_START_TOKEN }}
+      A: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      EMAILS: ${{ secrets.CF_TESTER_EMAILS }}
+      HAS_PLANNER_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN != '' }}
+      DRY: ${{ inputs.dry_run }}
+      HOST: plan.onpath.earth
+      DB: onpath-sync-test
+    steps:
+      - name: Access, one-time PIN, sync bypass, D1
+        run: |
+          set -euo pipefail
+          [ -n "$T" ] || { echo "::error::Secret CF_START_TOKEN is missing"; exit 1; }
+          [ -n "$A" ] || { echo "::error::Variable CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          API=https://api.cloudflare.com/client/v4/accounts/$A
+          # cf METHOD PATH [JSON] – prints the result, fails with Cloudflare's own error message (never the token)
+          cf() {
+            local out
+            out=$(curl -sS -X "$1" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+              ${3:+--data "$3"} "$API$2")
+            if [ "$(jq -r '.success' <<<"$out")" != "true" ]; then
+              echo "::error::Cloudflare $1 $2: $(jq -c '.errors' <<<"$out")"; return 1
+            fi
+            jq -c '.result' <<<"$out"
+          }
+          step() { echo "• $*"; }
+          act() { if [ "$DRY" = "true" ]; then echo "  (dry run – would $1)"; return 1; fi; echo "  → $1"; }
+
+          step "Zero Trust organisation"
+          org=$(cf GET /access/organizations || true)
+          if [ -z "$org" ] || [ "$(jq -r '.auth_domain // empty' <<<"$org")" = "" ]; then
+            echo "::error::No Zero Trust organisation yet. Once in the dashboard: Zero Trust → choose a team name and the Free plan. Then run this again."
+            exit 1
+          fi
+          echo "  ok: $(jq -r '.auth_domain' <<<"$org")"
+
+          step "Identity provider One-time PIN"
+          otp=$(cf GET /access/identity_providers | jq -r '[.[] | select(.type == "onetimepin")][0].id // empty')
+          if [ -z "$otp" ]; then
+            if act "create it"; then otp=$(cf POST /access/identity_providers '{"name":"One-time PIN","type":"onetimepin","config":{}}' | jq -r '.id'); fi
+          else echo "  ok"; fi
+
+          # reusable policy by name: create or update; prints its id
+          policy() { # name decision include-json
+            local id body
+            id=$(cf GET /access/policies | jq -r --arg n "$1" '[.[] | select(.name == $n)][0].id // empty')
+            body=$(jq -nc --arg n "$1" --arg d "$2" --argjson inc "$3" '{name:$n, decision:$d, include:$inc}')
+            if [ -z "$id" ]; then
+              act "create policy \"$1\" ($2)" >&2 && id=$(cf POST /access/policies "$body" | jq -r '.id')
+            else
+              act "update policy \"$1\" ($2)" >&2 && cf PUT "/access/policies/$id" "$body" >/dev/null
+            fi
+            echo "$id"
+          }
+          # self-hosted app by domain: create or update with one policy
+          app() { # name domain policy-id
+            local id body
+            id=$(cf GET /access/apps | jq -r --arg d "$2" '[.[] | select(.domain == $d)][0].id // empty')
+            body=$(jq -nc --arg n "$1" --arg d "$2" --arg p "$3" --arg idp "${otp:-}" \
+              '{name:$n, domain:$d, type:"self_hosted", session_duration:"720h", auto_redirect_to_identity:true,
+                allowed_idps:(if $idp == "" then [] else [$idp] end), policies:[{id:$p, precedence:1}]}')
+            if [ -z "$id" ]; then act "create Access app $2" && cf POST /access/apps "$body" >/dev/null
+            else act "update Access app $2" && cf PUT "/access/apps/$id" "$body" >/dev/null; fi
+          }
+
+          step "Access for $HOST (testers only, e-mail code)"
+          if [ -z "$EMAILS" ]; then
+            [ "$DRY" = "true" ] || { echo "::error::Secret CF_TESTER_EMAILS is missing (comma list of tester e-mails)"; exit 1; }
+            echo "::warning::Secret CF_TESTER_EMAILS is missing – needed for the real run"
+          fi
+          inc=$(jq -nc --arg e "$EMAILS" '[$e | split(",")[] | gsub("^\\s+|\\s+$";"") | select(length > 0) | {email:{email:.}}]')
+          echo "  testers: $(jq 'length' <<<"$inc")"
+          pa=$(policy "OnPath planner testers" allow "$inc" || true)
+          [ -z "$pa" ] || app "OnPath planner (test)" "$HOST" "$pa" || true
+
+          step "Bypass for $HOST/sync (the phone cannot log in; the mailbox token guards it)"
+          pb=$(policy "OnPath sync bypass" bypass '[{"everyone":{}}]' || true)
+          [ -z "$pb" ] || app "OnPath planner sync (test)" "$HOST/sync" "$pb" || true
+
+          step "D1 database $DB (EU)"
+          db=$(cf GET "/d1/database?name=$DB" | jq -r --arg n "$DB" '[.[] | select(.name == $n)][0].uuid // empty')
+          if [ -z "$db" ]; then
+            if act "create it in the EU jurisdiction"; then db=$(cf POST /d1/database "{\"name\":\"$DB\",\"jurisdiction\":\"eu\"}" | jq -r '.uuid'); fi
+          else echo "  ok"; fi
+
+      - id: done
+        run: |
+          if [ "$DRY" = "true" ]; then echo "deploy=false" >> "$GITHUB_OUTPUT"; echo "Dry run finished – nothing was changed."; exit 0; fi
+          if [ "$HAS_PLANNER_TOKEN" = "true" ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::Setup done. For the deploy add the secret CLOUDFLARE_PLANNER_TOKEN (see the header of this workflow) and run again."
+          fi
+
+  deploy:
+    needs: setup
+    if: needs.setup.outputs.deploy == 'true'
+    uses: ./.github/workflows/web-spike.yml
+    with:
+      deploy: true
+    secrets: inherit
+
+  check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: plan.onpath.earth answers with the Access login, /sync with the mailbox
+        run: |
+          set -u
+          for i in $(seq 1 20); do
+            page=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' https://plan.onpath.earth/ || true)
+            sync=$(curl -sS https://plan.onpath.earth/sync/v1/x || true)
+            echo "page: $page | sync: ${sync:0:80}"
+            if [[ "$page" == 302*cloudflareaccess.com* ]] && jq -e . >/dev/null 2>&1 <<<"$sync"; then ok=1; break; fi
+            sleep 15
+          done
+          [ "${ok:-0}" = 1 ] || { echo "::error::plan.onpath.earth not answering as expected yet (DNS / certificate can take a few minutes – run again)"; exit 1; }
+          echo
+          echo "Done. Now, owner:"
+          echo "  1. GitHub → Settings → Secrets → delete CF_START_TOKEN."
+          echo "  2. Cloudflare → My Profile → API Tokens → delete the start token."
+          echo "  3. Open https://plan.onpath.earth – log in with a tester e-mail (one-time code)."
