@@ -28,6 +28,9 @@ export interface PlanResult {
   because: string | null;
   /** The plan sheet's texts from the app's Format: "4 h 36 min", "12.5 km", "↑ 842 m  ↓ 310 m  ·  max 954 m". */
   texts: { time: string; distance: string; climb: string };
+  /** The app's amber route warning line (RouteWarnings.text) and its "On this route" rows, or null / []. */
+  warning: string | null;
+  spots: { title: string; detail: string; zoom: number | null; line: [number, number][] }[];
   wayTypes: [string, number][]; surfaces: [string, number][];
   legs: { straight: boolean; points: [number, number, number | null][] }[];
   profile: { dist: number[]; ele: number[]; steep: number[] };

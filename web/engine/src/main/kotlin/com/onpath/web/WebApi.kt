@@ -22,6 +22,7 @@ import com.onpath.app.poi.PoiLinks
 import com.onpath.app.recording.GpsStatus
 import com.onpath.app.ui.MapGestures
 import com.onpath.app.ui.PlanHistory
+import com.onpath.app.ui.RouteWarnings
 import org.teavm.jso.JSExport
 import org.teavm.jso.typedarrays.Int8Array
 import java.io.File
@@ -179,6 +180,16 @@ object Engine {
                 append(",\"climb\":").append(str("↑ ${Format.meters(p.ascentM)}  ↓ ${Format.meters(p.descentM)}" +
                     (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""))).append('}')
                 append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
+                // route warnings and hints, the app's amber line and its "On this route" rows (ui/RouteWarnings)
+                val spots = if (p.points.size >= 2) RouteWarnings.detect(p.points, act, sac) else emptyList()
+                append(",\"warning\":").append(RouteWarnings.text(spots, sac)?.let { str(it) } ?: "null")
+                append(",\"spots\":").append(spots.joinToString(",", "[", "]") { sp ->
+                    val piece = RouteWarnings.showPoints(p.points, sp)
+                    val c = RouteWarnings.centerFor(p.points, sp)
+                    "{\"title\":" + str(RouteWarnings.rowTitle(sp, sac)) + ",\"detail\":" + str(RouteWarnings.rowDetail(sp)) +
+                        ",\"zoom\":" + (c?.second?.let { num(it, 1) } ?: "null") + ",\"line\":" +
+                        piece.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } + "}"
+                })
                 append(",\"ms\":").append(System.currentTimeMillis() - t0)
                 append(",\"wayTypes\":").append(shares(p.wayTypes))
                 append(",\"surfaces\":").append(shares(p.surfaces))

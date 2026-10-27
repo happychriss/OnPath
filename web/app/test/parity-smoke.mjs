@@ -1,7 +1,7 @@
 // The phone's Plan screen features in the browser (docs/design/web-planner.md §11): first-point menu (Start here ·
 // Go here from my position), undo / redo (buttons and keys – the app's PlanHistory), the eye (hold hides route and
 // markers), the compass (turned map → north up), the point menu's "Open in Google Maps" (a new tab with the app's
-// link), Export GPX, Points delete, and the bottom sheet at phone width. Needs only the rd5 (no map data, CI).
+// link), Export GPX, Points delete, route warnings, and the bottom sheet at phone width. Needs only the rd5 (no map data, CI).
 // Usage: node test/parity-smoke.mjs [segmentsDir]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,7 +119,17 @@ console.log('google tab:', tab.url());
 check(/^https:\/\/www\.google\.com\/maps\/search\/Vellau\/@46\.\d+,11\.\d+,16z$/.test(tab.url()), 'Google Maps opens in a new tab with the place name near its point');
 await tab.close();
 
-// 9. phone width: bottom sheet; the handle shows the Points
+// 9. route warnings (the app's RouteWarnings): MTB up the Ifinger → amber line, click → "On this route" rows
+const steep = await page.evaluate(() => window.__engine.encode({ points: [[46.6870, 11.2350], [46.7006, 11.2585]], activity: 'MTB', sac: 2, pinned: [], names: {}, title: null }));
+await page.goto(url + 'index.html#p=' + steep); // only the hash changes: the page opens the plan (hashchange)
+await page.waitForFunction(() => !document.getElementById('warning').hidden, null, { timeout: 120_000 }).catch(() => {});
+const wl = await page.textContent('#warning');
+console.log('warning:', wl);
+check(await page.isVisible('#warning') && /steep/.test(wl), 'route warning line (steep sections) shown');
+await page.click('#warning');
+check(await page.locator('#spots li').count() > 0, 'click → the spots on this route');
+
+// 10. phone width: bottom sheet; the handle shows the Points
 await page.setViewportSize({ width: 412, height: 860 });
 await page.waitForTimeout(300);
 const sheet = await page.locator('#sheet').boundingBox();

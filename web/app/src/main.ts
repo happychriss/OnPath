@@ -78,6 +78,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
     </div>
     <div id="notice" class="notice" hidden></div>
+    <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
+    <ul id="spots" class="spots" hidden></ul>
     <div id="profile"></div>
     <div id="pointsSection" hidden>
       <div class="pointshead"><b>Points</b>
@@ -506,6 +508,12 @@ function render() {
     notice.hidden = !p.error;
     notice.innerHTML = p.error ? `⚠ ${escapeHtml(p.error)}` : '';
   }
+  // route warnings (the app's RouteWarnings): one amber ⚠ line, click → "On this route", click a row → the map shows it
+  const w = $('warning'), spots = $('spots');
+  w.hidden = !p?.warning;
+  w.textContent = p?.warning ? `⚠ ${p.warning}` : '';
+  if (!p?.warning) { spots.hidden = true; w.setAttribute('aria-expanded', 'false'); }
+  spots.innerHTML = (p?.spots ?? []).map((s, i) => `<li><button data-spot="${i}"><b>${escapeHtml(s.title)}</b><span class="muted small">${escapeHtml(s.detail)}</span></button></li>`).join('');
   $('sheet').classList.toggle('busy', state.planning);
   renderChip();
   renderFabs();
@@ -643,6 +651,16 @@ $('menuShare').onclick = share;
 $('menuAbout').onclick = () => { closeMenus(); credits(); };
 $('credits').onclick = () => credits();
 $('handle').onclick = () => $('sheet').classList.toggle('expanded');
+$('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };
+$('spots').addEventListener('click', (e) => {
+  const i = (e.target as HTMLElement).closest<HTMLElement>('[data-spot]')?.dataset.spot;
+  const s = i != null ? state.plan?.spots[Number(i)] : null;
+  if (!s || !s.line.length) return;
+  if (s.zoom != null) { const [la, lo] = s.line[Math.floor(s.line.length / 2)]; map.easeTo({ center: [lo, la], zoom: s.zoom, padding: fitPadding() }); return; }
+  const b = new maplibregl.LngLatBounds();
+  s.line.forEach(([la, lo]) => b.extend([lo, la]));
+  map.fitBounds(b, { padding: fitPadding(), maxZoom: 17 });
+});
 
 /** Full credits (the app's Settings → About, MAP_CREDITS); the map shows only "© OpenStreetMap". */
 function credits() {
