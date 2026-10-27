@@ -11,11 +11,10 @@ CELL_WORK=${ONPATH_CELLS_WORK:-$HOME/onpath-cells-work}
 cell_log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 cell_die() { cell_log "ERROR: $*"; exit 1; }
 
-# "10-531-342" or "10/531/342" -> "10-531-342" (z10 cells; z7 ids are region packages, map-cells.md §20)
+# "10-531-342" or "10/531/342" -> "10-531-342" (only z10 cells)
 cell_norm() {
   local c=${1//\//-}
-  [[ "$c" =~ ^10-[0-9]{1,4}-[0-9]{1,4}$ || "$c" =~ ^7-[0-9]{1,3}-[0-9]{1,3}$ ]] \
-    || cell_die "bad cell id '$1' (expected e.g. 10-531-342, or 7-66-42 for a region package)"
+  [[ "$c" =~ ^10-[0-9]{1,4}-[0-9]{1,4}$ ]] || cell_die "bad cell id '$1' (expected e.g. 10-531-342)"
   echo "$c"
 }
 

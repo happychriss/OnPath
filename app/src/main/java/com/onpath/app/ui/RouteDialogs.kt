@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
@@ -22,26 +21,25 @@ fun RouteDialogs(vm: AppViewModel) {
         SaveChoiceDialog(vm.savedName ?: "", unsaved = vm.planUnsaved,
             onSave = vm::saveChoiceOverwrite, onSaveAsNew = vm::saveChoiceAsNew, onCancel = { vm.saveChoice = null })
     }
-    if (vm.saveDialog) NameDialog(str(if (vm.savedName != null) Res.string.plan_save_as_new_route else Res.string.plan_save_route),
-        vm.savedName ?: vm.defaultName(str(Res.string.plan_route_default_name)),
+    if (vm.saveDialog) NameDialog(if (vm.savedName != null) "Save as new route" else "Save route",
+        vm.savedName ?: vm.defaultName("Route"),
         onDone = { vm.saveDialog = false; vm.saveRoute(it) }, onDismiss = { vm.saveDialog = false },
         suggestion = vm.suggestedName.takeIf { vm.savedName == null })
     vm.saveFirst?.let { _ ->
-        NameDialog(str(Res.string.plan_save_current_route), vm.savedName ?: vm.defaultName(str(Res.string.plan_route_default_name)),
+        NameDialog("Save current route", vm.savedName ?: vm.defaultName("Route"),
             onDone = { vm.saveFirstDone(it) }, onDismiss = { vm.saveFirst = null },
             suggestion = vm.suggestedName.takeIf { vm.savedName == null })
     }
-    vm.replaceAsk?.let { t ->
-        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
-            fromLink = t is PlanToOpen.Shared)
+    vm.replaceAsk?.let { _ ->
+        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null })
     }
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(
             onDismissRequest = { vm.routesProblem = null },
-            title = { Text(str(Res.string.plan_something_wrong)) },
+            title = { Text("Something went wrong") },
             text = { DialogText(msg) },
-            confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text(str(Res.string.common_ok)) } },
+            confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text("OK") } },
         )
     }
 }
@@ -56,14 +54,14 @@ fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveA
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Outlined.Save, null) },
-        title = { Text(str(Res.string.plan_save_route)) },
+        title = { Text("Save route") },
         text = {
-            DialogText(if (unsaved) str(Res.string.plan_save_changes_into, name)
-                else str(Res.string.plan_saved_again, name))
+            DialogText(if (unsaved) "Save the changes into “$name”, or as a new route."
+                else "“$name” is saved. Save it again, or as a new route.")
         },
-        confirmButton = { TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
+        confirmButton = { TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save") } },
         dismissButton = {
-            TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_save_as_new)) }
+            TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save as new…") }
         },
     )
 }
@@ -76,11 +74,11 @@ fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveA
 fun StraightLegsDialog(onNavigate: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(str(Res.string.plan_straight_title)) },
+        title = { Text("Parts of this route were not found") },
         text = {
-            DialogText(str(Res.string.plan_straight_text))
+            DialogText("The dashed parts are straight lines, not paths.")
         },
-        confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_navigate_anyway)) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_fix_route)) } },
+        confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text("Navigate anyway") } },
+        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Fix the route") } },
     )
 }

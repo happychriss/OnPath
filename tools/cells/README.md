@@ -10,8 +10,6 @@ Design: `docs/design/map-cells.md` (cells = z10 tiles, owner rule, manifest). Me
 | `Dockerfile` | Builder image: JRE 21, osmium-tool, Python deps (same versions as zo's venv), Planetiler jar, tippecanoe 2.79.0 + tile-join (built from source in a builder stage), non-root. Code is **not** baked in – the repo is mounted at `/onpath` (read-only), data at `/data` |
 | `run.sh Z X Y` | `docker run` with limits (`--memory=3g --memory-swap=3g --cpus=3 --cpu-shares=512`) |
 | `build_cell.sh Z X Y` | The build inside the container (steps, timings, publish) – see its header |
-| `build_package.sh 7 X Y` | A **region package** (z7 tile, map z7–9; `build_cell.sh 7 X Y` hands over to it) – `docs/design/map-cells.md` §20 |
-| `package_routes.py` | The package's long-distance route lines (net ≥ 3) for tippecanoe |
 | `cells.py` | Cell math (bbox, buffer, owner rule), pmtiles owned-tile filter, GeoJSON clip, POI id remap, manifest; `cells.py selftest` |
 | `seam_check.py WEST EAST LON [--png P]` | Seam report for two side-by-side cells (format 1 and 2) + PNG renders across the border |
 

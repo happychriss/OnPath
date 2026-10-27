@@ -1,7 +1,5 @@
 package com.onpath.app.time
 
-import com.onpath.strings.*
-
 /** Live times of the running tour, published by the recording service (RecState.time). */
 data class TripTime(
     /** Recording time without breaks (s). */
@@ -25,7 +23,7 @@ data class TripTime(
 /** "New route · was 13:15" (backlog: arrival forecast after plan edits). */
 data class LineNote(val wasMs: Long, val nowMs: Long) {
     /** "New route · was 13:15" – the new arrival is already big beside it (review 2026-10-24 B15). */
-    fun text(): String = Txt.s(Res.string.nav_line_note, TimeEstimate.clock(wasMs))
+    fun text(): String = "New route · was ${TimeEstimate.clock(wasMs)}"
 }
 
 enum class EstimateState {
@@ -36,9 +34,7 @@ enum class EstimateState {
     PAUSED,
 }
 
-enum class PauseReason(private val res: org.jetbrains.compose.resources.StringResource) {
-    NO_GPS(Res.string.nav_pause_no_gps),
-    NO_PROGRESS(Res.string.nav_pause_no_progress);
-
-    val text: String get() = Txt.s(res)
+enum class PauseReason(val text: String) {
+    NO_GPS("no GPS"),
+    NO_PROGRESS("no progress"),
 }

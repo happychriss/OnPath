@@ -1,6 +1,5 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
 import android.content.Context
 import btools.mapaccess.MatchedWaypoint
 import btools.mapaccess.OsmNodePairSet
@@ -81,13 +80,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException(CANCELLED)
         } catch (e: OutOfMemoryError) {
             Problems.error("routing", "BRouter ran out of memory", e)
-            throw RoutingException(Txt.s(Res.string.plan_err_memory))
+            throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: StackOverflowError) {
             Problems.error("routing", "BRouter stack overflow (route too complex)", e)
-            throw RoutingException(Txt.s(Res.string.plan_err_complex))
+            throw RoutingException("Route too complex for on-phone routing. Add via points or choose closer points.")
         } catch (e: LinkageError) {
             Problems.error("routing", "BRouter classes could not be loaded (LinkageError)", e)
-            throw RoutingException(Txt.s(Res.string.plan_err_engine))
+            throw RoutingException("Routing engine could not be loaded.")
         } catch (e: Exception) {
             Problems.error("routing", "Routing threw unexpectedly", e)
             throw RoutingException(UNEXPECTED)
@@ -104,7 +103,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private fun routeLocked(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
     ): RouteResult {
-        if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
+        if (waypoints.size < 2) throw RoutingException("Set a start point and a destination.")
         checkSegments(waypoints)
         ensureProfiles()
         val limit = RouteTimeLimit.forRoute(waypoints, activity)
@@ -117,10 +116,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw e
         } catch (e: OutOfMemoryError) {
             Problems.error("routing", "BRouter ran out of memory", e)
-            throw RoutingException(Txt.s(Res.string.plan_err_memory))
+            throw RoutingException("Not enough memory for this route. Add via points or choose closer points.")
         } catch (e: Exception) {
             Problems.warn("routing", "BRouter threw an exception; shown to the user as a routing error", e)
-            throw RoutingException(describeError(e.toString(), activity, sacLimit, timeoutMs), timedOut = isTimeout(e.toString()))
+            throw RoutingException(describeError(e.toString(), activity, sacLimit, timeoutMs))
         }
 
         return toResult(track, waypoints, activity, matchedPoints(track, nodes))
@@ -230,7 +229,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     private fun toResult(track: OsmTrack, waypoints: List<GeoPoint>, activity: Activity, matched: List<GeoPoint?>): RouteResult {
         val els = track.nodes
-        if (els.isEmpty()) throw RoutingException(Txt.s(Res.string.plan_err_no_route_for, activity.label))
+        if (els.isEmpty()) throw RoutingException("No route found between these points for ${activity.label}.")
         val points = ArrayList<GeoPoint>(els.size)
         var lastSElev: Short? = null
         var buffer = 0.0
@@ -269,7 +268,10 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             // a via point at the end of a removed out-and-back spike may lie further from the route
             val limit = if (i == 0 || i == waypoints.size - 1) MAX_SNAP_M else MAX_SNAP_M + viaCorrectionM(activity)
             if (d > limit) {
-                throw RoutingException(Txt.s(Res.string.plan_err_too_far, pointName(i, waypoints.size), d.roundToInt(), activity.label))
+                throw RoutingException(
+                    "${pointName(i, waypoints.size)} is too far (${d.roundToInt()} m) from any path " +
+                        "or road usable for ${activity.label}. Move it closer to a path."
+                )
             }
         }
 
@@ -312,7 +314,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         if (profilesReady) return
         if (!profileDir.isDirectory && !profileDir.mkdirs()) {
             Problems.error("routing", "Routing profile folder could not be created")
-            throw RoutingException(Txt.s(Res.string.plan_err_profile_folder))
+            throw RoutingException("Cannot create routing profile folder.")
         }
         try {
             for (name in PROFILE_ASSETS) {
@@ -326,7 +328,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                     target.delete()
                     if (!tmp.renameTo(target)) {
                         Problems.error("routing", "Routing profile could not be installed: $name")
-                        throw RoutingException(Txt.s(Res.string.plan_err_profile_install, name))
+                        throw RoutingException("Cannot install routing profile $name.")
                     }
                 }
             }
@@ -336,7 +338,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw e
         } catch (e: Exception) {
             Problems.error("routing", "Routing profiles could not be installed", e)
-            throw RoutingException(Txt.s(Res.string.plan_err_profiles))
+            throw RoutingException("Routing profiles could not be installed – the phone's storage may be full. Restart OnPath to try again.")
         }
         profilesReady = true
     }
@@ -390,7 +392,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     private fun checkSegments(waypoints: List<GeoPoint>) {
         for (p in waypoints) {
             if (p.lat.isNaN() || p.lon.isNaN() || abs(p.lat) > 89.0 || abs(p.lon) > 180.0) {
-                throw RoutingException(Txt.s(Res.string.plan_err_coordinates))
+                throw RoutingException("Invalid coordinates.")
             }
             val name = segmentName(p)
             if (!File(segmentsDir, name).isFile) {
@@ -418,40 +420,43 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
             m.contains("position not mapped") -> {
                 val who = m.substringBefore("-position")
-                Txt.s(Res.string.plan_err_not_mapped, pointNameFromBRouter(who), MAX_SNAP_M.toInt(), activity.label)
+                "${pointNameFromBRouter(who)} is more than ${MAX_SNAP_M.toInt()} m from any path or road " +
+                    "usable for ${activity.label}. Move it closer to a path."
             }
             isTimeout(m) ->
                 if (activity == Activity.HIKE) {
-                    Txt.s(Res.string.plan_err_timeout_hike, (timeoutMs / 1000).toInt(), sacLimit.coerceIn(1, 5))
+                    "No route found within ${timeoutMs / 1000} s. The destination may only be reachable via " +
+                        "paths harder than SAC T${sacLimit.coerceIn(1, 5)} - try a higher difficulty limit, " +
+                        "move the point, or add a via point."
                 } else {
-                    Txt.s(Res.string.plan_err_timeout, (timeoutMs / 1000).toInt())
+                    "Route calculation took too long (over ${timeoutMs / 1000} s). " +
+                        "Try points closer together or add a via point."
                 }
             m.contains("island") ->
-                Txt.s(Res.string.plan_err_island, activity.label)
+                "No route found: a point lies on an isolated path network not usable for ${activity.label}. Move it."
             m.contains("memory limit") ->
-                Txt.s(Res.string.plan_err_too_long)
+                "Route too long for on-phone routing. Add via points or choose closer points."
             m.contains("no track found") || m.isBlank() ->
-                Txt.s(Res.string.plan_err_no_route_for, activity.label)
+                "No route found between these points for ${activity.label}."
             else -> {
                 // BRouter's own wording is technical: the details go to the problem log, the user gets a plain sentence
                 Problems.warn("routing", "BRouter error not recognised: $m")
-                Txt.s(Res.string.plan_err_no_route_for_try, activity.label)
+                "No route found between these points for ${activity.label}. Try moving a point or adding a via point."
             }
         }
     }
 
     private fun pointName(i: Int, n: Int): String = when (i) {
-        0 -> Txt.s(Res.string.plan_err_start_point)
-        n - 1 -> Txt.s(Res.string.plan_point_destination)
-        else -> Txt.s(Res.string.plan_point_stop, i + 1)
+        0 -> "Start point"
+        n - 1 -> "Destination"
+        else -> "Stop ${i + 1}"
     }
 
     private fun pointNameFromBRouter(who: String): String = when {
-        who == "from" -> Txt.s(Res.string.plan_err_start_point)
-        who == "to" -> Txt.s(Res.string.plan_point_destination)
-        who.startsWith("via") -> who.removePrefix("via").toIntOrNull()?.let { Txt.s(Res.string.plan_point_stop, it + 1) }
-            ?: Txt.s(Res.string.plan_err_a_stop)
-        else -> Txt.s(Res.string.plan_err_a_point)
+        who == "from" -> "Start point"
+        who == "to" -> "Destination"
+        who.startsWith("via") -> who.removePrefix("via").toIntOrNull()?.let { "Stop ${it + 1}" } ?: "A stop"
+        else -> "A route point"
     }
 
     companion object {
@@ -462,12 +467,12 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
         /** Ms the last limited request on the calling thread waited for another route to finish (0 = none / unknown). */
         fun lastLockWaitMs(): Long = lastLockWait.get() ?: 0L
-        val CANCELLED: String get() = Txt.s(Res.string.plan_err_cancelled)
+        const val CANCELLED = "Routing was cancelled."
         /** Plain text (no file name, no path); the plan shows RoutingDataNotice instead. */
-        val NO_DATA: String get() = Txt.s(Res.string.plan_err_no_data)
-        val BUSY: String get() = Txt.s(Res.string.plan_err_busy)
+        const val NO_DATA = "No routing data for this area."
+        const val BUSY = "The router is busy - try again in a moment."
         /** An engine bug (details in the problem log): plain text, no exception message. */
-        val UNEXPECTED: String get() = Txt.s(Res.string.plan_err_unexpected)
+        const val UNEXPECTED = "Routing failed unexpectedly. Try again; if it keeps happening, send the diagnostics (Settings → Diagnostics)."
         private const val MIN_BUDGET_MS = 500L
         /** Isolated ways skipped per request before giving up (each failed try is fast, ~0.1 s). */
         private const val MAX_ISLAND_SKIPS = 3

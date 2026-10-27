@@ -63,7 +63,7 @@ object PoiLinks {
     }
 
     /** POIs: the name searches near the point; an unnamed POI gets an exact pin labelled with its kind. */
-    fun googleMaps(poi: Poi): MapsLink = googleMaps(poi.name, poi.lat, poi.lon, label = poi.kindInfo.label)
+    fun googleMaps(poi: Poi): MapsLink = googleMaps(poi.name, poi.lat, poi.lon, label = poi.kindInfo.label(Poi.isGerman()))
 
     private fun clean(s: String): String? = s.replace(Regex("\\s+"), " ").trim().takeIf { it.isNotEmpty() }
 

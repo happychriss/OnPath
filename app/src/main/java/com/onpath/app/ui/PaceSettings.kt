@@ -22,7 +22,6 @@ import com.onpath.app.data.AppSettings
 import com.onpath.app.routing.Activity
 import com.onpath.app.time.Pace
 import com.onpath.app.time.TimeEstimate
-import com.onpath.strings.*
 
 /**
  * Settings → "Your pace" (docs/plan-time-estimate.md §4.1, owner 2026-10-22: five levels): one level for hiking and one
@@ -34,13 +33,13 @@ import com.onpath.strings.*
 @Composable
 internal fun PaceSection(settings: AppSettings, onChange: (AppSettings) -> Unit, activity: Activity = Activity.HIKE) {
     val bike = if (TimeEstimate.isBike(activity)) activity else Activity.BIKE_TREKKING
-    Section(SettingsPage.PACE.title) {
-        Text(str(Res.string.settings_pace_intro),
+    Section("Your pace") {
+        Text("Changes the times only, not the route. Times are walking / riding time without breaks.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        PaceGroup(str(Res.string.settings_pace_hiking), Activity.HIKE, settings.hikePace) { onChange(settings.copy(hikePace = it)) }
-        PaceGroup(str(Res.string.settings_pace_cycling, bike.navName), bike, settings.bikePace) { onChange(settings.copy(bikePace = it)) }
-        Text(str(Res.string.settings_pace_learn),
+        PaceGroup("Hiking", Activity.HIKE, settings.hikePace) { onChange(settings.copy(hikePace = it)) }
+        PaceGroup("Cycling · ${bike.navName}", bike, settings.bikePace) { onChange(settings.copy(bikePace = it)) }
+        Text("During a tour, the arrival time adapts to your pace of the day after about 15 minutes.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
     }

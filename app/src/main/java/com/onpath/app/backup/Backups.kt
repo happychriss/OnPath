@@ -14,7 +14,6 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import com.onpath.strings.*
 
 /**
  * Tour & plan backup of the app (owner 2026-10-21, docs/core-features.md C11): the hooks call [tourChanged] /
@@ -59,7 +58,7 @@ object Backups {
         val tree = prefs(c).getString("tree", null)?.let(Uri::parse)
         return when {
             // the folder's name was read once when it was chosen (a cloud provider may answer slowly)
-            tree != null -> TreeBackupStore(c, tree, prefs(c).getString("treeLabel", null) ?: Txt.s(Res.string.backup_folder_chosen))
+            tree != null -> TreeBackupStore(c, tree, prefs(c).getString("treeLabel", null) ?: "chosen folder")
             Build.VERSION.SDK_INT >= 29 -> MediaStoreBackupStore(c)
             else -> LegacyBackupStore(c)
         }
@@ -126,8 +125,8 @@ object Backups {
         }
 
         override fun failed(reason: String, e: Throwable?) {
-            val folder = try { store(a).label } catch (x: Exception) { Problems.info("backup", "Backup folder name unknown", x); Txt.s(Res.string.backup_folder_unknown) }
-            val text = Txt.s(Res.string.backup_failed, folder, reason)
+            val folder = try { store(a).label } catch (x: Exception) { Problems.info("backup", "Backup folder name unknown", x); "the backup folder" }
+            val text = "Backup to $folder failed – $reason"
             Problems.warn("backup", text, e)
             prefs(a).edit().putString("lastError", reason).putString("pendingFailure", text).apply()
             failure.value = text
@@ -158,7 +157,7 @@ object Backups {
         var failed = 0
         val found = ArrayList<FoundBackup>()
         files.forEachIndexed { i, d ->
-            progress(Txt.s(Res.string.backup_progress_reading, i + 1, files.size))
+            progress("Reading backup files ${i + 1} / ${files.size}")
             try {
                 if (d.size > com.onpath.app.gpx.GpxParser.MAX_BYTES) { failed++; return@forEachIndexed }
                 val text = a.contentResolver.openInputStream(d.uri)?.use { String(it.readBytes(), Charsets.UTF_8) } ?: run { failed++; return@forEachIndexed }
@@ -176,7 +175,7 @@ object Backups {
         val adopt = (current.key == KEY_DOCUMENTS && BackupFolder.isDocumentsOnPath(tree)) || current.key == treeKey(tree)
         var tours = 0; var plans = 0
         todo.forEachIndexed { i, f ->
-            progress(Txt.s(Res.string.backup_progress_restoring, i + 1, todo.size))
+            progress("Restoring ${i + 1} / ${todo.size}")
             val m = f.entry.meta
             try {
                 db.insertTour(m.kind, m.name, m.activity, m.sac, m.distanceM, m.ascentM, m.descentM, m.durationS,
@@ -226,7 +225,7 @@ object Backups {
                 zip.closeEntry()
             }
         }
-        if (names.isEmpty()) { out.delete(); throw BackupException(Txt.s(Res.string.backup_err_nothing)) }
+        if (names.isEmpty()) { out.delete(); throw BackupException("nothing to export yet") }
         return out
     }
 

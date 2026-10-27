@@ -37,10 +37,6 @@ class MessageBarTest {
         listOf("Copied.", "Track saved to My routes.", "Imported “Algund” – some parts were skipped.",
             "The route already ends at the start.", "Route updated with newer map data – please check it.",
         ).forEach { assertFalse(it, MessageKind.isError(it)) }
-        // German texts (EN + DE, owner 2026-10-26): the same failure words in German
-        listOf("Der Export ist fehlgeschlagen.", "Der Track konnte nicht gespeichert werden.", "Etwas ist schiefgegangen.")
-            .forEach { assertTrue(it, MessageKind.isError(it)) }
-        listOf("Track in Meine Routen gespeichert.", "Kopiert.").forEach { assertFalse(it, MessageKind.isError(it)) }
     }
 
     @Test fun infoAndErrorBars() = paparazzi.snapshot {

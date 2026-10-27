@@ -1,6 +1,5 @@
 package com.onpath.app.cells
 
-import com.onpath.strings.*
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -99,13 +98,13 @@ class MapLoadService : Service() {
 
     private fun note(percent: Int?): Notification {
         if (Build.VERSION.SDK_INT >= 26) nm().createNotificationChannel(
-            NotificationChannel(CHANNEL, Txt.s(Res.string.maps_notif_channel), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
+            NotificationChannel(CHANNEL, "Loading maps", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(Txt.s(Res.string.maps_load_loading))
-            .setContentText(if (percent != null) Txt.s(Res.string.maps_notif_progress, percent) else Txt.s(Res.string.maps_notif_preparing))
+            .setContentTitle("Loading the map for your area")
+            .setContentText(if (percent != null) "$percent % – you can put the phone aside" else "Preparing – you can put the phone aside")
             .setProgress(100, percent ?: 0, percent == null)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
             .setContentIntent(open)

@@ -1,7 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
-
 /** Why a plan with two or more points has no route on purpose (the sheet says so and offers to calculate it). */
 enum class NotRouted {
     /** "This route is very long" was answered Cancel and there was no change to take back (e.g. a plan restored at start). */
@@ -16,7 +14,7 @@ enum class NotRouted {
  * Invariant: "Calculating the route…" only while a routing request runs.
  */
 object PlanStatus {
-    val CALCULATING: String get() = Txt.s(Res.string.plan_calculating)
+    const val CALCULATING = "Calculating the route…"
 
     /** What Cancel does: Undo / Redo one plan step, put the activity and T level back, or keep the points unrouted. */
     enum class OnCancel { UNDO, REDO, RESTORE_ACTIVITY, KEEP_POINTS }
@@ -49,22 +47,22 @@ object PlanStatus {
 
     /** Second line of the sheet when there is no route yet, for [pointCount] points. */
     fun noRouteLine(pointCount: Int, routing: Boolean, notRouted: NotRouted?): String = when {
-        pointCount == 0 -> Txt.s(Res.string.plan_hint_first_point)
-        pointCount == 1 -> Txt.s(Res.string.plan_hint_destination)
+        pointCount == 0 -> "Hold the map where you want to start or go. To only record: ☰ → Start recording."
+        pointCount == 1 -> "Hold the map to set the destination."
         routing -> CALCULATING
         else -> notRoutedText(notRouted)
     }
 
     /** Notice for a plan that is not routed (no request running). */
     fun notRoutedText(notRouted: NotRouted?): String = when (notRouted) {
-        NotRouted.LONG -> Txt.s(Res.string.plan_not_routed_long)
-        NotRouted.STOPPED -> Txt.s(Res.string.plan_not_routed_stopped)
-        null -> Txt.s(Res.string.plan_not_routed)
+        NotRouted.LONG -> "Route not calculated – very long plan."
+        NotRouted.STOPPED -> "Route not calculated – calculation stopped."
+        null -> "Route not calculated."
     }
 
     /** Button of that notice. */
     fun notRoutedAction(notRouted: NotRouted): String = when (notRouted) {
-        NotRouted.LONG -> Txt.s(Res.string.plan_anyway)
-        NotRouted.STOPPED -> Txt.s(Res.string.plan_calculate)
+        NotRouted.LONG -> "Plan anyway"
+        NotRouted.STOPPED -> "Calculate"
     }
 }

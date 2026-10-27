@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,8 +32,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RouteSpotsList(spots: List<RouteSpot>, sac: Int, onShow: (RouteSpot) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-        Text(str(Res.string.plan_spots_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Text(str(Res.string.plan_spots_tap), style = MaterialTheme.typography.bodySmall,
+        Text("On this route", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Tap a spot to see it on the map.", style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
         Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
             spots.forEachIndexed { i, s ->

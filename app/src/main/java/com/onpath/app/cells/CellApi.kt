@@ -1,6 +1,5 @@
 package com.onpath.app.cells
 
-import com.onpath.strings.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -57,7 +56,7 @@ class CellApi(
     fun manifest(cell: CellId, format: Int = FORMAT): CellManifest {
         val text = call("GET", "$apiUrl/cells/${cell.path}/manifest?format=$format", null)
         return try { CellManifest.parse(text) } catch (e: Exception) {
-            throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_bad_list), cause = e)
+            throw ApiException(Failure.BAD_ANSWER, "The map server sent an unusable file list for this area.", cause = e)
         }
     }
 
@@ -80,7 +79,7 @@ class CellApi(
                     code == 200 -> have = 0 // range ignored: start over
                     code == 416 -> { // our part is not a prefix of the server's file: start over
                         part.delete()
-                        throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_restart, f.name))
+                        throw ApiException(Failure.BAD_ANSWER, "Download of ${f.name} must start again – trying again.")
                     }
                     else -> throw failureFor(code, conn)
                 }
@@ -102,10 +101,10 @@ class CellApi(
             } finally { conn.disconnect() }
         }
         val len = part.length()
-        if (len < f.size) throw ApiException(Failure.UNREACHABLE, Txt.s(Res.string.maps_err_stopped_at, len * 100 / maxOf(1, f.size)))
+        if (len < f.size) throw ApiException(Failure.UNREACHABLE, "Map download stopped at ${len * 100 / maxOf(1, f.size)} % – continues when connected.")
         if (len != f.size || sha256(part) != f.sha256) {
             part.delete()
-            throw ChecksumException(Txt.s(Res.string.maps_err_checksum))
+            throw ChecksumException("Map download damaged – loading again.")
         }
         onBytes(len)
     }
@@ -147,11 +146,11 @@ class CellApi(
         }
         val retry = conn.getHeaderField("Retry-After")?.trim()?.toIntOrNull()
         return when {
-            code == 401 || code == 403 -> ApiException(Failure.REFUSED, Txt.s(Res.string.maps_err_refused))
-            code == 429 -> ApiException(Failure.BUSY, Txt.s(Res.string.maps_err_busy), retry ?: 60, technical(code, detail))
-            code == 404 && detail == "not ready" -> ApiException(Failure.NOT_READY, Txt.s(Res.string.maps_err_not_ready))
-            code >= 500 -> ApiException(Failure.SERVER, Txt.s(Res.string.maps_err_unreachable), retry)
-            else -> ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_unexpected), cause = technical(code, detail))
+            code == 401 || code == 403 -> ApiException(Failure.REFUSED, "Map server refused the request – update the app.")
+            code == 429 -> ApiException(Failure.BUSY, "The map server is busy – trying again later.", retry ?: 60, technical(code, detail))
+            code == 404 && detail == "not ready" -> ApiException(Failure.NOT_READY, "The map for this area is not ready yet.")
+            code >= 500 -> ApiException(Failure.SERVER, "Map server not reachable – trying again.", retry)
+            else -> ApiException(Failure.BAD_ANSWER, "The map server sent an unexpected answer – trying again later.", cause = technical(code, detail))
         }
     }
 
@@ -161,9 +160,9 @@ class CellApi(
     /** Network exceptions → [ApiException] (offline / unreachable). */
     private inline fun <T> guard(block: () -> T): T = try { block() } catch (e: ApiException) { throw e } catch (e: ChecksumException) { throw e } catch (e: IOException) {
         throw when (e) {
-            is UnknownHostException -> ApiException(Failure.OFFLINE, Txt.s(Res.string.maps_err_no_connection), cause = e)
-            is ConnectException, is SocketTimeoutException, is SSLException -> ApiException(Failure.UNREACHABLE, Txt.s(Res.string.maps_err_unreachable), cause = e)
-            else -> ApiException(Failure.UNREACHABLE, Txt.s(Res.string.maps_err_broke), cause = e)
+            is UnknownHostException -> ApiException(Failure.OFFLINE, "No connection – the detailed map for this area will load when you are online.", cause = e)
+            is ConnectException, is SocketTimeoutException, is SSLException -> ApiException(Failure.UNREACHABLE, "Map server not reachable – trying again.", cause = e)
+            else -> ApiException(Failure.UNREACHABLE, "Connection to the map server broke – trying again.", cause = e)
         }
     }
 
@@ -203,7 +202,7 @@ class CellApi(
                     c.optBoolean("updating", false))
             }, o.optInt("poll_s", 30).coerceIn(5, 600))
         } catch (e: Exception) {
-            throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_bad_answer), cause = e)
+            throw ApiException(Failure.BAD_ANSWER, "The map server sent an unusable answer.", cause = e)
         }
 
         fun sha256(f: File): String {

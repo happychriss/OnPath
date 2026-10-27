@@ -1,6 +1,5 @@
 package com.onpath.app.cells
 
-import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,10 +27,6 @@ import java.io.IOException
  * Ownership decides where every tile / POI comes from: a tile at zoom ≥ 10 inside an installed cell, and a POI inside
  * it (half-open rule), come only from that cell; everything else from the region package. So cells override the
  * region package where both exist, and the region package fills the rest (and z0–9).
- * Region packages (z7 tiles, [CellId.isPackage], map-cells.md §20) are joined the same way: a package owns the tiles
- * z7–9 under it (base, overlays "routes", hillshade). With any package installed, the region package's tiles below z10
- * are left out – the map then draws z7–9 from the detailed sources (map/Overview.kt), and a region package outside the
- * packages would double the overview there.
  * Not thread-safe by itself: [MapCells] calls it from one worker; methods are synchronized as a guard.
  */
 class CellStore(
@@ -89,7 +84,7 @@ class CellStore(
      * Folder the map, POI tap and search read from: the current generation when it holds at least one cell, else null
      * (then the data folder is used exactly as before cells existed).
      */
-    fun mapDir(): File? = current()?.takeIf { g -> g.cells.any { !it.id.isPackage } }?.dir
+    fun mapDir(): File? = current()?.takeIf { it.cells.isNotEmpty() }?.dir
 
     fun installed(): List<InstalledCell> = current()?.cells.orEmpty()
 
@@ -155,7 +150,6 @@ class CellStore(
         val keptIds = kept.map { it.id }.toSet()
         val allIds = keptIds + addIds
         val region = if (allIds.isEmpty()) emptyMap() else regionFiles()
-        val hasPackages = allIds.any { it.isPackage }
         // above every folder number on disk (also unreadable ones), so the rename below never meets an old folder
         val number = maxOf(cur?.number ?: 0, storeDir.listFiles().orEmpty().maxOfOrNull { f ->
             GEN.matchEntire(f.name)?.groupValues?.get(1)?.toIntOrNull() ?: 0 } ?: 0) + 1
@@ -163,7 +157,7 @@ class CellStore(
         val final = File(storeDir, "%s%06d".format("g", number))
         try {
             tmp.deleteRecursively()
-            if (!tmp.mkdirs()) throw StoreException(Txt.s(Res.string.maps_err_store_not_writable),
+            if (!tmp.mkdirs()) throw StoreException("The map could not be saved – the phone's storage is not writable. The previous map is kept.",
                 IOException("mkdirs failed: ${tmp.path}"))
             // space: the new generation is at most the sum of its inputs
             val need = LAYERS.sumOf { n ->
@@ -172,18 +166,14 @@ class CellStore(
             } + (cur?.dir?.let { File(it, POIS).length() } ?: 0L) + add.sumOf { File(it.dir, POIS).length() } +
                 (if (POIS in region) File(dataDir, POIS).length() else 0L) + MARGIN
             val free = freeSpace(storeDir)
-            if (free < need) throw StoreException(Txt.s(Res.string.maps_err_store_space, need / MB, free / MB))
+            if (free < need) throw StoreException("Not enough space for the map (needs ${need / MB} MB, ${free / MB} MB free). " +
+                "Delete map areas in Settings.")
             val bytes = HashMap<CellId, MutableMap<String, Long>>()
             val files = LinkedHashMap<String, Long>()
             for (n in LAYERS) {
                 val inputs = ArrayList<PmTiles.Input>()
                 val owners = ArrayList<CellId?>() // per input: the added cell it carries (null = region / previous store)
-                if (n in region) {
-                    inputs += PmTiles.Input(File(dataDir, n)) { z, x, y ->
-                        if (hasPackages && z < CellId.Z) false else CellId.ofTile(z, x, y)?.let { it !in allIds } ?: true
-                    }
-                    owners += null
-                }
+                if (n in region) { inputs += PmTiles.Input(File(dataDir, n)) { z, x, y -> CellId.ofTile(z, x, y)?.let { it !in allIds } ?: true }; owners += null }
                 cur?.dir?.let { File(it, n) }?.takeIf { it.isFile && keptIds.isNotEmpty() }?.let { f ->
                     inputs += PmTiles.Input(f) { z, x, y -> CellId.ofTile(z, x, y)?.let { it in keptIds } ?: false }; owners += null
                 }
@@ -195,7 +185,7 @@ class CellStore(
                 val out = File(tmp, n)
                 val bounds = boundsOf(allIds, inputs.zip(owners).filter { it.second == null && it.first.file.parentFile == dataDir }.map { it.first.file })
                 val r = try { PmTiles.merge(inputs, out, bounds, mergedMetadata(inputs.map { it.file })) }
-                catch (e: PmTiles.IncompatibleException) { throw StoreException(Txt.s(Res.string.maps_err_store_incompatible), IOException(n, e)) }
+                catch (e: PmTiles.IncompatibleException) { throw StoreException("The downloaded map does not fit the map already on the phone. The previous map is kept.", IOException(n, e)) }
                 if (r == null) continue
                 files[n] = PmTiles.verify(out).let { out.length() }
                 r.bytesPerInput.forEachIndexed { i, b -> owners[i]?.let { c -> bytes.getOrPut(c) { HashMap() }[n] = b } }
@@ -225,7 +215,7 @@ class CellStore(
             }.sortedBy { it.id }
             val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now)
             File(tmp, STORE_JSON).writeText(toJson(gen).toString(1))
-            if (!tmp.renameTo(final)) throw StoreException(Txt.s(Res.string.maps_err_store_failed), IOException("rename ${tmp.name} failed"))
+            if (!tmp.renameTo(final)) throw StoreException("The map could not be saved. The previous map is kept.", IOException("rename ${tmp.name} failed"))
             // the cells' addresses go where the search reads them; only after the generation is active
             for (d in add) installAddresses(d)
             for (c in remove - addIds) deleteAddresses(c)
@@ -239,7 +229,8 @@ class CellStore(
         } catch (e: Exception) {
             tmp.deleteRecursively()
             val low = freeSpace(storeDir) < MARGIN
-            throw StoreException(if (low) Txt.s(Res.string.maps_err_store_low) else Txt.s(Res.string.maps_err_store_failed), e)
+            throw StoreException(if (low) "Not enough space to save the map. Delete map areas in Settings." else
+                "The map could not be saved. The previous map is kept.", e)
         }
     }
 
@@ -354,11 +345,8 @@ class CellStore(
         const val STORE_JSON = "store.json"
         const val MANIFEST = "manifest.json"
         const val POIS = "pois.geojson"
-        /**
-         * Tile layers of a format-2 map (style sources base, overlays, terrain, contours; region-shade = the region
-         * packages' pre-rendered relief z7–9, map-cells.md §20).
-         */
-        val LAYERS = listOf("base.pmtiles", "overlays.pmtiles", "terrain.pmtiles", "contours.pmtiles", "hillshade.pmtiles")
+        /** Tile layers of a format-2 map (style sources base, overlays, terrain, contours). */
+        val LAYERS = listOf("base.pmtiles", "overlays.pmtiles", "terrain.pmtiles", "contours.pmtiles")
         private val GEN = Regex("""^g(\d{6})(\.tmp|\.bad)?$""")
         private const val MB = 1_048_576L
         /** Kept free besides the new generation (the phone needs room to work). */

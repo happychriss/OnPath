@@ -1,6 +1,5 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.debug.UserText
@@ -112,7 +111,7 @@ class Planner(
             val r = engine.route(waypoints, activity, sac)
             val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
             return PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS,
-                Txt.s(Res.string.plan_err_straight))
+                "Routes can't be calculated right now – straight lines shown.")
         }
         try {
             val r = route(waypoints, activity, sac)
@@ -147,7 +146,7 @@ class Planner(
             stopIfCancelled()
             try {
                 val r = route(listOf(a, b), activity, sac)
-                if (r.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, i + offset, i + offset + 1))
+                if (r.points.size < 2) throw RoutingException("No route found between point ${i + offset} and ${i + offset + 1}.")
                 routed[i] = r
                 dist += r.distanceM; up += r.ascentM; down += r.descentM; time += r.durationS
                 ways += r.wayTypes; surf += r.surfaces
@@ -196,7 +195,7 @@ class Planner(
 
     companion object {
         /** The whole plan timed out (straight lines at once). */
-        val TOOK_TOO_LONG: String get() = Txt.s(Res.string.plan_err_took_too_long)
+        const val TOOK_TOO_LONG = "Route took too long – straight lines for now"
 
         /**
          * One short ERROR line for a leg the router could not do (review 2026-10-24 B4): "Point 1 → 2: no path found" –
@@ -204,15 +203,14 @@ class Planner(
          * keeps the engine's text so the plain "map loading" notice still recognises it (RoutingDataNotice).
          */
         fun legError(from: Int, to: Int, e: Exception): String {
-            val msg = UserText.of(e, Txt.s(Res.string.plan_err_no_route))
-            val kind = (e as? RoutingException)?.kind
-            if (kind == RoutingException.Kind.NO_DATA || msg.contains(".rd5")) return msg
+            val msg = UserText.of(e, "No route found.")
+            if (msg.contains("No routing data") || msg.contains(".rd5")) return msg
             val why = when {
-                e is RoutingException && e.timedOut -> Txt.s(Res.string.plan_leg_took_too_long)
-                kind == RoutingException.Kind.TOO_COMPLEX -> Txt.s(Res.string.plan_leg_too_long)
-                else -> Txt.s(Res.string.plan_leg_no_path)
+                e is RoutingException && e.timedOut -> "took too long"
+                msg.startsWith("Not enough memory") || msg.startsWith("Route too complex") -> "too long – add a point between"
+                else -> "no path found"
             }
-            return Txt.s(Res.string.plan_leg_error, from, to, why)
+            return "Point $from → $to: $why"
         }
 
         /** A point this close to the way it was matched on counts as "on the way" (the user meant that way). */

@@ -1,27 +1,22 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
-
 /**
  * What to do at a junction of a routed line – from BRouter's turn instructions, which it computes only where other
  * ways branch off (a bend of a mountain path is no junction). Stored on the route point of the junction
  * ([GeoPoint.turn]); navigation vibrates before it and the lock screen names it.
  */
-enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.resources.StringResource, val side: Side) {
-    LEFT("TL", Res.string.nav_dir_left, Side.LEFT),
-    SLIGHT_LEFT("TSLL", Res.string.nav_dir_slight_left, Side.LEFT),
-    SHARP_LEFT("TSHL", Res.string.nav_dir_sharp_left, Side.LEFT),
-    KEEP_LEFT("KL", Res.string.nav_dir_keep_left, Side.LEFT),
-    RIGHT("TR", Res.string.nav_dir_right, Side.RIGHT),
-    SLIGHT_RIGHT("TSLR", Res.string.nav_dir_slight_right, Side.RIGHT),
-    SHARP_RIGHT("TSHR", Res.string.nav_dir_sharp_right, Side.RIGHT),
-    KEEP_RIGHT("KR", Res.string.nav_dir_keep_right, Side.RIGHT),
-    U_TURN_LEFT("TLU", Res.string.nav_dir_turn_around, Side.LEFT),
-    U_TURN_RIGHT("TRU", Res.string.nav_dir_turn_around, Side.RIGHT),
-    ROUNDABOUT("RNDB", Res.string.nav_dir_roundabout, Side.RIGHT);
-
-    /** "Keep left" in the app's language (lock screen). */
-    val text: String get() = Txt.s(res)
+enum class JunctionCue(val code: String, val text: String, val side: Side) {
+    LEFT("TL", "Left", Side.LEFT),
+    SLIGHT_LEFT("TSLL", "Slight left", Side.LEFT),
+    SHARP_LEFT("TSHL", "Sharp left", Side.LEFT),
+    KEEP_LEFT("KL", "Keep left", Side.LEFT),
+    RIGHT("TR", "Right", Side.RIGHT),
+    SLIGHT_RIGHT("TSLR", "Slight right", Side.RIGHT),
+    SHARP_RIGHT("TSHR", "Sharp right", Side.RIGHT),
+    KEEP_RIGHT("KR", "Keep right", Side.RIGHT),
+    U_TURN_LEFT("TLU", "Turn around", Side.LEFT),
+    U_TURN_RIGHT("TRU", "Turn around", Side.RIGHT),
+    ROUNDABOUT("RNDB", "Roundabout", Side.RIGHT);
 
     enum class Side { LEFT, RIGHT }
 

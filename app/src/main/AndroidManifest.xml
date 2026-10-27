@@ -78,19 +78,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- Plan links of the web planner (https://planer.onpath.earth/#p=<code>, QR code via the phone's camera,
-                 routing/PlanLinks, A-005). App Link: verified once the planner host serves
-                 /.well-known/assetlinks.json with the signing key's SHA-256; until then Android opens these links in
-                 the browser unless the user allows them (Settings → Apps → OnPath → Open by default). -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" />
-                <data android:host="planer.onpath.earth" />
-                <!-- only the planner page itself (plan links are "/#p=…"); other pages of the host stay in the browser -->
-                <data android:path="/" />
-            </intent-filter>
             <!-- geo: links ("open in a map app") -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

@@ -95,33 +95,8 @@
     "farmland"
    ],
    "paint": {
-    "fill-color": "#f0f1da",
+    "fill-color": "#f1f0de",
     "fill-antialias": false
-   }
-  },
-  {
-   "id": "land-tint",
-   "type": "background",
-   "maxzoom": 13,
-   "paint": {
-    "background-color": "#c8e0a6",
-    "background-opacity": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     0.6,
-     10,
-     0.55,
-     12,
-     0.25,
-     13,
-     0
-    ]
    }
   },
   {
@@ -147,16 +122,10 @@
      [
       "zoom"
      ],
-     8,
-     "#c4e7a5",
-     11,
-     "#cdeab1",
      12,
-     "#d7edbe",
-     13,
-     "#e2f0cf",
+     "#e3edd2",
      15,
-     "#e6f2d7"
+     "#e9f1dc"
     ],
     "fill-antialias": false
    }
@@ -184,16 +153,10 @@
      [
       "zoom"
      ],
-     8,
-     "#a9d789",
-     11,
-     "#b7de99",
      12,
-     "#c1e3a5",
-     13,
-     "#cde8b5",
+     "#cde3b8",
      15,
-     "#d4edbf"
+     "#d8eac6"
     ],
     "fill-antialias": false
    }
@@ -213,7 +176,7 @@
     "wetland"
    ],
    "paint": {
-    "fill-color": "#d1e7cb",
+    "fill-color": "#d4e6d0",
     "fill-antialias": false
    }
   },
@@ -441,9 +404,9 @@
       "zoom"
      ],
      14,
-     "#d9d7d2",
+     "#e2e0db",
      16,
-     "#e1dfda"
+     "#eae8e3"
     ],
     "fill-opacity": [
      "interpolate",
@@ -455,7 +418,7 @@
       "zoom"
      ],
      9,
-     0.9,
+     0.6,
      11,
      1
     ]
@@ -484,7 +447,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#d3cfcd"
+    "fill-color": "#dcd8d6"
    }
   },
   {
@@ -510,7 +473,7 @@
     ]
    ],
    "paint": {
-    "fill-color": "#d5ebbd"
+    "fill-color": "#d9e8c4"
    }
   },
   {
@@ -1479,9 +1442,7 @@
       "zoom"
      ],
      8,
-     0.5,
-     10,
-     1.0,
+     0.6,
      12,
      2,
      14,
@@ -1568,9 +1529,7 @@
       "zoom"
      ],
      7,
-     0.5,
-     10,
-     1.3,
+     0.6,
      12,
      2.6,
      14,
@@ -1659,8 +1618,6 @@
      ],
      6,
      0.6,
-     10,
-     1.5,
      12,
      2.8,
      14,
@@ -1911,9 +1868,7 @@
       "zoom"
      ],
      8,
-     0.5,
-     10,
-     1.0,
+     0.6,
      12,
      2,
      14,
@@ -1975,9 +1930,7 @@
       "zoom"
      ],
      7,
-     0.5,
-     10,
-     1.3,
+     0.6,
      12,
      2.6,
      14,
@@ -2041,8 +1994,6 @@
      ],
      6,
      0.6,
-     10,
-     1.5,
      12,
      2.8,
      14,
@@ -2822,9 +2773,7 @@
       "zoom"
      ],
      8,
-     0.5,
-     10,
-     1.0,
+     0.6,
      12,
      2,
      14,
@@ -2911,9 +2860,7 @@
       "zoom"
      ],
      7,
-     0.5,
-     10,
-     1.3,
+     0.6,
      12,
      2.6,
      14,
@@ -3002,8 +2949,6 @@
      ],
      6,
      0.6,
-     10,
-     1.5,
      12,
      2.8,
      14,
@@ -3493,7 +3438,7 @@
      [
       "zoom"
      ],
-     "#ddcea4",
+     "#c7aa52",
      10,
      "#fbe48f"
     ],
@@ -3507,9 +3452,7 @@
       "zoom"
      ],
      8,
-     0.5,
-     10,
-     1.0,
+     0.6,
      12,
      2,
      14,
@@ -3574,7 +3517,7 @@
      [
       "zoom"
      ],
-     "#d2b986",
+     "#b38a2c",
      10,
      "#f5c75a"
     ],
@@ -3588,9 +3531,7 @@
       "zoom"
      ],
      7,
-     0.5,
-     10,
-     1.3,
+     0.6,
      12,
      2.6,
      14,
@@ -3656,7 +3597,7 @@
      [
       "zoom"
      ],
-     "#d4a271",
+     "#b06d26",
      10,
      "#f0a24a"
     ],
@@ -3671,8 +3612,6 @@
      ],
      6,
      0.6,
-     10,
-     1.5,
      12,
      2.8,
      14,
@@ -3683,60 +3622,6 @@
      22
     ]
    }
-  },
-  {
-   "id": "routes-hike-regional",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 11,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "hike"
-    ],
-    [
-     "==",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     2
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": "#168403",
-    "line-width": [
-     "interpolate",
-     [
-      "exponential",
-      1.2
-     ],
-     [
-      "zoom"
-     ],
-     9,
-     1.0,
-     12,
-     1.6,
-     13.5,
-     2.2
-    ]
-   },
-   "maxzoom": 12.5
   },
   {
    "id": "routes-hike",
@@ -3916,23 +3801,38 @@
    }
   },
   {
-   "id": "routes-hike-major-low-halo-hikeview",
+   "id": "routes-hike-regional",
    "type": "line",
    "source": "routes",
-   "minzoom": 10,
+   "minzoom": 11,
    "maxzoom": 13.5,
    "filter": [
     "all",
     [
-     "==",
+     "all",
      [
-      "get",
-      "kind"
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "hike"
      ],
-     "hike"
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
     ],
     [
-     ">=",
+     "==",
      [
       "coalesce",
       [
@@ -3941,7 +3841,7 @@
       ],
       0
      ],
-     3
+     2
     ]
    ],
    "layout": {
@@ -3950,22 +3850,22 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#ffffff",
-    "line-opacity": 0.9,
+    "line-color": "#c43a7d",
     "line-width": [
      "interpolate",
      [
-      "linear"
+      "exponential",
+      1
      ],
      [
       "zoom"
      ],
-     7,
-     4.2,
-     11,
-     5.2,
+     9,
+     1.2,
+     12,
+     2.0,
      13,
-     5.6
+     2.6
     ]
    }
   },
@@ -3978,12 +3878,27 @@
    "filter": [
     "all",
     [
-     "==",
+     "all",
      [
-      "get",
-      "kind"
+      "==",
+      [
+       "get",
+       "kind"
+      ],
+      "hike"
      ],
-     "hike"
+     [
+      ">=",
+      [
+       "coalesce",
+       [
+        "get",
+        "net"
+       ],
+       0
+      ],
+      2
+     ]
     ],
     [
      ">=",
@@ -4004,21 +3919,22 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#c02fb0",
+    "line-color": "#c43a7d",
     "line-width": [
      "interpolate",
      [
-      "linear"
+      "exponential",
+      1
      ],
      [
       "zoom"
      ],
-     7,
-     2.2,
-     11,
-     3.2,
+     9,
+     1.2,
+     12,
+     2.0,
      13,
-     3.6
+     2.6
     ]
    }
   },
@@ -4047,7 +3963,7 @@
       ],
       0
      ],
-     3
+     2
     ]
    ],
    "layout": {
@@ -4172,23 +4088,7 @@
     "visibility": "visible"
    },
    "paint": {
-    "text-color": [
-     "case",
-     [
-      ">=",
-      [
-       "coalesce",
-       [
-        "get",
-        "net"
-       ],
-       0
-      ],
-      3
-     ],
-     "#a61e4d",
-     "#0d5f55"
-    ],
+    "text-color": "#a61e4d",
     "text-halo-color": "rgba(255,255,255,0.92)",
     "text-halo-width": 1.5
    }
@@ -4396,60 +4296,6 @@
    }
   },
   {
-   "id": "routes-bike-major-low-halo-bikeview",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 9,
-   "maxzoom": 13.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "bike"
-    ],
-    [
-     ">=",
-     [
-      "coalesce",
-      [
-       "get",
-       "net"
-      ],
-      0
-     ],
-     3
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "none"
-   },
-   "paint": {
-    "line-color": "#ffffff",
-    "line-opacity": 0.9,
-    "line-width": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     7,
-     4.2,
-     11,
-     5.2,
-     13,
-     5.6
-    ]
-   }
-  },
-  {
    "id": "routes-bike-major-low",
    "type": "line",
    "source": "routes",
@@ -4484,21 +4330,22 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#c02fb0",
+    "line-color": "#c43a7d",
     "line-width": [
      "interpolate",
      [
-      "linear"
+      "exponential",
+      1
      ],
      [
       "zoom"
      ],
-     7,
-     2.2,
-     11,
-     3.2,
+     9,
+     1.2,
+     12,
+     2.0,
      13,
-     3.6
+     2.6
     ]
    }
   },

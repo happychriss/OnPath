@@ -1,7 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
-import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
@@ -41,27 +39,27 @@ import com.onpath.app.routing.Share
 
 /** Labels and colours for the contract keys (RoutingContract.kt). */
 private val WAY = mapOf(
-    "cycleway" to (Res.string.plan_way_cycleway to Color(0xFF3B8E3B)),
-    "path" to (Res.string.plan_way_path to Color(0xFF8D5A3B)),
-    "footway" to (Res.string.plan_way_footway to Color(0xFFC08A5B)),
-    "track" to (Res.string.plan_way_track to Color(0xFFC9A64E)),
-    "quiet_road" to (Res.string.plan_way_quiet_road to Color(0xFF9AA5B1)),
-    "road" to (Res.string.plan_way_road to Color(0xFF5F6B78)),
-    "busy_road" to (Res.string.plan_way_busy_road to Color(0xFFC62828)),
-    "steps" to (Res.string.plan_way_steps to Color(0xFF4E342E)),
-    "ferry" to (Res.string.plan_way_ferry to Color(0xFF2F86C9)),
+    "cycleway" to ("Cycleway" to Color(0xFF3B8E3B)),
+    "path" to ("Path" to Color(0xFF8D5A3B)),
+    "footway" to ("Footway" to Color(0xFFC08A5B)),
+    "track" to ("Track" to Color(0xFFC9A64E)),
+    "quiet_road" to ("Quiet road" to Color(0xFF9AA5B1)),
+    "road" to ("Road" to Color(0xFF5F6B78)),
+    "busy_road" to ("Busy road" to Color(0xFFC62828)),
+    "steps" to ("Steps" to Color(0xFF4E342E)),
+    "ferry" to ("Ferry" to Color(0xFF2F86C9)),
 )
 private val SURFACE = mapOf(
-    "asphalt" to (Res.string.plan_surface_asphalt to Color(0xFF546E7A)),
-    "paved" to (Res.string.plan_surface_paved to Color(0xFF90A4AE)),
-    "gravel" to (Res.string.plan_surface_gravel to Color(0xFFD1B074)),
-    "unpaved" to (Res.string.plan_surface_unpaved to Color(0xFFA1887F)),
-    "ground" to (Res.string.plan_surface_ground to Color(0xFF8D6E63)),
-    "natural_trail" to (Res.string.plan_surface_natural_trail to Color(0xFF6D8B3A)),
-    "alpine" to (Res.string.plan_surface_alpine to Color(0xFF7B7F86)),
-    "unknown" to (Res.string.plan_surface_unknown to Color(0xFFE6E6E6)),
+    "asphalt" to ("Asphalt" to Color(0xFF546E7A)),
+    "paved" to ("Paved" to Color(0xFF90A4AE)),
+    "gravel" to ("Gravel" to Color(0xFFD1B074)),
+    "unpaved" to ("Unpaved" to Color(0xFFA1887F)),
+    "ground" to ("Ground" to Color(0xFF8D6E63)),
+    "natural_trail" to ("Natural trail" to Color(0xFF6D8B3A)),
+    "alpine" to ("Alpine" to Color(0xFF7B7F86)),
+    "unknown" to ("Unknown" to Color(0xFFE6E6E6)),
 )
-private val OTHER = Res.string.plan_other to Color(0xFFD5D5D5)
+private val OTHER = "Other" to Color(0xFFD5D5D5)
 
 /**
  * Way types and surfaces. Collapsed by default to one summary line (e.g. "Cycleway 92 % · Asphalt 98 %")
@@ -85,31 +83,31 @@ fun RouteBreakdown(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(str(Res.string.plan_way_types_surfaces), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Text("Way types & surfaces", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 Text(summaryLine(wayTypes, surfaces), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             androidx.compose.material3.Icon(
                 if (expanded) Icons.Filled.ExpandLess
                 else Icons.Filled.ExpandMore,
-                contentDescription = str(if (expanded) Res.string.plan_hide_details else Res.string.plan_show_details),
+                contentDescription = if (expanded) "Hide details" else "Show details",
             )
         }
         if (expanded) {
-            if (wayTypes.isNotEmpty()) BreakdownBar(str(Res.string.plan_way_types), wayTypes, WAY)
-            if (surfaces.isNotEmpty()) BreakdownBar(str(Res.string.plan_surfaces), surfaces, SURFACE)
+            if (wayTypes.isNotEmpty()) BreakdownBar("Way types", wayTypes, WAY)
+            if (surfaces.isNotEmpty()) BreakdownBar("Surfaces", surfaces, SURFACE)
         }
     }
 }
 
 /** "Cycleway 92 % · Asphalt 98 %" – the largest way type and surface. */
 internal fun summaryLine(wayTypes: List<Share>, surfaces: List<Share>): String {
-    fun top(list: List<Share>, names: Map<String, Pair<StringResource, Color>>): String? {
+    fun top(list: List<Share>, names: Map<String, Pair<String, Color>>): String? {
         val total = list.sumOf { it.meters }
         val first = list.maxByOrNull { it.meters } ?: return null
         if (total <= 0) return null
         val pct = Math.round(first.meters / total * 100)
-        return "${names[first.key]?.first?.let { Txt.s(it) } ?: first.key.replace('_', ' ')} $pct %"
+        return "${names[first.key]?.first ?: first.key.replace('_', ' ')} $pct %"
     }
     return listOfNotNull(top(wayTypes, WAY), top(surfaces, SURFACE)).joinToString(" · ")
 }
@@ -125,7 +123,7 @@ internal fun foldSmall(shares: List<Share>, minFraction: Double = 0.03): List<Sh
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, Pair<StringResource, Color>>) {
+private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, Pair<String, Color>>) {
     val parts = foldSmall(shares)
     if (parts.isEmpty()) return
     Column {
@@ -142,7 +140,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(color))
                     Spacer(Modifier.width(4.dp))
-                    Text("${str(label)} ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
+                    Text("$label ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

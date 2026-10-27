@@ -1,7 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
-import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -33,25 +31,18 @@ import androidx.compose.ui.unit.dp
  * Work the user started that takes a moment (review 2026-10-24 C9): it shows as a spinner where it was started (the
  * button / the My routes row), not in the message bar. The bar only gets the result when it is not visible, or an error.
  */
-enum class Busy(private val res: StringResource?, private val english: String = "") {
-    IMPORT(Res.string.plan_busy_import),
-    EXPORT(Res.string.plan_busy_export),
-    /** Diagnostics stays English (owner 2026-10-26: not translated). */
-    DIAGNOSTICS(null, "Creating the report…"),
-    BACKUP(Res.string.plan_busy_backup);
-
-    val text: String get() = res?.let { Txt.s(it) } ?: english
+enum class Busy(val text: String) {
+    IMPORT("Importing GPX…"),
+    EXPORT("Preparing the export…"),
+    DIAGNOSTICS("Creating the report…"),
+    BACKUP("Backing up…"),
 }
 
 /** Which look a message of the top bar gets (review 2026-10-24 B10): an error must not look like "Copied.". Pure. */
 object MessageKind {
     private val error = Regex(
         "\\b(failed|could not|couldn't|cannot|can't|not possible|went wrong|stopped unexpectedly|did not start|" +
-            "no app found|no file picker|not be saved|not be read|not be deleted|not be changed|not be removed|" +
-            // German (EN + DE, owner 2026-10-26): the same failures in the words the German texts use
-            "fehlgeschlagen|konnte nicht|konnten nicht|kann nicht|können nicht|nicht möglich|schiefgegangen|" +
-            "unerwartet beendet|nicht gestartet|keine App gefunden|keine Dateiauswahl|nicht gespeichert|nicht gelesen|" +
-            "nicht gelöscht|nicht geändert|nicht entfernt)\\b",
+            "no app found|no file picker|not be saved|not be read|not be deleted|not be changed|not be removed)\\b",
         RegexOption.IGNORE_CASE,
     )
 
@@ -63,8 +54,8 @@ object MessageKind {
  * bar; an error gets the ⚠ icon and a red left edge (ERROR look).
  */
 @Composable
-fun MessageBar(text: String, onOk: () -> Unit, modifier: Modifier = Modifier, error: Boolean = MessageKind.isError(text)) {
-    val err = error // EN + DE: the view model says whether it is an error (AppViewModel.showError)
+fun MessageBar(text: String, onOk: () -> Unit, modifier: Modifier = Modifier) {
+    val err = MessageKind.isError(text)
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.inverseSurface,
         contentColor = MaterialTheme.colorScheme.inverseOnSurface, shadowElevation = 6.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
@@ -72,13 +63,13 @@ fun MessageBar(text: String, onOk: () -> Unit, modifier: Modifier = Modifier, er
             Row(Modifier.weight(1f).heightIn(min = 48.dp).padding(start = if (err) 10.dp else 16.dp, top = 10.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 if (err) {
-                    Icon(Icons.Outlined.Warning, str(Res.string.plan_error), tint = ERROR_ON_DARK, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Warning, "Error", tint = ERROR_ON_DARK, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                 }
                 Text(text, style = MaterialTheme.typography.bodyLarge)
             }
             TextButton(onClick = onOk, modifier = Modifier.heightIn(min = 48.dp).padding(end = 4.dp)) {
-                Text(str(Res.string.common_ok), color = MaterialTheme.colorScheme.inversePrimary)
+                Text("OK", color = MaterialTheme.colorScheme.inversePrimary)
             }
         }
     }

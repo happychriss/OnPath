@@ -53,33 +53,6 @@ object CellFixtures {
                 .put("properties", JSONObject().put("id", "$tag-$i").put("kind", "restaurant").put("name", "$tag $i"))
         })).toString()
 
-    /** Files of a region package (map-cells.md §20): base + overlays (MVT, gzip), the pre-rendered relief (WebP). */
-    val PACKAGE_LAYERS = mapOf("base.pmtiles" to (1 to 2), "overlays.pmtiles" to (1 to 2), "hillshade.pmtiles" to (4 to 1))
-
-    /** Tiles z7–9 of region package [p]. */
-    fun packageTiles(p: CellId): List<Triple<Int, Int, Int>> = (7..9).flatMap { z ->
-        val s = 1 shl (z - 7)
-        (0 until s).flatMap { dx -> (0 until s).map { dy -> Triple(z, p.x * s + dx, p.y * s + dy) } }
-    }
-
-    /** Writes one region package version into [dir] (as downloaded and verified); returns its manifest. */
-    fun pkg(dir: File, p: CellId, version: String, tag: String = "$p@$version"): CellManifest {
-        require(p.isPackage)
-        dir.mkdirs()
-        val files = JSONArray()
-        for ((name, tt) in PACKAGE_LAYERS) {
-            val f = File(dir, name)
-            PmTiles.write(packageTiles(p).associateWith { (z, x, y) -> content(tag, name, z, x, y) }, f, tt.first, tt.second,
-                """{"vector_layers":[{"id":"${name.substringBefore('.')}"}]}""")
-            files.put(fileJson(name, f, p, version))
-        }
-        val m = JSONObject().put("cell", p.id).put("kind", "package").put("format", 2).put("osm_date", version).put("version", version)
-            .put("built", "${version}T03:00:00Z").put("min_app", "0.1.0").put("files", files)
-            .put("total_size", (0 until files.length()).sumOf { files.getJSONObject(it).getLong("size") })
-        File(dir, CellStore.MANIFEST).writeText(m.toString())
-        return CellManifest.parse(m.toString())
-    }
-
     /**
      * A format-2 region package in [dataDir]: tiles z8–11 over the 2 × 2 cells 543–544 / 361–362, POIs in each cell.
      */

@@ -2,7 +2,6 @@ package com.onpath.app.gpx
 
 import com.onpath.app.data.LastActivity
 import com.onpath.app.routing.Activity
-import com.onpath.strings.*
 
 /**
  * The sport in a GPX `<trk><type>` / `<rte><type>` (owner 2026-10-25, "Yes, preselect"): Komoot writes its sport there
@@ -74,7 +73,7 @@ object SportType {
     data class ImportChoice(val pick: Pick, val switch: Boolean, val note: String?)
 
     fun importChoice(type: String?, current: Activity, currentSac: Int, touring: Boolean): ImportChoice =
-        choice(forImport(type, current, currentSac), current, currentSac, touring, Res.string.routes_activity_from_file)
+        choice(forImport(type, current, currentSac), current, currentSac, touring, "the file")
 
     /**
      * Opening a tour from My routes (owner 2026-10-26): the tour's stored [activityName] (`Tour.activity`, the enum name;
@@ -90,13 +89,13 @@ object SportType {
             val band = bands[key(typeOf(a, own))]
             Pick(a, if (band != null && currentSac in band) currentSac else own)
         }
-        return choice(pick, current, currentSac, touring, Res.string.routes_activity_from_tour)
+        return choice(pick, current, currentSac, touring, "the tour")
     }
 
     /** [pick] against the current choice: switch (not during a tour) and the grey line naming [source]. */
-    private fun choice(pick: Pick, current: Activity, currentSac: Int, touring: Boolean, source: org.jetbrains.compose.resources.StringResource): ImportChoice {
+    private fun choice(pick: Pick, current: Activity, currentSac: Int, touring: Boolean, source: String): ImportChoice {
         val switch = !touring && (pick.activity != current || (pick.activity == Activity.HIKE && pick.sac != currentSac))
-        val note = if (!switch) null else Txt.s(source, LastActivity.name(pick.activity, pick.sac))
+        val note = if (!switch) null else "Activity set to ${LastActivity.name(pick.activity, pick.sac)} from $source"
         return ImportChoice(pick, switch, note)
     }
 

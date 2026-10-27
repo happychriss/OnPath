@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -113,9 +112,8 @@ fun Stat(value: String, label: String, modifier: Modifier = Modifier, big: Boole
 @Composable
 fun StatsRow(distance: Double, ascent: Double, descent: Double, durationS: Double) {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val stats = listOf(Format.distance(distance) to str(Res.string.plan_stat_distance),
-            "↑ " + Format.meters(ascent) to str(Res.string.plan_stat_ascent),
-            "↓ " + Format.meters(descent) to str(Res.string.plan_stat_descent), Format.duration(durationS) to str(Res.string.plan_stat_time))
+        val stats = listOf(Format.distance(distance) to "Distance", "↑ " + Format.meters(ascent) to "Ascent",
+            "↓ " + Format.meters(descent) to "Descent", Format.duration(durationS) to "Time")
         val perRow = if (maxWidth < 340.dp) 2 else 4
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             stats.chunked(perRow).forEach { row ->
@@ -150,7 +148,7 @@ fun TrackPanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(track.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f),
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            ActionButtonSmall(Icons.Filled.Close, str(Res.string.plan_close_track), onClose)
+            ActionButtonSmall(Icons.Filled.Close, "Close track", onClose)
         }
         Row(verticalAlignment = Alignment.Bottom) {
             Text(Format.distance(track.distanceM), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -169,7 +167,7 @@ fun TrackPanel(
             // Export as a square icon button: at 16 sp "Start navigation · Gravel bike" needs the room
             OutlinedButton(onClick = onExport, modifier = Modifier.size(56.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                Icon(Icons.Filled.Share, str(Res.string.common_export_gpx))
+                Icon(Icons.Filled.Share, "Export GPX")
             }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
@@ -181,7 +179,7 @@ fun TrackPanel(
 
 /** "Start navigation · Hike" / "Navigate this track · MTB": the button names the activity it navigates with. */
 internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity): String =
-    Txt.s(if (recording) Res.string.plan_navigate_track_for else Res.string.plan_start_navigation_for, activity.navName)
+    (if (recording) "Navigate this track" else "Start navigation") + " · " + activity.navName
 
 /** Placeholder for previews/screenshot tests where MapLibre cannot render. */
 @Composable

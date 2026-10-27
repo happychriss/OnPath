@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,9 +59,9 @@ data class MapLoadUi(
     enum class Kind { PREPARING, LOADING, OFFLINE, WIFI, FAILED }
 
     val title: String get() = when (kind) {
-        Kind.PREPARING -> Txt.s(Res.string.maps_load_preparing)
-        Kind.FAILED -> Txt.s(Res.string.maps_load_failed)
-        else -> Txt.s(Res.string.maps_load_loading)
+        Kind.PREPARING -> "Preparing the map for your area"
+        Kind.FAILED -> "The map for your area could not be loaded"
+        else -> "Loading the map for your area"
     }
 
     /** The line under the bar: time left, or why it waits. */
@@ -76,20 +75,19 @@ data class MapLoadUi(
     val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI
 
     /** "3 map areas · about 27 MB" (routing data included, not named); only routing data missing: "about 10 MB". */
-    val totals: String get() = if (regions == 0) bytes?.let { Txt.s(Res.string.maps_about_mb, mb(it)) } ?: ""
-        else if (bytes == null) Txt.p(Res.plurals.maps_load_totals, regions, regions)
-        else Txt.p(Res.plurals.maps_load_totals_mb, regions, regions, mb(bytes))
+    val totals: String get() = if (regions == 0) bytes?.let { "about ${mb(it)} MB" } ?: ""
+        else "$regions ${if (regions == 1) "map area" else "map areas"}" + (bytes?.let { " · about ${mb(it)} MB" } ?: "")
 
     companion object {
-        val OFFLINE_TEXT: String get() = Txt.s(Res.string.maps_offline_text)
-        val WIFI_TEXT: String get() = Txt.s(Res.string.maps_wifi_text)
+        const val OFFLINE_TEXT = "No internet connection – the map will load as soon as you're online."
+        const val WIFI_TEXT = "The map will load when you're on Wi-Fi (Settings: “Download maps only on Wi-Fi”)."
         /** One-time load over mobile data while "Maps only on Wi-Fi" waits (modal and blue strip; setting unchanged). */
-        val LOAD_ON_MOBILE: String get() = Txt.s(Res.string.maps_load_on_mobile)
+        const val LOAD_ON_MOBILE = "Load now over mobile data"
 
         fun timeLeft(s: Int): String = when {
-            s < 60 -> Txt.s(Res.string.maps_time_lt_minute)
-            s < 120 -> Txt.s(Res.string.maps_time_one_minute)
-            else -> Txt.s(Res.string.maps_time_minutes, (s + 30) / 60)
+            s < 60 -> "Less than a minute left"
+            s < 120 -> "About 1 minute left"
+            else -> "About ${(s + 30) / 60} minutes left"
         }
     }
 }
@@ -146,7 +144,7 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
             is CellState.Offline -> MapLoadUi(MapLoadUi.Kind.OFFLINE, shown.toInt(), null)
             is CellState.WaitingForWifi -> MapLoadUi(MapLoadUi.Kind.WIFI, shown.toInt(), null)
             is CellState.Failed -> MapLoadUi(MapLoadUi.Kind.FAILED, shown.toInt(), null,
-                reason = if (s.retryable) Txt.s(Res.string.maps_load_failed_retry) else s.message,
+                reason = if (s.retryable) "Something went wrong while preparing it. Please try again." else s.message,
                 retryable = s.retryable)
         }
     }
@@ -166,7 +164,7 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
  */
 object MapLoads {
     /** "2 regions · ≈ 18 MB" (the tap question). */
-    fun askText(regions: Int, bytes: Long): String = Txt.p(Res.plurals.maps_ask_text, regions, regions, mb(bytes))
+    fun askText(regions: Int, bytes: Long): String = "$regions ${if (regions == 1) "map area" else "map areas"} · ≈ ${mb(bytes)} MB"
 
     /** Size of a region when the server has not said it yet. */
     const val ESTIMATED_REGION_BYTES = 9L * 1_048_576
@@ -294,10 +292,10 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
             ui.line?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = variant) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (ui.kind == MapLoadUi.Kind.FAILED) {
-                    TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_close)) }
-                    if (ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_try_again)) }
+                    TextButton(onClick = cb.onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close") }
+                    if (ui.retryable) TextButton(onClick = cb.onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Try again") }
                 } else {
-                    TextButton(onClick = cb.onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
+                    TextButton(onClick = cb.onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
                     if (ui.kind == MapLoadUi.Kind.WIFI) TextButton(onClick = cb.onLoadOnMobile, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(MapLoadUi.LOAD_ON_MOBILE)
                     }
@@ -312,9 +310,9 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
 fun LoadAskDialog(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onNotNow,
-        title = { Text(str(Res.string.maps_ask_title)) },
+        title = { Text("Load the map for this area?") },
         text = { DialogText(MapLoads.askText(regions, bytes)) },
-        confirmButton = { TextButton(onClick = onLoad, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.maps_btn_load)) } },
-        dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_not_now)) } },
+        confirmButton = { TextButton(onClick = onLoad, modifier = Modifier.heightIn(min = 48.dp)) { Text("Load") } },
+        dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text("Not now") } },
     )
 }

@@ -1,6 +1,5 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
 import com.onpath.app.data.Geo
 import kotlin.math.roundToInt
 
@@ -23,6 +22,6 @@ object LongRoute {
     /** "about 29 days" / "about 30 hours" (plain words for the question). */
     fun describe(seconds: Double): String {
         val h = seconds / 3600.0
-        return if (h >= 48) Txt.s(Res.string.plan_about_days, (h / 24).roundToInt()) else Txt.s(Res.string.plan_about_hours, h.roundToInt())
+        return if (h >= 48) "about ${(h / 24).roundToInt()} days" else "about ${h.roundToInt()} hours"
     }
 }

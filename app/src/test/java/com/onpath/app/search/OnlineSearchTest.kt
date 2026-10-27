@@ -49,9 +49,9 @@ class OnlineSearchTest {
         assertEquals("train" to null, PhotonParser.kindOf("railway", "station"))
         assertEquals("water" to null, PhotonParser.kindOf("amenity", "drinking_water"))
         assertEquals("store" to "clothes", PhotonParser.kindOf("shop", "clothes"))
-        assertEquals("Clothes", SearchKinds.of("other", "clothes").label)
-        assertEquals("Village", SearchKinds.of("place", "village").label)
-        assertEquals("Dorf", com.onpath.app.poi.inGerman { SearchKinds.of("place", "village").label })
+        assertEquals("Clothes", SearchKinds.of("other", "clothes").label(false))
+        assertEquals("Village", SearchKinds.of("place", "village").label(false))
+        assertEquals("Dorf", SearchKinds.of("place", "village").label(true))
     }
 
     @Test fun urlAndUserAgent() {

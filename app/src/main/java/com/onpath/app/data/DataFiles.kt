@@ -1,6 +1,5 @@
 package com.onpath.app.data
 
-import com.onpath.strings.*
 import android.content.Context
 import com.onpath.app.debug.Problems
 import java.io.File
@@ -33,10 +32,10 @@ class DataFiles(context: Context) {
         fun f(name: String, hint: String) = Check(name, File(map, name).let { it.isFile && it.length() > 0 }, hint)
         val rd5 = segmentsDir.listFiles { file -> file.name.endsWith(".rd5") && file.length() > 0 }.orEmpty()
         return listOf(
-            f("base.pmtiles", Txt.s(Res.string.maps_check_base)),
-            f("terrain.pmtiles", Txt.s(Res.string.maps_check_terrain)),
+            f("base.pmtiles", "Base map"),
+            f("terrain.pmtiles", "Relief / elevation"),
         ) + overlayChecks { name -> File(map, name).let { it.isFile && it.length() > 0 } } +
-            Check("segments/*.rd5", rd5.isNotEmpty(), Txt.s(Res.string.maps_check_routing))
+            Check("segments/*.rd5", rd5.isNotEmpty(), "Routing data")
     }
 
     /** Map package format of the map folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
@@ -117,12 +116,12 @@ class DataFiles(context: Context) {
          * [OVERLAYS] (what new packages contain). Pure, unit-tested.
          */
         fun overlayChecks(present: (String) -> Boolean): List<Check> = when {
-            present(OVERLAYS) -> listOf(Check(OVERLAYS, true, Txt.s(Res.string.maps_check_overlays)))
+            present(OVERLAYS) -> listOf(Check(OVERLAYS, true, "Trails and route networks"))
             present("routes.geojson") || present("trails.geojson") -> listOf(
-                Check("routes.geojson", present("routes.geojson"), Txt.s(Res.string.maps_check_routes)),
-                Check("trails.geojson", present("trails.geojson"), Txt.s(Res.string.maps_check_trails)),
+                Check("routes.geojson", present("routes.geojson"), "Marked route networks"),
+                Check("trails.geojson", present("trails.geojson"), "Trail difficulty"),
             )
-            else -> listOf(Check(OVERLAYS, false, Txt.s(Res.string.maps_check_overlays)))
+            else -> listOf(Check(OVERLAYS, false, "Trails and route networks"))
         }
 
         /** Written by tools/build_region.sh into the package: region, bbox, OSM date, size of every file. */

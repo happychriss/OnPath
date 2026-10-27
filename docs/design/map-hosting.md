@@ -480,26 +480,6 @@ status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` =
 - Expected: 6 dense cells ≈ 10 min (2 at once, ~3 min each warm) + upload (~130 MB); the phone loads them at its
   next refresh / request for them.
 
-## 7i. Region packages (z7, 2026-10-26)
-
-The region view below z10 (main roads, towns, forests, rivers, relief, long-distance routes at z7–9) comes in
-**region packages**: one per web-mercator **z7 tile** (8 × 8 cells, ~200 km), holding only map tiles z7–9 under it.
-The doorman treats them like cells – same D1 table, queue, priorities, ETA, status files and R2 layout:
-
-| | Cell | Region package |
-| --- | --- | --- |
-| Id | `10-x-y` (`10/x/y`) | `7-x-y` (`7/x/y`), e.g. `7-66-42` Düsseldorf; any other zoom → 400 (`cells.js` `PACKAGE_Z`, `isPackage`) |
-| R2 | `cells/f2/10/x/y/<version>/…`, `status/f2/10-x-y.json` | `cells/f2/7/x/y/<version>/…`, `status/f2/7-x-y.json` |
-| Manifest | `GET /v1/cells/10/x/y/manifest` | `GET /v1/cells/7/x/y/manifest` |
-| Version | `<osm_date>-s<CELL_SCHEMA>` | `<osm_date>-s<PACKAGE_SCHEMA>` – its own content schema (`wrangler.toml` `PACKAGE_SCHEMA`, default 1) |
-| Older schema | rebuilt when asked; served meanwhile from `CELL_SCHEMA_SERVE` on | rebuilt when asked; any older version is served meanwhile |
-| Pre-warm (§7h) | after a `CELL_SCHEMA` bump | not pre-warmed – rebuilt when the app asks again |
-
-The doorman never queues a package by itself: the app asks for the packages under the cells it requests (and installed
-cells' packages), in separate calls with `reason: "refresh"` (priority 3 – background, never ahead of someone
-waiting). Adoption / the fast lane (§7h) works the same: a current package published into R2 outside a job is taken
-as it is. Mixing cells and packages in one request is allowed.
-
 ## 8. Open points
 
 - **Production trigger on release:** a release created by `release.yml` with `GITHUB_TOKEN` does not trigger other

@@ -7,22 +7,12 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.io.File
 import com.onpath.app.debug.Problems
-import com.onpath.strings.Res
-import com.onpath.strings.Txt
-import com.onpath.strings.routes_kind_imported
-import com.onpath.strings.routes_kind_planned
-import com.onpath.strings.routes_kind_recorded
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class TourKind(private val labelRes: org.jetbrains.compose.resources.StringResource) {
-    PLANNED(Res.string.routes_kind_planned), RECORDED(Res.string.routes_kind_recorded), IMPORTED(Res.string.routes_kind_imported);
-
-    /** "Planned route" / "Geplante Route" (strings_routes.xml); the stored form is the enum name. */
-    val label: String get() = Txt.s(labelRes)
-}
+enum class TourKind(val label: String) { PLANNED("Planned route"), RECORDED("Recorded track"), IMPORTED("Imported GPX") }
 
 data class Tour(
     val id: Long,

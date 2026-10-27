@@ -1,7 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,9 +43,9 @@ data class TimeDetailsUi(
 
 /** The plain lines of ⋯ → Time details (owner 2026-10-23): moving time, with breaks, pace level. Pure, unit-tested. */
 internal fun timeDetailsPlainLines(ui: TimeDetailsUi): List<Pair<String, String>> = listOf(
-    Txt.s(Res.string.nav_time_moving) to Format.duration(ui.result.finalS),
-    Txt.s(Res.string.nav_time_with_breaks) to Format.duration(ui.result.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)),
-    Txt.s(Res.string.nav_time_pace_level) to ui.paceLabel,
+    "Moving time" to Format.duration(ui.result.finalS),
+    "With breaks" to Format.duration(ui.result.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)),
+    "Pace level" to ui.paceLabel,
 )
 
 /**
@@ -63,9 +61,8 @@ fun TimeDetailsScreen(ui: TimeDetailsUi, onBack: () -> Unit) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
-                // the technical view is a developer tool: English on purpose (docs/i18n.md)
-                Text(if (ui.technical) "Time estimate (technical)" else str(Res.string.nav_time_details), style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                Text(if (ui.technical) "Time estimate (technical)" else "Time details", style = MaterialTheme.typography.titleLarge)
             }
             if (!ui.technical) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

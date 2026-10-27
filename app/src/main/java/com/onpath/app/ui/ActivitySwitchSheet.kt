@@ -1,7 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,14 +58,14 @@ data class ActivityCheckUi(
     val note: String? = null,
 )
 
-/** "✓ fits" / "⚠ 1.4 km not suited for gravelbikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
+/** "✓ fits" / "⚠ 1.4 km not suited for gravel bikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
 internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
-    ActivityRowState.Checking -> Txt.s(Res.string.nav_check_checking)
+    ActivityRowState.Checking -> "Checking the rest of the route…"
     ActivityRowState.Plain -> ""
     is ActivityRowState.Failed -> s.message
     is ActivityRowState.Ready -> buildString {
         val f = s.fit
-        if (f.fits) append(Txt.s(Res.string.nav_check_fits)) else append("⚠ ").append(f.problems.joinToString(", "))
+        if (f.fits) append("✓ fits") else append("⚠ ").append(f.problems.joinToString(", "))
         val e = Math.round(abs(f.extraM) / 10) * 10.0
         if (e >= 100) append(" · ").append(if (f.extraM > 0) "+" else "−").append(Format.distance(e))
     }
@@ -85,7 +83,7 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
         shadowElevation = 8.dp, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)) {
-            Text(str(if (free) Res.string.nav_check_recording_as else Res.string.nav_check_navigating_as), style = MaterialTheme.typography.bodyMedium,
+            Text(if (free) "You are recording as" else "You are navigating as", style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(ui.current.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(32.dp))
@@ -93,8 +91,8 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
                 Text(NavText.activityName(ui.current, ui.sac), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
             Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
-                Text(str(Res.string.nav_check_switch_to), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (!free) Text(str(Res.string.nav_check_rest_of_route), style = MaterialTheme.typography.bodySmall,
+                Text("Switch to", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                if (!free) Text("for the rest of the route", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             ui.note?.let {
@@ -107,7 +105,7 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             Spacer(Modifier.size(12.dp))
             Button(onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium)
+                Text("Keep ${NavText.activityName(ui.current, ui.sac)}", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -118,11 +116,10 @@ private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
     val s = row.state
     val status = activityRowStatus(s)
     val name = NavText.activityName(row.activity, row.sac)
-    val switchLabel = str(Res.string.nav_check_switch_to_cd, name)
     val dim = !row.choosable && s !is ActivityRowState.Checking
     val content = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
     Row(Modifier.fillMaxWidth().heightIn(min = 60.dp)
-        .clickable(enabled = row.choosable, onClickLabel = switchLabel, onClick = onClick)
+        .clickable(enabled = row.choosable, onClickLabel = "Switch to $name", onClick = onClick)
         .semantics(mergeDescendants = true) { contentDescription = listOf(name, status).filter { it.isNotEmpty() }.joinToString(". ") }
         .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,7 +84,7 @@ fun PlanTopBar(
 private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
         onClick = onSearch,
-        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
+        modifier = modifier.height(56.dp).semantics { contentDescription = "Search places or addresses"; role = Role.Button },
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 3.dp,
@@ -93,7 +92,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(12.dp))
-            Text(str(Res.string.plan_search_hint), style = MaterialTheme.typography.bodyLarge,
+            Text("Search places or addresses", style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
         }
     }
@@ -104,7 +103,7 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
         Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
+            shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = "Menu" }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null) }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
@@ -117,11 +116,11 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
-    MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }
-    MenuItem(Icons.Filled.FiberManualRecord, str(Res.string.plan_menu_start_recording), enabled = st.startRecording) { close(); menu.onStartRecording() }
+    MenuItem(Icons.Outlined.FolderOpen, "My routes", enabled = st.manage) { close(); menu.onManage() }
+    MenuItem(Icons.Filled.FiberManualRecord, "Start recording", enabled = st.startRecording) { close(); menu.onStartRecording() }
     HorizontalDivider()
-    MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
-    menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
+    MenuItem(Icons.Outlined.Settings, "Settings", enabled = st.settings) { close(); menu.onSettings() }
+    menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, "Check for updates", enabled = st.updates) { close(); u() } }
 }
 
 @Composable

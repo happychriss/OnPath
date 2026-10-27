@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
@@ -46,17 +45,11 @@ object PlanGaps {
     fun text(gaps: List<PlanGap>, activity: Activity, nameOf: (Int) -> String?): String? {
         val g = gaps.firstOrNull() ?: return null
         val d = Format.distance(Math.round(g.distanceM / 10.0) * 10.0)
-        val target = nameOf(g.index)?.trim()?.takeIf { it.isNotEmpty() }?.let { Txt.s(Res.string.plan_quoted, it) }
-            ?: Txt.s(Res.string.plan_gap_point, g.index + 1)
-        val line = Txt.s(if (g.index == 0) Res.string.plan_gap_first else Res.string.plan_gap_last, d, target, activityWords(activity))
-        return if (gaps.size > 1) withMore(line, gaps.size - 1) else line
+        val target = nameOf(g.index)?.trim()?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: "point ${g.index + 1}"
+        val piece = if (g.index == 0) "First $d from $target" else "Last $d to $target"
+        val more = if (gaps.size > 1) " (+${gaps.size - 1} more)" else ""
+        return "$piece: no way for ${activityWords(activity)}$more"
     }
-
-    /** "<line> (+2 more)": a red line with [more] further problems behind it. */
-    fun withMore(line: String, more: Int): String = Txt.s(Res.string.plan_more, line, more)
-
-    /** The line already says "(+N more)" (any language: the count follows "(+"). */
-    fun hasMore(line: String): Boolean = Regex("""\(\+\d+""").containsMatchIn(line)
 
     /** Where "Show" moves the map: the middle of the missing piece, close enough to see both ends. */
     fun showTarget(g: PlanGap): Pair<GeoPoint, Double> =

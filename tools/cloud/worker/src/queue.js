@@ -1,6 +1,6 @@
 // Queue, dedupe and the build pump (docs/design/map-cells.md §5, docs/design/map-hosting.md §Doorman).
 // State lives in D1; the builder reports per cell through status/f<format>/<cell>.json in the R2 bucket.
-import { isPackage, parseCellId } from "./cells.js";
+import { parseCellId } from "./cells.js";
 import { batchSize, isWaiting, plan, slotCount, smooth, WAITING_MAX } from "./eta.js";
 import * as gcp from "./gcp.js";
 import { globalFetch } from "./gcp.js";
@@ -42,14 +42,6 @@ export function schemaOf(version) {
   return m ? Number(m[1]) : 1;
 }
 
-/** Schema a published version must have to count as current: the cells' CELL_SCHEMA, or PACKAGE_SCHEMA for a region
- *  package (z7 id, map-hosting.md §7i). */
-export const wantSchema = (cfg, id) => (isPackage(id) ? cfg.packageSchema : cfg.cellSchema);
-
-/** Lowest schema still served while a rebuild runs: CELL_SCHEMA_SERVE for cells; any version for packages (they only
- *  add the region view below z10 – an older one is better than none). */
-export const serveSchema = (cfg, id) => (isPackage(id) ? 0 : Math.min(cfg.cellSchemaServe, cfg.cellSchema));
-
 function isStale(osmDate, cfg, now) {
   const t = Date.parse(osmDate || "");
   return !Number.isFinite(t) || now - t > cfg.refreshDays * DAY;
@@ -85,7 +77,7 @@ async function published(env, format, id) {
 export async function adoptable(env, cfg, format, id, row, now) {
   const p = await published(env, format, id);
   if (!p || p.version === row?.version) return null;
-  if (schemaOf(p.version) < wantSchema(cfg, id) || isStale(p.osm_date, cfg, now)) return null;
+  if (schemaOf(p.version) < cfg.cellSchema || isStale(p.osm_date, cfg, now)) return null;
   return p;
 }
 
@@ -125,8 +117,7 @@ async function adoptQueued(env, cfg, now) {
 /**
  * After a CELL_SCHEMA bump (map-hosting.md §7h): every cell asked for in the last PREWARM_DAYS whose published version
  * is of an older schema is queued once at refresh priority – rebuilt in the background (hourly cap, the waiting
- * reserve), so phones find the new map ready instead of waiting for it. Cells only: region packages (z7) have their own
- * schema and are rebuilt when the app asks for them again. Done when meta "prewarm-schema" = CELL_SCHEMA;
+ * reserve), so phones find the new map ready instead of waiting for it. Done when meta "prewarm-schema" = CELL_SCHEMA;
  * a queue that is too full for all of them goes on at the next pump.
  */
 async function prewarm(env, cfg, now) {
@@ -138,7 +129,7 @@ async function prewarm(env, cfg, now) {
   const room = Math.max(0, cfg.maxQueue - pend.n);
   const { results } = await db.prepare(`SELECT id, format, version FROM cells WHERE version IS NOT NULL AND job IS NULL
       AND last_request > ? ORDER BY last_request DESC`).bind(now - cfg.prewarmDays * DAY).all();
-  const old = results.filter((r) => cfg.formats.includes(r.format) && !isPackage(r.id) && schemaOf(r.version) < cfg.cellSchema);
+  const old = results.filter((r) => cfg.formats.includes(r.format) && schemaOf(r.version) < cfg.cellSchema);
   const take = old.slice(0, room);
   const writes = take.map((r) => db.prepare(`UPDATE cells SET job = 'queued', priority = ?3, requested_at = ?4, attempts = 0,
       error = NULL, execution = NULL, eta_at = NULL, eta_seen = NULL, updated_at = ?4
@@ -185,11 +176,11 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
     else if (r.job === "failed") {
       const retry = !r.permanent && (r.attempts < cfg.maxAttempts || r.rev !== cfg.buildRev);
       writes.push(retry ? queue(r.version ? Math.max(prio, PRIORITY.refresh) : prio) : touch(prio));
-    } else if (r.version && schemaOf(r.version) < wantSchema(cfg, c.id)) {
+    } else if (r.version && schemaOf(r.version) < cfg.cellSchema) {
       // built for an older style (e.g. without the "streets" layer – the map misses streets): rebuild with the asked
       // priority. From cellSchemaServe on the old version still works and is served meanwhile (statusFor): a
       // low-priority refresh like an OSM-old cell (e.g. s3 → s4 = POI priority only)
-      const servable = schemaOf(r.version) >= serveSchema(cfg, c.id);
+      const servable = schemaOf(r.version) >= Math.min(cfg.cellSchemaServe, cfg.cellSchema);
       writes.push(queue(servable ? Math.max(prio, PRIORITY.refresh) : prio));
     } else if (r.version && isStale(r.osm_date, cfg, now)) writes.push(queue(PRIORITY.refresh)); // old: refresh, low
     else if (r.version) writes.push(touch(PRIORITY.refresh));
@@ -248,7 +239,7 @@ export async function statusFor(env, cfg, ids, format, now = Date.now()) {
     const r = rows.get(id);
     if (!r) {
       out.push({ id, state: "none" });
-    } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < serveSchema(cfg, id))) {
+    } else if (r.version && !(rebuilding(r) && schemaOf(r.version) < Math.min(cfg.cellSchemaServe, cfg.cellSchema))) {
       // a published version is served at once; "updating" = a newer one is being built (the app keeps asking).
       // Not while a cell below cellSchemaServe is rebuilt: that map lacks data the style needs (streets).
       out.push({ id, state: "ready", osm_date: r.osm_date, size: r.size, version: r.version,

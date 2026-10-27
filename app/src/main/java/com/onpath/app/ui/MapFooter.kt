@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.foundation.background
@@ -62,7 +61,7 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Compo
             // short credit on the map (owner 2026-10-22); a tap opens the full credits (Settings → About)
             Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
                 modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
-                    .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
+                    .clickable(onClickLabel = "Show map credits", onClick = onCredits)
                     .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
@@ -124,13 +123,13 @@ fun MapControls(
         if (compass != null) add { CompassControl(compass, size) }
         if (showEye) add { EyeControl(onPeek, peeking, size) }
         if (onUndo != null) add {
-            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = Txt.s(Res.string.plan_undo) },
+            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = "Undo" },
                 contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
             }
         }
         if (onRedo != null) add {
-            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onRedo).semantics { contentDescription = Txt.s(Res.string.plan_redo) },
+            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onRedo).semantics { contentDescription = "Redo" },
                 contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.Redo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
             }
@@ -164,9 +163,9 @@ private fun GroupDivider() =
 @Composable
 private fun CompassControl(c: CompassSpec, size: Dp) {
     val what = when {
-        c.headingUp == true -> str(Res.string.plan_compass_heading)
-        kotlin.math.abs(c.bearing) > 1f -> str(Res.string.plan_compass_turned)
-        else -> str(Res.string.plan_compass_north)
+        c.headingUp == true -> "Map turns with your direction of travel. Tap for north up"
+        kotlin.math.abs(c.bearing) > 1f -> "Map is turned. Tap for north up"
+        else -> "Map is north up. Tap to turn it with your direction of travel"
     }
     Box(
         Modifier.size(size).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },
@@ -187,7 +186,7 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
     Box(
         Modifier.size(size).clip(CircleShape)
             .background(if (down) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .semantics { contentDescription = Txt.s(Res.string.plan_hold_hide_route) }
+            .semantics { contentDescription = "Hold to hide the route" }
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     held = true; peek(true)
@@ -204,9 +203,9 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
 @Composable
 private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp) {
     val what = when (status) {
-        GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
-        GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
-        else -> str(Res.string.plan_centre_on_me, status.label)
+        GpsStatus.OFF -> "Location is off, tap to turn it on"
+        GpsStatus.NO_PERMISSION -> "Location not allowed, tap to allow"
+        else -> "Centre on my position. ${status.label}"
     }
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {

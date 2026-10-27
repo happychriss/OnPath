@@ -1,6 +1,5 @@
 package com.onpath.app.data
 
-import com.onpath.strings.*
 import java.io.File
 import java.io.InputStream
 import java.util.zip.ZipInputStream
@@ -19,12 +18,10 @@ object DataImporter {
 
     data class Result(val imported: List<String>, val skipped: List<String>) {
         val summary: String
-            get() = listOfNotNull(
-                if (imported.isEmpty()) Txt.s(Res.string.maps_import_nothing)
-                else Txt.s(Res.string.maps_import_done, imported.size, imported.joinToString()),
-                if (skipped.isEmpty()) null
-                else Txt.s(Res.string.maps_import_skipped, skipped.take(5).joinToString() + if (skipped.size > 5) " …" else ""),
-            ).joinToString(" ")
+            get() = buildString {
+                append(if (imported.isEmpty()) "Nothing imported." else "Imported ${imported.size} file(s): ${imported.joinToString()}.")
+                if (skipped.isNotEmpty()) append(" Skipped: ${skipped.take(5).joinToString()}${if (skipped.size > 5) " …" else ""}.")
+            }
     }
 
     class ImportException(message: String) : Exception(message)
@@ -81,12 +78,12 @@ object DataImporter {
             }
         } else {
             val target = targetPath(displayName) ?: throw ImportException(
-                Txt.s(Res.string.maps_import_not_map_data, displayName))
+                "“$displayName” is not OnPath map data. Pick the onpath-data zip, or a .pmtiles, .geojson, .rd5, addresses .sqlite or style .json file.")
             onProgress(target)
             input.use { write(it, File(dataDir, target), -1) }
             imported += target
         }
-        if (imported.isEmpty()) throw ImportException(Txt.s(Res.string.maps_import_none_found, displayName))
+        if (imported.isEmpty()) throw ImportException("No map data found in “$displayName”.")
         return Result(imported, skipped)
     }
 
@@ -94,7 +91,7 @@ object DataImporter {
         dest.parentFile?.mkdirs()
         val free = dest.parentFile?.usableSpace ?: Long.MAX_VALUE
         if (expectedSize > 0 && free < expectedSize + 50L * 1024 * 1024) {
-            throw ImportException(Txt.s(Res.string.maps_import_no_space, dest.name, expectedSize / 1_048_576))
+            throw ImportException("Not enough free storage for ${dest.name} (needs ${expectedSize / 1_048_576} MB).")
         }
         val tmp = File(dest.parentFile, ".${dest.name}.importing")
         try {
@@ -107,11 +104,11 @@ object DataImporter {
                 }
                 out.fd.sync()
             }
-            if (tmp.length() == 0L) throw ImportException(Txt.s(Res.string.maps_import_empty, dest.name))
+            if (tmp.length() == 0L) throw ImportException("${dest.name} is empty.")
             // rename replaces the old file atomically: the existing data is never gone without the new one in place
             if (!tmp.renameTo(dest)) {
-                if (dest.exists() && !dest.delete()) throw ImportException(Txt.s(Res.string.maps_import_cant_replace, dest.name))
-                if (!tmp.renameTo(dest)) throw ImportException(Txt.s(Res.string.maps_import_cant_save, dest.name))
+                if (dest.exists() && !dest.delete()) throw ImportException("Could not replace ${dest.name}.")
+                if (!tmp.renameTo(dest)) throw ImportException("Could not save ${dest.name}.")
             }
         } finally {
             if (tmp.exists()) tmp.delete()

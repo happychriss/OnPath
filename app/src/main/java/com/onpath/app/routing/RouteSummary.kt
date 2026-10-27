@@ -1,7 +1,5 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
-import org.jetbrains.compose.resources.StringResource
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import kotlin.math.abs
@@ -17,12 +15,7 @@ object RouteSummary {
         return sum.map { Share(it.key, it.value) }.sortedByDescending { it.meters }
     }
 
-    enum class Difficulty(private val res: StringResource) {
-        EASY(Res.string.plan_difficulty_easy), MODERATE(Res.string.plan_difficulty_moderate), DIFFICULT(Res.string.plan_difficulty_difficult);
-
-        /** "Easy" / "Moderate" / "Difficult" in the app's language. */
-        val label: String get() = Txt.s(res)
-    }
+    enum class Difficulty(val label: String) { EASY("Easy"), MODERATE("Moderate"), DIFFICULT("Difficult") }
 
     /**
      * Difficulty from distance and ascent alone ("effort kilometres", fitness only):
@@ -84,14 +77,11 @@ object RouteSummary {
      */
     data class Technique(val level: Difficulty, val grade: String, val meters: Double,
                          val reason: Reason = Reason.GRADE, val sharePct: Int = 0) {
-        /** The badge word: the trail grade ("T3", "S2"), or "unpaved" in the app's language. */
-        val gradeLabel: String get() = if (grade == UNPAVED_WORD) Txt.s(Res.string.plan_difficulty_unpaved) else grade
-
-        /** Route details' grey line "Moderate because …" for [level]. */
-        fun because(level: String): String = when (reason) {
-            Reason.GRADE -> Txt.s(Res.string.plan_because_grade, level, Format.distance(meters), grade)
-            Reason.UNPAVED_SHARE -> Txt.s(Res.string.plan_because_unpaved, level, sharePct, Format.distance(meters))
-            Reason.LOOSE -> Txt.s(Res.string.plan_because_loose, level, Format.distance(meters))
+        /** The end of Route details' grey line "Moderate because …". */
+        val because: String get() = when (reason) {
+            Reason.GRADE -> "of ${Format.distance(meters)} at $grade or harder"
+            Reason.UNPAVED_SHARE -> "$sharePct % is unpaved (${Format.distance(meters)})"
+            Reason.LOOSE -> "of ${Format.distance(meters)} on loose ground"
         }
     }
 
@@ -101,8 +91,8 @@ object RouteSummary {
      * line ("Moderate because of 250 m at T3 or harder"), null when nothing raised it.
      */
     data class Rating(val level: Difficulty, val raisedBy: Technique? = null) {
-        val text: String get() = if (raisedBy == null) level.label else "${level.label} · ${raisedBy.gradeLabel}"
-        val because: String? get() = raisedBy?.because(level.label)
+        val text: String get() = if (raisedBy == null) level.label else "${level.label} · ${raisedBy.grade}"
+        val because: String? get() = raisedBy?.let { "${level.label} because ${it.because}" }
     }
 
     /**
@@ -169,7 +159,7 @@ object RouteSummary {
     }
 
     /** Badge word for the surface reasons ("Moderate · unpaved"). */
-    internal const val UNPAVED_WORD = "unpaved"
+    private const val UNPAVED_WORD = "unpaved"
 
     /** Gradient classes for colouring the elevation profile (absolute slope, up or down). */
     enum class Steepness { FLAT, MODERATE, STEEP, VERY_STEEP }

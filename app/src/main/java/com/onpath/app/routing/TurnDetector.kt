@@ -1,7 +1,5 @@
 package com.onpath.app.routing
 
-import com.onpath.strings.*
-
 import com.onpath.app.data.Geo
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -23,14 +21,9 @@ data class Turn(
     val kind: TurnKind get() = TurnKind.of(angle)
 }
 
-enum class TurnKind(private val res: org.jetbrains.compose.resources.StringResource) {
-    SLIGHT_LEFT(Res.string.nav_dir_slight_left), LEFT(Res.string.nav_dir_left), SHARP_LEFT(Res.string.nav_dir_sharp_left),
-    U_TURN_LEFT(Res.string.nav_dir_hairpin_left),
-    SLIGHT_RIGHT(Res.string.nav_dir_slight_right), RIGHT(Res.string.nav_dir_right), SHARP_RIGHT(Res.string.nav_dir_sharp_right),
-    U_TURN_RIGHT(Res.string.nav_dir_hairpin_right);
-
-    /** "Slight left" in the app's language. */
-    val label: String get() = Txt.s(res)
+enum class TurnKind(val label: String) {
+    SLIGHT_LEFT("Slight left"), LEFT("Left"), SHARP_LEFT("Sharp left"), U_TURN_LEFT("Hairpin left"),
+    SLIGHT_RIGHT("Slight right"), RIGHT("Right"), SHARP_RIGHT("Sharp right"), U_TURN_RIGHT("Hairpin right");
 
     companion object {
         fun of(angle: Double): TurnKind {

@@ -101,8 +101,8 @@ class CellDownloadTest {
 
     // ------------------------------------------------------------------------------------------- MapCells
 
-    private fun cells(net: NetworkStatus, data: File = tmp.newFolder("data"), packages: Boolean = false) =
-        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L, regionPackages = packages).also { it.start() }
+    private fun cells(net: NetworkStatus, data: File = tmp.newFolder("data")) =
+        MapCells(CellStore(data), api(), net, scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L).also { it.start() }
 
     @Test fun requestPollDownloadInstall() {
         server.publish(a, "2026-10-19"); server.buildPolls = 2
@@ -289,7 +289,7 @@ class CellDownloadTest {
         CellFixtures.cell(File(File(CellStore(data).downloadDir, a.id), dev), a, dev)
         var later = 0L
         val mc = MapCells(CellStore(data), api(), Net(), scope, "0.8.0", pollDelayMs = { 30L }, backgroundPollMs = 30L,
-            now = { System.currentTimeMillis() + later }, regionPackages = false).also { it.start() }
+            now = { System.currentTimeMillis() + later }).also { it.start() }
         waitFor("dev cell joined at start") { mc.installed.value.any { it.version == dev } }
         mc.request(listOf(a), CellReason.REFRESH)
         waitFor("refresh answered") { !File(mc.store.root, "requests.json").readText().contains(a.id) }
@@ -365,14 +365,14 @@ class CellDownloadTest {
         server.publish(a, "v1"); server.buildPolls = 0
         val data = tmp.newFolder("data2")
         // run 1: offline, the request is saved
-        val first = MapCells(CellStore(data), api(), Net(connected = false), scope, "0.8.0", pollDelayMs = { 30L }, regionPackages = false).also { it.start() }
+        val first = MapCells(CellStore(data), api(), Net(connected = false), scope, "0.8.0", pollDelayMs = { 30L }).also { it.start() }
         first.request(listOf(a), CellReason.POINT)
         waitFor("offline") { first.state(a) is CellState.Offline }
         // a verified download of b lies on disk (the app died before joining it)
         val store = CellStore(data)
         CellFixtures.cell(File(File(store.downloadDir, b.id), "v1"), b, "v1")
         // run 2: online
-        val second = MapCells(CellStore(data), api(), Net(), scope, "0.8.0", pollDelayMs = { 30L }, regionPackages = false).also { it.start() }
+        val second = MapCells(CellStore(data), api(), Net(), scope, "0.8.0", pollDelayMs = { 30L }).also { it.start() }
         waitFor("b joined at start") { second.installed.value.any { it.id == b } }
         waitFor("a loaded after restart") { second.state(a) is CellState.Ready }
         assertNotNull(second.mapDir())
@@ -464,67 +464,5 @@ class CellDownloadTest {
         assertEquals(0, mc.waiting().regions)
         assertEquals(null, mc.mapDir())
         assertEquals(listOf(a), mc.missing(listOf(a))) // loads again when needed
-    }
-
-    // ------------------------------------------------------------------------------------------- region packages
-
-    /** a = 10-543-361 lies in 7-67-45 and on its east edge (x 543 = 67·8 + 7) → also 7-68-45 (map-cells.md §20). */
-    private val pa = CellId(67, 45, 7)
-    private val pe = CellId(68, 45, 7)
-
-    /**
-     * Region packages come quietly with the cells: asked for in calls of their own (reason refresh), downloaded after
-     * the cell, joined into the map – never in the states / installed lists the card, the modal and Settings show.
-     */
-    @Test fun regionPackagesComeQuietlyWithTheCells() {
-        server.publish(a, "v1"); server.publishPackage(pa, "p1"); server.publishPackage(pe, "p1"); server.buildPolls = 0
-        val mc = cells(Net(), packages = true)
-        mc.request(listOf(a), CellReason.POINT)
-        waitFor("cell ready") { mc.state(a) is CellState.Ready }
-        waitFor("packages joined") { mc.packages.value.map { it.id }.toSet() == setOf(pa, pe) }
-        assertEquals(listOf(a), mc.installed.value.map { it.id })
-        assertTrue(mc.states.value.keys.none { it.isPackage })
-        assertEquals(CellState.Ready("p1"), mc.state(pa))
-        assertEquals(0, mc.waiting().regions)
-        assertEquals(setOf(pa.bbox.toList(), pe.bbox.toList()), mc.packageAreas().map { it.toList() }.toSet())
-        // own calls: never a cell and a package in one request
-        assertTrue(server.requestCalls.any { ids -> ids.toSet() == setOf(pa.id, pe.id) })
-        assertTrue(server.requestCalls.none { ids -> ids.any { it.startsWith("7-") } && ids.any { it.startsWith("10-") } })
-        val dir = mc.mapDir()!!
-        PmTiles.Reader(File(dir, "hillshade.pmtiles")).use { assertEquals(7, it.header.minZoom) }
-        PmTiles.Reader(File(dir, "base.pmtiles")).use { assertEquals(7, it.header.minZoom) }
-        // installed and fresh: not asked again
-        assertEquals(emptyList<CellId>(), mc.ensurePackages())
-    }
-
-    /** A doorman without packages (400 for z7 ids) must not hold up the cells; the packages are dropped quietly. */
-    @Test fun serverWithoutPackagesStillDeliversTheCells() {
-        server.publish(a, "v1"); server.buildPolls = 1; server.rejectPackages = true
-        val mc = cells(Net(), packages = true)
-        mc.request(listOf(a), CellReason.POINT)
-        waitFor("cell ready") { mc.state(a) is CellState.Ready }
-        waitFor("packages dropped") { mc.state(pa) is CellState.Failed }
-        assertFalse(File(mc.store.root, "requests.json").readText().contains(pa.id))
-        assertTrue(mc.packages.value.isEmpty())
-        assertTrue(mc.states.value.keys.none { it.isPackage })
-        // not asked again in this run (every join would ask: a 400 each time)
-        assertEquals(emptyList<CellId>(), mc.ensurePackages())
-    }
-
-    /** Packages belong to the cells: when the cells' request goes (plan changed), theirs goes too; deleting the last
-     *  cell under a package removes the package. */
-    @Test fun packagesFollowTheirCells() {
-        server.publish(a, "v1"); server.publishPackage(pa, "p1"); server.publishPackage(pe, "p1"); server.buildPolls = 1_000_000
-        val mc = cells(Net(), packages = true)
-        mc.request(listOf(b), CellReason.CORRIDOR, ownPoint = false) // b = 10-544-361 → 7-68-45 (+ 7-67-45 across the edge)
-        waitFor("packages asked") { mc.state(pe) != CellState.None }
-        mc.keepCorridor(emptyList()) // the plan has no route any more
-        waitFor("packages dropped with the corridor") { !File(mc.store.root, "requests.json").readText().contains("\"7-") }
-
-        server.buildPolls = 0
-        mc.request(listOf(a), CellReason.POINT)
-        waitFor("cell + packages") { mc.state(a) is CellState.Ready && mc.packages.value.size == 2 }
-        mc.delete(listOf(a))
-        waitFor("packages removed with the last cell") { mc.packages.value.isEmpty() && mc.installed.value.isEmpty() }
     }
 }

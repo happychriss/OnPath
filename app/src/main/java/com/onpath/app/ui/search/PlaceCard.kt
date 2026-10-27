@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.poi.Poi
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
-import com.onpath.strings.*
 
 /** What the card shows besides the place: its role in the route now, or what adding it would do. */
 data class PlaceCardUi(
@@ -62,6 +61,7 @@ data class PlaceCardActions(
  */
 @Composable
 fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = Modifier) {
+    val de = Poi.isGerman()
     val p = ui.place
     val kind = p.kindInfo
     val color = Color(SearchKinds.argb(p.kind))
@@ -75,13 +75,13 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                 KindIcon(p, 36)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(p.title(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                    Text(p.title(de), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(kind.label + (p.ele?.let { " · $it m" } ?: "") + (p.municipality?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium,
+                    Text(kind.label(de) + (p.ele?.let { " · $it m" } ?: "") + (p.municipality?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium,
                         color = color, maxLines = 1)
                 }
                 IconButton(onClick = actions.onClose, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = str(Res.string.common_close))
+                    Icon(Icons.Filled.Close, contentDescription = "Close")
                 }
             }
             // owner 2026-10-22: stays on the card (never disappears by itself)
@@ -109,7 +109,7 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     Icon(if (isStop) Icons.Filled.Remove else Icons.Filled.Add, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(str(if (isStop) Res.string.search_card_remove else Res.string.search_card_add), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(if (isStop) "Remove from route" else "Add to route", style = MaterialTheme.typography.titleSmall, maxLines = 1)
                         if (ui.subtitle.isNotEmpty()) Text(ui.subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
@@ -120,11 +120,11 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     val atEnd = ui.routeIndex != null && ui.routeIndex == ui.waypointCount - 1 && ui.waypointCount > 1
                     OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Text(str(Res.string.search_card_as_start), maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                        Text("As start", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
                         modifier = Modifier.weight(1.25f).heightIn(min = 48.dp)) {
-                        Text(str(Res.string.search_card_as_destination), maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                        Text("As destination", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(onClick = actions.onGoogle, contentPadding = small,
                         modifier = Modifier.weight(1.2f).heightIn(min = 48.dp)) {

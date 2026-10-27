@@ -43,7 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.onpath.strings.*
 
 /**
  * Content for a bottom sheet (e.g. inside ModalBottomSheet) describing one OSM POI.
@@ -52,6 +51,7 @@ import com.onpath.strings.*
 @Composable
 fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val de = Poi.isGerman()
     val kind = poi.kindInfo
     val color = Color(kind.group.argb)
 
@@ -74,36 +74,36 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(poi.title(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+                Text(poi.title(de), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
                 Text(
                     buildString {
-                        append(kind.label)
+                        append(kind.label(de))
                         poi.ele?.let { append(" · $it m") }
                     },
                     style = MaterialTheme.typography.bodyMedium, color = color,
                 )
             }
             IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = str(Res.string.common_close))
+                Icon(Icons.Filled.Close, contentDescription = if (de) "Schließen" else "Close")
             }
         }
 
         Spacer(Modifier.size(8.dp))
         HorizontalDivider()
 
-        poi.cuisineLabel?.let { DetailRow(Icons.Outlined.Restaurant, str(Res.string.poi_cuisine), it) }
+        poi.cuisineLabel?.let { DetailRow(Icons.Outlined.Restaurant, if (de) "Küche" else "Cuisine", it) }
         if (poi.openingHoursLines.isNotEmpty()) {
-            DetailRow(Icons.Outlined.Schedule, str(Res.string.poi_opening_hours),
+            DetailRow(Icons.Outlined.Schedule, if (de) "Öffnungszeiten" else "Opening hours",
                 poi.openingHoursLines.joinToString("\n"))
         }
         poi.firstPhone?.let { ph ->
-            DetailRow(Icons.Outlined.Phone, str(Res.string.poi_phone), ph, link = true) {
+            DetailRow(Icons.Outlined.Phone, if (de) "Telefon" else "Phone", ph, link = true) {
                 PoiIntents.dial(context, ph)
             }
         }
         PoiLinks.websiteLabel(poi.website)?.let { label ->
-            DetailRow(Icons.Outlined.Public, str(Res.string.poi_website), label, link = true) {
+            DetailRow(Icons.Outlined.Public, "Website", label, link = true) {
                 PoiIntents.openWebsite(context, poi.website)
             }
         }
@@ -122,11 +122,12 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier) {
         ) {
             Icon(Icons.Outlined.Map, contentDescription = null)
             Spacer(Modifier.width(10.dp))
-            Text(str(Res.string.poi_open_google), style = MaterialTheme.typography.bodyLarge,
+            Text(if (de) "In Google Maps öffnen" else "Open in Google Maps", style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold)
         }
         Text(
-            str(Res.string.poi_google_line),
+            if (de) "Online · Bewertungen, Fotos und aktuelle Infos bei Google"
+            else "Online · reviews, photos and current info on Google",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),

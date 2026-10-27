@@ -15,20 +15,11 @@ class OnPathApp : Application() {
         // Problems first: everything after this may report into it (debug/Problems.kt).
         Problems.init(filesDir)
         installCrashCapture()
-        // English + German (owner 2026-10-26): the chosen language first; a text that cannot be read is a problem, not a crash
-        com.onpath.app.data.AppLanguage.apply(this)
-        com.onpath.strings.Txt.onError = { msg, e -> Problems.error("text", msg, e) }
         installMapLibreLogger()
         // Must happen before any MapView is created. No API key / network needed.
         MapLibre.getInstance(this)
         RecordingService.createChannels(this)
         com.onpath.app.debug.Health.start() // a health line every 10 min in the event log (perf report 2026-10-22)
-    }
-
-    /** Android may reset the default locale to the phone's on a configuration change: keep the chosen language. */
-    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-        super.onConfigurationChanged(newConfig)
-        com.onpath.app.data.AppLanguage.apply(this)
     }
 
     /** A crash is written to the problem log (synchronously) before Android ends the app – shown at the next start. */

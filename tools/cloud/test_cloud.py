@@ -67,28 +67,9 @@ class SigV4(unittest.TestCase):
 class Cells(unittest.TestCase):
     def test_parse(self):
         self.assertEqual(job_build.parse_cells("10-543-361, 10/544/361 10-543-361"), [(10, 543, 361), (10, 544, 361)])
-        for bad in ("11-1-1", "10-1024-1", "abc", "7-128-1", "9-1-1"):
+        for bad in ("11-1-1", "10-1024-1", "abc"):
             with self.assertRaises(ValueError):
                 job_build.parse_cells(bad)
-
-    def test_parse_region_package(self):
-        # region packages (z7, map-cells.md §20) go through the same job
-        self.assertEqual(job_build.parse_cells("7-66-42 10-531-342 7/66/43"), [(7, 66, 42), (10, 531, 342), (7, 66, 43)])
-
-    def test_package_routes_only_long_distance(self):
-        import package_routes as pr
-        self.assertEqual(pr.route_of({"type": "route", "route": "bicycle", "network": "icn", "ref": "EV15",
-                                      "name": "Rheinradweg", "name:de": "Rheinradweg (DE)"}),
-                         ("bike", 4, "EV15", "Rheinradweg (DE)"))
-        self.assertEqual(pr.route_of({"type": "route", "route": "foot", "network": "nwn", "name": "Rheinsteig"})[:2],
-                         ("hike", 3))
-        for tags in ({"type": "route", "route": "bicycle", "network": "rcn"},      # regional: z11+ from the cells
-                     {"type": "route", "route": "hiking", "network": "lwn"},
-                     {"type": "route", "route": "bicycle", "network": "ncn", "network:type": "node_network"},
-                     {"type": "route", "route": "mtb", "network": "ncn"},          # no MTB band in the style
-                     {"type": "route", "route": "road", "network": "e-road"},
-                     {"type": "multipolygon", "route": "bicycle", "network": "icn"}):
-            self.assertIsNone(pr.route_of(tags), tags)
 
     def test_pinned_source(self):
         # the mechanism stays; sources.json pins nothing (owner 2026-10-21: South Tyrol uses the automatic choice)
@@ -266,28 +247,6 @@ class BuilderFlow(unittest.TestCase):
                                                    "https://download.geofabrik.de/europe/austria-latest.osm.pbf"])
         self.assertEqual([s["path"] for s in got], [self.src("geofabrik", "europe", "italy", "nord-est.osm.pbf"),
                                                     self.src("geofabrik", "europe", "austria.osm.pbf")])
-
-    def test_region_package_builds_and_reports_like_a_cell(self):
-        self.assertEqual(self.builder().main([(7, 68, 44)]), 0)
-        r = os.path.join(self.tmp.name, "r2", "cells", "f2", "7", "68", "44")
-        self.assertEqual(json.load(open(os.path.join(r, "current.json"))), {"version": "2026-10-19"})
-        self.assertEqual(self.status("7-68-44")["state"], "ready")
-
-    def test_region_package_sources_cover_the_package_plus_10_km(self):
-        self.real_sources()
-        boxes = []
-        real = osm_sources.select
-
-        def spy(regions, box, *a, **kw):
-            boxes.append(box)
-            return real(regions, box, *a, **kw)
-        osm_sources.select = spy
-        try:
-            got = self.builder().choose_sources(7, 68, 44)  # Innsbruck's package: Tyrol, Bavaria, South Tyrol
-        finally:
-            osm_sources.select = real
-        self.assertEqual(boxes, [buffered_bbox(cell_bbox(7, 68, 44), job_build.PACKAGE_BUFFER_KM)])
-        self.assertIn("austria", [s["id"] for s in got])
 
     def test_border_cell_downloads_both_and_passes_both(self):
         self.real_sources()

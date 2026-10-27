@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,8 +37,8 @@ fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Un
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
-                Text(str(Res.string.plan_route_details), style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                Text("Route details", style = MaterialTheme.typography.titleLarge)
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -52,7 +51,7 @@ fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Un
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val top = route.points.mapNotNull { it.ele }.maxOrNull()
                     Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
-                        (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""),
+                        (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f, fill = false))
                     Spacer(Modifier.width(8.dp))

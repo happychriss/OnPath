@@ -1,7 +1,5 @@
 package com.onpath.app.time
 
-import com.onpath.strings.*
-
 import com.onpath.app.data.Geo
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONObject
@@ -140,14 +138,14 @@ data class TourTimes(
     val neededS: Double? = null,
 ) {
     /** "Moving 2:52 · breaks 0:41" */
-    val movingLine: String get() = Txt.s(Res.string.nav_moving_breaks, TimeEstimate.hm(movingS), TimeEstimate.hm(breakS))
+    val movingLine: String get() = "Moving ${TimeEstimate.hm(movingS)} · breaks ${TimeEstimate.hm(breakS)}"
 
     /** "On the route: planned 3:10 – you needed 2:52" (only with ≥ 10 min on the route). */
     val planLine: String?
         get() {
             val p = plannedS ?: return null; val n = neededS ?: return null
             if (p < 600 || n <= 0) return null
-            return Txt.s(Res.string.nav_plan_vs_needed, TimeEstimate.hm(p), TimeEstimate.hm(n))
+            return "On the route: planned ${TimeEstimate.hm(p)} – you needed ${TimeEstimate.hm(n)}"
         }
 
     fun toJson(): JSONObject = JSONObject().put("moving", movingS).put("breaks", breakS)

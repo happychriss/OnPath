@@ -1,7 +1,5 @@
 package com.onpath.app.recording
 
-import com.onpath.strings.*
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -26,14 +24,12 @@ const val NET_MAX_ACCURACY_M = 150f
 fun useNetworkFix(lastGpsElapsed: Long, nowElapsed: Long, hasAccuracy: Boolean, accuracyM: Float): Boolean =
     lastGpsElapsed == 0L || (nowElapsed - lastGpsElapsed > GPS_STALE_MS && hasAccuracy && accuracyM <= NET_MAX_ACCURACY_M)
 
-enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringResource) {
-    NO_PERMISSION(Res.string.nav_gps_no_permission),
-    OFF(Res.string.nav_gps_off),
-    SEARCHING(Res.string.nav_gps_searching),
-    WEAK(Res.string.nav_gps_weak),
-    GOOD(Res.string.nav_gps_good);
-
-    val label: String get() = Txt.s(res)
+enum class GpsStatus(val label: String) {
+    NO_PERMISSION("No location permission"),
+    OFF("Location is off"),
+    SEARCHING("Searching GPS"),
+    WEAK("GPS weak"),
+    GOOD("GPS good"),
 }
 
 /**

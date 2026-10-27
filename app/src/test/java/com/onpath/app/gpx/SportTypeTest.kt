@@ -108,7 +108,7 @@ class SportTypeTest {
         assertTrue(bike.switch)
         assertEquals(Pick(Activity.BIKE_TOURING), bike.pick)
         assertEquals("Activity set to Bike from the tour", bike.note)
-        assertEquals("Activity set to Gravelbike from the tour",
+        assertEquals("Activity set to Gravel bike from the tour",
             SportType.openChoice("BIKE_TREKKING", 3, Activity.MTB, 2, touring = false).note)
         // a mountain hike (T4) while a bike is chosen and the remembered level is T2: the tour's level
         val berg = SportType.openChoice("HIKE", 4, Activity.EMTB, 2, touring = false)

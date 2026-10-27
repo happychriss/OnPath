@@ -65,8 +65,8 @@ jobs:
         run: |
           python3 tools/cells/cells.py selftest
           (cd tools/cloud && python3 -m unittest -v test_cloud)
-          (cd tools && python3 -m unittest -v test_extract_pois test_extract_overlays test_build_hillshade)
-          bash -n tools/cloud/gcp-setup.sh tools/cloud/worker/smoke.sh tools/cells/build_cell.sh tools/cells/build_package.sh
+          (cd tools && python3 -m unittest -v test_extract_pois test_extract_overlays)
+          bash -n tools/cloud/gcp-setup.sh tools/cloud/worker/smoke.sh tools/cells/build_cell.sh
 
   setup-pending:
     # Until the owner has set the repository variables, the deploy job is skipped (not failed); say why.

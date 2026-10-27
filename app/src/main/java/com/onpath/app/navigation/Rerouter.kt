@@ -78,7 +78,6 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         var bestScore = Double.MAX_VALUE
         var nearest: Pair<RejoinTarget, RouteResult>? = null
         var firstError: String? = null
-        var firstReason: Reason? = null
         var tried = 0
         for (t in targets) {
             if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, "Cancelled", clock() - t0)
@@ -92,11 +91,10 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
                 // expected: RoutingException = no way to this candidate; anything else is an engine bug
                 if (e !is RoutingException) Problems.error("routing", "Re-route candidate request threw unexpectedly", e)
                 val msg = com.onpath.app.debug.UserText.of(e, "No route found")
-                val kind = (e as? RoutingException)?.kind ?: RoutingException.Kind.OTHER
-                if (firstError == null) { firstError = msg; firstReason = reasonOf(kind) }
+                if (firstError == null) firstError = msg
                 if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, msg, clock() - t0)
                 // the position itself has no data / no way nearby: the other candidates fail the same way
-                if (kind == RoutingException.Kind.NO_DATA || kind == RoutingException.Kind.START_POINT) break
+                if (reasonOf(msg) == Reason.NO_DATA || msg.startsWith("Start point")) break
                 continue
             }
             if (r.points.size < 2) continue
@@ -110,7 +108,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             if (score < bestScore - TIE_S) { bestScore = score; best = t to r }
         }
         val took = clock() - t0
-        val (target, leg) = best ?: nearest ?: return Failed(firstReason ?: Reason.TIMEOUT,
+        val (target, leg) = best ?: nearest ?: return Failed(firstError?.let { reasonOf(it) } ?: Reason.TIMEOUT,
             firstError ?: "No time left", took)
         val line = RerouteTargets.splice(leg.points, req.original, target.alongM)
         val legLen = Geo.length(leg.points)
@@ -173,12 +171,11 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         const val SKIP_RATIO = 0.8
         const val SKIP_SLACK_M = 100.0
 
-        /** The engine's error kind (never its message: that is in the user's language since EN + DE). */
-        fun reasonOf(kind: RoutingException.Kind): Reason = when (kind) {
-            RoutingException.Kind.NO_DATA -> Reason.NO_DATA
-            RoutingException.Kind.CANCELLED -> Reason.CANCELLED
-            RoutingException.Kind.BUSY, RoutingException.Kind.TIMEOUT -> Reason.TIMEOUT
-            RoutingException.Kind.UNAVAILABLE -> Reason.UNAVAILABLE
+        fun reasonOf(message: String): Reason = when {
+            message.contains("No routing data") -> Reason.NO_DATA
+            message.contains("cancelled") -> Reason.CANCELLED
+            message.contains("busy") || message.contains("took too long") || message.contains("within") -> Reason.TIMEOUT
+            message.contains("not available") || message.contains("could not be loaded") -> Reason.UNAVAILABLE
             else -> Reason.NO_WAY
         }
     }

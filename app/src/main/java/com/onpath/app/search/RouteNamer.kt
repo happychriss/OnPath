@@ -2,7 +2,6 @@ package com.onpath.app.search
 
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
-import com.onpath.strings.*
 
 /**
  * Proposes a short route name from where it starts and ends ("Algund → Meran", "Round trip from Algund",
@@ -48,17 +47,17 @@ object RouteNamer {
         val loop = Geo.distance(start, end) <= LOOP_M
         if (loop || (s != null && s == e)) {
             val top = via ?: farthestLandmark(line, near)?.takeIf { it != s }
-            if (s == null) return top?.let { fit(Txt.s(Res.string.search_route_round_to, it)) }
+            if (s == null) return top?.let { fit("Round trip to $it") }
             if (!loop && top != null) "$s – $top – $s".takeIf { it.length <= MAX_LEN }?.let { return it }
-            return fit(Txt.s(Res.string.search_route_round_from, s))
+            return fit("Round trip from $s")
         }
         return when {
             s != null && e != null -> {
                 val base = "$s → $e"
-                via?.let { Txt.s(Res.string.search_route_via, base, it) }?.takeIf { it.length <= MAX_LEN } ?: fit(base)
+                via?.let { "$base (via $it)" }?.takeIf { it.length <= MAX_LEN } ?: fit(base)
             }
-            s != null -> fit(Txt.s(Res.string.search_route_from, s))
-            e != null -> fit(Txt.s(Res.string.search_route_to, e))
+            s != null -> fit("From $s")
+            e != null -> fit("To $e")
             else -> null
         }
     }

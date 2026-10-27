@@ -132,7 +132,7 @@ class RerouterTest {
     }
 
     @Test fun noDataFailsFastWithReason() {
-        val eng = FakeEngine(fail = { com.onpath.app.routing.BRouterEngine.NO_DATA })
+        val eng = FakeEngine(fail = { "No routing data for this area (missing E10_N45.rd5)." })
         val r = Rerouter(eng).reroute(req(pt(1_100.0, 100.0), 1_000.0)) as Rerouter.Failed
         assertEquals(Rerouter.Reason.NO_DATA, r.reason)
         assertEquals(1, eng.calls.size)
@@ -152,7 +152,7 @@ class RerouterTest {
             var n = 0
             override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult = throw IllegalStateException()
             override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
-                n++; now += limits.timeoutMs; throw RoutingException("No route found within 8 s.", timedOut = true)
+                n++; now += limits.timeoutMs; throw RoutingException("No route found within 8 s.")
             }
         }
         val r = Rerouter(eng) { now }.reroute(req(pt(1_100.0, 100.0), 1_000.0)) as Rerouter.Failed
