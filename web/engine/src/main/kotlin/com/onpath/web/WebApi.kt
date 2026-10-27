@@ -1,5 +1,6 @@
 package com.onpath.web
 
+import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
@@ -17,6 +18,10 @@ import com.onpath.app.routing.Rd5Parts
 import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
 import com.onpath.app.time.RouteTimes
+import com.onpath.app.poi.PoiLinks
+import com.onpath.app.recording.GpsStatus
+import com.onpath.app.ui.MapGestures
+import com.onpath.app.ui.PlanHistory
 import org.teavm.jso.JSExport
 import org.teavm.jso.typedarrays.Int8Array
 import java.io.File
@@ -164,7 +169,15 @@ object Engine {
                 append(",\"ascentM\":").append(num(p.ascentM))
                 append(",\"descentM\":").append(num(p.descentM))
                 append(",\"timeS\":").append(num(times))
-                append(",\"difficulty\":").append(str(RouteSummary.difficulty(act, p.distanceM, p.ascentM).label))
+                // the plan sheet's texts, from the app's code (data/Format, RouteSummary.rating as the badge)
+                val rating = RouteSummary.rating(act, p.distanceM, p.ascentM, p.points)
+                append(",\"difficulty\":").append(str(rating.text))
+                append(",\"because\":").append(rating.because?.let { str(it) } ?: "null")
+                val top = p.points.mapNotNull { it.ele }.maxOrNull()
+                append(",\"texts\":{\"time\":").append(str(Format.duration(times)))
+                append(",\"distance\":").append(str(Format.distance(p.distanceM)))
+                append(",\"climb\":").append(str("↑ ${Format.meters(p.ascentM)}  ↓ ${Format.meters(p.descentM)}" +
+                    (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""))).append('}')
                 append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
                 append(",\"ms\":").append(System.currentTimeMillis() - t0)
                 append(",\"wayTypes\":").append(shares(p.wayTypes))
@@ -300,6 +313,56 @@ object Engine {
         }
     }
 
+    // ---- undo / redo: the app's PlanHistory (ui/PlanState.kt) on the page's point list ----
+    private val history = PlanHistory()
+
+    /** Before a change of the points: [points] as they are now (one Undo step). */
+    fun historyRecord(points: String) = history.record(parsePoints(points))
+
+    /** "undo" / "redo": the point list to show, or "null" when there is nothing to take back. */
+    fun historyStep(op: String, points: String): String {
+        val now = parsePoints(points)
+        val out = (if (op == "redo") history.redo(now) else history.undo(now)) ?: return "null"
+        return out.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }
+    }
+
+    fun historyState(): String = "{\"canUndo\":" + history.canUndo + ",\"canRedo\":" + history.canRedo + "}"
+
+    // ---- map gestures: the app's MapGestures (hold rules, point menu) ----
+
+    /**
+     * What a press on the map does ([MapGestures.decide], Plan mode, the page treats a click as the app's hold):
+     * "PointMenu:<i>", "PoiMenu", "AddPoint", "FirstPointMenu", "CloseMenu" or "None".
+     */
+    fun gesture(menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): String =
+        when (val a = MapGestures.decide(true, MapGestures.Press.HOLD, menuOpen, marker, poi, planEmpty)) {
+            is MapGestures.Action.PointMenu -> "PointMenu:" + a.index
+            else -> a.toString()
+        }
+
+    /** The point menu's entries ([MapGestures.pointMenu]) as JSON names: MAKE_START, LOOP_START, GOOGLE, DELETE. */
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean): String =
+        MapGestures.pointMenu(index, count, isPlace, roundTrip).joinToString(",", "[", "]") { str(it.name) }
+
+    /** Why "Go here" is disabled ([MapGestures.fromMeBlocked]), or "" when the position can be used. */
+    fun fromMeBlocked(status: String, hasFix: Boolean): String = MapGestures.fromMeBlocked(GpsStatus.valueOf(status), hasFix) ?: ""
+
+    /** "Open in Google Maps" – the app's link ([PoiLinks.googleMaps], web form): a link-out, nothing is fetched. */
+    fun googleMaps(name: String, lat: Double, lon: Double, label: String): String =
+        PoiLinks.googleMaps(name.ifBlank { null }, lat, lon, label.ifBlank { null }).webUrl
+
+    /**
+     * The POI menu's head and link for a POI on the map (the app's ui/MapOverlays.PoiMenu: title, kind label · elevation
+     * in the kind's colour; [PoiLinks.googleMaps] for the POI). [ele] = "" when unknown. JSON or "null".
+     */
+    fun poiMenu(kind: String, name: String, ele: String, lat: Double, lon: Double): String {
+        val poi = com.onpath.app.poi.Poi.fromProperties(mapOf("kind" to kind, "name" to name, "ele" to ele), lat, lon) ?: return "null"
+        val place = com.onpath.app.search.Place.fromPoi(poi)
+        val color = com.onpath.app.search.SearchKinds.argb(place.kind) and 0xFFFFFFL
+        return "{\"title\":" + str(place.title(false)) + ",\"sub\":" + str(place.kindInfo.label(false) + (place.ele?.let { " · $it m" } ?: "")) +
+            ",\"color\":" + str("#" + color.toString(16).padStart(6, '0')) + ",\"google\":" + str(PoiLinks.googleMaps(poi).webUrl) + "}"
+    }
+
     fun problems(): String = Problems.drain().joinToString(",", "[", "]") { str(it) }
 
     private fun shares(s: List<Share>) = s.joinToString(",", "[", "]") { "[" + str(it.key) + "," + num(it.meters, 1) + "]" }
@@ -375,6 +438,25 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)
+
+@JSExport fun historyRecord(points: String) = Engine.historyRecord(points)
+
+@JSExport fun historyStep(op: String, points: String): String = Engine.historyStep(op, points)
+
+@JSExport fun historyState(): String = Engine.historyState()
+
+@JSExport fun gesture(menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): String =
+    Engine.gesture(menuOpen, marker, poi, planEmpty)
+
+@JSExport fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean): String =
+    Engine.pointMenu(index, count, isPlace, roundTrip)
+
+@JSExport fun fromMeBlocked(status: String, hasFix: Boolean): String = Engine.fromMeBlocked(status, hasFix)
+
+@JSExport fun googleMaps(name: String, lat: Double, lon: Double, label: String): String = Engine.googleMaps(name, lat, lon, label)
+
+@JSExport fun poiMenu(kind: String, name: String, ele: String, lat: Double, lon: Double): String =
+    Engine.poiMenu(kind, name, ele, lat, lon)
 
 @JSExport fun problems(): String = Engine.problems()
 

@@ -81,6 +81,13 @@ export class EngineClient {
     return r.ok ? r.shared ?? null : null;
   }
 
+  /** One of the app's small UI rules by name (worker CALLS): undo / redo, gestures, menus, Google link. */
+  async call(fn: string, ...args: (string | number | boolean)[]): Promise<string> {
+    const r = await this.ask({ type: 'call', fn, args });
+    if (!r.ok) throw new Error(r.error ?? fn + ' failed');
+    return r.text ?? '';
+  }
+
   /** Downloads the routing data around [lat],[lon] ahead of the first plan; resolves with the bytes fetched. */
   async prefetch(lat: number, lon: number): Promise<number> {
     const r = await this.ask({ type: 'prefetch', lat, lon });

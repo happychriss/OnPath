@@ -17,16 +17,20 @@ val appFiles = listOf(
     // search (docs/design/web-planner.md §10): the app's index, ranking and Photon parsing
     "search/Place.kt", "search/SearchText.kt", "search/OfflineIndex.kt", "search/OnlineSearch.kt", "search/BaseMapPlaces.kt",
     "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
+    // page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out
+    "ui/PlanState.kt", "ui/MapGestures.kt", "poi/GoogleMapsLink.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
 // the plain JVM here, so web CI checks them too).
-val appTests = listOf("routing/PlanCodeTest.kt")
+val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt")
 
 sourceSets {
     main {
         java.setSrcDirs(listOf("src/main/java", stubs, root.resolve("app/src/main/java/btools/router")))
         java.include("android/**", "org/**", "btools/**", "com/google/**", "OnPathHints.java")
+        // our Context (src/main/java) adds startActivity for poi/GoogleMapsLink.kt; the JVM test stubs' one steps aside
+        java.exclude { it.relativePath.pathString == "android/content/Context.java" && !it.file.canonicalPath.startsWith(projectDir.canonicalPath) }
     }
 }
 kotlin {

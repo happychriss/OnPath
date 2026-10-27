@@ -24,8 +24,19 @@ interface WasmEngine {
   search(text: string, lat: number, lon: number, route: string): string;
   searchOnline(text: string, photonJson: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
+  historyRecord(points: string): void;
+  historyStep(op: string, points: string): string;
+  historyState(): string;
+  gesture(menuOpen: boolean, marker: number, poi: boolean, planEmpty: boolean): string;
+  pointMenu(index: number, count: number, isPlace: boolean, roundTrip: boolean): string;
+  fromMeBlocked(status: string, hasFix: boolean): string;
+  googleMaps(name: string, lat: number, lon: number, label: string): string;
+  poiMenu(kind: string, name: string, ele: string, lat: number, lon: number): string;
   problems(): string;
 }
+
+/** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
+const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 
@@ -199,6 +210,13 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     }
     if (req.type === 'search') { reply({ id: req.id, ok: true, text: e.search(req.text, req.lat, req.lon, req.route) }); return; }
     if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon) }); return; }
+    if (req.type === 'call') {
+      if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
+      const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
+      const out = fn(...req.args);
+      reply({ id: req.id, ok: true, text: out == null ? '' : String(out) });
+      return;
+    }
     if (req.type === 'prefetch') {
       // the routing data around the map view, while the user looks at the map (the first plan then starts at once)
       const bytes = await ensureParts(e, `${req.lat.toFixed(6)},${req.lon.toFixed(6)}`);
