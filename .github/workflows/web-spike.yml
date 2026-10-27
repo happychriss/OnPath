@@ -96,7 +96,7 @@ jobs:
 
       # Deploy (manual only): Actions → Web spike → Run workflow → deploy. Needs the repository secret
       # CLOUDFLARE_PLANNER_TOKEN (Workers scripts + the planner zone's routes/DNS, nothing else), the repository
-      # variables CLOUDFLARE_ACCOUNT_ID (exists) and PLANNER_HOST_TEST (e.g. planer.onpath.earth), and Cloudflare Access
+      # variables CLOUDFLARE_ACCOUNT_ID (exists) and PLANNER_HOST_TEST (e.g. plan.onpath.earth), and Cloudflare Access
       # on that host set up first (web-planner.md §9) – the host has no other lock.
       - name: Deploy the planner host (test)
         if: github.event_name == 'workflow_dispatch' && inputs.deploy

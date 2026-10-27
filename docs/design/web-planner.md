@@ -215,7 +215,7 @@ browser (map-access.md). The planner host name is also the App Link host above.
 ## 9. Test page host (cloud, 2026-10-26) – built, not deployed
 
 Owner 2026-10-26: own domain **onpath.earth** (bought at all-inkl, DNS at Cloudflare; .earth is not sold by
-Cloudflare). Proposed: `onpath.earth` home + help, `planer.onpath.earth` the planner, later `maps.onpath.earth`.
+Cloudflare). Proposed: `onpath.earth` home + help (own repo happychriss/onpath.earth, marketing), `plan.onpath.earth` the planner (owner 2026-10-27: working assumption, to be confirmed), later `maps.onpath.earth`.
 The planner host name is also the App Link host (§8, A-005).
 
 **Map from cells** (`web/app/src/cells.ts`): the page reads the map server's format-2 cells in place – a cell is one
@@ -237,11 +237,11 @@ in the browser.
 
 **Owner setup, once (in this order):**
 1. onpath.earth active in Cloudflare (nameservers at all-inkl → Cloudflare).
-2. Zero Trust → Access → Applications → Add → *Self-hosted*: domain `planer.onpath.earth`; policy *Allow*, include the
+2. Zero Trust → Access → Applications → Add → *Self-hosted*: domain `plan.onpath.earth`; policy *Allow*, include the
    testers' e-mail addresses; login method *One-time PIN*. (First visit: choose a team name and the Free plan.)
 3. API token (My Profile → API Tokens → Create → Custom): Account · Workers Scripts · Edit; Zone onpath.earth ·
    Workers Routes · Edit and DNS · Edit. In GitHub: secret `CLOUDFLARE_PLANNER_TOKEN`, variable
-   `PLANNER_HOST_TEST` = `planer.onpath.earth` (`CLOUDFLARE_ACCOUNT_ID` exists).
+   `PLANNER_HOST_TEST` = `plan.onpath.earth` (`CLOUDFLARE_ACCOUNT_ID` exists).
 4. Actions → Web spike → Run workflow (branch web-spike) → tick *deploy*.
 
 Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
