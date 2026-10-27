@@ -29,7 +29,7 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
 
 export function setupSearch(host: SearchHost, box: HTMLElement) {
   box.innerHTML = `
-    <div class="searchrow"><input id="q" type="search" placeholder="Search places or addresses" autocomplete="off" aria-label="Search">
+    <div class="searchrow"><input id="q" type="text" placeholder="Search places or addresses" autocomplete="off" aria-label="Search">
       <button id="qclear" aria-label="Clear search" hidden>✕</button></div>
     <div id="results" hidden></div>
     <div id="card" hidden></div>`;

@@ -256,6 +256,7 @@ async function changed() {
   if (id !== state.latest) return; // a newer request supersedes this one
   if (!r.ok || !r.plan) { status(`Planning failed: ${r.error}`); return; }
   state.plan = r.plan;
+  drawPoints(); // leg distances along the new route line (the engine now has this plan)
   const s = r.stats!;
   status(`Planned for ${ACTIVITIES.find(([k]) => k === state.activity)?.[1]}${state.activity === "HIKE" ? " T" + state.sac : ""} in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
   render();
