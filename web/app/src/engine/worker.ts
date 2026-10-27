@@ -32,11 +32,13 @@ interface WasmEngine {
   fromMeBlocked(status: string, hasFix: boolean): string;
   googleMaps(name: string, lat: number, lon: number, label: string): string;
   poiMenu(kind: string, name: string, ele: string, lat: number, lon: number): string;
+  gpx(name: string, activity: string, sac: number): string;
+  activities(): string;
   problems(): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu']);
+const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 

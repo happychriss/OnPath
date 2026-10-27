@@ -19,6 +19,7 @@ val appFiles = listOf(
     "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
     // page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out
     "ui/PlanState.kt", "ui/MapGestures.kt", "poi/GoogleMapsLink.kt",
+    "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on

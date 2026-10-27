@@ -363,6 +363,23 @@ object Engine {
             ",\"color\":" + str("#" + color.toString(16).padStart(6, '0')) + ",\"google\":" + str(PoiLinks.googleMaps(poi).webUrl) + "}"
     }
 
+    /**
+     * "Export GPX" of the last plan, as the app's exportPlanned: one track of the routed line, the sport as `<trk><type>`
+     * ([com.onpath.app.gpx.SportType]), written by the app's [com.onpath.app.gpx.GpxWriter]. JSON {file, gpx} or "null".
+     */
+    fun gpx(name: String, activity: String, sac: Int): String {
+        val line = lastPlan?.second?.points?.takeIf { it.size >= 2 } ?: return "null"
+        val n = name.ifBlank { "OnPath route" }
+        val text = com.onpath.app.gpx.GpxWriter.write(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
+            type = com.onpath.app.gpx.SportType.typeOf(Activity.valueOf(activity), sac))
+        return "{\"file\":" + str(com.onpath.app.gpx.GpxWriter.fileName(n)) + ",\"gpx\":" + str(text) + "}"
+    }
+
+    /** The activity picker's rows from the app's [Activity] (label, the line under it, chip name). JSON. */
+    fun activities(): String = Activity.entries.joinToString(",", "[", "]") {
+        "{\"key\":" + str(it.name) + ",\"label\":" + str(it.label) + ",\"line\":" + str(it.line) + ",\"chip\":" + str(it.chip) + "}"
+    }
+
     fun problems(): String = Problems.drain().joinToString(",", "[", "]") { str(it) }
 
     private fun shares(s: List<Share>) = s.joinToString(",", "[", "]") { "[" + str(it.key) + "," + num(it.meters, 1) + "]" }
@@ -457,6 +474,10 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun poiMenu(kind: String, name: String, ele: String, lat: Double, lon: Double): String =
     Engine.poiMenu(kind, name, ele, lat, lon)
+
+@JSExport fun gpx(name: String, activity: String, sac: Int): String = Engine.gpx(name, activity, sac)
+
+@JSExport fun activities(): String = Engine.activities()
 
 @JSExport fun problems(): String = Engine.problems()
 
