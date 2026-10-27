@@ -8,6 +8,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **App colours closer to the website onpath.earth (owner 2026-10-27, Drive order A-009)** – `ui/Theme.kt` only: primary
+  `#1F6E43` → `#245F46`; primaryContainer minty `#DDEFE3` → a warmer olive light (≈ `#E6EDDC`, a bit stronger than the
+  website's `#EDF1E3` for sunlight); background `#F7F8F5` → `#FAFAF6`; text towards `#243C31` only if contrast stays ≥ 7:1.
+  **Not** the map / route colours, not warning / error colours, not the app icon. Paparazzi before/after, check contrast.
+  Suggested timing: with or after the German UI pass. Palette source: repo `happychriss/onpath.earth` `docs/COLORS.md`.
 - **Route hints: open candidates (desktop, 2026-10-26, numbers in `docs/design/bike-routing.md` "Route hints")** –
   (1) *faint trail* (trail_visibility=bad / horrible): 2 % of hikes, 11 % of MTB routes – a hint for hikers? owner
   question; (2) *ferry name / landing* in the hint: BRouter's data has no names – would need the ferry from our map
