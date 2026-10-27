@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] plan links (A-005): open planer.onpath.earth/#p= links, Share plan – since 2026-10-27
 
 
 ## Next (open, checked against the code 2026-10-23)
