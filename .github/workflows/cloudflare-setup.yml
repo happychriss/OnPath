@@ -15,6 +15,10 @@
 name: Cloudflare setup
 
 on:
+  # a dispatch needs the file on main – from web-spike a commit to this request file starts it (dry_run=true|false)
+  push:
+    branches: [web-spike]
+    paths: [".github/cloudflare-setup.request"]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -36,10 +40,19 @@ jobs:
       A: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       EMAILS: ${{ secrets.CF_TESTER_EMAILS }}
       HAS_PLANNER_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN != '' }}
-      DRY: ${{ inputs.dry_run }}
+      DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'from-file' }}
       HOST: plan.onpath.earth
       DB: onpath-sync-test
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+      - name: Dry run or real run
+        run: |
+          if [ "$DRY" = "from-file" ]; then
+            grep -q '^dry_run=false' .github/cloudflare-setup.request && d=false || d=true
+          else d=$DRY; fi
+          echo "DRY=$d" >> "$GITHUB_ENV"; echo "dry run: $d"
       - name: Access, one-time PIN, sync bypass, D1
         run: |
           set -euo pipefail
