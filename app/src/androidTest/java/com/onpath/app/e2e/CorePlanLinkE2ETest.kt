@@ -79,6 +79,25 @@ class CorePlanLinkE2ETest : E2EBase() {
         scenario.onActivity { assertEquals(Activity.HIKE, vm(it).activity) }
     }
 
+    /** Owner 2026-10-27: the next QR code replaces an unchanged link plan silently; a changed one asks. */
+    @Test fun secondLinkReplacesAnUnchangedLinkPlanWithoutAsking() {
+        val second = PlanLinks.link(com.onpath.app.routing.SharedPlan(
+            listOf(GeoPoint(46.68012, 11.1264), GeoPoint(46.6879, 11.1111), GeoPoint(46.6923, 11.0986)), Activity.MTB,
+            pinned = setOf(0, 1, 2)))
+        open(frozenLink)
+        waitUntil("first link's plan") { waypointCount() == 2 }
+        Thread.sleep(1_500) // routed and snapped – still "unchanged"
+        open(second)
+        waitUntil("second link's plan, no question – ${state()}") { waypointCount() == 3 }
+        scenario.onActivity { assertNull(vm(it).replaceAsk); assertEquals(Activity.MTB, vm(it).activity) }
+        // changed on the phone → the next link asks
+        Thread.sleep(1_500)
+        scenario.onActivity { vm(it).deletePointFromList(2) }
+        waitUntil("point deleted") { waypointCount() == 2 }
+        open(frozenLink)
+        assertNotNull("Replace current route? – ${state()}", findFresh(By.text("Replace current route?"), 10_000))
+    }
+
     @Test fun sharedLinkOpensTheSamePlan() {
         open(frozenLink)
         waitUntil("plan from the link") { waypointCount() == 2 }

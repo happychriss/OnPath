@@ -31,6 +31,23 @@ class CorePlanLinkTest {
         assertEquals(LinkOpen.NOW, RouteRules.linkOpen(false, link, null, link))
     }
 
+    /**
+     * Owner 2026-10-27: a second link while the plan is still the unchanged plan of the first link replaces it without a
+     * question (the plan is in the web planner / the first link anyway); once it was changed on the phone, it asks.
+     */
+    @Test fun secondLinkReplacesAnUnchangedLinkPlanWithoutAsking() {
+        val first = listOf(a, b)
+        assertEquals(LinkOpen.NOW, RouteRules.linkOpen(false, first, saved = null, incoming = link, opened = first))
+        // the router moved the free point onto its way (snapToRoute → the opened points follow) – elevation never counts
+        val snapped = listOf(a.copy(ele = 812.0), b)
+        assertEquals(LinkOpen.NOW, RouteRules.linkOpen(false, snapped, saved = null, incoming = link, opened = first))
+        // changed on the phone: a point added / moved → asks (Save first / Replace)
+        assertEquals(LinkOpen.ASK_FIRST, RouteRules.linkOpen(false, first + c, saved = null, incoming = link, opened = first))
+        assertEquals(LinkOpen.ASK_FIRST, RouteRules.linkOpen(false, listOf(a, c), saved = null, incoming = link, opened = first))
+        // during a tour still nothing is loaded
+        assertEquals(LinkOpen.AFTER_TOUR, RouteRules.linkOpen(true, first, saved = null, incoming = link, opened = first))
+    }
+
     @Test fun duringATourItWaits() {
         for (plan in listOf(emptyList(), listOf(a, b)))
             assertEquals(LinkOpen.AFTER_TOUR, RouteRules.linkOpen(true, plan, null, link))

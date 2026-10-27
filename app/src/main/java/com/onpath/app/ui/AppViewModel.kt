@@ -2495,6 +2495,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
+        linkPoints?.let { at -> if (at.map { it.lat to it.lon } == routed.map { it.lat to it.lon }) linkPoints = snapped }
         val moves = WaypointSnap.moves(routed, snapped)
         history.replacePoints(moves)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
@@ -3362,6 +3363,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Name a plan link brought, for the Save dialog while the plan still has the link's points. */
     private var linkTitle: Pair<String, List<GeoPoint>>? = null
+    /** The points the last plan link brought (after snapping): while the plan is unchanged, the next link needs no question. */
+    private var linkPoints: List<GeoPoint>? = prefs.planLinkPoints
+        set(v) { field = v; prefs.planLinkPoints = v }
 
     /**
      * A plan link opened in OnPath (camera / QR code, a tapped link, shared text, pasted into the search box; [via] for
@@ -3383,7 +3387,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // Cold start: the start mode (Plan / Navigate, an unfinished tour) is decided after a database check
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
-            when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points)) {
+            when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points, linkPoints)) {
                 LinkOpen.AFTER_TOUR -> {
                     Problems.info("plan", "Plan link ($via, ${plan.points.size} points) not opened: a tour is running")
                     message = Txt.s(Res.string.msg_plan_link_after_tour)
@@ -3419,6 +3423,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         load.names.forEach { (p, n) -> rememberPlaceName(p, n) }
         setSaved(null, -1, null) // not in My routes yet: Save asks for a name
         linkTitle = plan.title?.let { it to load.points }
+        linkPoints = load.points
         Problems.info("plan", "Plan link opened ($via): ${load.points.size} points, ${plan.activity.name}" +
             (if (plan.activity == Activity.HIKE) " T${plan.sac}" else "") + ", ${load.pinned.size} pinned, ${load.names.size} names")
         events += UiEvent.Fit(load.points)
