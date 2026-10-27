@@ -232,6 +232,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **[desktop] Bug: an old plan link came back after a reinstall (2026-10-27):** Android restarts the screen with the
+  task's first intent (a VIEW link handled long ago) – it was handled again ("This plan link can't be read").
+  `IncomingIntent`: a link / share / GPX is handled once (fingerprint of the last one in the prefs); onNewIntent always
+  handles, another link on a cold start too. Test `IncomingIntentTest`.
 - **[desktop] No dark message bar (owner 2026-10-27: "die komischen schwarzen Status-Codes … rausnehmen"):** the ~45
   producers of the old top bar now say where the user acted – `vm.say(text, NoticeKind, NoticePlace)`, pure
   `NoticeRouting`: a grey INFO / red ERROR line at the top of My routes or the open Settings page (gone when the screen

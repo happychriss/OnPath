@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
-        if (savedInstanceState == null) handleIntent(intent)
+        incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
 
         announceLastCrash()
         setContent {
@@ -339,7 +339,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
-        handleIntent(intent)
+        incoming(intent, IncomingIntent.Delivery.NEW_INTENT)
     }
 
     override fun onDestroy() {
@@ -389,6 +389,31 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
         super.onStop()
+    }
+
+    /**
+     * An incoming link / share / GPX, handled once ([IncomingIntent]): after a reinstall or restart Android starts the
+     * screen with the task's first intent again – that one is not handled a second time (field bug 2026-10-27).
+     */
+    private fun incoming(intent: Intent?, delivery: IncomingIntent.Delivery) {
+        intent ?: return
+        val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        val fp = try {
+            IncomingIntent.fingerprint(intent.action, intent.dataString, intent.type, intent.getStringExtra(Intent.EXTRA_TEXT),
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.toString())
+        } catch (e: Exception) {
+            // a malformed intent from another app (bad extras): handled as before, the handlers check it themselves
+            com.onpath.app.debug.Problems.warn("app", "Incoming intent could not be fingerprinted; handled without the once-check", e)
+            if (delivery != IncomingIntent.Delivery.RESTORED) handleIntent(intent)
+            return
+        }
+        if (!IncomingIntent.shouldHandle(delivery, fromHistory, fp, IncomingIntent.lastHandled(this))) {
+            if (fp != null && delivery == IncomingIntent.Delivery.CREATE && !fromHistory)
+                com.onpath.app.debug.Problems.trace("app", "Incoming ${intent.action} handled before (restart / reinstall) – not again")
+            return
+        }
+        IncomingIntent.remember(this, fp!!)
+        handleIntent(intent)
     }
 
     /** GPX from "open with" (VIEW) or "share" (SEND). */
