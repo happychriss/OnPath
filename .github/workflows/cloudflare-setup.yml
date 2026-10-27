@@ -64,18 +64,18 @@ jobs:
           cf() {
             local out code
             out=$(curl -sS -w '\n%{http_code}' -X "$1" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
-              ${3:+--data "$3"} "$API$2") || { echo "::error::Cloudflare $1 $2: no connection"; return 1; }
+              ${3:+--data "$3"} "$API$2") || { echo "::error::Cloudflare $1 $2: no connection" >&2; return 1; }
             code=${out##*$'\n'}; out=${out%$'\n'*}
             if ! jq -e . >/dev/null 2>&1 <<<"$out"; then
-              echo "::error::Cloudflare $1 $2: HTTP $code, not JSON: $(head -c 200 <<<"$out" | tr -d '\n')"; return 1
+              echo "::error::Cloudflare $1 $2: HTTP $code, not JSON: $(head -c 200 <<<"$out" | tr -d '\n')" >&2; return 1
             fi
             if [ "$(jq -r '.success' <<<"$out")" != "true" ]; then
-              echo "::error::Cloudflare $1 $2: HTTP $code $(jq -c '.errors' <<<"$out")"; return 1
+              echo "::error::Cloudflare $1 $2: HTTP $code $(jq -c '.errors' <<<"$out")" >&2; return 1
             fi
             jq -c '.result' <<<"$out"
           }
 
-          step "Token"
+          echo "• Token"
           v=$(curl -sS -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify || true)
           echo "  status: $(jq -r '.result.status // ("invalid: " + (.errors|tostring))' <<<"$v" 2>/dev/null || echo unreadable)"
           step() { echo "• $*"; }
