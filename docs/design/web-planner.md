@@ -274,3 +274,112 @@ What TeaVM lacked, and the web stand-ins (only in the engine build, the app is u
   `AtomicIntegerArray`; MapLibre `Feature`/`Point` and Android SQLite as empty shells for code the web never calls.
 
 Test: `web/app/test/search-smoke.mjs` (local – needs a map cell; `ONLINE=1` also checks Photon).
+
+## 11. Phone parity and speed (cloud, 2026-10-27)
+
+Owner: "feature parity between mobile and browser – the eye, page orientation, do and undo; add to route / as start,
+open Google Maps; maybe the page structure is similar too. It seems to take some time to route – or is this the Claude
+environment?"
+
+### 11.1 Inventory – phone Plan screen vs web
+
+| Feature | Phone (source) | Web now | How |
+| --- | --- | --- | --- |
+| Search pill + round ☰ | `ui/PlanTopBar` | same; ☰ = Send to phone · Share, About & credits | page (My routes, recording, settings, updates are app-only) |
+| Search, place card (Add to route / Remove, As start, As destination, Google) | `ui/search/*`, `search/AddPreview` | same | app code (§10) + `PoiLinks` |
+| Map controls group: compass, eye, undo, redo, locate + GPS dot | `ui/MapFooter.MapControls` | same order and rules (eye only with a route, undo / redo only when possible) | page; undo / redo = app's `PlanHistory` |
+| "Page orientation" = compass: shows the map's bearing, tap → north up | `CompassControl`, `AppViewModel.onCompass` | same; the map turns with right mouse / two fingers, no tilt | page; heading-up skipped (§11.4) |
+| Eye: hold → route + markers hidden | `EyeControl` | same (pointer / Space held) | page |
+| Hold rules: first hold "New route: Start here · Go here"; hold map / line → point (smart insertion); POI → "Add to route · Open in Google Maps" (empty plan: Start here · Go here); point → point menu | `ui/MapGestures`, `ui/MapOverlays` | a **click** (or right-click / long press) is the hold; same menus | app's `MapGestures.decide` / `pointMenu` / `fromMeBlocked` in the engine; menu texts mirrored |
+| Go here (from my location) | GPS | browser location (asks on first use) | page |
+| Point menu: Start here ("Removes N points before it"), Start & finish here, Open in Google Maps (named), Delete | `PointMenu` | same | app rule, texts mirrored |
+| Google Maps link-out | `poi/GoogleMapsLink.PoiLinks` (app: geo: intent, else web URL) | web URL in a new tab, nothing drawn or fetched | app code |
+| Plan sheet: activity chip, time + distance, ⋯, climb + max, difficulty badge (raised by technique), profile, Points (≡ drag, ✕, tap → map, Reverse, Round trip), one primary button | `ui/PlanPanel`, `PointsSection`, `StepSheet` | same; primary = Send to phone · Share; ⋯ = Export GPX, Clear route | texts from the app's `Format`, `RouteSummary.rating`, `PlanPoints`, `PlanEdits.move` |
+| Route warnings: amber ⚠ line → "On this route" → tap shows the spot | `ui/RouteWarnings` | same | app code |
+| Activity picker (six activities, line under each, T1–T5 with SAC text, Done) | `ActivityPicker`, `Screens.SacScale` | same | names from the app's `Activity`; SAC texts mirrored |
+| Export GPX | `GpxWriter`, `SportType` | download | app code |
+| Map credits: short "© OpenStreetMap", tap → full credits | `MapFooter`, `MAP_CREDITS` | same | page |
+| Bottom sheet steps small / profile / full | `StepSheet` | phone width: two steps (summary + profile, + Points); wide screen: side panel, all shown | page |
+| Undo keys | – | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | web extra |
+| Drag a marker | no (hold-only, owner) | yes (mouse habit) – becomes an unpinned point, one undo step | web extra, see 11.5 |
+| Navigate, recording, saved routes, offline maps, settings, haptics, Route details screen, time details | app | – | not a planner's job / later |
+
+New engine exports: `historyRecord/Step/State`, `gesture`, `pointMenu`, `fromMeBlocked`, `googleMaps`, `poiMenu`, `gpx`,
+`activities`; the plan answer carries `texts`, `because`, `warning`, `spots`. Compiled in place: `ui/PlanState.kt`,
+`ui/MapGestures.kt`, `ui/RouteWarnings.kt`, `poi/GoogleMapsLink.kt`, `gpx/GpxModel.kt`, `gpx/GpxWriter.kt`,
+`gpx/SportType.kt`, `data/LastActivity.kt`. Shells (web build only): `recording/GpsStatus` (the enum lives in the
+Android file `LocationTracker.kt`), `android.content.Intent`/`ActivityNotFoundException`, `android.net.Uri`,
+`android.app.Activity`, and a Context with `startActivity` (replaces the JVM test stub's in this build). The app's
+`PlanStateTest`, `MapGesturesTest`, `RouteWarningsTest` now run in the web CI. Mirrored in TS (Android files):
+`MapOverlays.stopLabel` and menu texts, `Screens.SacScale`, `PlanStatus.noRouteLine` ("Hold" → "Click").
+Test: `web/app/test/parity-smoke.mjs` (CI, no map data needed).
+
+### 11.2 Speed – where the time goes
+
+`web/app/test/perf.mjs` (headless Chromium, swiftshader; Meran rd5 for the normal build, the Hilden preview folder for
+the packed build; `NET=slow` = 50 Mbit/s, 40 ms). Times in ms; "download" includes waiting for a part another request
+is already fetching.
+
+| Step | normal, localhost | normal, 50 Mbit/s | packed (preview), localhost | packed, 50 Mbit/s |
+| --- | --- | --- | --- | --- |
+| page → engine ready (2.2 MB Wasm + profiles) | 1000–1350 | 1450–1750 | 680 (3600 before) | 3000 |
+| first plan, 2 points – before the fixes | 700 (download 113, store 47, route 529) | 2260 (download 1920) | 5925 (download 4880, store 404) | 15 400 (download 14 700) |
+| first plan – after the fixes, plan at once | 1100 (prefetch running) | 2370 | 2390 | 12 800 |
+| first plan – after the fixes, user looks at the map first | – | **290** (6 s look) | – | **540** (15 s look) |
+| add a via point | 150–230 | 120–170 | 260 | 180 |
+| same plan again (cache) | 3–9 | 3–7 | 3–5 | 5 |
+| switch Hike → Bike | 235–310 | 250–310 | 240–490 | 200–500 |
+| a small call (Points rows) through the worker | 0.3–1.1 | 0.3–0.7 | 0.4–1.2 | 0.4–1.2 |
+
+Routing itself is as fast as on the JVM (browser-compare, 20 routes: e.g. Bozen → Meran 33 km 380–1000 ms in the
+browser vs 400–1500 ms JVM, short hikes 35–55 ms vs 22–43 ms). The data is the cost: the first plan in an area needs its
+1° rd5 part (Meran 9.7 MB; 2 s at 50 Mbit/s – the phone downloads the same part once and keeps it). **The preview host
+adds most of the wait**: it serves no ranges and only text, so the whole 25 MB rd5 comes as 33 MB of base64 (plus
+~50 MB of base64 map files the page loads at the same time), and is decoded in the browser. A real host (R2 / the
+planner Worker, ranges) fetches only the parts – 9.7 MB here.
+
+Fixed (cheap wins):
+- **Engine loaded twice** – two early calls each loaded their own Wasm engine; on a slow line parts stored in one were
+  missing in the other ("part does not fit its index", planning failed). The worker keeps the loading promise.
+- **Prefetch**: from zoom 9 the page fetches the routing data under the map centre 0.8 s after the map stops, so the
+  first plan usually finds it in place (290 / 540 ms above).
+- **One rd5 write per plan** instead of one per part, and the engine (with its route cache) is kept: BRouter opens the
+  segment files for every route anyway, and a cached leg had all the parts its corridor needs. Store time 400 → 25–110 ms.
+- Each part downloads once, also when a prefetch and a plan ask together.
+- Preview: base64 pieces fetched 4 at a time; `Uint8Array.fromBase64` where the browser has it.
+
+Still real: the first plan in a new area waits for its part (2–10 MB); BRouter needs 0.1–1 s for long bike routes
+(same on the phone). Next, if needed: prefetch parts along the line while points are placed; keep parts in the
+browser's cache storage (IndexedDB) across visits.
+
+### 11.3 Page structure
+
+- **Wide screen (> 700 px)**: search pill + ☰ top left, the plan sheet below it as a side panel (384 px), map controls
+  bottom right, scale + "© OpenStreetMap" bottom left beside the panel. Everything of the sheet is shown.
+- **Phone width**: search pill + ☰ across the top, the plan sheet as a bottom sheet (handle: summary + profile +
+  button ↔ + Points), map controls and footer above the sheet (`--sheet-h`).
+- Menus: point / POI / first-point menus are map popups at the point; ☰ and ⋯ are drop-down menus; activity picker,
+  share and credits are dialogs. Colours and type follow `OnPathColors` (green primary, route blue, amber warnings,
+  red errors); icons are the app's Material icons.
+
+### 11.4 Still different from the phone, and why
+
+- **A click is the hold.** A browser has no hold-to-arm ring or vibration; a quick click adding a point is what web map
+  users expect. Right-click / long press do the same. Markers can also be dragged (desktop habit); the phone is
+  hold-only by owner decision.
+- **No heading-up compass mode**: there is no walking direction while planning at a desk, and the browser compass needs
+  a permission prompt on iOS. North up / turned only.
+- Two sheet steps instead of three on phones; no profile scrubbing dot; no Route details (way types / surfaces) screen
+  yet – the data is in the plan answer (`wayTypes`, `surfaces`), the screen is Compose.
+- No saved routes / My routes, recording, Navigate, offline maps, settings – the web planner hands the plan to the
+  phone (QR / link).
+- Offline house numbers, recents and categories in search (§10).
+
+### 11.5 Open decisions for the owner
+
+1. Click = hold (current) or require a long press / right-click to add points, like the phone?
+2. Keep marker dragging on the web (current) or hold-only as on the phone?
+3. Primary button: "Send to phone · Share" (current) – or also offer "Open in the app" on phones (needs the app's link
+   handling, §8 app part)?
+4. Prefetch: the 1° part under the map centre from zoom 9 (2–10 MB per area) – fine for a public page, or only after
+   the first click?
