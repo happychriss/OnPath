@@ -168,7 +168,7 @@ then a minimal planner for purpose A.
 The owner restarted the web planner with two phases (details and why: private notes, not in this repo):
 **Phase 1** – plan in the browser, bring the plan to the phone by QR code, share it as a link.
 **Phase 2** – pair phone and browser once (QR, like WhatsApp Web); then plans sync both ways by themselves, end-to-end
-encrypted through a small mailbox (Worker + D1/R2). No login. Not started.
+encrypted through a small mailbox (Worker + D1/R2). No login. Built 2026-10-27 – see §12.
 
 Split agreed with the owner: **cloud** builds the plan format, the web part and the test page; **the desktop session
 (donald, phone on USB)** builds the app part – many short tries with the camera are seconds with adb, ~20 min per
@@ -383,3 +383,12 @@ browser's cache storage (IndexedDB) across visits.
    handling, §8 app part)?
 4. Prefetch: the 1° part under the map centre from zoom 9 (2–10 MB per area) – fine for a public page, or only after
    the first click?
+
+## 12. Phase 2 – plan sync phone ⇄ browser (cloud, 2026-10-27) – built, not deployed
+
+Pair once (the browser shows a QR code, the app scans it), then saved plans sync both ways by themselves, end-to-end
+encrypted (AES-256-GCM; key from the pairing secret, which never reaches a server) through a small mailbox in this
+host (`/sync/v1/…`, D1). Newer wins, the older stays as a copy; unpair on both sides. The shared Kotlin
+(`app/.../sync/`, branch `feat/plan-sync`) runs in the app and – in the engine – in the browser; the page has
+☰ → My plans and ☰ → Pair phone. Everything – threat model, formats, API, limits, the owner's Cloudflare steps
+(D1, Access bypass for `/sync/*`), the app-side task list and the privacy text – is in **`docs/design/web-sync.md`**.
