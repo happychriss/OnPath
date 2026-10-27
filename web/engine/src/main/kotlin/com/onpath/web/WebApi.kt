@@ -44,8 +44,10 @@ object Engine {
         FileOutputStream(f).use { it.write(bytes) }
     }
 
-    private fun engine(): BRouterEngine = engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments"))
-        .also { engine = it }
+    private fun engine(): BRouterEngine {
+        if (dirty.isNotEmpty()) writeParts()
+        return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments")).also { engine = it }
+    }
 
     private fun parsePoints(points: String): List<GeoPoint> = points.split(';').filter { it.isNotBlank() }.map { p ->
         val (la, lo) = p.split(',').map { it.trim().toDouble() }
@@ -72,27 +74,41 @@ object Engine {
     }
 
     /**
-     * One downloaded part; then the local rd5 for [tile] is rewritten with every part we have (the phone does the
-     * same with [Rd5Parts.buildIndex] / [Rd5Parts.buildTail]). Returns false when the bytes do not fit the layout.
+     * One downloaded part. The local rd5 for [tile] is rewritten with every part we have (the phone does the same with
+     * [Rd5Parts.buildIndex] / [Rd5Parts.buildTail]) once, before the next route ([writeParts]) – not once per part.
+     * Returns false when the bytes do not fit the layout.
      */
     fun putPart(tile: String, index: Int, bytes: ByteArray): Boolean {
-        val (ix, tail) = layouts[tile] ?: return false
+        val (ix, _) = layouts[tile] ?: return false
         if (bytes.size.toLong() != ix.size(index)) return false
-        val parts = partBytes.getOrPut(tile) { HashMap() }
-        parts[index] = bytes
-        val present = parts.keys.filter { ix.size(it) > 0 }.toSortedSet()
-        val newIndex = Rd5Parts.buildIndex(ix, present)
-        val newTail = Rd5Parts.buildTail(ix, tail, newIndex)
-        val f = File(root, "segments/$tile")
-        f.parentFile?.mkdirs()
-        FileOutputStream(f).use { out ->
-            out.write(newIndex)
-            for (i in present) out.write(parts.getValue(i))
-            out.write(newTail)
-        }
+        partBytes.getOrPut(tile) { HashMap() }[index] = bytes
         have += Rd5Parts.Part.of(tile, index)
-        engine = null // BRouter caches open files; a fresh engine reads the new file
+        dirty += tile
         return true
+    }
+
+    private val dirty = HashSet<String>()
+
+    /**
+     * Writes the rd5 files that got new parts. The engine (and its result cache) stays: BRouter opens the segment
+     * files anew for every route, and a cached leg was routed with every part its corridor needs.
+     */
+    fun writeParts() {
+        for (tile in dirty) {
+            val (ix, tail) = layouts[tile] ?: continue
+            val parts = partBytes[tile] ?: continue
+            val present = parts.keys.filter { ix.size(it) > 0 }.toSortedSet()
+            val newIndex = Rd5Parts.buildIndex(ix, present)
+            val newTail = Rd5Parts.buildTail(ix, tail, newIndex)
+            val f = File(root, "segments/$tile")
+            f.parentFile?.mkdirs()
+            FileOutputStream(f).use { out ->
+                out.write(newIndex)
+                for (i in present) out.write(parts.getValue(i))
+                out.write(newTail)
+            }
+        }
+        dirty.clear()
     }
 
     /** [points] = "lat,lon;lat,lon;…", [activity] = Activity name. Returns JSON (route or {"error": …}). */
@@ -330,6 +346,8 @@ class WebContext(private val dir: File) : android.content.Context() {
     Engine.putLayout(tile, index.copyToJavaArray(), tail.copyToJavaArray())
 
 @JSExport fun putPart(tile: String, index: Int, data: Int8Array): Boolean = Engine.putPart(tile, index, data.copyToJavaArray())
+
+@JSExport fun writeParts() = Engine.writeParts()
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
 

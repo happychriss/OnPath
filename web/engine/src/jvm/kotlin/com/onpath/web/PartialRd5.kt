@@ -19,6 +19,7 @@ fun main(args: Array<String>) {
         check(Engine.putPart(tile, i, f.readBytes())) { "part $i does not fit the index" }
         println("part $i: ${f.length()} bytes")
     }
+    Engine.writeParts()
     File(tmp, "segments/$tile").copyTo(File(out), overwrite = true)
     println("wrote $out (${File(out).length()} bytes)")
 }

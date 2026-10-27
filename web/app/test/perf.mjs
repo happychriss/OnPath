@@ -4,6 +4,7 @@
 // Usage:
 //   node test/perf.mjs normal [segmentsDir]          the normal build (web/app/dist), rd5 via HTTP range
 //   node test/perf.mjs packed <previewFolder>        the preview build copied into a preview folder (base64 files)
+// LOOK=<ms> waits that long after "ready" before the first plan (the user looks at the map; the page prefetches).
 // NET=slow emulates a home line (50 Mbit/s down, 40 ms latency) instead of localhost.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,13 +32,14 @@ await page.goto(url + 'index.html');
 await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 300_000 });
 const readyMs = Date.now() - t0;
 const rows = [{ step: 'page → engine ready', wallMs: readyMs }];
+if (process.env.LOOK) await page.waitForTimeout(Number(process.env.LOOK));
 const plan = async (step, points, activity) => {
   const r = await page.evaluate(async ([p, a]) => {
     const s = performance.now();
     const x = await window.__engine.plan(p, a, 2);
     return { wall: performance.now() - s, stats: x.stats, ok: x.ok, km: x.plan?.distanceM, error: x.error ?? x.plan?.error };
   }, [points, activity]);
-  rows.push({ step, wallMs: Math.round(r.wall), downloadMs: Math.round((r.stats?.fetchMs ?? 0) - (r.stats?.storeMs ?? 0)),
+  rows.push({ step, wallMs: Math.round(r.wall), downloadMs: Math.round(r.stats?.fetchMs ?? 0),
     storeMs: Math.round(r.stats?.storeMs ?? 0), routeMs: Math.round(r.stats?.routeMs ?? 0),
     dataMB: +((r.stats?.bytesFetched ?? 0) / 1e6).toFixed(1), km: r.km ? +(r.km / 1000).toFixed(2) : null });
   if (r.error) console.log(step, "→", r.error);
@@ -52,6 +54,6 @@ const rt = await page.evaluate(async (p) => {
   return (performance.now() - s) / 20;
 }, pts.b);
 rows.push({ step: 'small call round trip (rows), avg', wallMs: +rt.toFixed(1) });
-console.log(`${mode}${process.env.NET === 'slow' ? ' · 50 Mbit/s, 40 ms' : ' · localhost'}`);
+console.log(`${mode}${process.env.NET === 'slow' ? ' · 50 Mbit/s, 40 ms' : ' · localhost'}${process.env.LOOK ? ` · first plan ${process.env.LOOK} ms after ready` : ''}`);
 console.table(rows);
 await browser.close(); server.close();

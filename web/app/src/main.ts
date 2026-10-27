@@ -205,7 +205,19 @@ const ready = engine.configure(base, params.get('segments') ?? base + 'segments/
   status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`);
   return r.ok;
 });
-ready.then((ok) => { if (ok) openFromLink(); });
+ready.then((ok) => { if (ok) { openFromLink(); prefetchView(); } });
+// The routing data around the map view is fetched while the user looks at the map, so the first plan starts at once
+// (docs/design/web-planner.md §11.2). Only from zoom 9: one 1° part is 2–10 MB.
+let prefetchTimer = 0;
+function prefetchView() {
+  clearTimeout(prefetchTimer);
+  prefetchTimer = window.setTimeout(() => {
+    if (map.getZoom() < 9) return;
+    const c = map.getCenter();
+    engine.prefetch(c.lat, c.lng);
+  }, 800);
+}
+map.on('moveend', () => { ready.then((ok) => { if (ok) prefetchView(); }); });
 addEventListener('hashchange', () => openFromLink());
 
 /** A plan in the address (#p=…, from a QR code or a shared link) replaces the current one. */

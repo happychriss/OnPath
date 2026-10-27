@@ -11,6 +11,7 @@ export type EngineRequest =
   | { id: number; type: 'search'; text: string; lat: number; lon: number; route: string }
   | { id: number; type: 'searchOnline'; text: string; photon: string }
   | { id: number; type: 'placePreview'; points: string; lat: number; lon: number }
+  | { id: number; type: 'prefetch'; lat: number; lon: number }
   | { id: number; type: 'insert'; points: string; lat: number; lon: number; lineSnapM: number };
 
 /** A plan as it travels in a QR code or link (the app's SharedPlan / PlanCode). */

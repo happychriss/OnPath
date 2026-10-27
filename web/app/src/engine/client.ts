@@ -81,6 +81,12 @@ export class EngineClient {
     return r.ok ? r.shared ?? null : null;
   }
 
+  /** Downloads the routing data around [lat],[lon] ahead of the first plan; resolves with the bytes fetched. */
+  async prefetch(lat: number, lon: number): Promise<number> {
+    const r = await this.ask({ type: 'prefetch', lat, lon });
+    return r.stats?.bytesFetched ?? 0;
+  }
+
   /** Index where a clicked point goes (the app's WaypointInsertion rule). */
   async insertIndex(points: [number, number][], lat: number, lon: number, lineSnapM: number): Promise<number> {
     const r = await this.ask({ type: 'insert', points: enc(points), lat, lon, lineSnapM });
