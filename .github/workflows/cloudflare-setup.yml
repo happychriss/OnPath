@@ -40,7 +40,7 @@ jobs:
       A: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       EMAILS: ${{ secrets.CF_TESTER_EMAILS }}
       HAS_PLANNER_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN != '' }}
-      DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'from-file' }}
+      DRY: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.dry_run) || 'from-file' }}
       HOST: plan.onpath.earth
       DB: onpath-sync-test
     steps:
@@ -60,15 +60,24 @@ jobs:
           [ -n "$A" ] || { echo "::error::Variable CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
           API=https://api.cloudflare.com/client/v4/accounts/$A
           # cf METHOD PATH [JSON] – prints the result, fails with Cloudflare's own error message (never the token)
+          T=$(printf '%s' "$T" | tr -d '[:space:]') # a pasted token may carry a newline or blanks
           cf() {
-            local out
-            out=$(curl -sS -X "$1" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
-              ${3:+--data "$3"} "$API$2")
+            local out code
+            out=$(curl -sS -w '\n%{http_code}' -X "$1" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+              ${3:+--data "$3"} "$API$2") || { echo "::error::Cloudflare $1 $2: no connection"; return 1; }
+            code=${out##*$'\n'}; out=${out%$'\n'*}
+            if ! jq -e . >/dev/null 2>&1 <<<"$out"; then
+              echo "::error::Cloudflare $1 $2: HTTP $code, not JSON: $(head -c 200 <<<"$out" | tr -d '\n')"; return 1
+            fi
             if [ "$(jq -r '.success' <<<"$out")" != "true" ]; then
-              echo "::error::Cloudflare $1 $2: $(jq -c '.errors' <<<"$out")"; return 1
+              echo "::error::Cloudflare $1 $2: HTTP $code $(jq -c '.errors' <<<"$out")"; return 1
             fi
             jq -c '.result' <<<"$out"
           }
+
+          step "Token"
+          v=$(curl -sS -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify || true)
+          echo "  status: $(jq -r '.result.status // ("invalid: " + (.errors|tostring))' <<<"$v" 2>/dev/null || echo unreadable)"
           step() { echo "• $*"; }
           act() { if [ "$DRY" = "true" ]; then echo "  (dry run – would $1)"; return 1; fi; echo "  → $1"; }
 
