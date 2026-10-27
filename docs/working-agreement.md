@@ -88,7 +88,7 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
 | Why something was done | commit messages (say *why*, not only *what*) |
 | Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
-| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access) – never copied into this repo |
+| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access; read **LIESMICH – privat** first) – never copied into this repo. Drive documents are never edited: a change = a new version, the old one is renamed "(… ersetzt)" and moved to **Archiv** (owner 2026-10-27) |
 
 Never rely on chat history of another session – if it matters, it must be in the repo.
 
