@@ -1,14 +1,14 @@
 package com.onpath.app.routing
 
 /**
- * Plan links (web planner phase 1, docs/design/web-planner.md §8, order A-005): `https://planer.onpath.earth/#p=<code>`
+ * Plan links (web planner phase 1, docs/design/web-planner.md §8, order A-005): `https://plan.onpath.earth/#p=<code>`
  * (code: [PlanCode]). The web planner writes them as a link and a QR code; the phone's camera opens the link in OnPath
  * (intent filter + App Links), a link shared or pasted into the search box opens too, and "Share plan" in the plan
  * sheet writes the same link. Pure Kotlin (SharedCoreRuleTest): the intent's strings come in as plain text.
  */
 object PlanLinks {
     /** The web planner's host – also the App Link host (`/.well-known/assetlinks.json` lives there). */
-    const val HOST = "planer.onpath.earth"
+    const val HOST = "plan.onpath.earth"
     const val BASE = "https://$HOST/"
     /** What marks a plan link anywhere (any host: a planner copy, a test page, a link shortener's target). */
     private const val MARK = "#p="

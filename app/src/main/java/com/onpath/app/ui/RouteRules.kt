@@ -83,7 +83,7 @@ object RouteRules {
         replacesPlan(kind, waypointCount) && isUnsaved(points, saved)
 
     /**
-     * A plan from a link (planer.onpath.earth, QR code, share, paste – A-005): during a tour it waits (the followed plan
+     * A plan from a link (plan.onpath.earth, QR code, share, paste – A-005): during a tour it waits (the followed plan
      * stays), unsaved changes ask "Replace current route?" like loading a saved route, else it opens at once. The same
      * link opened twice never asks, and neither does a plan that is still exactly what an earlier link brought ([opened],
      * owner 2026-10-27: scanning the next QR code replaces it silently; changed on the phone → asks).

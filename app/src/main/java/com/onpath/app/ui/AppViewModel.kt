@@ -3429,7 +3429,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.Fit(load.points)
     }
 
-    /** Sheet ⋯ → Share plan: the plan as a planer.onpath.earth link (PlanLinks) in the share sheet; from two points. */
+    /** Sheet ⋯ → Share plan: the plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. */
     fun sharePlan() {
         if (waypoints.size < 2) return
         val pts = waypoints.toList()

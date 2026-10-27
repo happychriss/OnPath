@@ -100,7 +100,7 @@ class PlanCallbacks(
     /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
     val onSave: () -> Unit = {},
     val onExport: () -> Unit = {},
-    /** Route ⋯ → Share plan: the plan as a planer.onpath.earth link (A-005), from two points. */
+    /** Route ⋯ → Share plan: the plan as a plan.onpath.earth link (A-005), from two points. */
     val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
     val onDetails: () -> Unit = {},

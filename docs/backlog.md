@@ -232,7 +232,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
-- **[desktop] Plan links (A-005, web planner phase 1, core feature C15):** `https://planer.onpath.earth/#p=<code>`
+- **[desktop] Plan links (A-005, web planner phase 1, core feature C15):** `https://plan.onpath.earth/#p=<code>`
   (PlanCode v1 from `feat/plan-code`) opens as the plan – camera / QR code and tapped links (intent filter, App Link
   `autoVerify`, path `/`), text shared to OnPath, a link pasted into the search box; loaded like a saved route (points,
   activity, T level, names, pinned points; "Replace current route?" with unsaved changes; not during a tour – grey

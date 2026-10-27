@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CorePlanLinkE2ETest : E2EBase() {
     /** The frozen version-1 code (PlanCodeTest.formatVersion1IsFrozen): Hike T3, 2 points, point 2 "Vellau", pinned. */
-    private val frozenLink = "https://planer.onpath.earth/#p=AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU"
+    private val frozenLink = "https://plan.onpath.earth/#p=AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU"
 
     @Before fun setUp() = launch()
 
