@@ -12,6 +12,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
   rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
   → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Field bug, bike: turn vibration never comes (owner 2026-10-28)** – no vibration before turns, neither with the app on
+  screen nor with the phone locked. Core feature rule: first a test, then the fix. Path: `RecordingService.junctionCue`
+  → `navigation/JunctionCues` (ahead distance `BIKE_AHEAD_M`, `onRoute` needs no prompt + `shownAlongM`) →
+  `vibrate(…, USAGE_ALARM)`; junctions come from `routing/Junctions.kt` / the navigation session. First look in the events
+  trace of that ride for "Junction cue:" lines (missing → cue logic / no junctions; present → the vibration itself).
+  **Wanted with the fix (owner):** the setting becomes three choices – *Off* / *Always* / *Only when the screen is locked*
+  – and the pattern becomes **1 pulse = left, 2 pulses = right** (today 2 = left, 3 = right; update `JunctionCues.pattern`,
+  its tests and the Settings explanation in EN + DE).
 - **Screen off while cycling when no turn is near (owner 2026-10-28, idea)** – today "keep screen on" (Settings →
   Navigation, `KeepScreenOn` in `PocketScreen.kt`) keeps it on the whole time, which costs battery on the bike. Wanted: a
   setting so the display goes off when the next turn is far away (e.g. > 500 m / 1 km) and wakes again shortly before it
