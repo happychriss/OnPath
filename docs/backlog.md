@@ -8,6 +8,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Field bug, bike: "new route found" but taking it does nothing (owner 2026-10-28)** – while cycling the reroute
+  question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
+  rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
+  → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Screen off while cycling when no turn is near (owner 2026-10-28, idea)** – today "keep screen on" (Settings →
+  Navigation, `KeepScreenOn` in `PocketScreen.kt`) keeps it on the whole time, which costs battery on the bike. Wanted: a
+  setting so the display goes off when the next turn is far away (e.g. > 500 m / 1 km) and wakes again shortly before it
+  (plus the junction vibration as today). Owner to choose the distance and whether it is the default for bikes.
 - **App colours closer to the website onpath.earth (owner 2026-10-27, Drive order A-009)** – `ui/Theme.kt` only: primary
   `#1F6E43` → `#245F46`; primaryContainer minty `#DDEFE3` → a warmer olive light (≈ `#E6EDDC`, a bit stronger than the
   website's `#EDF1E3` for sunlight); background `#F7F8F5` → `#FAFAF6`; text towards `#243C31` only if contrast stays ≥ 7:1.
