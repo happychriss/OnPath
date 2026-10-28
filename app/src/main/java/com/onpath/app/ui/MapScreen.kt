@@ -348,6 +348,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
                 else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }
             },
             onClose = vm::closeShown, onHighlight = { vm.highlight = it },
+            onPlan = vm::planFromShown, planBusy = vm.planFromTrackBusy,
         )
         return
     }

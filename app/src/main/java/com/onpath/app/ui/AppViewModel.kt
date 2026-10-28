@@ -3509,6 +3509,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeShown() { shown = null; highlight = null }
 
+    /** A track is being turned into a plan ([planFromShown]): spinner on its button. */
+    var planFromTrackBusy by mutableStateOf(false)
+        private set
+
+    /**
+     * Shown track → a plannable route with few route points (owner 2026-10-28; routing/TrackToPlan): our router and the
+     * current activity re-trace the track; the result replaces the plan (Undo brings the old one back).
+     */
+    fun planFromShown() {
+        val sh = shown ?: return
+        if (planFromTrackBusy) return
+        val track = sh.segments.flatten()
+        if (track.size < 2) return
+        val act = activity; val level = sac
+        // routing data along the track first: without it every leg fails
+        val missing = try { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track)) } catch (e: Exception) {
+            Problems.warn("routing", "Routing data along the track not checked; planning from the track anyway", e); emptyList()
+        }
+        if (missing.isNotEmpty()) {
+            sayError(Txt.s(Res.string.plan_from_track_wait), NoticePlace.MAP)
+            return
+        }
+        planFromTrackBusy = true
+        viewModelScope.launch {
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            val r = withContext(routingDispatcher) {
+                try {
+                    val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
+                        .also { if (EngineProvider.isRealRouter) engine = it }
+                    if (eng is com.onpath.app.routing.StraightLineEngine) null
+                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level)
+                } catch (e: Exception) {
+                    Problems.error("routing", "Track could not be turned into a plan", e); null
+                }
+            }
+            planFromTrackBusy = false
+            if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launch }
+            Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows " +
+                "${(r.follows * 100).toInt()} %, ${r.calls} routing calls, ${r.failedLegs} legs without a route, " +
+                "${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            closeShown()
+            change { clear(); addAll(r.points) }
+        }
+    }
+
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
         if (recState.value?.tourId == t.id) { sayError(Txt.s(Res.string.msg_track_recording_now), NoticePlace.ROUTES); return }

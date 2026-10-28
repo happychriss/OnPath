@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Navigation
@@ -144,6 +145,9 @@ fun TrackPanel(
     onFollow: () -> Unit,
     onClose: () -> Unit,
     onHighlight: (GeoPoint?) -> Unit,
+    /** "Plan from it": the track as a plannable route with few points (owner 2026-10-28); null = not offered. */
+    onPlan: (() -> Unit)? = null,
+    planBusy: Boolean = false,
 ) {
     BottomPanel {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -166,6 +170,16 @@ fun TrackPanel(
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))
         // no export here (owner 2026-10-28: it only confuses) – export lives in My routes
+        // the two ways to use a track (owner 2026-10-28): follow it as it is, or make a plan of it to edit
+        if (onPlan != null) {
+            OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                if (planBusy) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Filled.Edit, null)
+                Spacer(Modifier.width(8.dp))
+                Text(str(Res.string.plan_from_track), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))

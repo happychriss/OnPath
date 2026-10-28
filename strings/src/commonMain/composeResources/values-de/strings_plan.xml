@@ -217,4 +217,7 @@
     <string name="plan_leg_too_long">zu lang – setze einen Punkt dazwischen</string>
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Plan teilen</string>
+    <string name="plan_from_track">Als Route planen</string>
+    <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlen vielleicht Routing-Daten.</string>
+    <string name="plan_from_track_wait">Die Routing-Daten für diesen Track werden geladen – gleich noch einmal versuchen.</string>
 </resources>
