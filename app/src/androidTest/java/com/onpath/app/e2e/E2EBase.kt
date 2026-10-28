@@ -146,12 +146,14 @@ abstract class E2EBase {
 
     /**
      * Points snapped onto ways can end up under the search pill (top) or the plan sheet (bottom) – a finger there never
-     * reaches the map (CI 2026-10-22: point 3 at y 361). Centre the map on the point first, like a user would.
+     * reaches the map (CI 2026-10-22: point 3 at y 361), or under the map buttons on the right (CI 2026-10-28: Navigate
+     * now starts at zoom 17, back in Plan point 2 sat at x 999 under the button column). Centre the map on the point
+     * first, like a user would.
      */
     protected fun ensureOnOpenMap(index: Int) {
-        val (_, h) = mapSize()
-        val (_, y) = waypointOnScreen(index)
-        if (y in h * 0.25f..h * 0.55f) return
+        val (w, h) = mapSize()
+        val (x, y) = waypointOnScreen(index)
+        if (y in h * 0.25f..h * 0.55f && x in w * 0.15f..w * 0.75f) return
         var p: LatLng? = null
         scenario.onActivity { a -> vm(a).followMe = false; vm(a).waypoints[index].let { p = LatLng(it.lat, it.lon) } }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(p!!)) }
