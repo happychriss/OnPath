@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Clean-up of code comments and docs (owner 2026-10-28: no history in comments, no duplicates, dead code out) – since 2026-10-28
 
 
 ## Next (open, checked against the code 2026-10-23)
