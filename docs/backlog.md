@@ -14,6 +14,12 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   by going back the way one came (or ends in a dead end and turns), draw a clear U-turn sign at the turning point and
   say it in the question card / notification ("Turn round"). Test: a reroute whose first part reverses the approach
   shows the sign; a normal reroute does not. Junction vibration (other item) should give the turn-round cue too.
+- **Navigate: roundabouts (owner 2026-10-28, bike)** – today a roundabout is only "Roundabout" with the right-side
+  cue (`routing/Junctions.kt` ROUNDABOUT, RNDB/RNLB); the exit is lost. Wanted: a roundabout symbol with the exit
+  ("2nd exit"), like Google's walking navigation – at least the symbol. BRouter's VoiceHint knows the exit number
+  (RNDB + exit / roundaboutExit); `btools/router/OnPathHints.java` passes only {index, cmd, angle} – add the exit,
+  store it on the point (`GeoPoint.turn` + exit), show symbol + "2nd exit" on the turn sign / lock screen (EN + DE),
+  and decide the vibration (e.g. the exit side or one long pulse). Test with a routed roundabout (JVM harness).
 - **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
   `navigation/RerouteTargets` offers the next stop (≤ 5 km ahead) and line points 500 / 1500 / 3000 m ahead, and picks
   among them (docs/plan-auto-reroute.md §5). Owner question: when must the way back go to the next route point, and when
