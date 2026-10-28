@@ -3657,20 +3657,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun exportShown() {
-        val sh = shown ?: return
-        viewModelScope.launch {
-            // the shown tour's own activity (an imported track keeps the one it came with)
-            val tour = sh.tourId?.let { id ->
-                withContext(Dispatchers.IO) {
-                    runCatching { db.getTour(id) }.onFailure { Problems.warn("gpx", "GPX export: tour activity unreadable; exported without a sport type", it) }.getOrNull()
-                }
-            }
-            share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints,
-                tour?.let { SportType.typeOf(it.activity, it.sac) }, tour?.kind)
-        }
-    }
-
     /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
     private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?,
                               kind: TourKind? = null) {

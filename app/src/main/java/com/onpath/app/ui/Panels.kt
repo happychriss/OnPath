@@ -142,7 +142,6 @@ fun TrackPanel(
     /** The activity the track is navigated with (named on the button, UX review 2026-10-23 problem 5). */
     activity: com.onpath.app.routing.Activity,
     onFollow: () -> Unit,
-    onExport: () -> Unit,
     onClose: () -> Unit,
     onHighlight: (GeoPoint?) -> Unit,
 ) {
@@ -166,12 +165,8 @@ fun TrackPanel(
         Spacer(Modifier.height(8.dp))
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))
+        // no export here (owner 2026-10-28: it only confuses) – export lives in My routes
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Export as a square icon button: at 16 sp "Start navigation · Gravel bike" needs the room
-            OutlinedButton(onClick = onExport, modifier = Modifier.size(56.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                Icon(Icons.Filled.Share, str(Res.string.common_export_gpx))
-            }
             Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
                 Text(trackFollowLabel(recording, activity), maxLines = 1, overflow = TextOverflow.Ellipsis)

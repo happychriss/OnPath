@@ -49,6 +49,8 @@ jobs:
       version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags + history: the risk-based tests compare with the last release
 
       - name: Version and "already released?" check
         id: ver
@@ -82,9 +84,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.ver.outputs.skip != 'true'
 
-      - name: Unit tests
+      # Risk-based (owner 2026-10-28): the core-feature tests always, plus the packages changed since the last release
+      # (tools/ci/risk_tests.py); build files / BRouter → everything. The full suite runs after every push (unit.yml).
+      - name: Unit tests (risk-based)
         if: steps.ver.outputs.skip != 'true'
-        run: ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION"
+        run: |
+          LAST=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)
+          CHANGED=$([ -n "$LAST" ] && git diff --name-only "$LAST" HEAD || true)
+          ARGS=$(python3 tools/ci/risk_tests.py $CHANGED)
+          echo "Last release: ${LAST:-none} · tests: ${ARGS:-all}"
+          eval ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION" $ARGS
 
       # World overview map in the APK (docs/map-pipeline.md §9b): map data is not in git; the files are built on the
       # laptop (tools/build_overview.sh) and stored in a versioned folder (R2 overview/<date>/). Repository variable

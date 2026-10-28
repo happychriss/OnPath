@@ -657,7 +657,7 @@ class ScreenshotTest {
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
-                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {})
         }
     }
 
@@ -666,7 +666,7 @@ class ScreenshotTest {
         Frame {
             TrackPanel(ShownTrack(1, "Komoot – Hirzer Bergtour", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600,
                 note = "Activity set to Hike T3 from the file"),
-                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {})
         }
     }
 

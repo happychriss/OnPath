@@ -101,7 +101,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - Version: default `appVersion` in `app/build.gradle.kts` (versionCode = major*10000+minor*100+patch).
 - To release: bump that version, add `docs/release-notes/vX.Y.Z.md`, push to `main`.
   `.github/workflows/release.yml` then tests, builds, signs (test key), creates tag `vX.Y.Z` and the
-  GitHub Release with the APK – once per version (re-runs skip existing releases). Cloud sessions may not
+  GitHub Release with the APK – once per version (re-runs skip existing releases). Owner 2026-10-28: the release runs
+  **risk-based unit tests** (`tools/ci/risk_tests.py`: core-feature packages always + packages changed since the last
+  release; build files → all) beside the emulator start test; the **full** unit suite runs after every push in
+  `unit.yml` (not a gate – a red run is fixed at once, like E2E). Cloud sessions may not
   push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
 

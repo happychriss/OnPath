@@ -38,7 +38,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 11 | Red dot on the activity icon? | answered (recording) |
   | 12 | Smarter rejoin: skip a point or ask | open, release after next; owner's ride 2026-10-28 is a case |
   | 13 | Roundabout | data was on the line (diagnostics); icon read as "right" → drawn sign 0.11.10, badge 0.11.9; check next ride |
-  | 14 | No Export GPX next to saving | done 0.11.6; open: keep the track panel's export button? (owner) |
+  | 14 | No Export GPX next to saving | done 0.11.6; track panel button removed 0.11.11 (owner: export only in My routes) |
   | 15 | Larger dot, softer turn badge | done 0.11.7 |
   | 16 | U-turn sign on the map | done 0.11.7 |
   | 17 | New York / Greenland: how to plan there | answered; search fixed 0.11.8 |
@@ -49,7 +49,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 22 | Dot stays on the route (Komoot) | done 0.11.9 (default on) |
   | 23 | Larger arrow at the dot | done 0.11.9 |
   | 24 | Some settings in Navigate | open (entry below) |
-  | 25 | Shorter builds / risk-based tests | 0.11.10: release jobs side by side (~7 instead of ~12 min, same gates); risk-based subsets = owner decision |
+  | 25 | Shorter builds / risk-based tests | 0.11.10 jobs side by side; 0.11.11 risk-based unit tests (owner: yes) + Gradle build cache; full suite in unit.yml |
   | 26 | Cycle junction numbers (Knotenpunkte) on the map | open, map pipeline (entry below) |
   | 27 | Google Maps search → navigate there, not open Google | 0.11.10: the Google line says "Share → OnPath"; open: ask "Route here?" when the place arrives |
   | 28 | Recorded heights wrong (found in the ride) | open (entry below) |
@@ -63,9 +63,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **Google Maps place → go there (owner 2026-10-28)** – when a place comes back from Google Maps (Share → OnPath,
   `receiveSharedPlace`), ask at once "Route here?" (from the position / the plan's end) instead of only showing the
   place card. 0.11.10 only explains the way back on the Google line.
-- **Risk-based release tests (owner question 2026-10-28)** – the release now runs the start test and the unit tests
-  side by side (~7 min). Faster still: only the unit tests of changed packages, Paparazzi only when ui/ changed – that
-  weakens the gate, so only with the owner's word.
 - **Recorded heights are ~45 m too high (owner's ride 2026-10-28, Rosellen → Düsseldorf)** – GPS heights 81–135 m on a
   ride at ~35–45 m: Android's `Location.altitude` is above the WGS84 ellipsoid, and the geoid there is ~+47 m. Plus a
   settling drop 135 → 94 m in the first 12 s (false descent). Fix ideas: Android 14+ `AltitudeConverter.
