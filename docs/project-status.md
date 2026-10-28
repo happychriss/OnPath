@@ -1,6 +1,6 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-28 – current release **0.11.10** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.11.11** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
