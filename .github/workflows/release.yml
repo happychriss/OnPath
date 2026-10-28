@@ -93,7 +93,8 @@ jobs:
           CHANGED=$([ -n "$LAST" ] && git diff --name-only "$LAST" HEAD || true)
           ARGS=$(python3 tools/ci/risk_tests.py $CHANGED)
           echo "Last release: ${LAST:-none} · tests: ${ARGS:-all}"
-          eval ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION" $ARGS
+          # the filter belongs to the app's test task only (the :strings module has no such tests and would fail)
+          eval ./gradlew --no-daemon :app:testDebugUnitTest $ARGS :strings:testDebugUnitTest -PappVersion="$VERSION"
 
       # World overview map in the APK (docs/map-pipeline.md §9b): map data is not in git; the files are built on the
       # laptop (tools/build_overview.sh) and stored in a versioned folder (R2 overview/<date>/). Repository variable
