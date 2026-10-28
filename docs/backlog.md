@@ -14,6 +14,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   by going back the way one came (or ends in a dead end and turns), draw a clear U-turn sign at the turning point and
   say it in the question card / notification ("Turn round"). Test: a reroute whose first part reverses the approach
   shows the sign; a normal reroute does not. Junction vibration (other item) should give the turn-round cue too.
+- **Plan: no "Export GPX" next to saving (owner 2026-10-28, small)** – exporting right when saving a route only
+  clutters; export stays in My routes (⋮ Export GPX / Export all). Today "Export GPX" sits right under "Save route" in
+  the plan sheet's ⋯ menu (`PlanPanel.SheetMenuItems`), and the shown-track panel has a square export button beside
+  "Start navigation" (`Panels.TrackPanel`). Remove the ⋯ entry; the track panel's button too unless the owner wants
+  it kept (check with him when building – he was on the bike). Update Paparazzi snapshots and `PlanCallbacks.onExport`.
 - **Navigate: roundabouts (owner 2026-10-28, bike)** – today a roundabout is only "Roundabout" with the right-side
   cue (`routing/Junctions.kt` ROUNDABOUT, RNDB/RNLB); the exit is lost. Wanted: a roundabout symbol with the exit
   ("2nd exit"), like Google's walking navigation – at least the symbol. BRouter's VoiceHint knows the exit number
