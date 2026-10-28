@@ -23,10 +23,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (km 2.2 and 11.1, exit 2 each) and the card logic shows "Roundabout · exit 2" from 200 m. Found and fixed (0.11.9):
   the map badge kept the drawn left / right arrow at a roundabout. Ride left the plan at km 0.5–0.8 and 6.0–6.8 (up
   to 380 m) – also a real case for "smarter rejoin".
-- **Position on the route ("snap to route") as an option (owner question 2026-10-28, like Komoot)** – today the dot
-  is always the GPS fix. Idea: Settings → Navigation "Position: on the route / GPS"; on the route = the dot drawn at the
-  matched point on the followed line (`Navigator` progress → `NavLine` point) while within ~25 m of it, the real fix as
-  soon as one is off the route (so leaving it is seen); recording always GPS. Owner to choose the default.
 - **Planned-route GPX has no route points (owner question 2026-10-28)** – a planned route exports one `<trk>` with
   the routed line (lat / lon / ele, no times) and the sport `<type>`, but no `<wpt>` for its route points (`exportTour`
   passes none for PLANNED), so a re-import cannot rebuild the plan's points. Idea: write them as `<rte>` / `<rtept>`
@@ -295,6 +291,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **0.11.9 (cloud, 2026-10-28):** position on the route (`navigation/SnapToRoute`, ≤ 25 m, default on, Settings →
+  Navigation), larger facing arrow, no left / right map badge at a roundabout, trace counts roundabouts; JVM harness
+  compiles again (`tools/routing/jvm-test/strings_stub.py`).
 - **0.11.8 (cloud, 2026-10-28):** search opens empty; far big cities found (Photon places request + exact-name bonus);
   a very long plan's new point loads nothing until "Plan anyway"; T4 corridor capped at 30 regions
   (`CellTriggers.CORRIDOR_MAX_CELLS`); export names "… - planned / recorded.gpx". Still to check with the owner's
