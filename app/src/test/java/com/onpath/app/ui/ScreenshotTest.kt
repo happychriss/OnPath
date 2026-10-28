@@ -55,7 +55,7 @@ class ScreenshotTest {
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
                        eye: Boolean = false, peeking: Boolean = false, large: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
-            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large)
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large, onSettings = if (large) ({}) else null)
         }
 
     /**

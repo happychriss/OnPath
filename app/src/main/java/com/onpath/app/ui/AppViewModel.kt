@@ -164,6 +164,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
+    /** Navigate → ⚙: the navigation settings sheet is open. */
+    var navSettingsOpen by mutableStateOf(false)
     /** Zoom the map takes when Navigate starts ([AppMode.navStartZoom]); null once taken (then the user's zoom stays). */
     var navStartZoom by mutableStateOf<Double?>(null)
     /** Map taps may add, move or insert points (Plan with no track shown). */
@@ -3653,7 +3655,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
+            // a planned route carries its route points as <wpt> (start, stops, goal – with their names; owner question
+            // 2026-10-28): other apps show them, and a re-import can rebuild the plan from them
+            share(t.name, segs, t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
         }
     }
 

@@ -637,7 +637,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
     val bg = rememberBackgroundDownload(vm)
-    NavigateOverlay(ui, footer, onSlideToPlan = vm::switchToPlan, onResume = { vm.pauseRecording(false) },
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
+    NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
         onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
         onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,

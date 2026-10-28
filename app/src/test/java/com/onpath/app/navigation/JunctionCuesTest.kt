@@ -141,4 +141,12 @@ class JunctionCuesTest {
         assertEquals("Off route", t("Off route", JunctionCue.LEFT to 50.0).title)
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
     }
+
+    /** On the bike a slight bend does not vibrate; a real turn and a fork do (owner's ride 2026-10-28). */
+    @Test fun bikeSkipsSlightBends() {
+        val l = line(800, mapOf(100 to JunctionCue.SLIGHT_LEFT, 300 to JunctionCue.LEFT, 500 to JunctionCue.KEEP_RIGHT, 700 to JunctionCue.SLIGHT_RIGHT))
+        fun walk(c: JunctionCues) = (0..800 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true) }
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues(80.0).apply { skipSlight = true }))
+        assertEquals("hiking: every junction", 4, walk(JunctionCues(40.0)).size)
+    }
 }

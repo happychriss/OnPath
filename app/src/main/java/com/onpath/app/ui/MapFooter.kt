@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material3.MaterialTheme
@@ -118,9 +119,17 @@ fun MapControls(
     /** Plan: redo the last undone edit – shown only when there is something to redo (owner Q8 2026-10-23). */
     onRedo: (() -> Unit)? = null,
     large: Boolean = false,
+    /** Navigate: the navigation settings on the way (owner 2026-10-28) – a gear on top of the controls. */
+    onSettings: (() -> Unit)? = null,
 ) {
     val size = if (large) MAP_FAB_LARGE else MAP_FAB
     val items = buildList<@Composable () -> Unit> {
+        if (onSettings != null) add {
+            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onSettings).semantics { contentDescription = Txt.s(Res.string.nav_settings_cd) },
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+            }
+        }
         if (compass != null) add { CompassControl(compass, size) }
         if (showEye) add { EyeControl(onPeek, peeking, size) }
         if (onUndo != null) add {

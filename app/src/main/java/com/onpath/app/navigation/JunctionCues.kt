@@ -18,6 +18,12 @@ import com.onpath.app.routing.JunctionCue
  * - A new line (re-route, edited plan: [version]) starts over; junctions behind the position are skipped.
  */
 class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
+    /**
+     * No vibration for a slight bend (SLIGHT_LEFT / SLIGHT_RIGHT) – on the bike (owner's ride 2026-10-28: 40 cues in
+     * 50 min, many of them slight). Forks (keep left / right) and real turns still vibrate; the lock screen still names
+     * every junction.
+     */
+    var skipSlight: Boolean = false
     private var version = Int.MIN_VALUE
     private var size = -1
     private var alongs = DoubleArray(0)
@@ -38,6 +44,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         val at = alongs[next]; val cue = cues[next]
         val prev = if (next > 0) alongs[next - 1] else Double.NEGATIVE_INFINITY
         next++
+        if (skipSlight && (cue == JunctionCue.SLIGHT_LEFT || cue == JunctionCue.SLIGHT_RIGHT)) return null
         return if (at - prev < MERGE_M) null else cue // switchback chain: felt once, at its first junction
     }
 

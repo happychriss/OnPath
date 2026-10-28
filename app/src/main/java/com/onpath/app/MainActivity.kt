@@ -116,6 +116,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
+            // Navigate over the lock screen (owner 2026-10-28): while a tour runs in Navigate, a short press of the power
+            // button shows the navigation without unlocking; Plan (routes, settings) asks to unlock first.
+            val recNow by vm.recState.collectAsState()
+            val overLock = com.onpath.app.ui.LockScreenNav.shows(vm.mode == com.onpath.app.ui.AppMode.NAVIGATE, recNow != null)
+            LaunchedEffect(overLock) { showOverLockScreen(overLock) }
             // A new serious problem (error / crash) is said once per run – nothing stays unseen (owner).
             val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
@@ -373,6 +378,37 @@ class MainActivity : ComponentActivity() {
     private fun setLanguage(c: com.onpath.app.data.LanguageChoice) {
         com.onpath.app.data.AppLanguage.set(this, c)
         recreate()
+    }
+
+    /** Lets the activity show over the lock screen (Navigate during a tour) or not. Never throws. */
+    private fun showOverLockScreen(on: Boolean) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 27) setShowWhenLocked(on)
+            else @Suppress("DEPRECATION") if (on) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+            com.onpath.app.debug.Problems.trace("app", "Over the lock screen: $on")
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("app", "Show over the lock screen not changed ($on)", e)
+        }
+    }
+
+    /**
+     * Navigate → Plan while the phone is locked: unlock first (Plan shows routes and settings); unlocked → Plan at once.
+     * Without the unlock (cancelled) the navigation stays.
+     */
+    fun leaveNavigate(toPlan: () -> Unit) {
+        val km = getSystemService(android.app.KeyguardManager::class.java)
+        if (km == null || !km.isKeyguardLocked || android.os.Build.VERSION.SDK_INT < 26) { toPlan(); return }
+        try {
+            km.requestDismissKeyguard(this, object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() { toPlan() }
+                override fun onDismissCancelled() { com.onpath.app.debug.Problems.trace("app", "Unlock for Plan cancelled – Navigate stays") }
+                override fun onDismissError() { com.onpath.app.debug.Problems.info("app", "Unlock for Plan failed – Navigate stays") }
+            })
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("app", "Unlock request failed; Plan opened anyway", e)
+            toPlan()
+        }
     }
 
     override fun onStart() {

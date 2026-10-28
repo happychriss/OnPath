@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "where I face" arrow at the position dot in north-up / Plan (MapLibre's compass bearing image, turned by the
+     phone's direction). Larger than MapLibre's own (owner 2026-10-28), the same shape and size as ui/FacingArrow in
+     heading-up: just outside the dot and its white ring. 44 dp box, centre = the dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="44"
+    android:viewportHeight="44">
+    <path
+        android:fillColor="#1A73E8"
+        android:pathData="M22,3.5L28.5,12.5L15.5,12.5Z" />
+</vector>

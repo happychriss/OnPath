@@ -362,7 +362,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
 /** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
+internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
     Section(SettingsPage.NAVIGATION.title) {
         SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }

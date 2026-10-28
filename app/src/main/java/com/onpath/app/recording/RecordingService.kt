@@ -568,6 +568,7 @@ class RecordingService : Service() {
     /** Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. */
     private fun junctionCue() {
         val st = navigator?.state ?: return
+        junctions.skipSlight = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
             com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
         if (st.version != junctionsTracedVersion) {

@@ -102,6 +102,7 @@ fun MapScreen(
                 // Undo and Redo side by side as map buttons (owner Q8 2026-10-23); Redo only when there is something to redo
                 onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
                 large = mode == AppMode.NAVIGATE,
+                onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
             )
         }
     }
@@ -207,6 +208,22 @@ fun MapScreen(
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary (UX review 2026-10-23, problem 2)
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })
+    if (vm.navSettingsOpen) {
+        // Navigate → ⚙: the Navigation settings page on the way (owner 2026-10-28); everything else stays in Plan → Settings
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(bottom = 24.dp)) {
+                item {
+                    NavigationSection(vm.settings, vm::updateSettings) {
+                        try {
+                            ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", ctx.packageName, null)))
+                        } catch (e: Exception) { Problems.warn("ui", "App settings could not be opened from Navigate", e) }
+                    }
+                }
+            }
+        }
+    }
     vm.selectedPoi?.let { poi ->
         // Read-only details (Navigate, or a shown track): no "add to route" here.
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {

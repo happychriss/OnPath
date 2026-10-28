@@ -353,6 +353,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .trackingGesturesManagement(true)
                 // the dot a little larger (owner 2026-10-28: tell it apart from the turn badge at a glance)
                 .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
+                // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner 2026-10-28)
+                .bearingDrawable(com.onpath.app.R.drawable.onpath_bearing)
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
