@@ -8,13 +8,27 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Owner's diagnostics 2026-10-28 (Pixel 8, Android 17, evening ride on 0.11.7) – findings:**
+  (1) *Vibration:* the app vibrated at every junction – 40 cues in 50 min, each "vibrated=true (setting ALWAYS,
+  locked=false)"; the morning ride (0.11.5) cued too. So the app side works; if the owner felt nothing, the phone
+  drops it: check Pixel Settings → Sound & vibration → Vibration & haptics → *Alarm vibration* (our usage is ALARM)
+  and Do Not Disturb / Bedtime. Also: 40 cues incl. many SLIGHT_LEFT / RIGHT – consider no cue for slight turns on a
+  bike. (2) *Roundabout:* both were on the followed line (cues ROUNDABOUT at 17:46 and 18:13) – the data was there;
+  0.11.7 showed Material's "roundabout right" icon (an arrow curving right – reads as "right") and the map badge said
+  left / right → drawn sign (0.11.10) and badge fix (0.11.9). Check on the next ride. (3) *Memory:* the app holds
+  PSS ~1.9 GB with a 1.34 GB native heap all day; after the New York test (2 US regions + search index rebuilt,
+  167 k entries) PSS 3.18 GB, native heap 2.24 GB – an OOM-kill risk; profile on donald (MapLibre tile cache,
+  search index, PMTiles generations). (4) *Battery:* while riding with the screen on, CPU 1.6–1.7 cores (≈ 1000 s per
+  10 min) at ~63 fps all the time (no frame cap, owner 2026-10-20) – worth a frame cap while navigating or the
+  "screen off far from turns" idea. (5) One "Following stopped: map gesture" at 18:25 (mode 32 → 8) – a pan or the
+  pinch? Ask the owner.
 - **Owner's field notes 2026-10-28 – every point and its status** (bike day; details in the entries below / in Done):
   | # | Note | Status |
   | --- | --- | --- |
   | 1 | GPS only, or Wi-Fi / cell too? | done 0.11.6 – Wi-Fi wins over weak GPS for the dot; tracks GPS only |
   | 2 | "Take new route" did nothing | not a bug (way back on the same road) → U-turn: question 0.11.6, map sign 0.11.7 |
   | 3 | Screen off when no turn is near | open, phase 2 (with 9) |
-  | 4 | Turn vibration never comes | partly: 3-way setting, 1 = left / 2 = right, trace 0.11.6; cause open – needs the ride's diagnostics |
+  | 4 | Turn vibration never comes | app vibrates at every junction (diagnostics, 40× \"vibrated=true\"); open: does the phone drop it? (Alarm vibration setting) |
   | 5 | Dot glides from the old place on opening | done 0.11.7 |
   | 6 | Pinch zoom ends direction-up | done 0.11.6 – check on the phone |
   | 7 | Start zoom in Navigate | done 0.11.6 (Hike 17, bikes 16) |
@@ -23,7 +37,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 10 | GPX import as a plannable route, few points | open, Later (release at home) |
   | 11 | Red dot on the activity icon? | answered (recording) |
   | 12 | Smarter rejoin: skip a point or ask | open, release after next; owner's ride 2026-10-28 is a case |
-  | 13 | Roundabout | exit 0.11.7, map badge 0.11.9, drawn sign 0.11.10; field bug open – needs the trace |
+  | 13 | Roundabout | data was on the line (diagnostics); icon read as \"right\" → drawn sign 0.11.10, badge 0.11.9; check next ride |
   | 14 | No Export GPX next to saving | done 0.11.6; open: keep the track panel's export button? (owner) |
   | 15 | Larger dot, softer turn badge | done 0.11.7 |
   | 16 | U-turn sign on the map | done 0.11.7 |
