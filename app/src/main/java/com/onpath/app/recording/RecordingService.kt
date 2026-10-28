@@ -573,7 +573,8 @@ class RecordingService : Service() {
         if (st.version != junctionsTracedVersion) {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
-            Problems.trace("navigation", "Followed line v${st.version}: $n junctions" +
+            val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
+            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
         val onRoute = st.prompt == null && st.shownAlongM != null

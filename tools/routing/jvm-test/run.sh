@@ -48,6 +48,9 @@ if [ -n "${NO_VIA_CORRECTION:-}" ]; then
   grep -q 'correctMisplacedViaPoints"\] = "0"' "$W/BRouterEngine.kt"
 fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
+# the app's texts come from the :strings module (Compose resources): a JVM stand-in with the English texts
+python3 "$HERE/strings_stub.py" "$ROOT" "$W/StringsStub.kt" > /dev/null
+EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
   "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \

@@ -21,8 +21,9 @@ fun FacingArrow(f: MapController.Facing, mapBearing: () -> Float) {
     Canvas(Modifier.fillMaxSize()) {
         if (!f.visible) return@Canvas
         val c = Offset(f.x, f.y)
-        val r = 13.dp.toPx()      // just outside the dot and its white ring
-        val w = 6.dp.toPx(); val h = 7.dp.toPx()
+        // just outside the dot and its white ring (the dot is 1.3× since 0.11.7); the arrow larger too (owner 2026-10-28)
+        val r = 16.dp.toPx()
+        val w = 9.dp.toPx(); val h = 11.dp.toPx()
         rotate(f.viewHeading - mapBearing(), pivot = c) {
             val tip = Offset(c.x, c.y - r - h)
             val path = Path().apply {
