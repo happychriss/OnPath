@@ -28,7 +28,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 1 | GPS only, or Wi-Fi / cell too? | done 0.11.6 – Wi-Fi wins over weak GPS for the dot; tracks GPS only |
   | 2 | "Take new route" did nothing | not a bug (way back on the same road) → U-turn: question 0.11.6, map sign 0.11.7 |
   | 3 | Screen off when no turn is near | open, phase 2 (with 9) |
-  | 4 | Turn vibration never comes | app vibrates at every junction (diagnostics, 40× \"vibrated=true\"); open: does the phone drop it? (Alarm vibration setting) |
+  | 4 | Turn vibration never comes | app vibrates at every junction (diagnostics, 40× "vibrated=true"); open: does the phone drop it? (Alarm vibration setting) |
   | 5 | Dot glides from the old place on opening | done 0.11.7 |
   | 6 | Pinch zoom ends direction-up | done 0.11.6 – check on the phone |
   | 7 | Start zoom in Navigate | done 0.11.6 (Hike 17, bikes 16) |
@@ -37,7 +37,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 10 | GPX import as a plannable route, few points | open, Later (release at home) |
   | 11 | Red dot on the activity icon? | answered (recording) |
   | 12 | Smarter rejoin: skip a point or ask | open, release after next; owner's ride 2026-10-28 is a case |
-  | 13 | Roundabout | data was on the line (diagnostics); icon read as \"right\" → drawn sign 0.11.10, badge 0.11.9; check next ride |
+  | 13 | Roundabout | data was on the line (diagnostics); icon read as "right" → drawn sign 0.11.10, badge 0.11.9; check next ride |
   | 14 | No Export GPX next to saving | done 0.11.6; open: keep the track panel's export button? (owner) |
   | 15 | Larger dot, softer turn badge | done 0.11.7 |
   | 16 | U-turn sign on the map | done 0.11.7 |
