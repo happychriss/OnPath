@@ -1,10 +1,13 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-28 – current release **0.11.9** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.11.10** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-28 night – 0.11.10.** Drawn roundabout sign, export names plan / rec, release jobs in parallel, all
+  28 field notes of the day with a status in backlog Next (table). Waiting for the owner: ride diagnostics (vibration,
+  roundabout), track panel export button, risk-based tests.
 - **cloud, 2026-10-28 late – 0.11.9.** Position on the route (default on), larger arrow, roundabout map badge; owner's
   ride + plan analysed (backlog: heights ~45 m high = ellipsoid, roundabout field bug needs the trace).
 - **cloud, 2026-10-28 – 0.11.8.** Search opens empty, far cities found, far points load nothing before the long-plan
