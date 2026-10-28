@@ -221,6 +221,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   unconfirmed: re-routing P0–P4, arrival / time estimate, junction vibration + lock screen, map freshness.
 
 ## Later
+- **GPX import as a plannable route, with as few points as possible (owner 2026-10-28; for the release at home, not
+  the next one)** – on importing a GPX (ridden before or received), ask: *load as GPX track* (follow it as today) or
+  *load as a plannable route*. The second turns the track into route points so it can be edited like a plan. Smart:
+  the fewest points for which our router (activity profile) reproduces the track – not 1000 points. Idea: start with
+  start + end, route, find where our route leaves the track by more than ~30–50 m, add one point there (on the track,
+  ideally at a junction), route again; repeat until the route follows the track (greedy, like Douglas–Peucker but
+  checked with the router). Round trips: start = end plus one point far along. Show how close the result is ("follows
+  the track to 98 %") and keep the original track as the grey GPX line to compare. Needs tests (synthetic tracks,
+  JVM routing harness) and a cap on routing calls per import.
 - **iPhone version (owner 2026-10-26)** – not now. Direction and order in `docs/design/multiplatform.md`: EN + DE via
   Compose Multiplatform resources (not Android `res/values`), module split on a quiet release, BRouter on iOS only
   when iOS is a real goal. Rule from today: core logic free of Android (`SharedCoreRuleTest`).
