@@ -12,6 +12,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
   rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
   → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Navigate over the lock screen (owner 2026-10-28, bike)** – with the screen off during navigation, a short press of
+  the power button should show OnPath's Navigate map at once, without unlocking (like Google Maps / Komoot). Today only
+  the notification on the lock screen shows the next junction; the app has no `setShowWhenLocked`. Idea: while a tour
+  with a followed route runs, MainActivity `setShowWhenLocked(true)` (map only; Plan, Settings, My routes need unlock).
+  Fits with "screen off when no turn is near" (wake shortly before a turn: `setTurnScreenOn`).
 - **Navigate: pinch zoom ends "direction up" (owner 2026-10-28, bike)** – zooming in / out with two fingers, without
   turning, drops the camera from walking-direction-up (TRACKING_COMPASS) to free; very annoying while riding. Wanted:
   zoom only → keep following and direction up; only a pan or a clear turn ends it. Likely cause: a pinch always has a
