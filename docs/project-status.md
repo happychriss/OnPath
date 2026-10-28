@@ -1,10 +1,15 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-28 – current release **0.11.11** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.12.0** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-28 night – 0.12.0 (owner offline: build and test what you can).** Track → plan (TrackToPlan),
+  Navigate over the lock screen, Navigate ⚙ settings, heights above sea level, no slight-bend vibration on bikes,
+  larger north-up arrow, planned GPX with route points; release test filter fixed. **Next for donald:** memory
+  (backlog entry with suspects), Knotenpunkte (pipeline), frame cap / battery; owner to check on the phone: lock
+  screen, vibration (Alarm vibration setting), roundabout sign, heights.
 - **cloud, 2026-10-28 night – 0.11.10.** Drawn roundabout sign, export names plan / rec, release jobs in parallel, all
   28 field notes of the day with a status in backlog Next (table). Waiting for the owner: ride diagnostics (vibration,
   roundabout), track panel export button, risk-based tests.

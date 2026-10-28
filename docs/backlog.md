@@ -42,13 +42,13 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 1 | GPS only, or Wi-Fi / cell too? | done 0.11.6 – Wi-Fi wins over weak GPS for the dot; tracks GPS only |
   | 2 | "Take new route" did nothing | not a bug (way back on the same road) → U-turn: question 0.11.6, map sign 0.11.7 |
   | 3 | Screen off when no turn is near | open, phase 2 (with 9) |
-  | 4 | Turn vibration never comes | app vibrates at every junction (diagnostics, 40× "vibrated=true"); open: does the phone drop it? (Alarm vibration setting) |
+  | 4 | Turn vibration never comes | app vibrates at every junction (diagnostics); 0.12.0: no cue for slight bends on the bike; open: does the phone drop it? (Alarm vibration setting) |
   | 5 | Dot glides from the old place on opening | done 0.11.7 |
   | 6 | Pinch zoom ends direction-up | done 0.11.6 – check on the phone |
   | 7 | Start zoom in Navigate | done 0.11.6 (Hike 17, bikes 16) |
-  | 8 | Short press of power button → navigation | open, phase 2 ("Navigate over the lock screen") |
+  | 8 | Short press of power button → navigation | done 0.12.0 – Navigate shows over the lock screen during a tour; Plan asks to unlock |
   | 9 | km to go beside the time, same size | done 0.11.6 |
-  | 10 | GPX import as a plannable route, few points | open, Later (release at home) |
+  | 10 | GPX import as a plannable route, few points | done 0.12.0 – "Plan a route from it" on a shown track (owner's ride: 7 points, 99 %) |
   | 11 | Red dot on the activity icon? | answered (recording) |
   | 12 | Smarter rejoin: skip a point or ask | open, release after next; owner's ride 2026-10-28 is a case |
   | 13 | Roundabout | data was on the line (diagnostics); icon read as "right" → drawn sign 0.11.10, badge 0.11.9; check next ride |
@@ -59,20 +59,17 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 18 | Search keeps the old text | done 0.11.8 |
   | 19 | New York as goal: loads maps, hangs | done 0.11.8 (nothing loads before the long-plan answer, corridor ≤ 30); blank-map moment open (trace) |
   | 20 | Export names of plan and ride clash | done 0.11.8, names plan / rec in every language 0.11.10 |
-  | 21 | Is the planned GPX real GPX? | answered; open: route points not in the file (entry below) |
+  | 21 | Is the planned GPX real GPX? | answered; route points now in the file as <wpt> (0.12.0) |
   | 22 | Dot stays on the route (Komoot) | done 0.11.9 (default on) |
   | 23 | Larger arrow at the dot | done 0.11.9 |
-  | 24 | Some settings in Navigate | open (entry below) |
+  | 24 | Some settings in Navigate | done 0.12.0 – ⚙ in Navigate opens the Navigation settings |
   | 25 | Shorter builds / risk-based tests | 0.11.10 jobs side by side; 0.11.11 risk-based unit tests (owner: yes) + Gradle build cache; full suite in unit.yml |
   | 26 | Cycle junction numbers (Knotenpunkte) on the map | open, map pipeline (entry below) |
   | 27 | Google Maps search → navigate there, not open Google | 0.11.10: the Google line says "Share → OnPath"; open: ask "Route here?" when the place arrives |
-  | 28 | Recorded heights wrong (found in the ride) | open (entry below) |
+  | 28 | Recorded heights wrong (found in the ride) | done 0.12.0 – above sea level (MSL / geoid offset), first 15 s without height |
   | 29 | Memory 1.9–3.2 GB | open, top priority for donald (entry below) |
   | 30 | Watch turning / compass on the next rides | owner watches; trace names every stop |
-  | 31 | Arrow at the dot in Plan north-up should show where the phone points | designed so (compass standing, GPS moving); larger arrow everywhere (next release) |
-- **Some settings in Navigate (owner 2026-10-28)** – today Settings opens only from Plan (☰). Idea: a small ⚙ in Navigate
-  opens a short sheet with what matters on the way: junction vibration (Off / Always / Locked), position on the route,
-  keep screen on, map direction; everything else stays in Plan → Settings.
+  | 31 | Arrow at the dot in Plan north-up should show where the phone points | designed so; larger arrow in north-up too (0.12.0) |
 - **Cycle junction networks ("Knotenpunkte", NL / BE / DE) on the map (owner 2026-10-28)** – OSM nodes with
   `rcn_ref` (route=bicycle relations with `network:type=node_network`): green numbered circles + the network lines, own
   overlay layer, switchable in Settings → Map (default on for bikes?). Needs `extract_overlays.py` (node_network
@@ -80,12 +77,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **Google Maps place → go there (owner 2026-10-28)** – when a place comes back from Google Maps (Share → OnPath,
   `receiveSharedPlace`), ask at once "Route here?" (from the position / the plan's end) instead of only showing the
   place card. 0.11.10 only explains the way back on the Google line.
-- **Recorded heights are ~45 m too high (owner's ride 2026-10-28, Rosellen → Düsseldorf)** – GPS heights 81–135 m on a
-  ride at ~35–45 m: Android's `Location.altitude` is above the WGS84 ellipsoid, and the geoid there is ~+47 m. Plus a
-  settling drop 135 → 94 m in the first 12 s (false descent). Fix ideas: Android 14+ `AltitudeConverter.
-  addMslAltitudeToLocation` (off the main thread) or `Location.mslAltitudeMeters` when the chip gives it; better still
-  the heights from our terrain tiles (DEM) for ascent / descent; ignore the first fixes' heights. Ascent / descent and the
-  elevation profile of recorded tours depend on it.
 - **Field bug (0.11.7, bike, 2026-10-28 evening): roundabout sign never shown** – 2–3 roundabouts ridden, the turn card
   showed only left / right. BRouter does deliver them: 25 random Hilden bike routes (JVM harness, E5_N50) gave 13
   ROUNDABOUT cues with exits 2–3, mostly within ±40 m of a drawn turn (so `turnHint` should pick them). Next: the
@@ -95,10 +86,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   (km 2.2 and 11.1, exit 2 each) and the card logic shows "Roundabout · exit 2" from 200 m. Found and fixed (0.11.9):
   the map badge kept the drawn left / right arrow at a roundabout. Ride left the plan at km 0.5–0.8 and 6.0–6.8 (up
   to 380 m) – also a real case for "smarter rejoin".
-- **Planned-route GPX has no route points (owner question 2026-10-28)** – a planned route exports one `<trk>` with
-  the routed line (lat / lon / ele, no times) and the sport `<type>`, but no `<wpt>` for its route points (`exportTour`
-  passes none for PLANNED), so a re-import cannot rebuild the plan's points. Idea: write them as `<rte>` / `<rtept>`
-  (or `<wpt>`); fits "GPX import as a plannable route" (Later).
 - **Shown GPX track: keep the square export button? (owner question, 2026-10-28)** – 0.11.6 removed "Export GPX"
   from the plan ⋯ menu; the track panel (`Panels.TrackPanel`) still has its export button beside "Start navigation".
 - **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
@@ -108,11 +95,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   owner's bike ride of 2026-10-28 (events trace + recorded track) and sample routes the owner will upload. Ideas:
   skip a point when the detour to it is far longer than to the next one and it is not POI-pinned / a named stop; ask
   only when the difference is large and the point might matter (named, pinned).
-- **Navigate over the lock screen (owner 2026-10-28, bike)** – with the screen off during navigation, a short press of
-  the power button should show OnPath's Navigate map at once, without unlocking (like Google Maps / Komoot). Today only
-  the notification on the lock screen shows the next junction; the app has no `setShowWhenLocked`. Idea: while a tour
-  with a followed route runs, MainActivity `setShowWhenLocked(true)` (map only; Plan, Settings, My routes need unlock).
-  Fits with "screen off when no turn is near" (wake shortly before a turn: `setTurnScreenOn`).
 - **Navigate: pinch zoom vs direction-up – check on the phone (0.11.6)** – 0.11.6 sets MapLibre's
   `trackingGesturesManagement(true)` (zoom around the dot, higher two-finger move threshold); a deliberate turn still
   ends direction-up (owner wants that). If a pinch still drops it, the events trace names the gesture.
@@ -297,15 +279,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   unconfirmed: re-routing P0–P4, arrival / time estimate, junction vibration + lock screen, map freshness.
 
 ## Later
-- **GPX import as a plannable route, with as few points as possible (owner 2026-10-28; for the release at home, not
-  the next one)** – on importing a GPX (ridden before or received), ask: *load as GPX track* (follow it as today) or
-  *load as a plannable route*. The second turns the track into route points so it can be edited like a plan. Smart:
-  the fewest points for which our router (activity profile) reproduces the track – not 1000 points. Idea: start with
-  start + end, route, find where our route leaves the track by more than ~30–50 m, add one point there (on the track,
-  ideally at a junction), route again; repeat until the route follows the track (greedy, like Douglas–Peucker but
-  checked with the router). Round trips: start = end plus one point far along. Show how close the result is ("follows
-  the track to 98 %") and keep the original track as the grey GPX line to compare. Needs tests (synthetic tracks,
-  JVM routing harness) and a cap on routing calls per import.
 - **iPhone version (owner 2026-10-26)** – not now. Direction and order in `docs/design/multiplatform.md`: EN + DE via
   Compose Multiplatform resources (not Android `res/values`), module split on a quiet release, BRouter on iOS only
   when iOS is a real goal. Rule from today: core logic free of Android (`SharedCoreRuleTest`).
@@ -363,6 +336,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **0.12.0 (cloud, 2026-10-28 night, owner offline: "build what you can"):** GPX track → plan with few route points
+  (`routing/TrackToPlan`, track panel "Plan a route from it"; owner's ride 2565 → 7 points, 99 %), Navigate over the
+  lock screen (`ui/LockScreenNav`, unlock for Plan), ⚙ Navigation settings in Navigate, heights above sea level
+  (`recording/SeaLevel`), no vibration for slight bends on the bike, larger arrow in north-up (`onpath_bearing.xml`),
+  planned GPX with route points (<wpt>), release fix: test filter only on :app.
 - **0.11.9 (cloud, 2026-10-28):** position on the route (`navigation/SnapToRoute`, ≤ 25 m, default on, Settings →
   Navigation), larger facing arrow, no left / right map badge at a roundabout, trace counts roundabouts; JVM harness
   compiles again (`tools/routing/jvm-test/strings_stub.py`).
