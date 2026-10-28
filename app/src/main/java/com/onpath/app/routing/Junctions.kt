@@ -23,6 +23,10 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
     /** "Keep left" in the app's language (lock screen). */
     val text: String get() = Txt.s(res)
 
+    /** With the roundabout exit: "Roundabout · exit 2" (owner 2026-10-28); else [text]. */
+    fun text(exit: Int): String =
+        if (this == ROUNDABOUT && exit > 0) Txt.s(Res.string.nav_roundabout_exit, exit) else text
+
     enum class Side { LEFT, RIGHT }
 
     companion object {
@@ -47,7 +51,8 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
                 if (h.size < 2) continue
                 val i = h[0].toInt()
                 val cue = ofBRouter(h[1].toInt()) ?: continue
-                if (i in points.indices) points[i] = points[i].copy(turn = cue)
+                val exit = if (cue == ROUNDABOUT && h.size >= 4) kotlin.math.abs(h[3].toInt()) else 0
+                if (i in points.indices) points[i] = points[i].copy(turn = cue, exit = exit)
             }
         }
     }

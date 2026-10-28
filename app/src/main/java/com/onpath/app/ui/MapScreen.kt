@@ -448,6 +448,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     // re-sent on every fix: standing still on the route must keep the route direction (field test 2026-10-20: after
     // 15 s without progress the compass took over and, with the phone tilted / in the pocket, turned the map 180°)
     LaunchedEffect(c, routeAhead, nav?.shownAlongM, location) { c.setRouteHeading(routeAhead) }
+    // turn round: the U-turn sign where the way back starts (owner 2026-10-28)
+    LaunchedEffect(c, nav?.uTurnAt) { c.setUTurn(nav?.uTurnAt) }
     LaunchedEffect(c, (nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.id) {
         c.setNavProposal((nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.line)
     }

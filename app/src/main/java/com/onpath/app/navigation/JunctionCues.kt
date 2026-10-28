@@ -22,6 +22,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
     private var size = -1
     private var alongs = DoubleArray(0)
     private var cues = emptyList<JunctionCue>()
+    private var exits = IntArray(0)
     private var next = 0
 
     /** The cue to play now, or null. [alongM] = progress on [line] (null = not matched). */
@@ -51,6 +52,34 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         return null
     }
 
+    /** Like [nextAhead], as the lock screen says it: "Roundabout · exit 2" / "Left" and the distance. */
+    fun nextAheadText(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 1_000.0): Pair<String, Double>? {
+        load(line, version)
+        if (alongM == null) return null
+        for (i in alongs.indices) {
+            val d = alongs[i] - alongM
+            if (d < -PASSED_M) continue
+            return if (d <= maxM) cues[i].text(exits[i]) to d.coerceAtLeast(0.0) else null
+        }
+        return null
+    }
+
+    /**
+     * Next roundabout ahead within [maxM]: its exit (0 = unknown) and distance – the on-screen hint shows a roundabout
+     * sign instead of the plain arrow (owner 2026-10-28).
+     */
+    fun roundaboutAhead(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Pair<Int, Double>? {
+        load(line, version)
+        if (alongM == null) return null
+        for (i in alongs.indices) {
+            val d = alongs[i] - alongM
+            if (d < -PASSED_M) continue
+            if (d > maxM) return null
+            if (cues[i] == JunctionCue.ROUNDABOUT) return exits[i] to d.coerceAtLeast(0.0)
+        }
+        return null
+    }
+
     private fun load(line: List<GeoPoint>, v: Int) {
         if (v == version && line.size == size) return
         version = v; size = line.size
@@ -58,6 +87,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         val idx = line.indices.filter { line[it].turn != null }
         alongs = DoubleArray(idx.size) { cum[idx[it]] }
         cues = idx.map { line[it].turn!! }
+        exits = IntArray(idx.size) { line[idx[it]].exit }
         next = 0
     }
 
@@ -94,7 +124,7 @@ object NavNotification {
      * [status]: "Recording" / "Paused" / "Off route" / "Searching GPS…" ("Recording" is not repeated);
      * [junction] within [JUNCTION_TITLE_M] becomes the title; [clock] formats the arrival (epoch ms → "15:40").
      */
-    fun of(status: String, junction: Pair<JunctionCue, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
+    fun of(status: String, junction: Pair<String, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
            distance: (Double) -> String, duration: (Double) -> String, clock: (Long) -> String): Text? {
         if (toGoM == null) return null
         // the plain status (same text as RecordingService.notifStatus, so it works in every language)
@@ -102,7 +132,7 @@ object NavNotification {
         val distanceInTitle = recording && !(junction != null && junction.second <= JUNCTION_TITLE_M)
         val title = when {
             !recording -> status
-            !distanceInTitle -> Txt.s(Res.string.nav_turn_in, junction!!.first.text, distance(roundDist(junction.second)))
+            !distanceInTitle -> Txt.s(Res.string.nav_turn_in, junction!!.first, distance(roundDist(junction.second)))
             else -> Txt.s(Res.string.nav_notif_to_go, distance(toGoM))
         }
         // The distance is said once: in the title ("8.2 km to go") or, when the title is a status / junction, here.

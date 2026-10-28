@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.TurnSharpRight
 import androidx.compose.material.icons.filled.TurnSlightLeft
 import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnLeft
+import androidx.compose.material.icons.filled.RoundaboutRight
 import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -124,7 +125,10 @@ data class NavUi(
     val fixAgeS: Long? = null,
 )
 
-data class TurnHint(val kind: TurnKind, val distanceM: Double)
+/** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown) – owner 2026-10-28. */
+data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null) {
+    val label: String get() = roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+}
 
 /**
  * Off-route state for the screen. [arrowDeg] = direction to the route relative to the screen's "up" (map bearing
@@ -207,17 +211,17 @@ fun NavigateOverlay(
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15) str(Res.string.nav_turn_now, t.kind.label)
-        else str(Res.string.nav_turn_in, t.kind.label, turnDistance(t.distanceM))
+    val text = if (t.distanceM < 15) str(Res.string.nav_turn_now, t.label)
+        else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+            Icon(if (t.roundabout != null) Icons.Filled.RoundaboutRight else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.kind.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -573,6 +577,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val next = remember(turns, remaining, rec?.offRouteAlert) {
         nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
+    // a roundabout from the router's instructions wins over the drawn arrow when it comes first (owner 2026-10-28)
+    val cues = remember { com.onpath.app.navigation.JunctionCues() }
+    val roundabout = remember(line, remaining, nav?.version, rec?.offRouteAlert) {
+        if (line == null || remaining == null || rec?.offRouteAlert == true) null
+        else cues.roundaboutAhead(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))
+    }
     LaunchedEffect(next?.first) { vm.navTurn = next?.first }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
     val tt = rec?.time
@@ -596,7 +606,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
-        turn = next?.let { (t, d) -> TurnHint(t.kind, d) },
+        turn = turnHint(next?.let { (t, d) -> t.kind to d }, roundabout),
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
         movingS = tt?.movingS, breakS = tt?.breakS,
@@ -654,6 +664,17 @@ internal const val PACE_CLEAR = 0.15
 internal const val TURN_HIDE_OFF_M = 40.0
 
 /** The next turn ahead and its distance, or null (no line, no fix, off route, or > 500 m away). */
+/** The hint shown: the next roundabout when it comes before the next drawn turn (+ [ROUNDABOUT_SLACK_M]), else the turn. */
+internal fun turnHint(turn: Pair<TurnKind, Double>?, roundabout: Pair<Int, Double>?): TurnHint? = when {
+    roundabout != null && (turn == null || roundabout.second <= turn.second + ROUNDABOUT_SLACK_M) ->
+        TurnHint(turn?.first ?: TurnKind.RIGHT, roundabout.second, roundabout = roundabout.first)
+    turn != null -> TurnHint(turn.first, turn.second)
+    else -> null
+}
+
+/** A roundabout this little after the drawn turn is the same place (its entry bend). */
+internal const val ROUNDABOUT_SLACK_M = 40.0
+
 internal fun nextTurnHint(
     turns: List<com.onpath.app.routing.Turn>, totalM: Double, remainingM: Double?, offM: Double?, offRouteAlert: Boolean,
 ): Pair<com.onpath.app.routing.Turn, Double>? {

@@ -396,6 +396,11 @@ class ScreenshotTest {
         NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Kept, hint, arrowDeg = 160f)))
     }
 
+    /** Roundabout with its exit (owner 2026-10-28): roundabout sign + "Roundabout · exit 2 in 120 m". */
+    @Test fun navigateRoundabout() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0, roundabout = 2)))
+    }
+
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
     @Test fun navigateTurn() = paparazzi.snapshot {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)))

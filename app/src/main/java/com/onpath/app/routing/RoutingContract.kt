@@ -34,9 +34,12 @@ enum class Activity(private val labelRes: StringResource, private val lineRes: S
  * [WayAttrs]). Equality ignores [way] (two points at the same place are the same point), so lines with and without way
  * attributes compare as before.
  */
-/** [way]: way attributes from here on (time model); [turn]: a junction instruction at this point (navigation). */
+/**
+ * [way]: way attributes from here on (time model); [turn]: a junction instruction at this point (navigation);
+ * [exit]: with a roundabout [turn], the exit to take (1, 2, …; 0 = unknown).
+ */
 data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null,
-                    val turn: JunctionCue? = null) {
+                    val turn: JunctionCue? = null, val exit: Int = 0) {
     override fun equals(other: Any?): Boolean =
         this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
 

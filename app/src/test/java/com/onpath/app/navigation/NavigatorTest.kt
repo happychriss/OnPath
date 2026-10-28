@@ -49,6 +49,31 @@ class NavigatorTest {
         assertNotNull(r.nav.state.toRoute)
     }
 
+    /** Rode past the corner: the way back starts westwards, against the ride – "turn round" + the sign (owner 2026-10-28). */
+    @Test fun wayBackAgainstTheRideIsATurnRoundWithASign() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        val q = r.nav.prompt as NavPrompt.Question
+        assertTrue(q.turnRound)
+        assertEquals(q.line.first(), r.nav.state.uTurnAt)
+        r.nav.take(q.id)
+        assertNotNull("sign stays after taking it, until turned", r.nav.state.uTurnAt)
+        r.feed(walk(1150.0 to 0.0, 1080.0 to 0.0, t0Ms = 3_000_000L))
+        assertNull("turned and on the way: sign gone", r.nav.state.uTurnAt)
+    }
+
+    @Test fun wayBackAheadIsNoTurnRound() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        // a way on eastwards, away from where one came from
+        val leg = line(1150.0 to 0.0, 1300.0 to 0.0, 1300.0 to 200.0, 1000.0 to 200.0)
+        val l = RerouteTargets.splice(leg, NavLine(route), 1200.0)
+        r.nav.onResult(r.jobs.last().id, Rerouter.Found(l, com.onpath.app.data.Geo.length(leg), 1200.0, 300.0, 110.0, 5.0, null, emptySet(), 2, 15))
+        assertFalse((r.nav.prompt as NavPrompt.Question).turnRound)
+        assertNull(r.nav.state.uTurnAt)
+    }
+
     @Test fun questionStaysUntilAnsweredThenTakeNewRoute() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))

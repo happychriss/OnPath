@@ -85,6 +85,41 @@ class JunctionCuesTest {
         assertEquals(listOf(null, null, JunctionCue.RIGHT, null, null), pts.map { it.turn })
     }
 
+    // roundabouts with their exit (owner 2026-10-28): router row → point → session file → lock screen / hint
+    @Test fun roundaboutExitFromTheRouter() {
+        val pts = MutableList(5) { GeoPoint(46.0 + it * 0.001, 11.0) }
+        JunctionCue.apply(pts, arrayOf(doubleArrayOf(1.0, 13.0, 30.0, 2.0), doubleArrayOf(3.0, 5.0, 90.0, 0.0)))
+        assertEquals(JunctionCue.ROUNDABOUT, pts[1].turn); assertEquals(2, pts[1].exit)
+        assertEquals(0, pts[3].exit)
+        // an old three-value row (no exit) still works
+        JunctionCue.apply(pts, arrayOf(doubleArrayOf(2.0, 13.0, 30.0)))
+        assertEquals(JunctionCue.ROUNDABOUT, pts[2].turn); assertEquals(0, pts[2].exit)
+    }
+
+    @Test fun roundaboutText() {
+        assertEquals("Roundabout · exit 2", JunctionCue.ROUNDABOUT.text(2))
+        assertEquals("Roundabout", JunctionCue.ROUNDABOUT.text(0))
+        assertEquals("Left", JunctionCue.LEFT.text(3))
+    }
+
+    @Test fun roundaboutAheadAndLockScreenText() {
+        val l = line(600, mapOf(100 to JunctionCue.LEFT, 300 to JunctionCue.ROUNDABOUT)).toMutableList()
+        val i = l.indexOfFirst { it.turn == JunctionCue.ROUNDABOUT }
+        l[i] = l[i].copy(exit = 3)
+        val c = JunctionCues()
+        assertEquals(3 to 250.0, c.roundaboutAhead(l, 1, 50.0)!!.let { it.first to Math.round(it.second / 10) * 10.0 })
+        assertNull("passed", c.roundaboutAhead(l, 1, 320.0))
+        assertEquals("Left", c.nextAheadText(l, 1, 50.0)!!.first)
+        assertEquals("Roundabout · exit 3", c.nextAheadText(l, 1, 150.0)!!.first)
+    }
+
+    @Test fun sessionFileKeepsTheRoundaboutExit() {
+        val l = line(500, mapOf(200 to JunctionCue.ROUNDABOUT)).map { if (it.turn != null) it.copy(exit = 2) else it }
+        val back = NavSessionStore.fromJson(NavSessionStore.toJson(NavSession(NavKind.PLAN, "Test",
+            com.onpath.app.routing.Activity.BIKE_TOURING, 3, l)))!!
+        assertEquals(listOf(2), back.original.filter { it.turn != null }.map { it.exit })
+    }
+
     @Test fun sessionFileKeepsTheJunctions() {
         val l = line(500, mapOf(100 to JunctionCue.LEFT, 400 to JunctionCue.KEEP_RIGHT))
         val s = NavSession(NavKind.PLAN, "Test", com.onpath.app.routing.Activity.HIKE, 3, l, current = l.drop(5))
@@ -94,7 +129,7 @@ class JunctionCuesTest {
     }
 
     @Test fun lockScreenText() {
-        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j, 4230.0, 5100.0, 0L,
+        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j?.let { it.first.text to it.second }, 4230.0, 5100.0, 0L,
             distance = { if (it < 1000) "${it.toInt()} m" else "%.1f km".format(java.util.Locale.ROOT, it / 1000) },
             duration = { "1:25 h" }, clock = { "15:40" })!!
         assertEquals("Left in 120 m", t("Recording", JunctionCue.LEFT to 117.0).title)

@@ -13,6 +13,7 @@
     <string name="nav_dir_keep_right">Rechts halten</string>
     <string name="nav_dir_turn_around">Wenden</string>
     <string name="nav_dir_roundabout">Kreisverkehr</string>
+    <string name="nav_roundabout_exit">Kreisverkehr · %1$d. Ausfahrt</string>
     <string name="nav_turn_now">%1$s – jetzt</string>
     <string name="nav_turn_in">%1$s in %2$s</string>
     <string name="nav_turn_distance_now">Jetzt</string>

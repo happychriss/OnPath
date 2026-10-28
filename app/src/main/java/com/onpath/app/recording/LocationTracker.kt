@@ -156,6 +156,16 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
                     if (useNetwork) runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull() else null,
                 ).maxByOrNull { it.elapsedRealtimeNanos }
                 if (last != null) _location.value = last
+            } else {
+                // Back from the lock screen / background: the position we hold is from before. A tour keeps GPS on in
+                // the recording service, so the phone's last GPS fix is seconds old – show it at once (owner 2026-10-28).
+                // expected: no last GPS fix (GPS off / never used) – the next fix comes from the listener
+                val gps = runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
+                if (gps != null && gps.elapsedRealtimeNanos > _location.value!!.elapsedRealtimeNanos) {
+                    lastGpsElapsed = gps.elapsedRealtimeNanos / 1_000_000
+                    lastGpsAccuracy = if (gps.hasAccuracy()) gps.accuracy else 0f
+                    _location.value = gps
+                }
             }
         } catch (e: SecurityException) {
             Problems.error("gps", "Location updates refused (permission withdrawn?); no GPS fixes", e)

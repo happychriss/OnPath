@@ -8,17 +8,8 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
-- **Navigate: U-turn sign on the map (owner 2026-10-28; phase 2)** – 0.11.6 says "turn round" with a U-turn icon in
-  the reroute question / notification (`navigation/TurnRound`). Still open: the sign drawn on the map where one turns
-  (at the end of the road), checked on the phone.
 - **Shown GPX track: keep the square export button? (owner question, 2026-10-28)** – 0.11.6 removed "Export GPX"
   from the plan ⋯ menu; the track panel (`Panels.TrackPanel`) still has its export button beside "Start navigation".
-- **Navigate: roundabouts (owner 2026-10-28, bike)** – today a roundabout is only "Roundabout" with the right-side
-  cue (`routing/Junctions.kt` ROUNDABOUT, RNDB/RNLB); the exit is lost. Wanted: a roundabout symbol with the exit
-  ("2nd exit"), like Google's walking navigation – at least the symbol. BRouter's VoiceHint knows the exit number
-  (RNDB + exit / roundaboutExit); `btools/router/OnPathHints.java` passes only {index, cmd, angle} – add the exit,
-  store it on the point (`GeoPoint.turn` + exit), show symbol + "2nd exit" on the turn sign / lock screen (EN + DE),
-  and decide the vibration (e.g. the exit side or one long pulse). Test with a routed roundabout (JVM harness).
 - **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
   `navigation/RerouteTargets` offers the next stop (≤ 5 km ahead) and line points 500 / 1500 / 3000 m ahead, and picks
   among them (docs/plan-auto-reroute.md §5). Owner question: when must the way back go to the next route point, and when
@@ -34,11 +25,6 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 - **Navigate: pinch zoom vs direction-up – check on the phone (0.11.6)** – 0.11.6 sets MapLibre's
   `trackingGesturesManagement(true)` (zoom around the dot, higher two-finger move threshold); a deliberate turn still
   ends direction-up (owner wants that). If a pinch still drops it, the events trace names the gesture.
-- **Navigate: on opening the app the dot glides from an old place to the current one (owner 2026-10-28)** – wanted: the
-  dot appears at once where I am, no glide. Likely: the screen's tracker still holds the fix from before the app went
-  to the background (or `getLastKnownLocation` seeds an old one), and MapLibre animates the puck to the next fix
-  (`MapController.updateLocation` → `forceLocationUpdate`). Ideas: on resume take the recording service's latest fix
-  (it ran all the time), drop a seed older than a few seconds, and place the first fix after resume without animation.
 - **Field bug, bike: turn vibration never comes (owner 2026-10-28; phase 2)** – no vibration before turns, app on
   screen or locked. 0.11.6 added the 3-way setting (Off / Always / Screen locked), 1 = left / 2 = right and trace lines
   ("Followed line vN: X junctions", "Junction cue: … vibrated=…"). Next: read the trace of the next ride – 0 junctions →
@@ -286,6 +272,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **0.11.7 (cloud, 2026-10-28):** dot jumps to the current position after a pause (`map/PositionDot`, fresh last GPS
+  fix on start in `LocationTracker`), larger dot, softer / smaller turn badge (`TURN_HINT_COLOR`), U-turn sign on the
+  map (`NavState.uTurnAt`, until 40 m along the new line), roundabout exit from BRouter (`OnPathHints` 4th value →
+  `GeoPoint.exit` → session file "RNDB:2" → turn card "Roundabout · exit 2" + lock screen). Check on the phone: the
+  exit number on a real roundabout (only unit-tested with synthetic rows – no routing data in the cloud).
 - **0.11.6 bike field fixes (cloud, 2026-10-28):** pinch zoom keeps direction-up (`trackingGesturesManagement`), start
   zoom Hike 17 / bikes 16 (`AppMode.navStartZoom`), time + km to go side by side (`Format.durationShort`, FlowRow,
   `NavStripScreenshotTest`), junction vibration Off / Always / Screen locked + 1 = left / 2 = right + trace, "turn

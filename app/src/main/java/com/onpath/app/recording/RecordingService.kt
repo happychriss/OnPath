@@ -897,7 +897,7 @@ class RecordingService : Service() {
             val t = _state.value?.time
             val ok = t?.state == com.onpath.app.time.EstimateState.OK
             com.onpath.app.navigation.NavNotification.of(notifStatus(),
-                junctions.nextAhead(st.line, st.version, along), toGo,
+                junctions.nextAheadText(st.line, st.version, along), toGo,
                 t?.toGoS?.takeIf { ok }, t?.arrivalMs?.takeIf { ok },
                 distance = { Format.distance(it) }, duration = { Format.duration(it) },
                 clock = { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) })

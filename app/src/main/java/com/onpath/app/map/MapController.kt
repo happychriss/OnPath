@@ -44,6 +44,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     companion object {
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
+        /** Turn badge / U-turn sign: a soft blue, clearly lighter than the position dot (owner 2026-10-28). */
+        const val TURN_HINT_COLOR = "#7C8FD0"
         const val GPX_COLOR = "#8E24AA"       // purple
         const val REC_COLOR = "#EF6C00"       // orange
         const val NAV_ORIGINAL_COLOR = "#8A8F98" // grey: the original route while a new one is followed
@@ -68,6 +70,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         // --- Navigate: orientation + next-turn arrow (navigation agent) ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
+        /** U-turn sign where a way back starts by turning round (owner 2026-10-28). */
+        const val SRC_UTURN = "nav-uturn"
         const val SRC_MARK = "search-mark"
         /** MapLibre's own position layers (dot, accuracy circle, bearing) all start with this. */
         const val POSITION_LAYER_PREFIX = "mapbox-location"
@@ -86,11 +90,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val NAV_LAYERS = listOf(SRC_NAV_ORIGINAL, SRC_NAV_PROPOSAL, SRC_NAV_GUIDE)
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
-            "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN,
+            "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN, SRC_UTURN,
             "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS, SRC_SPOT,
         )
         private const val ARROW_IMAGE = "route-arrow"
         private const val IMG_TURN = "nav-turn-arrow"
+        private const val IMG_UTURN = "nav-uturn-sign"
         /** Map tilt in heading-up Navigate (degrees). 0 = flat; try 30–40 for a "navigation" look. */
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
@@ -194,6 +199,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         ))
         addNavOverlays()
         addTurnLayer()
+        addUTurnLayer()
         activateLocation()
     }
 
@@ -345,6 +351,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // pinch zoom while following must not end direction-up (owner 2026-10-28, bike): zoom around the
                 // dot and a higher move threshold for two fingers – only a real pan or a turn ends following
                 .trackingGesturesManagement(true)
+                // the dot a little larger (owner 2026-10-28: tell it apart from the turn badge at a glance)
+                .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
@@ -383,9 +391,20 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun updateLocation(loc: Location) {
         if (!locationReady) return
-        try { map.locationComponent.forceLocationUpdate(loc) } catch (e: Exception) { Problems.warn("map", "Position dot not updated", e) }
+        val now = android.os.SystemClock.elapsedRealtime()
+        val jump = PositionDot.jumps(lastFeedElapsed, now)
+        lastFeedElapsed = now
+        try {
+            map.locationComponent.forceLocationUpdate(loc)
+            // After a pause (screen locked, app in the background) MapLibre would glide the dot from the old place for
+            // as long as the pause (max 2 s). Fed again at once, the glide time is ~0: the dot is there (owner 2026-10-28).
+            if (jump) map.locationComponent.forceLocationUpdate(loc)
+        } catch (e: Exception) { Problems.warn("map", "Position dot not updated", e) }
         heading.onLocation(loc)
     }
+
+    /** When the dot was last fed ([updateLocation]); 0 = never. */
+    private var lastFeedElapsed = 0L
 
     /** Heading-up on a followed route: direction of the route ahead (null = compass / GPS bearing). Never throws. */
     fun setRouteHeading(bearingDeg: Double?) {
@@ -518,6 +537,63 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         })
     }
 
+    /** The U-turn sign at [p] (where to turn round), or none. Never throws. */
+    fun setUTurn(p: GeoPoint?) = guarded("U-turn sign") {
+        val src = source(SRC_UTURN) ?: return
+        src.setGeoJson(if (p == null) FeatureCollection.fromFeatures(emptyList())
+            else FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)))))
+    }
+
+    private fun addUTurnLayer() {
+        style.addImage(IMG_UTURN, uTurnSign())
+        style.addSource(GeoJsonSource(SRC_UTURN))
+        // upright on screen, just above the point (the dot sits on the point itself)
+        addBelowPosition(SymbolLayer(SRC_UTURN, SRC_UTURN).withProperties(
+            PF.iconImage(IMG_UTURN),
+            PF.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+            PF.iconOffset(arrayOf(0f, -6f)),
+            PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
+        ))
+    }
+
+    /** Round white badge with a soft blue ring and a U-turn arrow (up, round to the left, down with the head). */
+    private fun uTurnSign(): Bitmap {
+        val px = (34 * density).toInt()
+        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+        bmp.density = context.resources.displayMetrics.densityDpi
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val r = px / 2f
+        val u = px / 34f
+        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)
+        c.drawCircle(r, r, r, p)
+        p.color = android.graphics.Color.WHITE
+        c.drawCircle(r, r, r - 2.5f * density, p)
+        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 3.2f * u
+        p.strokeCap = Paint.Cap.ROUND
+        // right leg up, half circle over the top to the left, left leg down
+        val left = 11f * u; val right = 22f * u; val top = 9f * u; val bottom = 25f * u
+        val path = android.graphics.Path().apply {
+            moveTo(right, bottom)
+            lineTo(right, top + (right - left) / 2)
+            arcTo(android.graphics.RectF(left, top, right, top + (right - left)), 0f, -180f, false)
+            lineTo(left, bottom - 4f * u)
+        }
+        c.drawPath(path, p)
+        // arrow head at the bottom of the left leg
+        p.style = Paint.Style.FILL
+        val head = android.graphics.Path().apply {
+            moveTo(left - 4.5f * u, bottom - 5f * u)
+            lineTo(left + 4.5f * u, bottom - 5f * u)
+            lineTo(left, bottom + 1f * u)
+            close()
+        }
+        c.drawPath(head, p)
+        return bmp
+    }
+
     private fun addTurnLayer() {
         style.addImage(IMG_TURN, turnArrow())
         style.addSource(GeoJsonSource(SRC_TURN))
@@ -530,19 +606,22 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         ))
     }
 
-    /** Round white badge with a route-blue arrow pointing up (north); rotated by the layer. */
+    /**
+     * Round white badge with a soft blue arrow pointing up (north); rotated by the layer. Softer and a little smaller
+     * than before (owner 2026-10-28), so the strong blue position dot stands out from it.
+     */
     private fun turnArrow(): Bitmap {
-        val px = (30 * density).toInt()
+        val px = (26 * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         bmp.density = context.resources.displayMetrics.densityDpi
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         val r = px / 2f
-        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)
+        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)
         c.drawCircle(r, r, r, p)
         p.color = android.graphics.Color.WHITE
         c.drawCircle(r, r, r - 2.5f * density, p)
-        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)
+        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)
         val path = android.graphics.Path().apply {
             val u = px / 30f
             moveTo(r, 5 * u)               // tip
