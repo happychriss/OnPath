@@ -1,10 +1,17 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-26 – current release **0.11.5** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.11.6** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-28 – 0.11.6 (bike field fixes, phase 1).** Owner's notes from a bike ride, sorted with him into
+  phase 1 (built, unit + Paparazzi tested, no phone here) and phase 2 (needs the phone / ride data – backlog Next):
+  pinch keeps direction-up, start zoom Hike 17 / bikes 16, time + km to go side by side, junction vibration Off /
+  Always / Screen locked + 1 = left / 2 = right + trace lines, "turn round" in the reroute question, no Export GPX in
+  the plan ⋯, Wi-Fi fix when GPS is weak. **Next:** read the trace of the owner's evening ride (junction lines, pinch
+  gesture reasons); phase 2: vibration fix, dot glide on opening, Navigate over the lock screen, screen off far from
+  turns, U-turn sign on the map, roundabout exits, smarter rejoin (the release after).
 - **desktop (donald, captain), 2026-10-26 late – 0.11.5.** App bilingual EN + DE (`:strings` KMP module with Compose
   resources, `Txt` / `str()`, language override in Developer tools, guards `StringFilesTest` + `HardCodedTextRuleTest`,
   round trip `tools/i18n/i18n.py` – docs/i18n.md; owner reviewed the sheet in Drive). Region look r3b: greener land
