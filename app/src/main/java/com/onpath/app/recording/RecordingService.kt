@@ -243,6 +243,7 @@ class RecordingService : Service() {
                 tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
+                firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 saveTrip()
             }
@@ -360,7 +361,7 @@ class RecordingService : Service() {
         lastGoodFixElapsed = nowEl
         val gapWhy = gapWatch.why()
         gapWatch.reset()
-        val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
+        val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
         try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
@@ -586,6 +587,35 @@ class RecordingService : Service() {
             val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
             Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
         } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
+    }
+
+    // ---- heights above sea level (SeaLevel; owner's ride 2026-10-28) ----
+    @Volatile private var geoid: SeaLevel.Offset? = null
+    @Volatile private var geoidJob = false
+    private var firstFixElapsed = 0L
+    private val geoidExec by lazy { Executors.newSingleThreadExecutor() }
+
+    private fun seaLevelHeight(loc: Location, nowEl: Long): Double? {
+        if (firstFixElapsed == 0L) firstFixElapsed = nowEl
+        val ell = if (loc.hasAltitude()) loc.altitude else null
+        val msl = if (Build.VERSION.SDK_INT >= 34 && loc.hasMslAltitude()) loc.mslAltitudeMeters else null
+        if (ell != null && msl == null && Build.VERSION.SDK_INT >= 34 && !geoidJob && SeaLevel.needsOffset(geoid, loc.latitude, loc.longitude)) {
+            geoidJob = true
+            val copy = Location(loc)
+            // the converter reads its geoid data from disk: never on the main thread
+            geoidExec.execute {
+                try {
+                    android.location.altitude.AltitudeConverter().addMslAltitudeToLocation(applicationContext, copy)
+                    if (copy.hasMslAltitude()) {
+                        geoid = SeaLevel.Offset(copy.latitude, copy.longitude, copy.altitude - copy.mslAltitudeMeters)
+                        Problems.trace("gps", "Geoid offset here: ${"%.1f".format(geoid!!.metres)} m (heights now above sea level)")
+                    }
+                } catch (e: Exception) {
+                    Problems.warn("gps", "Sea-level height not available; heights stay as the GPS gives them", e)
+                } finally { geoidJob = false }
+            }
+        }
+        return SeaLevel.height(ell, msl, geoid, loc.latitude, loc.longitude, nowEl - firstFixElapsed)
     }
 
     /** Screen off or the lock screen showing (junction vibration "only when locked"). */
