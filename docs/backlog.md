@@ -19,8 +19,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   `dismissed(...)`, the reason is in the events trace). Ideas: `LocationComponentOptions.trackingGesturesManagement(true)`
   (zoom / rotate around the dot, higher move thresholds for multi-finger gestures – not set today), a higher rotate
   threshold or no rotate gesture while heading-up in Navigate. Test: E2E pinch on the Navigate map keeps the mode.
-- **Navigate: start zoom (owner question 2026-10-28)** – today `setCamera` keeps the Plan zoom and only zooms to 15 when
-  the map is further out than 13; no zoom per activity or speed. Owner to decide (see the chat answer).
+- **Navigate: fixed start zoom per activity (owner 2026-10-28)** – today `setCamera` keeps the Plan zoom and only zooms
+  to 15 when the map is further out than 13. **Decided (owner):** on entering Navigate, Hike → zoom 17, all bikes → 16;
+  after that the user's own zoom stays until the next start of navigation. Not speed-based.
 - **Navigate: on opening the app the dot glides from an old place to the current one (owner 2026-10-28)** – wanted: the
   dot appears at once where I am, no glide. Likely: the screen's tracker still holds the fix from before the app went
   to the background (or `getLastKnownLocation` seeds an old one), and MapLibre animates the puck to the next fix
