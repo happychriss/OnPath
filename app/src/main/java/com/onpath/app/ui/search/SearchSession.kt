@@ -100,10 +100,14 @@ class SearchSession(
     private var onlineJob: Job? = null
     private var generation = 0
 
-    /** Called when the view opens: refreshes recents, (re)builds the index if the data files changed. */
+    /**
+     * Called when the view opens: a fresh, empty search (owner 2026-10-28: the old text stayed when the search was
+     * opened again) with the recent places; (re)builds the index if the data files changed.
+     */
     fun onOpen() {
         val ctx = context()
-        ui = ui.copy(recent = recentHits(ctx), hasRoute = ctx.route != null)
+        ui = ui.copy(query = "", category = null, recent = recentHits(ctx), hasRoute = ctx.route != null)
+        run() // clears the old results and stops a search still on its way
         scope.launch { ensureIndex(force = true); if (ui.active) run() }
     }
 
@@ -243,7 +247,7 @@ class SearchSession(
                 try {
                     val r = online.search(text, bLat, bLon, 20)
                     val towns = OnlineRanking.queryTowns(text, named)
-                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns).take(10), towns, bLat, bLon)
+                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns, text).take(10), towns, bLat, bLon)
                 } catch (e: Exception) {
                     Problems.info("search", "Online search failed (offline or server unreachable)", e); null
                 }

@@ -41,8 +41,25 @@ class PhotonProvider(
         return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
     }
 
+    /** The same search for places only (towns, regions, countries) – far big cities are not lost behind shops. */
+    fun placesUrl(query: String, lat: Double, lon: Double, limit: Int): String =
+        url(query, lat, lon, limit) + PLACE_LAYERS.joinToString("") { "&layer=$it" }
+
+    /**
+     * Two requests (owner 2026-10-28: "New York" from South Tyrol gave ten nearby shops and no city – the location
+     * bias wins over the far city): the normal one, and one for places only, merged with [mergePlaces]. The places
+     * request failing never costs the normal results.
+     */
     override fun search(query: String, lat: Double, lon: Double, limit: Int): List<Place> {
-        val c = URL(url(query, lat, lon, limit)).openConnection() as HttpURLConnection
+        val main = get(url(query, lat, lon, limit))
+        val places = try { get(placesUrl(query, lat, lon, PLACES_LIMIT)) } catch (e: Exception) {
+            Problems.info("search", "Online search for places failed; shown without it", e); emptyList()
+        }
+        return mergePlaces(query, places, main)
+    }
+
+    private fun get(u: String): List<Place> {
+        val c = URL(u).openConnection() as HttpURLConnection
         try {
             c.connectTimeout = timeoutMs; c.readTimeout = timeoutMs
             c.setRequestProperty("User-Agent", userAgent)
@@ -56,6 +73,22 @@ class PhotonProvider(
     }
 
     companion object {
+        /** Photon layers of the places request. */
+        val PLACE_LAYERS = listOf("city", "locality", "district", "county", "state", "country")
+        const val PLACES_LIMIT = 5
+
+        /**
+         * Places whose name is the query (or starts with it) go first, then the normal results; the same place twice
+         * (same name, < 100 m) only once. Pure.
+         */
+        fun mergePlaces(query: String, places: List<Place>, main: List<Place>): List<Place> {
+            val q = SearchText.normalize(query)
+            val named = places.filter { p -> (listOfNotNull(p.name) + p.alt).any { SearchText.normalize(it).startsWith(q) } }
+            val out = ArrayList<Place>(named)
+            for (p in main) if (out.none { it.id == p.id || SearchMerge.samePlace(it, p) }) out += p
+            return out
+        }
+
         fun userAgent(version: String) = "OnPath-Android/$version (github.com/happychriss/OnPath)"
 
         /** A coordinate rounded to 2 decimals (~1.1 km latitude) for the request; "46.68". */
@@ -189,14 +222,22 @@ object PhotonParser {
  * named in the query wins, then the user's country, then distance; Photon's own order breaks ties.
  */
 object OnlineRanking {
-    fun rank(results: List<Place>, refLat: Double, refLon: Double, userCc: String?, queryTowns: Set<String>): List<Place> =
-        results.withIndex().sortedByDescending { (i, p) ->
+    fun rank(results: List<Place>, refLat: Double, refLon: Double, userCc: String?, queryTowns: Set<String>,
+             query: String = ""): List<Place> {
+        val q = SearchText.normalize(query)
+        return results.withIndex().sortedByDescending { (i, p) ->
             val d = Geo.distance(refLat, refLon, p.lat, p.lon)
             var s = -1.5 * i - SearchRanking.distancePenalty(d)
             if (userCc != null && p.cc == userCc) s += 15.0
             if (p.town != null && SearchText.normalize(p.town) in queryTowns) s += 30.0
+            // a town / city named exactly like the query is what was meant, however far ("New York", owner 2026-10-28)
+            if (q.isNotEmpty() && p.kind == "place" && p.name != null && SearchText.normalize(p.name) == q) s += EXACT_PLACE_BONUS
             s
         }.map { it.value }
+    }
+
+    /** Larger than the distance penalty of the far side of the world (10 · ln(20 000 km) ≈ 99). */
+    const val EXACT_PLACE_BONUS = 100.0
 
     /** Town names a query may mean: its words and word pairs, plus all language variants of known towns. */
     fun queryTowns(text: String, known: List<AddressFile.Town>): Set<String> {
