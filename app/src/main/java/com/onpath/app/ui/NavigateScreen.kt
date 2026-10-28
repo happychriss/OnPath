@@ -583,7 +583,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         if (line == null || remaining == null || rec?.offRouteAlert == true) null
         else cues.roundaboutAhead(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))
     }
-    LaunchedEffect(next?.first) { vm.navTurn = next?.first }
+    // the map badge shows the drawn arrow – not while the card says "Roundabout" (field 2026-10-28: the badge said
+    // left / right at a roundabout)
+    val shownTurn = next?.first?.takeIf { turnHint(next.first.kind to next.second, roundabout)?.roundabout == null }
+    LaunchedEffect(shownTurn) { vm.navTurn = shownTurn }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
     val tt = rec?.time
     // the service's calm, learned value while it knows the line; else the plain model from here

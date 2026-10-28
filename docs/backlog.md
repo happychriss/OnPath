@@ -8,11 +8,21 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Recorded heights are ~45 m too high (owner's ride 2026-10-28, Rosellen → Düsseldorf)** – GPS heights 81–135 m on a
+  ride at ~35–45 m: Android's `Location.altitude` is above the WGS84 ellipsoid, and the geoid there is ~+47 m. Plus a
+  settling drop 135 → 94 m in the first 12 s (false descent). Fix ideas: Android 14+ `AltitudeConverter.
+  addMslAltitudeToLocation` (off the main thread) or `Location.mslAltitudeMeters` when the chip gives it; better still
+  the heights from our terrain tiles (DEM) for ascent / descent; ignore the first fixes' heights. Ascent / descent and the
+  elevation profile of recorded tours depend on it.
 - **Field bug (0.11.7, bike, 2026-10-28 evening): roundabout sign never shown** – 2–3 roundabouts ridden, the turn card
   showed only left / right. BRouter does deliver them: 25 random Hilden bike routes (JVM harness, E5_N50) gave 13
   ROUNDABOUT cues with exits 2–3, mostly within ±40 m of a drawn turn (so `turnHint` should pick them). Next: the
   owner's planned + ridden GPX and the trace ("Followed line vN: X junctions, R roundabouts" since 0.11.9) – 0 → the
   followed line had no turn data (GPX track? old session?); > 0 → the screen logic. Test first, then fix.
+  Owner's files (2026-10-28): plan Rosellen → Pozangmatcha 13.9 km; re-routed in the harness it has 2 roundabouts
+  (km 2.2 and 11.1, exit 2 each) and the card logic shows "Roundabout · exit 2" from 200 m. Found and fixed (0.11.9):
+  the map badge kept the drawn left / right arrow at a roundabout. Ride left the plan at km 0.5–0.8 and 6.0–6.8 (up
+  to 380 m) – also a real case for "smarter rejoin".
 - **Position on the route ("snap to route") as an option (owner question 2026-10-28, like Komoot)** – today the dot
   is always the GPS fix. Idea: Settings → Navigation "Position: on the route / GPS"; on the route = the dot drawn at the
   matched point on the followed line (`Navigator` progress → `NavLine` point) while within ~25 m of it, the real fix as
