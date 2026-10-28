@@ -12,6 +12,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
   rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
   → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Navigate strip: km to go as big as the time, side by side (owner 2026-10-28, bike)** – today in
+  `NavigateScreen.kt` (~line 306) the time to go is 22 sp (`titleLarge`) and the distance to go sits under it at 16 sp
+  (`bodyLarge`); wanted: "1:25 h  18,4 km" on one line, both `titleLarge`. The code comment says both would not fit
+  beside the 30 sp arrival clock – check with Paparazzi on a small phone (360 dp) and long values ("10:25 h  123 km");
+  if it does not fit there, shorten (no "h", km without decimal from 100 km) rather than shrink the text.
 - **Navigate over the lock screen (owner 2026-10-28, bike)** – with the screen off during navigation, a short press of
   the power button should show OnPath's Navigate map at once, without unlocking (like Google Maps / Komoot). Today only
   the notification on the lock screen shows the next junction; the app has no `setShowWhenLocked`. Idea: while a tour
