@@ -8,6 +8,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Search: big far cities lost behind local shops (owner 2026-10-28, found while trying New York)** – Photon with our
+  location bias (`OnlineSearch.PhotonProvider.url`: zoom 12, bias 0.3, lang de) answers "New York" from South Tyrol with
+  10 shops / restaurants ("New York Bistro", "New Yorker") and no city; with `&layer=city&layer=state` the city comes
+  first. Oslo / Nuuk work. Fix idea: a second request with the place layers only (city, town, village, county, state,
+  country), merged in; an exact-name place ranks above a shop of the same name. Test with recorded Photon answers.
 - **Shown GPX track: keep the square export button? (owner question, 2026-10-28)** – 0.11.6 removed "Export GPX"
   from the plan ⋯ menu; the track panel (`Panels.TrackPanel`) still has its export button beside "Start navigation".
 - **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
