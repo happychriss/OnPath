@@ -1,10 +1,13 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-28 – current release **0.11.6** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.11.7** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-28 – 0.11.7 (owner pulled three phase-2 items forward).** Dot no glide after a pause, larger dot +
+  softer turn badge, U-turn sign on the map, roundabout exit on the turn card / lock screen. Still phase 2: vibration
+  fix (needs the ride trace), Navigate over the lock screen, screen off far from turns, smarter rejoin.
 - **cloud, 2026-10-28 – 0.11.6 (bike field fixes, phase 1).** Owner's notes from a bike ride, sorted with him into
   phase 1 (built, unit + Paparazzi tested, no phone here) and phase 2 (needs the phone / ride data – backlog Next):
   pinch keeps direction-up, start zoom Hike 17 / bikes 16, time + km to go side by side, junction vibration Off /
