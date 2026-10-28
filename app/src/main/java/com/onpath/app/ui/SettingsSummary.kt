@@ -71,8 +71,9 @@ object SettingsSummary {
         Txt.s(if (s.navHeadingUp) Res.string.settings_map_travel else Res.string.settings_map_north)))
 
     fun navigation(s: AppSettings): Summary = Summary(
-        if (!s.offRouteWarning) Txt.s(Res.string.settings_sum_nav_off, onOff(s.junctionVibrate))
-        else Txt.s(Res.string.settings_sum_nav, s.offRouteM, onOff(s.offRouteVibrate || s.junctionVibrate)))
+        if (!s.offRouteWarning) Txt.s(Res.string.settings_sum_nav_off, onOff(s.junctionVibration != com.onpath.app.data.JunctionVibration.OFF))
+        else Txt.s(Res.string.settings_sum_nav, s.offRouteM,
+            onOff(s.offRouteVibrate || s.junctionVibration != com.onpath.app.data.JunctionVibration.OFF)))
 
     fun offlineMaps(ui: OfflineMapsUi): Summary {
         val waiting = ui.waiting?.let { w -> (w.regions + w.routingParts).takeIf { it > 0 } }

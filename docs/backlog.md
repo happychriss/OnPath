@@ -5,21 +5,14 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] 0.11.6 bike field fixes (owner 2026-10-28, phase 1): pinch keeps direction-up, start zoom per activity, km beside time, junction vibration setting + 1/2 pattern + trace, turn-round in the reroute question, no Export GPX in the plan ⋯, Wi-Fi fix when GPS is weak – since 2026-10-28
 
 
 ## Next (open, checked against the code 2026-10-23)
-- **Navigate: U-turn sign when the way back starts by turning round (owner 2026-10-28; next release)** – the earlier
-  report "take new route does nothing" was most likely **not** a bug (owner, same day): the re-route was taken, but it
-  sent the rider back along the same way, so the line on the map looked unchanged. Wanted: when the new route begins
-  by going back the way one came (or ends in a dead end and turns), draw a clear U-turn sign at the turning point and
-  say it in the question card / notification ("Turn round"). Test: a reroute whose first part reverses the approach
-  shows the sign; a normal reroute does not. Junction vibration (other item) should give the turn-round cue too.
-- **Plan: no "Export GPX" next to saving (owner 2026-10-28, small)** – exporting right when saving a route only
-  clutters; export stays in My routes (⋮ Export GPX / Export all). Today "Export GPX" sits right under "Save route" in
-  the plan sheet's ⋯ menu (`PlanPanel.SheetMenuItems`), and the shown-track panel has a square export button beside
-  "Start navigation" (`Panels.TrackPanel`). Remove the ⋯ entry; the track panel's button too unless the owner wants
-  it kept (check with him when building – he was on the bike). Update Paparazzi snapshots and `PlanCallbacks.onExport`.
+- **Navigate: U-turn sign on the map (owner 2026-10-28; phase 2)** – 0.11.6 says "turn round" with a U-turn icon in
+  the reroute question / notification (`navigation/TurnRound`). Still open: the sign drawn on the map where one turns
+  (at the end of the road), checked on the phone.
+- **Shown GPX track: keep the square export button? (owner question, 2026-10-28)** – 0.11.6 removed "Export GPX"
+  from the plan ⋯ menu; the track panel (`Panels.TrackPanel`) still has its export button beside "Start navigation".
 - **Navigate: roundabouts (owner 2026-10-28, bike)** – today a roundabout is only "Roundabout" with the right-side
   cue (`routing/Junctions.kt` ROUNDABOUT, RNDB/RNLB); the exit is lost. Wanted: a roundabout symbol with the exit
   ("2nd exit"), like Google's walking navigation – at least the symbol. BRouter's VoiceHint knows the exit number
@@ -33,39 +26,24 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   owner's bike ride of 2026-10-28 (events trace + recorded track) and sample routes the owner will upload. Ideas:
   skip a point when the detour to it is far longer than to the next one and it is not POI-pinned / a named stop; ask
   only when the difference is large and the point might matter (named, pinned).
-- **Navigate strip: km to go as big as the time, side by side (owner 2026-10-28, bike)** – today in
-  `NavigateScreen.kt` (~line 306) the time to go is 22 sp (`titleLarge`) and the distance to go sits under it at 16 sp
-  (`bodyLarge`); wanted: "1:25 h  18,4 km" on one line, both `titleLarge`. The code comment says both would not fit
-  beside the 30 sp arrival clock – check with Paparazzi on a small phone (360 dp) and long values ("10:25 h  123 km");
-  if it does not fit there, shorten (no "h", km without decimal from 100 km) rather than shrink the text.
 - **Navigate over the lock screen (owner 2026-10-28, bike)** – with the screen off during navigation, a short press of
   the power button should show OnPath's Navigate map at once, without unlocking (like Google Maps / Komoot). Today only
   the notification on the lock screen shows the next junction; the app has no `setShowWhenLocked`. Idea: while a tour
   with a followed route runs, MainActivity `setShowWhenLocked(true)` (map only; Plan, Settings, My routes need unlock).
   Fits with "screen off when no turn is near" (wake shortly before a turn: `setTurnScreenOn`).
-- **Navigate: pinch zoom ends "direction up" (owner 2026-10-28, bike)** – zooming in / out with two fingers, without
-  turning, drops the camera from walking-direction-up (TRACKING_COMPASS) to free; very annoying while riding. Wanted:
-  zoom only → keep following and direction up; only a pan or a clear turn ends it. Likely cause: a pinch always has a
-  little rotation and a moving focal point, and MapLibre ends tracking for either (`onCameraTrackingDismissed` →
-  `dismissed(...)`, the reason is in the events trace). Ideas: `LocationComponentOptions.trackingGesturesManagement(true)`
-  (zoom / rotate around the dot, higher move thresholds for multi-finger gestures – not set today), a higher rotate
-  threshold or no rotate gesture while heading-up in Navigate. Test: E2E pinch on the Navigate map keeps the mode.
-- **Navigate: fixed start zoom per activity (owner 2026-10-28)** – today `setCamera` keeps the Plan zoom and only zooms
-  to 15 when the map is further out than 13. **Decided (owner):** on entering Navigate, Hike → zoom 17, all bikes → 16;
-  after that the user's own zoom stays until the next start of navigation. Not speed-based.
+- **Navigate: pinch zoom vs direction-up – check on the phone (0.11.6)** – 0.11.6 sets MapLibre's
+  `trackingGesturesManagement(true)` (zoom around the dot, higher two-finger move threshold); a deliberate turn still
+  ends direction-up (owner wants that). If a pinch still drops it, the events trace names the gesture.
 - **Navigate: on opening the app the dot glides from an old place to the current one (owner 2026-10-28)** – wanted: the
   dot appears at once where I am, no glide. Likely: the screen's tracker still holds the fix from before the app went
   to the background (or `getLastKnownLocation` seeds an old one), and MapLibre animates the puck to the next fix
   (`MapController.updateLocation` → `forceLocationUpdate`). Ideas: on resume take the recording service's latest fix
   (it ran all the time), drop a seed older than a few seconds, and place the first fix after resume without animation.
-- **Field bug, bike: turn vibration never comes (owner 2026-10-28)** – no vibration before turns, neither with the app on
-  screen nor with the phone locked. Core feature rule: first a test, then the fix. Path: `RecordingService.junctionCue`
-  → `navigation/JunctionCues` (ahead distance `BIKE_AHEAD_M`, `onRoute` needs no prompt + `shownAlongM`) →
-  `vibrate(…, USAGE_ALARM)`; junctions come from `routing/Junctions.kt` / the navigation session. First look in the events
-  trace of that ride for "Junction cue:" lines (missing → cue logic / no junctions; present → the vibration itself).
-  **Wanted with the fix (owner):** the setting becomes three choices – *Off* / *Always* / *Only when the screen is locked*
-  – and the pattern becomes **1 pulse = left, 2 pulses = right** (today 2 = left, 3 = right; update `JunctionCues.pattern`,
-  its tests and the Settings explanation in EN + DE).
+- **Field bug, bike: turn vibration never comes (owner 2026-10-28; phase 2)** – no vibration before turns, app on
+  screen or locked. 0.11.6 added the 3-way setting (Off / Always / Screen locked), 1 = left / 2 = right and trace lines
+  ("Followed line vN: X junctions", "Junction cue: … vibrated=…"). Next: read the trace of the next ride – 0 junctions →
+  a followed GPX track (no junctions) or lost turns; cues without "vibrated=true" → the vibrator; no cue lines → cue
+  logic. Core feature rule: a test that reproduces it, then the fix.
 - **Screen off while cycling when no turn is near (owner 2026-10-28, idea)** – today "keep screen on" (Settings →
   Navigation, `KeepScreenOn` in `PocketScreen.kt`) keeps it on the whole time, which costs battery on the bike. Wanted: a
   setting so the display goes off when the next turn is far away (e.g. > 500 m / 1 km) and wakes again shortly before it
@@ -308,6 +286,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **0.11.6 bike field fixes (cloud, 2026-10-28):** pinch zoom keeps direction-up (`trackingGesturesManagement`), start
+  zoom Hike 17 / bikes 16 (`AppMode.navStartZoom`), time + km to go side by side (`Format.durationShort`, FlowRow,
+  `NavStripScreenshotTest`), junction vibration Off / Always / Screen locked + 1 = left / 2 = right + trace, "turn
+  round" in the reroute question (`TurnRound`), no Export GPX in the plan ⋯, Wi-Fi fix when GPS is weak
+  (`useNetworkFix` / `showGpsFix`). The "take new route does nothing" report was a way back on the same road.
 - **[desktop] Bug: an old plan link came back after a reinstall (2026-10-27):** Android restarts the screen with the
   task's first intent (a VIEW link handled long ago) – it was handled again ("This plan link can't be read").
   `IncomingIntent`: a link / share / GPX is handled once (fingerprint of the last one in the prefs); onNewIntent always

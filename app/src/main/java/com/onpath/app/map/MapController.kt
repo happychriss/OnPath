@@ -342,6 +342,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .staleStateTimeout(30_000)
                 // HeadingEngine turns smoothly at display rate itself (polish audit B1)
                 .compassAnimationEnabled(false)
+                // pinch zoom while following must not end direction-up (owner 2026-10-28, bike): zoom around the
+                // dot and a higher move threshold for two fingers – only a real pan or a turn ends following
+                .trackingGesturesManagement(true)
                 .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
@@ -390,7 +393,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /** Plan mode follow (north stays where the user left it). */
-    fun setFollow(follow: Boolean, onDismissed: () -> Unit) = setCamera(follow, navigating = false, headingUp = false, onDismissed)
+    fun setFollow(follow: Boolean, onDismissed: () -> Unit) { setCamera(follow, navigating = false, headingUp = false, onDismissed = onDismissed) }
 
     /**
      * Camera and puck for both modes. Following: the camera tracks the position – walking direction up
@@ -400,8 +403,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * The puck is always the small dot with a direction triangle ([PUCK_MODE]); the compass sensor runs while
      * the map is visible (MapLibre releases it when the map stops).
      */
-    fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, onDismissed: () -> Unit) {
-        if (!locationReady) return
+    fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, startZoom: Double? = null,
+                  onDismissed: () -> Unit): Boolean {
+        if (!locationReady) return false
+        var zoomed = false
         try {
             val lc = map.locationComponent
             onTrackingDismissed = null   // no callbacks for our own mode switches
@@ -422,7 +427,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 lc.renderMode = if (headingUp) RenderMode.NORMAL else PUCK_MODE
                 facing.visible = false
                 wantedCameraMode = mode
-                val zoom = if (map.cameraPosition.zoom < 13) 15.0 else null
+                // Navigate's start zoom (AppMode.navStartZoom) once; else only zoom in when far out
+                val zoom = startZoom ?: if (map.cameraPosition.zoom < 13) 15.0 else null
+                zoomed = true
                 // a north-up animation from Plan must not run on into the walking-direction camera
                 if (mode == CameraMode.TRACKING_COMPASS) map.cancelTransitions()
                 val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
@@ -456,6 +463,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         } catch (e: Exception) {
             Problems.warn("map", "Map camera mode not changed (follow / heading-up)", e)
         }
+        return zoomed
     }
 
     private fun pad(top: Double) {

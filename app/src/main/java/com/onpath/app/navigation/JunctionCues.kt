@@ -67,11 +67,19 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         const val MERGE_M = 50.0
         const val PASSED_M = 5.0
 
-        /** Vibration timings (off, on, off, on …): 2 short pulses = left, 3 = right. */
+        /** Junctions on [line] – traced once per followed line ("0" = a GPX track / straight line: nothing to cue). */
+        fun count(line: List<GeoPoint>): Int = line.count { it.turn != null }
+
+        /**
+         * Vibration timings (off, on, off, on …): 1 pulse = left, 2 pulses = right (owner 2026-10-28). Pulses of a
+         * quarter second, so one is felt through a jacket on the bike, the gap clearly apart.
+         */
         fun pattern(side: JunctionCue.Side): LongArray = when (side) {
-            JunctionCue.Side.LEFT -> longArrayOf(0, 110, 140, 110)
-            JunctionCue.Side.RIGHT -> longArrayOf(0, 110, 140, 110, 140, 110)
+            JunctionCue.Side.LEFT -> longArrayOf(0, PULSE_MS)
+            JunctionCue.Side.RIGHT -> longArrayOf(0, PULSE_MS, GAP_MS, PULSE_MS)
         }
+        const val PULSE_MS = 250L
+        const val GAP_MS = 220L
     }
 }
 

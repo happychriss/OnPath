@@ -67,7 +67,10 @@
     <string name="settings_nav_vibrate_off">Vibrieren abseits der Route</string>
     <string name="settings_nav_vibrate_off_sub">Spürbar in der Tasche, auch bei ausgeschaltetem Bildschirm</string>
     <string name="settings_nav_junction">Vibrieren an Abzweigungen</string>
-    <string name="settings_nav_junction_sub">Vor einer Abzweigung der Route: 2× links, 3× rechts</string>
+    <string name="settings_nav_junction_sub">Vor einer Abzweigung der Route: 1× links, 2× rechts</string>
+    <string name="settings_nav_junction_off">Aus</string>
+    <string name="settings_nav_junction_always">Immer</string>
+    <string name="settings_nav_junction_locked">Nur gesperrt</string>
     <string name="settings_nav_screen_on">Bildschirm beim Navigieren anlassen</string>
     <string name="settings_nav_screen_on_sub">Nur beim Folgen einer Route; in der Tasche aus</string>
     <string name="settings_nav_battery_hint">Aufzeichnen bei ausgeschaltetem Bildschirm: am besten mit Akku „Nicht eingeschränkt“.</string>

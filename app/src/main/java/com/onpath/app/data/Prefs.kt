@@ -82,7 +82,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             hillshade = sp.getBoolean("hillshade", true),
             offRouteWarning = sp.getBoolean("offRouteOn", true),
             offRouteVibrate = sp.getBoolean("offRouteVibrate", true),
-            junctionVibrate = sp.getBoolean("junctionVibrate", true),
+            junctionVibration = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
@@ -99,7 +99,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putBoolean("hillshade", v.hillshade)
             .putBoolean("offRouteOn", v.offRouteWarning)
             .putBoolean("offRouteVibrate", v.offRouteVibrate)
-            .putBoolean("junctionVibrate", v.junctionVibrate)
+            .putString("junctionVibration", v.junctionVibration.name).remove("junctionVibrate")
             .putInt("offRouteM", v.offRouteM)
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)

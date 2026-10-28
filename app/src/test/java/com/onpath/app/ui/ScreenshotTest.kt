@@ -374,6 +374,11 @@ class ScreenshotTest {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(extraM = -800.0, rejoinInM = 1_250.0, startOffM = 300.0), hint)))
     }
 
+    /** The way back starts by turning round (owner 2026-10-28): U-turn sign + "turn round" in the question. */
+    @Test fun navigateRerouteQuestionTurnRound() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(turnRound = true), hint)))
+    }
+
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
     @Test fun navigateOffRouteNoWay() = paparazzi.snapshot {
         NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_WAY),

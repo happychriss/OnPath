@@ -124,6 +124,8 @@ class RecordingService : Service() {
     private var navigator: Navigator? = null
     /** Vibration before junctions of the followed line + the next junction for the lock screen (owner 2026-10-22). */
     private val junctions = com.onpath.app.navigation.JunctionCues()
+    /** Line version whose junction count was traced (field 2026-10-28: "no vibration at all" – see why in the trace). */
+    private var junctionsTracedVersion = Int.MIN_VALUE
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
     private val routeExec = Executors.newSingleThreadExecutor()
     private val routeDispatcher = routeExec.asCoroutineDispatcher()
@@ -563,24 +565,45 @@ class RecordingService : Service() {
         com.onpath.app.data.AppRouting.get(this).ensure(com.onpath.app.data.RoutingTiles.forPoints(listOf(g), T5_ROUTING_MARGIN_M))
     }
 
-    /** Before a junction of the followed line: 2 short pulses = left, 3 = right ([JunctionCues]). */
+    /** Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. */
     private fun junctionCue() {
         val st = navigator?.state ?: return
         junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
             com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
+        if (st.version != junctionsTracedVersion) {
+            junctionsTracedVersion = st.version
+            val n = com.onpath.app.navigation.JunctionCues.count(st.line)
+            Problems.trace("navigation", "Followed line v${st.version}: $n junctions" +
+                (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
+        }
         val onRoute = st.prompt == null && st.shownAlongM != null
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
-        if ((settings ?: Prefs(this).settings).junctionVibrate) {
-            vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
-            Problems.trace("navigation", "Junction cue: ${cue.name}")
-        }
+        val choice = (settings ?: Prefs(this).settings).junctionVibration
+        val locked = screenLocked()
+        if (choice.plays(locked)) {
+            val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
+            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
+        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
     }
 
-    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert") {
-        try {
+    /** Screen off or the lock screen showing (junction vibration "only when locked"). */
+    private fun screenLocked(): Boolean = try {
+        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        val off = !pm.isInteractive
+        off || km.isKeyguardLocked
+    } catch (e: Exception) {
+        Problems.warn("sensor", "Screen lock state not readable; taken as locked (junction vibration plays)", e)
+        true
+    }
+
+    /** Plays [pattern]; false when the phone has no vibrator or it failed (reported). */
+    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean {
+        return try {
             val vib = if (Build.VERSION.SDK_INT >= 31) {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+            if (!vib.hasVibrator()) { Problems.warn("sensor", "This phone reports no vibrator ($what); given without vibration"); return false }
             val effect = VibrationEffect.createWaveform(pattern, -1)
             // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
             // pocket – field test 2026-10-20: the warning only blinked). Alarm vibrations also pass the touch setting.
@@ -591,8 +614,10 @@ class RecordingService : Service() {
                 vib.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             }
+            true
         } catch (e: Exception) {
             Problems.warn("sensor", "Vibration failed ($what); given without vibration", e)
+            false
         }
     }
 

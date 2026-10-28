@@ -68,7 +68,10 @@
     <string name="settings_nav_vibrate_off">Vibrate when off route</string>
     <string name="settings_nav_vibrate_off_sub">Felt in the pocket, also with the screen off</string>
     <string name="settings_nav_junction">Vibrate at junctions</string>
-    <string name="settings_nav_junction_sub">Before a turn of the followed route: 2× left, 3× right</string>
+    <string name="settings_nav_junction_sub">Before a turn of the followed route: 1× left, 2× right</string>
+    <string name="settings_nav_junction_off">Off</string>
+    <string name="settings_nav_junction_always">Always</string>
+    <string name="settings_nav_junction_locked">Screen locked</string>
     <string name="settings_nav_screen_on">Keep screen on while navigating</string>
     <string name="settings_nav_screen_on_sub">Only while following a route; off in your pocket</string>
     <string name="settings_nav_battery_hint">Recording with the screen off: best with battery “Unrestricted”.</string>

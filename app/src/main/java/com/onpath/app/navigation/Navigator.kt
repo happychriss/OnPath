@@ -25,6 +25,8 @@ sealed interface NavPrompt {
          * for it. Stays until answered (also when on the route).
          */
         val switch: ActivitySwitch? = null,
+        /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round" (owner 2026-10-28). */
+        val turnRound: Boolean = false,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -109,6 +111,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var origHits = 0
     private var forceCheck = false
     private var lastFix: OffRouteDetector.Fix? = null
+    /** The rider's latest positions, oldest first ([TurnRound]). */
+    private val recent = ArrayDeque<GeoPoint>()
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
@@ -143,6 +147,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     fun onFix(f: OffRouteDetector.Fix): Step {
         lastFix = f
         val p = f.point
+        recent.addLast(p); while (recent.size > RECENT_FIXES) recent.removeFirst()
         var step = markVisited(p)
         if (forceCheck) {
             forceCheck = false
@@ -198,7 +203,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return when (outcome) {
             is Rerouter.Found -> {
                 prompt = NavPrompt.Question(++questionId, outcome.extraM, outcome.rejoinInM, outcome.startOffM, outcome.line,
-                    outcome.legM, outcome.resumeAlongM)
+                    outcome.legM, outcome.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), outcome.line))
                 failures = 0
                 Step(vibrate = vib)
             }
@@ -339,6 +344,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     }
 
     companion object {
+        /** Positions kept for the rider's direction (1 fix / s: the last half minute). */
+        const val RECENT_FIXES = 30
         /** A question is recomputed (no vibration) after moving this far from where it was computed … */
         const val REFRESH_MOVE_M = 150.0
         /** … but not more often than this. */

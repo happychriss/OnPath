@@ -40,7 +40,7 @@ class SettingsSummaryTest {
     @Test fun navigation() {
         assertEquals("Warn after 40 m · vibration on", SettingsSummary.navigation(AppSettings()).text)
         assertEquals("Warn after 75 m · vibration off",
-            SettingsSummary.navigation(AppSettings(offRouteM = 75, offRouteVibrate = false, junctionVibrate = false)).text)
+            SettingsSummary.navigation(AppSettings(offRouteM = 75, offRouteVibrate = false, junctionVibration = com.onpath.app.data.JunctionVibration.OFF)).text)
         assertEquals("Off-route warning off · junction vibration on", SettingsSummary.navigation(AppSettings(offRouteWarning = false)).text)
     }
 

@@ -22,9 +22,28 @@ const val GPS_STALE_MS = 30_000L
 /** Network fixes worse than this are never shown once GPS was seen (cell towers: km off). */
 const val NET_MAX_ACCURACY_M = 150f
 
-/** Whether a network fix is shown: before the first GPS fix, or when GPS is stale and the fix is Wi-Fi accurate. Pure. */
-fun useNetworkFix(lastGpsElapsed: Long, nowElapsed: Long, hasAccuracy: Boolean, accuracyM: Float): Boolean =
-    lastGpsElapsed == 0L || (nowElapsed - lastGpsElapsed > GPS_STALE_MS && hasAccuracy && accuracyM <= NET_MAX_ACCURACY_M)
+/** A GPS fix worse than this is weak (station roof, indoors at a window): a clearly better Wi-Fi fix may win. */
+const val GPS_WEAK_M = 30f
+/** A network fix counts as current this long (network updates come every 5 s). */
+const val NET_FRESH_MS = 12_000L
+
+/**
+ * Whether a network fix is shown: before the first GPS fix; when GPS is stale; or (owner 2026-10-28, train station)
+ * when the last GPS fix is weak and this one is at least twice as accurate – in the last two cases only when it is
+ * Wi-Fi accurate. Pure.
+ */
+fun useNetworkFix(lastGpsElapsed: Long, nowElapsed: Long, hasAccuracy: Boolean, accuracyM: Float,
+                  lastGpsAccuracyM: Float = 0f): Boolean =
+    lastGpsElapsed == 0L || (hasAccuracy && accuracyM <= NET_MAX_ACCURACY_M &&
+        (nowElapsed - lastGpsElapsed > GPS_STALE_MS || (lastGpsAccuracyM > GPS_WEAK_M && accuracyM * 2 <= lastGpsAccuracyM)))
+
+/**
+ * Whether a GPS fix is shown: always, unless it is weak and a current network fix is at least twice as accurate
+ * (otherwise the dot would jump between the two every second). [gpsAccuracyM] null = unknown → shown. Pure.
+ */
+fun showGpsFix(gpsAccuracyM: Float?, lastNetElapsed: Long, lastNetAccuracyM: Float, nowElapsed: Long): Boolean =
+    gpsAccuracyM == null || gpsAccuracyM <= GPS_WEAK_M || lastNetElapsed == 0L ||
+        nowElapsed - lastNetElapsed > NET_FRESH_MS || lastNetAccuracyM * 2 > gpsAccuracyM
 
 enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringResource) {
     NO_PERMISSION(Res.string.nav_gps_no_permission),
@@ -39,8 +58,9 @@ enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringReso
 /**
  * Thin wrapper over the platform LocationManager (GPS + network), no Play Services.
  * GPS fixes win. A network (Wi-Fi / cell) fix is used before the first GPS fix, and again when GPS has been silent
- * for [GPS_STALE_MS] (indoors, a restaurant – owner 2026-10-20: "when I plan it must know where I am") – but only
- * when it is at least [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
+ * for [GPS_STALE_MS] (indoors, a restaurant – owner 2026-10-20: "when I plan it must know where I am") or is weak
+ * and the Wi-Fi fix twice as accurate (train station roof, owner 2026-10-28) – but only when it is at least
+ * [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
  * [useNetwork] = false never asks for it (recording service: the track is GPS only).
  */
 class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
@@ -55,12 +75,18 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     private var running = false
     private var netRunning = false
     private var lastGpsElapsed = 0L
+    private var lastGpsAccuracy = 0f
+    /** Last network fix that was shown (time + accuracy), for [showGpsFix]. */
+    private var lastNetElapsed = 0L
+    private var lastNetAccuracy = 0f
     var onFix: ((Location) -> Unit)? = null
 
     private val gpsListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
-            lastGpsElapsed = SystemClock.elapsedRealtime()
-            publish(loc)
+            val now = SystemClock.elapsedRealtime()
+            lastGpsElapsed = now
+            lastGpsAccuracy = if (loc.hasAccuracy()) loc.accuracy else 0f
+            if (showGpsFix(if (loc.hasAccuracy()) loc.accuracy else null, lastNetElapsed, lastNetAccuracy, now)) publish(loc)
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
         override fun onProviderDisabled(provider: String) { _enabled.value = isEnabled() }
@@ -69,7 +95,11 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     }
     private val netListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
-            if (useNetworkFix(lastGpsElapsed, SystemClock.elapsedRealtime(), loc.hasAccuracy(), loc.accuracy)) publish(loc)
+            val now = SystemClock.elapsedRealtime()
+            if (useNetworkFix(lastGpsElapsed, now, loc.hasAccuracy(), loc.accuracy, lastGpsAccuracy)) {
+                lastNetElapsed = now; lastNetAccuracy = loc.accuracy
+                publish(loc)
+            }
         }
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
         override fun onProviderDisabled(provider: String) { _enabled.value = isEnabled() }

@@ -97,9 +97,8 @@ class PlanCallbacks(
     val onRoundTrip: () -> Unit = {},
     /** Activity icon at the start of the sheet: opens the activity picker. */
     val onActivity: () -> Unit = {},
-    /** Route ⋯: Save (name / overwrite choice), Export GPX of the planned route. */
+    /** Route ⋯: Save (name / overwrite choice). */
     val onSave: () -> Unit = {},
-    val onExport: () -> Unit = {},
     /** Route ⋯ → Share plan: the plan as a plan.onpath.earth link (A-005), from two points. */
     val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
@@ -479,9 +478,9 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 @Composable
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    // About this route: save / export, time details, clear.
+    // About this route: save, share, time details, clear. No "Export GPX" here (owner 2026-10-28: it only clutters next
+    // to saving) – export lives in My routes (⋮ Export GPX / Export all).
     MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
-    MenuItem(Icons.Outlined.Share, str(Res.string.common_export_gpx), enabled = ui.route != null, onClick = run(cb.onExport))
     MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
     MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice

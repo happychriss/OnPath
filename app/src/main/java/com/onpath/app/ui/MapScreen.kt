@@ -370,7 +370,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onActivity = onActivity, onSave = vm::requestSave, onExport = vm::exportPlanned, onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
+            onActivity = onActivity, onSave = vm::requestSave, onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
@@ -489,8 +489,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         }
     }
     // Camera: follow the position, walking direction up or north up (both modes); next-turn arrow (see NavigateScreen).
-    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick) {
-        c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.headingUp) { vm.onMapGesture() }
+    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick, vm.navStartZoom) {
+        val startZoom = vm.navStartZoom.takeIf { vm.mode == AppMode.NAVIGATE && vm.followMe }
+        val zoomed = c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.headingUp, startZoom) { vm.onMapGesture() }
+        if (startZoom != null && zoomed) vm.navStartZoom = null
     }
     LaunchedEffect(c, vm.northTick) { if (vm.northTick > 0) c.northUp() }
     LaunchedEffect(c, vm.navTurn) { c.setTurnArrow(vm.navTurn) }

@@ -58,6 +58,8 @@
     <string name="nav_title_kept">Off route – original route kept</string>
     <string name="nav_state_searching">Looking for a way back…</string>
     <string name="nav_state_found">New route found</string>
+    <string name="nav_title_turn_round">Off route – turn round, new route found</string>
+    <string name="nav_state_turn_round">Turn round – new route found</string>
     <string name="nav_state_no_data">No map here to find a way back</string>
     <string name="nav_state_unavailable">Can't search a way back right now</string>
     <string name="nav_state_no_way">No way back found</string>

@@ -14,7 +14,8 @@ object NavText {
 
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
-        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: Txt.s(Res.string.nav_title_found)
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: Txt.s(if (p.turnRound) Res.string.nav_title_turn_round else Res.string.nav_title_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_title_unavailable)
@@ -29,7 +30,8 @@ object NavText {
      */
     fun state(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_state_searching)
-        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: Txt.s(Res.string.nav_state_found)
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: Txt.s(if (p.turnRound) Res.string.nav_state_turn_round else Res.string.nav_state_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_state_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_state_unavailable)

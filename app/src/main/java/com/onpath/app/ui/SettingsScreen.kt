@@ -360,6 +360,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
 }
 
 /** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
     Section(SettingsPage.NAVIGATION.title) {
@@ -378,8 +379,20 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
             onChange(settings.copy(offRouteVibrate = it))
         }
-        SwitchRow(str(Res.string.settings_nav_junction), str(Res.string.settings_nav_junction_sub),
-            settings.junctionVibrate) { onChange(settings.copy(junctionVibrate = it)) }
+        // three choices (owner 2026-10-28): off / always / only with the screen locked
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+            Text(str(Res.string.settings_nav_junction), style = MaterialTheme.typography.bodyLarge)
+            Text(str(Res.string.settings_nav_junction_sub), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(com.onpath.app.data.JunctionVibration.OFF to Res.string.settings_nav_junction_off,
+                    com.onpath.app.data.JunctionVibration.ALWAYS to Res.string.settings_nav_junction_always,
+                    com.onpath.app.data.JunctionVibration.LOCKED to Res.string.settings_nav_junction_locked).forEach { (v, label) ->
+                    FilterChip(selected = settings.junctionVibration == v, onClick = { onChange(settings.copy(junctionVibration = v)) },
+                        label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
+                }
+            }
+        }
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }

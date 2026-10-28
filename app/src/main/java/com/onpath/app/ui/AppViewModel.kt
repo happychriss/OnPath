@@ -164,6 +164,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
+    /** Zoom the map takes when Navigate starts ([AppMode.navStartZoom]); null once taken (then the user's zoom stays). */
+    var navStartZoom by mutableStateOf<Double?>(null)
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
     /** "You have arrived – end tour?" is open. */
@@ -2822,7 +2824,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
     private fun enter(m: AppMode) {
+        val was = mode
         mode = m
+        // the start zoom of Navigate, once per start (owner 2026-10-28); the map takes it when it follows
+        if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
+        else if (m != AppMode.NAVIGATE) navStartZoom = null
         if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; highlight = null; followMe = true }
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
         // map); north up stops following as before
@@ -3642,14 +3648,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints,
                 tour?.let { SportType.typeOf(it.activity, it.sac) })
-        }
-    }
-
-    fun exportPlanned() {
-        val r = route ?: return
-        viewModelScope.launch {
-            share(defaultName(Txt.s(Res.string.msg_name_share)), listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), emptyList(),
-                SportType.typeOf(activity, sac))
         }
     }
 

@@ -63,9 +63,15 @@ class JunctionCuesTest {
         assertNull("beyond 1 km", c.nextAhead(l, 1, 400.0))
     }
 
-    @Test fun patternsLeftTwoRightThree() {
-        assertEquals(2, JunctionCues.pattern(JunctionCue.Side.LEFT).size / 2)
-        assertEquals(3, JunctionCues.pattern(JunctionCue.Side.RIGHT).size / 2)
+    @Test fun patternsLeftOneRightTwo() {
+        assertEquals(1, JunctionCues.pattern(JunctionCue.Side.LEFT).size / 2)
+        assertEquals(2, JunctionCues.pattern(JunctionCue.Side.RIGHT).size / 2)
+    }
+
+    @Test fun junctionsOfALineAreCounted() {
+        val l = listOf(GeoPoint(46.0, 11.0), GeoPoint(46.001, 11.0, turn = JunctionCue.LEFT), GeoPoint(46.002, 11.0))
+        assertEquals(1, JunctionCues.count(l))
+        assertEquals(0, JunctionCues.count(l.map { it.copy(turn = null) }))
     }
 
     @Test fun brouterCommands() {

@@ -109,6 +109,14 @@ object Format {
         return if (h > 0) "${h} h ${m.toString().padStart(2, '0')} min" else "$m min"
     }
 
+    /** Short time to go for the Navigate strip (owner 2026-10-28): "2:50 h", under an hour "25 min". */
+    fun durationShort(s: Double): String {
+        val total = (s / 60).toLong()
+        val h = total / 60
+        val m = total % 60
+        return if (h > 0) "$h:${m.toString().padStart(2, '0')} h" else "$m min"
+    }
+
     fun clock(s: Long): String {
         val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
         return "%d:%02d:%02d".format(h, m, sec)

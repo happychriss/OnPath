@@ -261,6 +261,7 @@ internal fun NorthNeedle(modifier: Modifier) {
  * position 4 min old"; moving time / breaks are in the opened card. Buttons: the icon, "Resume" while paused, the
  * chevron (48 dp); the rest of the card is not clickable.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
@@ -303,14 +304,18 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         }
                     } else {
                         val paused = g.state == com.onpath.app.time.EstimateState.PAUSED
-                        // the time first and big (22 sp); the distance under it – beside the 30 sp arrival clock both
-                        // would not fit on one line at a glance size
+                        // time and distance to go side by side, both big (owner 2026-10-28, bike): "2:50 h  7.4 km";
+                        // the short time form makes room beside the arrival clock. Where even that does not fit
+                        // (small phone, long values) the distance wraps under the time – same size, never smaller.
                         val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        Text(Format.duration(g.timeS), style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            color = if (paused) dim else Color.Unspecified)
-                        Text(Format.distance(g.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
-                            maxLines = 1, color = if (paused) dim else Color.Unspecified)
+                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(Format.durationShort(g.timeS), style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                                color = if (paused) dim else Color.Unspecified)
+                            Text(Format.distance(g.distanceM), style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                                color = if (paused) dim else Color.Unspecified)
+                        }
                         if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
@@ -515,7 +520,9 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
         border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(q.switch?.activity?.icon ?: Icons.Outlined.AltRoute, null, tint = OnPathColors.Route, modifier = Modifier.size(28.dp))
+                // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
+                Icon(q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute, null,
+                    tint = OnPathColors.Route, modifier = Modifier.size(if (q.turnRound) 36.dp else 28.dp))
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
