@@ -111,8 +111,13 @@ class CellTriggers(
         val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
         cells.keepCorridor(corridor) // the corridor of an older route goes (field bug 2026-10-22)
         cells.markUsed(corridor)
-        val want = needed(corridor)
-        if (want.isEmpty()) return null
+        val all = needed(corridor)
+        if (all.isEmpty()) return null
+        // never hundreds of regions for one route (owner 2026-10-28, a test with New York): the first stretch loads,
+        // the rest follows on tour (T5, the map ahead) – the corridor is in order along the line
+        val want = all.take(CORRIDOR_MAX_CELLS)
+        if (all.size > want.size) com.onpath.app.debug.Problems.info("cells",
+            "Route corridor needs ${all.size} map regions – only the first $CORRIDOR_MAX_CELLS load now, the rest on tour")
         if (!cells.downloadsAvailable) return CellJob(want, null, CellWhy.PLANNED)
         val added = cells.request(want, CellReason.CORRIDOR, ownPoint = false)
         return if (added.isEmpty()) null else CellJob(added, null, CellWhy.PLANNED)
@@ -182,6 +187,8 @@ class CellTriggers(
 
         const val NEAR_M = 5_000.0
         const val CORRIDOR_M = 10_000.0
+        /** At most this many corridor regions load for one route (≈ 300 km of route, ~300 MB). */
+        const val CORRIDOR_MAX_CELLS = 30
         const val AHEAD_M = 5_000.0
         const val T3_MAX_ACCURACY_M = 500f
         const val AHEAD_RETRY_MS = 30 * 60_000L

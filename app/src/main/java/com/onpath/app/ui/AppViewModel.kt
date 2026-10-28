@@ -651,6 +651,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
+        // a point that makes the plan very long (New York from Meran, owner 2026-10-28) loads nothing until the
+        // long-plan question is answered: Plan anyway → it loads then; Cancel → nothing was loaded
+        if (after.size >= 2 && after.toList() != longRouteOk && com.onpath.app.routing.LongRoute.needsAsk(after.toList(), activity)) {
+            longRouteDeferred = before.toList()
+            Problems.trace("cells", "Very long plan: maps and routing data for the new point wait for the answer")
+            return
+        }
+        longRouteDeferred = null
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
         if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
@@ -1150,6 +1158,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** The very long plan the user said yes to (not asked again for the same points). */
     private var longRouteOk: List<GeoPoint>? = null
+    /** The points before the edit that made the plan very long: its maps load only after "Plan anyway". */
+    private var longRouteDeferred: List<GeoPoint>? = null
     /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
     var notRouted by mutableStateOf<NotRouted?>(null)
         private set
@@ -2254,7 +2264,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
-        if (plan) { longRouteOk = waypoints.toList(); nextCause = runCause; recalc(); return }
+        val deferred = longRouteDeferred; longRouteDeferred = null
+        if (plan) {
+            longRouteOk = waypoints.toList()
+            deferred?.let { cellsForNewPoints(it, waypoints) } // now the new point's maps load
+            nextCause = runCause; recalc(); return
+        }
+        if (deferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
+        longRouteDeferred = deferred // points kept unrouted: "Plan anyway" later loads them (an undo replaces it)
         // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
         // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
         // with nothing running (0.9.3 bug)
@@ -2292,7 +2309,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
     fun planAnyway() {
         if (waypoints.size < 2) return
-        if (notRouted == NotRouted.LONG) longRouteOk = waypoints.toList()
+        if (notRouted == NotRouted.LONG) {
+            longRouteOk = waypoints.toList()
+            longRouteDeferred?.let { longRouteDeferred = null; cellsForNewPoints(it, waypoints) }
+        }
         recalc()
     }
 
@@ -3633,7 +3653,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints, SportType.typeOf(t.activity, t.sac))
+            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
         }
     }
 
@@ -3647,16 +3667,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints,
-                tour?.let { SportType.typeOf(it.activity, it.sac) })
+                tour?.let { SportType.typeOf(it.activity, it.sac) }, tour?.kind)
         }
     }
 
     /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
-    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?) {
+    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?,
+                              kind: TourKind? = null) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
-                val file = File(dir, GpxWriter.fileName(name))
+                val suffix = when (kind) {
+                    TourKind.PLANNED -> Txt.s(Res.string.gpx_file_planned)
+                    TourKind.RECORDED -> Txt.s(Res.string.gpx_file_recorded)
+                    else -> null
+                }
+                val file = File(dir, GpxWriter.fileName(name, suffix))
                 file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)
             }

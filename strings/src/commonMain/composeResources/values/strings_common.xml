@@ -26,6 +26,8 @@
     <string name="common_app_settings">App settings</string>
     <string name="common_recycle_bin">Recycle bin</string>
     <string name="common_export_gpx">Export GPX</string>
+    <string name="gpx_file_planned">planned</string>
+    <string name="gpx_file_recorded">recorded</string>
     <string name="common_settings">Settings</string>
     <string name="common_date">d MMM yyyy</string>
     <string name="common_date_time">d MMM yyyy, HH:mm</string>

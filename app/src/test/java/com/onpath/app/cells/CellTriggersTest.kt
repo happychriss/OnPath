@@ -218,4 +218,15 @@ class CellTriggersTest {
         assertEquals(emptySet<CellId>(), f.kept.last())
         assertEquals(before, f.requests.size)
     }
+
+    /** A huge corridor (New York test, owner 2026-10-28) never asks for hundreds of regions: the first stretch only. */
+    @Test fun t4CorridorIsCappedToItsFirstStretch() {
+        val f = FakeCells()
+        // Meran → Hamburg, ~900 km straight: far more corridor cells than the cap
+        val line = (0..90).map { GeoPoint(46.67 + it * 0.0894, 11.16 - it * 0.0127) }
+        assertTrue(CellId.alongLine(line, CellTriggers.CORRIDOR_M).size > CellTriggers.CORRIDOR_MAX_CELLS)
+        val job = CellTriggers(f).routeComputed(line)!!
+        assertEquals(CellTriggers.CORRIDOR_MAX_CELLS, job.cells.size)
+        assertTrue("the stretch at the start loads first", meran in job.cells || CellId.at(line.first()) in job.cells)
+    }
 }
