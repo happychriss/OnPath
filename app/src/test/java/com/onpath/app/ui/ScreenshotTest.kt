@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -398,7 +399,14 @@ class ScreenshotTest {
 
     /** Roundabout with its exit (owner 2026-10-28): roundabout sign + "Roundabout · exit 2 in 120 m". */
     @Test fun navigateRoundabout() = paparazzi.snapshot {
-        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0, roundabout = 2)))
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0, roundabout = 2, roundaboutAngle = 5f)))
+    }
+
+    /** The drawn roundabout for other exits: 1st right, 3rd left. */
+    @Test fun navigateRoundaboutExits() = paparazzi.snapshot {
+        androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)) {
+            for ((e, a) in listOf(1 to 80f, 2 to 0f, 3 to -85f, 4 to -170f)) RoundaboutSign(e, a, Modifier.size(64.dp))
+        }
     }
 
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */

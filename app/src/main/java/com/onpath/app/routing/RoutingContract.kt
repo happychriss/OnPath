@@ -36,10 +36,11 @@ enum class Activity(private val labelRes: StringResource, private val lineRes: S
  */
 /**
  * [way]: way attributes from here on (time model); [turn]: a junction instruction at this point (navigation);
- * [exit]: with a roundabout [turn], the exit to take (1, 2, …; 0 = unknown).
+ * [exit]: with a roundabout [turn], the exit to take (1, 2, …; 0 = unknown); [turnAngle]: BRouter's angle of that
+ * turn in degrees (> 0 right, < 0 left; the roundabout sign draws its exit there).
  */
 data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null,
-                    val turn: JunctionCue? = null, val exit: Int = 0) {
+                    val turn: JunctionCue? = null, val exit: Int = 0, val turnAngle: Float = 0f) {
     override fun equals(other: Any?): Boolean =
         this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
 

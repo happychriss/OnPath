@@ -162,7 +162,8 @@ class NavSessionStore(private val file: File) {
             if (l.none { it.turn != null }) return null
             val a = JSONArray()
             // "RNDB:2" = roundabout, 2nd exit (older sessions: the code alone)
-            l.forEachIndexed { i, p -> p.turn?.let { a.put(i); a.put(if (p.exit > 0) "${it.code}:${p.exit}" else it.code) } }
+            // "RNDB:2:-85" = roundabout, 2nd exit, angle (older sessions: the code alone)
+            l.forEachIndexed { i, p -> p.turn?.let { a.put(i); a.put(if (p.exit > 0) "${it.code}:${p.exit}:${p.turnAngle.toInt()}" else it.code) } }
             return a
         }
 
@@ -176,7 +177,8 @@ class NavSessionStore(private val file: File) {
                     val parts = a.optString(r + 1).split(':')
                     val cue = com.onpath.app.routing.JunctionCue.ofCode(parts[0])
                     val exit = parts.getOrNull(1)?.toIntOrNull() ?: 0
-                    if (cue != null && i in out.indices) out[i] = out[i].copy(turn = cue, exit = exit)
+                    val angle = parts.getOrNull(2)?.toFloatOrNull() ?: 0f
+                    if (cue != null && i in out.indices) out[i] = out[i].copy(turn = cue, exit = exit, turnAngle = angle)
                     r += 2
                 }
                 out

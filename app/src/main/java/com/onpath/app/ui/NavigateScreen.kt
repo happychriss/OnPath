@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.TurnSharpRight
 import androidx.compose.material.icons.filled.TurnSlightLeft
 import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnLeft
-import androidx.compose.material.icons.filled.RoundaboutRight
 import androidx.compose.material.icons.filled.UTurnRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -126,7 +125,9 @@ data class NavUi(
 )
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown) – owner 2026-10-28. */
-data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null) {
+data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
+                    /** BRouter's angle of the roundabout turn (> 0 right): where the drawn sign's exit goes. */
+                    val roundaboutAngle: Float? = null) {
     val label: String get() = roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
 }
 
@@ -217,7 +218,8 @@ private fun TurnCard(t: TurnHint) {
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (t.roundabout != null) Icons.Filled.RoundaboutRight else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+            if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
+            else Icon(turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
@@ -581,7 +583,11 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val cues = remember { com.onpath.app.navigation.JunctionCues() }
     val roundabout = remember(line, remaining, nav?.version, rec?.offRouteAlert) {
         if (line == null || remaining == null || rec?.offRouteAlert == true) null
-        else cues.roundaboutAhead(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))
+        else cues.roundabout(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))
+    }?.let { it.exit to it.distanceM }
+    val roundaboutAngle = remember(line, remaining, nav?.version) {
+        if (line == null || remaining == null) null
+        else cues.roundabout(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))?.angle
     }
     // the map badge shows the drawn arrow – not while the card says "Roundabout" (field 2026-10-28: the badge said
     // left / right at a roundabout)
@@ -609,7 +615,9 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
-        turn = turnHint(next?.let { (t, d) -> t.kind to d }, roundabout),
+        turn = turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
+            if (h.roundabout != null) h.copy(roundaboutAngle = roundaboutAngle) else h
+        },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
         movingS = tt?.movingS, breakS = tt?.breakS,

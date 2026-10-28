@@ -23,6 +23,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
     private var alongs = DoubleArray(0)
     private var cues = emptyList<JunctionCue>()
     private var exits = IntArray(0)
+    private var angles = FloatArray(0)
     private var next = 0
 
     /** The cue to play now, or null. [alongM] = progress on [line] (null = not matched). */
@@ -68,17 +69,24 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
      * Next roundabout ahead within [maxM]: its exit (0 = unknown) and distance – the on-screen hint shows a roundabout
      * sign instead of the plain arrow (owner 2026-10-28).
      */
-    fun roundaboutAhead(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Pair<Int, Double>? {
+    fun roundaboutAhead(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Pair<Int, Double>? =
+        roundabout(line, version, alongM, maxM)?.let { it.exit to it.distanceM }
+
+    /** The next roundabout ahead within [maxM] with exit, angle and distance (the drawn roundabout sign). */
+    fun roundabout(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Roundabout? {
         load(line, version)
         if (alongM == null) return null
         for (i in alongs.indices) {
             val d = alongs[i] - alongM
             if (d < -PASSED_M) continue
             if (d > maxM) return null
-            if (cues[i] == JunctionCue.ROUNDABOUT) return exits[i] to d.coerceAtLeast(0.0)
+            if (cues[i] == JunctionCue.ROUNDABOUT) return Roundabout(exits[i], angles[i], d.coerceAtLeast(0.0))
         }
         return null
     }
+
+    /** A roundabout ahead: [exit] to take (0 = unknown), [angle] of the whole turn (> 0 right), [distanceM] to it. */
+    data class Roundabout(val exit: Int, val angle: Float, val distanceM: Double)
 
     private fun load(line: List<GeoPoint>, v: Int) {
         if (v == version && line.size == size) return
@@ -88,6 +96,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         alongs = DoubleArray(idx.size) { cum[idx[it]] }
         cues = idx.map { line[it].turn!! }
         exits = IntArray(idx.size) { line[idx[it]].exit }
+        angles = FloatArray(idx.size) { line[idx[it]].turnAngle }
         next = 0
     }
 

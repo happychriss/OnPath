@@ -68,9 +68,12 @@ object GpxWriter {
     }
 
     /** Safe file name for exports. */
+    /** File name suffix by kind, not translated (a language switch must not rename the files): plan / rec / none. */
+    fun kindSuffix(planned: Boolean, recorded: Boolean): String? = when { planned -> "plan"; recorded -> "rec"; else -> null }
+
     fun fileName(name: String, suffix: String? = null): String {
         val base = name.replace(Regex("[^A-Za-z0-9äöüÄÖÜß _.-]"), "_").trim().take(60).ifBlank { "onpath" }
-        // "Hilden - planned.gpx" / "Hilden - recorded.gpx": a plan and its ride never overwrite each other (owner 2026-10-28)
+        // "Hilden - plan.gpx" / "Hilden - rec.gpx": a plan and its ride never overwrite each other (owner 2026-10-28)
         val s = suffix?.replace(Regex("[^A-Za-z0-9äöüÄÖÜß _.-]"), "_")?.trim()?.takeIf { it.isNotEmpty() }
         return (if (s != null) "$base - $s" else base) + ".gpx"
     }

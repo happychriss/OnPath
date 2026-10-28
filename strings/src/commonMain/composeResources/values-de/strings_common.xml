@@ -25,8 +25,6 @@
     <string name="common_app_settings">App-Einstellungen</string>
     <string name="common_recycle_bin">Papierkorb</string>
     <string name="common_export_gpx">GPX exportieren</string>
-    <string name="gpx_file_planned">geplant</string>
-    <string name="gpx_file_recorded">aufgezeichnet</string>
     <string name="common_settings">Einstellungen</string>
     <string name="common_date">d. MMM yyyy</string>
     <string name="common_date_time">d. MMM yyyy, HH:mm</string>

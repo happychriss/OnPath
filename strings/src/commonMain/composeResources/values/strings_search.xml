@@ -11,7 +11,7 @@
     <string name="search_online_attribution">Online results © OpenStreetMap</string>
     <string name="search_searching_online">Searching online…</string>
     <string name="search_in_google">Search “%1$s” in Google Maps</string>
-    <string name="search_google_line">Opens Google Maps – shops, opening times, reviews</string>
+    <string name="search_google_line">Opens Google Maps – found it? Share → OnPath to go there</string>
     <string name="search_preparing">Preparing offline search…</string>
     <string name="search_near_route">near your route</string>
     <string name="search_online">online</string>

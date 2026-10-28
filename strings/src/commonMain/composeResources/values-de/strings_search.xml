@@ -10,7 +10,7 @@
     <string name="search_online_attribution">Online-Ergebnisse © OpenStreetMap</string>
     <string name="search_searching_online">Online-Suche läuft…</string>
     <string name="search_in_google">„%1$s“ in Google Maps suchen</string>
-    <string name="search_google_line">Öffnet Google Maps – Geschäfte, Öffnungszeiten, Bewertungen</string>
+    <string name="search_google_line">Öffnet Google Maps – gefunden? Teilen → OnPath, dann dorthin</string>
     <string name="search_preparing">Offline-Suche wird vorbereitet…</string>
     <string name="search_near_route">nahe deiner Route</string>
     <string name="search_online">online</string>

@@ -52,7 +52,8 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
                 val i = h[0].toInt()
                 val cue = ofBRouter(h[1].toInt()) ?: continue
                 val exit = if (cue == ROUNDABOUT && h.size >= 4) kotlin.math.abs(h[3].toInt()) else 0
-                if (i in points.indices) points[i] = points[i].copy(turn = cue, exit = exit)
+                val angle = if (h.size >= 3) h[2].toFloat() else 0f
+                if (i in points.indices) points[i] = points[i].copy(turn = cue, exit = exit, turnAngle = angle)
             }
         }
     }

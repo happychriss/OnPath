@@ -3677,11 +3677,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
-                val suffix = when (kind) {
-                    TourKind.PLANNED -> Txt.s(Res.string.gpx_file_planned)
-                    TourKind.RECORDED -> Txt.s(Res.string.gpx_file_recorded)
-                    else -> null
-                }
+                // the same in every language (owner 2026-10-28): "Hilden - plan.gpx" / "Hilden - rec.gpx"
+                val suffix = GpxWriter.kindSuffix(kind == TourKind.PLANNED, kind == TourKind.RECORDED)
                 val file = File(dir, GpxWriter.fileName(name, suffix))
                 file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)

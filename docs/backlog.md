@@ -8,6 +8,50 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Owner's field notes 2026-10-28 – every point and its status** (bike day; details in the entries below / in Done):
+  | # | Note | Status |
+  | --- | --- | --- |
+  | 1 | GPS only, or Wi-Fi / cell too? | done 0.11.6 – Wi-Fi wins over weak GPS for the dot; tracks GPS only |
+  | 2 | "Take new route" did nothing | not a bug (way back on the same road) → U-turn: question 0.11.6, map sign 0.11.7 |
+  | 3 | Screen off when no turn is near | open, phase 2 (with 9) |
+  | 4 | Turn vibration never comes | partly: 3-way setting, 1 = left / 2 = right, trace 0.11.6; cause open – needs the ride's diagnostics |
+  | 5 | Dot glides from the old place on opening | done 0.11.7 |
+  | 6 | Pinch zoom ends direction-up | done 0.11.6 – check on the phone |
+  | 7 | Start zoom in Navigate | done 0.11.6 (Hike 17, bikes 16) |
+  | 8 | Short press of power button → navigation | open, phase 2 ("Navigate over the lock screen") |
+  | 9 | km to go beside the time, same size | done 0.11.6 |
+  | 10 | GPX import as a plannable route, few points | open, Later (release at home) |
+  | 11 | Red dot on the activity icon? | answered (recording) |
+  | 12 | Smarter rejoin: skip a point or ask | open, release after next; owner's ride 2026-10-28 is a case |
+  | 13 | Roundabout | exit 0.11.7, map badge 0.11.9, drawn sign 0.11.10; field bug open – needs the trace |
+  | 14 | No Export GPX next to saving | done 0.11.6; open: keep the track panel's export button? (owner) |
+  | 15 | Larger dot, softer turn badge | done 0.11.7 |
+  | 16 | U-turn sign on the map | done 0.11.7 |
+  | 17 | New York / Greenland: how to plan there | answered; search fixed 0.11.8 |
+  | 18 | Search keeps the old text | done 0.11.8 |
+  | 19 | New York as goal: loads maps, hangs | done 0.11.8 (nothing loads before the long-plan answer, corridor ≤ 30); blank-map moment open (trace) |
+  | 20 | Export names of plan and ride clash | done 0.11.8, names plan / rec in every language 0.11.10 |
+  | 21 | Is the planned GPX real GPX? | answered; open: route points not in the file (entry below) |
+  | 22 | Dot stays on the route (Komoot) | done 0.11.9 (default on) |
+  | 23 | Larger arrow at the dot | done 0.11.9 |
+  | 24 | Some settings in Navigate | open (entry below) |
+  | 25 | Shorter builds / risk-based tests | 0.11.10: release jobs side by side (~7 instead of ~12 min, same gates); risk-based subsets = owner decision |
+  | 26 | Cycle junction numbers (Knotenpunkte) on the map | open, map pipeline (entry below) |
+  | 27 | Google Maps search → navigate there, not open Google | 0.11.10: the Google line says "Share → OnPath"; open: ask "Route here?" when the place arrives |
+  | 28 | Recorded heights wrong (found in the ride) | open (entry below) |
+- **Some settings in Navigate (owner 2026-10-28)** – today Settings opens only from Plan (☰). Idea: a small ⚙ in Navigate
+  opens a short sheet with what matters on the way: junction vibration (Off / Always / Locked), position on the route,
+  keep screen on, map direction; everything else stays in Plan → Settings.
+- **Cycle junction networks ("Knotenpunkte", NL / BE / DE) on the map (owner 2026-10-28)** – OSM nodes with
+  `rcn_ref` (route=bicycle relations with `network:type=node_network`): green numbered circles + the network lines, own
+  overlay layer, switchable in Settings → Map (default on for bikes?). Needs `extract_overlays.py` (node_network
+  nodes) + `make_style.py` + a cell schema bump – donald / map pipeline.
+- **Google Maps place → go there (owner 2026-10-28)** – when a place comes back from Google Maps (Share → OnPath,
+  `receiveSharedPlace`), ask at once "Route here?" (from the position / the plan's end) instead of only showing the
+  place card. 0.11.10 only explains the way back on the Google line.
+- **Risk-based release tests (owner question 2026-10-28)** – the release now runs the start test and the unit tests
+  side by side (~7 min). Faster still: only the unit tests of changed packages, Paparazzi only when ui/ changed – that
+  weakens the gate, so only with the owner's word.
 - **Recorded heights are ~45 m too high (owner's ride 2026-10-28, Rosellen → Düsseldorf)** – GPS heights 81–135 m on a
   ride at ~35–45 m: Android's `Location.altitude` is above the WGS84 ellipsoid, and the geoid there is ~+47 m. Plus a
   settling drop 135 → 94 m in the first 12 s (false descent). Fix ideas: Android 14+ `AltitudeConverter.
