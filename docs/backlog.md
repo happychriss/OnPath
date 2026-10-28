@@ -5,6 +5,7 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] 0.11.6 bike field fixes (owner 2026-10-28, phase 1): pinch keeps direction-up, start zoom per activity, km beside time, junction vibration setting + 1/2 pattern + trace, turn-round in the reroute question, no Export GPX in the plan ⋯, Wi-Fi fix when GPS is weak – since 2026-10-28
 
 
 ## Next (open, checked against the code 2026-10-23)
