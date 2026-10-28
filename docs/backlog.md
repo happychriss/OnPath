@@ -8,10 +8,19 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
-- **Field bug, bike: "new route found" but taking it does nothing (owner 2026-10-28)** – while cycling the reroute
-  question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
-  rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
-  → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Navigate: U-turn sign when the way back starts by turning round (owner 2026-10-28; next release)** – the earlier
+  report "take new route does nothing" was most likely **not** a bug (owner, same day): the re-route was taken, but it
+  sent the rider back along the same way, so the line on the map looked unchanged. Wanted: when the new route begins
+  by going back the way one came (or ends in a dead end and turns), draw a clear U-turn sign at the turning point and
+  say it in the question card / notification ("Turn round"). Test: a reroute whose first part reverses the approach
+  shows the sign; a normal reroute does not. Junction vibration (other item) should give the turn-round cue too.
+- **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
+  `navigation/RerouteTargets` offers the next stop (≤ 5 km ahead) and line points 500 / 1500 / 3000 m ahead, and picks
+  among them (docs/plan-auto-reroute.md §5). Owner question: when must the way back go to the next route point, and when
+  should it skip it and go to the one after (much closer from where one is now) – or ask? Work from real cases: the
+  owner's bike ride of 2026-10-28 (events trace + recorded track) and sample routes the owner will upload. Ideas:
+  skip a point when the detour to it is far longer than to the next one and it is not POI-pinned / a named stop; ask
+  only when the difference is large and the point might matter (named, pinned).
 - **Navigate strip: km to go as big as the time, side by side (owner 2026-10-28, bike)** – today in
   `NavigateScreen.kt` (~line 306) the time to go is 22 sp (`titleLarge`) and the distance to go sits under it at 16 sp
   (`bodyLarge`); wanted: "1:25 h  18,4 km" on one line, both `titleLarge`. The code comment says both would not fit
