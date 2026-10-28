@@ -1,10 +1,13 @@
 # OnPath – project status and decision log
 
-Last update: 2026-10-28 – current release **0.11.7** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
+Last update: 2026-10-28 – current release **0.11.8** (2026-10-28). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
 Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud, 2026-10-28 – 0.11.8.** Search opens empty, far cities found, far points load nothing before the long-plan
+  answer, corridor cap 30 regions, export names planned / recorded. Open: blank map moment in the New York test
+  (needs the owner's trace).
 - **cloud, 2026-10-28 – 0.11.7 (owner pulled three phase-2 items forward).** Dot no glide after a pause, larger dot +
   softer turn badge, U-turn sign on the map, roundabout exit on the turn card / lock screen. Still phase 2: vibration
   fix (needs the ride trace), Navigate over the lock screen, screen off far from turns, smarter rejoin.

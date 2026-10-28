@@ -8,11 +8,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
-- **Search: big far cities lost behind local shops (owner 2026-10-28, found while trying New York)** – Photon with our
-  location bias (`OnlineSearch.PhotonProvider.url`: zoom 12, bias 0.3, lang de) answers "New York" from South Tyrol with
-  10 shops / restaurants ("New York Bistro", "New Yorker") and no city; with `&layer=city&layer=state` the city comes
-  first. Oslo / Nuuk work. Fix idea: a second request with the place layers only (city, town, village, county, state,
-  country), merged in; an exact-name place ranks above a shop of the same name. Test with recorded Photon answers.
+- **Planned-route GPX has no route points (owner question 2026-10-28)** – a planned route exports one `<trk>` with
+  the routed line (lat / lon / ele, no times) and the sport `<type>`, but no `<wpt>` for its route points (`exportTour`
+  passes none for PLANNED), so a re-import cannot rebuild the plan's points. Idea: write them as `<rte>` / `<rtept>`
+  (or `<wpt>`); fits "GPX import as a plannable route" (Later).
 - **Shown GPX track: keep the square export button? (owner question, 2026-10-28)** – 0.11.6 removed "Export GPX"
   from the plan ⋯ menu; the track panel (`Panels.TrackPanel`) still has its export button beside "Start navigation".
 - **Re-routing: smarter choice of where to rejoin (owner 2026-10-28; the release after next)** – today
@@ -277,6 +276,10 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   on), summary with four choices at "End tour", raw points kept.
 
 ## Done (recent)
+- **0.11.8 (cloud, 2026-10-28):** search opens empty; far big cities found (Photon places request + exact-name bonus);
+  a very long plan's new point loads nothing until "Plan anyway"; T4 corridor capped at 30 regions
+  (`CellTriggers.CORRIDOR_MAX_CELLS`); export names "… - planned / recorded.gpx". Still to check with the owner's
+  trace: the brief blank map after the New York test (not reproduced here).
 - **0.11.7 (cloud, 2026-10-28):** dot jumps to the current position after a pause (`map/PositionDot`, fresh last GPS
   fix on start in `LocationTracker`), larger dot, softer / smaller turn badge (`TURN_HINT_COLOR`), U-turn sign on the
   map (`NavState.uTurnAt`, until 40 m along the new line), roundabout exit from BRouter (`OnPathHints` 4th value →
