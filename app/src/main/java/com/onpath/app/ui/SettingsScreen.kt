@@ -393,6 +393,9 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
                 }
             }
         }
+        SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
+            onChange(settings.copy(positionOnRoute = it))
+        }
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }

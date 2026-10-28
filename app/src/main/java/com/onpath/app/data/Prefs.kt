@@ -86,6 +86,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
+            positionOnRoute = sp.getBoolean("positionOnRoute", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
             hikePace = pace("hikePaceLevel", "hikePace"),
@@ -103,6 +104,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putInt("offRouteM", v.offRouteM)
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)
+            .putBoolean("positionOnRoute", v.positionOnRoute)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
             .putString("hikePaceLevel", v.hikePace.name)

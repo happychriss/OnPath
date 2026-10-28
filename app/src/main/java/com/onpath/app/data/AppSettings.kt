@@ -32,6 +32,8 @@ data class AppSettings(
      */
     val planVibrate: Boolean = true,
     val keepScreenOn: Boolean = true,
+    /** Navigate: the dot sits on the followed route while within ~25 m of it (owner 2026-10-28, like Komoot; default on). */
+    val positionOnRoute: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled since 0.7.0 (one style); others = adb overrides. */
     val mapTheme: String = "classic",
     // --- Navigate orientation (navigation agent) ---

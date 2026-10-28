@@ -469,7 +469,18 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     LaunchedEffect(c, vm.activity, vm.sac) { c.setOverlay(vm.activity, true, vm.sac) }
     // hiking route band above the T level from Settings: grey dashes (the router forbids those trails)
     LaunchedEffect(c, vm.sac) { c.setSacLimit(vm.sac) }
-    LaunchedEffect(c, location) { location?.let { c.updateLocation(it); vm.checkFreeLook(it.latitude, it.longitude) } }
+    val snapLine = remember(rec?.nav?.line) { rec?.nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
+    LaunchedEffect(c, location) {
+        location?.let { loc ->
+            // "Position on the route" (owner 2026-10-28): the dot on the followed line while close to it – the drawn
+            // dot only; everything else uses the real fix
+            val n = rec?.nav
+            val on = com.onpath.app.navigation.SnapToRoute.position(vm.settings.positionOnRoute && vm.mode == AppMode.NAVIGATE,
+                snapLine, n?.shownAlongM, n?.offM, n?.prompt)
+            c.updateLocation(if (on == null) loc else android.location.Location(loc).apply { latitude = on.lat; longitude = on.lon })
+            vm.checkFreeLook(loc.latitude, loc.longitude)
+        }
+    }
     // App start / back to the app in Plan: centre on the position (first fix, else last known), unless the user
     // moved the map (StartCamera; restarted by vm.onAppStart).
     LaunchedEffect(c, vm.startCameraGen) {

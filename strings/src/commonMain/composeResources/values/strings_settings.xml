@@ -72,6 +72,8 @@
     <string name="settings_nav_junction_off">Off</string>
     <string name="settings_nav_junction_always">Always</string>
     <string name="settings_nav_junction_locked">Screen locked</string>
+    <string name="settings_nav_on_route">Position on the route</string>
+    <string name="settings_nav_on_route_sub">While you are close to the route, the dot sits on it</string>
     <string name="settings_nav_screen_on">Keep screen on while navigating</string>
     <string name="settings_nav_screen_on_sub">Only while following a route; off in your pocket</string>
     <string name="settings_nav_battery_hint">Recording with the screen off: best with battery “Unrestricted”.</string>
