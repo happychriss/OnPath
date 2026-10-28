@@ -8,6 +8,20 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 
 
 ## Next (open, checked against the code 2026-10-23)
+- **Memory: the app must get far smaller (owner 2026-10-28: "3.2 GB can kill smaller phones")** – Pixel 8 diagnostics:
+  PSS ~1.9 GB all day (native heap 1.34 GB), 3.18 GB / native 2.24 GB after the New York test (2 regions + search
+  index rebuilt, 167 k entries, 14.8 s). Suspects, in order (to measure on donald with `dumpsys meminfo` /
+  `showmap` / Android Studio's native profiler before and after each): (1) the POIs as ONE GeoJSON source
+  (`pois.geojson`, 23 MB for 19 regions, parsed + geojson-vt indexed in native memory, grows with every region) →
+  POIs as a vector-tile layer in the cell pipeline (tippecanoe, like overlays.pmtiles); (2) the offline search index
+  (167 k entries in memory) → SQLite FTS on disk or a smaller in-memory form; (3) MapLibre's tile cache and the
+  number of layers (254) – check `MapView` cache settings, drop layers outside the zoom; (4) old PMTiles generations
+  still open after a style reload. Goal: < 800 MB PSS in Plan with 20 regions. Add a memory number per part to the
+  health line so field logs show which part grows.
+- **Watch: turning and compass (owner 2026-10-28)** – one "Following stopped: map gesture" on the evening ride (18:25,
+  mode 32 → 8), the owner does not know what he did. He will watch on the next rides: does turning the map / the
+  phone, or zooming, end direction-up; does the arrow at the dot follow the phone in Plan north-up? The trace names
+  every stop ("Following stopped: …"); export diagnostics right after it happens.
 - **Owner's diagnostics 2026-10-28 (Pixel 8, Android 17, evening ride on 0.11.7) – findings:**
   (1) *Vibration:* the app vibrated at every junction – 40 cues in 50 min, each "vibrated=true (setting ALWAYS,
   locked=false)"; the morning ride (0.11.5) cued too. So the app side works; if the owner felt nothing, the phone
@@ -53,6 +67,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   | 26 | Cycle junction numbers (Knotenpunkte) on the map | open, map pipeline (entry below) |
   | 27 | Google Maps search → navigate there, not open Google | 0.11.10: the Google line says "Share → OnPath"; open: ask "Route here?" when the place arrives |
   | 28 | Recorded heights wrong (found in the ride) | open (entry below) |
+  | 29 | Memory 1.9–3.2 GB | open, top priority for donald (entry below) |
+  | 30 | Watch turning / compass on the next rides | owner watches; trace names every stop |
+  | 31 | Arrow at the dot in Plan north-up should show where the phone points | designed so (compass standing, GPS moving); larger arrow everywhere (next release) |
 - **Some settings in Navigate (owner 2026-10-28)** – today Settings opens only from Plan (☰). Idea: a small ⚙ in Navigate
   opens a short sheet with what matters on the way: junction vibration (Off / Always / Locked), position on the route,
   keep screen on, map direction; everything else stays in Plan → Settings.
