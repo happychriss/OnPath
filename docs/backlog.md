@@ -12,6 +12,15 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
   rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
   → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Navigate: pinch zoom ends "direction up" (owner 2026-10-28, bike)** – zooming in / out with two fingers, without
+  turning, drops the camera from walking-direction-up (TRACKING_COMPASS) to free; very annoying while riding. Wanted:
+  zoom only → keep following and direction up; only a pan or a clear turn ends it. Likely cause: a pinch always has a
+  little rotation and a moving focal point, and MapLibre ends tracking for either (`onCameraTrackingDismissed` →
+  `dismissed(...)`, the reason is in the events trace). Ideas: `LocationComponentOptions.trackingGesturesManagement(true)`
+  (zoom / rotate around the dot, higher move thresholds for multi-finger gestures – not set today), a higher rotate
+  threshold or no rotate gesture while heading-up in Navigate. Test: E2E pinch on the Navigate map keeps the mode.
+- **Navigate: start zoom (owner question 2026-10-28)** – today `setCamera` keeps the Plan zoom and only zooms to 15 when
+  the map is further out than 13; no zoom per activity or speed. Owner to decide (see the chat answer).
 - **Navigate: on opening the app the dot glides from an old place to the current one (owner 2026-10-28)** – wanted: the
   dot appears at once where I am, no glide. Likely: the screen's tracker still holds the fix from before the app went
   to the background (or `getLastKnownLocation` seeds an old one), and MapLibre animates the puck to the next fix
