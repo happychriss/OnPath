@@ -12,6 +12,11 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
   question card appeared; tapping the take-route button changed nothing (route stayed, no visible reaction). Core feature
   rule: first a test that reproduces it, then the fix. Path: `NavigateScreen.RerouteQuestionCard` → `AppViewModel.takeNewRoute`
   → `RecordingService.ACTION_TAKE_ROUTE` (question id may be stale / the answer lost?). Check the events trace of that ride.
+- **Navigate: on opening the app the dot glides from an old place to the current one (owner 2026-10-28)** – wanted: the
+  dot appears at once where I am, no glide. Likely: the screen's tracker still holds the fix from before the app went
+  to the background (or `getLastKnownLocation` seeds an old one), and MapLibre animates the puck to the next fix
+  (`MapController.updateLocation` → `forceLocationUpdate`). Ideas: on resume take the recording service's latest fix
+  (it ran all the time), drop a seed older than a few seconds, and place the first fix after resume without animation.
 - **Field bug, bike: turn vibration never comes (owner 2026-10-28)** – no vibration before turns, neither with the app on
   screen nor with the phone locked. Core feature rule: first a test, then the fix. Path: `RecordingService.junctionCue`
   → `navigation/JunctionCues` (ahead distance `BIKE_AHEAD_M`, `onRoute` needs no prompt + `shownAlongM`) →
