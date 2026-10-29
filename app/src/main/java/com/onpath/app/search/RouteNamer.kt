@@ -32,6 +32,21 @@ object RouteNamer {
     )
     private val NEAR_CLASSES = setOf("city", "town", "village")
 
+    /** The only kinds [name] and [label] look at. */
+    val KINDS: Set<String> = LANDMARKS + INNS + "place"
+
+    /**
+     * The places of [index] that [name] / [label] look at for [points]: [KINDS] in their box plus [NEAR_M] (with
+     * margin) – a few hundred instead of the whole index. Blocking (disk) – off the main thread.
+     */
+    fun placesNear(index: PlaceIndex, points: List<GeoPoint>): List<Place> {
+        val b = Geo.bounds(points) ?: return emptyList()
+        val pad = 1.5 * NEAR_M / 111_000.0
+        val far = maxOf(kotlin.math.abs(b[0]), kotlin.math.abs(b[2])) + pad
+        val padLon = pad / kotlin.math.cos(Math.toRadians(far.coerceAtMost(80.0)))
+        return index.placesIn(b[0] - pad, b[1] - padLon, b[2] + pad, b[3] + padLon, KINDS)
+    }
+
     /**
      * [line]: the route or track (at least start and end); [places]: offline index places (may be empty);
      * [startName] / [endName]: names of the first / last stop when they came from a place; [viaNames]: names of

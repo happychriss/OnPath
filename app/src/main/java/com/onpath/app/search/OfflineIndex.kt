@@ -31,10 +31,10 @@ data class SearchHit(val place: Place, val score: Double, val tier: Int, val dis
 /**
  * In-memory offline search index over one map folder: POIs (pois.geojson), peaks/passes and place names
  * (base.pmtiles, cached), trail names (trailnames.geojson, t = "n"; without it: layer "trailnames" of
- * overlays.pmtiles). Missing files just mean fewer results. ~20 000 entries; a query scans them all in well under
- * 100 ms. Map cells build it per area ([SearchAreas]).
+ * overlays.pmtiles). Missing files just mean fewer results. The app uses [DiskIndex] (same answers, kept on disk);
+ * this one is the reference it is tested against, and the readers / helpers here are shared.
  */
-class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
+class OfflineIndex(val entries: List<Entry>, override val signature: String = "") : PlaceIndex {
 
     class Entry(val place: Place, val words: Array<String>, val fullNames: Array<String>) {
         constructor(place: Place) : this(
@@ -44,7 +44,16 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
         )
     }
 
-    fun search(q: SearchQuery, addresses: List<AddressHit> = emptyList()): List<SearchHit> = SearchRanking.rank(entries, q, addresses)
+    override val size: Int get() = entries.size
+
+    override fun search(q: SearchQuery, addresses: List<AddressHit>): List<SearchHit> = SearchRanking.rank(entries, q, addresses)
+
+    override fun place(id: String): Place? = entries.firstOrNull { it.place.id == id }?.place
+
+    override fun placesIn(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, kinds: Set<String>): List<Place> =
+        entries.map { it.place }.filter {
+            it.source != Place.Source.TRAIL && it.name != null && it.kind in kinds && it.lat in minLat..maxLat && it.lon in minLon..maxLon
+        }
 
     companion object {
         const val POIS = "pois.geojson"
@@ -167,14 +176,21 @@ class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
         }
 
         /** Longest piece first; a piece within 2 km of a kept piece of the same name is dropped. Pure, unit-tested. */
-        fun mergeTrailParts(parts: List<TrailPart>): List<Place> {
+        fun mergeTrailParts(parts: List<TrailPart>): List<Place> = mergeTrailIndices(parts).mapIndexed { k, i ->
+            val p = parts[i]
+            Place("t:$k", p.name, "trail", p.lat, p.lon, source = Place.Source.TRAIL)
+        }
+
+        /** [mergeTrailParts] as the indices (into [parts]) of the kept pieces, in result order. */
+        fun mergeTrailIndices(parts: List<TrailPart>): List<Int> {
             val kept = HashMap<String, MutableList<TrailPart>>()
-            val out = ArrayList<Place>()
-            for (p in parts.sortedByDescending { it.len }) {
+            val out = ArrayList<Int>()
+            for (i in parts.indices.sortedByDescending { parts[it].len }) {
+                val p = parts[i]
                 val list = kept.getOrPut(SearchText.normalize(p.name)) { ArrayList() }
                 if (list.any { Geo.distance(it.lat, it.lon, p.lat, p.lon) < 2000.0 }) continue
                 list += p
-                out += Place("t:${out.size}", p.name, "trail", p.lat, p.lon, source = Place.Source.TRAIL)
+                out += i
             }
             return out
         }

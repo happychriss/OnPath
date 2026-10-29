@@ -49,6 +49,8 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
@@ -1005,12 +1007,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = cells.installed.value.map { it.id }.filter { it !in areaNames }
         if (todo.isEmpty()) return
         viewModelScope.launch {
-            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+            val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) { Problems.info("cells", "No place index for map area names; coordinates shown", e); return@launch }
-            val names = withContext(Dispatchers.Default) {
-                todo.associateWith { c -> com.onpath.app.search.RouteNamer.label(c.center, places) }.filterValues { it != null }
-                    .mapValues { it.value!! }
+            val names = withContext(Dispatchers.IO) {
+                todo.associateWith { c ->
+                    com.onpath.app.search.RouteNamer.label(c.center, com.onpath.app.search.RouteNamer.placesNear(index, listOf(c.center)))
+                }.filterValues { it != null }.mapValues { it.value!! }
             }
             areaNames = areaNames + names
         }
@@ -1928,7 +1931,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Nearest place / hut / peak for route points without a name of their own (offline index, RouteNamer.label). */
     private var nearbyNames by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
-    private var namePlaces: List<com.onpath.app.search.Place>? = null
     private var namesJob: Job? = null
 
     /** Rows of the Points section: names (pinned POI / search first, then the nearest place), leg distances. */
@@ -1943,15 +1945,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
         if (todo.isEmpty() || namesJob?.isActive == true) return
         namesJob = viewModelScope.launch {
-            // the index can be large: its places are copied off the main thread (else the sheet stutters)
-            val places = namePlaces ?: try {
-                val index = search.offlineIndex()
-                withContext(Dispatchers.Default) { index.entries.map { it.place } }.also { namePlaces = it }
-            }
+            // only the places near each point are read from the index file (off the main thread)
+            val index = try { search.offlineIndex() }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launch }
-            val names = withContext(Dispatchers.Default) {
-                todo.mapNotNull { p -> com.onpath.app.search.RouteNamer.label(p, places)?.let { p to it } }.toMap()
+            val names = withContext(Dispatchers.IO) {
+                todo.mapNotNull { p ->
+                    com.onpath.app.search.RouteNamer.label(p, com.onpath.app.search.RouteNamer.placesNear(index, listOf(p)))?.let { p to it }
+                }.toMap()
             }
             nearbyNames = nearbyNames + names
         }
@@ -2811,11 +2812,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val startName = stopName(pts.first()); val endName = stopName(pts.last())
         val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
         nameJob = viewModelScope.launch {
-            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+            val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); emptyList() }
-            suggestedName = withContext(Dispatchers.Default) {
-                try { com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via) } catch (e: Exception) {
+            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); null }
+            suggestedName = withContext(Dispatchers.IO) {
+                try {
+                    val places = index?.let { com.onpath.app.search.RouteNamer.placesNear(it, line) }.orEmpty()
+                    com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via)
+                } catch (e: Exception) {
                     Problems.warn("search", "No route name proposed (naming failed)", e); null
                 }
             }
@@ -2836,11 +2840,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!dateName.startsWith("Tour ") && !dateName.startsWith(datePrefix)) return
         viewModelScope.launch {
             val name = try {
-                val places = search.offlineIndex().entries.map { it.place }
+                val index = search.offlineIndex()
                 withContext(Dispatchers.IO) {
                     // "Save only until …": named after the part that is the tour
                     val line = com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides).flatten().map { GeoPoint(it.lat, it.lon) }
-                    com.onpath.app.search.RouteNamer.name(line, places)
+                    com.onpath.app.search.RouteNamer.name(line, com.onpath.app.search.RouteNamer.placesNear(index, line))
                 }?.let { if (demo) com.onpath.app.recording.DemoLocation.TOUR_PREFIX + it else it }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
@@ -4021,6 +4025,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }
+        }
+        // a joined / removed map area → the offline search index follows in the background (only changed areas are read;
+        // not at start – an unchanged index needs nothing), so the next search or route name does not wait for it
+        viewModelScope.launch {
+            cells.generation.drop(1).collectLatest { delay(5_000); search.prepare() }
         }
         // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 on fixes
         cells.wifiOnly = settings.mapsWifiOnly

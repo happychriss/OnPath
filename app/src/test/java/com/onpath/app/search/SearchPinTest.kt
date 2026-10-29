@@ -86,7 +86,7 @@ object SearchFixture {
         SearchFixture::class.java.classLoader!!.getResourceAsStream("search/mini.pmtiles")!!.use { File(dir, OfflineIndex.BASE).outputStream().use(it::copyTo) }
     }
 
-    fun areas(dir: File) = SearchAreas(dir)
+    fun areas(dir: File) = SearchAreas(dir, opener = JdbcSearchDb.opener)
 
     val route = listOf(GeoPoint(46.60, 11.00), GeoPoint(46.65, 11.10), GeoPoint(46.70, 11.15), GeoPoint(46.75, 11.30))
 
