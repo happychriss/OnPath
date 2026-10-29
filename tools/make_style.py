@@ -1528,6 +1528,8 @@ def labels():
 # Icons come from the sprite (tools/make_sprite.py): "poi-<kind>" (badge) and "poi-<kind>-small" (dot).
 # Tiers ("more at closer zoom"); within a tier the order is the placement priority (first = most important).
 # Collision is on, so dense areas thin out; place/peak labels (above) win over POIs.
+# Format 2: the app puts a POI into vector tiles only from the zoom its kind is drawn (cells/PoiTiles.kt minZoom: train
+# z10, tier 1 z12, rest z14) – drawing a kind earlier needs that table changed too (PoiTilesStyleTest fails otherwise).
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
     # restaurants and cafés with huts and lifts from z12 (owner): a hike is planned around where you can eat
@@ -1671,6 +1673,8 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
             if lyr.get("source") in OVERLAY_LAYERS:
                 lyr["source-layer"] = OVERLAY_LAYERS[lyr["source"]]
                 lyr["source"] = "overlays"
+            elif lyr.get("source") == "pois":
+                lyr["source-layer"] = "pois"
         # the order of keys does not matter to MapLibre, but keep id/type/source/source-layer first for reading
         L[:] = [{k: lyr[k] for k in ("id", "type", "source", "source-layer") if k in lyr} | lyr for lyr in L]
     sources = {
@@ -1687,11 +1691,21 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
         sources["region-shade"] = {"type": "raster", "url": "pmtiles://file://{DATA_DIR}/hillshade.pmtiles", "tileSize": 256}
     else:
         sources.update(geojson_overlay_sources())
-    sources["pois"] = {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14, "buffer": 32}
+    pois_geojson = {"type": "geojson", "data": "file://{DATA_DIR}/pois.geojson", "maxzoom": 14, "buffer": 32}
+    metadata = {"onpath:version": 1, "onpath:theme": theme, "onpath:format": FMT}
+    if FMT == 2:
+        # POIs as vector tiles (layer "pois", z10-14), written by the app when it joins the cells (cells/PoiTiles.kt):
+        # one GeoJSON source kept every POI in MapLibre's memory (~5.5 KB each). Without pois.pmtiles (data folder
+        # only, older store) the app swaps in the GeoJSON source below (map/OptionalSources.kt "onpath:fallback-sources").
+        # PoiTiles.minZoom must stay <= the minzoom of every poi-* layer per kind (PoiTilesStyleTest).
+        sources["pois"] = {"type": "vector", "url": "pmtiles://file://{DATA_DIR}/pois.pmtiles"}
+        metadata["onpath:fallback-sources"] = {"pois": pois_geojson}
+    else:
+        sources["pois"] = pois_geojson
     style = {
         "version": 8,
         "name": T("style.name", "OnPath"),
-        "metadata": {"onpath:version": 1, "onpath:theme": theme, "onpath:format": FMT},
+        "metadata": metadata,
         "center": [11.16, 46.67], "zoom": 12,
         "glyphs": "asset://fonts/{fontstack}/{range}.pbf",
         "sprite": "asset://sprites/onpath",

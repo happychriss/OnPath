@@ -4,7 +4,15 @@
  "metadata": {
   "onpath:version": 1,
   "onpath:theme": "classic",
-  "onpath:format": 2
+  "onpath:format": 2,
+  "onpath:fallback-sources": {
+   "pois": {
+    "type": "geojson",
+    "data": "file://{DATA_DIR}/pois.geojson",
+    "maxzoom": 14,
+    "buffer": 32
+   }
+  }
  },
  "center": [
   11.16,
@@ -39,10 +47,8 @@
    "tileSize": 256
   },
   "pois": {
-   "type": "geojson",
-   "data": "file://{DATA_DIR}/pois.geojson",
-   "maxzoom": 14,
-   "buffer": 32
+   "type": "vector",
+   "url": "pmtiles://file://{DATA_DIR}/pois.pmtiles"
   }
  },
  "layers": [
@@ -20236,6 +20242,7 @@
    "id": "poi-bus-detail-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 16,
    "filter": [
     "all",
@@ -20414,6 +20421,7 @@
    "id": "poi-bus-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 14,
    "filter": [
     "all",
@@ -20593,6 +20601,7 @@
    "id": "poi-tier3-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 15,
    "filter": [
     "in",
@@ -20772,6 +20781,7 @@
    "id": "poi-tier2-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 14,
    "filter": [
     "in",
@@ -20954,6 +20964,7 @@
    "id": "poi-tier1-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 12,
    "filter": [
     "in",
@@ -21135,6 +21146,7 @@
    "id": "poi-station-name",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 10,
    "filter": [
     "==",
@@ -21202,6 +21214,7 @@
    "id": "poi-bus-detail",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 16,
    "filter": [
     "all",
@@ -21362,6 +21375,7 @@
    "id": "poi-bus",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 14,
    "filter": [
     "all",
@@ -21523,6 +21537,7 @@
    "id": "poi-tier3",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 15,
    "filter": [
     "in",
@@ -21684,6 +21699,7 @@
    "id": "poi-tier2",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 14,
    "filter": [
     "in",
@@ -21848,6 +21864,7 @@
    "id": "poi-tier1",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 12,
    "filter": [
     "in",
@@ -22027,6 +22044,7 @@
    "id": "poi-station",
    "type": "symbol",
    "source": "pois",
+   "source-layer": "pois",
    "minzoom": 10,
    "filter": [
     "==",

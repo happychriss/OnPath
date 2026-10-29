@@ -14,14 +14,15 @@ the git log.
   Saved routes and imported GPX tracks sync both ways (a delete from the browser → recycle bin; never during a tour).
   Tested without a phone: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`, and against the real `sync.js` in Node
   (`tools/sync/e2e.sh`). Web planner: track items (kind 3, field 4 = `TrackCode`) to show / keep – see `sync/TrackCode.kt`.
-- **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
+- **[desktop] Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
   PSS ~1.9 GB all day (native heap 1.34 GB), 3.18 GB / native 2.24 GB after the New York test (2 regions + search
   index rebuilt, 167 k entries). Measure each suspect with `dumpsys meminfo` / `showmap` / the native profiler, before
   and after: (1) the POIs as ONE GeoJSON source (`pois.geojson`, 23 MB for 19 regions, indexed in native memory) → a
   vector-tile layer in the cell pipeline (tippecanoe, like `overlays.pmtiles`); (2) the offline search index in memory
   → SQLite FTS on disk or a smaller form; (3) MapLibre's tile cache and the 254 layers; (4) old PMTiles generations
   still open after a style reload. Goal: < 800 MB PSS in Plan with 20 regions. Add a memory number per part to the
-  health line.
+  health line. Baseline measured 2026-10-29 (POI GeoJSON 0.8 GB, join leaves 0.7 GB, tiles 0.1–0.5 GB, search 70–90 MB);
+  being fixed: join leak + tile limits + health line, POIs as vector tiles, search index → SQLite.
 - **Check on the phone (0.11.6 – 0.12.0, built without a phone):**
   - junction vibration: the app vibrated at every junction on the 2026-10-28 ride (trace "vibrated=true"), the owner
     felt nothing → Pixel Settings → Sound & vibration → Vibration & haptics → *Alarm vibration*, Do Not Disturb /
@@ -57,10 +58,6 @@ the git log.
   `receiveSharedPlace`), ask "Route here?" (from the position / the plan's end) instead of only showing the place card.
 - **Plan links: publish `/.well-known/assetlinks.json` on plan.onpath.earth (Drive order A-005)** – test key SHA-256 in
   the A-005 report; until then Android opens the links in the browser unless "Open by default" allows OnPath.
-- **App colours closer to the website (owner, Drive order A-009)** – `ui/Theme.kt` only: primary `#1F6E43` → `#245F46`;
-  primaryContainer `#DDEFE3` → a warmer olive light (≈ `#E6EDDC`); background `#F7F8F5` → `#FAFAF6`; text towards
-  `#243C31` only if contrast stays ≥ 7:1. Not the map / route / warning / error colours, not the icon. Paparazzi
-  before / after. Palette: repo `happychriss/onpath.earth` `docs/COLORS.md`.
 - **Two MainActivity instances at start (seen only on the first start after an install)** – one process, two
   activities, each its own ViewModel; shared state is already per host (`ui/MapReload.kt`) and the event log names
   every "Screen #n created / destroyed". Next: read those lines after the next install; if it is a plain launcher
