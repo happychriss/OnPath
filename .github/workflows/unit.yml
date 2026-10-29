@@ -1,5 +1,5 @@
 # All JVM unit tests (incl. the screenshot tests) after every push to main that touches the app – beside the release,
-# not a gate (the release runs only the risk-based selection, tools/ci/risk_tests.py; owner 2026-10-28). Like the E2E
+# not a gate (the release runs only the risk-based selection, tools/ci/risk_tests.py; owner). Like the E2E
 # run: a red run is fixed at once.
 name: Unit tests
 

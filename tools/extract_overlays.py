@@ -29,12 +29,12 @@ tools/build_overlays.sh, which turns them into ONE overlays.pmtiles. The tile "p
 copy at z11-12) and carries what the style needs to drop the base map's path / track lines (schema: see
 docs/map-pipeline.md "Overlays as vector tiles"). --no-geojson skips the format-1 files.
 
-Towns and path links (format 2, "quiet towns" 2026-10-26, docs/design/map-colour-analysis.md): "paths" (also the z11-12
+Towns and path links (format 2, "quiet towns", docs/design/map-colour-analysis.md): "paths" (also the z11-12
 copy) and "streets" features get u = 1 in built-up land / 2 in town green (TownIndex: one more read of the file for
 landuse / leisure / natural / amenity areas and building centres); path ends that stop at a hidden sidewalk / crossing
 get link pieces k = "l" (link_pieces); pedestrian squares carry ar = 1.
 
-Router classes (--wayclass JAR, format 2; docs/map-style-notes.md "Router classes", owner decisions 2026-10-22):
+Router classes (--wayclass JAR, format 2; docs/map-style-notes.md "Router classes", owner decisions):
 tools/routing/wayclass (BRouter's own expression engine and OnPath's profiles, --profiles DIR) classifies every
 "paths" (z13-14) and "streets" feature per activity group: ch hike, ct trekking + e-bike, cf touring, cm MTB +
 e-MTB, each 0 good / 1 possible / 2 forbidden / 3 too hard (forbidden only by sac_scale / mtb:scale /
@@ -99,11 +99,11 @@ SMOOTH = {"excellent": 0, "good": 1, "intermediate": 2, "bad": 3, "very_bad": 4,
           "very_horrible": 6, "impassable": 7}
 WAY_KIND = {"track": "t", "path": "p", "footway": "p", "bridleway": "p", "cycleway": "c"}
 ROUTE_KIND = {"hiking": "hike", "foot": "hike", "bicycle": "bike", "mtb": "mtb"}
-# Cycle routes drawn on the map (owner field review, Hilden 2026-10-26): only the four signed networks. Relations with
+# Cycle routes drawn on the map (owner field review, Hilden): only the four signed networks. Relations with
 # another network (network=bcn / bicycle, or none – unnamed collections such as "cycle_network=Kreis Mettmann") drew a
 # route line along ways that carry no signposted route. The router's route pseudo-tags (--wayclass) are not affected.
 BIKE_NETWORKS = {"lcn", "rcn", "ncn", "icn"}
-# Route names on the map (owner 2026-10-26): a way keeps the name of its best NAMED route of these kinds even where a
+# Route names on the map (owner): a way keeps the name of its best NAMED route of these kinds even where a
 # higher-ranked route gives it the highlight; merged_routes writes them as label copies (lb). Names of whole networks
 # ("Radverkehrsnetz NRW, Stadt Solingen Restnetz") are no route names.
 LABEL_KINDS = {"bike"}
@@ -116,7 +116,7 @@ LOW_SIMPLIFY = 0.00008  # ~8 m: lowways are only drawn below z13
 LOW_WAYS = {"path", "footway", "bridleway", "track"}
 
 # --- format 2: extra ways and attributes of the tile layer "paths" (only with --tiles) ----------------------------
-# The base map's path / track lines are dropped at z13-14 in format 2, so every way a style layer used to read from
+# The base map's path / track lines are dropped at z13-14 in format 2, so every way a style layer would read from
 # the base map's transportation layer must be in "paths": cycleways, steps, pedestrian streets / areas, sidewalks and
 # crossings (green ways), plus via ferratas and roads with cycle lanes for the planned bike map. They get k="x" (never
 # drawn as a path / track line); k "t" / "p" stay exactly as in paths.geojson.
@@ -137,7 +137,7 @@ BARRIER_ZOOMS = (14, 14)
 # BRouter's map creator turns route relations into way pseudo-tags "route_<route>_<network>" = yes | proposed
 ROUTER_ROUTES = {"bicycle", "mtb", "hiking", "foot"}
 
-# --- towns (format 2, "quiet towns" 2026-10-26; docs/design/map-colour-analysis.md "Quiet towns") --------------------
+# --- towns (format 2, "quiet towns"; docs/design/map-colour-analysis.md "Quiet towns") --------------------
 # Tile attribute u on "paths" and "streets": 1 = the way lies in built-up land (the style draws footways there thin
 # grey and only from z14, streets white), 2 = in a park / cemetery / allotments inside a town (paths stay dark, but
 # only from z13). Not set in forests, fields, meadows and open land, and never on graded trails (T2+ or a faint trail):
@@ -155,22 +155,22 @@ COUNTRY_GREEN = {("landuse", "forest"), ("landuse", "meadow"), ("landuse", "farm
 TOWN_BUFFER_M = 25.0
 BUILDING_GRID_M = 40.0   # building density: centres counted per grid square ...
 BUILDING_DENSE = 8       # ... a point is built-up with at least this many buildings in the 3 x 3 squares around it
-# Gap fix (2026-10-26): sidewalks / crossings (footway=sidewalk|crossing) are not drawn, so a path that ends on one
-# stopped a few metres before the street. The hidden pieces that join such a path end to the nearest drawn way become
+# Gap fix: sidewalks / crossings (footway=sidewalk|crossing) are not drawn, so a path that ends on one
+# would stop a few metres before the street. The hidden pieces that join such a path end to the nearest drawn way become
 # tile features k="l" (drawn like the path, same u), at most LINK_MAX_M along the hidden ways. Left out: links that
 # would close a small loop (back onto the same path, or a detour much longer than the straight gap – corner triangles,
 # traffic islands).
 LINK_MAX_M = 30.0
 LINK_MAX_DETOUR = 1.6    # chain length / straight distance start -> end
 LINK_MIN_PATH_M = 20.0   # no link from a path piece shorter than this (spurs at traffic islands / corners)
-# Sidewalk fragments (owner 2026-10-26, Hilden Hagelkreuz): a short unnamed footway / path in built-up land (u = 1) that
+# Sidewalk fragments (owner, Hilden Hagelkreuz): a short unnamed footway / path in built-up land (u = 1) that
 # touches no other drawn way at either end is a stub of the sidewalk network (across a traffic island, a corner cut, a
-# bit to a door) that just lacks the footway=sidewalk tag – drawn, it was a stray grey arc beside the street, and its
-# links made it longer. Such pieces become k="x" (like a sidewalk: not drawn as a path) and get no links. Footways tagged
+# bit to a door) that just lacks the footway=sidewalk tag – drawn, it is a stray grey arc beside the street, and its
+# links make it longer. Such pieces become k="x" (like a sidewalk: not drawn as a path) and get no links. Footways tagged
 # footway=traffic_island are hidden like sidewalks and crossings everywhere (HIDDEN_FOOTWAY).
 FRAGMENT_MAX_M = 25.0
 HIDDEN_FOOTWAY = ("sidewalk", "crossing", "traffic_island")
-# Street areas (owner 2026-10-26, Hilden Hagelkreuz: the reference map shows pedestrian areas and traffic islands as light
+# Street areas (owner, Hilden Hagelkreuz: the reference map shows pedestrian areas and traffic islands as light
 # polygons): tile layer "areas", z14 only (the style draws them from z16, over-zoomed), attribute a = "foot" (walkable
 # surface: area:highway footway / pedestrian / path / sidewalk / steps / cycleway, highway footway / path / cycleway
 # with area=yes), "square" (highway=pedestrian + area=yes, place=square), "island" (area:highway=traffic_island,
@@ -201,7 +201,7 @@ def lookup_keys(profiles_dir):
 LOOKUP = lookup_keys(ARGS.profiles) if WAYCLASS else {"way": set(), "node": set()}
 NODE_KEYS = LOOKUP["node"] - {"highway"}  # a node only matters for blocking with one of these (barrier, access …)
 
-# --- smoothing (--smooth, owner 2026-10-20 / 21): OSM paths are polylines with hard corners; rounded bends read like
+# --- smoothing (--smooth, owner): OSM paths are polylines with hard corners; rounded bends read like
 # a real trail. Every bend of >= SMOOTH_ANGLE becomes a short curve that stays within SMOOTH_MAX_DEV of the OSM line.
 # Way ends and junction nodes (shared with any other highway) are kept exact, so the network stays connected and a
 # way smooths the same in every cell (it is smoothed whole, before any clipping). Small streets (STREETS) are smoothed
@@ -209,12 +209,12 @@ NODE_KEYS = LOOKUP["node"] - {"highway"}  # a node only matters for blocking wit
 # roads stay in the base map, unsmoothed - their shared nodes with a small street are junctions, so both still meet.
 # Route bands use the same geometry as the way below them.
 SMOOTH_WAYS = LOW_WAYS | {"cycleway", "steps", "via_ferrata", "pedestrian"}
-SMOOTH_ANGLE = ARGS.smooth_angle   # degrees of turn (default 15; was 20 until 2026-10-21)
-SMOOTH_MAX_DEV = ARGS.smooth_dev   # metres from the OSM line at the bend's corner (default 3; was 1.5)
+SMOOTH_ANGLE = ARGS.smooth_angle   # degrees of turn (default 15)
+SMOOTH_MAX_DEV = ARGS.smooth_dev   # metres from the OSM line at the bend's corner (default 3)
 SMOOTH_MAX_CUT = 20.0  # metres along each leg at most
 JUNCTIONS = set()      # node ids used by more than one highway way (filled by RelationPass with --smooth)
 
-# --- format 2: small streets (tile layer "streets", owner 2026-10-21) ----------------------------------------------
+# --- format 2: small streets (tile layer "streets", owner) ----------------------------------------------
 # OpenMapTiles classes "minor" (residential, living_street, unclassified, road) and "service" come from the overlay at
 # z13-14 (smoothed with --smooth); tools/trim_base.sh drops them from the base map's "transportation" layer there (the
 # street names in "transportation_name" stay in the base map). Attributes use the OpenMapTiles names, so the street

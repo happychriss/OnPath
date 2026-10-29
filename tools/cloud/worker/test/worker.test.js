@@ -238,7 +238,7 @@ test("ETA: queue simulation with measured build and download times", async () =>
   j = await statusFor(env, cfg, [BOZEN, INNSBRUCK], 2, now);
   assert.equal(j.cells[0].eta_s, 100);
   assert.equal(j.cells[1].eta_s, 100 + cfg.pumpLagS + cfg.startupS + 35 + 300); // after Bozen's slot frees
-  // published by the builder, not yet recorded by the pump: almost there (not "starting" again – TEST 2026-10-21)
+  // published by the builder, not yet recorded by the pump: almost there (not "starting" again – seen on TEST)
   await putStatus(env, BOZEN, { state: "ready", version: "2026-10-21-s2", execution: short });
   j = await statusFor(env, cfg, [BOZEN], 2, now);
   assert.deepEqual([j.cells[0].step, j.cells[0].progress, j.cells[0].eta_s], ["upload", 1, cfg.pumpLagS]);

@@ -26,10 +26,10 @@ export function config(env) {
     rateLimitPerMin: num(env.RATE_LIMIT_PER_MIN, 30),
     refreshDays: num(env.REFRESH_DAYS, 35),
     jobTimeoutS: num(env.JOB_TIMEOUT_S, 3600),
-    avgCellS: num(env.AVG_CELL_S, 330), // raw cuts since 2026-10-21: 300–370 s per cell (map-hosting.md §7e)
+    avgCellS: num(env.AVG_CELL_S, 330), // raw cuts: 300–370 s per cell (map-hosting.md §7e)
     startupS: num(env.STARTUP_S, 90),
     // first cell in an area without a cached source extract: download (+ lock wait) – measured, map-hosting.md
-    newAreaS: num(env.NEW_AREA_S, 90), // measured 2026-10-21: slovenia 20 s, nord-est + austria ~80 s
+    newAreaS: num(env.NEW_AREA_S, 90), // measured: slovenia 20 s, nord-est + austria ~80 s
     etaSamples: num(env.ETA_SAMPLES, 10), // rolling average over the last N measured builds
     etaSmoothS: num(env.ETA_SMOOTH_S, 60), // an ETA moves fully to a new estimate only after this many seconds
     pumpLagS: num(env.PUMP_LAG_S, 30), // cron every minute: a freed slot is noticed after ~30 s on average

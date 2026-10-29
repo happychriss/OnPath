@@ -31,9 +31,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Owner decisions 2026-10-22: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
-  # publishing only a short start test (the app opens, also with a saved plan – 0.9.1 crashed there). Unit tests below.
-  # Owner 2026-10-28 ("make building shorter"): smoke and build run side by side, publish waits for both – the same
+  # Owner decisions: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
+  # publishing only a short start test (the app opens, also with a saved plan). Unit tests below.
+  # Owner ("make building shorter"): smoke and build run side by side, publish waits for both – the same
   # gates, ~7 instead of ~12 minutes.
   smoke:
     uses: ./.github/workflows/e2e.yml
@@ -84,7 +84,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.ver.outputs.skip != 'true'
 
-      # Risk-based (owner 2026-10-28): the core-feature tests always, plus the packages changed since the last release
+      # Risk-based (owner): the core-feature tests always, plus the packages changed since the last release
       # (tools/ci/risk_tests.py); build files / BRouter → everything. The full suite runs after every push (unit.yml).
       - name: Unit tests (risk-based)
         if: steps.ver.outputs.skip != 'true'

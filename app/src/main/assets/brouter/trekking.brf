@@ -105,8 +105,8 @@ assign isbike = or hasbikerouteoraccess hascycleway
 
 assign ispaved = or surface=paved|asphalt|concrete|paving_stones|sett smoothness=excellent|good
 # OnPath: compacted (a firm, water-bound surface, typical of shared foot / cycle paths) is not loose ground – it
-# counts like fine_gravel (2026-10-26, Hilden Itter path: a compacted bicycle=designated path cost 5.15, more than a
-# primary road; routes zig-zagged through side streets)
+# counts like fine_gravel (else a compacted bicycle=designated path costs 5.15, more than a primary road, and routes
+# zig-zag through side streets)
 assign isunpaved = not or ispaved or ( and surface= smoothness= ) or surface=fine_gravel|compacted|cobblestone smoothness=intermediate|bad
 assign probablyGood = or ispaved and ( or isbike highway=footway ) not isunpaved
 
@@ -136,8 +136,8 @@ assign initialclassifier =
 # changed
 #
 assign initialcost =
-     if ( equal initialclassifier classifier_ferry ) then 1000  # OnPath: was 10000 (10 km per ferry); route tests
-                                                                # 2026-10-25: a 70 m canal ferry cost a 7 km detour
+     if ( equal initialclassifier classifier_ferry ) then 1000  # OnPath: upstream 10000 (10 km per ferry) made
+                                                                # a 70 m canal ferry cost a 7 km detour
      else 0
 
 #
@@ -175,9 +175,9 @@ assign footaccess =
 #
 assign accesspenalty =
        if bikeaccess then 0
-       # OnPath (owner 2026-10-25): a footway on a signed cycle route is ridden; a paved / firm footway without a
+       # OnPath (owner): a footway on a signed cycle route is ridden; a paved / firm footway without a
        # bicycle tag (not a sidewalk / crossing) is only slightly dearer (+1); the app shows "… m pushing" for the rest.
-       # bicycle=no / dismount keep +4 (2026-10-26: a 592 m bicycle=no promenade in Meran became a shortcut)
+       # bicycle=no / dismount keep +4 (else a 592 m bicycle=no promenade in Meran becomes a shortcut)
        else if and any_cycleroute and bicycle= footaccess then 0
        else if footaccess then ( if ( and highway=footway and not footway=sidewalk|crossing and bicycle= not isunpaved ) then 1 else 4 )
        else if any_cycleroute then 15
@@ -221,7 +221,7 @@ assign onewaypenalty =
          else if ( highway=primary|primary_link              ) then 100
          else if ( highway=secondary|secondary_link          ) then 100
          else if ( highway=tertiary|tertiary_link            ) then 100
-         else 100.0  # OnPath: wrong way on a oneway is (almost) never used – owner 2026-10-20 (was 4 = "push the bike")
+         else 100.0  # OnPath (owner): wrong way on a oneway is (almost) never used (upstream 4 = "push the bike")
        )
        else 0.0
 
@@ -284,8 +284,8 @@ assign town_penalty
 # the type of way the routing profile is searching for
 #
 assign isresidentialorliving = or highway=residential|living_street living_street=yes
-# OnPath: a busy road on a cycle route is not "perfect" (route tests 2026-10-25: a secondary with traffic class 5
-# on a local cycle route beat the parallel cycleway)
+# OnPath: a busy road on a cycle route is not "perfect" (else a secondary with traffic class 5 on a local cycle
+# route beats the parallel cycleway)
 assign ldcr_busy =
        if hascycleway then false
        else if highway=trunk|trunk_link|primary|primary_link|secondary|secondary_link then true
@@ -342,7 +342,7 @@ assign costfactor
   #
   if ( highway=steps ) then ( if allow_steps then 40 else 10000 )
   # OnPath: a ferry that does not take bikes (ferry_nobike) is forbidden – pushing does not help on a boat
-  # (2026-10-26: 56 of 208 test routes over a short bicycle=no ferry used it)
+  # (as a mere cost, 56 of 208 test routes over a short bicycle=no ferry used it)
   else if ( route=ferry   ) then ( if ( and allow_ferries not ferry_nobike ) then 5.67 else 10000 )
 
   #
@@ -350,7 +350,7 @@ assign costfactor
   #
   else if ( and is_ldcr not ldcr_busy ) then 1  # always treated as perfect (=1); OnPath: not a busy road
   else
-  add ( if stick_to_cycleroutes then 0.5 else 0.15 )  # everything else somewhat up (OnPath: was 0.05; 0.20 took a T2 path in Meran)
+  add ( if stick_to_cycleroutes then 0.5 else 0.15 )  # everything else somewhat up (OnPath: upstream 0.05; 0.20 takes a T2 path in Meran)
 
   #
   # some other highway types

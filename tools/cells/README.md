@@ -68,12 +68,12 @@ docker run --rm -v ~/onpath-data:/data -v ~/onpath:/onpath:ro onpath-cell-builde
   are mapped back to OSM ids (`cells.py remap-ids`).
 - **zo and Docker networking:** every container on the default bridge adds a `veth` interface at start and removes it
   at stop. The owner's Docbox mDNS daemon (`dnssd`, `cdclient_daemon.rb`) crashes on the vanished interface and
-  systemd restarts the Docbox services (seen 2026-10-20 at each `docker build` step and run). **Fix (2026-10-20): `run.sh`
+  systemd restarts the Docbox services (seen at each `docker build` step and run). **Fix: `run.sh`
   uses `--network host` by default** – no veth per run, Docbox restart counters stayed unchanged over two builds.
   Never `docker build` on zo on the default bridge (use `docker build --network host`).
 - Low zooms (z < 10) are not in a cell (overview map, map-cells.md §7): a cell alone shows nothing below z10.
 - `DOCKER_ARGS="--dns 1.1.1.1"` where the Docker bridge has no working DNS (the laptop).
-- Local test (laptop, 2026-10-20): `docker build --network host -t onpath-cell-builder:f2 …`, then
+- Local test (laptop): `docker build --network host -t onpath-cell-builder:f2 …`, then
   `DATA=<dir> IMAGE=onpath-cell-builder:f2 KEEP_WORK=1 tools/cells/run.sh 10 543 361` (`FORMAT=1` for the old set).
   Inside a git worktree the container cannot read the revision (manifest `pipeline: git:unknown`); on zo and in the
   job image it is set.

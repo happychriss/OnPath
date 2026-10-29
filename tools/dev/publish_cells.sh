@@ -7,7 +7,7 @@
 #   tools/dev/publish_cells.sh 10-531-342 10-531-341 …     build + upload (≤ 2 cells at once, low priority)
 #   tools/dev/publish_cells.sh --dry-run 10-531-342        everything but the upload (into ~/onpath-cells-work/dry-run)
 #
-# Rules (owner 2026-10-26):
+# Rules (owner):
 #   - the code is origin/main (git archive), never local changes: a dirty working tree is refused (use push_cell.sh
 #     to try local changes on the phone); the manifest's "pipeline" is the origin/main commit, never "+dirty"
 #   - TEST only: the credentials come from ~/.config/onpath/r2-test.env (0600, outside the repo; R2 API token with

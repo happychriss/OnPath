@@ -104,7 +104,7 @@ PLANETILER_VERSION=${PLANETILER_VERSION:-0.10.2}
 PLANETILER_JAR=${PLANETILER_JAR:-$WORK/planetiler-$PLANETILER_VERSION.jar}
 PLANETILER_SOURCES=${PLANETILER_SOURCES:-$WORK/planetiler-sources}
 JAVA_XMX=${JAVA_XMX:-6g}
-TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}  # format 2 too since 2026-10-22 (was 12; balanced hill shading, owner)
+TERRAIN_MAXZOOM=${TERRAIN_MAXZOOM:-13}  # format 2 too (balanced hill shading, owner)
 TERRAIN_ARGS=(); [ "$FORMAT" = 2 ] && TERRAIN_ARGS=(--format 2)
 TERRARIUM_CACHE="$WORK/terrarium"   # AWS Terrarium PNGs, shared by terrain (format 2) and contours (format 2)
 OSM_MAX_AGE_DAYS=${OSM_MAX_AGE_DAYS:-6}

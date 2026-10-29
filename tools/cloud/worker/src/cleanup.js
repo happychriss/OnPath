@@ -1,4 +1,4 @@
-// Storage cleanup (owner-approved 2026-10-22, docs/design/map-hosting.md §7g), once a day from the cron:
+// Storage cleanup (owner-approved, docs/design/map-hosting.md §7g), once a day from the cron:
 //   - format-1 cells are gone for good (the app reads format 2 only): their objects (cells/f1/…, status/f1/…) and D1 rows
 //   - format-2 cells keep their current version and the previous one; older versions whose newest object is older
 //     than KEEP_DAYS are deleted (an app that just read the old manifest can still finish its download)

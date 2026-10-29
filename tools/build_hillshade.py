@@ -275,8 +275,8 @@ def main(argv=None):
     print(f"DEM tiles: {len(fetch_set)}, tiles to shade: {sum(map(len, need.values()))} (z{a.minzoom}-{top})",
           flush=True)
     with ThreadPoolExecutor(16) as ex:
-        # loop counters must not be called k: k (tile size factor) is used below to build the jobs (bug until
-        # 2026-10-26: after the loop k was the last fetch index, so every job shaded the wrong DEM zoom / size)
+        # loop counters must not be called k: k (tile size factor) is used below to build the jobs (after the loop
+        # k would be the last fetch index, so every job would shade the wrong DEM zoom / size)
         for n_done, _ in enumerate(ex.map(lambda t: fetch(t, CACHE), sorted(fetch_set))):
             if n_done % 2000 == 0:
                 print(f"  fetched {n_done}", flush=True)

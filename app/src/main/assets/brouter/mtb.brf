@@ -273,7 +273,7 @@ assign any_cycleroute
            else if highway=primary|primary_link               then 100
            else if highway=secondary|secondary_link           then 100
            else if highway=tertiary|tertiary_link             then 100
-           else 100.0  # OnPath: wrong way on a oneway is (almost) never used – owner 2026-10-20 (was 4 = "push the bike")
+           else 100.0  # OnPath (owner): wrong way on a oneway is (almost) never used (upstream 4 = "push the bike")
 
          else 0.0
 
@@ -464,9 +464,9 @@ assign any_cycleroute
   assign rawcostfactor ( # can be <1, adjusted to >=1 in final step of calculation of costfactor, uphillcostfactor,downhillcostfactor
     switch and highway= not route=ferry  10000 #only highways unless ferry
     switch highway=motorway|motorway_link|proposed|abandoned  10000
-    switch highway=via_ferrata  10000 # OnPath: via ferratas are forbidden (were cost_of_unknown 2.0)
+    switch highway=via_ferrata  10000 # OnPath: via ferratas are forbidden (upstream cost_of_unknown 2.0)
     # OnPath: SAC T4+ (alpine_hiking and harder) is forbidden. As a 9000 "last resort" the Ifinger case ran into the
-    # 15 s routing timeout instead of giving a route; sac_scale was ignored before (Ifinger: 1.2 km of T5).
+    # 15 s routing timeout instead of giving a route; upstream ignores sac_scale (Ifinger: 1.2 km of T5).
     switch sac_scale=alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking  10000
 
     # all other exclusions below (access, steps, ferries,..) should not be deleted by the decoder, to be available in voice-hint-processing
@@ -474,7 +474,7 @@ assign any_cycleroute
 
     switch    highway=steps  switch allow_steps     40 10000
     # OnPath: a ferry that does not take bikes (ferry_nobike) is forbidden – pushing does not help on a boat
-    # (2026-10-26: 67 of 194 test routes over a short bicycle=no ferry used it)
+    # (as a mere cost, 67 of 194 test routes over a short bicycle=no ferry used it)
     switch    route=ferry    switch and allow_ferries not ferry_nobike 5.67 10000
     switch    highway=construction                     10000
 

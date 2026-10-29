@@ -77,7 +77,7 @@ class TileSize(unittest.TestCase):
             return {t: bytes(d) for t, d in all_tiles(MmapSource(f))}
 
     def test_tiles_are_256_px_from_their_own_zoom(self):
-        # regression 2026-10-26: the fetch / shade loop counters were called k and overwrote the tile size factor
+        # regression: the fetch / shade loop counters were called k and overwrote the tile size factor
         # k = tile_size // 256 before the jobs were built – every tile was shaded at the wrong size from a DEM zoom
         # that was not there (here: no tile at all)
         out = os.path.join(self.tmp.name, "hs.pmtiles")

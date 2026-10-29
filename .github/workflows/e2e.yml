@@ -1,8 +1,8 @@
 # End-to-end tests of the core features (docs/core-features.md) on an Android emulator: the real app and map,
-# a finger held on the screen (app/src/androidTest). Owner 2026-10-21: "not good to find out during walking".
+# a finger held on the screen (app/src/androidTest). Owner: "not good to find out during walking".
 #
-# Runs on every push to main that touches the app and by hand (owner 2026-10-22: beside releases, not as a gate);
-# release.yml calls it with only StartSmokeE2ETest as a short gate (the app opens – 0.9.1 crashed at start).
+# Runs on every push to main that touches the app and by hand (owner: beside releases, not as a gate);
+# release.yml calls it with only StartSmokeE2ETest as a short gate (the app opens).
 name: E2E
 
 on:

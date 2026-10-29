@@ -1,4 +1,4 @@
-"""Format-2 overlay data of extract_overlays.py: towns and path links (TownIndex / link_pieces, "quiet towns" 2026-10-26)
+"""Format-2 overlay data of extract_overlays.py: towns and path links (TownIndex / link_pieces, "quiet towns")
 and the bike map attributes of schema 7 (cycle networks, route labels, bicycle streets, footbridges):
 cd tools && python3 -m unittest -v test_extract_overlays
 
@@ -145,7 +145,7 @@ class TownsAndLinks(unittest.TestCase):
 
 @unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
 class BikeMap(unittest.TestCase):
-    """Schema 7 (Hilden field review 2026-10-26): only signed cycle networks, labels for named local routes, bicycle
+    """Schema 7: only signed cycle networks, labels for named local routes, bicycle
     streets, footbridges. Every line runs west -> east at its own y (metres north), so a feature is found by its y."""
 
     @classmethod
@@ -243,7 +243,7 @@ class BikeMap(unittest.TestCase):
 
 @unittest.skipUnless(HAVE_LIBS, "pyosmium / shapely not installed")
 class JunctionAreas(unittest.TestCase):
-    """Schema 7 (Hilden Hagelkreuz 2026-10-26): street areas as polygons (layer "areas") and short unnamed town footways
+    """Schema 7 (Hilden Hagelkreuz): street areas as polygons (layer "areas") and short unnamed town footways
     between sidewalks hidden like a sidewalk (no stray pieces, no links from them)."""
 
     @classmethod

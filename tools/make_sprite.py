@@ -151,7 +151,7 @@ def way_arrow(pr, color, both=False, canvas=(14, 8)):
 
 def both_ways_arrow(pr, color, canvas=(18, 10)):
     """A two-headed arrow ⟷ (one shaft, a full head at each end) with a white outline: "bikes both ways" in a one-way
-    street (owner 2026-10-26: the two half arrows were too small to read)."""
+    street (owner: the two half arrows were too small to read)."""
     w, h = canvas[0] * pr * SS, canvas[1] * pr * SS
     sc = pr * SS
     im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -177,7 +177,7 @@ PATTERNS = {
                         '<path d="M2 8h9M4.5 8v-2.4M6.5 8v-3.4M8.5 8v-2.4M18 21h9M20.5 21v-2.4M22.5 21v-3.4M24.5 21v-2.4"/>'),
     # Farmland: only orchards (small tree rings) and vineyards (short upright stakes) get a symbol; plain fields none.
     # The former furrow dashes (horizontal dashes) on every farmland read like the German wet-meadow / marsh symbol
-    # (owner 2026-10-19: "symbols on many meadows" – in the valley these are the apple orchards).
+    # (owner: "symbols on many meadows" – in the valley these are the apple orchards).
     "pattern-orchard": ("#f1f0de", 14, 12, .45, .30, False, .7,
                         '<circle cx="3.5" cy="3" r="1.2"/><circle cx="10.5" cy="9" r="1.2"/>'),
     "pattern-vineyard": ("#f1f0de", 8, 12, .45, .30, False, .8, '<path d="M2 1.5v3.5M6 7.5v3.5"/>'),
@@ -207,7 +207,7 @@ def build(pr):
         images[f"poi-{kind}-small"] = badge(col, None, pr, canvas=12, r_out=4.6, ring=1.3, shadow=True)
     images["access-no"] = no_entry(pr)
     # bike map (format 2, make_style.py bike_map): one-way streets, and one-way streets open to bikes both ways
-    # Arrow colour rule (owner 2026-10-26): dark single arrow = one-way for everyone (bikes too); green two-headed arrow =
+    # Arrow colour rule (owner): dark single arrow = one-way for everyone (bikes too); green two-headed arrow =
     # one-way for cars, bikes both ways; green single arrow = one-way only for bikes. White outline on all of them, so
     # they read on white streets, yellow / orange roads and black paths alike.
     images["oneway-arrow"] = way_arrow(pr, "#262626")

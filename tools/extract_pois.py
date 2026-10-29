@@ -123,7 +123,7 @@ def importance(t):
 
 def priority(imp, lon, lat):
     """Placement priority "pr" (higher = placed first where symbols collide; make_style.pois() sort key). Fixed per
-    POI, so the same POI wins at every zoom and in every tile (field report 0.10.1, Bad Waldsee: restaurants swapped
+    POI, so the same POI wins at every zoom and in every tile (field report, Bad Waldsee: restaurants swapped
     while zooming – all of a kind had one sort key and the feature order of each tile decided). Equal importance is
     broken by a hash of the rounded position: deterministic and, unlike the id, the same in a cell build (renumbered
     extract) and a region build."""
