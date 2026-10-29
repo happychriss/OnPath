@@ -95,7 +95,7 @@
     <string name="settings_upd_check">Check for updates</string>
     <string name="settings_upd_source">Updates come from the OnPath page on GitHub. Android asks you to confirm every install.</string>
     <string name="settings_privacy_lead">Nothing is tracked. No account, no analytics, no ads.</string>
-    <string name="settings_privacy_tracks">Your tracks and routes never leave the phone – only to your own backup folder.</string>
+    <string name="settings_privacy_tracks">Your tracks and routes never leave the phone – only to your own backup folder, and encrypted to your browser when you pair it (below).</string>
     <string name="settings_privacy_what">What leaves your phone</string>
     <string name="settings_privacy_maps_what">Which map area you need (an area of about 30 × 40 km, not your position)</string>
     <string name="settings_privacy_maps_to">OnPath map server</string>
@@ -129,4 +129,10 @@
     <plurals name="settings_sum_maps_areas"><item quantity="one">%1$s · %2$d area</item><item quantity="other">%1$s · %2$d areas</item></plurals>
     <plurals name="settings_sum_diag_new"><item quantity="one">%1$d new problem</item><item quantity="other">%1$d new problems</item></plurals>
     <plurals name="settings_sum_diag_notes"><item quantity="one">For bug reports · %1$d note</item><item quantity="other">For bug reports · %1$d notes</item></plurals>
+    <string name="settings_page_sync">Browser sync</string>
+    <string name="settings_privacy_sync_what">Your saved routes and imported tracks, encrypted on the phone</string>
+    <string name="settings_privacy_sync_to">OnPath sync server (Cloudflare, EU)</string>
+    <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
+    <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
+    <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
 </resources>

@@ -22,6 +22,8 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     NAVIGATION(Res.string.settings_page_navigation),
     OFFLINE_MAPS(Res.string.settings_page_offline_maps),
     BACKUP(Res.string.settings_page_backup),
+    /** Plan sync with the web planner (A-007): shown when the app has the sync (always, not in older screenshots). */
+    SYNC(Res.string.settings_page_sync),
     UPDATES(Res.string.settings_page_updates, app = true),
     PRIVACY(Res.string.settings_page_privacy, app = true),
     DIAGNOSTICS(Res.string.settings_page_diagnostics, app = true),

@@ -250,6 +250,8 @@ private fun PlanMode(
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
+                // plan sync (A-007): Settings → Browser sync – how to pair, or "Paired with …"
+                onPairBrowser = { vm.openSettings(SettingsPage.SYNC) },
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,

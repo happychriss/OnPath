@@ -837,5 +837,44 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 45
+  },
+  "settings_page_sync": {
+    "area": "Settings list",
+    "context": "Topic: pair with the web planner in a browser, sync routes both ways",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Abgleich\" vs \"Sync\"",
+    "max": 28
+  },
+  "settings_privacy_sync_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: what (plan sync)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: to whom",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_title": {
+    "area": "Settings · Privacy",
+    "context": "Heading of the plan sync paragraph (docs/design/web-sync.md §12; same text on the website)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_text": {
+    "area": "Settings · Privacy",
+    "context": "Plan sync paragraph (web-sync.md §12; the website's privacy notice says the same)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the website text"
   }
 }

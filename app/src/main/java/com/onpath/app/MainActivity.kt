@@ -278,6 +278,15 @@ class MainActivity : ComponentActivity() {
                                     needsStorageAccess = remember(b) { needsStorageAccess() },
                                     backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
+                            sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
+                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }),
+                            syncCb = com.onpath.app.ui.SyncCallbacks(
+                                onOpenCamera = ::openCameraForPairing,
+                                onPair = vm::confirmPair,
+                                onCancelPair = vm::cancelPair,
+                                onSyncNow = vm::syncNow,
+                                onUnpair = vm::unpair,
+                            ),
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
                                     vm.busy = com.onpath.app.ui.Busy.BACKUP
@@ -517,6 +526,19 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
         vm.sayError(Txt.s(Res.string.msg_shared_unreadable), com.onpath.app.ui.NoticePlace.MAP)
         null
+    }
+
+    /**
+     * Settings → Browser sync → Open camera: the phone's camera app (it reads QR codes) – the pairing link it opens
+     * comes back to OnPath through the plan-link filter (PlanLinks, `#pair=`). No camera app → a line on the page.
+     */
+    private fun openCameraForPairing() {
+        try {
+            startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("sync", "No camera app to scan the pairing code", e)
+            vm.sayError(Txt.s(Res.string.sync_no_camera), com.onpath.app.ui.NoticePlace.SETTINGS)
+        }
     }
 
     private fun launchImport() {

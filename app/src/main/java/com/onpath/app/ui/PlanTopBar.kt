@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +54,8 @@ class PlanMenu(
     val onOpened: () -> Unit = {},
     /** Null hides "Check for updates" (updates switched off / not available in this build). */
     val onUpdates: (() -> Unit)? = null,
+    /** "Pair with browser" (plan sync with the web planner); null hides it. */
+    val onPairBrowser: (() -> Unit)? = null,
 )
 
 /**
@@ -112,6 +115,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }
     MenuItem(Icons.Filled.FiberManualRecord, str(Res.string.plan_menu_start_recording), enabled = st.startRecording) { close(); menu.onStartRecording() }
     HorizontalDivider()
+    menu.onPairBrowser?.let { p -> MenuItem(Icons.Outlined.Sync, str(Res.string.sync_menu_pair), enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
     menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
 }

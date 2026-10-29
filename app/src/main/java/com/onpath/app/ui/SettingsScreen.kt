@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.filled.CheckCircle
@@ -137,6 +138,9 @@ fun SettingsScreen(
     /** Settings → "Backup" (tours and routes as GPX in Documents/OnPath); null = topic hidden. */
     backup: BackupUi? = null,
     backupCb: BackupCallbacks = BackupCallbacks(),
+    /** Settings → "Browser sync" (plan sync with the web planner); null = topic hidden. */
+    sync: SyncUi? = null,
+    syncCb: SyncCallbacks = SyncCallbacks(),
     /** Current activity: "Your pace" explains the cycling levels for this bike. */
     activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
     /** Diagnostics → "Developer tools" open at first (screenshots). */
@@ -163,6 +167,7 @@ fun SettingsScreen(
         when (it) {
             SettingsPage.OFFLINE_MAPS -> offlineMaps != null
             SettingsPage.BACKUP -> backup != null
+            SettingsPage.SYNC -> sync != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
             else -> true
@@ -200,6 +205,7 @@ fun SettingsScreen(
                                             SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
                                             SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
                                             SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
+                                            SettingsPage.SYNC -> SettingsSummary.sync(sync!!)
                                             SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
                                             SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
                                             SettingsPage.PRIVACY -> SettingsSummary.privacy
@@ -222,6 +228,7 @@ fun SettingsScreen(
                         SettingsPage.NAVIGATION -> item { NavigationSection(settings, onChange, onAppSettings) }
                         SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                         SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
+                        SettingsPage.SYNC -> if (sync != null) item { SyncSection(sync, syncCb, now) }
                         SettingsPage.UPDATES -> if (update != null) item {
                             Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
@@ -249,6 +256,7 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.NAVIGATION -> Icons.Outlined.Navigation
         SettingsPage.OFFLINE_MAPS -> Icons.Outlined.CloudDownload
         SettingsPage.BACKUP -> Icons.Outlined.SaveAlt
+        SettingsPage.SYNC -> Icons.Outlined.Sync
         SettingsPage.PRIVACY -> Icons.Outlined.Lock
         SettingsPage.UPDATES -> Icons.Outlined.SystemUpdate
         SettingsPage.DIAGNOSTICS -> Icons.Outlined.BugReport
@@ -670,6 +678,10 @@ private fun PrivacySection() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // plan sync (docs/design/web-sync.md §12 – the website's privacy notice says the same)
+            HorizontalDivider()
+            Text(str(Res.string.settings_privacy_sync_title), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_privacy_sync_text), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -691,6 +703,9 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOf(
         Txt.s(Res.string.settings_privacy_web_when)),
     PrivacyFlow(Txt.s(Res.string.settings_privacy_diag_what), Txt.s(Res.string.settings_privacy_diag_to),
         Txt.s(Res.string.settings_privacy_diag_when)),
+    // plan sync with the web planner (plansync/HttpMailbox → plan.onpath.earth/sync/v1, only when paired)
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_sync_what), Txt.s(Res.string.settings_privacy_sync_to),
+        Txt.s(Res.string.settings_privacy_sync_when)),
 )
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */

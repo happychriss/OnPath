@@ -96,7 +96,7 @@ class SettingsSummaryTest {
     /** "Your settings" first, then the smaller "App" group. */
     @Test fun twoGroups() {
         assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
-            SettingsPage.BACKUP), SettingsPage.entries.filter { !it.app })
+            SettingsPage.BACKUP, SettingsPage.SYNC), SettingsPage.entries.filter { !it.app })
         assertEquals(listOf(SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
             SettingsPage.entries.filter { it.app })
     }

@@ -289,6 +289,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
         appVisible = true; appOnScreen = true
         cells.setForeground(true)
+        sync.request("back in the app")
         if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
     }
 
@@ -2670,6 +2671,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
             Backups.tourChanged(getApplication(), id)
+            sync.changed("route saved")
             setSaved(title, id, pts)
             refreshTours()
             then?.invoke()
@@ -2715,7 +2717,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             ok.onSuccess { replaced ->
-                if (replaced) { Backups.tourChanged(getApplication(), id); setSaved(name, id, pts); refreshTours(); then?.invoke() }
+                if (replaced) { Backups.tourChanged(getApplication(), id); sync.changed("route overwritten"); setSaved(name, id, pts); refreshTours(); then?.invoke() }
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
                 Problems.error("db", "Overwriting a saved route failed", it)
@@ -2741,6 +2743,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = Txt.s(Res.string.msg_route_rename_failed); return@launch }
             Backups.tourChanged(getApplication(), t.id)
+            sync.changed("renamed")
             if (linkId == t.id) setSaved(name, linkId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
             refreshTours()
@@ -3420,6 +3423,127 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------- plan sync with the browser (A-007: plansync/, docs/design/web-sync.md) ----------------
+
+    /**
+     * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
+     * back in the app, after a change here, when the network is back – never during a recording (after the tour).
+     */
+    val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
+        recording = { recState.value != null }, onReport = ::syncReport)
+
+    /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
+    var pairAsk by mutableStateOf<ByteArray?>(null)
+        private set
+
+    init {
+        sync.start()
+        // a tour ended: what waited for it comes now
+        viewModelScope.launch {
+            var was = recState.value != null
+            recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
+        }
+    }
+
+    /** A pairing link (camera / QR code, a tapped link): Settings → Browser sync shows the check digits and asks. */
+    private fun receivePairing(secret: ByteArray, via: String) {
+        openSettings(SettingsPage.SYNC)
+        viewModelScope.launch {
+            val current = withContext(Dispatchers.IO) {
+                try { sync.pairedMailbox() } catch (e: Exception) { Problems.warn("sync", "Stored pairing not read", e); null }
+            }
+            val incoming = com.onpath.app.sync.SyncKeys(secret).mailbox
+            Problems.info("sync", "Pairing link ($via): " + when (current) { null -> "asking"; incoming -> "already paired"; else -> "paired with another browser" })
+            when (current) {
+                null -> pairAsk = secret
+                incoming -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                else -> sayError(Txt.s(Res.string.sync_unpair_first), NoticePlace.SETTINGS)
+            }
+        }
+    }
+
+    /** "Pair": store the pairing, say hello, sync at once (the page shows "Paired with …" when the browser answered). */
+    fun confirmPair() { val s = pairAsk ?: return; pairAsk = null; sync.pair(s) }
+
+    fun cancelPair() { pairAsk = null; Problems.info("sync", "Pairing cancelled") }
+
+    /** Settings → Sync now. */
+    fun syncNow() {
+        if (recState.value != null) { sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS); return }
+        sync.request("Sync now", manual = true)
+    }
+
+    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
+    fun unpair() {
+        sync.unpair { status ->
+            when (status) {
+                200, 404, 410 -> sayInfo(Txt.s(Res.string.sync_unpaired), NoticePlace.SETTINGS)
+                -2 -> sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
+                else -> sayInfo(Txt.s(Res.string.sync_unpaired_offline), NoticePlace.SETTINGS)
+            }
+        }
+    }
+
+    /** A sync pass ended (main thread): new / changed routes into My routes, plans from the browser routed. */
+    private fun syncReport(r: com.onpath.app.plansync.PlanSync.Report) {
+        val res = r.result
+        if (r.ended) sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS)
+        // Pair / Sync now during a tour: nothing ran – it comes after the tour
+        if (r.manual && res == null && !r.error && recState.value != null) sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS)
+        if (res?.toursChanged == true) {
+            refreshTours()
+            followSyncedSavedPlan()
+            routeSyncedPlans(res.toRoute)
+        }
+    }
+
+    /** The open plan's saved route was renamed or deleted from the browser: "Saved as …" follows (like Rename / Delete). */
+    private fun followSyncedSavedPlan() {
+        val id = linkId.takeIf { it >= 0 } ?: return
+        viewModelScope.launch {
+            val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() }
+            if (linkId != id) return@launch
+            if (t == null || t.deletedMs != null) setSaved(null, -1, null) else if (t.name != linkName) setSaved(t.name, id, savedPoints)
+        }
+    }
+
+    /**
+     * Routes from the browser are saved with their points as the line; here they get the real route (the router, the
+     * pace) like a route saved on the phone. No routing data there yet: the points stay – opening the route routes it.
+     */
+    private fun routeSyncedPlans(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            for (id in ids.distinct()) {
+                val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() } ?: continue
+                if (t.kind != TourKind.PLANNED || t.waypoints.size < 2 || t.deletedMs != null) continue
+                val act = activityOrNull(t.activity) ?: Activity.HIKE
+                val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
+                val f = planFactors(act)
+                val r = withContext(routingDispatcher) {
+                    try {
+                        val eng = routingEngine()
+                        if (eng is com.onpath.app.routing.StraightLineEngine) null
+                        else withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel()).plan(pts, act, t.sac, t.pinned), act, f)
+                    } catch (e: Exception) {
+                        Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
+                    }
+                } ?: continue
+                val ok = withContext(Dispatchers.IO) {
+                    try {
+                        // changed again meanwhile (a newer sync): leave it to that one's routing
+                        val now = db.getTour(id)
+                        now != null && now.waypoints == t.waypoints && db.replacePlanned(id, act.name, t.sac, r.distanceM, r.ascentM, r.descentM,
+                            r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned)
+                            .also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
+                    } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
+                }
+                if (ok) Backups.tourChanged(getApplication(), id)
+            }
+            refreshTours()
+        }
+    }
+
     // ---------------- plan links (A-005: routing/PlanLinks, docs/core-features.md C15) ----------------
 
     /** Name a plan link brought, for the Save dialog while the plan still has the link's points. */
@@ -3444,6 +3568,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
             is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
+            // a pairing link of the web planner (☰ → Pair phone): Settings → Browser sync asks first (A-007)
+            is com.onpath.app.routing.PlanLinks.Found.Pairing -> { receivePairing(found.secret, via); return }
+            is com.onpath.app.routing.PlanLinks.Found.BrokenPairing -> {
+                Problems.warn("sync", "Pairing link ($via) could not be read: cut off or a newer version")
+                openSettings(SettingsPage.SYNC)
+                sayError(Txt.s(Res.string.sync_link_broken), NoticePlace.SETTINGS)
+                return
+            }
         }
         viewModelScope.launch {
             // Cold start: the start mode (Plan / Navigate, an unfinished tour) is decided after a database check
@@ -3567,7 +3699,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
-            if (ok) Backups.tourChanged(getApplication(), t.id)
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("moved to the recycle bin") }
             withContext(Dispatchers.Main) {
                 if (!ok) { routesProblem = Txt.s(Res.string.msg_tour_delete_failed, t.name); return@withContext }
                 if (shown?.tourId == t.id) shown = null
@@ -3597,7 +3729,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
             }
-            if (ok) Backups.tourChanged(getApplication(), t.id)
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("restored from the recycle bin") }
             else routesProblem = Txt.s(Res.string.msg_tour_restore_failed, t.name)
             openRecycleBin(); refreshTours()
         }
@@ -3609,7 +3741,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.deleteTour(t.id) }.onFailure { Problems.error("db", "Deleting a tour for good failed", it) }.isSuccess
             }
-            if (ok) Backups.purge(getApplication(), listOf(t.uuid))
+            if (ok) { Backups.purge(getApplication(), listOf(t.uuid)); sync.changed("deleted for good") }
             openRecycleBin()
         }
     }
@@ -3693,6 +3825,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
             }
             restoreProgress = null
+            if (r != null) sync.changed("restored from the backup folder")
             // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
             // offered at the first start); a failure there → the error card
             if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
@@ -3769,6 +3902,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 Backups.tourChanged(app, id)
+                sync.changed("GPX imported")
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
                 routesOpen = false // show the imported track on the map
                 refreshTours()
@@ -3916,6 +4050,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         com.onpath.app.data.AppRouting.unlisten(routingListener)
         // the screen's state is gone: only the age / corridor rules apply – unless a newer screen set its own already
         ownRelevance?.let { cells.releaseRelevance(it) }
+        sync.stop()
         routingDispatcher.close()
         super.onCleared()
     }

@@ -7,9 +7,13 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] Plan sync phone ⇄ browser, app part (Drive order A-007, web-sync.md §11; branch of the captain's agent) – since 2026-10-29
 
 ## Next
+- **Plan sync phone ⇄ browser (A-007) – app part built, check on the phone once the mailbox is deployed** – ☰ → Pair
+  with browser / Settings → Browser sync (camera opens the `#pair=` link, check digits, Pair; Sync now; Unpair asks).
+  Saved routes and imported GPX tracks sync both ways (a delete from the browser → recycle bin; never during a tour).
+  Tested without a phone: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`, and against the real `sync.js` in Node
+  (`tools/sync/e2e.sh`). Web planner: track items (kind 3, field 4 = `TrackCode`) to show / keep – see `sync/TrackCode.kt`.
 - **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
   PSS ~1.9 GB all day (native heap 1.34 GB), 3.18 GB / native 2.24 GB after the New York test (2 regions + search
   index rebuilt, 167 k entries). Measure each suspect with `dumpsys meminfo` / `showmap` / the native profiler, before

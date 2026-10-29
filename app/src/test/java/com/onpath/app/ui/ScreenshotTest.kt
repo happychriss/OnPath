@@ -289,7 +289,7 @@ class ScreenshotTest {
     private fun TopMenu(state: RouteMenuState, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             Frame { bottom() }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(state, onUpdates = {})) {} } }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(state, onUpdates = {}, onPairBrowser = {})) {} } }
         }
     }
 
