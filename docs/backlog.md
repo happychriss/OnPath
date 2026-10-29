@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] Plan sync phone ⇄ browser, app part (Drive order A-007, web-sync.md §11; branch of the captain's agent) – since 2026-10-29
 
 ## Next
 - **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
