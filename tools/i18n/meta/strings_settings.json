@@ -629,8 +629,8 @@
   },
   "settings_privacy_tracks": {
     "area": "Settings · Privacy",
-    "context": "Second line of the privacy page",
-    "priority": 2,
+    "context": "Second paragraph of the privacy page: what stays on the phone, what goes to the paired browser (plan sync). Wording approved by the owner 2026-10-30",
+    "priority": 1,
     "confidence": "sicher"
   },
   "settings_privacy_what": {

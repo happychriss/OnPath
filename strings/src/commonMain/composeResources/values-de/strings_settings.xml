@@ -94,7 +94,7 @@
     <string name="settings_upd_check">Nach Updates suchen</string>
     <string name="settings_upd_source">Updates kommen von der OnPath-Seite auf GitHub. Android fragt bei jeder Installation nach deiner Bestätigung.</string>
     <string name="settings_privacy_lead">Nichts wird verfolgt. Kein Konto, keine Analyse, keine Werbung.</string>
-    <string name="settings_privacy_tracks">Deine Tracks und Routen verlassen das Handy nie – außer in deinen eigenen Sicherungsordner und verschlüsselt zu deinem Browser, wenn du ihn verbindest (unten).</string>
+    <string name="settings_privacy_tracks">Deine Touren und Routen bleiben auf deinem Handy und in deinem eigenen Sicherungsordner. Wenn du dein Handy mit deinem Browser verbindest, werden deine gespeicherten Routen und importierten Tracks dorthin übertragen, damit du sie auch am Computer planen kannst. Sie werden vorher auf dem Handy verschlüsselt: Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen.</string>
     <string name="settings_privacy_what">Was dein Handy verlässt</string>
     <string name="settings_privacy_maps_what">Welches Kartengebiet du brauchst (ein Gebiet von etwa 30 × 40 km, nicht deine Position)</string>
     <string name="settings_privacy_maps_to">OnPath-Kartenserver</string>

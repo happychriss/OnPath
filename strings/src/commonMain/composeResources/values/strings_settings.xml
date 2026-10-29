@@ -95,7 +95,7 @@
     <string name="settings_upd_check">Check for updates</string>
     <string name="settings_upd_source">Updates come from the OnPath page on GitHub. Android asks you to confirm every install.</string>
     <string name="settings_privacy_lead">Nothing is tracked. No account, no analytics, no ads.</string>
-    <string name="settings_privacy_tracks">Your tracks and routes never leave the phone – only to your own backup folder, and encrypted to your browser when you pair it (below).</string>
+    <string name="settings_privacy_tracks">Your tours and routes stay on your phone and in your own backup folder. When you pair your phone with your browser, your saved routes and imported tracks are sent there so you can plan on your computer too. They are encrypted on the phone first: only your phone and your browser can read them – we can't. Recorded tours are never sent.</string>
     <string name="settings_privacy_what">What leaves your phone</string>
     <string name="settings_privacy_maps_what">Which map area you need (an area of about 30 × 40 km, not your position)</string>
     <string name="settings_privacy_maps_to">OnPath map server</string>
