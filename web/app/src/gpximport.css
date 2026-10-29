@@ -1,0 +1,13 @@
+/* GPX import (gpximport.ts): the track panel takes the plan sheet's place while a track is shown (the app's TrackPanel) */
+#sheet.track > :not(#trackPanel) { display: none !important; }
+#trackPanel { display: flex; flex-direction: column; gap: 8px; }
+#trackPanel .trackhead { display: flex; align-items: center; gap: 8px; }
+#trackPanel .trackname { flex: 1; font-size: 16px; font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#trackPanel .infoline { color: var(--muted); font-size: 12px; }
+#trackPanel .trackerror { color: var(--error); font-size: 14px; }
+#trackPanel .trackprofile svg { display: block; width: 100%; height: auto; }
+#trackPanel button.primary { height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#trackPanel button.primary.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+  border-radius: 50%; animation: gpxspin 0.8s linear infinite; }
+@keyframes gpxspin { to { transform: rotate(360deg); } }
+#map.gpxdrop { outline: 4px dashed #8E24AA; outline-offset: -8px; }

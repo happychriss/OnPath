@@ -13,7 +13,9 @@ export type EngineRequest =
   | { id: number; type: 'placePreview'; points: string; lat: number; lon: number }
   | { id: number; type: 'prefetch'; lat: number; lon: number }
   | { id: number; type: 'call'; fn: string; args: (string | number | boolean)[] }
-  | { id: number; type: 'insert'; points: string; lat: number; lon: number; lineSnapM: number };
+  | { id: number; type: 'insert'; points: string; lat: number; lon: number; lineSnapM: number }
+  | { id: number; type: 'gpxRead'; data: Uint8Array; fileName: string; activity: Activity; sac: number }
+  | { id: number; type: 'planFromTrack'; points: string; activity: Activity; sac: number };
 
 /** A plan as it travels in a QR code or link (the app's SharedPlan / PlanCode). */
 export interface SharedPlan {

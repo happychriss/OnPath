@@ -26,6 +26,8 @@ import { PlanSync } from './sync';
 import { myPlansDialog, pairDialog, joinDialog, requestSave } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
+import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
+import { setupGpxImport } from './gpximport';
 import './style.css';
 
 const ROUTE = '#1E3FAE';
@@ -54,6 +56,8 @@ const state = {
   roundTrip: false,
   canUndo: false,
   canRedo: false,
+  /** "Very long plan" was cancelled with nothing to take back: the points stay without a route (app: NotRouted.LONG). */
+  notRouted: false,
 };
 /** Names and pins by point value, also for points only undo / redo can bring back (the app: PlanHistory.allPoints). */
 const known = new Map<string, Meta>();
@@ -70,6 +74,7 @@ const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
   { id: 'menuPlans', icon: 'folder', label: 'My plans' },
   { id: 'menuPair', icon: 'sync', label: 'Pair phone' },
   { id: 'menuShare', icon: 'phone', label: 'Send to phone' },
+  { id: 'menuImportGpx', icon: 'route', label: 'Import GPX' }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: 'Help & credits' },
 ];
 const navItem = (id: string) => NAV.find((n) => n.id === id)!;
@@ -237,6 +242,7 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 
 /** Replaces the points (one undo step); names and pins follow their points by value. */
 async function commit(points: LatLon[], meta?: Meta[]) {
+  runCause = nextCause ?? 'edit'; nextCause = null;
   await engine.call('historyRecord', enc(state.points));
   setPoints(points, meta);
   await changed();
@@ -257,6 +263,7 @@ async function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 
 async function step(op: 'undo' | 'redo') {
   closeMenu();
   const t = await engine.call('historyStep', op, enc(state.points));
+  runCause = op;
   if (t === 'null') return;
   setPoints(dec(t));
   await changed();
@@ -482,6 +489,7 @@ async function loadShared(shared: SharedPlan) {
     shared.points.forEach(([la, lo]) => b.extend([lo, la]));
     map.fitBounds(b, { padding: fitPadding(), maxZoom: 15, duration: 0 });
   }
+  nextCause = 'other';
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
 }
 
@@ -516,7 +524,10 @@ async function changed() {
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
   $<HTMLButtonElement>('share').disabled = state.points.length < 2;
   rememberInAddress();
+  state.notRouted = false;
   if (state.points.length < 2) { state.plan = null; state.planning = false; render(); return; }
+  // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
+  if (!(await longRouteOk(engine, state.points, state.activity))) { await cancelLongRoute(); return; }
   const id = ++state.latest;
   state.planning = true;
   render();
@@ -529,6 +540,21 @@ async function changed() {
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   const s = r.stats!;
   status(`Planned in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
+  render();
+}
+
+/** What started this run (the app's PlanStatus.Cause): Cancel of the long-route question takes back only that. */
+let runCause = 'other';
+let nextCause: string | null = null;
+let activityBefore: { a: Activity; sac: number } | null = null;
+/** Cancel of "This route is very long" (AppViewModel.cancelRun): undo / redo the change, put the activity back, or keep the points. */
+async function cancelLongRoute() {
+  const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
+  state.latest++; state.plan = null; state.planning = false;
+  if (what === 'UNDO') return step('undo');
+  if (what === 'REDO') return step('redo');
+  if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
+  state.notRouted = true;
   render();
 }
 
@@ -547,7 +573,13 @@ function render() {
     head.innerHTML = '<span class="title">Plan a route</span>';
     const n = state.points.length;
     sub.textContent = n === 0 ? 'Click the map where you want to start or go.'
-      : n === 1 ? 'Click the map to set the destination.' : 'Calculating the route…';
+      : n === 1 ? 'Click the map to set the destination.' : state.notRouted ? notRoutedTexts.line : 'Calculating the route…';
+    if (state.notRouted && n >= 2) {
+      const b = document.createElement('button');
+      b.className = 'textbtn'; b.id = 'planAnyway'; b.textContent = notRoutedTexts.button;
+      b.onclick = () => { allowLongRoute(state.points); changed(); };
+      sub.append(b);
+    }
     $('profile').innerHTML = '';
     notice.hidden = true;
   } else {
@@ -590,6 +622,7 @@ function renderChip() {
 }
 function setActivity(a: Activity, sac: number, plan: boolean) {
   const same = a === state.activity && sac === state.sac;
+  if (plan && !same) { runCause = 'activity'; activityBefore = { a: state.activity, sac: state.sac }; }
   state.activity = a; state.sac = sac;
   localStorageSet('activity', a); localStorageSet('sac', String(sac));
   renderChip();
@@ -766,6 +799,15 @@ navItem('menuAbout').act = () => credits();
 const mapContent = new MapContentPanel(map, engine, (t) => status(t, 'error'));
 function applyMapContent() { mapContent.apply(); }
 $('mapContent').onclick = () => { closeMenus(); picker.close(); mapContent.open(); };
+// ☰ → Import GPX and a .gpx dropped on the map (gpximport.ts: the app's GpxParser, SportType, TrackToPlan)
+const gpxImport = setupGpxImport({
+  map, engine, status, fitPadding,
+  activity: () => ({ activity: state.activity, sac: state.sac }),
+  setActivity: (a, sac) => setActivity(a, sac, true),
+  plan: async (points, title) => { state.title = title; state.savedId = null; await commit(points); },
+});
+navItem('menuImportGpx').act = () => gpxImport.pick();
+(window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
 $('credits').onclick = () => credits();
 $('handle').onclick = () => $('sheet').classList.toggle('expanded');
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };

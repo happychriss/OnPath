@@ -24,17 +24,22 @@ val appFiles = listOf(
     "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",
     // plan sync, phase 2 (docs/design/web-sync.md): pairing code, keys, crypto, item format, conflict rule, ledger
     "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt",
+    // long-route question (web-planner.md §15): the app's LongRoute rule and plan status texts
+    "routing/LongRoute.kt", "ui/PlanStatus.kt",
+    // GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
+    "gpx/GpxParser.kt", "routing/TrackToPlan.kt", "time/TimeEstimate.kt", "data/AppSettings.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
 // the plain JVM here, so web CI checks them too).
 val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt", "ui/RouteWarningsTest.kt",
-    "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt")
+    "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt", "routing/LongRouteTest.kt", "gpx/GpxParserTest.kt",
+    "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt")
 
 sourceSets {
     main {
         java.setSrcDirs(listOf("src/main/java", stubs, root.resolve("app/src/main/java/btools/router")))
-        java.include("android/**", "org/**", "btools/**", "com/google/**", "OnPathHints.java")
+        java.include("android/**", "org/**", "btools/**", "com/google/**", "OnPathHints.java", "onpathweb/**", "com/onpath/web/**")
         // our Context (src/main/java) adds startActivity for poi/GoogleMapsLink.kt; the JVM test stubs' one steps aside
         java.exclude { it.relativePath.pathString == "android/content/Context.java" && !it.file.canonicalPath.startsWith(projectDir.canonicalPath) }
     }
@@ -50,6 +55,9 @@ dependencies {
     implementation(files(root.resolve("app/libs").listFiles { f -> f.name.endsWith(".jar") }!!.sorted()))
     implementation(teavm.libs.jsoApis)
     implementation("com.google.code.gson:gson:2.11.0") // the app gets it with MapLibre; search reads GeoJSON with it
+    // TeaVM maps java.time to ThreeTen backport (its classlib's substitution); gpx/GpxParser reads GPX times with it
+    implementation("org.threeten:threetenbp:1.6.9")
+    compileOnly("org.teavm:teavm-extension-spi:0.16.0") // XmlSubstitution (onpathweb SAX stand-ins for the Wasm build)
     testImplementation("junit:junit:4.13.2")
 }
 

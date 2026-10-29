@@ -50,12 +50,12 @@ object Engine {
         FileOutputStream(f).use { it.write(bytes) }
     }
 
-    private fun engine(): BRouterEngine {
+    internal fun engine(): BRouterEngine {
         if (dirty.isNotEmpty()) writeParts()
         return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments")).also { engine = it }
     }
 
-    private fun parsePoints(points: String): List<GeoPoint> = points.split(';').filter { it.isNotBlank() }.map { p ->
+    internal fun parsePoints(points: String): List<GeoPoint> = points.split(';').filter { it.isNotBlank() }.map { p ->
         val (la, lo) = p.split(',').map { it.trim().toDouble() }
         GeoPoint(la, lo)
     }
@@ -223,7 +223,7 @@ object Engine {
      * Elevation profile like the app's (ui/ElevationProfile `profileData`: points with elevation, distance along
      * the whole line via [Geo.cumulative]) with the app's gradient classes ([RouteSummary.steepness], 100 m window).
      */
-    private fun StringBuilder.profileJson(points: List<GeoPoint>) {
+    internal fun StringBuilder.profileJson(points: List<GeoPoint>) {
         val cum = if (points.size >= 2) Geo.cumulative(points) else DoubleArray(0)
         val keep = points.indices.filter { points[it].ele != null }
         val d = DoubleArray(keep.size) { cum[keep[it]] }
@@ -234,7 +234,7 @@ object Engine {
         append(",\"steep\":").append(steep.joinToString(",", "[", "]") { it.ordinal.toString() }).append('}')
     }
 
-    private fun StringBuilder.pointsJson(pts: List<GeoPoint>) {
+    internal fun StringBuilder.pointsJson(pts: List<GeoPoint>) {
         append('[')
         pts.forEachIndexed { i, p ->
             if (i > 0) append(',')
@@ -396,7 +396,7 @@ object Engine {
     private fun shares(s: List<Share>) = s.joinToString(",", "[", "]") { "[" + str(it.key) + "," + num(it.meters, 1) + "]" }
 
     /** Fixed-decimals number without String.format (same text on the JVM and in the browser). */
-    private fun num(v: Double, decimals: Int = 2): String {
+    internal fun num(v: Double, decimals: Int = 2): String {
         if (v.isNaN() || v.isInfinite()) return "null"
         var f = 1L
         repeat(decimals) { f *= 10 }
@@ -408,7 +408,7 @@ object Engine {
         return if (decimals == 0) "$sign$whole" else "$sign$whole.$frac"
     }
 
-    private fun str(s: String): String = buildString {
+    internal fun str(s: String): String = buildString {
         append('"')
         for (c in s) when (c) {
             '"' -> append("\\\""); '\\' -> append("\\\\"); '\n' -> append("\\n")
@@ -491,6 +491,13 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun activities(): String = Engine.activities()
 
 @JSExport fun problems(): String = Engine.problems()
+
+// plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
+@JSExport fun longRoute(points: String, activity: String): String = WebPlanRules.longRoute(points, activity)
+@JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
+@JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
+    WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
+@JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)
 
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----
 @JSExport fun syncPairNew(random: String): String = WebSync.pairNew(random)

@@ -94,6 +94,20 @@ export class EngineClient {
     return r.stats?.bytesFetched ?? 0;
   }
 
+  /** A GPX file read with the app's GpxParser + SportType (WebImport.kt): the track panel's JSON, or {error}. */
+  async gpxRead(data: Uint8Array, fileName: string, activity: Activity, sac: number): Promise<string> {
+    const r = await this.ask({ type: 'gpxRead', data, fileName, activity, sac });
+    if (!r.ok || r.text == null) throw new Error(r.error ?? 'GPX not read');
+    return r.text;
+  }
+
+  /** The app's TrackToPlan for [track] (routing data along it fetched first): {points} or {error}. */
+  async planFromTrack(track: [number, number][], activity: Activity, sac: number): Promise<string> {
+    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac });
+    if (!r.ok || r.text == null) throw new Error(r.error ?? 'track not planned');
+    return r.text;
+  }
+
   /** Index where a clicked point goes (the app's WaypointInsertion rule). */
   async insertIndex(points: [number, number][], lat: number, lon: number, lineSnapM: number): Promise<number> {
     const r = await this.ask({ type: 'insert', points: enc(points), lat, lon, lineSnapM });

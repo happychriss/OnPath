@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="https://www.komoot.de" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>Meran 2000 &amp; Ifinger Hütte</name>
+    <author><link href="https://www.komoot.de"><text>komoot</text><type>text/html</type></link></author>
+  </metadata>
+  <trk>
+    <name>Meran 2000 &amp; Ifinger Hütte</name>
+    <type>hike</type>
+    <trkseg>
+      <trkpt lat="46.687332" lon="11.234928">
+        <ele>1893.3</ele>
+        <time>2026-07-14T08:00:00Z</time>
+      </trkpt>
+      <trkpt lat="46.687349" lon="11.235096">
+        <ele>1894.3</ele>
+        <time>2026-07-14T08:00:45Z</time>
+      </trkpt>
+      <trkpt lat="46.687394" lon="11.235389">
+        <ele>1895.0</ele>
+        <time>2026-07-14T08:01:30Z</time>
+      </trkpt>
+      <trkpt lat="46.687660" lon="11.235832">
+        <ele>1887.8</ele>
+        <time>2026-07-14T08:02:15Z</time>
+      </trkpt>
+      <trkpt lat="46.687983" lon="11.236435">
+        <ele>1891.0</ele>
+        <time>2026-07-14T08:03:00Z</time>
+      </trkpt>
+      <trkpt lat="46.688300" lon="11.236863">
+        <ele>1892.8</ele>
+        <time>2026-07-14T08:03:45Z</time>
+      </trkpt>
+      <trkpt lat="46.688859" lon="11.236847">
+        <ele>1887.5</ele>
+        <time>2026-07-14T08:04:30Z</time>
+      </trkpt>
+      <trkpt lat="46.689129" lon="11.237      <trkpt lat="46.6880" lon="11.2360"><ele>19
+   </trkseg> <oops & stray>
+      <trkpt lat="46.6890" lon="11.2370"><ele>1905</ele></trkpt>
+      <trkpt lat="46.6900" lon="11.2380"><ele>1910</ele></trkpt>

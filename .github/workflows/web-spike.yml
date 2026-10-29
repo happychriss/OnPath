@@ -59,10 +59,13 @@ jobs:
           ls -la segments
 
       - name: Build the Wasm engine (TeaVM)
-        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's PlanCodeTest, PlanStateTest, MapGesturesTest, sync tests
+        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's own tests of the shared files (appTests) + WebImportTest
 
       - name: Plan sync in Wasm = the JVM's frozen bytes (keys, blob)
         run: node web/app/test/sync-engine.mjs
+
+      - name: GPX import + long-route rule in Wasm = the JVM (the web's SAX stand-in reads like the JDK's)
+        run: node web/app/test/gpx-engine.mjs
 
       - name: Routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
@@ -98,6 +101,10 @@ jobs:
       - name: Plan sync (phase 2) – two browsers pair, sync both ways, offline + conflict copy, delete, unpair
         working-directory: web/app
         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
+        working-directory: web/app
+        run: node test/import-smoke.mjs $GITHUB_WORKSPACE/segments
 
       - name: Where the time goes (numbers only, nothing checked)
         working-directory: web/app

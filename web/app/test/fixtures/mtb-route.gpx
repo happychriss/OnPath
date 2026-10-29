@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- a GPX 1.0 file with a prefix, a route, waypoints, CDATA and character references -->
+<!DOCTYPE gpx [ <!ENTITY unused "never read"> ]>
+<gpx:gpx version="1.0" creator="test" xmlns:gpx="http://www.topografix.com/GPX/1/0">
+  <gpx:name><![CDATA[Lana – Völlan <MTB>]]></gpx:name>
+  <gpx:wpt lat="46.6160" lon="11.1590"><gpx:ele>310</gpx:ele><gpx:name>Lana &#x2013; Start</gpx:name><gpx:type>parking</gpx:type></gpx:wpt>
+  <gpx:wpt lat='46.6085' lon='11.1400'><gpx:name>V&#246;llan</gpx:name></gpx:wpt>
+  <gpx:rte>
+    <gpx:name>Lana &amp; V&#xF6;llan</gpx:name>
+    <gpx:type>MTB</gpx:type>
+    <gpx:rtept lat="46.6160" lon="11.1590"><gpx:ele>310</gpx:ele></gpx:rtept>
+    <gpx:rtept lat="46.6130" lon="11.1520"><gpx:ele>420</gpx:ele></gpx:rtept>
+    <gpx:rtept lat="46.6100" lon="11.1450"/>
+    <gpx:rtept lat="46.6085" lon="11.1400"><gpx:ele>700,5</gpx:ele></gpx:rtept>
+    <gpx:rtept lat="bad" lon="11.14"/>
+  </gpx:rte>
+</gpx:gpx>

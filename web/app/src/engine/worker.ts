@@ -35,12 +35,18 @@ interface WasmEngine {
   gpx(name: string, activity: string, sac: number): string;
   activities(): string;
   problems(): string;
+  longRoute(points: string, activity: string): string;
+  planCancel(cause: string, canUndo: boolean, canRedo: boolean): string;
+  gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
+  planFromTrack(track: string, activity: string, sac: number): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
 const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
+  // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
+  'longRoute', 'planCancel',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked']);
@@ -234,8 +240,20 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       reply({ id: req.id, ok: true, index: e.insertIndex(req.points, req.lat, req.lon, req.lineSnapM) });
       return;
     }
+    if (req.type === 'gpxRead') {
+      // GPX import (WebImport.kt – the app's GpxParser + SportType)
+      reply({ id: req.id, ok: true, text: e.gpxRead(new Int8Array(req.data.buffer, req.data.byteOffset, req.data.length), req.fileName, req.activity, req.sac) });
+      return;
+    }
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points);
+    if (req.type === 'planFromTrack') {
+      // a shown track → plan (the app's TrackToPlan): the routing data along the whole track first, like the app
+      e.writeParts();
+      reply({ id: req.id, ok: true, text: e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
+        problems: JSON.parse(e.problems()) });
+      return;
+    }
     const t1 = performance.now();
     e.writeParts(); // new parts into the local rd5 files (once per plan, not per part)
     const storeMs = performance.now() - t1;
