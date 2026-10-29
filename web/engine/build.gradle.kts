@@ -17,6 +17,8 @@ val appFiles = listOf(
     // search (docs/design/web-planner.md §10): the app's index, ranking and Photon parsing
     "search/Place.kt", "search/SearchText.kt", "search/OfflineIndex.kt", "search/OnlineSearch.kt", "search/BaseMapPlaces.kt",
     "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
+    // web UI (docs/design/web-planner.md §13): route name proposal (Save), POI kind filters (Map content)
+    "search/RouteNamer.kt", "poi/PoiFilter.kt",
     // page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out
     "ui/PlanState.kt", "ui/MapGestures.kt", "poi/GoogleMapsLink.kt", "ui/RouteWarnings.kt",
     "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",

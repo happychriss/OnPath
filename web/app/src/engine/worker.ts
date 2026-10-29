@@ -39,6 +39,8 @@ interface WasmEngine {
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
 const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+  // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
+  'routeName', 'poiKinds', 'poiFilter',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked']);

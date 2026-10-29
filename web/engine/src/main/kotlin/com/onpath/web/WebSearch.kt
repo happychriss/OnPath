@@ -45,6 +45,9 @@ object WebSearch {
 
     fun hasArea(key: String) = key in areas
 
+    /** All places of the indexed map areas (for the route name proposal, WebUi.routeName). */
+    fun places(): List<Place> = entries.map { it.place }
+
     private inline fun safe(what: String, block: () -> Unit) {
         try { block() } catch (e: Throwable) { Problems.warn("search", "Search index: $what skipped (file unreadable)", e) }
     }

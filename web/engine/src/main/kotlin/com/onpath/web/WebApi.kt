@@ -512,5 +512,10 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun syncOutbox(ledger: String, pair: String, random: String): String = WebSync.outbox(ledger, pair, random)
 @JSExport fun syncAcked(ledger: String, sent: String, rev: Double): String = WebSync.acked(ledger, sent, rev)
 
+// ---- web UI rules (WebUi.kt): route name proposal, POI kind filters ----
+@JSExport fun routeName(line: String, names: String): String = WebUi.routeName(line, names)
+@JSExport fun poiKinds(): String = WebUi.poiKinds()
+@JSExport fun poiFilter(original: String, hidden: String): String = WebUi.poiFilter(original, hidden)
+
 fun main() {}
 
