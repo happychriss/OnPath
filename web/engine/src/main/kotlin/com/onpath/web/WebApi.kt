@@ -153,6 +153,9 @@ object Engine {
 
     private var lastPlan: Pair<List<GeoPoint>, PlannedRoute>? = null
 
+    /** The last plan when it was made for exactly [wps] (WebPlanRules.gaps). */
+    internal fun lastPlanFor(wps: List<GeoPoint>): PlannedRoute? = lastPlan?.takeIf { it.first == wps }?.second
+
     /**
      * Plans like the phone's plan sheet: the app's [Planner] (leg by leg, a failed leg becomes a straight dashed
      * line with a plain message), times from [RouteTimes], difficulty from [RouteSummary].
@@ -498,6 +501,7 @@ class WebContext(private val dir: File) : android.content.Context() {
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String): String = WebPlanRules.longRoute(points, activity)
 @JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
+@JSExport fun planGaps(points: String, activity: String, names: String): String = WebPlanRules.gaps(points, activity, names)
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)

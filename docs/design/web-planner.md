@@ -420,3 +420,96 @@ search-smoke (card beside the sheet, closes, results stay closed, name proposal)
 Open: header entry "Plan" (the page itself) left out; Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help); Manrope is named but not loaded (system font fallback – loading it from
 onpath.earth or bundling it is the owner's call).
+
+## 14. App logic on the web – inventory and keeping it in sync (cloud, 2026-10-29)
+
+Owner items 5 + 13: "cross-check the planning logic and keep the web in sync automatically – also with the memory
+work in the app". Since 2026-10-29 web-spike carries main's app code again (the engine generates the app's string
+resources, web-sync.md §0); every file below "shared" is compiled from `app/` as it is.
+
+### 14.1 Inventory (app source → web)
+
+| Planning logic / validation | App source | Web | How |
+| --- | --- | --- | --- |
+| Routing, profiles, SAC limit, "more than 1000 m from any path", time limits | `routing/BRouterEngine`, `RouteTimeLimit`, `RoutingContract` (error kinds), `WaypointSnap` | same | shared (Wasm) |
+| Leg-by-leg plan, failed leg = straight dashed + plain message, pinned POI points | `routing/Planner` | same | shared |
+| Where a clicked point goes; reverse, round trip, move, start here, delete | `WaypointInsertion`, `PlanEdits`, `PlanPoints` | same (drag arithmetic also mirrored, see below) | shared |
+| Undo / redo, hold rules and menus, "Go here" blocked reasons | `ui/PlanState` (`PlanHistory`), `ui/MapGestures` | same | shared |
+| Difficulty badge, steepness, way types / surfaces | `routing/RouteSummary`, `BRouterWayStats` | same | shared |
+| Route warnings (ferry, pushing, steps, above T, ford, steep; MTB rules) | `ui/RouteWarnings` | same | shared |
+| Plan time (one time model, default pace, e-bike flat cap, rounding) | `time/PaceModel`, `RouteTimes`, `TimeEstimate.planSeconds` | same since 2026-10-29 (before: unrounded, no e-bike cap) | shared; pace setting = the app's default (no Settings on the web) |
+| Very long plan asked first (> 24 h estimate) and what Cancel does | `routing/LongRoute`, `ui/PlanStatus`, `AppViewModel.recalc / answerLongRoute / cancelRun` | same (§15) | shared rule + texts; dialog flow mirrored (`longroute.ts`, `main.ts`) |
+| Point the route does not reach (red line + Show, grey dashed piece) | `ui/PlanGaps`, `MapController.setPlanGaps`, `PlanPanel` | same since 2026-10-29 | shared rule + text; drawing mirrored (`plangaps.ts`); hollow grey point not drawn yet |
+| Plan link / QR | `routing/PlanCode` | same | shared |
+| GPX import, Komoot sport → activity + T level, track → plan | `gpx/GpxParser`, `gpx/SportType`, `routing/TrackToPlan`, `time/TimeEstimate`, `AppViewModel.importGpx / planFromShown` | same (§15) | shared; flow + panel mirrored (`gpximport.ts`, `WebImport.kt`) |
+| GPX export with sport type | `gpx/GpxWriter`, `SportType` | same | shared |
+| Search: index, ranking, Photon, add preview; route name proposal | `search/*`, `search/RouteNamer` | same | shared; Photon URL + debounce mirrored (`search.ts`) |
+| POI kinds and filters | `poi/PoiKinds`, `poi/PoiFilter` | same | shared; visibility rules mirrored (`mapcontent.ts`, `LayerSettings`) |
+| Routing data per corridor (1° parts) | `routing/Rd5Parts` | same | shared; download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
+| Plan sync | `sync/*` | same | shared |
+| World overview below z10 | `map/Overview.merge` | same (§16) | shared, run at build time; cover + URLs in `overview.ts` |
+| Optional map sources stripped | `map/OptionalSources` | mirrored | `cells.ts` |
+| Texts | `strings/…/values/*.xml`, `Txt` | same (English) | generated (`generateStrings`), `Txt` stand-in |
+| Mirrored UI rules (Android / Compose files) | `Screens.SacScale`, `MapOverlays.stopLabel` + menus, `PlanStatus.noRouteLine` texts, `RouteRules.saveMode`, `MapFooter.gpsColor`, `MapController` arrows + layer order, `MAP_CREDITS`, `ElevationProfile` colours, `TourBar.longRouteText`, `Panels.TrackPanel`, `PointsSection`, `PlanPoints.dropIndex/shift` (per pointer move) | mirrored | listed with the app file's hash in `web/parity.json` |
+| Engine stand-ins for Android files | `debug/Problems`, `debug/UserText`, `data/DataFiles`, `recording/GpsStatus`, `Txt` / `XmlStrings` | mirrored | `web/engine/src/main/kotlin/com/onpath/app/…` |
+| Not on the web (on purpose) | navigation, recording, re-routing, activity check, rides, cells download / loading prompts, backups, Google share (`SharedPlace`), plan links into the app (`PlanLinks`), haptics, Points delete guard, Notices | – | phone only; `watch` in `web/parity.json` lists the plan-related ones |
+| Not on the web yet | pace setting (Settings → Pace), region packages z7–9, Route details screen, hollow grey unreachable point | – | open items (§14.3) |
+
+### 14.2 How the web stays in sync
+
+1. **Shared code updates itself:** web-spike merges main (`web/parity/merge-main.sh`: fetch, merge, build the engine,
+   all JVM / Wasm / browser tests, the parity check; exit codes say why it stopped). Scheduled GitHub workflows only
+   run from the default branch, so the daily run is a **scheduled Claude task** (prompt in the task report): it runs
+   the script, pushes when green (CI = the gate, a green push deploys), and when mirrors or plan behaviour changed it
+   writes a proposal of web adjustments instead of guessing.
+2. **Mirrors cannot drift silently:** `web/parity.json` stores, per mirrored app file, the git blob hash it was last
+   checked at. `web/parity/check.mjs` (first step of the web CI) **fails** when such a file changed – look at the
+   change, adjust the web, then `node web/parity/check.mjs --update <app file>`.
+3. **Shared files and performance / memory:** every compiled app file (`appFiles` + `appTests`), the string files,
+   BRouter's jars and profiles and the style are listed with their hash and their perf / memory-relevant lines
+   (caches, limits, timeouts, budgets, buffer sizes). A change is a CI warning; a change in those lines is shown
+   line by line ("PERF/MEMORY-relevant change …") – then check the web side too (Wasm heap, worker, prefetch sizes,
+   `RouteTimeLimit` vs browser speed). The run's summary page carries the report.
+4. **Watch list:** app files with plan behaviour the web neither compiles nor mirrors (PlanPanel, MapScreen, Notices …):
+   a change is a warning, so the daily task can propose the web side.
+
+### 14.3 Open items
+
+- Pace setting: the web uses the app's default pace (Average). A "Pace" choice in the activity drop-down would make
+  times match a user's phone (needs the owner's go).
+- Region packages (z7–9) on the web: served from the maps bucket like cells, `Overview.merge(packages = …)`.
+- `PlanStatus.noRouteLine` texts are still mirrored in `main.ts`; the engine now compiles `PlanStatus` – the page could
+  ask it (UI agent's file).
+
+## 15. Long-route question and GPX import (cloud, 2026-10-29)
+
+**Long route (owner item 4).** The app does not refuse a far plan; it **asks first** (`routing/LongRoute`: straight
+lines × 1.3, flat, timed by the pace model; more than 24 h → "This route is very long" / "About 8 days on foot.
+Calculating and loading its maps takes long." / Cancel · Plan anyway). Nothing is routed or downloaded while it is
+open. Cancel takes back only the change that made it long (`PlanStatus.onCancel`: a clicked point is undone, an
+activity change is put back, a loaded plan stays unrouted with "Route not calculated – very long plan." + "Plan
+anyway"). The web asks the engine (`longRoute`, `planCancel` – the app's code and texts) before every plan; "Plan
+anyway" is remembered for those points like the app's `longRouteOk`.
+
+**GPX import (owner item 10).** Header / ☰ → **Import GPX**, or drop a `.gpx` on the map. The engine runs the app's
+`GpxParser` unchanged: TeaVM has no XML parser, so the Wasm build maps `javax.xml.parsers` / `org.xml.sax` to a small
+SAX stand-in (`web/engine/src/main/java/onpathweb/…`, `XmlSubstitution`), and java.time to ThreeTen backport (TeaVM's
+own mapping); `WebImportTest` checks the stand-in reports the JDK's events on the fixtures and `gpx-engine.mjs` that
+Wasm gives the JVM's JSON byte for byte. Then like the app: Komoot's `<trk><type>` sets activity and T level
+(`SportType.importChoice`, "Activity set to Hike T2 from the file"), time = the file's own, else the time model, the
+track panel (name · Close track, distance, time, climb, grey lines, profile) takes the sheet's place, and the app's two
+ways on: keep it shown, or **Plan a route from it** (`TrackToPlan`: few route points, our router, one undo step).
+Following the track (Navigate) is phone-only. Export ⇄ import keeps sport and line. Tests: `import-smoke.mjs`
+(fixtures in `web/app/test/fixtures`: a Komoot hike, a GPX 1.0 route with prefixes / CDATA / references, a broken file).
+
+## 16. World overview below the cells (cloud, 2026-10-29)
+
+Owner item 12: below zoom 10 the web map was empty (cells hold z10+). Now the page serves the APK's overview files
+(`base.pmtiles` Natural Earth z0–5, `hillshade.pmtiles` z0–7 – the GitHub release `overview-2026-10-22` the app's
+release workflow downloads, SHA256-checked in the web CI, ~14 MB static assets) and loads the app's style merged by
+the app's own `map/Overview.merge` (run on the JVM at build time: `./gradlew -p web/engine overviewStyle` →
+`style/onpath-overview.json`). The page only points the `asset://overview/` URLs at its `overview/` folder and keeps
+the cover (`detail-cover`) on the cells it found – the app covers its installed cells. Without the files (a local build
+without `ONPATH_OVERVIEW_DIR`) the plain style is used as before. Region packages (z7–9) are not served yet; their
+`region-shade` source is left out like a missing file. Test: `overview-smoke.mjs` (zoom 5 and 8 draw the overview; with
+map data also zoom 12.5 with the cover).

@@ -5,7 +5,8 @@
 // 2. ☰ → Import GPX with a Komoot hike: the track panel, Activity set to Hike T2 from the file, "Plan a route from it"
 //    (TrackToPlan) → a plan with few points along the track;
 // 3. a .gpx dropped on the map (route + waypoints, <type>MTB</type>), Close track;
-// 4. Export GPX ⇄ Import GPX keeps the sport and the line.
+// 4. Export GPX ⇄ Import GPX keeps the sport and the line;
+// 5. a point the route does not reach: the app's PlanGaps red line + Show.
 // Needs only the rd5 (no map data, CI). Usage: node test/import-smoke.mjs [segmentsDir]
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,7 +29,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 let rd5Requests = 0;
-page.on('request', (r) => { if (/\/segments\//.test(r.url())) rd5Requests++; });
+page.on('request', (r) => { if (/\/segments\//.test(r.url()) && !/E10_N45/.test(r.url())) rd5Requests++; }); // the start view's own prefetch (E10_N45) does not count
 const pins = () => page.evaluate(() => document.querySelectorAll('.pin').length);
 const planned = () => page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
 const clickAt = async (lon, lat) => {
@@ -67,7 +68,9 @@ await page.waitForTimeout(500);
 await clickAt(11.16, 52.05);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
 await page.click('#lrCancel');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2 && document.querySelector('#summary .big'), null, { timeout: 60_000 }).catch(() => {});
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2, null, { timeout: 60_000 }).catch(() => {});
+await page.waitForTimeout(500); await planned().catch(() => {});
+console.log('after cancel:', await pins(), await page.textContent('#summary'), await page.textContent('#status'));
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'Cancel (a clicked point): the point is taken back, the short route stays');
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike
@@ -135,6 +138,16 @@ await page.click('#closeTrack');
 await page.evaluate(async () => { await window.__gpx.importFile(new File(['<gpx></gpx>'], 'empty.gpx')); });
 await page.waitForFunction(() => document.getElementById('status').classList.contains('error'), null, { timeout: 10_000 }).catch(() => {});
 check((await page.textContent('#status')).includes('Could not import this file: No track, route or waypoint found in this file.'), 'empty GPX: the app\'s plain error');
+
+// 5. a point the route does not reach (the app's PlanGaps): Ifinger summit as Hike T2 – one red line + Show, grey dashed piece
+const summit = await page.evaluate(() => window.__engine.encode({ points: [[46.6870, 11.2350], [46.7006, 11.2585]], activity: 'HIKE', sac: 2, pinned: [], names: { 1: 'Ifinger' }, title: null }));
+await page.goto(url + 'index.html#p=' + summit);
+await planned();
+await page.waitForFunction(() => !document.getElementById('notice').hidden, null, { timeout: 30_000 }).catch(() => {});
+const red = await page.textContent('#notice');
+console.log('red line:', red);
+check(/Last \d+ m to “Ifinger”: no way for Hike/.test(red) && await page.isVisible('#showGap'), 'unreachable summit at T2: the app\'s red line + Show');
+check(await page.evaluate(() => window.__map.getSource('plan-gaps').serialize().data.features.length) === 1, 'the missing piece is drawn grey dashed');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE|ERROR) /.test(e));

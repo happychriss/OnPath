@@ -218,11 +218,6 @@
   ],
   "watch": [
     {
-      "app": "app/src/main/java/com/onpath/app/ui/PlanGaps.kt",
-      "why": "unreachable plan point line – not on the web yet",
-      "blob": "7bbb8a5beb58098049f5891a9cc21a5405b469c6"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
       "blob": "5428503fa6ef6e34dfd25112202d8437d51a4bb6"
@@ -671,6 +666,10 @@
       "blob": "a4dec1feb98a716449ac445605dadac1476d7374",
       "perf": []
     },
+    "app/src/main/java/com/onpath/app/ui/PlanGaps.kt": {
+      "blob": "7bbb8a5beb58098049f5891a9cc21a5405b469c6",
+      "perf": []
+    },
     "app/src/main/java/com/onpath/app/gpx/GpxParser.kt": {
       "blob": "b4a1c867ea9d09c6bef335eb441ae93a7a2eaa26",
       "perf": [
@@ -758,6 +757,10 @@
       "perf": [
         "assertTrue(r.calls <= TrackToPlan.MAX_CALLS)"
       ]
+    },
+    "app/src/test/java/com/onpath/app/ui/PlanGapsTest.kt": {
+      "blob": "ab05ac05d3ade481806a7502fc5df37248c98ff9",
+      "perf": []
     },
     "app/src/main/java/btools/router/OnPathHints.java": {
       "blob": "dbd2a3a2b80cb26e150d3b9476626ece1eb5df6a",

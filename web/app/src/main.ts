@@ -29,6 +29,7 @@ import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover } from './overview';
+import { PlanGapsLayer } from './plangaps';
 import './style.css';
 
 const ROUTE = '#1E3FAE';
@@ -207,6 +208,7 @@ async function loadStyle(): Promise<StyleSpecification> {
 
 // ---- engine ----
 const engine = new EngineClient();
+const planGaps = new PlanGapsLayer(map, engine); // points the route does not reach (plangaps.ts)
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 status('Loading the routing engine…');
 const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) => {
@@ -528,7 +530,7 @@ async function changed() {
   $<HTMLButtonElement>('share').disabled = state.points.length < 2;
   rememberInAddress();
   state.notRouted = false;
-  if (state.points.length < 2) { state.plan = null; state.planning = false; render(); return; }
+  if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
   // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
   if (!(await longRouteOk(engine, state.points, state.activity))) { await cancelLongRoute(); return; }
   const id = ++state.latest;
@@ -540,6 +542,8 @@ async function changed() {
   state.planning = false;
   if (!r.ok || !r.plan) { status(`Planning failed: ${r.error}`, 'error'); render(); return; }
   state.plan = r.plan;
+  await planGaps.update(state.points, state.activity, namesText()); // points the route does not reach (app: PlanGaps)
+  if (id !== state.latest) return;
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   const s = r.stats!;
   status(`Planned in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
@@ -590,8 +594,16 @@ function render() {
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
       `<span class="badge ${p.difficulty.split(' ')[0].toLowerCase()}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     $('profile').innerHTML = profileSvg(p.profile);
-    notice.hidden = !p.error;
-    notice.innerHTML = p.error ? `⚠ ${escapeHtml(p.error)}` : '';
+    // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
+    const red = planGaps.last.text ?? p.error;
+    notice.hidden = !red;
+    notice.innerHTML = red ? `⚠ ${escapeHtml(red)}` : '';
+    if (planGaps.last.text) {
+      const b = document.createElement('button');
+      b.className = 'textbtn'; b.id = 'showGap'; b.textContent = 'Show';
+      b.onclick = () => planGaps.show(fitPadding());
+      notice.append(' ', b);
+    }
   }
   // route warnings (the app's RouteWarnings): one amber ⚠ line, click → "On this route", click a row → the map shows it
   const w = $('warning'), spots = $('spots');

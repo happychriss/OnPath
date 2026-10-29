@@ -35,6 +35,31 @@ object WebPlanRules {
     }
 
     /**
+     * Plan points the route does not reach (the app's [com.onpath.app.ui.PlanGaps]: a summit above the T level, a
+     * point off any path – the router stops at the nearest allowed way): the sheet's red line, combined with a failed
+     * leg like PlanPanel does (one line, "+N more"), and the grey dashed pieces. For the last plan of exactly these
+     * points; [names] = lines "index<TAB>name".
+     */
+    fun gaps(points: String, activity: String, names: String): String {
+        val wps = Engine.parsePoints(points)
+        val p = Engine.lastPlanFor(wps) ?: return "{\"text\":null,\"gaps\":[]}"
+        val gaps = com.onpath.app.ui.PlanGaps.of(wps, p.snapped)
+        val nm = names.split('\n').mapNotNull { l -> l.substringBefore('\t').toIntOrNull()?.let { it to l.substringAfter('\t') } }.toMap()
+        val gapText = com.onpath.app.ui.PlanGaps.text(gaps, Activity.valueOf(activity)) { nm[it] }
+        val text = when {
+            gapText == null -> null
+            p.error != null && !com.onpath.app.ui.PlanGaps.hasMore(gapText) -> com.onpath.app.ui.PlanGaps.withMore(gapText, 1)
+            else -> gapText
+        }
+        return "{\"text\":" + (text?.let { Engine.str(it) } ?: "null") + ",\"gaps\":" + gaps.joinToString(",", "[", "]") { g ->
+            val (at, zoom) = com.onpath.app.ui.PlanGaps.showTarget(g)
+            "{\"index\":" + g.index + ",\"point\":[" + Engine.num(g.point.lat, 6) + "," + Engine.num(g.point.lon, 6) + "],\"end\":[" +
+                Engine.num(g.routeEnd.lat, 6) + "," + Engine.num(g.routeEnd.lon, 6) + "],\"show\":[" + Engine.num(at.lat, 6) + "," +
+                Engine.num(at.lon, 6) + "," + Engine.num(zoom, 1) + "]}"
+        } + "}"
+    }
+
+    /**
      * Cancel of the long-route question for a run started by [cause] ("edit", "undo", "redo", "activity", other):
      * "UNDO" / "REDO" / "RESTORE_ACTIVITY" / "KEEP_POINTS" ([PlanStatus.onCancel]).
      */

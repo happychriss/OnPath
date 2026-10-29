@@ -37,6 +37,7 @@ interface WasmEngine {
   problems(): string;
   longRoute(points: string, activity: string): string;
   planCancel(cause: string, canUndo: boolean, canRedo: boolean): string;
+  planGaps(points: string, activity: string, names: string): string;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
 }
@@ -46,7 +47,7 @@ const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture'
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
-  'longRoute', 'planCancel',
+  'longRoute', 'planCancel', 'planGaps',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked']);

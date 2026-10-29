@@ -25,7 +25,7 @@ val appFiles = listOf(
     // plan sync, phase 2 (docs/design/web-sync.md): pairing code, keys, crypto, item format, conflict rule, ledger
     "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt",
     // long-route question (web-planner.md §15): the app's LongRoute rule and plan status texts
-    "routing/LongRoute.kt", "ui/PlanStatus.kt",
+    "routing/LongRoute.kt", "ui/PlanStatus.kt", "ui/PlanGaps.kt",
     // GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
     "gpx/GpxParser.kt", "routing/TrackToPlan.kt", "time/TimeEstimate.kt", "data/AppSettings.kt",
     // the world overview below the cells (web-planner.md §16): the app's style merge (org.json, as on Android; run on
@@ -37,7 +37,7 @@ val appFiles = listOf(
 // the plain JVM here, so web CI checks them too).
 val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt", "ui/RouteWarningsTest.kt",
     "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt", "routing/LongRouteTest.kt", "gpx/GpxParserTest.kt",
-    "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt")
+    "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt", "ui/PlanGapsTest.kt")
 
 sourceSets {
     main {
