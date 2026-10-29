@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Onboarding + phone check (owner: yes to all 4) + point texts when planning (start / destination / "Add …") – since 2026-10-29
 
 ## Next
 - **Onboarding + "Phone check" (owner: older users, step by step, must survive the phone removing things)** – concept
