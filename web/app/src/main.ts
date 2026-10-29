@@ -1,5 +1,6 @@
-// OnPath web planner (docs/design/web-planner.md §6–§11). The page mirrors the phone's Plan screen: search pill + ☰
-// on top, the map controls (compass, eye, undo / redo, locate) bottom right, the plan sheet (activity chip, time,
+// OnPath web planner (docs/design/web-planner.md §6–§13). The page mirrors the phone's Plan screen in a web layout: a
+// header line (logo, My plans, Pair phone, …), the search pill with the map toolbar beside it (undo / redo, eye,
+// compass, locate, Map content), the plan sheet (activity chip, time,
 // distance, climb + badge, profile, Points, one primary button) – a bottom sheet on a phone, a side panel on a wide
 // screen. The app's own code decides and plans (compiled to Wasm, in a Web Worker): Planner + BRouter, RouteTimes,
 // WaypointInsertion, PlanEdits, PlanPoints, PlanHistory (undo / redo), MapGestures (hold and point menus), PoiLinks
@@ -17,12 +18,14 @@ import { profileSvg } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
 import { setupSearch, type PlaceRole } from './search';
-import { icon, activityIcon, needle } from './icons';
+import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync } from './sync';
-import { myPlansDialog, pairDialog, joinDialog } from './plans';
+import { myPlansDialog, pairDialog, joinDialog, requestSave } from './plans';
+import { MapContentPanel } from './mapcontent';
+import { sortable } from './sortable';
 import './style.css';
 
 const ROUTE = '#1E3FAE';
@@ -40,6 +43,9 @@ const state = {
   title: null as string | null,
   /** The saved plan (My plans) the page shows, so "Save" writes a new version of it. */
   savedId: null as string | null,
+  /** Its name and plan code as saved (the sheet says "Saved as …", and whether the plan changed since). */
+  savedTitle: null as string | null,
+  savedCode: null as string | null,
   activity: (localStorageGet('activity') as Activity) ?? 'HIKE',
   sac: Number(localStorageGet('sac') ?? 2),
   plan: null as PlanResult | null,
@@ -55,38 +61,57 @@ const known = new Map<string, Meta>();
 const pairLink = /[#&]pair=/.test(location.hash) ? location.href : null;
 if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
 
+/**
+ * The header's entries (owner 2026-10-28: a top line like komoot's web header, in onpath.earth's look). One list for
+ * both places: inline in the header on a wide screen, the ☰ drop-down on a phone. Add an entry here (id, icon, label,
+ * what it does); `act` is set further down, once the page's parts exist.
+ */
+const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
+  { id: 'menuPlans', icon: 'folder', label: 'My plans' },
+  { id: 'menuPair', icon: 'sync', label: 'Pair phone' },
+  { id: 'menuShare', icon: 'phone', label: 'Send to phone' },
+  { id: 'menuAbout', icon: 'help', label: 'Help & credits' },
+];
+const navItem = (id: string) => NAV.find((n) => n.id === id)!;
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+  <header id="header">
+    <a class="brand" href="https://onpath.earth" target="_blank" rel="noopener" title="onpath.earth (new tab)">${logo(30)}<span>OnPath</span></a>
+    <span class="product">Planner</span>
+    <button id="menuBtn" class="iconbtn" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
+    <nav id="mainMenu" class="nav" aria-label="Planner">
+      ${NAV.map((n) => `<button id="${n.id}" role="menuitem">${icon(n.icon, 20)}<span>${n.label.replace('&', '&amp;')}</span></button>`).join('')}
+    </nav>
+    <span class="hint muted">No account · plans stay in this browser</span>
+  </header>
+  <div id="stage">
   <div id="map"></div>
-  <div id="top">
-    <div id="searchbox"></div>
-    <button id="menuBtn" class="round" aria-label="Menu" aria-haspopup="menu">${icon('menu')}</button>
-    <div id="mainMenu" class="menu" role="menu" hidden>
-      <button id="menuPlans" role="menuitem">${icon('folder')}My plans</button>
-      <button id="menuPair" role="menuitem">${icon('sync')}Pair phone</button>
-      <button id="menuShare" role="menuitem">${icon('phone')}Send to phone · Share</button>
-      <hr><button id="menuAbout" role="menuitem">${icon('info')}About &amp; credits</button>
-    </div>
+  <div id="top"><div id="searchbox"></div></div>
+  <div id="toolbar" class="toolbar" role="toolbar" aria-label="Map tools">
+    <button id="undo" class="tool" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>${icon('undo')}</button>
+    <button id="redo" class="tool" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>${icon('redo')}</button>
+    <span class="sep"></span>
+    <button id="eye" class="tool" aria-label="Hold to hide the route" title="Hold to hide the route" disabled>${icon('eye')}</button>
+    <button id="compass" class="tool"></button>
+    <button id="locate" class="tool"></button>
+    <span class="sep"></span>
+    <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="Points of interest, contour lines, hill shading">${icon('layers')}<span>Map content</span>${icon('dropDown', 18)}</button>
   </div>
+  <div id="placecard" class="placecard" hidden></div>
   <div id="footer"><button id="credits" class="credit" aria-label="Show map credits">© OpenStreetMap</button></div>
-  <div id="fabs" class="fabgroup">
-    <button id="compass" class="fab"></button>
-    <button id="eye" class="fab" aria-label="Hold to hide the route" title="Hold to hide the route" hidden>${icon('eye')}</button>
-    <button id="undo" class="fab" aria-label="Undo" title="Undo (Ctrl+Z)" hidden>${icon('undo')}</button>
-    <button id="redo" class="fab" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" hidden>${icon('redo')}</button>
-    <button id="locate" class="fab"></button>
-  </div>
   <section id="sheet" aria-label="Plan">
     <button id="handle" aria-label="Show or hide the points"><span></span></button>
     <div class="sheethead">
-      <button id="activityChip" class="chip" aria-haspopup="dialog"></button>
+      <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="Route actions" aria-haspopup="menu">${icon('more')}</button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
-        <button id="menuSavePlan" role="menuitem">${icon('folder')}Save to My plans</button>
+        <button id="menuSavePlan" role="menuitem">${icon('save')}Save to My plans</button>
         <button id="exportGpx" role="menuitem">${icon('download')}Export GPX</button>
         <hr><button id="clear" role="menuitem">${icon('delete')}Clear route</button>
       </div>
     </div>
+    <div id="savedLine" class="savedline muted small" hidden></div>
     <div id="notice" class="notice" hidden></div>
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
     <ul id="spots" class="spots" hidden></ul>
@@ -99,7 +124,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
     <button id="share" class="primary wide" disabled>${icon('phone')}Send to phone · Share</button>
     <div id="status" class="status muted" role="status"></div>
-  </section>`;
+  </section>
+  </div>`;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -120,6 +146,7 @@ const map = new maplibregl.Map({
 (window as unknown as { __map: maplibregl.Map }).__map = map; // for the browser tests
 // the scale bar sits in our footer, above the short credit (the app's MapFooter)
 $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }).onAdd(map));
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
 map.on('load', () => {
   if (useCells) cells.loadPois(map);
@@ -132,6 +159,13 @@ map.on('load', () => {
     layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE, 'line-width': 6 } });
   map.addLayer({ id: 'planned-straight', type: 'line', source: 'planned-route', filter: straight,
     paint: { 'line-color': ROUTE, 'line-width': 4, 'line-dasharray': [1.5, 1.5] } });
+  // direction of travel: small white chevrons along the routed legs (the app's MapController.addDirectionArrows)
+  map.addImage('route-arrow', arrowImage(), { pixelRatio: 2 });
+  map.addLayer({ id: 'planned-route-arrows', type: 'symbol', source: 'planned-route', filter: routed, layout: {
+    'symbol-placement': 'line', 'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 12, 60, 16, 90],
+    'icon-image': 'route-arrow', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 16, 0.8],
+    'icon-rotation-alignment': 'map', 'icon-keep-upright': false, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+  applyMapContent();
   render();
 });
 
@@ -281,8 +315,8 @@ async function drawPoints() {
   $('points').innerHTML = r.rows.map((row) => {
     const role = row.role === 'START' ? 'Start' : row.role === 'GOAL' ? 'Destination' : '';
     const color = row.loop ? COLORS.start : stopColor(row.i, n);
-    return `<li data-i="${row.i}" draggable="true">
-      <span class="grip" title="Drag to change the order">${icon('drag', 20)}</span>
+    return `<li data-i="${row.i}">
+      <button class="grip" title="Drag to change the order (or Arrow up / down)" aria-label="Move ${escapeHtml(row.name)}">${icon('drag', 20)}</button>
       <span class="num" style="background:${color}">${row.loop ? '↺' : row.i + 1}</span>
       <span class="txt"><span>${escapeHtml(row.name)}</span>${role || row.loop ? `<span class="muted small">${row.loop ? 'Start & finish' : role}</span>` : ''}</span>
       ${row.legM != null ? `<span class="leg muted">${row.approx ? '~' : '+'}${(row.legM / 1000).toFixed(1)} km</span>` : '<span class="leg"></span>'}
@@ -293,24 +327,16 @@ async function drawPoints() {
   $('pointsSection').hidden = n === 0;
 }
 
-// Points list: click = show on the map, ✕ = delete, drag = new order (PlanEdits.move)
-let dragFrom = -1;
+// Points list: click = show on the map, ✕ = delete, drag ≡ = new order (PlanEdits.move; sortable.ts)
 $('points').addEventListener('click', (e) => {
   const li = (e.target as HTMLElement).closest('li');
-  if (!li) return;
+  if (!li || (e.target as HTMLElement).closest('.grip')) return;
   const i = Number(li.dataset.i);
   if ((e.target as HTMLElement).closest('.del')) { deletePoint(i); return; }
   const p = state.points[i];
   if (p) map.easeTo({ center: [p[1], p[0]], zoom: Math.max(map.getZoom(), 14) });
 });
-$('points').addEventListener('dragstart', (e) => { dragFrom = Number((e.target as HTMLElement).closest('li')?.dataset.i ?? -1); });
-$('points').addEventListener('dragover', (e) => { if (dragFrom >= 0) e.preventDefault(); });
-$('points').addEventListener('drop', (e) => {
-  e.preventDefault();
-  const to = Number((e.target as HTMLElement).closest('li')?.dataset.i ?? -1);
-  if (dragFrom >= 0 && to >= 0 && to !== dragFrom) applyEdit('move', dragFrom, to);
-  dragFrom = -1;
-});
+sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
@@ -443,7 +469,7 @@ async function openFromLink() {
   const shared = await engine.parse(location.href);
   if (!shared) { status('This link does not contain a readable plan.', 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
-  state.savedId = null;
+  forgetSaved();
   await loadShared(shared);
 }
 
@@ -539,11 +565,21 @@ function render() {
   if (!p?.warning) { spots.hidden = true; w.setAttribute('aria-expanded', 'false'); }
   spots.innerHTML = (p?.spots ?? []).map((s, i) => `<li><button data-spot="${i}"><b>${escapeHtml(s.title)}</b><span class="muted small">${escapeHtml(s.detail)}</span></button></li>`).join('');
   $('sheet').classList.toggle('busy', state.planning);
+  renderSaved();
   renderChip();
   renderFabs();
 }
 
-// ---- activity (the app's picker: six activities, Hike with its T level) ----
+/** "Saved as …" under the summary while the plan is a saved one (the app's sheet line after Save). */
+async function renderSaved() {
+  const line = $('savedLine');
+  line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
+  if (line.hidden) return;
+  const changed = state.savedCode != null && (await ready) && (await engine.encode(sharedPlan())) !== state.savedCode;
+  line.innerHTML = `${icon('check', 16)}<span>Saved as <b>${escapeHtml(state.savedTitle!)}</b>${changed ? ' · changed since' : ''}</span>`;
+}
+
+// ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
 const picker = new ActivityPicker((a, sac) => setActivity(a, sac, true));
 engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => status(`Activity names not loaded: ${e}`, 'error'));
 function renderChip() {
@@ -559,18 +595,18 @@ function setActivity(a: Activity, sac: number, plan: boolean) {
   renderChip();
   if (plan && !same) changed();
 }
-$('activityChip').onclick = () => picker.open(state.activity, state.sac);
+$('activityChip').onclick = (e) => { e.stopPropagation(); closeMenus(); picker.toggle($('activityChip'), state.activity, state.sac); };
 
-// ---- map controls (the app's MapControls: compass, eye, undo, redo, locate) ----
+// ---- map toolbar (the app's MapControls: undo, redo, eye, compass, locate – always there, greyed when not possible) ----
 function renderFabs() {
   const b = map.getBearing();
   const c = $('compass');
   c.innerHTML = needle(b);
   const what = Math.abs(b) > 1 ? 'Map is turned. Click for north up' : 'Map is north up. Turn it with the right mouse button or two fingers';
   c.title = what; c.setAttribute('aria-label', what);
-  $('eye').hidden = !state.plan || state.points.length < 2;
-  $('undo').hidden = !state.canUndo;
-  $('redo').hidden = !state.canRedo;
+  $<HTMLButtonElement>('eye').disabled = !state.plan || state.points.length < 2;
+  $<HTMLButtonElement>('undo').disabled = !state.canUndo;
+  $<HTMLButtonElement>('redo').disabled = !state.canRedo;
   const l = $('locate');
   l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed') + `<span class="gpsdot ${position.dotClass}"></span>`;
   l.classList.toggle('on', position.following);
@@ -587,20 +623,20 @@ $('locate').onclick = () => position.locate();
 function peek(on: boolean) {
   if (hidden === on) return;
   hidden = on;
-  for (const id of ['planned-route-casing', 'planned-route', 'planned-straight']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
+  for (const id of ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
   markers.forEach((m) => { m.getElement().style.visibility = on ? 'hidden' : ''; });
   $('eye').innerHTML = icon(on ? 'eyeOff' : 'eye');
   $('eye').classList.toggle('on', on);
 }
 const eye = $('eye');
-eye.addEventListener('pointerdown', (e) => { eye.setPointerCapture(e.pointerId); peek(true); });
+eye.addEventListener('pointerdown', (e) => { if ((eye as HTMLButtonElement).disabled) return; eye.setPointerCapture(e.pointerId); peek(true); });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) eye.addEventListener(ev, () => peek(false));
 eye.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); peek(true); } });
 eye.addEventListener('keyup', () => peek(false));
 eye.addEventListener('contextmenu', (e) => e.preventDefault()); // a long press must not open the browser's menu
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   const typing = (e.target as HTMLElement).closest('input, textarea');
-  if (e.key === 'Escape') { closeMenu(); closeMenus(); }
+  if (e.key === 'Escape') { closeMenu(); closeMenus(); picker.close(); }
   if (typing || !(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); step('undo'); }
@@ -615,7 +651,8 @@ setupSearch({
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
   add: (h, role) => addPlace(h, role),
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
-}, $('searchbox'));
+  cardShown: (open) => document.body.classList.toggle('card-open', open),
+}, $('searchbox'), $('placecard'));
 
 /**
  * The place card's actions, as the app's addPlace: a pinned stop named after the place (passed exactly). "Add to
@@ -646,29 +683,67 @@ function toggleMenu(btn: string, box: string) {
   $(btn).setAttribute('aria-expanded', String(open));
 }
 function closeMenus() {
-  for (const [b, m] of [['menuBtn', 'mainMenu'], ['sheetMenuBtn', 'sheetMenu']]) { $(m).hidden = true; $(b).setAttribute('aria-expanded', 'false'); }
+  $('sheetMenu').hidden = true; $('sheetMenuBtn').setAttribute('aria-expanded', 'false');
+  $('mainMenu').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', 'false');
 }
-$('menuBtn').onclick = (e) => { e.stopPropagation(); toggleMenu('menuBtn', 'mainMenu'); };
+// ☰ (phone width): the header's entries as a drop-down
+$('menuBtn').onclick = (e) => {
+  e.stopPropagation();
+  const open = !$('mainMenu').classList.contains('open');
+  closeMenus(); picker.close();
+  $('mainMenu').classList.toggle('open', open); $('menuBtn').setAttribute('aria-expanded', String(open));
+};
+$('mainMenu').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest('button');
+  if (!b) return;
+  e.stopPropagation(); closeMenus();
+  NAV.find((n) => n.id === b.id)?.act?.();
+});
 $('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; toggleMenu('sheetMenuBtn', 'sheetMenu'); };
-document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu')) closeMenus(); });
+document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .nav')) closeMenus(); });
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
-$('clear').onclick = () => { closeMenus(); state.title = null; state.savedId = null; commit([], []); };
+$('clear').onclick = () => { closeMenus(); state.title = null; forgetSaved(); commit([], []); };
+function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
   openId: () => state.savedId,
   open: async (p: { id: string; plan: string; title: string | null }) => {
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status('This saved plan could not be read.', 'error'); return; }
-    state.savedId = p.id;
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; return; }
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan;
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; render(); return; }
     await loadShared({ ...shared, title: p.title });
   },
+  saved: (p: { id: string; plan: string; title: string | null }) => {
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title;
+    rememberInAddress();
+    render();
+    status(`Saved as “${p.title ?? 'Plan'}”`);
+  },
+  suggestName,
 };
-$('menuPlans').onclick = () => { closeMenus(); myPlansDialog(sync, plansHost); };
-$('menuSavePlan').onclick = () => { closeMenus(); myPlansDialog(sync, plansHost); };
-$('menuPair').onclick = () => { closeMenus(); pairDialog(sync, location.href); };
+/** The app's name proposal (AppViewModel.suggestName → RouteNamer): stop names from places, else the map's places. */
+async function suggestName(): Promise<string> {
+  if (state.points.length < 2) return '';
+  try {
+    await engine.searchAreas(await (useCells ? cells.searchAreas(map) : Promise.resolve([{ key: 'map', dir: mapFolder }])));
+    const line = state.plan?.legs.flatMap((l) => l.points) ?? state.points;
+    const step = Math.max(1, Math.ceil(line.length / 400)); // thinned: ends kept, enough for "via" landmarks
+    const thin = line.filter((_, i) => i % step === 0 || i === line.length - 1);
+    const pinnedName = (i: number) => (state.meta[i]?.pinned && state.meta[i]?.name) || '';
+    const via = state.points.slice(1, -1).map((_, k) => pinnedName(k + 1)).filter(Boolean);
+    const names = [pinnedName(0), pinnedName(state.points.length - 1), ...via].map((n) => n.replace(/\t/g, ' ')).join('\t');
+    return await engine.call('routeName', enc(thin as LatLon[]), names);
+  } catch (e) {
+    status(`No name proposed: ${e}`);
+    return '';
+  }
+}
+navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
+$('menuSavePlan').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
+navItem('menuPair').act = () => pairDialog(sync, location.href);
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
@@ -685,8 +760,12 @@ const share = async () => {
   shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title);
 };
 $('share').onclick = share;
-$('menuShare').onclick = share;
-$('menuAbout').onclick = () => { closeMenus(); credits(); };
+navItem('menuShare').act = share;
+navItem('menuAbout').act = () => credits();
+// Map content (toolbar): the app's POI and map settings in one large panel, applied live (mapcontent.ts)
+const mapContent = new MapContentPanel(map, engine, (t) => status(t, 'error'));
+function applyMapContent() { mapContent.apply(); }
+$('mapContent').onclick = () => { closeMenus(); picker.close(); mapContent.open(); };
 $('credits').onclick = () => credits();
 $('handle').onclick = () => $('sheet').classList.toggle('expanded');
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };
@@ -705,7 +784,12 @@ function credits() {
   const d = document.createElement('dialog');
   d.className = 'share';
   d.innerHTML = `<h2>OnPath web planner</h2>
-    <p class="muted">A test page: the OnPath app's own planning code in your browser. Plans stay in the link – nothing is stored on a server.</p>
+    <p class="muted">A test page: the OnPath app's own planning code in your browser. Your plan stays in the link and,
+      once saved, in this browser (and on your paired phone, end-to-end encrypted). No account.</p>
+    <b>How to plan</b><ul class="credits"><li>Click the map to set the start, then the destination and stops; click a point for its menu.</li>
+      <li>Search a place, then add it from its card. Drag ≡ in Points to change the order.</li>
+      <li>Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</li>
+      <li>Send to phone: a QR code the OnPath app scans – or pair the phone once and save plans to My plans.</li></ul>
     <b>Credits</b><ul class="credits">${['Map data © OpenStreetMap contributors (ODbL)', 'Vector tile schema © OpenMapTiles',
       'Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)', 'Routing: BRouter (MIT)',
       'Search online: Photon by komoot (OpenStreetMap data)', 'POI icons: Maki and Temaki (CC0)',
@@ -726,3 +810,13 @@ function empty(): FeatureCollection { return { type: 'FeatureCollection', featur
 function escapeHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }
 function localStorageGet(k: string): string | null { try { return localStorage.getItem('onpath.' + k); } catch { return null; } } // expected: storage blocked
 function localStorageSet(k: string, v: string) { try { localStorage.setItem('onpath.' + k, v); } catch { /* expected: storage blocked */ } }
+
+/** White chevron ">" pointing along the line (the app's MapController.arrowBitmap: 16 px, drawn at 2× here). */
+function arrowImage(): ImageData {
+  const s = 32, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = '#fff'; g.lineWidth = s * 0.16; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(s * 0.32, s * 0.2); g.lineTo(s * 0.72, s * 0.5); g.lineTo(s * 0.32, s * 0.8); g.stroke();
+  return g.getImageData(0, 0, s, s);
+}

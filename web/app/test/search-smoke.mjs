@@ -50,7 +50,7 @@ check(hits.length > 0, 'trail names (Waalweg)');
 // pick → card → Add to route (empty plan: as start)
 await searchFor('Vellau');
 await page.click('#results .hit');
-await page.waitForSelector('#card:not([hidden]) #cadd');
+await page.waitForSelector('#placecard:not([hidden]) #cadd');
 const add = await page.textContent('#cadd');
 console.log('card:', add.replace(/\s+/g, ' '));
 check(/as start/.test(add), 'card says where it goes (empty plan → as start)');
@@ -58,14 +58,26 @@ await page.click('#cadd');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 });
 await searchFor('Ifinger');
 await page.click('#results .hit');
-await page.waitForSelector('#card:not([hidden]) #cdest');
+await page.waitForSelector('#placecard:not([hidden]) #cdest');
+await page.waitForTimeout(800); // the online search would have answered by now (owner 2026-10-28: the list came back)
+const card = await page.locator('#placecard').boundingBox(), sheet = await page.locator('#sheet').boundingBox();
+check(card.x >= sheet.x + sheet.width || card.y >= sheet.y + sheet.height, 'place card beside the plan sheet, not over it');
+check(await page.isHidden('#results'), 'the results list stays closed while the card is shown');
 await page.click('#cdest');
+check(await page.isHidden('#placecard'), 'the card closes after its action');
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 const pts = await page.textContent('#points');
 console.log('points:', pts.replace(/\s+/g, ' '));
 check(/Vellau/.test(pts) && /Ifinger/.test(pts), 'found places are named stops in the Points list');
 check((await page.evaluate(() => location.hash)).length > 10, 'plan with pinned, named places in the link');
 await page.screenshot({ path: shot });
+// Save proposes a name like the app (RouteNamer: the places the stops came from)
+await page.click('#sheetMenuBtn'); await page.click('#menuSavePlan');
+await page.waitForFunction(() => document.getElementById('saveTitle')?.value, null, { timeout: 30_000 }).catch(() => {});
+const proposed = await page.inputValue('#saveTitle');
+console.log('proposed name:', proposed);
+check(proposed === 'Vellau → Ifinger Hütte', 'Save proposes "Vellau → Ifinger Hütte" (RouteNamer)');
+await page.click('#saveCancel');
 
 if (process.env.ONLINE === '1') {
   hits = await searchFor('Innsbruck');

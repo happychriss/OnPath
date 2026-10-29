@@ -1,7 +1,8 @@
 // The phone's Plan screen features in the browser (docs/design/web-planner.md §11): first-point menu (Start here ·
 // Go here from my position), undo / redo (buttons and keys – the app's PlanHistory), the eye (hold hides route and
 // markers), the compass (turned map → north up), the point menu's "Open in Google Maps" (a new tab with the app's
-// link), Export GPX, Points delete, route warnings, and the bottom sheet at phone width. Needs only the rd5 (no map data, CI).
+// link), Export GPX, Points delete, route warnings, and the bottom sheet at phone width. Web layout (§13): toolbar on
+// top, direction arrows, activity drop-down, Points drag, Map content, Save / Save as new. Needs only the rd5 (CI).
 // Usage: node test/parity-smoke.mjs [segmentsDir]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,20 +39,24 @@ await page.waitForFunction(() => document.getElementById('status')?.textContent?
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
 check((await page.textContent('.menuhead')).includes('New route') && (await menuItems()).join('|') === 'Start here|Go here', 'first click: New route – Start here · Go here');
-check(await page.isHidden('#undo'), 'no undo before the first change');
+check(await page.isDisabled('#undo'), 'no undo before the first change (greyed in the toolbar)');
+const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
+check(tb.y < 100 && tb.x >= sb.x + sb.width && Math.abs(tb.y - sb.y) < 4, 'toolbar on top, right of the search pill');
 await page.click('.pointmenu button:first-of-type');
 await waitPins(1);
 check(await pins() === 1, 'Start here sets the start');
 await page.waitForSelector('#undo', { state: 'visible', timeout: 10_000 }).catch(() => {}); // the state comes back from the engine worker
-check(await page.isVisible('#undo') && await page.isHidden('#redo'), 'undo shown, redo hidden');
+check(await page.isEnabled('#undo') && await page.isDisabled('#redo'), 'undo possible, redo greyed');
 await clickAt(11.1350, 46.6840);
 await planned();
 check(await pins() === 2, 'next click adds the destination (no menu)');
-check(await page.isVisible('#eye'), 'eye shown once there is a route');
+check(await page.isEnabled('#eye'), 'eye usable once there is a route');
+check(await page.evaluate(() => !!window.__map.getLayer('planned-route-arrows') && window.__map.getLayer('planned-route-arrows').type === 'symbol'),
+  'direction arrows along the route (symbol layer, as the app)');
 
 // 2. undo / redo (buttons and keys)
 await page.click('#undo'); await waitPins(1);
-check(await pins() === 1 && await page.isVisible('#redo'), 'undo takes the destination back, redo appears');
+check(await pins() === 1 && await page.isEnabled('#redo'), 'undo takes the destination back, redo possible');
 await page.click('#redo'); await waitPins(2);
 check(await pins() === 2, 'redo brings it back');
 await page.keyboard.press('Control+z'); await waitPins(1);
@@ -88,6 +93,25 @@ await page.waitForSelector('.pointmenu');
 const mid = await menuItems();
 check(mid[0] === 'Start here' && mid.at(-1) === 'Delete', 'point menu of a middle point: Start here … Delete');
 await page.keyboard.press('Escape');
+// drag ≡ of the first row below the last: the row follows the pointer, the others move aside; drop = new order
+const order = () => page.evaluate(() => location.hash); // the plan's points, in order (rows are named by position)
+await page.waitForTimeout(300);
+const before = await order();
+const g = await page.locator('#points li:first-child .grip').boundingBox();
+const lastRow = await page.locator('#points li:last-child').boundingBox();
+await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+await page.mouse.down();
+await page.mouse.move(g.x + g.width / 2, lastRow.y + lastRow.height / 2 + 4, { steps: 8 });
+const live = await page.evaluate(() => ({ lifted: document.querySelector('#points li.lifted')?.style.transform ?? '',
+  moved: [...document.querySelectorAll('#points li:not(.lifted)')].filter((li) => li.style.transform.includes('-')).length }));
+await page.mouse.up();
+check(/translateY\(\d/.test(live.lifted) && live.moved === 2, 'dragged row moves with the pointer, the others make room');
+await page.waitForFunction((b) => location.hash !== b, before, { timeout: 15_000 }).catch(() => {});
+check(await order() !== before && await pins() === 3, 'drop gives the plan the new order (PlanEdits.move)');
+await planned();
+await page.keyboard.press('Control+z'); await planned(); // back to the order before
+await page.waitForFunction((b) => location.hash === b, before, { timeout: 15_000 }).catch(() => {});
+check(await order() === before, 'one undo step brings the old order back');
 await page.click('#points li:nth-child(2) .del');
 await waitPins(2);
 check(await pins() === 2, 'Points list ✕ deletes the point');
@@ -98,6 +122,50 @@ await page.click('#sheetMenuBtn');
 const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportGpx')]);
 const gpx = await (await import('node:fs')).promises.readFile(await dl.path(), 'utf8');
 check(dl.suggestedFilename().endsWith('.gpx') && gpx.includes('<trkpt') && gpx.includes('<type>'), 'Export GPX downloads a track with the sport type');
+
+// 6b. activity drop-down at the chip: one click picks and closes; Hike's T level in the same list
+await page.click('#activityChip');
+const am = await page.locator('#activityMenu').boundingBox(), chip = await page.locator('#activityChip').boundingBox();
+check(await page.isVisible('#activityMenu') && Math.abs(am.y - (chip.y + chip.height)) < 12 && Math.abs(am.x - chip.x) < 12, 'activity list opens under the chip (no dialog)');
+await page.click('#activityMenu [data-act=BIKE_TOURING]');
+check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).includes('Bike'), 'picking Bike closes the list at once');
+await planned();
+await page.click('#activityChip');
+await page.click('#activityMenu [data-sac="4"]');
+check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4'), 'a T level picks Hike T4 and closes');
+await planned();
+
+// 6c. Map content: the app's POI kinds by group, applied live to the poi- layers (PoiFilter), remembered
+await page.click('#mapContent');
+await page.waitForSelector('dialog.mapcontent[open] [data-kind=hut]');
+check(await page.locator('dialog.mapcontent [data-kind]').count() === 28 && await page.isChecked('[data-kind=hut]') && !(await page.isChecked('[data-kind=parking]')),
+  'Map content: 28 kinds, the app\'s defaults (huts on, parking off)');
+await page.uncheck('[data-kind=hut]');
+const kindsOn = () => page.evaluate(() => { const f = window.__map.getFilter('poi-tier1'); return f?.[0] === 'all' ? f.at(-1)[2][1] : null; });
+await page.waitForFunction(() => { const f = window.__map.getFilter('poi-tier1'); return f?.[0] === 'all' && !f.at(-1)[2][1].includes('hut'); }, null, { timeout: 5_000 }).catch(() => {});
+const on = await kindsOn();
+check(Array.isArray(on) && on.includes('bivouac') && !on.includes('hut'), 'unticking Mountain hut filters it out of the map at once (PoiFilter)');
+await page.fill('#kindFilter', 'water');
+check(await page.locator('dialog.mapcontent [data-kind]').count() < 28 && await page.isVisible('[data-kind=water]'), 'the filter box narrows the kinds');
+await page.uncheck('#mcContours');
+check(await page.evaluate(() => window.__map.getLayer('contour-minor') ? window.__map.getLayoutProperty('contour-minor', 'visibility') === 'none' : true), 'contour lines off');
+await page.click('#mcReset'); await page.check('#mcContours');
+await page.click('#mcClose');
+check(await page.evaluate(() => JSON.parse(localStorage.getItem('onpath.mapContent')).hidden.includes('parking')), 'choice remembered in this browser');
+
+// 6d. Save: name proposal, saving closes the dialog, "Saved as …"; saving again asks Save / Save as new (no duplicate)
+await page.click('#sheetMenuBtn'); await page.click('#menuSavePlan');
+await page.waitForSelector('dialog.savename[open] #saveTitle');
+await page.fill('#saveTitle', 'Test loop');
+await page.click('#savePlan');
+await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
+check(await page.locator('dialog[open]').count() === 0 && (await page.textContent('#savedLine')).includes('Saved as Test loop'), 'Save closes the dialog; the sheet says "Saved as Test loop"');
+await page.click('#sheetMenuBtn'); await page.click('#menuSavePlan');
+await page.waitForSelector('dialog.savechoice[open] #saveOver');
+await page.click('#saveOver');
+await page.waitForTimeout(500);
+const saved = await page.evaluate(async () => (await window.__sync.list()).map((p) => p.title));
+check(saved.length === 1 && saved[0] === 'Test loop', 'saving again replaces the plan (Save), no duplicate');
 
 // 7. Go here from my position (browser location)
 await page.click('#sheetMenuBtn'); await page.click('#clear'); await waitPins(0);
@@ -136,6 +204,10 @@ await page.setViewportSize({ width: 412, height: 860 });
 await page.waitForTimeout(300);
 const sheet = await page.locator('#sheet').boundingBox();
 check(sheet.y > 300 && sheet.y + sheet.height >= 855, 'phone: the plan sheet sits at the bottom');
+check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'), 'phone: header entries behind ☰');
+await page.click('#menuBtn');
+check(await page.isVisible('#menuPlans'), 'phone: ☰ shows the entries');
+await page.keyboard.press('Escape');
 check(await page.isHidden('#points'), 'phone: Points folded away');
 await page.click('#handle');
 check(await page.isVisible('#points'), 'phone: the handle shows the Points');

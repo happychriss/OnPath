@@ -1,25 +1,47 @@
-/* The phone's Plan screen in a browser (docs/design/web-planner.md §11): map full screen, search pill + ☰ on top,
-   map controls bottom right, the plan sheet – a bottom sheet on a phone, a side panel on a wide screen.
-   Colours from the app's theme (ui/Theme OnPathColors). */
+/* The phone's Plan screen in a browser (docs/design/web-planner.md §11, §13): a header line in onpath.earth's look,
+   the map below it; search pill + the map toolbar on top, the plan sheet – a bottom sheet on a phone, a side panel on
+   a wide screen. Colours from the app's theme (ui/Theme OnPathColors); the header from onpath.earth (site colours). */
 :root {
   --bg: #fff; --fg: #1d201e; --muted: #5f645e; --line: #e2e5e1; --surface2: #f3f5f2;
   --green: #1F6E43; --green-light: #DDEFE3; --route: #1E3FAE; --chip: #DCE3F6; --chip-fg: #14245e;
   --warn: #9A5B00; --warn-bg: #FFF0D2; --error: #C62828; --error-bg: #FDE0DC;
   --good: #2E7D32; --weak: #F9A825; --grey: #6B6F6A; --shadow: rgba(0,0,0,.2);
   --sheet-w: 384px; --sheet-h: 0px;
+  --site-bg: #fafaf6; --site-fg: #243c31; --site-line: #dce1d6; --site-soft: #eef0e8; --site-eyebrow: #526d57;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #1b1d1c; --fg: #e8eae7; --muted: #a8aca7; --line: #343836; --surface2: #252826;
   --green-light: #23402f; --chip: #27304d; --chip-fg: #dfe5fb; --warn-bg: #3a2c12; --warn: #f3c66e;
-  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark; } }
+  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark;
+  --site-bg: #1f2421; --site-fg: #e3ebe5; --site-line: #343c37; --site-soft: #2a312d; --site-eyebrow: #a9c2ae; } }
 :root[data-theme="dark"] {
   --bg: #1b1d1c; --fg: #e8eae7; --muted: #a8aca7; --line: #343836; --surface2: #252826;
   --green-light: #23402f; --chip: #27304d; --chip-fg: #dfe5fb; --warn-bg: #3a2c12; --warn: #f3c66e;
-  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark; }
+  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark;
+  --site-bg: #1f2421; --site-fg: #e3ebe5; --site-line: #343c37; --site-soft: #2a312d; --site-eyebrow: #a9c2ae; }
 html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg); background: var(--bg); }
 [hidden] { display: none !important; }
-#app { position: fixed; inset: 0; overflow: hidden; }
+#app { position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; }
+#stage { position: relative; flex: 1; min-height: 0; }
 #map { position: absolute; inset: 0; }
+
+/* ---- header (onpath.earth: Manrope, site green, soft line) ---- */
+#header { flex: none; position: relative; z-index: 6; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 16px;
+  padding: 0 16px; background: var(--site-bg); color: var(--site-fg); border-bottom: 1px solid var(--site-line);
+  font-family: Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.brand { display: inline-flex; gap: 9px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -.05em; color: inherit; text-decoration: none; }
+.brand .logo { border-radius: 7px; flex: none; }
+.product { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--site-eyebrow);
+  border-left: 1px solid var(--site-line); padding-left: 14px; }
+.nav { display: flex; gap: 2px; margin-left: 8px; }
+.nav button { border: none; background: none; display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px;
+  font-size: 15px; color: var(--site-fg); }
+.nav button .ic { color: var(--site-eyebrow); }
+.nav button:hover { background: var(--site-soft); }
+#header .hint { margin-left: auto; font-size: 13px; white-space: nowrap; }
+#menuBtn { display: none; color: var(--site-fg); }
+@media (max-width: 1020px) { #header .hint { display: none; } }
+@media (max-width: 860px) and (min-width: 701px) { .nav button span { display: none; } .product { display: none; } }
 .muted { color: var(--muted); } .small { font-size: 12px; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
@@ -39,7 +61,7 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .txt > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- top: search pill + ☰ ---- */
-#top { position: absolute; z-index: 3; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; width: var(--sheet-w);
+#top { position: absolute; z-index: 5; top: 12px; left: 12px; width: var(--sheet-w);
   display: flex; gap: 10px; align-items: flex-start; }
 #searchbox { flex: 1; min-width: 0; }
 .searchrow { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 16px; box-sizing: border-box;
@@ -48,8 +70,11 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .searchrow input::-webkit-search-cancel-button { display: none; }
 .round { flex: none; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--bg); box-shadow: 0 2px 8px var(--shadow);
   display: grid; place-items: center; color: var(--fg); }
-#results, #card { margin-top: 8px; background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 8px 12px; max-height: 60vh; overflow: auto; }
-#card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+#results { margin-top: 8px; background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 8px 12px; max-height: 60vh; overflow: auto; }
+/* the place card: floating beside the plan sheet (wide screen), a bottom card in place of the sheet (phone) */
+.placecard { position: absolute; z-index: 4; top: 76px; left: calc(var(--sheet-w) + 24px); width: 360px; max-width: calc(100% - var(--sheet-w) - 48px);
+  box-sizing: border-box; background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px; }
 .hit { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; border: none; background: none; padding: 8px 4px; border-radius: 10px; }
 .hit:hover { background: var(--surface2); }
 .glyph { flex: none; width: 36px; height: 36px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
@@ -68,15 +93,19 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .menu button .ic { color: var(--muted); }
 .menu hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
 
-/* ---- map controls (the app's MapControls group) and footer ---- */
-#fabs { position: absolute; z-index: 2; right: 16px; bottom: 16px; }
-.fabgroup { display: flex; flex-direction: column; align-items: center; background: var(--bg); border-radius: 24px; box-shadow: 0 2px 8px var(--shadow); overflow: hidden; }
-.fab { position: relative; width: 48px; height: 48px; border: none; background: none; display: grid; place-items: center; padding: 0; color: var(--muted); touch-action: none; }
-.fab:hover { background: var(--surface2); }
-.fabgroup > .fab:not([hidden]) ~ .fab:not([hidden])::before { content: ""; position: absolute; top: 0; left: 10px; right: 10px; border-top: 1px solid var(--line); }
-.fab.on { color: var(--route); } #eye.on { background: var(--green-light); color: var(--fg); }
+/* ---- map toolbar (the app's MapControls, in a row beside the search pill) and footer ---- */
+.toolbar { position: absolute; z-index: 3; top: 12px; left: calc(var(--sheet-w) + 24px); height: 52px; box-sizing: border-box; padding: 0 4px;
+  display: flex; align-items: center; gap: 2px; background: var(--bg); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); }
+.tool { position: relative; width: 44px; height: 44px; border: none; background: none; border-radius: 22px; display: grid; place-items: center;
+  padding: 0; color: var(--fg); touch-action: none; }
+.tool.wide { width: auto; display: inline-flex; gap: 6px; padding: 0 8px 0 12px; font-weight: 600; }
+.tool:hover:not(:disabled) { background: var(--surface2); }
+.tool:disabled { opacity: .32; }
+.toolbar .sep { width: 1px; height: 26px; background: var(--line); margin: 0 4px; }
+.tool.on { color: var(--route); } #eye.on { background: var(--green-light); color: var(--fg); }
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 12px; box-shadow: 0 2px 8px var(--shadow); margin: 0 16px 16px 0; }
 .needle { transition: transform .15s; color: var(--fg); }
-.gpsdot { position: absolute; top: 8px; right: 8px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--bg); }
+.gpsdot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--bg); }
 .gpsdot.good { background: var(--good); } .gpsdot.weak { background: var(--weak); } .gpsdot.grey { background: var(--grey); } .gpsdot.bad { background: var(--error); }
 #footer { position: absolute; z-index: 1; left: calc(var(--sheet-w) + 24px); bottom: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 #footer .maplibregl-ctrl-scale { background: rgba(255,255,255,.6); border-color: #222; color: #222; font-size: 11px; }
@@ -84,10 +113,15 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .mypos { width: 16px; height: 16px; border-radius: 50%; background: #1A73E8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.2), 0 1px 4px rgba(0,0,0,.4); }
 
 /* ---- the plan sheet ---- */
-#sheet { position: absolute; z-index: 2; top: calc(76px + env(safe-area-inset-top, 0px)); left: 12px; width: var(--sheet-w); max-height: calc(100% - 88px);
-  box-sizing: border-box; overflow: auto; background: var(--bg); border-radius: 18px; box-shadow: 0 2px 14px var(--shadow);
+#sheet { position: absolute; z-index: 2; top: 76px; left: 12px; width: var(--sheet-w); max-height: calc(100% - 88px);
+  box-sizing: border-box; overflow: hidden; background: var(--bg); border-radius: 18px; box-shadow: 0 2px 14px var(--shadow);
   padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
 #handle { display: none; }
+#sheet > * { flex: none; }
+/* long plans: the Points list scrolls inside the sheet; summary, profile and the button stay in view */
+#sheet > #pointsSection { flex: 0 1 auto; min-height: 96px; display: flex; flex-direction: column; }
+#pointsSection > .pointshead { flex: none; }
+.savedline { display: flex; gap: 6px; align-items: center; margin-top: -4px; } .savedline .ic { color: var(--green); }
 .sheethead { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; }
 #sheetMenuBtn { grid-row: 1; grid-column: 3; }
 #summary { display: contents; }
@@ -107,10 +141,12 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
   border-radius: 8px; display: flex; flex-direction: column; } .spots button:hover { background: var(--surface2); }
 #profile svg { width: 100%; height: 90px; display: block; } .axis { display: flex; justify-content: space-between; font-size: 11px; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
-#points { list-style: none; margin: 0; padding: 0; }
-#points li { display: grid; grid-template-columns: 24px 28px 1fr auto 40px; gap: 10px; align-items: center; padding: 6px 0; cursor: pointer; border-radius: 10px; }
+#points { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+#points li { display: grid; grid-template-columns: 32px 28px 1fr auto 40px; gap: 8px; align-items: center; padding: 6px 0; cursor: pointer; border-radius: 10px; background: var(--bg); }
 #points li:hover { background: var(--surface2); }
-.grip { color: var(--muted); cursor: grab; display: grid; }
+.grip { color: var(--muted); cursor: grab; display: grid; place-items: center; border: none; background: none; padding: 4px; border-radius: 8px; touch-action: none; }
+#points.sorting li { transition: transform .15s ease; } #points.sorting { cursor: grabbing; }
+#points li.lifted { position: relative; z-index: 2; transition: none; background: var(--surface2); box-shadow: 0 4px 14px var(--shadow); cursor: grabbing; }
 .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12px; flex: none; }
 .leg { font-size: 13px; white-space: nowrap; }
 .status { font-size: 12px; min-height: 1.4em; } .status.error { color: var(--error); }
@@ -126,7 +162,18 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .pointmenu button:hover:not(:disabled) { background: var(--surface2); }
 .pointmenu button.danger { color: var(--error); }
 
-/* ---- dialogs: share, credits, activity picker ---- */
+/* ---- activity drop-down (at the chip) ---- */
+.actmenu { position: fixed; z-index: 8; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto; box-sizing: border-box;
+  background: var(--bg); color: var(--fg); border-radius: 14px; box-shadow: 0 8px 28px var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.actmenu > button { display: flex; gap: 14px; align-items: center; border: none; background: none; text-align: left; padding: 8px 10px; border-radius: 10px; color: var(--muted); }
+.actmenu > button b { color: var(--fg); font-weight: 500; font-size: 15px; }
+.actmenu > button:hover { background: var(--surface2); }
+.actmenu > button.on { background: var(--green-light); } .actmenu > button.on b { font-weight: 700; } .actmenu > button.on .ic { color: var(--green); }
+.sacrow { padding: 0 10px 8px 48px; }
+.sacrow .seg { margin: 4px 0 6px; }
+.sacrow .seg button { padding: 6px 0; }
+
+/* ---- dialogs: share, credits ---- */
 dialog.share, dialog.picker { width: min(400px, calc(100vw - 32px)); border: none; border-radius: 22px; padding: 20px 22px;
   background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px var(--shadow); box-sizing: border-box; }
 dialog::backdrop { background: rgba(0,0,0,.45); }
@@ -146,18 +193,59 @@ dialog.share .row button.primary { border: none; background: var(--green); }
 .seg button { flex: 1; border: none; border-left: 1px solid var(--muted); background: none; padding: 10px 0; }
 .seg button:first-child { border-left: none; } .seg button.on { background: var(--chip); color: var(--chip-fg); }
 
+/* ---- Map content (POI kinds, contour lines, hill shading) – a large panel ---- */
+dialog.mapcontent { width: min(1100px, calc(100vw - 32px)); height: min(780px, calc(100vh - 32px)); max-width: none; max-height: none; padding: 0;
+  border: none; border-radius: 18px; background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px var(--shadow); box-sizing: border-box; }
+dialog.mapcontent[open] { display: flex; flex-direction: column; }
+dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
+.mchead { display: flex; gap: 16px; align-items: center; padding: 14px 16px 14px 22px; border-bottom: 1px solid var(--line); }
+.mchead h2 { margin: 0; font-size: 22px; font-weight: 400; flex: none; }
+.mchead input { flex: 1; min-width: 0; height: 40px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 20px; padding: 0 16px; font: inherit;
+  background: var(--surface2); color: var(--fg); }
+.mcbody { flex: 1; overflow: auto; padding: 14px 22px 22px; }
+.mcbody h3 { margin: 0; font-size: 15px; }
+.mcmap { display: flex; gap: 8px 24px; align-items: center; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+.mcpoihead { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; margin-bottom: 8px; } .mcpoihead h3 { margin-right: 4px; }
+.mcpoihead .muted { margin-right: auto; }
+.mcgroups { columns: 3 240px; column-gap: 28px; }
+.mcgroup { break-inside: avoid; border: none; margin: 0 0 14px; padding: 0; min-width: 0; }
+.mcgroup legend { padding: 0; width: 100%; }
+.grouprow, .kind { display: flex; gap: 10px; align-items: center; padding: 6px 4px; border-radius: 8px; cursor: pointer; }
+.grouprow:hover, .kind:hover { background: var(--surface2); }
+.grouprow b { flex: 1; }
+.mcgroup .kind { padding-left: 30px; }
+.kind input, .grouprow input { width: 18px; height: 18px; accent-color: var(--green); margin: 0; }
+.glyph.small { width: 22px; height: 22px; font-size: 11px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+
 /* ---- phone width: the sheet is a bottom sheet (collapsed: summary + profile + button; expanded: + Points) ---- */
 @media (max-width: 700px) {
+  #header { height: 48px; padding: 0 4px 0 12px; gap: 10px; }
+  .brand { font-size: 19px; } .brand .logo { width: 26px; height: 26px; }
+  #menuBtn { display: grid; margin-left: auto; }
+  .nav { display: none; }
+  .nav.open { display: flex; position: absolute; top: 48px; right: 8px; margin: 0; flex-direction: column; min-width: 230px; padding: 6px 0;
+    background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); }
+  .nav.open button { padding: 12px 18px; gap: 16px; border-radius: 0; }
+  .toolbar { left: auto; right: 12px; top: 72px; height: 44px; }
+  .tool { width: 38px; height: 38px; } .tool.wide { padding: 0 6px; } .tool.wide span, .tool.wide .ic:last-child { display: none; }
+  .toolbar .sep { margin: 0 2px; }
+  .maplibregl-ctrl-bottom-right { display: none; }
+  .placecard { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-width: none; border-radius: 22px 22px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  body.card-open #sheet { display: none; }
+  .mcgroups { columns: 1; }
+  dialog.mapcontent { width: 100vw; height: 100%; border-radius: 0; margin: 0; }
+  .mchead { flex-wrap: wrap; } .mchead input { order: 3; flex-basis: 100%; } #mcClose { margin-left: auto; }
   #top { left: 12px; right: 12px; width: auto; }
   #sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 48%; border-radius: 22px 22px 0 0;
     padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-  #sheet.expanded { max-height: calc(100% - 80px); }
+  #sheet.expanded { max-height: calc(100% - 128px); }
   #sheet:not(.expanded) #pointsSection { display: none; }
   #handle { display: block; align-self: center; border: none; background: none; padding: 8px 24px; }
   #handle span { display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
-  #fabs { bottom: calc(var(--sheet-h) + 12px); }
   #footer { left: 12px; bottom: calc(var(--sheet-h) + 12px); }
-  #results, #card { max-height: 50vh; }
+  #results { max-height: 50vh; }
 }
 
 /* ---- My plans, Pair phone (docs/design/web-sync.md) ---- */

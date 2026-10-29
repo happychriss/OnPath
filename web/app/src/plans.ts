@@ -2,6 +2,7 @@
 // – once paired – also on the phone, end-to-end encrypted through the mailbox. Conflict copies show as "… (copy)".
 import qrcode from 'qrcode-generator';
 import type { PlanSync, SavedPlan, SyncStatus } from './sync';
+import { icon } from './icons';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -9,6 +10,10 @@ export interface PlanHost {
   /** The saved plan the page shows now (to save a new version of it), or null. */
   openId(): string | null;
   open(plan: SavedPlan): void;
+  /** A name proposal for a new saved plan ("Algund → Meran", the app's RouteNamer), "" when none fits. */
+  suggestName(): Promise<string>;
+  /** The plan was saved as [p] – the page shows "Saved as …". */
+  saved(p: SavedPlan): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -41,21 +46,15 @@ export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   const d = dialog('plans', `
     <h2>My plans</h2>
-    <div class="saveRow">
-      <input id="saveTitle" placeholder="Name of the plan" aria-label="Name of the plan" maxlength="100">
-      <button id="savePlan" class="primary">Save</button>
-    </div>
-    <div id="saveAsNewRow" class="small" hidden><label><input type="checkbox" id="saveAsNew"> Save as a new plan</label></div>
+    <button id="saveCurrent" class="outline">${icon('save', 18)}Save the current plan…</button>
     <ul id="planList" class="planlist" aria-label="Saved plans"></ul>
     <div id="plansStatus" class="status muted"></div>
     <div class="row end"><button id="syncNow" hidden>Sync now</button><button id="closePlans">Close</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const cur = await host.current();
-  const openId = host.openId();
-  $<HTMLInputElement>('saveTitle').value = cur?.title ?? '';
-  $<HTMLButtonElement>('savePlan').disabled = !cur;
-  $('saveAsNewRow').hidden = !openId;
-  if (!cur) $<HTMLInputElement>('saveTitle').placeholder = 'Set a start and a destination first';
+  $<HTMLButtonElement>('saveCurrent').disabled = !cur;
+  if (!cur) $('saveCurrent').title = 'Set a start and a destination first';
+  $('saveCurrent').onclick = () => { d.close(); requestSave(sync, host); };
 
   const render = async () => {
     const plans = await sync.list();
@@ -65,12 +64,16 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const li = document.createElement('li');
       li.dataset.id = p.id;
       li.innerHTML = `<button class="open txt" title="Open this plan"><span class="name">${esc(p.title ?? 'Plan')}</span>
-        <span class="muted small">${when(p.updatedAt)}${p.mine ? '' : ' · from the other device'}</span></button>
+        <span class="muted small">${when(p.updatedAt)}${p.mine ? '' : ' · from the other device'}${p.id === host.openId() ? ' · shown now' : ''}</span></button>
         <button class="rename iconbtn" aria-label="Rename">✎</button><button class="del iconbtn" aria-label="Delete">✕</button>`;
       li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); host.open(p); };
       li.querySelector<HTMLButtonElement>('.rename')!.onclick = async () => {
         const t = prompt('New name of the plan', p.title ?? '');
-        if (t != null && t.trim()) { await sync.rename(p.id, t.trim()); render(); }
+        if (t != null && t.trim()) {
+          await sync.rename(p.id, t.trim());
+          if (p.id === host.openId()) host.saved({ ...p, title: t.trim() }); // "Saved as …" follows the new name
+          render();
+        }
       };
       li.querySelector<HTMLButtonElement>('.del')!.onclick = () => confirmDelete(d, p, async () => { await sync.remove(p.id); render(); });
       ul.append(li);
@@ -84,18 +87,58 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   d.addEventListener('close', () => off());
-  $<HTMLButtonElement>('savePlan').onclick = async () => {
-    const c = await host.current();
-    if (!c) return;
-    const title = $<HTMLInputElement>('saveTitle').value.trim() || c.title || 'Plan ' + when(Date.now());
-    const asNew = $<HTMLInputElement>('saveAsNew').checked;
-    const id = await sync.save(c.code, title, openId && !asNew ? openId : undefined);
-    host.open({ id, title, plan: c.code, updatedAt: Date.now(), mine: true }); // the page now shows this saved plan
-    render();
-  };
   $('syncNow').onclick = () => sync.syncNow();
   $('closePlans').onclick = () => d.close();
   render();
+}
+
+/**
+ * Save, as the app's AppViewModel.requestSave (RouteRules.saveMode): a plan shown from My plans (and still there) asks
+ * "Save" (a new version of it, name kept – saveChoiceOverwrite) or "Save as new…"; otherwise the name dialog with the
+ * app's name proposal (RouteNamer). Saving closes the dialog; the sheet then says "Saved as …".
+ */
+export async function requestSave(sync: PlanSync, host: PlanHost) {
+  const cur = await host.current();
+  if (!cur) return;
+  const id = host.openId();
+  const existing = id ? (await sync.list()).find((p) => p.id === id) : undefined;
+  if (!existing) { nameDialog(sync, host, cur); return; }
+  const d = dialog('savechoice', `<h2>Save “${esc(existing.title ?? 'Plan')}”?</h2>
+    <p class="muted">Save replaces the saved plan with this one. Save as new keeps it and adds this plan.</p>
+    <div class="row end"><button id="saveAsNew">Save as new…</button><button id="saveOver" class="primary">Save</button></div>`);
+  d.querySelector<HTMLButtonElement>('#saveAsNew')!.onclick = () => { d.close(); nameDialog(sync, host, cur); };
+  d.querySelector<HTMLButtonElement>('#saveOver')!.onclick = async () => {
+    d.close();
+    const title = existing.title ?? cur.title;
+    await sync.save(cur.code, title, existing.id);
+    host.saved({ id: existing.id, title, plan: cur.code, updatedAt: Date.now(), mine: true });
+  };
+}
+
+/** The name dialog: opens at once, takes the app's proposal over while nothing was typed (AppViewModel.suggestedName). */
+function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: string | null }) {
+  const fallback = 'Plan ' + when(Date.now());
+  const d = dialog('savename', `<h2>Save plan</h2>
+    <label class="muted small" for="saveTitle">Name</label>
+    <input id="saveTitle" maxlength="100" placeholder="${esc(fallback)}" value="${esc(cur.title ?? '')}">
+    <div class="row end"><button id="saveCancel">Cancel</button><button id="savePlan" class="primary">Save</button></div>`);
+  const input = d.querySelector<HTMLInputElement>('#saveTitle')!;
+  let typed = !!cur.title;
+  input.addEventListener('input', () => { typed = true; });
+  input.select();
+  host.suggestName().then((n) => { if (n && !typed && d.open) { input.value = n; input.select(); } });
+  let busy = false;
+  const save = async () => {
+    if (busy) return; // one click, one plan (owner 2026-10-28: saving made duplicates)
+    busy = true;
+    const title = input.value.trim() || fallback;
+    d.close();
+    const newId = await sync.save(cur.code, title);
+    host.saved({ id: newId, title, plan: cur.code, updatedAt: Date.now(), mine: true });
+  };
+  d.querySelector<HTMLButtonElement>('#saveCancel')!.onclick = () => d.close();
+  d.querySelector<HTMLButtonElement>('#savePlan')!.onclick = save;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
 }
 
 /** Deleting loses something – one question, verb buttons. */

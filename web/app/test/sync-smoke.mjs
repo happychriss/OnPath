@@ -38,12 +38,13 @@ const status = (p) => p.evaluate(() => ({ ...window.__sync.status }));
 
 const ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const ctxB = await browser.newContext({ viewport: { width: 400, height: 800 }, userAgent: ANDROID });
+/** A header entry: inline on a wide screen, behind ☰ at phone width. */
+const menu = async (P, id) => { if (await P.isVisible('#menuBtn')) await P.click('#menuBtn'); await P.click(id); };
 const A = await open(ctxA, '#p=' + CODE);
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 60_000 });
 
 // 1. A shows the pairing code; B opens the link (as the phone app would after scanning) and pairs
-await A.click('#menuBtn');
-await A.click('#menuPair');
+await menu(A, '#menuPair');
 await A.waitForSelector('#pairLink', { timeout: 30_000 });
 const link = await A.inputValue('#pairLink');
 const checkA = await A.textContent('#checkDigits');
@@ -62,19 +63,19 @@ check((await A.textContent('#pairBody')).includes('Chrome on Android'), 'browser
 await A.click('#closePair');
 
 // 2. save on A → appears on B
-await A.click('#menuBtn');
-await A.click('#menuPlans');
+await menu(A, '#menuPlans');
+await A.click('#saveCurrent'); // My plans → Save the current plan… → the name dialog (requestSave)
 await A.fill('#saveTitle', 'Waalweg');
 await A.click('#savePlan');
-await A.waitForFunction(() => document.getElementById('planList')?.textContent?.includes('Waalweg'));
-await A.click('#closePlans');
+await A.waitForFunction(async () => (await window.__sync.list()).some((p) => p.title === 'Waalweg'));
+await A.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Saved as Waalweg'), null, { timeout: 10_000 }).catch(() => {});
+check((await A.textContent('#savedLine')).includes('Saved as Waalweg'), 'the sheet says "Saved as Waalweg"');
 await syncNow(A);
 await syncNow(B);
 check(JSON.stringify(await plans(B)) === '["Waalweg"]', 'saved in the browser → on the phone');
 
 // 3. rename on B (UI) → A
-await B.click('#menuBtn');
-await B.click('#menuPlans');
+await menu(B, '#menuPlans');
 await B.waitForSelector('#planList li .rename');
 B.once('dialog', (d) => d.accept('Waalweg Algund'));
 await B.click('#planList li .rename');
@@ -102,15 +103,13 @@ check(JSON.stringify(await plans(B)) === want, 'conflict on the phone: newer win
 check(JSON.stringify(await plans(A)) === want, 'conflict in the browser: the same two plans');
 
 // 5. open a saved plan on B (empty page → the plan)
-await B.click('#menuBtn');
-await B.click('#menuPlans');
+await menu(B, '#menuPlans');
 await B.click('#planList li:has-text("Browser name") .open');
 await B.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }).catch(() => {});
 check((await B.textContent('#points')).includes('Vellau'), 'a synced plan opens on the other side');
 
 // 6. delete on A (with the question) → gone on B
-await A.click('#menuBtn');
-await A.click('#menuPlans');
+await menu(A, '#menuPlans');
 await A.click('#planList li:has-text("Phone name (copy)") .del');
 await A.click('dialog.plans .confirm .danger');
 await A.waitForFunction(() => !document.getElementById('planList')?.textContent?.includes('(copy)'));
@@ -131,8 +130,7 @@ check(rows.length >= 3 && !/Waalweg|Browser name|Phone name|Android|Chrome/.test
 check(!JSON.stringify(env.SYNC.sqlite.prepare('SELECT * FROM mailbox').all()).includes(link.split('#pair=')[1]), 'server never saw the pairing code');
 
 // 9. unpair on B → A learns it, plans stay on both
-await B.click('#menuBtn');
-await B.click('#menuPair');
+await menu(B, '#menuPair');
 await B.waitForSelector('#unpair', { timeout: 30_000 });
 await B.click('#unpair');
 await B.click('dialog.pair .confirm .danger');

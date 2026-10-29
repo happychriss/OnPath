@@ -14,52 +14,79 @@ const SAC = [
   ['Demanding alpine hiking', 'Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed.'],
 ];
 
+/**
+ * A drop-down anchored to the activity chip (owner 2026-10-28: no dialog, no Done): a click on an activity picks it and
+ * closes; Hike carries its T1–T5 row in the same list – a T level picks Hike with that level and closes.
+ */
 export class ActivityPicker {
   private rows: ActivityRow[] = [];
-  private d: HTMLDialogElement;
+  private box: HTMLDivElement;
   private act: Activity = 'HIKE';
   private sac = 2;
+  private anchor: HTMLElement | null = null;
 
   constructor(private onPick: (a: Activity, sac: number) => void) {
-    this.d = document.createElement('dialog');
-    this.d.className = 'picker';
-    this.d.id = 'activityDialog';
-    document.body.append(this.d);
-    this.d.addEventListener('click', (e) => {
+    this.box = document.createElement('div');
+    this.box.className = 'actmenu';
+    this.box.id = 'activityMenu';
+    this.box.setAttribute('role', 'menu');
+    this.box.hidden = true;
+    this.box.addEventListener('click', (e) => {
+      e.stopPropagation();
       const t = e.target as HTMLElement;
-      if (t === this.d) { this.d.close(); return; } // click on the backdrop
-      const a = t.closest<HTMLElement>('[data-act]')?.dataset.act as Activity | undefined;
       const s = t.closest<HTMLElement>('[data-sac]')?.dataset.sac;
-      if (a) { this.act = a; this.pick(); }
-      else if (s) { this.sac = Number(s); this.pick(); }
-      else if (t.closest('#activityDone')) this.d.close();
+      const a = t.closest<HTMLElement>('[data-act]')?.dataset.act as Activity | undefined;
+      if (s) this.pick('HIKE', Number(s));
+      else if (a) this.pick(a, this.sac);
+    });
+    this.box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { this.close(); this.anchor?.focus(); } });
+    document.addEventListener('click', (e) => {
+      if (!this.box.hidden && !this.box.contains(e.target as Node) && !this.anchor?.contains(e.target as Node)) this.close();
     });
   }
 
   setRows(rows: ActivityRow[]) { this.rows = rows; }
   row(a: Activity) { return this.rows.find((r) => r.key === a); }
+  get isOpen() { return !this.box.hidden; }
 
-  open(a: Activity, sac: number) {
+  /** Opens under [anchor] (the chip); a second click on the chip closes it. */
+  toggle(anchor: HTMLElement, a: Activity, sac: number) {
+    if (this.isOpen) { this.close(); return; }
+    this.anchor = anchor;
     this.act = a; this.sac = sac;
     this.draw();
-    this.d.showModal();
+    document.body.append(this.box);
+    this.box.hidden = false;
+    // under the chip; on a phone (sheet at the bottom) above it when there is no room below
+    const r = anchor.getBoundingClientRect(), h = this.box.offsetHeight;
+    const below = innerHeight - r.bottom - 8 >= h || r.top < h + 8;
+    this.box.style.left = Math.max(8, Math.min(r.left, innerWidth - this.box.offsetWidth - 8)) + 'px';
+    this.box.style.top = below ? Math.min(r.bottom + 6, innerHeight - h - 8) + 'px' : Math.max(8, r.top - h - 6) + 'px';
+    anchor.setAttribute('aria-expanded', 'true');
+    this.box.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }
 
-  /** The choice applies at once (the plan is routed again behind the dialog); Done closes. */
-  private pick() { this.draw(); this.onPick(this.act, this.sac); }
+  close() {
+    this.box.hidden = true;
+    this.anchor?.setAttribute('aria-expanded', 'false');
+  }
+
+  private pick(a: Activity, sac: number) { this.close(); this.onPick(a, sac); }
 
   private draw() {
-    const [name, text] = SAC[this.sac - 1];
-    this.d.innerHTML = `<h2>Activity</h2>
-      <div class="acts" role="radiogroup" aria-label="Activity">${this.rows.map((r) => `
-        <button data-act="${r.key}" role="radio" aria-checked="${r.key === this.act}" class="${r.key === this.act ? 'on' : ''}">
-          ${activityIcon(r.key)}<span class="txt"><b>${r.label}</b><span class="muted">${r.line}</span></span></button>`).join('')}</div>
-      <div id="sacRow" ${this.act === 'HIKE' ? '' : 'hidden'}>
-        <div class="muted">Hiking difficulty (SAC)</div>
-        <div class="seg" role="radiogroup" aria-label="Hiking difficulty">${[1, 2, 3, 4, 5].map((t) =>
-          `<button data-sac="${t}" role="radio" aria-checked="${t === this.sac}" class="${t === this.sac ? 'on' : ''}">T${t}</button>`).join('')}</div>
-        <p class="muted">T${this.sac} · ${name} – ${text}</p>
-      </div>
-      <div class="row end"><button id="activityDone" class="textbtn">Done</button></div>`;
+    this.box.innerHTML = this.rows.map((r) => {
+      const on = r.key === this.act;
+      const row = `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}">
+          ${activityIcon(r.key)}<span class="txt"><b>${r.label}</b><span class="muted small">${r.line}</span></span></button>`;
+      if (r.key !== 'HIKE') return row;
+      const [name, text] = SAC[this.sac - 1];
+      return row + `<div id="sacRow" class="sacrow">
+          <div class="seg" role="group" aria-label="Hiking difficulty (SAC)">${[1, 2, 3, 4, 5].map((t) => {
+            const [n, d] = SAC[t - 1];
+            const sel = this.act === 'HIKE' && t === this.sac;
+            return `<button data-sac="${t}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${t} · ${n} – ${d}">T${t}</button>`;
+          }).join('')}</div>
+          <div class="muted small">T${this.sac} · ${name} – ${text}</div></div>`;
+    }).join('');
   }
 }

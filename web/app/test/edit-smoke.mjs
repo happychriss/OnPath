@@ -20,7 +20,7 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const summary = async () => (await page.textContent('#summary')).replace(/\s+/g, ' ').trim();
 const planned = async (before) => {
-  await page.waitForFunction((b) => { const s = document.querySelector('#summary'); return s?.querySelector('.big') && s.textContent !== b && !document.getElementById('status').textContent.includes('Planning'); }, before, { timeout: 120_000 });
+  await page.waitForFunction((b) => { const s = document.querySelector('#summary'); return s?.querySelector('.big') && s.textContent.replace(/\s+/g, ' ').trim() !== b && !document.getElementById('status').textContent.includes('Planning'); }, before, { timeout: 120_000 });
   await page.waitForTimeout(300);
 };
 
@@ -42,8 +42,7 @@ console.log('hike:', hike);
 // activity switch re-plans
 await page.click('#activityChip');
 await page.click('[data-act=BIKE_TOURING]');
-check(!(await page.isVisible('#sacRow')), 'T level hidden for Bike');
-await page.click('#activityDone');
+check(await page.isHidden('#activityMenu'), 'picking an activity closes the drop-down (no Done)');
 await planned(hike);
 const bike = await summary();
 console.log('bike:', bike);

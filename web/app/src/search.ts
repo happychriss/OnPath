@@ -19,6 +19,8 @@ export interface SearchHost {
   add(hit: Hit, role: PlaceRole): void;
   /** "Google": the app's Google Maps link-out for this place (a new tab). */
   google(hit: Hit): void;
+  /** The place card opened or closed (the page makes room: on a phone it stands in for the plan sheet). */
+  cardShown?(open: boolean): void;
 }
 
 const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
@@ -30,15 +32,19 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
     `&zoom=12&location_bias_scale=0.3&limit=${limit}&lang=de`;
 }
 
-export function setupSearch(host: SearchHost, box: HTMLElement) {
+/**
+ * [box] holds the search pill and its results; [card] is the place card's own spot – a floating card beside the plan
+ * sheet on a wide screen, a bottom card in place of the sheet on a phone (owner 2026-10-28: it must not cover the
+ * sheet, and it closes after any action).
+ */
+export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElement) {
   box.innerHTML = `
     <div class="searchrow">${icon('search')}<input id="q" type="search" placeholder="Search places or addresses" autocomplete="off" aria-label="Search places or addresses">
       <button id="qclear" class="iconbtn" aria-label="Clear search" hidden>${icon('close', 20)}</button></div>
-    <div id="results" hidden></div>
-    <div id="card" hidden></div>`;
+    <div id="results" hidden></div>`;
+  card.hidden = true;
   const q = box.querySelector<HTMLInputElement>('#q')!;
   const results = box.querySelector<HTMLDivElement>('#results')!;
-  const card = box.querySelector<HTMLDivElement>('#card')!;
   const clear = box.querySelector<HTMLButtonElement>('#qclear')!;
   let gen = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -60,7 +66,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement) {
     const my = ++gen;
     const text = q.value;
     clear.hidden = !text;
-    card.hidden = true;
+    close();
     if (timer) clearTimeout(timer);
     if (!text.trim()) { results.hidden = true; return; }
     const c = host.map.getCenter();
@@ -82,7 +88,11 @@ export function setupSearch(host: SearchHost, box: HTMLElement) {
     }, DEBOUNCE_MS);
   };
 
+  let picked = 0;
   const pick = async (h: Hit) => {
+    const my = ++picked;
+    gen++; // a search still running (online results after 350 ms) must not open the list again over the card
+    if (timer) clearTimeout(timer);
     results.hidden = true;
     marker?.remove();
     const ring = document.createElement('div');
@@ -92,7 +102,9 @@ export function setupSearch(host: SearchHost, box: HTMLElement) {
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     const n = host.points().length;
     const atStart = pv.existing === 0, atEnd = pv.existing != null && pv.existing === n - 1;
+    if (my !== picked) return; // a newer pick or a close came first
     card.hidden = false;
+    host.cardShown?.(true);
     card.innerHTML = `
       <div class="cardhead"><span class="glyph" style="background:${h.color}">${esc(h.glyph)}</span>
         <span class="txt"><b>${esc(h.title)}</b><span class="muted">${esc(h.subtitle)}</span>
@@ -104,16 +116,22 @@ export function setupSearch(host: SearchHost, box: HTMLElement) {
       <div class="row three"><button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>As start</button>
         <button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>As destination</button>
         <button id="cgoogle" class="outline" title="Open in Google Maps (new tab)">${icon('map', 18)}Google</button></div>`;
-    const done = (role: PlaceRole) => { host.add(h, role); close(); };
+    const done = (role: PlaceRole) => { close(); host.add(h, role); };
     card.querySelector<HTMLButtonElement>('#cadd')?.addEventListener('click', () => done('SMART'));
     card.querySelector<HTMLButtonElement>('#cremove')?.addEventListener('click', () => done('REMOVE'));
     card.querySelector<HTMLButtonElement>('#cstart')!.onclick = () => done('START');
     card.querySelector<HTMLButtonElement>('#cdest')!.onclick = () => done('DESTINATION');
-    card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => host.google(h);
+    card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => { close(); host.google(h); };
     card.querySelector<HTMLButtonElement>('#cclose')!.onclick = close;
   };
 
-  const close = () => { card.hidden = true; marker?.remove(); marker = null; };
+  const close = () => {
+    picked++; // a pick still waiting for its preview must not open the card afterwards
+    const was = !card.hidden;
+    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null;
+    if (was) host.cardShown?.(false);
+  };
+  card.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 
   q.addEventListener('input', () => { run(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
