@@ -42,10 +42,9 @@ await page.waitForFunction(() => document.getElementById('status')?.textContent?
 
 // 1a. a link with two points ~600 km apart: asked first, nothing fetched meanwhile
 const far = await page.evaluate(() => window.__engine.encode({ points: [[46.6700, 11.1600], [52.0500, 11.1600]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null }));
-await page.waitForTimeout(1500); // the prefetch of the start view is done
-rd5Requests = 0;
 await page.goto(url + 'index.html#p=' + far);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
+rd5Requests = 0; // only requests started while the question is open count (not the start view's prefetch)
 const q = await page.textContent('dialog.longroute');
 check(/This route is very long/.test(q) && /days on foot\. Calculating and loading its maps takes long\./.test(q), `long plan asked first: "${q.replace(/\s+/g, ' ').trim()}"`);
 await page.waitForTimeout(1500);
@@ -87,7 +86,8 @@ console.log('track panel:', tp.replace(/\s+/g, ' ').trim());
 check(tp.includes('Meran 2000 & Ifinger Hütte') && /2[.,]4 km/.test(tp) && tp.includes('1 h 21 min'), 'track panel: name, distance, the file\'s own time');
 check(tp.includes('Activity set to Hike T2 from the file'), 'Komoot <type>hike</type> → Hike T2, said in one grey line');
 check((await page.textContent('#activityChip')).includes('T2') && (await page.getAttribute('#activityChip', 'aria-label')).includes('Hike'), 'the activity chip shows Hike · T2');
-check(await page.evaluate(() => window.__map.getSource('gpx-track').serialize().data.features.length) >= 1, 'the track is drawn (gpx-track)');
+const drawn = await page.waitForFunction(() => (window.__map.getSource('gpx-track')?.serialize().data.features.length ?? 0) >= 1, null, { timeout: 15_000 }).then(() => true).catch(() => false);
+check(drawn, 'the track is drawn (gpx-track)');
 // … "Plan a route from it": the app's TrackToPlan
 await page.click('#planFromTrack');
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 120_000 });

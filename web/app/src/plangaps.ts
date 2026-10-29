@@ -15,13 +15,18 @@ const NONE: Gaps = { text: null, gaps: [] };
 
 export class PlanGapsLayer {
   last: Gaps = NONE;
+  private ensure: () => boolean = () => false;
   constructor(private map: maplibregl.Map, private engine: EngineClient) {
     const add = () => {
+      if (map.getSource('plan-gaps')) return;
       map.addSource('plan-gaps', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'plan-gaps', type: 'line', source: 'plan-gaps', layout: { 'line-cap': 'round' },
         paint: { 'line-color': '#6B6F6A', 'line-width': 3, 'line-dasharray': [1.5, 1.5] } });
     };
-    if (map.isStyleLoaded()) add(); else map.once('load', add);
+    // as soon as the style takes it, also when 'load' already fired (isStyleLoaded() is false while tiles load)
+    this.ensure = () => { try { add(); return true; } catch { return false; } }; // expected: style not done loading – retried
+    map.on('styledata', this.ensure);
+    this.ensure();
   }
 
   /** After a plan of exactly [points]: the gaps (or none), drawn; returns them for the sheet. */
@@ -42,6 +47,7 @@ export class PlanGapsLayer {
   }
 
   private draw() {
+    this.ensure();
     (this.map.getSource('plan-gaps') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: this.last.gaps.map((g) => ({
       type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[g.end[1], g.end[0]], [g.point[1], g.point[0]]] },
     })) });

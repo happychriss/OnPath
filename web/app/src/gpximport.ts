@@ -60,8 +60,14 @@ export function setupGpxImport(h: GpxHost) {
     if (f) importFile(f);
   });
 
-  const withLayers = (fn: () => void) => (h.map.isStyleLoaded() ? fn() : h.map.once('load', fn));
-  withLayers(() => {
+  // the layers go in as soon as the style can take them – also when 'load' fired before this ran (isStyleLoaded() is
+  // false while tiles load, so waiting for 'load' alone could wait forever)
+  const ensureLayers = () => {
+    if (h.map.getSource('gpx-track')) return true;
+    try { addLayers(); return true; } catch { return false; } // expected: style not done loading yet – retried on styledata
+  };
+  h.map.on('styledata', ensureLayers);
+  const addLayers = () => {
     h.map.addSource('gpx-track', { type: 'geojson', data: empty() });
     h.map.addLayer({ id: 'gpx-track-casing', type: 'line', source: 'gpx-track', filter: ['==', '$type', 'LineString'],
       layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': 8 } });
@@ -69,7 +75,8 @@ export function setupGpxImport(h: GpxHost) {
       layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': GPX, 'line-width': 4 } });
     h.map.addLayer({ id: 'gpx-waypoints', type: 'circle', source: 'gpx-track', filter: ['==', '$type', 'Point'],
       paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-color': GPX, 'circle-stroke-width': 3 } });
-  });
+  };
+  ensureLayers();
 
   async function importFile(f: File) {
     h.status(`Importing ${f.name}…`);
@@ -91,6 +98,7 @@ export function setupGpxImport(h: GpxHost) {
 
   function show(t: Track) {
     shown = t;
+    if (!ensureLayers()) { h.map.once('idle', () => { if (shown === t) show(t); }); }
     const src = h.map.getSource('gpx-track') as GeoJSONSource | undefined;
     src?.setData({ type: 'FeatureCollection', features: [
       ...t.segments.filter((s) => s.length >= 2).map((s) => ({ type: 'Feature' as const, properties: {},
