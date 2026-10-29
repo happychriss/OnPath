@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] A-009 app colours (ui/Theme.kt) – since 2026-10-29
 
 ## Next
 - **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
