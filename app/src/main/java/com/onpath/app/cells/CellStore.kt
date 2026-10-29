@@ -12,7 +12,7 @@ import java.io.IOException
  * in the data folder – joined into ONE set of map files that MapLibre draws with the unchanged format-2 style:
  *
  * ```
- * <dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson store.json
+ * <dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson pois.pmtiles store.json
  * <dataDir>/cells/download/10-543-361/2026-10-19.part/   while downloading (never used)
  * <dataDir>/cells/download/10-543-361/2026-10-19/        complete + verified, waiting to be joined
  * <dataDir>/addresses/10-543-361.sqlite                  the cell's addresses (search reads every file there)
@@ -66,6 +66,8 @@ class CellStore(
         val region: Map<String, String>,
         val files: Map<String, Long>,
         val createdAt: Long,
+        /** Building [PoiTiles.FILE] failed for this generation (no retry at start, [needsPoiTiles]). */
+        val poiTilesFailed: Boolean = false,
     ) {
         val cellIds: Set<CellId> get() = cells.map { it.id }.toSet()
         fun cell(id: CellId) = cells.firstOrNull { it.id == id }
@@ -118,6 +120,7 @@ class CellStore(
             o.optJSONObject("region")?.let { r -> r.keys().asSequence().associateWith { r.getString(it) } }.orEmpty(),
             o.optJSONObject("files")?.let { r -> r.keys().asSequence().associateWith { r.getLong(it) } }.orEmpty(),
             o.optLong("createdAt"),
+            o.optBoolean("poiTilesFailed"),
         )
     } catch (e: Exception) {
         Problems.error("cells", "Map store generation ${dir.name} unreadable; skipped (older one used)", e)
@@ -170,7 +173,9 @@ class CellStore(
                 (if (n in region) File(dataDir, n).length() else 0L) + (cur?.dir?.let { File(it, n).length() } ?: 0L) +
                     add.sumOf { File(it.dir, n).length() }
             } + (cur?.dir?.let { File(it, POIS).length() } ?: 0L) + add.sumOf { File(it.dir, POIS).length() } +
-                (if (POIS in region) File(dataDir, POIS).length() else 0L) + MARGIN
+                (if (POIS in region) File(dataDir, POIS).length() else 0L) +
+                // POI tiles: the previous ones + about the size of the new cells' GeoJSON
+                (cur?.dir?.let { File(it, PoiTiles.FILE).length() } ?: 0L) + add.sumOf { File(it.dir, POIS).length() } + MARGIN
             val free = freeSpace(storeDir)
             if (free < need) throw StoreException(Txt.s(Res.string.maps_err_store_space, need / MB, free / MB))
             val bytes = HashMap<CellId, MutableMap<String, Long>>()
@@ -219,11 +224,24 @@ class CellStore(
                     r.bytesPerInput.forEachIndexed { i, b -> owners[i]?.let { c -> bytes.getOrPut(c) { HashMap() }[POIS] = b } }
                 }
             }
+            // POIs as vector tiles (PoiTiles): kept cells' tiles copied from the previous generation, the rest encoded
+            // here. Robust first: a failure leaves the map with the GeoJSON POIs (style fallback), never without a map.
+            val poiTilesFailed = try {
+                poiTiles(tmp, cur, region, keptIds, allIds, add)?.let { (size, per) ->
+                    files[PoiTiles.FILE] = size
+                    per.forEach { (c, b) -> bytes.getOrPut(c) { HashMap() }[PoiTiles.FILE] = b }
+                }
+                false
+            } catch (e: Exception) {
+                File(tmp, PoiTiles.FILE).delete()
+                Problems.error("cells", "Map POIs could not be prepared as tiles; drawn the old way (more memory)", e)
+                true
+            }
             val cells = kept + add.map { d ->
                 InstalledCell(d.manifest.cell, d.manifest.version, d.manifest.built, d.manifest.format,
                     bytes[d.manifest.cell].orEmpty(), addressFileOf(d)?.length() ?: 0L, now)
             }.sortedBy { it.id }
-            val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now)
+            val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now, poiTilesFailed)
             File(tmp, STORE_JSON).writeText(toJson(gen).toString(1))
             if (!tmp.renameTo(final)) throw StoreException(Txt.s(Res.string.maps_err_store_failed), IOException("rename ${tmp.name} failed"))
             // the cells' addresses go where the search reads them; only after the generation is active
@@ -240,6 +258,58 @@ class CellStore(
             tmp.deleteRecursively()
             val low = freeSpace(storeDir) < MARGIN
             throw StoreException(if (low) Txt.s(Res.string.maps_err_store_low) else Txt.s(Res.string.maps_err_store_failed), e)
+        }
+    }
+
+    /**
+     * True when the current generation has its POIs only as GeoJSON (written by an app before [PoiTiles]) and building
+     * the tiles did not fail for it before: [MapCells] then writes a new generation at start.
+     */
+    fun needsPoiTiles(): Boolean = current()?.let { g ->
+        g.cells.isNotEmpty() && !g.poiTilesFailed && File(g.dir, POIS).isFile && !File(g.dir, PoiTiles.FILE).isFile
+    } ?: false
+
+    /**
+     * Writes [tmp]/pois.pmtiles. Inputs like the tile layers: the region package's POIs outside every cell, the kept
+     * cells' tiles of the previous generation (its GeoJSON when it has no tiles yet), each added cell's GeoJSON.
+     * Returns (file size, bytes per added cell), null when there are no POIs.
+     */
+    private fun poiTiles(tmp: File, cur: Generation?, region: Map<String, String>, keptIds: Set<CellId>, allIds: Set<CellId>,
+                         add: List<Download>): Pair<Long, Map<CellId, Long>>? {
+        val work = File(tmp, ".poi-work")
+        val inputs = ArrayList<PmTiles.Input>()
+        val owners = ArrayList<CellId?>()
+        val parts = ArrayList<File>()
+        fun encode(src: File, keep: (Double, Double) -> Boolean): File? {
+            val f = File(tmp, ".poi-part-${parts.size}.pmtiles").also { parts += it }
+            return PoiTiles.build(listOf(PoiTiles.Input(src, keep)), f, work)?.let { f }
+        }
+        try {
+            if (POIS in region) encode(File(dataDir, POIS)) { lat, lon -> CellId.at(lat, lon)?.let { it !in allIds } ?: false }
+                ?.let { inputs += PmTiles.Input(it) { _, _, _ -> true }; owners += null }
+            val prev = cur?.dir?.takeIf { keptIds.isNotEmpty() }
+            val prevTiles = prev?.let { File(it, PoiTiles.FILE) }?.takeIf { it.isFile }
+            if (prevTiles != null) {
+                inputs += PmTiles.Input(prevTiles) { z, x, y -> CellId.ofTile(z, x, y)?.let { it in keptIds } ?: false }; owners += null
+            } else prev?.let { File(it, POIS) }?.takeIf { it.isFile }?.let { f ->
+                encode(f) { lat, lon -> CellId.at(lat, lon)?.let { it in keptIds } ?: false }
+                    ?.let { inputs += PmTiles.Input(it) { _, _, _ -> true }; owners += null }
+            }
+            for (d in add) File(d.dir, POIS).takeIf { it.isFile }?.let { f ->
+                val c = d.manifest.cell
+                encode(f) { lat, lon -> CellId.at(lat, lon) == c }
+                    ?.let { inputs += PmTiles.Input(it) { z, x, y -> c.ownsTile(z, x, y) }; owners += c }
+            }
+            if (inputs.isEmpty()) return null
+            val out = File(tmp, PoiTiles.FILE)
+            val r = PmTiles.merge(inputs, out, metadataJson = PoiTiles.METADATA) ?: return null
+            val size = PmTiles.verify(out).let { out.length() }
+            val per = HashMap<CellId, Long>()
+            r.bytesPerInput.forEachIndexed { i, b -> owners[i]?.let { per[it] = b } }
+            return size to per
+        } finally {
+            work.deleteRecursively()
+            parts.forEach { it.delete() }
         }
     }
 
@@ -338,6 +408,7 @@ class CellStore(
 
     private fun toJson(g: Generation) = JSONObject()
         .put("generation", g.number).put("format", 2).put("createdAt", g.createdAt)
+        .apply { if (g.poiTilesFailed) put("poiTilesFailed", true) }
         .put("region", JSONObject(g.region as Map<*, *>))
         .put("files", JSONObject(g.files as Map<*, *>))
         .put("cells", JSONArray(g.cells.map { c ->

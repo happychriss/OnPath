@@ -590,6 +590,15 @@ class MapCells(
         } catch (e: Exception) {
             Problems.error("cells", "Downloaded map areas could not be joined after a restart; they load again", e)
         }
+        // a store written before POI tiles (PoiTiles): rewritten once, so MapLibre reads the POIs as tiles, not GeoJSON
+        try {
+            if (!holdUpdates && store.needsPoiTiles()) {
+                Problems.info("cells", "Map store rewritten with POI tiles (once after the app update)")
+                publish(store.apply())
+            }
+        } catch (e: Exception) {
+            Problems.warn("cells", "Map store could not get POI tiles now (POIs drawn the old way); tried again at the next start", e)
+        }
     }
 
     /** Joins the cells downloaded during a tour ([CellState.Downloaded]) – called when [holdUpdates] goes false. */

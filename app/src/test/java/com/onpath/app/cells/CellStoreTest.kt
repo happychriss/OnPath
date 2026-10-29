@@ -263,4 +263,81 @@ class CellStoreTest {
         assertFalse(File(g4.dir, "hillshade.pmtiles").exists())
         assertEquals("region:base.pmtiles:9/${a.x shr 1}/${a.y shr 1}", tileOf(g4.dir, "base.pmtiles", 9, a.x shr 1, a.y shr 1))
     }
+
+    // ------------------------------------------------------------------------------------------- POI tiles
+
+    /** POI names in the generation's POI tiles at z14 (every kind is there). */
+    private fun poiTileNames(dir: File): List<String> =
+        MvtTestDecoder.featuresByZoom(File(dir, PoiTiles.FILE))[14].orEmpty().map { it.props.getValue("name") as String }.sorted()
+
+    @Test fun poiTilesFollowTheCells() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        assertEquals(3, poiTileNames(g1.dir).size)
+        assertEquals(poiNames(g1.dir), poiTileNames(g1.dir))
+        assertTrue(store.installed().single().bytes.getValue(PoiTiles.FILE) > 0)
+        assertFalse(store.needsPoiTiles())
+        val g2 = store.apply(add = listOf(download(store, b, "v1")))
+        assertEquals(6, poiTileNames(g2.dir).size)
+        assertEquals(poiNames(g2.dir), poiTileNames(g2.dir))
+        // replace a: only a's POIs change
+        val g3 = store.apply(add = listOf(download(store, a, "v2")))
+        assertEquals(poiNames(g3.dir), poiTileNames(g3.dir))
+        assertEquals(3, poiTileNames(g3.dir).count { it.startsWith("$a@v2") })
+        // delete b: its tiles go
+        val g4 = store.remove(setOf(b))
+        assertEquals(listOf("$a@v2 0", "$a@v2 1", "$a@v2 2"), poiTileNames(g4.dir))
+        PmTiles.Reader(File(g4.dir, PoiTiles.FILE)).use { r ->
+            r.entries().forEach { e -> PmTiles.tileIdToZxy(e.tileId).let { (z, x, y) -> assertEquals(a, CellId.ofTile(z, x, y)) } }
+        }
+        assertTrue(g4.dir.listFiles()!!.none { it.name.startsWith(".poi") })
+    }
+
+    @Test fun regionPoisOutsideTheCellsGoIntoTheTiles() {
+        val data = tmp.newFolder("data")
+        CellFixtures.region(data)
+        val store = CellStore(data)
+        val g = store.apply(add = listOf(download(store, a, "v1")))
+        val names = poiTileNames(g.dir)
+        assertEquals(poiNames(g.dir), names)
+        assertEquals(3, names.count { it.startsWith("region") })
+    }
+
+    /** A store written by an app before POI tiles: [CellStore.needsPoiTiles] → one rewrite brings them (MapCells.recover). */
+    @Test fun olderStoreGetsPoiTilesOnce() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        store.apply(add = listOf(download(store, a, "v1"), download(store, b, "v1")))
+        val old = store.current()!!
+        File(old.dir, PoiTiles.FILE).delete()
+        assertTrue(store.needsPoiTiles())
+        val g = store.apply()
+        assertEquals(old.number + 1, g.number)
+        assertEquals(setOf(a, b), g.cellIds)
+        assertEquals(6, poiTileNames(g.dir).size)
+        assertEquals(poiNames(g.dir), poiTileNames(g.dir))
+        assertFalse(store.needsPoiTiles())
+    }
+
+    /**
+     * POI tiles that cannot be built never cost the map: the generation is written with the GeoJSON (the style falls
+     * back to it), not retried at every start, and the next change builds them from the GeoJSON again.
+     */
+    @Test fun brokenPoiTilesLeaveTheMap() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        File(g1.dir, PoiTiles.FILE).writeText("not a pmtiles archive")
+        val g2 = store.apply(add = listOf(download(store, b, "v1")))
+        assertEquals(setOf(a, b), g2.cellIds)
+        assertTrue(g2.poiTilesFailed)
+        assertFalse(File(g2.dir, PoiTiles.FILE).exists())
+        assertEquals(6, poiNames(g2.dir).size)
+        assertTrue(g2.dir.listFiles()!!.none { it.name.startsWith(".poi") })
+        assertFalse(store.needsPoiTiles())
+        val g3 = store.apply(add = listOf(download(store, a, "v2")))
+        assertFalse(g3.poiTilesFailed)
+        assertEquals(poiNames(g3.dir), poiTileNames(g3.dir))
+    }
 }
