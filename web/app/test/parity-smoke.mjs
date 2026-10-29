@@ -41,7 +41,13 @@ await page.waitForSelector('.pointmenu');
 check((await page.textContent('.menuhead')).includes('New route') && (await menuItems()).join('|') === 'Start here|Go here', 'first click: New route – Start here · Go here');
 check(await page.isDisabled('#undo'), 'no undo before the first change (greyed in the toolbar)');
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
-check(tb.y < 100 && tb.x >= sb.x + sb.width && Math.abs(tb.y - sb.y) < 4, 'toolbar on top, right of the search pill');
+const bar = await page.locator('#topbar').boundingBox();
+check(tb.y < 100 && tb.x >= sb.x + sb.width && Math.abs(tb.y - sb.y) < 2 && Math.abs(tb.height - sb.height) < 2 &&
+  tb.x + tb.width <= bar.x + bar.width + 1 && sb.x >= bar.x, 'one top bar: search field left, the tools right in it, same height');
+check(await page.evaluate(() => { const s = getComputedStyle(document.getElementById('topbar')); const t = getComputedStyle(document.getElementById('toolbar'));
+  return s.boxShadow !== 'none' && t.boxShadow === 'none'; }), 'the bar has one shared background and shadow');
+check(await page.evaluate(() => document.fonts.check('600 14px Manrope') && [...document.fonts].some((f) => f.family.replace(/"/g, '') === 'Manrope' && f.status === 'loaded')),
+  'Manrope served by the page itself');
 await page.click('.pointmenu button:first-of-type');
 await waitPins(1);
 check(await pins() === 1, 'Start here sets the start');
@@ -205,6 +211,11 @@ await page.waitForTimeout(300);
 const sheet = await page.locator('#sheet').boundingBox();
 check(sheet.y > 300 && sheet.y + sheet.height >= 855, 'phone: the plan sheet sits at the bottom');
 check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'), 'phone: header entries behind ☰');
+const ptb = await page.locator('#toolbar').boundingBox(), psb = await page.locator('#searchbox').boundingBox(), pbar = await page.locator('#topbar').boundingBox();
+check(ptb.y >= psb.y + psb.height - 1 && ptb.y + ptb.height <= pbar.y + pbar.height + 1 && Math.abs(psb.width - pbar.width) < 2,
+  'phone: search full width, the tools as a row below it in the same bar');
+check((await Promise.all(['#undo', '#redo', '#eye', '#compass', '#locate', '#mapContent'].map((s) => page.isVisible(s)))).every(Boolean),
+  'phone: all tools visible (none behind a menu)');
 await page.click('#menuBtn');
 check(await page.isVisible('#menuPlans'), 'phone: ☰ shows the entries');
 await page.keyboard.press('Escape');

@@ -30,7 +30,9 @@ import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover } from './overview';
 import { PlanGapsLayer } from './plangaps';
+import './fonts/manrope.css';
 import './style.css';
+import manropeLicence from './fonts/manrope/OFL.txt?url';
 
 const ROUTE = '#1E3FAE';
 const COLORS = { start: '#2E7D32', via: ROUTE, end: '#C62828' }; // OnPathColors.Good / Route / Bad (ui/PlanPanel.stopColor)
@@ -93,7 +95,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </header>
   <div id="stage">
   <div id="map"></div>
-  <div id="top"><div id="searchbox"></div></div>
+  <div id="topbar" class="topbar">
+  <div id="searchbox"></div>
+  <span class="barsep" aria-hidden="true"></span>
   <div id="toolbar" class="toolbar" role="toolbar" aria-label="Map tools">
     <button id="undo" class="tool" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>${icon('undo')}</button>
     <button id="redo" class="tool" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>${icon('redo')}</button>
@@ -103,6 +107,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="locate" class="tool"></button>
     <span class="sep"></span>
     <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="Points of interest, contour lines, hill shading">${icon('layers')}<span>Map content</span>${icon('dropDown', 18)}</button>
+  </div>
   </div>
   <div id="placecard" class="placecard" hidden></div>
   <div id="footer"><button id="credits" class="credit" aria-label="Show map credits">© OpenStreetMap</button></div>
@@ -502,7 +507,7 @@ async function loadShared(shared: SharedPlan) {
 function fitPadding(): maplibregl.PaddingOptions {
   const sheet = $('sheet').getBoundingClientRect();
   const phone = matchMedia('(max-width: 700px)').matches;
-  return phone ? { top: 90, bottom: sheet.height + 30, left: 40, right: 80 } : { top: 90, bottom: 50, left: sheet.right + 50, right: 90 };
+  return phone ? { top: 130, bottom: sheet.height + 30, left: 40, right: 40 } : { top: 90, bottom: 50, left: sheet.right + 50, right: 90 };
 }
 
 /** The current plan in the app's format (for the QR code, the link and the address bar). */
@@ -850,7 +855,8 @@ function credits() {
     <b>Credits</b><ul class="credits">${['Map data © OpenStreetMap contributors (ODbL)', 'Vector tile schema © OpenMapTiles',
       'Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)', 'Routing: BRouter (MIT)',
       'Search online: Photon by komoot (OpenStreetMap data)', 'POI icons: Maki and Temaki (CC0)',
-      'Map renderer: MapLibre GL JS (BSD licence)'].map((t) => `<li>${t}</li>`).join('')}</ul>
+      'Map renderer: MapLibre GL JS (BSD licence)'].map((t) => `<li>${t}</li>`).join('')}
+      <li>Typeface: Manrope, © The Manrope Project Authors, <a href="${manropeLicence}" target="_blank" rel="noopener">SIL Open Font License 1.1</a></li></ul>
     <p class="muted small">Licence: Apache-2.0</p><div class="row"><button class="primary" id="closeCredits">Close</button></div>`;
   document.body.append(d);
   d.querySelector<HTMLButtonElement>('#closeCredits')!.onclick = () => d.close();

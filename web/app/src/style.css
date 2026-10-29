@@ -1,5 +1,5 @@
 /* The phone's Plan screen in a browser (docs/design/web-planner.md §11, §13): a header line in onpath.earth's look,
-   the map below it; search pill + the map toolbar on top, the plan sheet – a bottom sheet on a phone, a side panel on
+   the map below it; one top bar (search field + the map toolbar), the plan sheet – a bottom sheet on a phone, a side panel on
    a wide screen. Colours from the app's theme (ui/Theme OnPathColors); the header from onpath.earth (site colours). */
 :root {
   --bg: #fff; --fg: #1d201e; --muted: #5f645e; --line: #e2e5e1; --surface2: #f3f5f2;
@@ -19,7 +19,7 @@
   --green-light: #23402f; --chip: #27304d; --chip-fg: #dfe5fb; --warn-bg: #3a2c12; --warn: #f3c66e;
   --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark;
   --site-bg: #1f2421; --site-fg: #e3ebe5; --site-line: #343c37; --site-soft: #2a312d; --site-eyebrow: #a9c2ae; }
-html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg); background: var(--bg); }
+html, body { margin: 0; height: 100%; font: 14px/1.4 Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg); background: var(--bg); }
 [hidden] { display: none !important; }
 #app { position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; }
 #stage { position: relative; flex: 1; min-height: 0; }
@@ -28,7 +28,7 @@ html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, "
 /* ---- header (onpath.earth: Manrope, site green, soft line) ---- */
 #header { flex: none; position: relative; z-index: 6; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 16px;
   padding: 0 16px; background: var(--site-bg); color: var(--site-fg); border-bottom: 1px solid var(--site-line);
-  font-family: Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+}
 .brand { display: inline-flex; gap: 9px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -.05em; color: inherit; text-decoration: none; }
 .brand .logo { border-radius: 7px; flex: none; }
 .product { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--site-eyebrow);
@@ -60,17 +60,17 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .txt { display: flex; flex-direction: column; min-width: 0; }
 .txt > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- top: search pill + ☰ ---- */
-#top { position: absolute; z-index: 5; top: 12px; left: 12px; width: var(--sheet-w);
-  display: flex; gap: 10px; align-items: flex-start; }
-#searchbox { flex: 1; min-width: 0; }
-.searchrow { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 16px; box-sizing: border-box;
-  background: var(--bg); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); color: var(--muted); }
+/* ---- top bar: ONE unit – search field (flexible) | undo redo | eye compass locate | Map content ---- */
+.topbar { position: absolute; z-index: 5; top: 12px; left: 12px; width: min(860px, calc(100% - 24px)); height: 52px; box-sizing: border-box;
+  display: flex; align-items: center; background: var(--bg); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); }
+#searchbox { flex: 1; min-width: 220px; position: relative; align-self: stretch; }
+.barsep { flex: none; width: 1px; height: 28px; background: var(--line); }
+.searchrow { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 16px; box-sizing: border-box; color: var(--muted); }
 .searchrow input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--fg); font: inherit; font-size: 16px; }
 .searchrow input::-webkit-search-cancel-button { display: none; }
 .round { flex: none; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--bg); box-shadow: 0 2px 8px var(--shadow);
   display: grid; place-items: center; color: var(--fg); }
-#results { margin-top: 8px; background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 8px 12px; max-height: 60vh; overflow: auto; }
+#results { position: absolute; z-index: 2; left: 0; right: 0; top: calc(100% + 8px); min-width: min(360px, calc(100vw - 24px)); background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 8px 12px; max-height: 60vh; overflow: auto; }
 /* the place card: floating beside the plan sheet (wide screen), a bottom card in place of the sheet (phone) */
 .placecard { position: absolute; z-index: 4; top: 76px; left: calc(var(--sheet-w) + 24px); width: 360px; max-width: calc(100% - var(--sheet-w) - 48px);
   box-sizing: border-box; background: var(--bg); border-radius: 18px; box-shadow: 0 4px 16px var(--shadow); padding: 14px 16px;
@@ -93,9 +93,8 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .menu button .ic { color: var(--muted); }
 .menu hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
 
-/* ---- map toolbar (the app's MapControls, in a row beside the search pill) and footer ---- */
-.toolbar { position: absolute; z-index: 3; top: 12px; left: calc(var(--sheet-w) + 24px); height: 52px; box-sizing: border-box; padding: 0 4px;
-  display: flex; align-items: center; gap: 2px; background: var(--bg); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); }
+/* ---- map toolbar (the app's MapControls) – the right part of the top bar ---- and footer */
+.toolbar { flex: none; height: 52px; box-sizing: border-box; padding: 0 4px; display: flex; align-items: center; gap: 2px; }
 .tool { position: relative; width: 44px; height: 44px; border: none; background: none; border-radius: 22px; display: grid; place-items: center;
   padding: 0; color: var(--fg); touch-action: none; }
 .tool.wide { width: auto; display: inline-flex; gap: 6px; padding: 0 8px 0 12px; font-weight: 600; }
@@ -227,8 +226,11 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
   .nav.open { display: flex; position: absolute; top: 48px; right: 8px; margin: 0; flex-direction: column; min-width: 230px; padding: 6px 0;
     background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); }
   .nav.open button { padding: 12px 18px; gap: 16px; border-radius: 0; }
-  .toolbar { left: auto; right: 12px; top: 72px; height: 44px; }
-  .tool { width: 38px; height: 38px; } .tool.wide { padding: 0 6px; } .tool.wide span, .tool.wide .ic:last-child { display: none; }
+  /* the bar keeps one unit: search full width, the tools as a row directly below it (all visible) */
+  .topbar { right: 12px; width: auto; height: auto; flex-direction: column; align-items: stretch; border-radius: 22px; }
+  .barsep { width: auto; height: 1px; margin: 0 14px; }
+  .toolbar { height: 46px; justify-content: space-between; padding: 0 6px; }
+  .tool { width: 40px; height: 40px; } .tool.wide { padding: 0 6px; } .tool.wide span, .tool.wide .ic:last-child { display: none; }
   .toolbar .sep { margin: 0 2px; }
   .maplibregl-ctrl-bottom-right { display: none; }
   .placecard { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-width: none; border-radius: 22px 22px 0 0;
@@ -237,10 +239,10 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
   .mcgroups { columns: 1; }
   dialog.mapcontent { width: 100vw; height: 100%; border-radius: 0; margin: 0; }
   .mchead { flex-wrap: wrap; } .mchead input { order: 3; flex-basis: 100%; } #mcClose { margin-left: auto; }
-  #top { left: 12px; right: 12px; width: auto; }
+
   #sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 48%; border-radius: 22px 22px 0 0;
     padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-  #sheet.expanded { max-height: calc(100% - 128px); }
+  #sheet.expanded { max-height: calc(100% - 136px); }
   #sheet:not(.expanded) #pointsSection { display: none; }
   #handle { display: block; align-self: center; border: none; background: none; padding: 8px 24px; }
   #handle span { display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
