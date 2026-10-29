@@ -6,12 +6,17 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
-- **cloud, 2026-10-29 – clean-up after 0.12.0 (owner: "no history in comments or docs, no duplicates, dead code
-  out").** Code comments say what the code does (history left to git); repeated code folded into helpers; test-only
-  and unused code removed. Docs: the dated one-off files (field tests, handovers, owner list, review sheets) are
-  deleted – their open points are in the backlog; this file and the backlog hold only the current state. Drive: new
-  handoff in `00 Übergabe`. **Next:** see backlog "Next" – top: memory (donald), phone checks of 0.11.6–0.12.0,
-  smarter rejoin, Knotenpunkte.
+- **desktop (donald), 2026-10-29/30 – memory, plan sync, screenshots (captain session with background agents).**
+  On main since 0.12.0 (not released yet): Demo location (Developer tools), app colours closer to onpath.earth
+  (A-009), tools/hetzner removed, **POIs as vector tiles built on the phone at join** (Plan 1.49 → 0.45 GB PSS on the
+  Pixel 8, no cell / server change), **search index on disk** (search +67 → +13 MB Java heap), **plan sync with the
+  browser** (A-007, core feature C16, owner's privacy sentence). Memory goal (< 800 MB in Plan) is met: 0.36–0.58 GB.
+  **Half done:** branch `wip/memory-fix1` (50a470f, not verified after the last main merge): free the GeoJSON
+  stand-in before a style reload, prefetch delta 1, trim → `onLowMemory`, fuller health line – notes and numbers in
+  external-docs/memory/fix1-wip.md (private). Savings only 10–30 MB now; graphics (150–250 MB) is the biggest part.
+  **Next:** finish / trim that branch (tests, keep prefetch 1?, split commits) → propose release 0.12.1 (owner OK);
+  phone test of plan sync once plan.onpath.earth has the mailbox; web planner takes over the track format (backlog);
+  owner questions: area names in screenshots 06 / A-006-3, silent lock-screen notification, DEMO tag on screenshots.
 
 ## Where we are
 - Android app, Kotlin + Compose + MapLibre, fully offline: map cells and routing data load per area from the map
