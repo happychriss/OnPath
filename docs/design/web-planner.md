@@ -357,12 +357,15 @@ browser's cache storage (IndexedDB) across visits.
 - **Header line** (56 px; onpath.earth's look: logo, Manrope, site colours): OnPath · PLANNER, then the entries
   My plans · Pair phone · Send to phone · Help & credits (one list, `NAV` in `main.ts` – new entries go there), right
   "No account · plans stay in this browser". Phone width: 48 px, the entries behind ☰.
-- **Wide screen (> 700 px)**: search pill top left, the **map toolbar** right of it (undo, redo | eye, compass,
-  locate + GPS dot | Map content ▾ – always there, greyed when not possible), the plan sheet below the pill as a side
+- **Top bar = one unit** (shared background and shadow): the search field (flexible width), then the map tools
+  separated by thin dividers – undo, redo | eye, compass, locate + GPS dot | Map content ▾ (always there, greyed when
+  not possible). Phone width: the search across the top and the tools as a row directly below it in the same bar.
+- **Type**: Manrope (OFL), bundled from this host (`web/app/src/fonts/`, woff2, latin, 400/500/600/700, licence text
+  beside the files, named in Help & credits) – no font-service requests.
+- **Wide screen (> 700 px)**: the top bar top left (up to 860 px), the plan sheet below it as a side
   panel (384 px; summary, profile and the primary button stay in view, a long Points list scrolls inside), zoom ±
   bottom right, scale + "© OpenStreetMap" bottom left beside the panel. The place card floats beside the sheet.
-- **Phone width**: search pill across the top, the toolbar (icons only) under it on the right, the plan sheet as a
-  bottom sheet (handle: summary + profile + button ↔ + Points); the place card is a bottom card that stands in for the
+- **Phone width**: the top bar across the top (search, tools below), the plan sheet as a bottom sheet (handle: summary + profile + button ↔ + Points); the place card is a bottom card that stands in for the
   sheet while it is open.
 - Menus: point / POI / first-point menus are map popups at the point; ⋯ is a drop-down; the activity picker is a
   drop-down at the chip; Map content is a large panel; share, save and credits are dialogs. Colours and type follow
@@ -417,9 +420,13 @@ live drag + undo, activity drop-down, Map content filter + storage, Save / Save 
 search-smoke (card beside the sheet, closes, results stay closed, name proposal), sync-smoke (save via My plans,
 "Saved as"); `test/ui-shots.mjs` takes desktop + phone screenshots for a look (nothing checked).
 
+Follow-up (owner, same day): Manrope bundled (§11.3), search field and tools merged into one top bar. Colours from
+onpath.earth: page background `#fafaf6`, text `#243c31`, line `#dce1d6`, soft background `#eef0e8`, eyebrow / icon
+green `#526d57`, button green `#245f46`, logo green `#1F6E43` + path yellow `#FFC94D` – used for the header; the
+map, sheet and controls keep the app's `OnPathColors` (green `#1F6E43`, route blue, amber, red).
+
 Open: header entry "Plan" (the page itself) left out; Help is the credits dialog with four how-to lines (a real help
-page could link onpath.earth/help); Manrope is named but not loaded (system font fallback – loading it from
-onpath.earth or bundling it is the owner's call).
+page could link onpath.earth/help).
 
 ## 14. App logic on the web – inventory and keeping it in sync (cloud, 2026-10-29)
 
