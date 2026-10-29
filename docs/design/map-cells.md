@@ -439,7 +439,7 @@ clustered archives with leaf directories when the root would exceed 16 KiB.
 ### 19.2 Layout and rules
 
 ```
-<dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson store.json
+<dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson pois.pmtiles store.json
 <dataDir>/cells/download/10-543-361/2026-10-19.part/   downloading (Range resume, never read by the map)
 <dataDir>/cells/download/10-543-361/2026-10-19/        complete, size + sha256 verified, waiting to be joined
 <dataDir>/cells/requests.json   queue (survives restarts)      <dataDir>/cells/usage.json   last use per cell (T6)
@@ -456,8 +456,20 @@ clustered archives with leaf directories when the root would exceed 16 KiB.
   without cells and z0–9); cells override it where both exist. A new import → `regionChanged()` → joined again.
   A **format-1** package is not joined (GeoJSON overlays, other terrain encoding – mixing would break the style):
   with the first cell the map shows cells only (+ overview). Without cells, both formats work as before.
-- **POIs:** one merged `pois.geojson` per generation (same ownership rule, streamed) – the style's single geojson
-  source, POI tap and search stay unchanged. Chosen over one file per cell (would need a source per cell).
+- **POIs:** one merged `pois.geojson` per generation (same ownership rule, streamed) – read by the search index and
+  the style's stand-in source. Chosen over one file per cell (would need a source per cell).
+- **POI tiles** (`cells/PoiTiles.kt`, 2026-10-30): the map draws the POIs from `pois.pmtiles` (one MVT layer `pois`,
+  z10–14, gzip, extent 8192, every property kept; a POI only from the zoom its kind is drawn: train z10, tier 1 z12,
+  rest z14 – `PoiTilesStyleTest` keeps it in step with `make_style.py` POI_TIERS). Why: as one GeoJSON source
+  MapLibre's geojson-vt held every POI with its properties in every tile it cut, ~5.5 KB per POI – 0.8 GB native heap
+  for 145 k POIs (19 cells); from tiles only the tiles on screen (largest tile 18 KB). The **app** builds them while
+  writing a generation (kept cells' tiles copied from the previous generation, added cells / region package encoded
+  from their `pois.geojson`, joined by tile ownership like the other layers) – no cell format or schema change, every
+  installed cell gets them. A store written by an older app is rewritten once at start (`needsPoiTiles`, not during a
+  tour). Without `pois.pmtiles` (data folder only, a failed build – reported, `poiTilesFailed` in `store.json`, not
+  retried at every start) the style's metadata `onpath:fallback-sources` makes `OptionalSources` swap in the GeoJSON
+  source. Phone (Pixel 8, 19 cells + packages, Plan, cold start 60 s): PSS 1.49 → 0.45 GB, native heap 1.21 → 0.10 GB;
+  the one-time rewrite took 21 s (294 MB).
 - **Generations:** number = highest folder + 1; current = highest complete one with a readable `store.json`
   (`.tmp` / `.bad` / unreadable folders are ignored and cleaned). After the map loaded a generation
   (`confirmLoaded`), older ones are deleted; if MapLibre fails to load it, `rollback` sets it aside and the previous
