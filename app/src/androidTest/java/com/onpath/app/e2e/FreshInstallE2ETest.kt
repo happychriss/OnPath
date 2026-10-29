@@ -26,10 +26,10 @@ import org.maplibre.android.maps.MapView
 import java.io.File
 
 /**
- * Fresh install (phone test 2026-10-21): no map package, no map cell, no routing data. With the overview map in the
- * APK and map downloads in the build the app opens on the map (DataFiles.blocking) and the style must not point
- * MapLibre at missing files ("Failed to load source terrain … path not found" was announced as a problem); without
- * them the "Offline map data is missing" screen shows as before. Both builds pass – the test checks the right one.
+ * Fresh install: no map package, no map cell, no routing data. With the overview map in the APK and map downloads in
+ * the build the app opens on the map (DataFiles.blocking) and the style must not point MapLibre at missing files (e.g.
+ * "Failed to load source terrain … path not found"); without them the "Offline map data is missing" screen shows. Both
+ * builds pass – the test checks the right one.
  */
 @RunWith(AndroidJUnit4::class)
 class FreshInstallE2ETest {
@@ -54,7 +54,7 @@ class FreshInstallE2ETest {
         var blocking = true
         scenario.onActivity { a -> blocking = ViewModelProvider(a)[AppViewModel::class.java].blockingMissing.isNotEmpty() }
         if (blocking) {
-            // no overview in this APK or no map server key: the missing-data screen, as before cells
+            // no overview in this APK or no map server key: the missing-data screen
             assertNotNull("missing-data screen", device.wait(Until.findObject(By.text("Offline map data is missing")), 15_000))
             return
         }

@@ -3,8 +3,8 @@ package com.onpath.app.recording
 import com.onpath.app.data.Geo
 
 /**
- * Slower GPS while standing still during a tour (owner decision 10, 2026-10-22: battery, never lose a point). Pure,
- * unit-tested (RestWatchTest); [RecordingService] feeds it every usable GPS fix of a running (not paused) tour and
+ * Slower GPS while standing still during a tour (owner: battery, never lose a point). Pure, unit-tested;
+ * [RecordingService] feeds it every usable GPS fix of a running (not paused) tour and
  * applies [intervalMs].
  *
  * - Resting: all good fixes (≤ [REST_MAX_ACCURACY_M]) for [REST_AFTER_MS] stayed within [STILL_M] of the first one, none

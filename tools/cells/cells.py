@@ -30,15 +30,15 @@ import sys
 import time
 
 FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-cells.md §18)
-# Content schema of a cell: bump whenever the style needs data that older cells lack (2 = overlays layer "streets",
-# 2026-10-21; 3 = router classes on paths / streets, barrier nodes, SAC on hiking route pieces – extract_overlays.py
-# --wayclass, 2026-10-22; 4 = POI placement priority "pr" in pois.geojson – extract_pois.priority(), 2026-10-23; 5 = router
-# classes from the tuned bike profiles – touring.brf for touring / e-bike, tuned trekking.brf, 2026-10-26; 6 = town flag
+# Content schema of a cell: bump whenever the style needs data that older cells lack (2 = overlays layer "streets";
+# 3 = router classes on paths / streets, barrier nodes, SAC on hiking route pieces – extract_overlays.py
+# --wayclass; 4 = POI placement priority "pr" in pois.geojson – extract_pois.priority(); 5 = router
+# classes from the tuned bike profiles – touring.brf for touring / e-bike, tuned trekking.brf; 6 = town flag
 # "u" on paths / streets, link pieces k="l" for path ends at hidden sidewalks / crossings, "ar" on pedestrian squares –
-# extract_overlays.py TownIndex / link_pieces, "quiet towns" 2026-10-26, plus the router classes of the bike footway
-# cost fix of the same day; 7 = bike map: cycle routes only of the networks lcn / rcn / ncn / icn, label lines "lb" for
+# extract_overlays.py TownIndex / link_pieces, "quiet towns", plus the router classes of the bike footway
+# cost fix; 7 = bike map: cycle routes only of the networks lcn / rcn / ncn / icn, label lines "lb" for
 # named local cycle routes, "bs" on bicycle streets, "br" / "fw" / tn "p" | "t" in "paths", street areas (layer "areas"), short town
-# sidewalk stubs hidden – Hilden field review 2026-10-26). The
+# sidewalk stubs hidden). The
 # version folder is "<osm_date>-s<schema>", so a rebuild is a new version for app and caches; the doorman rebuilds
 # cells of an older schema when asked (wrangler.toml CELL_SCHEMA; older cells from CELL_SCHEMA_SERVE on are served while
 # rebuilt), the app re-requests installed cells below the schema its style needs (cells/CellApi.CELL_SCHEMA – stays 3
@@ -48,12 +48,12 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 CELL_SCHEMA = 7
 # Region packages (z7 tile, map z7-9: main roads, towns, forests, rivers, long-distance routes, relief) have their own
 # content schema – the doorman compares a package version with PACKAGE_SCHEMA (wrangler.toml), never with CELL_SCHEMA.
-# 1 = OpenMapTiles base z7-9 without farmland, overlays layer "routes" (net >= 3), hillshade.pmtiles (2026-10-26).
+# 1 = OpenMapTiles base z7-9 without farmland, overlays layer "routes" (net >= 3), hillshade.pmtiles.
 PACKAGE_Z = 7
 PACKAGE_MAXZOOM = 9
 PACKAGE_SCHEMA = 1
 PACKAGE_MIN_APP = "0.11.3"  # apps up to 0.11.3 never ask for a package (their cell ids are z10 only)
-MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
+MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 
 

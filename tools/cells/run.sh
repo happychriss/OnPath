@@ -18,7 +18,7 @@ read -r -a EXTRA <<<"${DOCKER_ARGS:-}"
 ENVS+=("${EXTRA[@]}")
 # NETWORK (docker --network, default bridge): on zo every bridge container start/stop adds/removes a veth interface,
 # and the owner's Docbox mDNS daemon (dnssd) crashes on the vanished interface, so systemd restarts the Docbox
-# services (seen 2026-10-20). See tools/cells/README.md for the options.
+# services. See tools/cells/README.md for the options.
 # memory-swap = memory: the container never swaps (zo's swap is used by the other services);
 # cpu-shares 512: under contention the other containers get the CPU first
 exec docker run --rm --name "onpath-cell-$1-$2-$3" \

@@ -20,7 +20,7 @@ import com.onpath.app.poi.PoiKinds
 import org.junit.Rule
 import org.junit.Test
 
-/** Settings as a list of topics + one page per topic (owner 2026-10-22), Offline maps → Clean up / Clear all. */
+/** Settings as a list of topics + one page per topic, Offline maps → Clean up / Clear all. */
 class SettingsScreenshotTest {
     @get:Rule
     val paparazzi = Paparazzi(
@@ -45,7 +45,8 @@ class SettingsScreenshotTest {
 
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
-        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now) = OnPathTheme {
+        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
+        demo: DemoUi? = null) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -63,12 +64,13 @@ class SettingsScreenshotTest {
             devTools = devTools,
             diagnosticsSeenMs = seenMs,
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
+            demo = demo,
             now = now,
         )
     }
 
     @Test fun list() = paparazzi.snapshot { Screen(null) }
-    /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner C6). */
+    /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */
     @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
     @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
@@ -83,6 +85,16 @@ class SettingsScreenshotTest {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot { Screen(SettingsPage.DIAGNOSTICS, devTools = true) }
+    }
+    /** Developer tools → Demo location while a demo ride runs (speed, stand still, stop). */
+    @Test fun diagnosticsDemoRunning() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)))
+        paparazzi.snapshot {
+            Screen(SettingsPage.DIAGNOSTICS, devTools = true, demo = DemoUi(com.onpath.app.recording.DemoLocation.State(
+                com.onpath.app.recording.DemoLocation.Kind.RIDE, "planned route", factor = 5, paused = false, alongM = 3400.0,
+                lengthM = 12_600.0, ended = false), "planned route"))
+        }
     }
     @Test fun about() = paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
 
@@ -110,7 +122,7 @@ class SettingsScreenshotTest {
             clearAllBlocked = "Not during a tour – the map stays as it is until you end it."))
     }
 
-    /** After Clean up: a plain line on the page (owner 2026-10-22: no message box on the map), until the page is left. */
+    /** After Clean up: a plain line on the page (no message box on the map), until the page is left. */
     @Test fun offlineMapsAfterCleanUp() = paparazzi.snapshot {
         Screen(SettingsPage.OFFLINE_MAPS, OfflineMapsUi(true, areas.take(2), wifiOnly = false,
             result = OfflineResult.removed(37, 450L * 1_048_576, afterTour = false)))

@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * "The router decides, the map shows it" (docs/design/map-vs-router-audit.md, owner decisions 2026-10-22 (3) / (4)):
+ * "The router decides, the map shows it" (docs/design/map-vs-router-audit.md, owner decisions (3) / (4)):
  * evaluates OnPath's own BRouter profiles per way tag set with BRouter's expression engine (no routing, no segments)
  * and writes one class per profile group. tools/extract_overlays.py --wayclass runs this and puts the classes on the
  * overlay tile layers "paths" and "streets" (and blocked barrier nodes on "barriers").
@@ -50,9 +50,9 @@ import java.util.Map;
  *   forbidden  c > 9998 – and still so without the difficulty tags (access bans, via ferrata, one-way …)
  *   too hard   c > 9998 only because of DIFFICULTY_KEYS (sac_scale, mtb:scale, trail_visibility) or highway=via_ferrata / steps
  *              (judged as a path): the router never
- *              uses it either, but the map shows a grey line, not the red "forbidden" (owner 2026-10-22)
+ *              uses it either, but the map shows a grey line, not the red "forbidden" (owner)
  *   good       c <= GOOD[profile]     (thresholds below, docs/map-style-notes.md "Router classes")
- *   possible   everything between ("avoid / poor look like black", owner 2026-10-22)
+ *   possible   everything between ("avoid / poor look like black", owner)
  * A one-way flag for bikes (cr) where one direction is forbidden or costs at least ONEWAY_EXTRA more than the other.
  * Barrier nodes: BRouter adds the node's initialcost when a route reaches it; >= 1e6 = blocked (OsmPath
  * processTargetNode). The way it arrives on can grant access (nodeaccessgranted: hiking / cycle routes), so a node is
@@ -70,10 +70,8 @@ public class WayClass {
    *                   on one ≈ 1.16, pedestrian 1.2); foot=no (+4 → 6.2), bad trail visibility (+1.5), informal,
    *                   fords and steps (3.6) are "possible".
    *   trekking  1.20: cycleways and bicycle=yes|designated paths / footways (1.15 off a cycle route, 1.0 on one);
-   *                   residential 1.25, untagged paths 5.15 (pushing); compacted counts as firm (2026-10-26). Was 1.10 while the off-route add was 0.05
-   *                   (trekking.brf 0.15 since 2026-10-25).
-   *   touring   1.20: as trekking (touring.brf = trekking.brf with unpavedPenalty 2.5 and "v_rough", 2026-10-26;
-   *                   before: fastbike, 2.00).
+   *                   residential 1.25, untagged paths 5.15 (pushing); compacted counts as firm.
+   *   touring   1.20: as trekking (touring.brf = trekking.brf with unpavedPenalty 2.5 and "v_rough").
    *   MTB       7.00: unpaved cycleways and bicycle=yes|designated paths (6.67), easy trails; plain paths 10.05, paved
    *                   cycleways 9.6 (mtb.brf path_preference 20), streets 13+.
    */
@@ -143,8 +141,8 @@ public class WayClass {
     boolean changed = false;
     for (String[] kv : tags) {
       if (DIFFICULTY_KEYS.contains(kv[0])) { changed = true; continue; }
-      // a via ferrata is a (very) hard trail, not a ban (owner 2026-10-22): judged like a path without the grade
-      // steps: carrying the bike is hard, not banned (owner 2026-10-22: MTB steps grey, not red)
+      // a via ferrata is a (very) hard trail, not a ban (owner): judged like a path without the grade
+      // steps: carrying the bike is hard, not banned (owner: MTB steps grey, not red)
       if (kv[0].equals("highway") && (kv[1].equals("via_ferrata") || kv[1].equals("steps"))) {
         rest.add(new String[]{"highway", "path"}); changed = true; continue;
       }
@@ -270,8 +268,8 @@ public class WayClass {
       {t("highway=path", "foot=no"), "1 1 1 1 0"},
       {t("highway=path", "route_hiking_lwn=yes"), "0 1 1 1 0"},
       {t("highway=path", "bicycle=designated"), "0 0 0 0 0"},
-      {t("highway=path", "bicycle=yes"), "0 0 0 0 0"},  // touring.brf = trekking (fastbike: 1)
-      // compacted = firm (2026-10-26, Hilden Itter path): a bike path with it is good; a footway without a bicycle tag
+      {t("highway=path", "bicycle=yes"), "0 0 0 0 0"},  // touring.brf = trekking
+      // compacted = firm (Hilden Itter path): a bike path with it is good; a footway without a bicycle tag
       // stays "possible" (+1 pushing), whatever its surface
       {t("highway=path", "bicycle=designated", "foot=designated", "surface=compacted"), "0 0 0 0 0"},
       {t("highway=footway", "surface=compacted"), "0 1 1 1 0"},
@@ -292,7 +290,7 @@ public class WayClass {
       {t("highway=residential", "oneway=yes", "oneway:bicycle=no"), "0 1 1 1 0"},
       {t("highway=residential", "access=private"), "2 2 2 2 0"},
       {t("highway=pedestrian"), "0 1 1 1 0"},
-      // ferries (2026-10-26): no bikes on board = forbidden for bikes (also on a cycle route), foot=no for hikers
+      // ferries: no bikes on board = forbidden for bikes (also on a cycle route), foot=no for hikers
       {t("route=ferry", "foot=yes", "bicycle=yes"), "1 1 1 0 0"},
       {t("route=ferry", "bicycle=dismount"), "1 1 1 1 0"},
       {t("route=ferry", "foot=yes", "bicycle=no"), "1 2 2 2 0"},

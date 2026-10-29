@@ -30,7 +30,7 @@ enum class CellWhy {
     HERE,
     /** Installed areas built for an older map style are loaded again (content schema). */
     UPDATE,
-    /** A search result where there is no detailed map (owner 2026-10-21: a search IS a trigger). */
+    /** A search result where there is no detailed map (owner: a search is a trigger). */
     SEARCHED,
     /** A short tap on the world map, after the user said "Load" to the question. */
     TAPPED,
@@ -40,9 +40,9 @@ enum class CellWhy {
 data class CellJob(val cells: List<CellId>, val own: CellId?, val why: CellWhy)
 
 /**
- * When the map is fetched (docs/design/map-cells.md §9): **the map comes where you plan or where you are**. Searching,
- * scrolling and zooming never download (T2 rejected). Pure rules on a [CellSource]; the ViewModel calls them and shows
- * the card for the returned [CellJob] (T1, T3, T4); T5 and T6 are quiet.
+ * When the map is fetched (docs/design/map-cells.md §9): **the map comes where you plan or where you are**. A search
+ * result loads at once (T2), a tap on the world map asks first (T2b); scrolling and zooming never download. Pure rules
+ * on a [CellSource]; the ViewModel calls them and shows the card for the returned [CellJob]; T5 and T6 are quiet.
  *
  * A cell counts as "without detailed map" when no installed cell and no region package covers its centre (cells fully
  * inside the region package are not fetched – they would only duplicate it).
@@ -99,9 +99,8 @@ class CellTriggers(
     }
 
     /**
-     * The corridor cells of [line] (~10 km) – pure geometry, may run off the main thread (perf report 2026-10-22: ~8 ms
-     * per call at 250 km on the laptop, called twice per route on the main thread); pass it to [routeComputed] and
-     * [freshenAlong].
+     * The corridor cells of [line] (~10 km) – pure geometry (~8 ms for 250 km), so compute it off the main thread once
+     * and pass it to [routeComputed] and [freshenAlong].
      */
     fun corridorOf(line: List<GeoPoint>): List<CellId> = if (line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M)
 
@@ -109,10 +108,15 @@ class CellTriggers(
     fun routeComputed(line: List<GeoPoint>, corridorCells: List<CellId>? = null): CellJob? {
         if (line.size < 2) { planRoute(null); return null }
         val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
-        cells.keepCorridor(corridor) // the corridor of an older route goes (field bug 2026-10-22)
+        cells.keepCorridor(corridor) // the corridor of an older route goes
         cells.markUsed(corridor)
-        val want = needed(corridor)
-        if (want.isEmpty()) return null
+        val all = needed(corridor)
+        if (all.isEmpty()) return null
+        // never hundreds of regions for one route (owner): the first stretch loads,
+        // the rest follows on tour (T5, the map ahead) – the corridor is in order along the line
+        val want = all.take(CORRIDOR_MAX_CELLS)
+        if (all.size > want.size) com.onpath.app.debug.Problems.info("cells",
+            "Route corridor needs ${all.size} map regions – only the first $CORRIDOR_MAX_CELLS load now, the rest on tour")
         if (!cells.downloadsAvailable) return CellJob(want, null, CellWhy.PLANNED)
         val added = cells.request(want, CellReason.CORRIDOR, ownPoint = false)
         return if (added.isEmpty()) null else CellJob(added, null, CellWhy.PLANNED)
@@ -143,7 +147,7 @@ class CellTriggers(
     }
 
     /**
-     * After a route was computed (owner 2026-10-21: "at the moment I plan, I want a recent map"): ask the server for a
+     * After a route was computed (owner: "at the moment I plan, I want a recent map"): ask the server for a
      * newer version of every installed cell of the corridor – a newer map style (content schema) or newer OSM data
      * (the server rebuilds areas older than its refresh age). Already built → quick download, the map switches (blurred
      * while it loads); to be built → the old map stays until the new one is ready. Each cell at most every
@@ -182,6 +186,8 @@ class CellTriggers(
 
         const val NEAR_M = 5_000.0
         const val CORRIDOR_M = 10_000.0
+        /** At most this many corridor regions load for one route (≈ 300 km of route, ~300 MB). */
+        const val CORRIDOR_MAX_CELLS = 30
         const val AHEAD_M = 5_000.0
         const val T3_MAX_ACCURACY_M = 500f
         const val AHEAD_RETRY_MS = 30 * 60_000L

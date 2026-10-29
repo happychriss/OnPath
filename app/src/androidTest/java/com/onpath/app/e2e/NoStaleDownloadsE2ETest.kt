@@ -16,10 +16,10 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * CORE FEATURE C13 "no stale or unexpected downloads" end to end (field bug 2026-10-22: 16 corridor regions of a long
- * route Bozen → Germany stayed in the download queue and loaded again after every app start on Wi-Fi).
+ * CORE FEATURE C13 "no stale or unexpected downloads" end to end: the corridor regions of a cancelled long route
+ * (Bozen → Germany) must not stay in the download queue and load again after every app start on Wi-Fi.
  *
- * The saved plan is that long route and the saved queue still holds its corridor (as on the owner's phone). The app
+ * The saved plan is that long route and the saved queue still holds its corridor. The app
  * starts → the long-route question → Cancel → the app is started again → the queue holds no corridor region and nothing
  * of it was downloaded.
  */

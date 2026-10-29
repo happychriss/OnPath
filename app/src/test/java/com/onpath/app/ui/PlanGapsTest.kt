@@ -10,8 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Owner 2026-10-22 (screenshot: a message box "The route passes 180 m away from point 19: the last part is too difficult
- * for Bike – trekking, closed or has no path. OK"): no box; one red sheet line while it holds, one reason only.
+ * A plan point the route does not reach (owner): no message box; one red sheet line while it holds, one reason only.
  */
 class PlanGapsTest {
     private val a = GeoPoint(46.6800, 11.1500)

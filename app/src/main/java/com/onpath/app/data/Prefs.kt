@@ -16,7 +16,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     private val followFile = File(filesDir, "follow.json")
 
     /**
-     * Last chosen activity (owner 2026-10-22: the app always starts with it; fresh install → Hike). Older installs:
+     * Last chosen activity (owner: the app always starts with it; fresh install → Hike). Older installs:
      * the activity the old app started with ([LastActivity] – Settings default before the stale key activity).
      */
     var activity: Activity
@@ -43,9 +43,9 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     }
 
     /**
-     * Pace level (five levels since 2026-10-22) under [key]; not set yet → the old three-level value under [oldKey]
-     * mapped onto the five ([com.onpath.app.time.Pace.fromOld]), so existing users keep their pace. New keys because the
-     * old "FIT" (×0.8) is now "Very fit", not the new "Fit".
+     * Pace level (five levels) under [key]; not set yet → the old three-level value under [oldKey] mapped onto the
+     * five ([com.onpath.app.time.Pace.fromOld]), so existing users keep their pace. Separate keys because the old
+     * "FIT" (×0.8) maps to "Very fit", not to "Fit".
      */
     private fun pace(key: String, oldKey: String): com.onpath.app.time.Pace = try {
         if (sp.contains(key)) com.onpath.app.time.Pace.of(sp.getString(key, null))
@@ -82,12 +82,13 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             hillshade = sp.getBoolean("hillshade", true),
             offRouteWarning = sp.getBoolean("offRouteOn", true),
             offRouteVibrate = sp.getBoolean("offRouteVibrate", true),
-            junctionVibrate = sp.getBoolean("junctionVibrate", true),
+            junctionVibration = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
+            positionOnRoute = sp.getBoolean("positionOnRoute", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
-            navHeadingUp = sp.getBoolean("navHeadingUp", true),  // Navigate orientation
+            navHeadingUp = sp.getBoolean("navHeadingUp", true),
             hikePace = pace("hikePaceLevel", "hikePace"),
             bikePace = pace("bikePaceLevel", "bikePace"),
             mapsWifiOnly = sp.getBoolean("mapsWifiOnly", false),
@@ -99,12 +100,13 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putBoolean("hillshade", v.hillshade)
             .putBoolean("offRouteOn", v.offRouteWarning)
             .putBoolean("offRouteVibrate", v.offRouteVibrate)
-            .putBoolean("junctionVibrate", v.junctionVibrate)
+            .putString("junctionVibration", v.junctionVibration.name).remove("junctionVibrate")
             .putInt("offRouteM", v.offRouteM)
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)
+            .putBoolean("positionOnRoute", v.positionOnRoute)
             .putString("mapTheme", v.mapTheme)
-            .putBoolean("navHeadingUp", v.navHeadingUp)  // Navigate orientation
+            .putBoolean("navHeadingUp", v.navHeadingUp)
             .putString("hikePaceLevel", v.hikePace.name)
             .putString("bikePaceLevel", v.bikePace.name)
             .remove("hikePace").remove("bikePace") // the old three-level keys, migrated by [pace]
@@ -129,7 +131,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
 
-    /** The plan's points as the last plan link brought them (snapped by the router); null = none (A-005). */
+    /** The plan's points as the last plan link brought them (snapped by the router); null = none (core feature C15). */
     var planLinkPoints: List<GeoPoint>?
         get() = sp.getString("planLinkPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planLinkPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
@@ -140,8 +142,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         set(v) = sp.edit().putString("planPinned", TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()
 
     /**
-     * Pace learned across tours was dropped (owner 2026-10-22: learning per tour only): removes the old stored value
-     * ("paceStore") once. Returns true when there was one.
+     * Removes the stored pace learned across tours ("paceStore") once – pace is learned per tour only (owner).
+     * Returns true when there was one.
      */
     fun dropOldLearnedPace(): Boolean {
         if (!sp.contains("paceStore")) return false
@@ -149,13 +151,12 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return true
     }
 
-
-    /** Developer tools unlocked by 7 taps on the version in Settings → About (owner C5 2026-10-24); stays. */
+    /** Developer tools unlocked by 7 taps on the version in Settings → About (owner); stays. */
     var devToolsUnlocked: Boolean
         get() = sp.getBoolean("devToolsUnlocked", false)
         set(v) = sp.edit().putBoolean("devToolsUnlocked", v).apply()
 
-    /** Last visit to Settings → Diagnostics (ms): newer serious problems colour its list line red (owner C6). */
+    /** Last visit to Settings → Diagnostics (ms): newer serious problems colour its list line red (owner). */
     var diagnosticsSeenMs: Long
         get() = sp.getLong("diagnosticsSeenMs", 0L)
         set(v) = sp.edit().putLong("diagnosticsSeenMs", v).apply()
@@ -187,7 +188,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         if (!followFile.exists()) null else {
             val o = org.json.JSONObject(followFile.readText())
             val a = o.getJSONArray("pts")
-            val e = o.optJSONArray("ele") // optional (build 2+): elevation per point for "remaining ascent"
+            val e = o.optJSONArray("ele") // optional (older files lack it): elevation per point for "remaining ascent"
             o.getString("name") to (0 until a.length() / 2).map {
                 val h = e?.takeIf { arr -> it < arr.length() && !arr.isNull(it) }?.optDouble(it)
                 GeoPoint(a.getDouble(it * 2), a.getDouble(it * 2 + 1), h?.takeIf { v -> !v.isNaN() })

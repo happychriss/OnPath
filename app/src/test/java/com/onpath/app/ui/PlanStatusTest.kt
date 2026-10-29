@@ -10,10 +10,9 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Field bug (owner phone, 0.9.3, 2026-10-22 20:23): app start with a saved ≈ 8-day plan (Bozen → Germany) → "Very long
- * plan – asking first" → Cancel → the sheet showed "Calculating the route…" forever, "Start navigation" disabled, no way
- * out. Cancel = undo the last change, but a plan restored at start has nothing to undo, and the sheet said
- * "Calculating…" for every plan without a route.
+ * App start with a saved ≈ 8-day plan (Bozen → Germany) → "Very long plan – asking first" → Cancel: the sheet must not
+ * show "Calculating the route…" forever with "Start navigation" disabled. Cancel = undo the last change, but a plan
+ * restored at start has nothing to undo, and "Calculating…" belongs only to a running request.
  */
 class PlanStatusTest {
     private val bozen = GeoPoint(46.4983, 11.3548)
@@ -39,8 +38,8 @@ class PlanStatusTest {
     }
 
     /**
-     * UX review 2026-10-23, problem 1: points edited, then the activity changed → slow route → Cancel undid the last
-     * *point* edit and the activity stayed changed. Now Cancel puts the activity back and never touches the points.
+     * Points edited, then the activity changed → slow route → Cancel puts the activity back and never touches the
+     * points (not the last *point* edit undone with the activity left changed).
      */
     @Test fun cancelAfterAnActivityChangeRestoresTheActivityNotThePoints() {
         val c = PlanStatus.Cause.ActivityChange(Activity.HIKE, 3)

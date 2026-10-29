@@ -216,9 +216,9 @@ class Rd5PartStoreTest {
     }
 
     /**
-     * Field 2026-10-21/22: "Parts list of E10_N45.rd5 does not match the file" 12× – once per part added to a tile
-     * that already had parts. install() read the state between renaming the new rd5 into place and writing its list,
-     * so it met its own half-done install. Adding parts (and readers during an install) must not warn.
+     * "Parts list … does not match the file" must not appear when parts are added to a tile that already has some:
+     * a state read between renaming the new rd5 into place and writing its list meets the half-done install.
+     * Adding parts (and readers during an install) must not warn.
      */
     @Test fun addingPartsDoesNotReportAStaleList() {
         val (_, _, store) = setup()
@@ -229,7 +229,7 @@ class Rd5PartStoreTest {
         assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.message.contains("does not match") })
     }
 
-    /** Perf report 2026-10-22: the parts list is cached by file length + time; a change on disk is still seen. */
+    /** The parts list is cached by file length + time; a change on disk is still seen. */
     @Test fun cachedStateFollowsTheFiles() {
         val (seg, _, store) = setup()
         store.download(listOf(meran))

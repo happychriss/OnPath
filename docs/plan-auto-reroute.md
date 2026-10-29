@@ -1,16 +1,16 @@
-# Plan: automatic re-routing while navigating
+# Re-routing while navigating
 
-Status: **implemented P0–P4 (branch `feat/reroute`, 2026-10-18), field test pending.** Where the text below still says
-"automatic", the owner decisions win. Implementation notes:
+Status: **implemented (P0–P4).** The design below (§1–§9) was written before the owner decisions; where it says
+"automatic", the owner decisions win – the app always asks. Implementation notes:
 
 | Piece | Where | Notes |
 | --- | --- | --- |
 | Detection (P0) | `navigation/OffRouteDetector`, `navigation/NavLine` | §4 as written: window −300 m / +2 km (+5 km while off), setting + min(accuracy, 20 m), 15 s **and** 25 m (+margin) moved, back on after 3 fixes within half the distance, GPS loss freezes timers (a confirmed state stays). |
 | Way back (P1) | `navigation/RerouteTargets`, `navigation/Rerouter`, `RoutingContract.RouteLimits/RouteCancel`, `BRouterEngine` | Option C. Base = progress when leaving, or further when abeam of a later part (shortcut). Candidates: next stop ≤ 5 km, +0.5/1.5/3 km, never beyond the next stop. Score = way back + rest of the original (both `Geo.estimateSeconds`, ties → nearer). **Extra rule:** a way back shorter than 80 % of the route part it replaces (+100 m) is a skip, not a rejoin (round-trip end next to you, way back of an out-and-back) and is not chosen. 8 s per request, 12 s total, cancel via BRouter `terminate()`. The straight-line engine is never used for a way back. |
 | Flow (P2) | `navigation/Navigator` (pure), `navigation/NavSession` (`nav-session.json`), `recording/RecordingService` | Off route confirmed → one vibration + notification (sound) → "finding a way back…" → question. Question refreshed silently after 150 m (≥ 30 s). No way / no data → arrow banner, retry after 200 m or 2 min, max 3. "Keep original" → arrow banner, asked again only after 200 m **and** 2/4/8 min (with vibration). After "Take new route": back on the original (30 m into the untouched rest, or 3 fixes on the original near where you left it) → original used again, grey line gone, no vibration. Plan mode: no new questions; a pending one stays. Off-route warning off in Settings = never ask. |
-| Notification | `RecordingService.updateAlert` | One ongoing notification on channel `offroute-question` (high, sound, no channel vibration – the service vibrates once), lock-screen visible, actions **Take new route / Keep original**; stays until answered or back on route. The old `offroute` channel is deleted. |
+| Notification | `RecordingService.updateAlert` | One ongoing notification on channel `offroute-question` (high, sound, no channel vibration – the service vibrates once), lock-screen visible, actions **Take new route / Keep original**; stays until answered or back on route. The former `offroute` channel is deleted on start. |
 | UI (P3) | `ui/NavigateScreen` (`OffRouteUi`, `RerouteQuestionCard`), `ui/MapScreen.MapSync`, `map/MapController.NAV_LAYERS` | Question card low (thumb reach) above the grouped map controls; banners on top. Map layers `nav-original` (grey, below the followed line), `nav-proposal` (dashed preview while asking), `nav-guide` (dashed line to the route in arrow mode) – all in `ROUTE_OVERLAY_LAYERS` (eye button). |
-| Continue navigation (P4) | `AppViewModel.continueNavigation` | No longer edits the plan's waypoints. Edited plan → new session; else the session (and a new route taken) stays. The service checks the next fix at once (`ACTION_CHECK_NOW`) and asks when away from the line (no vibration – the user is looking). |
+| Continue navigation (P4) | `AppViewModel.continueNavigation` | Does not edit the plan's waypoints. Edited plan → new session; else the session (and a new route taken) stays. The service checks the next fix at once (`ACTION_CHECK_NOW`) and asks when away from the line (no vibration – the user is looking). |
 
 Tests: `OffRouteDetectorTest`, `RerouteTargetsTest`/`RerouterTest`, `NavigatorTest` (unit); `tools/routing/jvm-test/RerouterJvmTest.kt`
 (real BRouter data, 20 cases on 5 routes: all found, ≤ to-destination +10 %, median ~40 ms, max ~250 ms on the laptop JVM;
@@ -18,7 +18,7 @@ unreachable target gives up after 8 s, cancel after 0.3 s, no data in 1 ms); Pap
 `navigateRerouteQuestion*`. Not done: quiet mode (not needed with ask-every-time), heading for bikes, one matcher for
 progress (the to-go strip still uses `FollowProgress`).
 
-## Owner decisions (2026-10-18) – these override the recommendations below
+## Owner decisions – these override the recommendations below
 
 | # | Decision |
 | --- | --- |
@@ -28,23 +28,10 @@ progress (the to-go strip still uses `FollowProgress`).
 | Q4 | **No extra vibration** for a found route – the vibration comes with the question (Q1). Failure (no way found): question/banner with arrow to the route, same vibration. |
 | Q5 | **No separate change** – "Continue navigation" uses the same ask flow when you are off route. |
 | Q6 | Not now (no answer = recommendation). |
-| Q7 | **Keep the 80 % rule** (owner, 2026-10-18): a way back shorter than 80 % of the route part it replaces is not offered (would cut a round trip short). The proposal is shown as a dashed preview and always needs confirmation. |
+| Q7 | **Keep the 80 % rule** (owner): a way back shorter than 80 % of the route part it replaces is not offered (would cut a round trip short). The proposal is shown as a dashed preview and always needs confirmation. |
 
 UX rule from the owner for the whole app: **no messages that disappear by themselves**; banners/questions stay until
 answered or until the situation is gone.
-
-**Short version**
-
-- When you are really off the route (distance **and** time **and** you are moving), OnPath **re-routes automatically and
-  offline** from your position back onto the route **ahead of you** – never back to a stop you already passed.
-- It tries a few rejoin points ahead (the next stop and points 0.5 / 1.5 / 3 km further on the route) and takes the one
-  with the shortest total time. The rest of the original route stays exactly as planned.
-- One short vibration + banner "New route · +350 m" with a button **"Original route"**. No pop-up, nothing to tap.
-- If routing fails (no data, timeout): banner + an **arrow to the route** and the distance, like today's warning.
-- The service does it (works with the screen off and in the pocket). BRouter is fast enough: rejoin legs take
-  **1–30 ms** on the laptop JVM (phone estimate ≤ 0.2 s), so battery cost is negligible.
-
----
 
 ## 1. Goal and non-goals
 
@@ -60,25 +47,6 @@ lose the original plan, never block or crash the recording.
 - No online routing, no traffic, no "alternative routes" choice while walking.
 - No automatic changes to the user's **plan** (Plan mode waypoints). Re-routing changes only the *navigation line*.
 - No re-routing in Plan mode or during free recording (nothing to go back to).
-
-## 2. Today's behaviour (code as of `5b87fa4`) and gaps
-
-| What | Where | Today |
-| --- | --- | --- |
-| Off-route check | `recording/RecordingService.checkOffRoute()` | Every accepted fix: `Geo.distanceToLine()` to the **whole** followed line. `> offRouteM` (Settings 25/40/75 m, default 40) for `OFF_ROUTE_MS` = 15 s → one alert: vibration pattern + high-priority notification "You left the route". Back under the threshold → alert cleared at once (no hysteresis). |
-| GPS filter | `RecordingService.onFix()` | Only GPS provider, accuracy ≤ 30 m, speed ≤ 35 m/s. `gpsLost()` (> 8 s no good fix) resets the off-route timer (R-04). |
-| Plan vs. Navigate | `ACTION_NAVIGATING` | Off-route checks pause in Plan; the recording continues. |
-| Followed line | `Prefs.saveFollow()` → `follow.json` | Only **name + points**. No stops, no "plan or track" for the service (`Prefs.followIsTrack` is a VM flag). |
-| Banner | `ui/NavigateScreen.OffRouteBanner` | "Off route · 54 m away" while `RecState.offRouteAlert`. Turn card hidden when off route (`nextTurnHint`, `TURN_HIDE_OFF_M` = 40 m). |
-| Remaining / progress | `data/FollowProgress.remaining()` (with a `hint` index) | Computed in the Compose layer (`NavigateMode`), not in the service. |
-| Re-route | `AppViewModel.continueNavigation()` | **Only manual**, only from Plan ("Continue navigation"): `RouteProgress.remainingStops()` drops passed stops, then `set(listOf(pos) + stops)` **replaces the plan's waypoints** (undoable), re-plans with `Planner`, follows the result (`followNextRoute`). Not for followed tracks (`followIsTrack`). |
-| Routing engine | `routing/BRouterEngine` | Blocking, one at a time (static `LOCK`), LRU cache of 8, timeout 15–30 s (`timeoutFor`), `MAX_SNAP_M` 1000 m, via-spike correction 400 m (hike 50 m). `RoutingEngine.route()` has no timeout or cancel parameter. |
-| Arrival | `AppViewModel.checkArrival()` + `RouteProgress.arrived()` | Within 50 m of `followLine.last()` and ≤ 150 m of the line left. |
-
-**Gaps:** no automatic re-route; no re-route at all for followed GPX tracks; the service knows no stops; the off-route
-state has no hysteresis, no "moving" check and no accuracy margin; the detector scans the whole line (on an
-out-and-back route the "way back" counts as "on route"); a re-route edits the plan; long failures (16–30 s) would block
-the single routing thread.
 
 ## 3. Scenarios
 
@@ -324,31 +292,7 @@ feature (still written per fix).
    - [ ] Airplane mode the whole time; battery % per hour noted.
    - [ ] Note re-route times shown in logcat (`adb logcat -d | grep -i reroute`, lines "reroute #n: found in … ms").
 
-## 10. Phases (small, shippable)
-
-| Phase | Content | Who | Effort |
-| --- | --- | --- | --- |
-| **P0** | `navigation/OffRouteDetector` (pure) with progress window, accuracy margin, moving check, hysteresis; service uses it for today's warning (no re-route yet). Unit tests. | cloud | S (½ day) |
-| **P1** | `RerouteTargets` (pure) + `RoutingEngine` timeout parameter + `BRouterEngine.terminate` on cancel; JVM tests (this experiment → assertions). | cloud (routing owner) | M (1 day) |
-| **P2** | `NavSession` persisted; service runs `Rerouter`; `RecState` carries the line; ViewModel follows it; vibration/notification; Settings "When off route". | cloud or laptop (claim) | M (1 day) |
-| **P3** | Navigate UI: banners, grey original line, "Original route" button, arrow mode; Paparazzi. Install + walk test. | **laptop** (device feel) | M (1 day) |
-| **P4** | `continueNavigation()` uses `RerouteTargets` (no plan edit); one matcher for progress; quiet mode tuning from field data; release. | either | S–M |
-
-Each phase is a separate release-able commit set on `main` behind the default "Reroute automatically" only from P2 on
-(P0/P1 change no visible behaviour except fewer false alarms).
-
-## 11. Open questions for the owner
-
-| # | Question | Recommendation |
-| --- | --- | --- |
-| Q1 | Automatic re-route by default, or only warn and offer a "Reroute" button (F-NAV-02 says "offer")? | **Automatic** (pocket / bike use), with "Original route" undo; "Only warn" as setting. Update F-NAV-02 text. |
-| Q2 | When re-routed, keep showing the original route as a thin grey line? | **Yes**, so a deliberate own way stays understandable. |
-| Q3 | A stop you walked past by a shortcut: skip it automatically, or route back to it? | **Skip automatically** once you are past it on the route; a POI-pinned stop (hut you added on purpose) asks via the banner "Skipped Brunnenburg – go back?" (one button). |
-| Q4 | Vibration for a successful re-route: short double buzz, or nothing (only the banner)? | **Short double buzz**; the long pattern only when no way back was found. |
-| Q5 | Should "Continue navigation" (Plan → Navigate) stop changing the plan's waypoints and use the same re-route? | **Yes** (phase 4) – the plan stays what you planned. |
-| Q6 | Offer a quick "Reroute now" button in Navigate even when on route (e.g. after a closed path)? | **Not now**; a closed path means you walk off the route anyway and the auto re-route follows. Later: "Avoid this way" (BRouter nogo) if field tests show the need. |
-
-## 12. How other apps do it (research)
+## 10. How other apps do it (research)
 
 Sources read on 2026-10-18; manuals/help pages marked (doc), forum reports (forum, uncertain).
 

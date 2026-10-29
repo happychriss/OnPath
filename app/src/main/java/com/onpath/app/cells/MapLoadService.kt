@@ -28,8 +28,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Map loading goes on with the screen off or the app in the background (owner 2026-10-23: "you put the phone aside,
- * wait 3 minutes, and nothing loaded"). While map areas are requested / built / downloaded (or routing data loads) and
+ * Map loading goes on with the screen off or the app in the background (owner: putting the phone aside must not stop
+ * it). While map areas are requested / built / downloaded (or routing data loads) and
  * no tour runs (RecordingService already keeps the app alive and asks for the map ahead), this small foreground service
  * keeps the process and the server polling going ([MapCells.loadInBackground]) and shows one quiet notification with
  * the progress. It ends by itself when nothing is loading any more, after [MAX_MS], or when a tour starts.

@@ -101,7 +101,7 @@ def is_push(t):
     if b == "no":
         return True
     if wt == "footway":
-        # a footway on a signed cycle route is ridden (owner 2026-10-25), a pedestrian zone not (2026-10-26)
+        # a footway on a signed cycle route is ridden (owner), a pedestrian zone not
         return not cycleroute(t) or t.get("highway") == "pedestrian"
     m = t.get("mtb:scale", "")
     mtb = int(m[0]) if m[:1].isdigit() else -1

@@ -8,7 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Modal → Cancel = stop (owner 2026-10-21, field test: searched Hilden → "about 30 minutes" → Cancel). */
+/** Modal → Cancel = stop (owner). */
 class MapLoadCancelTest {
     private val own = CellId(543, 361)
     private val east = CellId(544, 361)

@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The string files stay usable (owner 2026-10-26, EN + DE): every English text has a German one with the same
+ * The string files stay usable (EN + DE): every English text has a German one with the same
  * placeholders, plurals have their forms, and nothing uses Android-only syntax that Compose resources would show
  * literally (`\'`, `%%`, `%s` without a number, `%.1f`).
  */

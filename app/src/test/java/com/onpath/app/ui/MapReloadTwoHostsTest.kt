@@ -9,13 +9,12 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Field test 0.10.1 (Hilden, backlog "new map areas never showed until an app restart"): the event log shows "Plan
- * restored at app start" twice within one second and two style loads (#1, #2 with the native heap already at 93 MB) –
- * two activities, each with its own ViewModel and MapHost, lived at the same time. They shared the process-wide
- * reload / controller refs and the "map dir on screen" ([com.onpath.app.map.StyleLoader.lastMapDir]):
- *  - the short-lived host was disposed AFTER the other one had set the refs and cleared them → every later reload was
- *    a silent no-op (styleVersion 5, no "Style load #n"), `map: not ready` in the export;
- *  - the "is the map behind the data?" check read the global dir, which the other host had already moved on.
+ * New map areas must show without an app restart, also when two activities – each with its own ViewModel and MapHost –
+ * live at the same time for a moment (event log: "Plan restored at app start" twice within one second, two style
+ * loads). With process-wide reload / controller refs and "map dir on screen":
+ *  - the short-lived host, disposed AFTER the other one had set the refs, clears them → every later reload is a silent
+ *    no-op;
+ *  - the "is the map behind the data?" check reads the global dir, which the other host has already moved on.
  * The rules below are per host; this test replays that sequence.
  */
 class MapReloadTwoHostsTest {
@@ -36,7 +35,7 @@ class MapReloadTwoHostsTest {
         val a = Host("A"); val b = Host("B")
         ready(a, refs, g48) // activity 1: style load #1
         ready(b, refs, g48) // activity 2: style load #2 – the refs now point at B
-        refs.clear(a) // activity 1 goes away later: before the fix the refs were cleared here
+        refs.clear(a) // activity 1 goes away later: it must not clear B's refs
         assertSame(b, refs.get())
         refs.clear(b)
         assertNull(refs.get())

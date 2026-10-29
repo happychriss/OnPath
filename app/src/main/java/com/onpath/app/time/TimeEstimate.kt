@@ -12,7 +12,7 @@ import kotlin.math.roundToLong
  * One place, so the plan sheet, the route list and Navigate show the same number (docs/plan-time-estimate.md §5).
  */
 object TimeEstimate {
-    /** Break allowance on top of the moving time for the arrival clock (owner decision Q2: fixed 10 %). */
+    /** Break allowance on top of the moving time for the arrival clock (owner: fixed 10 %). */
     const val BREAK_ALLOWANCE = 0.10
 
     fun isBike(a: Activity) = a != Activity.HIKE
@@ -20,7 +20,7 @@ object TimeEstimate {
     fun pace(a: Activity, s: AppSettings): Pace = if (isBike(a)) s.bikePace else s.hikePace
 
     /**
-     * Factors for planning and for the start of every tour: the pace setting alone (owner 2026-10-22: learning per
+     * Factors for planning and for the start of every tour: the pace setting alone (owner: learning per
      * tour only, nothing is carried from one tour to the next; e-bikes no faster than ~25 km/h on the flat, [Pace.factors]).
      */
     fun planFactors(a: Activity, s: AppSettings): Factors = pace(a, s).factors(a)
@@ -30,8 +30,8 @@ object TimeEstimate {
 
     /**
      * Time of an imported track: the file's own (first → last timestamp, [fileSeconds]), else the model's for its
-     * segments – the same number a planned route on the same points shows (captain 2026-10-26: one time model, no second
-     * speed table). The gap between segments is not counted. Without way attributes = the activity's usual way.
+     * segments – the same number a planned route on the same points shows (one time model, no second speed table).
+     * The gap between segments is not counted. Without way attributes = the activity's usual way.
      */
     fun importedSeconds(segments: List<List<TrackPoint>>, a: Activity, f: Factors): Double =
         fileSeconds(segments) ?: round(segments.sumOf { s -> RouteTimes.of(s.map { it.toGeo() }, a).total(f) })

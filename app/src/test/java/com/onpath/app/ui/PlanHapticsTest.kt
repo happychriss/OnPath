@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Owner 2026-10-21 (feedback on 0.8.9): vibrate at the moment of the press, never after the action, only on the map –
+ * Owner rule: vibrate at the moment of the press, never after the action, only on the map –
  * hold on the map / line / POI 1×, hold on a route point 2×; nothing after an edit, nothing in the Points list.
  */
 class PlanHapticsTest {
@@ -35,7 +35,7 @@ class PlanHapticsTest {
     }
 
     /**
-     * Field bug 0.8.9: "set" never vibrated. The 1× pulse is short enough for Android to re-label an unlabelled
+     * "Set" must vibrate too. The 1× pulse is short enough for Android to re-label an unlabelled
      * vibration as touch feedback (muted with "Touch feedback" off) – which is why Haptics always sends an explicit
      * non-touch usage. This pins the reason: the 1× waveform is such a candidate, the 2× one was not.
      */

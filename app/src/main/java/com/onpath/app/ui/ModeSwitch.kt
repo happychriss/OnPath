@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.Transition
@@ -34,10 +33,9 @@ import com.onpath.app.debug.FrameJankMeter
 import com.onpath.app.debug.Problems
 
 /**
- * Plan ⇄ Navigate transition (owner decision for 0.10.0): the leaving controls slide out at the edges and fade, the new
- * ones slide in, in [DURATION_MS]. Only the control layers move – the map (MapHost) is a sibling of [ModeSwitch] and is
- * neither recomposed nor re-laid out, and no camera move is added (CLAUDE.md "Map camera"). Pure parts unit tested
- * (ModeSwitchTest).
+ * Plan ⇄ Navigate transition (owner): the leaving controls slide out at the edges and fade, the new ones slide in, in
+ * [DURATION_MS]. Only the control layers move – the map (MapHost) is a sibling of [ModeSwitch] and is neither recomposed
+ * nor re-laid out, and no camera move is added (CLAUDE.md "Map camera").
  */
 object ModeMotion {
     const val DURATION_MS = 250

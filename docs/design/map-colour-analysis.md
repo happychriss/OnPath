@@ -1,6 +1,6 @@
 # Map colours: how the OnPath route band and ground colours were derived
 
-Status: analysis done 2026-10-19 (owner + Claude, cloud session); built into the app in **0.7.0** (map package with paths.geojson).
+Status: analysis done 2026-10-19 (owner + Claude); built into the app (map package with paths.geojson).
 Reproduce the numbers with `python3 tools/style_analysis/route_green.py`. The interactive matrix is
 [`route-green-matrix.html`](route-green-matrix.html) (open in a browser).
 
@@ -15,9 +15,9 @@ used field-test feedback from the owner and a measurable contrast criterion, as 
 images, icons or data were taken from Komoot or any other app. The ground colours come from our own `classic`
 theme (2026-10-17 onward). The route colour was chosen by an optimisation over our own ground colours.
 
-## Starting point (field test, 2026-10-19, Ultental / Algund)
+## Starting point (field test, Ultental / Algund)
 
-The owner tested 0.6.x on a hike and found the map too pale:
+The owner tested the first map style on a hike and found the map too pale:
 
 - **Route band hard to see on forest.** The route band was a light green `#c9f29b`, opaque from zoom 14, on forest `#a9cd8b`.
 - **Route turned black at zoom 12.** There the route is a thin green line under the black path, so the path covered it.
@@ -57,7 +57,7 @@ Weakest ground at 40 % opacity:
 
 | Green | Ground today, blue-grey shadow | Lighter ground, greenish shadow |
 |---|---|---|
-| light `#c9f29b` (until 0.6.9) | band 3.7 · path 7.5 | — |
+| light `#c9f29b` (first style) | band 3.7 · path 7.5 | — |
 | dark `#2e7d32` | band 8.3 · path 4.1 | band 10.4 · path 5.3 |
 | **chosen `#168403`** | band 11.4 · path 4.2 | **band 12.4 · path 5.3** |
 | very dark `#014e08` | band 14.3 · path 3.2 | band 16.0 · path 4.2 |
@@ -79,7 +79,7 @@ Findings:
 Limits: these are screen colours (sRGB, ideal display). Sunlight and glare on the glass reduce all contrasts, so
 the real map renders and a field test have the last word. Symbols and relief texture are not part of the numbers.
 
-## Chosen style (proposal `tools/themes-proposals/d-final.json`)
+## Chosen style (now `tools/themes/classic.json`)
 
 - **Route band:** `#168403`, 40 % opacity at every zoom, no edge. Route pieces are merged into continuous lines
   in the pipeline, so the transparent band does not darken where pieces meet. Only real junctions and tight
@@ -99,40 +99,23 @@ the real map renders and a field test have the last word. Symbols and relief tex
   - sand: dots
 
   None for forest and meadow (owner decision).
-- **Cable-car ropes:** wider with zoom (1 → 3.2 px), like the railway. Already in the app style since 2026-10-19.
+- **Cable-car ropes:** wider with zoom (1 → 3.2 px), like the railway.
 
 ## Before / after (maplibre-gl render of the same map data)
 
-| Before (0.6.9) | After (proposal) |
+| Before | After (proposal) |
 |---|---|
 | ![](img/before-algund-12.jpg) | ![](img/after-algund-12.jpg) |
 | ![](img/before-algund-14.jpg) | ![](img/after-algund-14.jpg) |
 | ![](img/before-ulten-15.jpg) | ![](img/after-ulten-15.jpg) |
 | ![](img/before-meran2000-14.jpg) | ![](img/after-meran2000-14.jpg) |
 
-## Shipped in 0.7.0 (what was done)
-
-1. **Pipeline:** `extract_overlays.py` writes `paths.geojson` (every path and track, exact geometry, `k`, `sac`,
-   `vis`, steps flag) and merges route pieces per kind into continuous lines.
-2. **Style:**
-   - Move the post-processing in `tools/themes-proposals/d-final-post.py` into `make_style.py`:
-     - own path layer
-     - track variant A
-     - symbol layers
-     - 40 % route opacity
-   - Make the chosen theme the only one and drop "high contrast".
-3. **App:**
-   - Add the symbol tiles at style load (`style.addImage`).
-   - Remove the theme switch in Settings.
-   - Add `paths.geojson` to `OptionalSources`.
-4. **Field test** in sunlight.
-
-## Road types: street, track, path (2026-10-19, proposal)
+## Road types: street, track, path
 
 For hiking and cycling the key question is the surface. Is it a paved street, an unpaved track (forest or farm
 road, `highway=track`, theoretically drivable) or a path? The owner rejected white street fills with a dark casing
 as too busy. Four variants without any white were rendered
-(https://claude.ai/artifact/JfUteXEasokSfqgJeCn8hq, `tools/themes-proposals/roads-post.py`):
+(https://claude.ai/artifact/JfUteXEasokSfqgJeCn8hq):
 
 | Variant | Street (minor, service) | Track |
 |---|---|---|
@@ -161,9 +144,9 @@ most for cyclists. Track quality from `tracktype` sets the dash length:
 | grade4–5 (soft, grass) | short dashes |
 | paved track | solid |
 
-Decision pending (owner).
+The owner chose variant 5:
 
-**Owner variant 5 (2026-10-19):**
+**Owner variant 5:**
 - Street: two separate solid grey lines.
 - Farm road: two dotted brown lines (round dots).
 - Neither has any white. Both show through under the 40 % green band.
@@ -185,9 +168,9 @@ area), the spacing of the dots shows the surface:
 Up to z14.5 a track is one brown dashed line. Tracks then come from our own `paths.geojson` (with `tt` and a paved
 flag), like paths, so no base-map track line shows underneath.
 
-## Quiet towns (2026-10-26, owner field report)
+## Quiet towns (owner field report)
 
-**Problem.** In towns the map was hard to read (owner, Düsseldorf and Hilden on the phone, 0.11.0):
+**Problem.** In towns the map was hard to read (owner, Düsseldorf and Hilden on the phone):
 - zoomed out (z11–13): hundreds of short near-black dashes – town footways from the coarse path copy and the base map;
 - the street grid hardly showed: two dark grey edges around a near-white lane read as one grey line at z12–13;
 - built-up land was nearly the colour of fields;
@@ -197,7 +180,7 @@ flag), like paths, so no base-map track line shows underneath.
 
 The hiking look in forests, meadows and mountains was fine and had to stay.
 
-**Rule.** The map now knows where a way is in a town. The overlay attribute `u` is set by `extract_overlays.py`
+**Rule.** The map knows where a way is in a town. The overlay attribute `u` is set by `extract_overlays.py`
 (`TownIndex`):
 - **`u = 1`, built-up:** inside residential / commercial / retail / industrial / railway / education landuse or a school
   or hospital area, grown by 25 m (landuse blocks often stop at the street), or in a dense block of buildings (≥ 8
@@ -206,7 +189,7 @@ The hiking look in forests, meadows and mountains was fine and had to stay.
 - **Never set:** forests, meadows, fields and other open land win over both, and graded trails (T2+ or a faint trail)
   never get `u`.
 
-Cells without `u` (built before schema 6) draw exactly as before.
+Cells without `u` (built before schema 6) keep the plain look.
 
 | What | Before | Now | Why |
 |---|---|---|---|
@@ -214,13 +197,13 @@ Cells without `u` (built before schema 6) draw exactly as before.
 | Industrial land | `#e0dadb` | **`#dcd8d6`** | one step below built-up land, as before |
 | Town footways / paths / cycleways / steps (`u = 1`) | near-black `#33251a`, from z12 (base map) / z11 (coarse copy) | **mid-grey `#8e8780`**, thinner (0.9 / 1.4 / 2.2 px at z14 / 16 / 18), only from z14 (fade in from z13) | In a town every footway is walkable, so the line only has to say "there is a way". Grey keeps 2.7 : 1 on built-up land and 3.5 : 1 on a white street lane: readable close in, quiet zoomed out. ΔE00 34.5 to the dark path ink, so country and park paths still stand out where hiking starts |
 | Town green (`u = 2`) | dark, from z11 | dark as before, but only from z13 | A cemetery or park path grid was a black mat at z11–12; close in, park paths are where people walk |
-| Town streets (overlay `streets`, `u = 1`) | warm lane `#f9f7f1` 92 %, edges `#7d766d` | **white lane `#ffffff`**, a little wider (gap 1.9 / 2.6 / 4.4 / 8 px at z13 / 14 / 16 / 18), **light edges `#b8b2aa` → `#a39c93` → `#8f887f`** (z13 / 15 / 17) | The grid reads at a glance: the white lane has ΔE00 7.0 to built-up land (old lane 4.9), and light edges (1.6–2.7 : 1) frame it without drawing a dark line. Country streets keep the 0.7.0 look: pure white glared on hillsides (Meran test renders) |
+| Town streets (overlay `streets`, `u = 1`) | warm lane `#f9f7f1` 92 %, edges `#7d766d` | **white lane `#ffffff`**, a little wider (gap 1.9 / 2.6 / 4.4 / 8 px at z13 / 14 / 16 / 18), **light edges `#b8b2aa` → `#a39c93` → `#8f887f`** (z13 / 15 / 17) | The grid reads at a glance: the white lane has ΔE00 7.0 to built-up land (old lane 4.9), and light edges (1.6–2.7 : 1) frame it without drawing a dark line. Country streets keep their warm look: pure white glared on hillsides (Meran test renders) |
 | Small streets z11–12 (base map, no town flag) | gap 0.6 → 1.1 px, edges `#7d766d` 0.6 px | **gap 0.7 / 1.25 / 1.5 px** (z11 / 12 / 13), **edges `#958e85` 0.5–0.6 px**, lane `#fdfcf9` | A lane wider than its edges reads as a light street rather than a grey line. Kept modest because these zooms also show mountain farm roads |
 | Pedestrian streets in town | dark line | **pale warm lane `#f1ebe0`** (2.6 / 6 / 14 px at z14 / 16 / 18); squares (`area=yes`) no outline at all | A walking street looks like a street you may walk on (ΔE00 3.8 to built-up land, 6.7 to a white street). A square's outline drew a thick ring around it |
 | Path gap at sidewalks / crossings | gap of a few metres before the street | **link pieces `k = "l"`**: the hidden sidewalk / crossing piece from a loose path end to the nearest drawn way (≤ 30 m), drawn like the path (grey in town) | The path visibly reaches the street. Not drawn for detours (chain > 1.6 × the straight gap), for path pieces shorter than 20 m (spurs at traffic islands made small triangles) or towards another loose end |
 | Hiking green line (`greenway-foot`) | on every town footway and sidewalk | not on town footways (`u = 1`) or squares; parks, country and cycleways outside towns as before | In a town every footway is walkable: the green said nothing and doubled the clutter |
 
-**Bike activities** (the cycle-route view, owner 2026-10-26):
+**Bike activities** (the cycle-route view, owner):
 
 | What | Before | Now | Why |
 |---|---|---|---|
@@ -228,7 +211,7 @@ Cells without `u` (built before schema 6) draw exactly as before.
 | National / long-distance routes (net ≥ 3) | pink line / pink dashes | **violet `#7a4bc4`** on top (1.1 → 3.8 px), 95 %, name in `#5a2f9e` | Long-distance routes stay findable inside the network: ΔE00 40 to the teal, 56 to the green ways; 4.4 : 1 on built-up land. Regional routes (net 2) are part of the teal network, with their name in `#0d5f55` |
 | Ways good for the bike | thin green line `#2e9e3a` | the green line plus a **soft mint glow `#a9e4c6`** at 55 % (2.5 → 10 px) underneath; **roads with a cycle lane / track** get the glow beside the road (6 → 30 px, under the road casing); in town from z14 (fade in) | Shows at a glance where riding is pleasant, also on roads with a lane. Soft (ΔE00 14 on built-up land), so it never competes with the route lines. Later in towns, where bike infrastructure is everywhere |
 
-**Forbidden ways** (owner 2026-10-26, Hilden industrial area: "forbidden tracks are super visible – normal streets
+**Forbidden ways** (owner, Hilden industrial area: "forbidden tracks are super visible – normal streets
 are smaller"):
 - Rule: a forbidden marking is never wider or stronger than a normal street at the same zoom (`StyleFormatTest`
   checks the widths at z14–18).
@@ -244,7 +227,7 @@ are smaller"):
 Renders (private, not in the repo): Düsseldorf south z11.6–13, Oberbilk z14/15, Hauptbahnhof z17, Hilden centre z15/16,
 Hilden industrial z15/16, Meran/Algund z12–16 (hiking look unchanged except village streets).
 
-### Town streets: contrast and endings (2026-10-26, owner on 0.11.2, Hilden old town)
+### Town streets: contrast and endings (owner, Hilden old town)
 
 **Problem.** In the old town (Markt / Axlerhof, about z17) the owner said "the roads are very low contrast" and "clean up
 the street endings – the green line and black lines go into the other street":
@@ -270,7 +253,7 @@ street now, the lane only has to be the lightest thing on the map. Variants trie
 Hilden industrial / Meran / Algund at phone size): endings only; edges; edges + lighter ground (this one); bold edges
 (3.2–3.8 : 1, the town grid looked like an outlined street plan at z15–16).
 
-### Bike view: green line + route band (2026-10-26, owner on the phone, later the same day)
+### Bike view: green line + route band (owner on the phone)
 
 **Problem.** In bike mode the soft mint glow under good bike ways was too faint to notice, and the thin teal route lines
 said little at a glance.
@@ -309,7 +292,7 @@ Hiking keeps its look in every row (`-hikeview` layers; pixel-checked renders of
 - Town footbridges stay above the streets they cross.
 - Unsigned "networks" (for example `network=bcn`) no longer draw a route band (pipeline).
 
-### Overview when zoomed out (2026-10-26, owner, every activity)
+### Overview when zoomed out (owner, every activity)
 - Up to z13.5 the map shows the signed routes as thin solid lines (1.0 / 1.6 / 2.2 px at z9 / 12 / 13.5):
   - cycle routes in dark green `#1f7a5a`, on top of the streets;
   - hiking routes in their own green;
@@ -321,7 +304,7 @@ Hiking keeps its look in every row (`-hikeview` layers; pixel-checked renders of
 - Why: zoomed out, the dense path network and the soft bands hid the route network. The overview shows the signed
   routes first.
 
-### One-way arrows, forbidden ways, street space, underpasses (2026-10-26, owner on the phone)
+### One-way arrows, forbidden ways, street space, underpasses (owner on the phone)
 | What | Before | Now | Why |
 |---|---|---|---|
 | One-way for everyone | small grey arrow `#5a5a5a` | **dark arrow `#262626`**, white outline, a little bigger | Reads on white streets, yellow / orange roads and black paths alike |
@@ -332,14 +315,14 @@ Hiking keeps its look in every row (`-hikeview` layers; pixel-checked renders of
 | Street space (z16+) | – | pedestrian areas / squares / islands / platforms `#f1ebdc` with a `#a89b88` outline; sidewalk / crossing lines `#9a9184` 0.6–1.0 px | A junction reads like a plan (Hagelkreuz in Hilden); data from schema 7 cells |
 | Underpass | faint grey dashes (like a passage through a building) | **clear path line with thin dashed tunnel edges** above the railway | An underpass at a station is an important way, a building passage is not; needs the pipeline's `tn = "t"` |
 
-### Region view: routes by zoom (2026-10-26, owner)
+### Region view: routes by zoom (owner)
 Zoomed out to a region, every signed route at once (local loops, town networks) hid the few routes that matter at that
 scale. The map now shows them in tiers, the same for hiking and bikes:
 - long-distance routes (national, EuroVelo, long-distance hiking) at every zoom, as the pink line;
 - regional routes from z11: the thin green overview line (bikes dark green, hiking the band green);
 - every signed route from z12.5.
 
-### Greener region view, pink long-distance routes (2026-10-26, owner on 0.11.4 over Düsseldorf – Köln)
+### Greener region view, pink long-distance routes (owner, over Düsseldorf – Köln)
 "The landscape doesn't look green at all zoomed out – it looks like there is no nice area to walk" and "bike roads
 zoomed out are red, very similar to streets". Three rounds of renders and phone tests (r1 calm, r2 stronger, r3 / r3b
 after the owner's look at r2); shipped as r3b.

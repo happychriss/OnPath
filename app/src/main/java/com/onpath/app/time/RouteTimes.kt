@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  * Along positions are metres from the start of the line as [Geo.cumulative] counts them (same as NavLine).
  * Elevation: the line's own (BRouter DEM) values; missing values are carried over from the neighbours (flat).
  * Way: each point's [GeoPoint.way] describes the span to the next point; a piece is timed span by span with its own way
- * (P4: SAC, surface, steps, ...). Points without way = the activity's usual way (the times as before P4).
+ * (SAC, surface, steps, ...). Points without way = the activity's usual way.
  */
 class RouteTimes private constructor(
     val activity: Activity,
@@ -45,8 +45,6 @@ class RouteTimes private constructor(
     /** True when at least one segment had way attributes. */
     val hasWays: Boolean get() = ways.any { it != null }
 
-    /** Per segment: (gradient, height change m, seconds at Average pace) – for [TimeBreakdown]. */
-    fun segments(): List<Triple<Double, Double, Double>> = seconds.indices.map { Triple(grades[it], dzs[it], seconds[it]) }
     val segmentLengthM: Double get() = step
 
     /** cum[g][k] = seconds of group g in segments 0 until k (Average pace, no factors). */

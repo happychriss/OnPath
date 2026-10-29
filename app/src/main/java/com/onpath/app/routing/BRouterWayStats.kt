@@ -79,7 +79,7 @@ object BRouterWayStats {
     )
 
     /**
-     * What the node ending a run adds to the span leading to it (route hints, 2026-10-26): a ford node (ford=yes /
+     * What the node ending a run adds to the span leading to it: a ford node (ford=yes /
      * stepping_stones, highway=ford) or a barrier a bike does not simply pass ([HARD_BARRIERS]). [w] unchanged when the
      * node has none of these.
      */

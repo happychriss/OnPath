@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Perf report 2026-10-22, finding 4: the routing time limit by distance and profile instead of a flat 30 s. */
+/** The routing time limit by distance and profile instead of a flat 30 s. */
 class RouteTimeLimitTest {
     private fun old(km: Double) = (15_000 + km * 500).toLong().coerceIn(15_000, 30_000)
 

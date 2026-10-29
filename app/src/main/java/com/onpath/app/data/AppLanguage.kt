@@ -5,13 +5,13 @@ import android.content.res.Resources
 import com.onpath.app.debug.Problems
 import java.util.Locale
 
-/** Language of the app's texts: the phone's, or fixed in Developer tools (owner 2026-10-26). Stored by [name]. */
+/** Language of the app's texts: the phone's, or fixed in Developer tools (owner). Stored by [name]. */
 enum class LanguageChoice(val tag: String?, val label: String) {
     SYSTEM(null, "System"), ENGLISH("en", "English"), GERMAN("de", "Deutsch");
 }
 
 /**
- * The app is English + German (owner 2026-10-26): texts follow the phone's language (German phone → German, any other
+ * The app is English + German (owner): texts follow the phone's language (German phone → German, any other
  * → English); Settings → Diagnostics → Developer tools can fix it to English or Deutsch (kept across restarts).
  *
  * How: the choice sets the JVM default locale, which every text lookup (com.onpath.strings.Txt / str()) and number

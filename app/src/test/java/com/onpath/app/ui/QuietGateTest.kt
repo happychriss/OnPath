@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Perf report 2026-10-22: one style reload / one recalc per burst of changes, never while the user drags. */
+/** One style reload / one recalc per burst of changes, never while the user drags. */
 class QuietGateTest {
     @Test fun nothingPendingNothingToDo() {
         assertNull(QuietGate(2_000, 10_000).waitMs(0, busy = false))

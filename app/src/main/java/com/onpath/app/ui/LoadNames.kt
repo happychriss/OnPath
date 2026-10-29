@@ -6,8 +6,8 @@ import com.onpath.app.routing.GeoPoint
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Human names for what loads in the background (owner 2026-10-23): map areas only have grid ids, so each one is named
- * by why it loads – the app knows that – and else by the nearest larger town of the world overview. Pure, unit-tested.
+ * Human names for what loads in the background: map areas only have grid ids, so each one is named by why it loads –
+ * the app knows that – and else by the nearest larger town of the world overview.
  */
 
 /** Why an area loads; declaration order = importance (the chip names the most important). */
@@ -33,7 +33,7 @@ enum class LoadPhase(private val res: StringResource) {
     val text: String get() = Txt.s(res)
 }
 
-/** One loading thing: a map area, or ([paths]) a part the map needs for planning routes – never named on its own (owner Q5). */
+/** One loading thing: a map area, or ([paths]) a part the map needs for planning routes – never named on its own (owner). */
 data class LoadEntry(
     val why: LoadWhy?,
     /** Name for [why]: the point's / search result's / destination's name; null = unknown. */
@@ -85,7 +85,7 @@ object LoadNames {
 
     /**
      * [entries] grouped by label, most important first (waiting > route > point > newer > ahead > unknown). Route-planning
-     * parts ([LoadEntry.paths]) are part of "the map" (owner texts Q5, 2026-10-23): never a line of their own – their MB
+     * parts ([LoadEntry.paths]) are part of "the map" (owner): never a line of their own – their MB
      * join the most important line; without any map line they count only in the total.
      */
     fun groups(entries: List<LoadEntry>): List<LoadGroup> {

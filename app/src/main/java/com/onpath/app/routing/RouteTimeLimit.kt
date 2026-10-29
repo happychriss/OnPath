@@ -3,13 +3,13 @@ package com.onpath.app.routing
 import com.onpath.app.data.Geo
 
 /**
- * BRouter's search time limit for one request, by straight-line distance and profile (perf report 2026-10-22, finding 4).
+ * BRouter's search time limit for one request, by straight-line distance and profile.
  *
  * A short route that is not found quickly is almost always unreachable (only via paths above the SAC limit, an island),
- * so it keeps a short limit. Search cost grows with distance and differs by profile: measured on the laptop for
- * Bozen → Munich (~260 km) hike 5 s, trekking 8 s, touring 12 s, MTB 26 s; a phone is 3–5× slower. The old flat 30 s
- * cap made long bike / MTB routes time out on the phone. Every limit is at least what the old rule gave
- * (15 s + 0.5 s/km, max 30 s), so nothing that worked before fails now. Cancel stays possible at any time. Pure.
+ * so it keeps a short limit. Search cost grows with distance and differs by profile: measured on a PC for
+ * Bozen → Munich (~260 km) hike 5 s, trekking 8 s, touring 12 s, MTB 26 s; a phone is 3–5× slower, so a flat 30 s cap
+ * makes long bike / MTB routes time out. No limit is below 15 s + 0.5 s/km (max 30 s). Cancel stays possible at any
+ * time. Pure.
  */
 object RouteTimeLimit {
     const val MIN_MS = 15_000L

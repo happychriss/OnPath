@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Owner 2026-10-23: the map loading % raced to 50 and then stood still. Now it follows the time. */
+/** The map loading % follows the time – it must not race to 50 and then stand still. */
 class LoadSmootherTest {
     /** Feeds one value per second for [seconds], time left from [left] (elapsed s → s left). */
     private fun run(s: LoadSmoother, seconds: Int, left: (Int) -> Int?): List<Int> =
@@ -19,7 +19,7 @@ class LoadSmootherTest {
     }
 
     @Test fun quickRoutingDataDoesNotCountAsHalf() {
-        // field case: routing data done after 5 s, the server then needs 3 more minutes – the bar must not be at 50 %
+        // routing data done after 5 s, the server then needs 3 more minutes – the bar must not be at 50 %
         val p = run(LoadSmoother(), 10) { t -> if (t < 5) 190 - t else 180 }
         assertTrue("not half after 10 s: ${p[10]}", p[10] < 10)
     }

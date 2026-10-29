@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Owner 2026-10-23: only what needs the user goes to the blue strip; plain progress and "ready" do not. */
+/** Only what needs the user goes to the blue strip; plain progress and "ready" do not. */
 class MapNoticeTest {
     private fun working(q: MobileQuestion? = null, wifi: String? = null) =
         CellCardUi.Working("Getting the detailed map", null, emptyList(), null, 0.4f, q, wifi)
@@ -22,7 +22,7 @@ class MapNoticeTest {
         assertNull(mapNotice(null))
     }
 
-    /** Review 2026-10-24 A / C8: blue only for questions, amber for a failure, grey pill for a status. */
+    /** Blue only for questions, amber for a failure, grey pill for a status. */
     @Test fun oneColourOneMeaning() {
         assertEquals(NoticeLook.QUESTION, noticeLook(working(MobileQuestion(3, null))))
         assertEquals(NoticeLook.QUESTION, noticeLook(CellCardUi.NeedPosition(permission = false)))

@@ -16,7 +16,7 @@ import org.junit.rules.TemporaryFolder
 import java.time.ZoneId
 
 /**
- * CORE FEATURE C11 (owner 2026-10-21): tours and plans are never lost – a GPX file per tour / plan in
+ * CORE FEATURE C11 (owner): tours and plans are never lost – a GPX file per tour / plan in
  * Documents/OnPath, restorable after a reinstall or on a new phone; deleting goes to a 30-day recycle bin.
  */
 class BackupTest {

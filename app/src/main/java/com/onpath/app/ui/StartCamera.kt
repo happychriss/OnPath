@@ -2,7 +2,7 @@ package com.onpath.app.ui
 
 /**
  * Every app start / return to the app in Plan: centre the map on the own position (owner: "always at my current
- * location"). Pure, unit tested.
+ * location").
  *
  * A fresh fix centres at once; if none comes within [FRESH_WAIT_MS], the last known position is used (even if
  * old); without any position it keeps waiting – e.g. for the permission answer or a cold GPS start – and centres

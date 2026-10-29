@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * The long event trace on disk (owner 2026-10-22: "no errors is the objective" – 50 events lasted only 5 hours).
+ * The long event trace on disk (owner: "no errors is the objective"); the in-memory list covers only a few hours.
  *
  * - Append-only, one line per event: `time-ms TAB local time TAB area TAB message` (tabs / line breaks escaped).
  * - Written off the calling thread by one writer thread; the caller only puts the line in a queue (cheap on the UI

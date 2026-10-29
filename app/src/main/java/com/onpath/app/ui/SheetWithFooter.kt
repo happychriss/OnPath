@@ -9,9 +9,8 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Where the map footer (scale, attribution, map controls) goes above the plan sheet: on the sheet's top edge, but never
- * above [limitPx] – the bottom of the search pill + ☰ row (owner screenshot 2026-10-22: with the points open the
- * compass covered ☰). Pushed further, it stays there and fades out under the sheet over [fadePx]. Pure, unit tested
- * (FooterPlacementTest).
+ * above [limitPx] – the bottom of the search pill + ☰ row (else, with the points open, the compass covers ☰). Pushed
+ * further, it stays there and fades out under the sheet over [fadePx].
  */
 object FooterPlacement {
     data class Spot(val y: Int, val alpha: Float)
@@ -27,7 +26,7 @@ object FooterPlacement {
 /**
  * Plan mode bottom: [sheet] at the bottom, [footer] riding on its top edge (FooterPlacement: never above [topLimit]).
  * Both are measured once; when the sheet moves only their places (and the footer's fade) change – no recomposition per
- * frame (owner field report 0.9.3). The sheet is drawn over the footer; a faded-out footer is not placed (no taps).
+ * frame. The sheet is drawn over the footer; a faded-out footer is not placed (no taps).
  */
 @Composable
 fun SheetWithFooter(

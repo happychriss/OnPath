@@ -33,7 +33,7 @@ data class ActivityFit(
 data class ActivitySwitch(val activity: Activity, val sac: Int, val session: NavSession, val timeS: Double)
 
 /**
- * Pure logic of the activity check (owner request 2026-10-18: "a wrong activity is a disaster").
+ * Pure logic of the activity check (owner: "a wrong activity is a disaster").
  *
  * Approach: for every other activity the **rest of the tour is routed offline** (BRouter, position → remaining stops;
  * a followed track keeps its shape through vias every [TRACK_VIA_M]). The followed line carries no per-way tags, so
@@ -115,8 +115,8 @@ object ActivityCheck {
             val steps = way("steps")
             if (steps >= STEPS_MIN_M) problems += Txt.s(Res.string.nav_check_steps, Format.distance(round10(steps)))
         }
-        // the surface check follows the routing profile (review 2026-10-25: E-bike was checked like BIKE_TOURING but routed
-        // like BIKE_TREKKING) – touring.brf avoids gravel, trekking.brf only rough trails
+        // the surface check follows the routing profile (BRouterEngine.profileFile), not the activity: touring.brf avoids
+        // gravel, trekking.brf only rough trails
         when {
             activity == Activity.HIKE -> {
                 val busy = way("busy_road")
@@ -155,7 +155,7 @@ object ActivityCheck {
         return off.coerceAtMost(r.lengthM)
     }
 
-    /** "gravelbikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
+    /** "gravelbikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label]. */
     fun who(activity: Activity, sac: Int): String = when (activity) {
         Activity.HIKE -> Txt.s(Res.string.nav_who_hike, sac.coerceIn(1, 5))
         Activity.BIKE_TOURING -> Txt.s(Res.string.nav_who_bike_touring)

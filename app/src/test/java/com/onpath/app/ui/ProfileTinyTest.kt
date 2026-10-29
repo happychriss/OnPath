@@ -13,8 +13,8 @@ import org.junit.Test
 import kotlin.math.sin
 
 /**
- * Field crash 2026-10-21: the profile drawn while the sheet animates is only a few pixels high – the label range became
- * "0 .. negative" and coerceIn threw. Drawing at tiny sizes must never crash.
+ * While the sheet animates the profile is only a few pixels high – the label range becomes "0 .. negative" and
+ * coerceIn would throw. Drawing at tiny sizes must never crash.
  */
 class ProfileTinyTest {
     @get:Rule val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)

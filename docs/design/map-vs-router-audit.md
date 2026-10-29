@@ -1,10 +1,10 @@
 # Map rules vs. BRouter: audit (origin/main 3511f3c, 2026-10-21)
 
-> **Status 2026-10-23:** quick fixes A and approach 1 ("router decides") are merged and released in **0.10.0**; open: the
-> app does not check the cells' `wayclass` hash, tertiary and bigger roads have no class (backlog). Classifier
-> `tools/routing/wayclass/`, details and thresholds in `docs/map-style-notes.md` "Router classes".
-> **Since 2026-10-26** Touring bike + E-bike use OnPath's `touring.brf` (a trekking copy, `docs/design/bike-routing.md`);
-> the "Touring" column of the cost table below is the old road-bike fastbike profile, and E-bike now shares the touring class.
+> **Status:** quick fixes A and approach 1 ("router decides") are built; open: the app does not check the cells'
+> `wayclass` hash, tertiary and bigger roads have no class (backlog). Classifier `tools/routing/wayclass/`, details and
+> thresholds in `docs/map-style-notes.md` "Router classes". The numbers below are the audit's snapshot: "Touring" there
+> is the road-bike profile fastbike-verylowtraffic that Bike used then; today Bike + E-bike use OnPath's `touring.brf`
+> (a trekking copy, `docs/design/bike-routing.md`) and share the touring class. "Trekking" = trekking.brf (Gravelbike).
 
 Read-only audit. Sources: `tools/make_style.py` (format 2), `tools/themes/classic.json`, `tools/extract_overlays.py`
 (`tile_attrs`, `street_attrs`), `MapController.setOverlay`, `BRouterEngine.profileFile/keyValues`,
@@ -23,8 +23,8 @@ How it was checked:
 | Activity | Profile | Overrides |
 |---|---|---|
 | Hike | hiking-mountain.brf | SAC_scale_limit = user T (1–5), SAC_scale_preferred = min(T,3) |
-| Touring bike, E-bike | touring.brf (since 2026-10-26; was fastbike-verylowtraffic.brf, E-bike was trekking.brf) | E-bike: power/speed/mass only (same costs) |
-| Trekking bike | trekking.brf | – |
+| Bike, E-bike | touring.brf (at audit time: fastbike-verylowtraffic.brf; E-bike trekking.brf) | E-bike: power/speed/mass only (same costs) |
+| Gravelbike | trekking.brf | – |
 | MTB, E-MTB | mtb.brf | E-MTB: power/speed/mass only |
 
 The map has two activity states, plus MTB for the S-labels: **walking** (greenway-foot, access-*-foot,
@@ -134,8 +134,8 @@ Counted by row: 7 H rows, 12 M rows, 11 L rows.
 - Route membership by network: the router uses `route_hiking_*` / `route_foot_*` (any network) and
   `route_bicycle_{icn,ncn,rcn,lcn}`. The map has `net` rank but not whether it is a "BRouter cycle route".
 - The user's SAC limit is runtime state. The style never sees it (#4).
-- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for Touring and
-  Trekking (consider_traffic = true, busy classes 4+ only, since 2026-10-26 in both).
+- `estimated_*_class` (traffic / noise / forest / town) live only in the rd5. They matter only for touring.brf and
+  trekking.brf (consider_traffic = true, busy classes 4+ only).
 
 The map uses these, but the router ignores them:
 - route=mtb relations (#7) and bicycle routes without a network (#29)
@@ -171,7 +171,7 @@ barrier nodes.
 
 1. Write the relevant tags and route pseudo-tags (`route_hiking_<net>`, `route_bicycle_<net>`, computed like
    BRouter's map creator does) of each paths / streets feature to an ndjson file.
-2. A small Java CLI (`tools/routing/classify`) evaluates the four profiles forward and reverse and writes back a
+2. A small Java CLI (built as `tools/routing/wayclass/`) evaluates the four profiles forward and reverse and writes back a
    class per profile, e.g. `ch` / `ct` / `cf` / `cm` with values 0 = good (≤1.3), 1 = ok, 2 = poor (push / ≥5),
    3 = avoid (≥30), 4 = forbidden (≥9999), plus a `cr` flag "reverse forbidden or ×100" for one-way arrows.
 3. Hike needs SAC handled separately: evaluate at limit 6 and keep `sac` as is. The app then adds the runtime rule
@@ -186,7 +186,7 @@ barrier nodes.
 - Tile size: ~4 small ints per path / street feature, a few % of overlays.pmtiles.
 - Any profile change means rebuilding the map cells (or accepting a mismatch until the next build). The profiles are
   OnPath-edited, so tie the class to a profile hash.
-- E-bike = Trekking (since 2026-10-26: = Touring) and E-MTB = MTB for costs, so 4 classes cover all 6 activities.
+- E-bike = Bike (touring.brf) and E-MTB = MTB for costs, so 4 classes cover all 6 activities.
 - Class thresholds are a product decision. Trekking makes every untagged path / track "poor" (5.05) and Touring makes
   them "avoid" (100), so a literal mapping would turn most mountain paths grey or red in bike modes.
 - The base map's tertiary+ roads are not in the overlay. Either keep them tag-styled or add them to "streets".

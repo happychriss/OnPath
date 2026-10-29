@@ -8,7 +8,7 @@ import org.junit.Test
 import java.io.File
 import java.sql.DriverManager
 
-/** Broken / missing address files and degenerate lines never throw (walk-readiness review 2026-10-20). */
+/** Broken / missing address files and degenerate lines never throw. */
 class SearchRobustnessTest {
 
     private fun dataDir() = kotlin.io.path.createTempDirectory("addr-bad").toFile()

@@ -6,9 +6,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Owner 2026-10-22 (screenshot): after Offline maps → Clean up a dark "37 map areas removed. OK" box sat on the map until
- * OK. The user confirmed the removal himself: the result is a plain line on the Offline maps page until it is left;
- * only a failure keeps a persistent message.
+ * After Offline maps → Clean up no "37 map areas removed. OK" box on the map: the user confirmed the removal himself,
+ * so the result is a plain line on the Offline maps page until it is left; only a failure keeps a persistent message.
  */
 class OfflineResultTest {
     private val mb = 1_048_576L
@@ -30,11 +29,11 @@ class OfflineResultTest {
         }
         for (fn in listOf("clearAllMaps", "confirmCleanup")) {
             val b = body(fn)
-            assertTrue("$fn: no map message on success", "message =" !in b && "showError(" !in b)
+            assertTrue("$fn: no message on success", "say(" !in b && "sayError(" !in b && "sayInfo(" !in b)
             assertTrue("$fn: result line", "offlineResult = OfflineResult.removed(" in b)
             assertTrue("$fn: failures stay visible (removeAreas)", "removeAreas(" in b)
         }
-        assertTrue("a failure keeps a persistent message", "showError(" in body("removeAreas"))
+        assertTrue("a failure is a red line on the page", "sayError(Txt.s(Res.string.msg_maps_remove_failed), NoticePlace.SETTINGS)" in body("removeAreas"))
         assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(src))
     }
 }

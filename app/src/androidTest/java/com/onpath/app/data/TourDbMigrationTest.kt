@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Schema upgrades (field test / vehicle detection 2026-10-22): 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`.
+ * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`.
  * An existing version-2 or version-3 database keeps every point; old points read back as unknown accuracy, new ones store
  * it, and the tour has no rides.
  */
@@ -23,7 +23,7 @@ class TourDbMigrationTest {
 
     @After fun tearDown() { ctx.deleteDatabase(name) }
 
-    /** A version-2 database as 0.9.2 wrote it ([version] 3: with `points.acc`, as main wrote it). */
+    /** A version-2 database ([version] 3: with `points.acc`). */
     private fun writeOld(version: Int) {
         ctx.deleteDatabase(name)
         SQLiteDatabase.openOrCreateDatabase(ctx.getDatabasePath(name), null).use { db ->

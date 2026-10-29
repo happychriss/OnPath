@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Perf report 2026-10-22 finding 9: the elevation profile draws about the pixel width, not every point. */
+/** The elevation profile draws about the pixel width, not every point. */
 class ProfileColumnsTest {
     @Test fun fewPointsAllDrawn() {
         val d = doubleArrayOf(0.0, 10.0, 20.0)

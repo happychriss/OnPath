@@ -42,7 +42,6 @@ import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.WaypointSnap
-import com.onpath.app.routing.RouteProgress
 import com.onpath.app.routing.RoutingEngine
 import com.onpath.app.routing.WaypointInsertion
 import kotlinx.coroutines.Job
@@ -77,11 +76,12 @@ data class ShownTrack(
     /** Rides not counted (vehicle detection): drawn grey dashed (bus / car) or purple dashed (lift) beside the track. */
     val rides: List<Pair<List<GeoPoint>, com.onpath.app.rides.RideKind>> = emptyList(),
     /**
-     * Grey INFO line in the track panel, e.g. "Activity set to MTB from the file" after an import changed the activity
-     * (captain 2026-10-26, "no surprises"), "Activity set to Bike from the tour" after opening one from My routes did
-     * (owner 2026-10-26); stays until the track is closed / replaced or the user picks an activity.
+     * Grey INFO line in the track panel when opening the track changed the activity ("Activity set to MTB from the
+     * file"); stays until the track is closed / replaced or the user picks an activity.
      */
     val note: String? = null,
+    /** Grey INFO line after a GPX import that skipped parts of the file (the details are in Diagnostics); stays with the track. */
+    val skippedNote: String? = null,
 ) {
     val points: List<GeoPoint> get() = segments.flatten()
 }
@@ -115,7 +115,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val db = TourDb.get(app)
     // time estimate state, declared before init {} uses it (recalc / refreshTours)
     init {
-        // learning per tour only (owner 2026-10-22): the pace stored across tours by older versions is not used – removed
+        // pace is learned per tour only (owner): drop the cross-tour pace older installs stored
         try { if (prefs.dropOldLearnedPace()) Problems.info("time", "Pace learned across tours removed (learning per tour only)") }
         catch (e: Exception) { Problems.warn("time", "Old learned pace could not be removed; it is not used", e) }
     }
@@ -132,7 +132,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             val note = packageNote()
             val p = dataFiles.packageCheck()
-            withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && message == null) message = note.trim() }
+            withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && errorCard == null) sayError(note.trim(), NoticePlace.BACKGROUND) }
         }
     }
     var dataScreenDismissed by mutableStateOf(false)
@@ -142,28 +142,41 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Missing files that keep the app on the missing-data screen: none when the overview is in the APK and map cells can
-     * be downloaded (the map comes where the user is or plans); otherwise [missing], as before cells (DataFiles.blocking).
+     * be downloaded (the map comes where the user is or plans); otherwise [missing] (DataFiles.blocking).
      */
     val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
 
     // --- screens and mode ---
+    // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
+    /** The light error card over the map (⚠, red edge, OK); null = none. Never cleared by itself. */
+    var errorCard by mutableStateOf<String?>(null)
+    /** The line at the top of My routes; goes when My routes is left. */
+    var routesNote by mutableStateOf<Notice?>(null)
+    /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
+    var settingsNote by mutableStateOf<Notice?>(null)
+    private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
-    var routesOpen by mutableStateOf(false)
+    var routesOpen: Boolean
+        get() = routesShown
+        set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
+    /** Navigate → ⚙: the navigation settings sheet is open. */
+    var navSettingsOpen by mutableStateOf(false)
+    /** Zoom the map takes when Navigate starts ([AppMode.navStartZoom]); null once taken (then the user's zoom stays). */
+    var navStartZoom by mutableStateOf<Double?>(null)
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
     /** "You have arrived – end tour?" is open. */
     var arrivalAsk by mutableStateOf(false)
-    /** Asked once per followed line; reset when the line or the tour changes. */
     /** When to ask "You have arrived" (round trips, poor fixes, ask again after leaving); see [ArrivalGate]. */
     private val arrivalGate = ArrivalGate()
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
     // --- activity ---
-    // Every app start begins with the last chosen activity and hiking level (owner 2026-10-22; fresh install Hike T2).
+    // Every app start begins with the last chosen activity and hiking level (owner; fresh install Hike T2).
     var activity by mutableStateOf(prefs.activity)
         private set
     var sac by mutableStateOf(prefs.sac)
@@ -171,18 +184,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
         private set
-    var showSettings by mutableStateOf(false)
-    /** Open topic of Settings (owner 2026-10-22: list of topics → pages); null = the list. */
+    private var settingsShown by mutableStateOf(false)
+    var showSettings: Boolean
+        get() = settingsShown
+        set(v) { if (!v) settingsNote = null; settingsShown = v } // the line lasts until Settings is left
+    /** Open topic of Settings (list of topics → pages); null = the list. */
     private var page by mutableStateOf<SettingsPage?>(null)
     var settingsPage: SettingsPage?
         get() = page
         set(v) {
             if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
+            if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             page = v
         }
 
-    /** Developer tools in Diagnostics (owner C5 2026-10-24): debug builds always, else after 7 taps on the version. */
+    /** Developer tools in Diagnostics (owner): debug builds always, else after 7 taps on the version. */
     var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))
         private set
 
@@ -192,7 +209,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.info("ui", "Developer tools unlocked (7 taps on the version)")
     }
 
-    /** Last visit to Diagnostics: a serious problem after it shows red on the Settings list (owner C6 2026-10-24). */
+    /** Last visit to Diagnostics: a serious problem after it shows red on the Settings list (owner). */
     var diagnosticsSeenMs by mutableStateOf(prefs.diagnosticsSeenMs)
         private set
 
@@ -207,14 +224,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Back in Settings: a topic page returns to the list, the list closes Settings. */
     fun settingsBack() { if (settingsPage != null) settingsPage = null else showSettings = false }
 
-    // --- Navigate orientation + next turn (navigation agent; see NavigateScreen, MapController.setCamera) ---
+    // --- Navigate orientation + next turn (see NavigateScreen, MapController.setCamera) ---
     /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
     val navHeadingUp: Boolean get() = settings.navHeadingUp
 
-    /**
-     * Walking direction up – one setting for Plan and Navigate (owner 2026-10-20: switching modes must keep the compass
-     * choice, anything else is confusing). Persisted.
-     */
+    /** Walking direction up – one persisted setting for Plan and Navigate (owner: switching modes keeps the compass choice). */
     val headingUp: Boolean get() = navHeadingUp
     /** Bumped to turn the map north (MapScreen → MapController.northUp). */
     var northTick by mutableIntStateOf(0)
@@ -234,7 +248,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val hasFix = tracker.location.value != null
         when {
             // Navigate, looked around by hand (free look) with walking direction chosen: back to it, not to north
-            // (requirements review 2026-10-20)
             mode == AppMode.NAVIGATE && headingUp && !followMe && hasFix -> { followMe = true; recentreTick++ }
             turningWithMe || mapTurned -> {
                 setHeadingUp(false)
@@ -242,7 +255,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // make MapLibre drop the following again (it ends tracking on every app camera move).
                 if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
             }
-            !hasFix -> message = Txt.s(Res.string.msg_no_position_turn)
+            !hasFix -> sayError(Txt.s(Res.string.msg_no_position_turn), NoticePlace.MAP) // a tap must not do nothing
             else -> { setHeadingUp(true); followMe = true; recentreTick++ }
         }
     }
@@ -280,7 +293,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * The app left the screen. Map areas still on their way keep loading through MapLoadService (owner 2026-10-23),
+     * The app left the screen. Map areas still on their way keep loading through MapLoadService (owner),
      * started when they began; otherwise nothing is polled in the background (map-cells.md §8).
      */
     fun onLeaveApp() { appVisible = false; appOnScreen = false; cells.setForeground(false) }
@@ -298,7 +311,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val cells: com.onpath.app.cells.MapCells by lazy { com.onpath.app.cells.AppCells.get(getApplication()) }
 
     init {
-        // map areas start loading → MapLoadService keeps it going with the screen off / app left (owner 2026-10-23)
+        // map areas start loading → MapLoadService keeps it going with the screen off / app left (owner)
         viewModelScope.launch {
             var wasLoading = false
             cells.states.collect { st ->
@@ -321,12 +334,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return cells.rollback(gen)
     }
 
+    // ---------------- demo location (Developer tools → Demo, recording/DemoLocation) ----------------
+
+    /** What "Demo: ride" would ride: the planned route, else the shown track (a GPX file / tour); null = nothing. */
+    fun demoLine(): Pair<String, List<GeoPoint>>? {
+        route?.points?.takeIf { it.size >= 2 }?.let { return "planned route" to it }
+        shown?.let { t -> t.segments.flatten().takeIf { it.size >= 2 }?.let { return "track \"${t.name}\"" to it } }
+        return null
+    }
+
+    /** Rides [demoLine] from its start at the activity's modelled speed (user's pace); real GPS is ignored meanwhile. */
+    fun startDemoRide() {
+        val (label, line) = demoLine() ?: return
+        val path = com.onpath.app.recording.DemoPath.timed(line, activity, planFactors())
+        if (path == null) { sayInfo("This line is too short for a demo ride.", NoticePlace.SETTINGS); return }
+        com.onpath.app.recording.DemoLocation.startRide(path, label)
+    }
+
+    /** Stands at the map centre (non-moving shots). */
+    fun startDemoAtMapCentre() {
+        val (lat, lon, _) = initialCamera()
+        com.onpath.app.recording.DemoLocation.jumpTo(lat, lon, null, "map centre")
+    }
+
     /** Settings → Diagnostics → "Map cells (debug)": request the cell under the map centre (own-point rule). */
     fun requestCellAtMapCentre() {
         val (lat, lon, _) = initialCamera()
         val c = com.onpath.app.cells.CellId.at(lat, lon) ?: return
         val added = cells.request(listOf(c), com.onpath.app.cells.CellReason.POINT)
-        message = if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see Settings → Diagnostics."
+        sayInfo(if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see the list below.",
+            NoticePlace.SETTINGS)
     }
 
     // ---------------- map cell triggers + card (map-cells.md §9: the map comes where you plan or where you are) ----
@@ -370,8 +407,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var firstStartHidden by mutableStateOf(false)
     /** "Map downloads not available in this build" was shown in this app run (once is enough). */
     private var notAvailableShown = false
-    /** T5: position of the last check, so the check runs every [T5_STEP_M], not on every fix. */
-    private var t5LastAt: GeoPoint? = null
 
     /** The card for the current cell states (MapScreen collects [com.onpath.app.cells.MapCells.states] / installed). */
     fun cellCardUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
@@ -410,7 +445,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------------- the modal while the user waits for the map of their area (owner 2026-10-21) ----------------
+    // ---------------- the modal while the user waits for the map of their area ----------------
 
     /** Regions the modal waits for; empty = no modal (closed with Cancel / Close, or all there). */
     private var loadModalFor by mutableStateOf<Set<com.onpath.app.cells.CellId>>(emptySet())
@@ -436,10 +471,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val map = if (focus.isEmpty() || !cells.downloadsAvailable) null else
             MapLoads.aggregate(focus, states, cells.installed.value.associate { it.id to it.totalBytes }, loadProgress, loadHeld, now)
                 .also { if (it == null) loadModalFor = emptySet() else loadHeld = it.percent } // null: the map is there
-        // routing data in the same modal (field test 2026-10-21): one % over both, closes when both are there
+        // routing data in the same modal: one % over both, closes when both are there
         val r = if (routingModal) routingData.status.also { if (it == null) routingModal = false } else null
         val raw = RoutingLoads.combine(map, r, combinedHeld)
-        // the % follows the time, not the bytes (owner 2026-10-23: quick routing data made it race to 50 % and stand)
+        // the % follows the time, not the bytes (owner: quick routing data would race to 50 % and stand)
         val ui = when {
             raw == null -> { loadSmoother.reset(); null }
             raw.kind == MapLoadUi.Kind.LOADING || raw.kind == MapLoadUi.Kind.PREPARING ->
@@ -453,7 +488,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
     fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false }
 
-    // ---------------- routing data on a fresh install (field test 2026-10-21: it never came by itself) ----------------
+    // ---------------- routing data (loaded by the app itself, also on a fresh install) ----------------
 
     /** Loads missing routing data tiles from brouter.de (mobile data too unless "Maps only on Wi-Fi"). */
     private val routingData: com.onpath.app.data.RoutingDataLoader by lazy {
@@ -480,14 +515,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
     private fun routingForLine(keys: List<String>) = safeRouting("route") {
-        routingData.keepCorridor(keys) // parts of an older route's corridor go (field bug 2026-10-22)
+        routingData.keepCorridor(keys) // parts of an older route's corridor go
         routingData.ensure(keys, corridor = true)
     }
 
     /**
-     * What a computed route needs for its corridor – pure geometry and file checks, computed off the main thread (perf
-     * report 2026-10-22: 3–4 corridor walks per result on the main thread, a hitch after every long route). Null parts
-     * = that check failed (reported); the route stays.
+     * What a computed route needs for its corridor – pure geometry and file checks, computed off the main thread (several
+     * corridor walks per long route would hitch the UI). Null parts = that check failed (reported); the route stays.
      */
     private class PostRoute(val routingKeys: List<String>?, val tilesMissing: Boolean, val cells: List<com.onpath.app.cells.CellId>?)
 
@@ -507,8 +541,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The plan's route settled without a corridor ([line] null: cleared, long-route question, Cancel, not routed, routing
-     * failed): corridor map regions and routing parts of older routes are dropped, nothing new loads (field bug
-     * 2026-10-22). A computed route does this through T4 ([routingForLine], CellTriggers.routeComputed).
+     * failed): corridor map regions and routing parts of older routes are dropped, nothing new loads. A computed route does this through T4 ([routingForLine], CellTriggers.routeComputed).
      */
     private fun corridorFollowsPlan(line: List<GeoPoint>?) {
         safeCells("corridor") { cellTriggers.planRoute(line) }
@@ -536,14 +569,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when {
             s == null || name !in s.names -> {
                 manualRouting = null; dataBusy = null
-                message = Txt.s(if (routingData.exists(name)) Res.string.msg_routing_data_ready else Res.string.msg_routing_data_stopped)
+                if (routingData.exists(name)) sayInfo(Txt.s(Res.string.msg_routing_data_ready), NoticePlace.SETTINGS)
+                else sayError(Txt.s(Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
             s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING ->
                 dataBusy = Txt.s(Res.string.msg_routing_data_progress, s.percent, mb(s.totalBytes))
             else -> {
                 manualRouting = null; dataBusy = null
-                message = Txt.s(if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE) Res.string.msg_routing_data_offline
-                    else Res.string.msg_routing_data_stopped)
+                sayError(Txt.s(if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE) Res.string.msg_routing_data_offline
+                    else Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
         }
     }
@@ -556,7 +590,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
         recheckData()
         engine = null // a new engine reads the new tile
-        // once after the batch (perf report 2026-10-22: one recalc per arriving part, each up to a minute on a long plan)
+        // once after the batch, not per arriving part (a recalc can take up to a minute on a long plan)
         arrivedNames += names
         arrivalGateJob = gated(routingArrivalGate, arrivalGateJob, busy = { routingData.loading }) {
             val n = arrivedNames.size; arrivedNames.clear()
@@ -590,7 +624,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Modal → Cancel (owner 2026-10-21: "Cancel = stop", [MapLoadCancel]): the waited-for regions stop loading, no card
+     * Modal → Cancel (owner: "Cancel = stop", [MapLoadCancel]): the waited-for regions stop loading, no card
      * follows, a searched place's ring goes, points set stay, the camera stays.
      */
     fun cancelLoadModal() {
@@ -631,6 +665,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** T1: the user set these points (hold → Start here / Go here, a stop, a moved point). */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
+        // a point that makes the plan very long (owner) loads nothing until the
+        // long-plan question is answered: Plan anyway → it loads then; Cancel → nothing was loaded
+        if (after.size >= 2 && after.toList() != longRouteOk && com.onpath.app.routing.LongRoute.needsAsk(after.toList(), activity)) {
+            longRouteDeferred = before.toList()
+            Problems.trace("cells", "Very long plan: maps and routing data for the new point wait for the answer")
+            return
+        }
+        longRouteDeferred = null
         val fresh = com.onpath.app.cells.CellTriggers.newPoints(before, after)
         if (fresh.isNotEmpty()) routingFor(fresh, wait = fresh.size <= 3)
         if (fresh.size > 3) return // a whole route loaded / restored: T4 covers its corridor
@@ -643,7 +685,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Strip → "Load now over mobile data" (owner Q6 2026-10-23): the waiting cells of this card load now, once – the
+     * Strip → "Load now over mobile data" (owner): the waiting cells of this card load now, once – the
      * "Maps only on Wi-Fi" setting stays.
      */
     fun cellCardMobileYes() {
@@ -654,7 +696,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Loading modal → "Load now over mobile data" (owner Q6 2026-10-23): what the modal waits for (map regions and
+     * Loading modal → "Load now over mobile data" (owner): what the modal waits for (map regions and
      * routing data) loads once over mobile data; the setting stays.
      */
     fun loadModalOnMobile() {
@@ -698,7 +740,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val mapsLocked: Boolean get() = recState.value != null || mode == AppMode.NAVIGATE
 
     /**
-     * Settings → Offline maps → "Clear all" (owner 2026-10-22, replaces Diagnostics → "Reset maps"): every downloaded
+     * Settings → Offline maps → "Clear all" (owner): every downloaded
      * map area and every waiting request goes, the world overview stays; the area of the position (T3) and the next
      * point set load again as on a new install. Not during a tour.
      */
@@ -708,8 +750,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val all = cells.clearAll()
         if (all.isNotEmpty()) removeRoutingParts(all, emptyList())
         cleanupPreview = null
-        closeCellCard(); t3Pending = true; t5LastAt = null
-        // the user confirmed it on the Offline maps page: the result is a plain line there, nothing on the map (owner 2026-10-22)
+        closeCellCard(); t3Pending = true
+        // the user confirmed it on the Offline maps page: the result is a plain line there, nothing on the map (owner)
         offlineResult = OfflineResult.removed(all.size, bytes, afterTour = false)
     }
 
@@ -721,7 +763,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try { block() } catch (e: Exception) {
             Problems.error("cells", "Offline maps: $what failed", e)
             offlineResult = null
-            showError(Txt.s(Res.string.msg_maps_remove_failed))
+            sayError(Txt.s(Res.string.msg_maps_remove_failed), NoticePlace.SETTINGS)
         }
     }
 
@@ -763,7 +805,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.error("cells", "Clean up could not work out which map areas are needed; nothing removed", e)
-                showError(Txt.s(Res.string.msg_cleanup_not_possible))
+                sayError(Txt.s(Res.string.msg_cleanup_not_possible), NoticePlace.SETTINGS)
                 return@launch
             }
             Problems.trace("cells", "Clean up preview: ${preview.remove.size} region(s) could go (${preview.bytes / 1_048_576} MB); keeps " +
@@ -785,7 +827,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** "Overview only" hint: Plan, zoom ≥ 10 and no detailed map at the map centre. Reads a file header – call off main. */
     /** Areas with the detailed map (installed cells, region package) for the style's overview cover. */
     fun detailedAreas(): List<DoubleArray> = cells.detailedAreas()
 
@@ -800,14 +841,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); false
     }
 
-    /** Every fix: T3 (first usable fix after start / return in Plan) and T5 (on tour, near the edge of the map). */
+    /** Every fix: T3 (first usable fix after start / return in Plan). */
     private fun cellsForFix(loc: android.location.Location) {
         val p = GeoPoint(loc.latitude, loc.longitude)
         val acc = if (loc.hasAccuracy()) loc.accuracy else null
         val onTour = recState.value != null || mode == AppMode.NAVIGATE
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
-            // owner 2026-10-23/24 (e.g. in a car): opening the app loads the map for here silently only when the server
+            // owner (e.g. in a car): opening the app loads the map for here silently only when the server
             // has it ready (seconds); when it must be built first (minutes) the blue strip asks. No loading window.
             safeCells("position") {
                 val want = cellTriggers.preview(p)
@@ -829,13 +870,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
-        // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off (2026-10-22)
+        // T5 (on tour, near the edge of the map) runs in the recording service – also with the screen off
     }
 
-    /** T6: once a day, newer versions of used cells (quiet, Wi-Fi only). */
     /**
-     * After a route was computed in Plan (owner 2026-10-21: "at the moment I plan, I want a recent map"; nothing is
-     * updated while the app is idle): newer versions of the installed map areas along it (quiet; the map is veiled for
+     * After a route was computed in Plan (owner: "at the moment I plan, I want a recent map"; nothing is updated while
+     * the app is idle): newer versions of the installed map areas along it (quiet; the map is veiled for
      * the seconds a ready one loads) and newer routing data (then the plan is computed again).
      */
     private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?) {
@@ -847,7 +887,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         checkRoutingData(line)
     }
 
-    // ---------------- background downloads: visible and stoppable (owner 2026-10-22) ----------------
+    // ---------------- background downloads: visible and stoppable (owner) ----------------
 
     private val bgProgress = BackgroundProgress()
     /** Per map region of the strip: its time-based % while the server prepares it ([MapLoadProgress]). */
@@ -856,7 +896,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
-    /** Height of that strip in dp (measured); the message bar goes below it ([MessagePlacement]). */
+    /** Height of that strip in dp (measured); the error card goes below it ([MessagePlacement]). */
     var backgroundStripHeightDp by mutableStateOf(0)
 
     /**
@@ -867,7 +907,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val modal = loadModalFor.isNotEmpty() || routingModal
         // newer versions of installed areas: told in the strip / its details (no second indicator on the map)
         val installed = if (modal) emptySet() else cells.installed.value.map { it.id }.toSet()
-        // the server's preparing time moves the % too (field test 0.10.1: 0 % for the ~10 min two areas were prepared)
+        // the server's preparing time moves the % too (else it stands at 0 % for the minutes an area is prepared)
         val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), installed, bgCellProgress,
             android.os.SystemClock.elapsedRealtime(), cells::knownSize)
         val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
@@ -882,7 +922,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.warn("cells", "Background download status unknown; strip hidden", e); null
     }
 
-    // ---- names of what loads (owner 2026-10-23: "⬇ Bad Waldsee · 34 %"; map areas only have grid ids) ----
+    // ---- names of what loads (owner: "⬇ Bad Waldsee · 34 %"; map areas only have grid ids) ----
 
     /** Why each map area was asked for, set where the app asks (point, search, route, newer map); main thread only. */
     private val loadTags = HashMap<com.onpath.app.cells.CellId, LoadTag>()
@@ -980,8 +1020,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val fmt = SimpleDateFormat(Txt.s(Res.string.msg_date_pattern_area), Locale.getDefault())
         val iso = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
         val sorted = installed.sortedBy { areaNames[it.id] ?: it.id.id }
-        // the map of a region includes its routing data (owner 2026-10-22); a part shared by regions counts once.
-        // Computed once per change of the regions or the routing data – not on every progress tick (perf report 2026-10-22)
+        // the map of a region includes its routing data (owner); a part shared by regions counts once.
+        // Computed once per change of the regions or the routing data – not on every progress tick
         val key = sorted.map { it.id } to routingData.store.version
         val routingBytes = routingBytesCache?.takeIf { it.first == key }?.second ?: try {
             com.onpath.app.data.RoutingTiles.bytesPerCell(sorted.map { it.id }) { k ->
@@ -1000,7 +1040,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val ids = installed.map { it.id }.toSet()
         val loading = states.count { (c, s) -> c !in ids && s !is com.onpath.app.cells.CellState.Failed && s != com.onpath.app.cells.CellState.None }
-        // what still waits to download – visible and stoppable (owner 2026-10-22)
+        // what still waits to download – visible and stoppable (owner)
         val w = try { cells.waiting() } catch (e: Exception) { Problems.warn("cells", "Waiting downloads unknown", e); null }
         val r = try { routingData.status } catch (e: Exception) { Problems.warn("routing", "Routing downloads unknown", e); null }
         val waiting = WaitingDownloads(w?.regions ?: 0, r?.names?.size ?: 0,
@@ -1018,7 +1058,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun updateMapsNow() = safeCells("update") {
         val all = cells.installed.value.map { it.id }
         val asked = cells.request(all, com.onpath.app.cells.CellReason.REFRESH, ownPoint = false)
-        message = if (asked.isEmpty()) Txt.s(Res.string.msg_maps_already_checking)
+        // the page's own result line (like a removal), not a message
+        offlineResult = if (asked.isEmpty()) Txt.s(Res.string.msg_maps_already_checking)
             else Txt.p(if (settings.mapsWifiOnly) Res.plurals.msg_maps_checking_wifi else Res.plurals.msg_maps_checking, asked.size, asked.size)
     }
 
@@ -1030,7 +1071,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Routing parts under deleted regions that no remaining region needs go too (owner 2026-10-22: routing data is part
+     * Routing parts under deleted regions that no remaining region needs go too (owner: routing data is part
      * of a region's map). Parts loaded for a point or a route outside every region stay. Background, never during a tour.
      */
     private fun removeRoutingParts(deleted: List<com.onpath.app.cells.CellId>, kept: List<com.onpath.app.cells.CellId>) {
@@ -1079,7 +1120,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Settings → Offline maps → "Clean up": what would be removed, shown until Remove / Cancel; null = no question. */
     var cleanupPreview by mutableStateOf<CleanupPreview?>(null)
     /**
-     * Plan points the route does not reach (owner 2026-10-22, [PlanGaps]): grey dashed piece + hollow point on the map,
+     * Plan points the route does not reach (owner, [PlanGaps]): grey dashed piece + hollow point on the map,
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
      */
     val planGaps: List<PlanGap>
@@ -1105,7 +1146,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private var spotsMemo: Pair<Triple<List<GeoPoint>, Activity, Int>, List<RouteSpot>>? = null
 
-    // Bursts → one action (perf report 2026-10-22); declared before init {} (ViewModelInitOrderTest).
+    // Bursts → one action; declared before init {} (ViewModelInitOrderTest).
     /** Map style reload after new map store generations: once per quiet period, never while the user drags. */
     private val styleGate = QuietGate(STYLE_QUIET_MS, STYLE_MAX_WAIT_MS)
     private var styleGateJob: kotlinx.coroutines.Job? = null
@@ -1116,8 +1157,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Settings → Offline maps: routing bytes per region for (regions, routing data version) – see [offlineMapsUi]. */
     private var routingBytesCache: Pair<Pair<List<com.onpath.app.cells.CellId>, Int>, Map<com.onpath.app.cells.CellId, Long>>? = null
 
-    // declared before init {}: init restores the saved plan and routes it at once (0.9.1 crashed at start – they were
-    // declared below and still null then)
+    // declared before init {}: init restores the saved plan and routes it at once (declared below, they are still null then)
     /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
     private var routeCancel: com.onpath.app.routing.RouteCancel? = null
     private val ROUTING_SLOW_MS = 2_500L
@@ -1129,10 +1169,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** The very long plan the user said yes to (not asked again for the same points). */
     private var longRouteOk: List<GeoPoint>? = null
+    /** The points before the edit that made the plan very long: its maps load only after "Plan anyway". */
+    private var longRouteDeferred: List<GeoPoint>? = null
     /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
     var notRouted by mutableStateOf<NotRouted?>(null)
         private set
-    /** What the next [recalc] is for (set just before it; UX review 2026-10-23, problem 1): Cancel undoes only that. */
+    /** What the next [recalc] is for (set just before it): Cancel undoes only that. */
     private var nextCause: PlanStatus.Cause = PlanStatus.Cause.Other
     /** What the current / last routing run (or long-route question) was started by. */
     private var runCause: PlanStatus.Cause = PlanStatus.Cause.Other
@@ -1186,21 +1228,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- position / camera ---
     var followMe by mutableStateOf(false)
 
-    /** Navigate: where the user turned / moved the map by hand (free look); null = not looking around. */
+    /**
+     * Navigate: where the user turned / moved the map by hand (free look, e.g. to match a mountain range; owner); after
+     * walking on [FREE_LOOK_BACK_M] the map follows again by itself, compass / locate at once. null = not looking around.
+     */
     private var freeLookAt: GeoPoint? = null
 
-    /**
-     * The map stopped following because of a finger (turn, move). Navigate (owner 2026-10-20): look around freely –
-     * e.g. turn the map to match a mountain range – and once you walk on ([FREE_LOOK_BACK_M]) the map comes back to
-     * your position and the chosen orientation by itself. Compass / locate bring it back at once, as before.
-     */
     /** Last finger-down on the map (MapHost); a "gesture" without a recent touch is not one. */
     var lastMapTouchMs = 0L
 
     /**
      * Finger down on the map. Plan with walking direction up: stop turning / following at once, so a route point stays
-     * exactly under the finger (field test 2026-10-20: points could no longer be held to delete them while the map
-     * kept turning).
+     * exactly under the finger (a point cannot be held to delete it while the map keeps turning).
      */
     fun onMapTouch() {
         lastMapTouchMs = android.os.SystemClock.uptimeMillis()
@@ -1210,8 +1249,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * MapLibre stopped following. It does that for finger gestures and also for every camera move of the app itself
      * (fly to a search result, show a route, profile scrub) – both mean "not following any more". Only a stop right
-     * after a real touch starts free look (back to following after walking on); the 0.7.20 "ignore without touch"
-     * guard is gone – it undid the app's own camera moves (requirements review 2026-10-20).
+     * after a real touch starts free look (back to following after walking on); a stop without a touch is not ignored –
+     * that would undo the app's own camera moves.
      */
     fun onMapGesture() {
         followMe = false
@@ -1258,19 +1297,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- dialogs / messages ---
     /**
-     * The message bar (until OK): a result that is not visible elsewhere, or an error (MessageBar). Its look (ERROR =
-     * ⚠ + red edge) is decided where it is said: [showError] for a failure; a plain `message =` uses the English wording
-     * check ([MessageKind]) – German texts never match it, so every failure goes through [showError] (EN + DE, 2026-10-26).
+     * Says [text] where it belongs (owner: no dark message bar): a line in My routes / the open Settings page where the
+     * user acted ([place]); an error without such a place on the light [errorCard] (stays until OK); an INFO without a
+     * place only in the problem log. Routing: [NoticeRouting].
      */
-    private var messageState by mutableStateOf<Pair<String, Boolean>?>(null)
-    var message: String?
-        get() = messageState?.first
-        set(v) { messageState = v?.let { it to MessageKind.isError(it) } }
-    /** The current message is an error (⚠ + red edge). */
-    val messageIsError: Boolean get() = messageState?.second == true
-    /** Says [text] as an error (⚠ + red edge) in any language. */
-    fun showError(text: String) { messageState = text to true }
-    /** Work the user started that takes a moment: a spinner where it was started (review 2026-10-24 C9). */
+    fun say(text: String, kind: NoticeKind, place: NoticePlace) {
+        when (NoticeRouting.surface(kind, place, routesOpen, showSettings)) {
+            NoticeSurface.ROUTES_LINE -> routesNote = Notice(text, kind)
+            NoticeSurface.SETTINGS_LINE -> settingsNote = Notice(text, kind)
+            NoticeSurface.ERROR_CARD -> errorCard = text
+            NoticeSurface.LOG_ONLY -> Problems.trace("ui", "${kind.name} for ${place.name.lowercase()} not shown (place closed): $text")
+        }
+    }
+    fun sayError(text: String, place: NoticePlace) = say(text, NoticeKind.ERROR, place)
+    fun sayInfo(text: String, place: NoticePlace) = say(text, NoticeKind.INFO, place)
+    /** Settings → Updates, or the update banner on the map. */
+    private fun updatePlace() = if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP
+
+    /** Work the user started that takes a moment: a spinner where it was started. */
     var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
     var finishedTour by mutableStateOf<Tour?>(null)
@@ -1286,6 +1330,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val routingDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private var engine: RoutingEngine? = null
+
+    /** The router (on [routingDispatcher]); only a real one is kept, so a failed start is retried next time. */
+    private fun routingEngine(): RoutingEngine =
+        engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir).also { if (EngineProvider.isRealRouter) engine = it }
+
     private var routeJob: Job? = null
     private val requests = RouteRequests()
     /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
@@ -1302,7 +1351,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var planEditPending = false
 
     // `by lazy` used from init (also from its IO jobs: refreshTours → withModelTime → planTimes) is declared here,
-    // above that init – below it the delegate is still null (0.9.0 crash, ViewModelInitOrderTest)
+    // above that init – below it the delegate is still null (ViewModelInitOrderTest)
     /** Model times of saved planned routes (with way attributes), stored at save. */
     private val planTimes by lazy {
         com.onpath.app.time.PlanTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.PlanTimesStore.FILE))
@@ -1323,7 +1372,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         recalc()
-        // field test 2026-10-22: plan changes had to be guessed from route numbers – every one is traced now
+        // every plan change is traced, so the diagnostics show what the user did
         Problems.trace("plan", "Plan restored at app start: ${waypoints.size} points" +
             (followName?.let { ", following \"$it\" (${followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
         refreshTours() // "Load route" is enabled only when something is saved
@@ -1342,7 +1391,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
         viewModelScope.launch {
             RecordingService.startFailed.collect { why ->
-                if (why != null) { RecordingService.startFailed.value = null; message = why; if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
+                if (why != null) { RecordingService.startFailed.value = null; sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
             }
         }
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
@@ -1358,7 +1407,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (st?.saveFailed == true && !saveFailedShown) {
                     saveFailedShown = true
-                    showError(Txt.s(Res.string.msg_track_save_failing))
+                    sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
                 } else if (st?.saveFailed == false) saveFailedShown = false
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
@@ -1377,7 +1426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                                 .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
                         }
                         finishedTour = null; finishedTimes = null
-                        if (!ok) showError(Txt.s(Res.string.msg_track_delete_failed_here))
+                        if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed_here), NoticePlace.MAP)
                     } else {
                         finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
                         finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
@@ -1389,7 +1438,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
-                    // owner 2026-10-22: after Save or Delete the tour is done – the plan leaves the map, saved or not
+                    // owner: after Save or Delete the tour is done – the plan leaves the map, saved or not
                     // (one Undo step brings it back)
                     if (waypoints.isNotEmpty()) clearPlan()
                     enter(AppMode.PLAN)
@@ -1416,6 +1465,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
+            .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
+                .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
+                .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
             .put("location", loc?.let { org.json.JSONObject().put("lat", "%.5f".format(java.util.Locale.ROOT, it.latitude))
                 .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
                 .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
@@ -1446,8 +1498,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val p = dataFiles.packageCheck() ?: return ""
         return if (p.ok) "" else " " + Txt.s(Res.string.msg_package_mixed, p.mismatched.joinToString())
     }
-
-    // ---------------- map data on the phone (no adb) ----------------
 
     // ---------------- app updates from GitHub Releases (F-OFF-06) ----------------
 
@@ -1499,7 +1549,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         val rel = (update as? UpdateState.Available)?.release ?: return
         if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
-            message = Txt.s(Res.string.msg_update_allow_install)
+            sayInfo(Txt.s(Res.string.msg_update_allow_install), updatePlace())
             try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (e: Exception) {
                 Problems.warn("update", "Install-permission settings screen could not be opened", e)
             }
@@ -1519,7 +1569,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.warn("update", "Update download or installer start failed; current version kept", e)
                 withContext(Dispatchers.Main) {
                     update = UpdateState.Available(rel)
-                    showError(Txt.s(Res.string.msg_update_download_failed))
+                    sayError(Txt.s(Res.string.msg_update_download_failed), updatePlace())
                 }
             }
         }
@@ -1581,15 +1631,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             withContext(Dispatchers.Main) {
                 dataBusy = null
-                // the success summary keeps the English wording check (it may report a partial import)
-                if (msg.second) showError(msg.first) else message = msg.first
+                say(msg.first, if (msg.second) NoticeKind.ERROR else NoticeKind.INFO, NoticePlace.SETTINGS)
             }
         }
     }
 
     /**
      * Settings → Diagnostics → "Download routing data": the 1° parts at the map centre from brouter.de (normally they
-     * come by themselves with the map – owner 2026-10-22: no separate "routing data" for the user).
+     * come by themselves with the map – owner: no separate "routing data" for the user).
      */
     fun downloadRoutingData() {
         if (dataBusy != null) return
@@ -1598,7 +1647,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val miss = try { routingData.missing(keys) } catch (e: Exception) {
             Problems.warn("routing", "Routing data check failed", e); keys
         }
-        if (miss.isEmpty()) { message = Txt.s(Res.string.msg_routing_data_present); return }
+        if (miss.isEmpty()) { sayInfo(Txt.s(Res.string.msg_routing_data_present), NoticePlace.SETTINGS); return }
         // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
         manualRouting = miss.first()
         dataBusy = Txt.s(Res.string.msg_routing_data_busy)
@@ -1627,7 +1676,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         clearShownNote()
     }
 
-    /** "Activity set to … from the file" is over once the activity / T level changes again (captain 2026-10-26). */
+    /** A stored activity name; null for none or an unknown / old one (expected: the caller falls back). */
+    private fun activityOrNull(name: String?): Activity? = name?.let { runCatching { Activity.valueOf(it) }.getOrNull() }
+
+    /** "Activity set to … from the file" is over once the activity / T level changes again. */
     private fun clearShownNote() { shown?.let { if (it.note != null) shown = it.copy(note = null) } }
 
     /** Cause of an activity / T level change; a change still being calculated keeps the activity from before it. */
@@ -1635,7 +1687,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         (runCause as? PlanStatus.Cause.ActivityChange)?.takeIf { routing || longRouteAsk != null }
             ?: PlanStatus.Cause.ActivityChange(activity, sac)
 
-    /** T level from the activity picker (Hike): remembered, the route is planned again at once (owner 2026-10-22). */
+    /** T level from the activity picker (Hike): remembered, the route is planned again at once. */
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
@@ -1656,7 +1708,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * One undoable change of the planned points. No vibration here: the plan vibrates only at the moment of a map hold
-     * (PlanHaptics, owner 2026-10-21), never after an edit.
+     * (PlanHaptics, owner), never after an edit.
      */
     private fun change(block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
@@ -1683,8 +1735,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: recState.value?.track?.lastOrNull()?.lastOrNull()
 
     /**
-     * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour – "Route back to
-     * the start?" stays until answered (never self-dismissing). The followed line is unchanged while it is open.
+     * The goal of a start → goal plan was deleted during a tour (owner, [RouteBack]): "Route back to the start?" stays
+     * until answered (never self-dismissing). The followed line is unchanged while it is open.
      */
     var routeBackAsk by mutableStateOf(false)
         private set
@@ -1711,14 +1763,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             recalc()
             return
         }
-        if (yes) message = Txt.s(Res.string.msg_route_back_no_position)
+        if (yes) sayError(Txt.s(Res.string.msg_route_back_no_position), NoticePlace.MAP)
         Problems.trace("plan", "Route back to the start: " + (if (yes) "yes, but no position" else "no") +
             " – route guidance ended, recording continues (Undo brings it back)")
         if (followLine != null && !followIsTrack) { clearFollow(); guidanceEndedByEmptyPlan = true }
     }
 
     /**
-     * Owner rule 2026-10-22 (PlanGuidance): what Plan shows = what Navigate follows. An empty plan during a tour ends the
+     * Owner rule ([PlanGuidance]): what Plan shows = what Navigate follows. An empty plan during a tour ends the
      * route guidance – no line, no off-route warning, no junction vibration, no arrival; the recording goes on. Undo
      * (points back) follows the plan again ([followEditedPlan]).
      */
@@ -1829,7 +1881,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
         closeMapOverlays()
-        val idx = waypoints.indexOfFirst { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
+        val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
         if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
@@ -1846,8 +1898,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner Q3
-     * 2026-10-23: the same word does the same, [PlanEdits.startHere]); one Undo step brings the plan back.
+     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner:
+     * the same word does the same, [PlanEdits.startHere]); one Undo step brings the plan back.
      */
     private fun startAtPoint(index: Int) {
         val w = waypoints.toList()
@@ -1860,7 +1912,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
      * plan as it is NOW (the plan can change under an open menu – PointMenuTarget), or null when that point is gone.
-     * Logged either way (field 2026-10-21: "Delete did nothing", no trace of why).
+     * Logged either way, so a "tap did nothing" report can be traced.
      */
     private fun menuAction(what: String): Int? {
         val t = pointMenuTarget
@@ -1890,7 +1942,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
         if (todo.isEmpty() || namesJob?.isActive == true) return
         namesJob = viewModelScope.launch {
-            // the index can be large: its places are copied off the main thread (owner field report 0.9.3, sheet stutter)
+            // the index can be large: its places are copied off the main thread (else the sheet stutters)
             val places = namePlaces ?: try {
                 val index = search.offlineIndex()
                 withContext(Dispatchers.Default) { index.entries.map { it.place } }.also { namePlaces = it }
@@ -1954,10 +2006,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun googleFromMenu(): GeoPoint? = menuAction("Open in Google Maps")?.let { waypoints[it] }
     // ---------------- end map hold menus ----------------
 
-    fun isStop(poi: com.onpath.app.poi.Poi): Boolean =
-        waypoints.any { kotlin.math.abs(it.lat - poi.lat) < 1e-7 && kotlin.math.abs(it.lon - poi.lon) < 1e-7 }
+    fun isStop(poi: com.onpath.app.poi.Poi): Boolean = waypoints.any { sameSpot(it, poi.lat, poi.lon) }
 
-    // ---------------- search + place card (search agent; UI in ui/search, logic in search/) ----------------
+    /** [p] is at [lat] / [lon] (a POI, place or search mark that became a route point keeps its exact coordinate). */
+    private fun sameSpot(p: GeoPoint, lat: Double, lon: Double) =
+        kotlin.math.abs(p.lat - lat) < 1e-7 && kotlin.math.abs(p.lon - lon) < 1e-7
+
+    // ---------------- search + place card (UI in ui/search, logic in search/) ----------------
     // Open/close the search view, the picked place, and "add as role" actions of the shared place card.
     // The card is keyed by planPoi (so MapHost's tap rules – a map tap closes it – apply unchanged).
 
@@ -1987,10 +2042,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeMapOverlays()
         searchPlace = p
         searchMark = p
-        // Zoom to fit what it is: a city needs the overview, a single restaurant the close-up.
+        flyToPlace(p)
+    }
+
+    /**
+     * Flies to a searched / shared place at a zoom that fits what it is (a city needs the overview, a restaurant the
+     * close-up); without a detailed map there its regions and routing data load in the modal (owner: a trigger).
+     */
+    private fun flyToPlace(p: com.onpath.app.search.Place) {
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
-        // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
         if (mode == AppMode.PLAN) safeCells("search") {
             showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)
                 .tagged(LoadTag(LoadWhy.POINT, GeoPoint(p.lat, p.lon), p.title())))
@@ -2003,7 +2064,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun clearSearchMarkAt(lat: Double, lon: Double) {
         val m = searchMark ?: return
-        if (kotlin.math.abs(m.lat - lat) < 1e-7 && kotlin.math.abs(m.lon - lon) < 1e-7) searchMark = null
+        if (sameSpot(GeoPoint(m.lat, m.lon), lat, lon)) searchMark = null
     }
 
     /** Place shown in the card: the search result, or the tapped POI. */
@@ -2013,7 +2074,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closePlaceCard() { planPoi = null; searchPlace = null }
 
     private fun routeIndexOf(place: com.onpath.app.search.Place) =
-        waypoints.indexOfFirst { kotlin.math.abs(it.lat - place.lat) < 1e-7 && kotlin.math.abs(it.lon - place.lon) < 1e-7 }.takeIf { it >= 0 }
+        waypoints.indexOfFirst { sameSpot(it, place.lat, place.lon) }.takeIf { it >= 0 }
 
     /** Card content incl. what "Add to route" will do (same WaypointInsertion as a map hold). */
     fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi {
@@ -2033,7 +2094,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePlaceCard()
         rememberPlaceName(p, name)
         if (idx != null) {
-            // "As start" = the point menu's "Start here" (owner Q3 2026-10-23); "As destination" moves it to the end
+            // "As start" = the point menu's "Start here" (owner); "As destination" moves it to the end
             when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
             return
         }
@@ -2096,8 +2157,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val link = p.link!!
                 val http = com.onpath.app.search.ShortLinkResolver.http(
                     com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))
-                // Faster (owner: 2–3 s before anything moved): when the redirect already names the address, search that
-                // and skip the Google page; the page is only read when the address is not found.
+                // For speed (owner): when the redirect already names the address, search that and skip the Google
+                // page; the page is only read when the address is not found.
                 var r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http, stopAtAddress = true).resolve(link) }
                 val quick = r.place?.takeIf { !it.hasPoint && it.address != null }
                 if (quick != null) {
@@ -2121,8 +2182,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var lat = p.lat; var lon = p.lon
             var addressWon = false
             // A point read from the downloaded Google page (the link itself had none) is checked against the address
-            // in the link: the page can carry other places' markers (field test 2026-10-20: Gelateria Costantin in
-            // Meran landed far away). More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
+            // in the link: the page can carry other places' markers. More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
             if (fromPage && lat != null && lon != null && p.searchTexts().isNotEmpty()) {
                 val byAddress = try { search.findOne(p.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                     Problems.info("search", "Address check for a shared place failed", e); null
@@ -2148,7 +2208,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             val found = search.findOne(p.searchTexts())
             // Stays until OK (owner rule: no message disappears by itself).
-            if (found == null) { showError(Txt.s(Res.string.msg_shared_place_not_found)); return@launch }
+            if (found == null) { sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP); return@launch }
             val (place, from) = found
             Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
             showSharedPlace(place.copy(name = p.name ?: place.name,
@@ -2164,15 +2224,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchPlace = p
         searchMark = p
         followMe = false
-        // Outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear.
-        val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
-        events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
-        // no detailed map there: its regions load (owner 2026-10-21 – a search / shared place is a trigger, modal)
-        if (mode == AppMode.PLAN) safeCells("search") {
-            showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)
-                .tagged(LoadTag(LoadWhy.POINT, GeoPoint(p.lat, p.lon), p.title())))
-        }
-        if (mode == AppMode.PLAN) routingFor(listOf(GeoPoint(p.lat, p.lon)), wait = true)
+        // outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear
+        flyToPlace(p)
     }
 
     private fun holdCameraForSharedPlace() {
@@ -2187,7 +2240,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
     fun roundTrip() {
         val w = PlanEdits.roundTrip(waypoints)
-        if (w.size != waypoints.size) set(w) else if (waypoints.size >= 2) message = Txt.s(Res.string.msg_round_trip_already)
+        // the sheet offers Round trip only when the route does not end at the start yet (PlanPanel canRoundTrip)
+        if (w.size != waypoints.size) set(w) else Problems.trace("plan", "Round trip: the route already ends at the start")
     }
 
     fun undoStep() = step(history.undo(waypoints), "Undo")
@@ -2228,15 +2282,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun answerLongRoute(plan: Boolean) {
         longRouteAsk = null
-        if (plan) { longRouteOk = waypoints.toList(); nextCause = runCause; recalc(); return }
+        val deferred = longRouteDeferred; longRouteDeferred = null
+        if (plan) {
+            longRouteOk = waypoints.toList()
+            deferred?.let { cellsForNewPoints(it, waypoints) } // now the new point's maps load
+            nextCause = runCause; recalc(); return
+        }
+        if (deferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
+        longRouteDeferred = deferred // points kept unrouted: "Plan anyway" later loads them (an undo replaces it)
         // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
         // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
-        // with nothing running (0.9.3 bug)
+        // with nothing running
         cancelRun(NotRouted.LONG)
     }
 
     /**
-     * Cancel of the long-route question or of a running calculation (UX review 2026-10-23, problem 1): a point edit is
+     * Cancel of the long-route question or of a running calculation: a point edit is
      * undone (Undo / Redo the other way), an activity / T level change gets the previous activity back, anything else
      * just stops and leaves the points unrouted.
      */
@@ -2266,7 +2327,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
     fun planAnyway() {
         if (waypoints.size < 2) return
-        if (notRouted == NotRouted.LONG) longRouteOk = waypoints.toList()
+        if (notRouted == NotRouted.LONG) {
+            longRouteOk = waypoints.toList()
+            longRouteDeferred?.let { longRouteDeferred = null; cellsForNewPoints(it, waypoints) }
+        }
         recalc()
     }
 
@@ -2282,7 +2346,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Cancel while a route is calculated (owner 2026-10-22, 2026-10-23): the router stops at once and the change that
+     * Cancel while a route is calculated (owner): the router stops at once and the change that
      * started this calculation is taken back ([cancelRun]). Nothing to take back: the points stay, without a route.
      */
     fun cancelRouting() {
@@ -2307,7 +2371,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             corridorFollowsPlan(null); return
         }
         val act = activity; val level = sac
-        // owner 2026-10-22: a plan far beyond a day (a point in another country by mistake) is asked about first –
+        // owner: a plan far beyond a day (a point in another country by mistake) is asked about first –
         // nothing is routed or loaded until the answer
         if (pts != longRouteOk && com.onpath.app.routing.LongRoute.needsAsk(pts, act)) {
             requests.invalidate(); route = null; routeError = null; routing = false
@@ -2329,20 +2393,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var planner: Planner? = null
             val result = withContext(routingDispatcher) {
                 runCatching {
-                    val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
-                        .also { if (EngineProvider.isRealRouter) engine = it } // retry later if it failed
+                    val eng = routingEngine()
                     withModelTime(Planner(eng, cancel).also { planner = it }.plan(pts, act, level, pins), act, f)
                 }
             }
             slow.cancel()
-            // the corridor work of a result off the main thread (perf report 2026-10-22)
+            // the corridor work of a result off the main thread
             val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r, pts) } }
             if (requests.isCurrent(gen)) routingSlow = false
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
             }
-            // one line per route (perf report 2026-10-22): distance, size, profile, each try's time and outcome
+            // one line per route: distance, size, profile, each try's time and outcome
             val done = result.getOrNull()
             Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
                 " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
@@ -2377,9 +2440,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             if (followNextRoute) {
                 followNextRoute = false
-                if (route != null) followPlanned(checkNow = true) else message = Txt.s(Res.string.msg_no_new_route)
+                if (route != null) followPlanned(checkNow = true) else sayError(Txt.s(Res.string.msg_no_new_route), NoticePlace.MAP)
             } else if (planEditPending && result.isSuccess) {
-                // an edit of the plan during a tour: the tour follows the new plan (owner rule 2026-10-19, no question)
+                // an edit of the plan during a tour: the tour follows the new plan (owner rule, no question)
                 planEditPending = false
                 if (!baseline) followEditedPlan()
             }
@@ -2432,7 +2495,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshTours()
     }
 
-
     /** A planned route was saved as [id]: keep its model time per group (with way attributes) for the route list. */
     private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) {
         if (r == null || r.points.size < 2) return
@@ -2443,12 +2505,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Planned routes and imported tracks without timestamps show the model time with the current pace (recomputed, the
-     * stored time is ignored: one time model, captain 2026-10-26); recorded tours and timed imports as stored.
+     * stored time is ignored: one time model); recorded tours and timed imports as stored.
      */
     private fun withModelTime(t: Tour): Tour {
         if (t.kind != TourKind.PLANNED && t.kind != TourKind.IMPORTED) return t
-        // expected: unknown/old activity name in the DB falls back to Hike
-        val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: Activity.HIKE
+        val a = activityOrNull(t.activity) ?: Activity.HIKE
         val f = planFactors(a)
         val key = f to t.distanceM // an overwritten route has a new distance
         plannedTimes[t.id]?.takeIf { it.first == key }?.let { return t.copy(durationS = it.second) }
@@ -2460,7 +2521,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Problems.warn("time", "Model time of an imported track could not be computed; stored time shown", e)
             t
         }
-        // stored at save with the way attributes (P4); the stored points alone have none
+        // stored at save with the way attributes; the stored points alone have none
         planTimes.get(t.id, t.distanceM)?.let { g ->
             val s = com.onpath.app.time.PlanTimesStore.seconds(g, f)
             plannedTimes[t.id] = key to s
@@ -2505,7 +2566,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The router reaches a point only by its nearest allowed way (up to 1 km away): a summit above the T level, a
-     * via ferrata, a point off any path. The plan sheet says so in one red line (owner 2026-10-22: no message box), or
+     * via ferrata, a point off any path. The plan sheet says so in one red line (owner: no message box), or
      * the hiker trusts a line that stops short of where they want to go. Null = every point is reached.
      */
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
@@ -2514,8 +2575,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return PlanGaps.text(gaps, activity) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
     }
 
-    // ---------------- route warnings (safety audit batch B, owner 2026-10-22) ----------------
-
+    // ---------------- route warnings ----------------
 
     private fun noteActivityChange() {
         routeChangedNotice = null
@@ -2541,11 +2601,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return v
         }
 
-    /** The amber line of the plan sheet: the "route changed" notice first, else the spots; null = nothing to know. */
-    /** The amber line: spots on the way only (pushing, steps, above T, steep). */
+    /** The amber line of the plan sheet: spots on the way only (pushing, steps, above T, steep). */
     fun warningLineText(): String? = RouteWarnings.text(routeSpots, sac)
 
-    /** Grey INFO line "New route for … – check it" (review 2026-10-24 B6: the user changed the activity themselves). */
+    /** Grey INFO line "New route for … – check it" (grey: the user changed the activity themselves). */
     fun routeChangedLineText(): String? = routeChangedNotice
 
     /** Tap on the "New route for …" line: it goes, the map shows the whole route. */
@@ -2617,7 +2676,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** The plan's stops as saved: with their place names (backup / restore keeps them, owner 2026-10-21). */
+    /** The plan's stops as saved: with their place names (backup / restore keeps them). */
     private fun savedStops(pts: List<GeoPoint>) = pts.map { GpxWaypoint(it.lat, it.lon, stopName(it)) }
 
     /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
@@ -2768,7 +2827,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun nameRecordedTour(t: Tour) {
         // the date name in the language it was made in (EN "Tour 20 Oct…", the German pattern starts the same today)
         val datePrefix = Txt.s(Res.string.nav_tour_date_name, "\u0000").substringBefore("\u0000")
-        if (!t.name.startsWith("Tour ") && !t.name.startsWith(datePrefix)) return
+        // a demo tour (Developer tools → Demo) gets a place name too and keeps its "Demo · " mark
+        val demo = t.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
+        val dateName = t.name.removePrefix(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
+        if (!dateName.startsWith("Tour ") && !dateName.startsWith(datePrefix)) return
         viewModelScope.launch {
             val name = try {
                 val places = search.offlineIndex().entries.map { it.place }
@@ -2776,7 +2838,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // "Save only until …": named after the part that is the tour
                     val line = com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides).flatten().map { GeoPoint(it.lat, it.lon) }
                     com.onpath.app.search.RouteNamer.name(line, places)
-                }
+                }?.let { if (demo) com.onpath.app.recording.DemoLocation.TOUR_PREFIX + it else it }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
             } ?: return@launch
@@ -2798,10 +2860,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
     private fun enter(m: AppMode) {
+        val was = mode
         mode = m
+        // the start zoom of Navigate, once per start (owner); the map takes it when it follows
+        if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
+        else if (m != AppMode.NAVIGATE) navStartZoom = null
         if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; highlight = null; followMe = true }
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
-        // map); north up stops following as before
+        // map); north up stops following
         else followMe = headingUp && followMe && tracker.location.value != null
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
@@ -2828,12 +2894,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startJob = viewModelScope.launch {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
             if (started) enter(AppMode.NAVIGATE)
-            else if (message == null) showError(Txt.s(Res.string.msg_recording_not_started))
+            else if (errorCard == null) sayError(Txt.s(Res.string.msg_recording_not_started), NoticePlace.MAP)
         }
     }
 
     private var startJob: Job? = null
-
 
     /** How long Start waits for the service's first state before saying that recording did not start. */
     private val START_TIMEOUT_MS = 6_000L
@@ -2844,14 +2909,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun planHasStraightLegs(): Boolean =
         (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
 
-    /** A followed track and a plan edited since: Continue follows the plan, the track is drawn grey (owner Q7). */
+    /** A followed track and a plan edited since: Continue follows the plan, the track is drawn grey (owner). */
     private fun planReplacesTrack(): Boolean = PlanGuidance.planReplacesTrack(followIsTrack, waypoints.toList(), planAtTrackFollow)
 
     /** The user wants to navigate the plan although parts of it are straight lines. */
     fun straightConfirmed() { straightAsk = false; startNavigation(force = true) }
 
     /**
-     * Back to Navigate while a tour runs (no new recording). The plan's waypoints are **not** changed (owner Q5):
+     * Back to Navigate while a tour runs (no new recording). The plan's waypoints are **not** changed (owner):
      * when the plan was edited, its route becomes the new navigation session; otherwise the running session (and a
      * new route already taken) stays. Either way the service checks the next fix at once and, when the user is away
      * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
@@ -2962,8 +3027,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (!isActive || cancel.isCancelled) return@launch
                 val st = withContext(routingDispatcher) {
                     try {
-                        val eng = engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir)
-                            .also { if (EngineProvider.isRealRouter) engine = it }
+                        val eng = routingEngine()
                         if (eng is com.onpath.app.routing.StraightLineEngine) {
                             ActivityRowState.Failed(Txt.s(Res.string.msg_check_cannot_route))
                         } else {
@@ -3056,7 +3120,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * "End tour" tapped: rides in the track so far (docs/design/vehicle-detection.md) → the summary with four choices,
      * otherwise the short Cancel · Delete · Save question. Detection failing = the short question (reported).
-     * [saveIfNoRides]: Save was already chosen ("You have arrived" → Save, UX review 2026-10-23 problem 2) – with
+     * [saveIfNoRides]: Save was already chosen ("You have arrived" → Save) – with
      * rides the summary shows, without them the tour is saved at once.
      */
     fun askEndTour(saveIfNoRides: Boolean = false) {
@@ -3067,8 +3131,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val s = withContext(Dispatchers.IO) {
                 runCatching {
                     val segs = db.loadSegments(id)
-                    // expected: unknown activity name → the current one
-                    val a = navActivity ?: db.getTour(id)?.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+                    val a = navActivity ?: activityOrNull(db.getTour(id)?.activity) ?: activity
                     com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
                 }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
             }
@@ -3105,7 +3168,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.rides.RideView.summary(db.loadSegments(t.id), rec.rides, onFoot, allowSplit = false)
                 }.onFailure { Problems.warn("rides", "Rides of a tour could not be shown", it) }.getOrNull()
             }
-            if (s == null) { showError(Txt.s(Res.string.msg_rides_read_failed)); return@launch }
+            if (s == null) { sayError(Txt.s(Res.string.msg_rides_read_failed), NoticePlace.ROUTES); return@launch }
             editRides = t to s
         }
     }
@@ -3118,13 +3181,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     .onFailure { Problems.error("rides", "Changing the rides of a tour failed; it stays as it was", it) }.isSuccess
                     .also { if (it) Backups.tourChanged(getApplication(), t.id) }
             }
-            if (!ok) showError(Txt.s(Res.string.msg_rides_change_failed))
+            if (!ok) sayError(Txt.s(Res.string.msg_rides_change_failed), NoticePlace.ROUTES)
             refreshTours()
             if (shown?.tourId == t.id) withContext(Dispatchers.IO) { db.getTour(t.id) }?.let { openTour(it) }
         }
     }
 
-    /** End tour → Delete (owner 2026-10-22): stop, then the tour goes straight to the recycle bin, no summary. */
+    /** End tour → Delete (owner): stop, then the tour goes straight to the recycle bin, no summary. */
     fun endTourAndDelete() { Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true; stopRecording() }
     private var deleteFinished = false
 
@@ -3139,7 +3202,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The plan was edited while a tour follows it (round trip, Undo, points added / removed, reverse): the tour follows
-     * the new plan at once – followed line, target and arrival – without a question (owner rule 2026-10-19). A
+     * the new plan at once – followed line, target and arrival – without a question (owner rule). A
      * re-computed line that is the same route (Undo back to it) keeps the running session. A followed GPX track or a
      * free recording are not touched; a plan with fewer than two points changes nothing.
      */
@@ -3233,7 +3296,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var unfinishedRides by mutableStateOf<Pair<Tour, com.onpath.app.rides.RideView.Summary>?>(null)
 
     /**
-     * "Unfinished tour" → Save (UX review 2026-10-23, problem 2): like End tour – rides found → the summary with the four
+     * "Unfinished tour" → Save: like End tour – rides found → the summary with the four
      * choices ([unfinishedRides]), else saved at once. Detection failing = saved as recorded (reported).
      */
     fun askSaveUnfinished(t: Tour) {
@@ -3243,8 +3306,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val s = withContext(Dispatchers.IO) {
                 runCatching {
                     val segs = db.loadSegments(t.id)
-                    // expected: unknown activity name → the current one
-                    val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+                    val a = activityOrNull(t.activity) ?: activity
                     com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
                 }.onFailure { Problems.warn("rides", "Ride check of the unfinished tour failed – saved without it", it) }.getOrNull()
             }
@@ -3270,13 +3332,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val store = com.onpath.app.rides.TourDbRides(db)
             if (choice != null && rides != null) runCatching { com.onpath.app.rides.RideApply.choose(store, t.id, rides, choice) }
                 .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
-            // expected: unknown activity name → the current one
-            val a = t.activity?.let { runCatching { Activity.valueOf(it) }.getOrNull() } ?: activity
+            val a = activityOrNull(t.activity) ?: activity
             val parts = com.onpath.app.rides.RideApply.finish(store, t.id,
                 com.onpath.app.rides.TourStats(t.distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
             Backups.tourChanged(getApplication(), t.id)
             parts.forEach { Backups.tourChanged(getApplication(), it) }
-            withContext(Dispatchers.Main) { message = Txt.s(Res.string.msg_track_saved); refreshTours() }
+            // the track is in My routes – no message (owner: no "Track saved" bar)
+            withContext(Dispatchers.Main) { refreshTours() }
         }
     }
 
@@ -3294,7 +3356,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }.onFailure { Problems.error("db", "The unfinished tour could not be moved to the recycle bin", it) }.getOrDefault(false)
             if (ok) Backups.tourChanged(getApplication(), t.id)
             withContext(Dispatchers.Main) {
-                if (ok) message = Txt.s(Res.string.msg_track_to_bin) else showError(Txt.s(Res.string.msg_track_delete_failed))
+                // the dialog closing is the result; only a failure is said
+                if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed), NoticePlace.MAP)
                 refreshTours()
             }
         }
@@ -3323,12 +3386,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
-                // expected: unknown/old activity name keeps the current activity
-                t.activity?.let { a -> runCatching { Activity.valueOf(a) }.getOrNull()?.let { activity = it; prefs.activity = it } }
+                activityOrNull(t.activity)?.let { activity = it; prefs.activity = it } // unknown: the current one stays
                 sac = t.sac
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
-                // stop names and POI pins saved with the plan (since the backup, 2026-10-21) come back too – the pins
+                // stop names and POI pins saved with the plan come back too – the pins
                 // before the points, so the first route already passes them exactly (recalc reads them at once)
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
                 change { clear(); addAll(pts) }
@@ -3336,10 +3398,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
-                // a recorded or imported tour brings its activity (UX review 2026-10-23, problem 5; imports: owner
-                // 2026-10-26) – like the import: the T level stays inside the tour's band, not during a tour (the
-                // followed route keeps its activity), a change is said in the track panel; an unknown / missing
-                // activity keeps the current one
+                // a recorded or imported tour brings its activity, like the import: the T level stays inside the
+                // tour's band, not during a tour (the followed route keeps its activity), a change is said in the
+                // track panel; an unknown / missing activity keeps the current one
                 val choice = SportType.openChoice(t.activity, t.sac, activity, sac, touring = recState.value != null)
                 // before the track is shown: an activity change clears the panel's line, this one sets it
                 if (choice.switch) {
@@ -3359,7 +3420,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------------- plan links (web planner phase 1, A-005: routing/PlanLinks, docs/core-features.md C15) ----------------
+    // ---------------- plan links (A-005: routing/PlanLinks, docs/core-features.md C15) ----------------
 
     /** Name a plan link brought, for the Save dialog while the plan still has the link's points. */
     private var linkTitle: Pair<String, List<GeoPoint>>? = null
@@ -3379,7 +3440,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val plan = when (found) {
             is com.onpath.app.routing.PlanLinks.Found.Broken -> {
                 Problems.warn("plan", "Plan link ($via) could not be read: cut off, damaged or a newer format")
-                showError(Txt.s(Res.string.msg_plan_link_unreadable))
+                sayError(Txt.s(Res.string.msg_plan_link_unreadable), NoticePlace.MAP)
                 return
             }
             is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
@@ -3390,7 +3451,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points, linkPoints)) {
                 LinkOpen.AFTER_TOUR -> {
                     Problems.info("plan", "Plan link ($via, ${plan.points.size} points) not opened: a tour is running")
-                    message = Txt.s(Res.string.msg_plan_link_after_tour)
+                    sayError(Txt.s(Res.string.msg_plan_link_after_tour), NoticePlace.MAP)
                 }
                 LinkOpen.ASK_FIRST -> {
                     if (shown != null) closeShown()
@@ -3429,7 +3490,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.Fit(load.points)
     }
 
-    /** Sheet ⋯ → Share plan: the plan as a planer.onpath.earth link (PlanLinks) in the share sheet; from two points. */
+    /** Sheet ⋯ → Share plan: the plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. */
     fun sharePlan() {
         if (waypoints.size < 2) return
         val pts = waypoints.toList()
@@ -3455,9 +3516,53 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeShown() { shown = null; highlight = null }
 
+    /** A track is being turned into a plan ([planFromShown]): spinner on its button. */
+    var planFromTrackBusy by mutableStateOf(false)
+        private set
+
+    /**
+     * Shown track → a plannable route with few route points (owner; routing/TrackToPlan): our router and the
+     * current activity re-trace the track; the result replaces the plan (Undo brings the old one back).
+     */
+    fun planFromShown() {
+        val sh = shown ?: return
+        if (planFromTrackBusy) return
+        val track = sh.segments.flatten()
+        if (track.size < 2) return
+        val act = activity; val level = sac
+        // routing data along the track first: without it every leg fails
+        val missing = try { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track)) } catch (e: Exception) {
+            Problems.warn("routing", "Routing data along the track not checked; planning from the track anyway", e); emptyList()
+        }
+        if (missing.isNotEmpty()) {
+            sayError(Txt.s(Res.string.plan_from_track_wait), NoticePlace.MAP)
+            return
+        }
+        planFromTrackBusy = true
+        viewModelScope.launch {
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            val r = withContext(routingDispatcher) {
+                try {
+                    val eng = routingEngine()
+                    if (eng is com.onpath.app.routing.StraightLineEngine) null
+                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level)
+                } catch (e: Exception) {
+                    Problems.error("routing", "Track could not be turned into a plan", e); null
+                }
+            }
+            planFromTrackBusy = false
+            if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launch }
+            Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows " +
+                "${(r.follows * 100).toInt()} %, ${r.calls} routing calls, ${r.failedLegs} legs without a route, " +
+                "${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            closeShown()
+            change { clear(); addAll(r.points) }
+        }
+    }
+
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
-        if (recState.value?.tourId == t.id) { message = Txt.s(Res.string.msg_track_recording_now); return }
+        if (recState.value?.tourId == t.id) { sayError(Txt.s(Res.string.msg_track_recording_now), NoticePlace.ROUTES); return }
         viewModelScope.launch(Dispatchers.IO) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
@@ -3473,7 +3578,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------------- recycle bin + backup (owner 2026-10-21, docs/core-features.md C11) ----------------
+    // ---------------- recycle bin + backup (docs/core-features.md C11) ----------------
 
     /** Recycle bin list (My routes → ⋮ → Recycle bin); null = closed. */
     var recycleBin by mutableStateOf<List<Tour>?>(null)
@@ -3509,8 +3614,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** "Imported “Name” – some parts were skipped." (the parser's warnings are in Diagnostics). */
-    internal fun importedMessage(name: String) = Txt.s(Res.string.msg_gpx_imported_skipped, name)
+    /** "Some parts of the file were skipped." – a line in the imported track's panel (the parser's warnings are in Diagnostics). */
+    internal fun importedNote(warnings: List<String>): String? = if (warnings.isEmpty()) null else Txt.s(Res.string.msg_gpx_parts_skipped)
 
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
@@ -3531,11 +3636,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.msg_export_all_chooser)))
             } catch (e: com.onpath.app.backup.BackupException) {
-                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; message = Txt.s(Res.string.msg_export_reason, e.reason)
+                Problems.info("backup", "Export all: ${e.reason}", e); busy = null; sayError(Txt.s(Res.string.msg_export_reason, e.reason), NoticePlace.ROUTES)
             } catch (e: Exception) {
                 Problems.error("backup", "Export all failed", e)
                 busy = null
-                showError(Txt.s(Res.string.msg_export_failed))
+                sayError(Txt.s(Res.string.msg_export_failed), NoticePlace.ROUTES)
             }
         }
     }
@@ -3568,8 +3673,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
-                while (message != null) delay(500) // after the current message
-                showError(Txt.s(Res.string.msg_backup_failed, text))
+                while (errorCard != null) delay(500) // after the current error card
+                sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }
         }
@@ -3588,7 +3693,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
             }
             restoreProgress = null
-            if (r != null) message = com.onpath.app.backup.BackupRestore.summary(r) else showError(Txt.s(Res.string.msg_restore_folder_unreadable))
+            // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
+            // offered at the first start); a failure there → the error card
+            if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
+                if (showSettings) NoticePlace.SETTINGS else { routesOpen = true; NoticePlace.ROUTES })
+            else sayError(Txt.s(Res.string.msg_restore_folder_unreadable), if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP)
             refreshTours()
         }
     }
@@ -3597,38 +3706,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            share(t.name, segs, if (t.kind == TourKind.PLANNED) emptyList() else t.waypoints, SportType.typeOf(t.activity, t.sac))
-        }
-    }
-
-    fun exportShown() {
-        val sh = shown ?: return
-        viewModelScope.launch {
-            // the shown tour's own activity (an imported track keeps the one it came with)
-            val tour = sh.tourId?.let { id ->
-                withContext(Dispatchers.IO) {
-                    runCatching { db.getTour(id) }.onFailure { Problems.warn("gpx", "GPX export: tour activity unreadable; exported without a sport type", it) }.getOrNull()
-                }
-            }
-            share(sh.name, sh.segments.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele) } }, sh.waypoints,
-                tour?.let { SportType.typeOf(it.activity, it.sac) })
-        }
-    }
-
-    fun exportPlanned() {
-        val r = route ?: return
-        viewModelScope.launch {
-            share(defaultName(Txt.s(Res.string.msg_name_share)), listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), emptyList(),
-                SportType.typeOf(activity, sac))
+            // a planned route carries its route points as <wpt> (start, stops, goal – with their names): other apps
+            // show them, and a re-import can rebuild the plan from them
+            share(t.name, segs, t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
         }
     }
 
     /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
-    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?) {
+    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?,
+                              kind: TourKind? = null) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
-                val file = File(dir, GpxWriter.fileName(name))
+                // the same in every language (owner): "Hilden - plan.gpx" / "Hilden - rec.gpx"
+                val suffix = GpxWriter.kindSuffix(kind == TourKind.PLANNED, kind == TourKind.RECORDED)
+                val file = File(dir, GpxWriter.fileName(name, suffix))
                 file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)
             }
@@ -3641,7 +3733,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.common_export_gpx)))
         } catch (e: Exception) {
             Problems.error("gpx", "GPX export failed", e)
-            showError(Txt.s(Res.string.msg_export_failed))
+            sayError(Txt.s(Res.string.msg_export_failed), NoticePlace.ROUTES)
         }
     }
 
@@ -3662,8 +3754,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     stream.use { GpxParser.parse(it) } to name
                 }
                 val segs = data.allSegments
-                // Komoot's sport in <trk><type> preselects the activity (owner 2026-10-25); unknown → the current one;
-                // the user's T level stays when it fits the type's band, and a change is said (captain 2026-10-26)
+                // Komoot's sport in <trk><type> preselects the activity (owner); unknown → the current one;
+                // the user's T level stays when it fits the type's band, and a change is said
                 val choice = SportType.importChoice(data.type, activity, sac, touring = recState.value != null)
                 val pick = choice.pick
                 val name = data.name ?: fileName?.removeSuffix(".gpx")?.removeSuffix(".GPX") ?: defaultName(Txt.s(Res.string.msg_name_import))
@@ -3686,7 +3778,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (pick.activity == Activity.HIKE) { sac = pick.sac.coerceIn(1, 5); prefs.sac = sac }
                     selectActivity(pick.activity, userChange = false)
                 }
-                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note))
+                // something odd in the file: a grey line in the track panel, never a message (owner)
+                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note,
+                    skippedNote = importedNote(data.warnings)))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
                 data.type?.let { t ->
@@ -3694,26 +3788,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""
                     Problems.info("gpx", "GPX import “$name”: type “${t.take(40)}” → $to")
                 }
-                // The track panel with its name is the feedback; a message (until OK) only when something was odd –
-                // in plain words; the details go to Diagnostics (review 2026-10-24 B28)
+                // The track panel with its name is the feedback (+ its "parts skipped" line); the details go to Diagnostics
                 busy = null
                 if (data.warnings.isNotEmpty()) {
                     Problems.info("gpx", "GPX import “$name”: ${data.pointCount} points, ${data.waypoints.size} waypoints; " +
                         data.warnings.joinToString("; "))
-                    message = importedMessage(name)
                 }
             } catch (e: Exception) {
                 busy = null
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")
-                showError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
-                    else Txt.s(Res.string.msg_gpx_import_failed))
+                // My routes when the import was started there; a file opened from another app → the error card
+                sayError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
+                    else Txt.s(Res.string.msg_gpx_import_failed), NoticePlace.ROUTES)
             }
         }
     }
 
-    // ---------------- routing data freshness (owner 2026-10-21: routing matters most – a changed way must reroute) ----
+    // ---------------- routing data freshness (owner: routing matters most – a changed way must reroute) ----
 
     /** The plan is being computed again because newer routing data arrived. */
     private var routingDataReroute = false
@@ -3762,10 +3855,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingDataRouteChanged(r: com.onpath.app.routing.PlannedRoute) {
         val before = routingDataBefore ?: return
         routingDataBefore = null
-        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) message = Txt.s(Res.string.msg_route_updated_newer_data)
+        // the plan sheet's grey "changed" line (a tap shows the whole route), not a message (owner)
+        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
     }
 
-    /** This ViewModel's [com.onpath.app.cells.MapCells.relevance] – onCleared removes only its own (two screens at start, 0.10.1). */
+    /** This ViewModel's [com.onpath.app.cells.MapCells.relevance] – onCleared removes only its own (two screens can exist at start). */
     private var ownRelevance: com.onpath.app.cells.MapCells.Relevance? = null
 
     // Last in the class: every property it touches is initialised by now.
@@ -3774,15 +3868,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // (new file paths; MapLibre keeps no stale PMTiles index) and recheck the data. The search index notices by itself.
         viewModelScope.launch {
             // what THIS ViewModel's map was asked to show (start: the data now – its map's first load takes it). Not the
-            // process-wide StyleLoader.lastMapDir: with two activities alive (field test 0.10.1) the other one's map had
-            // loaded the new data, so this one never asked its own map to reload (MapReload, StyleReloadRule).
+            // process-wide StyleLoader.lastMapDir: with two activities alive the other one's map may have loaded the new
+            // data, and this one would never ask its own map to reload (MapReload, StyleReloadRule).
             var asked: java.io.File? = dataFiles.mapDir()
             cells.generation.collect {
                 val onMap = com.onpath.app.map.StyleLoader.lastMapDir
                 if (onMap == null) { recheckData(); asked = dataFiles.mapDir() } // no map shown yet: its first load takes it
                 else if (StyleReloadRule.ask(dataFiles.mapDir(), asked)) {
-                    // once per burst, never while the map / sheet is dragged (perf report 2026-10-22: one reload per
-                    // region, native memory grew with each); the camera and location tracking stay as they are
+                    // once per burst, never while the map / sheet is dragged (a reload per region makes native memory
+                    // grow); the camera and location tracking stay as they are
                     styleGateJob = gated(styleGate, styleGateJob, busy = { cells.userBusy }) {
                         val dir = dataFiles.mapDir()
                         if (StyleReloadRule.ask(dir, asked)) {
@@ -3794,9 +3888,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
-        // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 / T5 on fixes
+        // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 on fixes
         cells.wifiOnly = settings.mapsWifiOnly
-        // asked right before each download (owner 2026-10-22): does a point request still belong to the user?
+        // asked right before each download (owner): does a point request still belong to the user?
         cells.relevance = object : com.onpath.app.cells.MapCells.Relevance {
             override fun waiting(): Set<com.onpath.app.cells.CellId> =
                 loadModalFor + (cellJob?.takeIf { it.why == com.onpath.app.cells.CellWhy.TAPPED }?.cells ?: emptyList())
@@ -3841,7 +3935,5 @@ private const val SHARED_PAGE_MAX_OFF_M = 3_000.0
 /** Routing data: checked at most this often after a route (ms), and refreshed when older than this (days). */
 private const val ROUTING_CHECK_MS = 12 * 3600_000L
 private const val ROUTING_MAX_AGE_DAYS = 35
-/** T5 (on tour, edge of the detailed map) is checked again after moving this far. */
-private const val T5_STEP_M = 300.0
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
 private const val FREE_LOOK_BACK_M = 25.0

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Navigate status card texts (owner 2026-10-24: C3 recording line only when it matters, C4 pace in words, B3 no GPS). */
+/** Navigate status card texts. */
 class NavStatusTextTest {
     private val toGo = ToGo(7_420.0, 512.0, 3600.0, 12.0)
     private val nav = NavUi(toGo = toGo, recordedM = 5_320.0, movingS = 72 * 60.0, breakS = 11 * 60.0)

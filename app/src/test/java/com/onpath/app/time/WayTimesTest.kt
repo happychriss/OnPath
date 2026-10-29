@@ -10,7 +10,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Time estimate P4: way attributes (SAC, surface, smoothness, MTB scale, steps) per span. */
+/** Time estimate: way attributes (SAC, surface, smoothness, MTB scale, steps) per span. */
 class WayTimesTest {
     private fun path(sac: Int, vis: String? = null, rough: String? = null) =
         WayAttrs("path", if (sac >= 4) "alpine" else "natural_trail", sac = sac, visibility = vis, rough = rough)
@@ -113,23 +113,23 @@ class WayTimesTest {
         assertEquals(w, WayAttrs.parse(w.code()))
         assertEquals(WayAttrs("track", "gravel"), WayAttrs.parse(WayAttrs("track", "gravel").code()))
         assertEquals(null, WayAttrs.parse("garbage"))
-        // bike access (2026-10-22): round trip, and older 7-field codes read as unknown
+        // bike access: round trip, and older 7-field codes read as unknown
         val bike = w.copy(bicycle = "dismount")
         assertEquals("dismount", WayAttrs.parse(bike.code())?.bicycle)
         assertEquals(null, WayAttrs.parse("path|natural_trail|3|-1||bad|")?.bicycle)
         assertEquals(null, WayAttrs.parse(null))
         assertNotEquals(w, WayAttrs.parse(w.copy(sac = 4).code()))
-        // cycle route (2026-10-25): round trip, and older 8-field codes read as "not on a route"
+        // cycle route: round trip, and older 8-field codes read as "not on a route"
         assertEquals(true, WayAttrs.parse(bike.copy(cycleRoute = true).code())?.cycleRoute)
         assertEquals(false, WayAttrs.parse(bike.code())?.cycleRoute)
         assertEquals(false, WayAttrs.parse("footway|paved|0|-1||||")?.cycleRoute)
-        // pedestrian zone (2026-10-26): a flag beside "r"; codes with only "r" read as no pedestrian zone
+        // pedestrian zone: a flag beside "r"; codes with only "r" read as no pedestrian zone
         val zone = bike.copy(cycleRoute = true, pedestrian = true)
         assertEquals(zone, WayAttrs.parse(zone.code()))
         assertEquals(true, WayAttrs.parse(bike.copy(pedestrian = true).code())?.pedestrian)
         assertEquals(false, WayAttrs.parse(bike.copy(pedestrian = true).code())?.cycleRoute)
         assertEquals(false, WayAttrs.parse("footway|paved|0|-1|||||r")?.pedestrian)
-        // route hints (2026-10-26): ford / construction flags and the barrier field; older codes read as none
+        // route hints: ford / construction flags and the barrier field; older codes read as none
         val hints = zone.copy(ford = true, construction = true, barrier = "stile")
         assertEquals(hints, WayAttrs.parse(hints.code()))
         assertEquals(WayAttrs("track", "gravel", ford = true), WayAttrs.parse(WayAttrs("track", "gravel", ford = true).code()))

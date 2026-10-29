@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.UploadFile
@@ -43,8 +42,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +49,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
@@ -182,8 +178,8 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 // ------------------------------------------------------------------ activity picker
 
 /**
- * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and closes; Hike applies and stays open with the
- * T1–T5 row (SAC level, owner 2026-10-22: moved here from Settings) and the selected level's description; a level
+ * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and
+ * closes; Hike applies and stays open with the T1–T5 row (SAC level) and the selected level's description; a level
  * applies at once (the route is planned again) and closes. Both are remembered across sessions.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -212,7 +208,7 @@ fun ActivityDialog(
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(14.dp))
-                        // name + one short explaining line (owner 2026-10-26: "Gravel bike" / "Gravel tracks welcome")
+                        // name + one short explaining line ("Gravel bike" / "Gravel tracks welcome")
                         Column(Modifier.padding(vertical = 6.dp)) {
                             Text(a.label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
                             Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -245,8 +241,8 @@ fun ActivityDialog(
 }
 
 /**
- * SAC hiking scale (Swiss Alpine Club), short official descriptions. Chosen in the activity picker with Hike
- * (owner 2026-10-22): the routing avoids paths above the chosen level.
+ * SAC hiking scale (Swiss Alpine Club), short official descriptions. Chosen in the activity picker with Hike: the
+ * routing avoids paths above the chosen level.
  */
 internal object SacScale {
     /** [name] / [text] in the app's language (strings_routes.xml; German = the SAC's own German wording). */
@@ -291,8 +287,10 @@ fun RoutesScreen(
     onRecycleBin: () -> Unit = {},
     /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
     onEditRides: (Tour) -> Unit = {},
-    /** Import / Export all running: a spinner on the Import button / a line under the title (review 2026-10-24 C9). */
+    /** Import / Export all running: a spinner on the Import button / a line under the title. */
     busy: Busy? = null,
+    /** The result of something done here (restored, export / import failed …): a line under the title. */
+    note: Notice? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var rename by remember { mutableStateOf(initialRename) }
@@ -309,6 +307,7 @@ fun RoutesScreen(
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
+            note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
             if (tours.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(str(Res.string.routes_empty),
@@ -456,8 +455,8 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
 }
 
 /**
- * A recording was interrupted (app or phone restarted without the service): Continue · Delete · Save, like End tour
- * (UX review 2026-10-23, problem 2). Delete asks once more, then the tour goes to the recycle bin. Stays until answered.
+ * A recording was interrupted (app or phone restarted without the service): Continue · Delete · Save, like End tour.
+ * Delete asks once more, then the tour goes to the recycle bin. Stays until answered.
  */
 @Composable
 fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDelete: () -> Unit) {
@@ -491,8 +490,8 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
 
 /**
  * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
- * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (owner
- * 2026-10-22, Undo brings it back) – so no "Clear route from map" here (UX review 2026-10-23, problem 12: it never showed).
+ * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (Undo
+ * brings it back), so there is no "Clear route from map" here.
  */
 @Composable
 fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,

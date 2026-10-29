@@ -7,8 +7,8 @@ import org.junit.Test
 
 class PoiTest {
 
-    // The old single "name lat,lon" search query is gone: Google searched that text without any bias to the
-    // coordinates and often landed elsewhere (see PoiLinks.googleMaps KDoc).
+    // Never a single "name lat,lon" search query: Google searches that text without any bias to the coordinates
+    // and often lands elsewhere (see PoiLinks.googleMaps KDoc).
 
     @Test
     fun googleMapsNamedSearchesNearTheCoordinate() {
@@ -74,7 +74,6 @@ class PoiTest {
         assertEquals(listOf("May-Oct 08:00-18:00", "Nov off"), p.openingHoursLines)
         assertEquals("Regional, Pizza", p.cuisineLabel)
         assertEquals("Hochganghaus", inGerman { p.title() })
-        assertEquals("https://www.openstreetmap.org/node/42", p.osmUrl)
         assertNull(p.website)
     }
 

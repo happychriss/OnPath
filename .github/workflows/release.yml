@@ -31,20 +31,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Owner decisions 2026-10-22: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
-  # the build only a short start test (the app opens, also with a saved plan – 0.9.1 crashed there). Unit tests below.
+  # Owner decisions: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
+  # publishing only a short start test (the app opens, also with a saved plan). Unit tests below.
+  # Owner ("make building shorter"): smoke and build run side by side, publish waits for both – the same
+  # gates, ~7 instead of ~12 minutes.
   smoke:
     uses: ./.github/workflows/e2e.yml
     with:
       tests: com.onpath.app.e2e.StartSmokeE2ETest
 
   build:
-    needs: smoke
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: test
+    outputs:
+      skip: ${{ steps.ver.outputs.skip }}
+      version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags + history: the risk-based tests compare with the last release
 
       - name: Version and "already released?" check
         id: ver
@@ -55,6 +61,7 @@ jobs:
           [ -n "$VERSION" ] || { echo "No default appVersion found in app/build.gradle.kts"; exit 1; }
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release v$VERSION already exists – nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -77,9 +84,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.ver.outputs.skip != 'true'
 
-      - name: Unit tests
+      # Risk-based (owner): the core-feature tests always, plus the packages changed since the last release
+      # (tools/ci/risk_tests.py); build files / BRouter → everything. The full suite runs after every push (unit.yml).
+      - name: Unit tests (risk-based)
         if: steps.ver.outputs.skip != 'true'
-        run: ./gradlew --no-daemon testDebugUnitTest -PappVersion="$VERSION"
+        run: |
+          LAST=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)
+          CHANGED=$([ -n "$LAST" ] && git diff --name-only "$LAST" HEAD || true)
+          ARGS=$(python3 tools/ci/risk_tests.py $CHANGED)
+          echo "Last release: ${LAST:-none} · tests: ${ARGS:-all}"
+          # the filter belongs to the app's test task only (the :strings module has no such tests and would fail)
+          eval ./gradlew --no-daemon :app:testDebugUnitTest $ARGS :strings:testDebugUnitTest -PappVersion="$VERSION"
 
       # World overview map in the APK (docs/map-pipeline.md §9b): map data is not in git; the files are built on the
       # laptop (tools/build_overview.sh) and stored in a versioned folder (R2 overview/<date>/). Repository variable
@@ -129,8 +144,30 @@ jobs:
           TXT
           ls -la dist
 
-      - name: Publish GitHub release
+      - name: Keep the release files for publishing
         if: steps.ver.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: dist/
+          retention-days: 3
+
+  # Publishes only when the start test on the emulator and the unit tests + APK build are both green.
+  publish:
+    needs: [smoke, build]
+    if: needs.build.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      TAG: v${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: dist
+
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}

@@ -20,14 +20,13 @@ import kotlin.math.hypot
  * Walking direction for the Navigate camera (heading-up). Pure, unit-tested.
  *
  * On a followed route (Navigate, matched to the line): the direction of the route ahead wins ([onRoute]) – the
- * next stretch points straight up, whatever the compass or a wobbly GPS bearing says (owner, 2026-10-20: "the way
- * should be a straight line in front of me"). Exception: walking clearly against it (GPS bearing > [OPPOSED_DEG]
+ * next stretch points straight up, whatever the compass or a wobbly GPS bearing says (owner: "the way should be a
+ * straight line in front of me"). Exception: walking clearly against it (GPS bearing > [OPPOSED_DEG]
  * off) – then the GPS bearing, so the map never shows you walking down the screen.
  * Otherwise, moving (GPS speed ≥ [MOVING_MPS] with a bearing): the GPS bearing – it is where you walk, not where
  * the phone points. Standing or slow: the compass (rotation-vector sensor). All are smoothed and a change
  * smaller than [DEADBAND_DEG] is not passed on, so the map does not jitter while you stand still.
- * Route and GPS (1 fix/s) are smoothed only lightly (owner 2026-10-20: turning lagged a few seconds at 0.5 –
- * now ~90 % of a turn after 1–2 fixes).
+ * Route and GPS (1 fix/s) are smoothed only lightly: ~90 % of a turn after 1–2 fixes (owner: no lag when turning).
  */
 class HeadingFilter {
     companion object {
@@ -74,8 +73,8 @@ class HeadingFilter {
 
     /**
      * A position (any speed): every [MOVE_STEP_M] walked gives the direction you really move in. Slow uphill or a
-     * wrong match on an out-and-back route made the route direction point backwards (field test 2026-10-20: map
-     * turned by 180°); walking against the route ahead now switches to compass / GPS.
+     * wrong match on an out-and-back route can make the route direction point backwards (map turned by 180°); walking
+     * against the route ahead switches to compass / GPS.
      */
     fun onPosition(lat: Double, lon: Double, accuracyM: Double, nowMs: Long) {
         if (accuracyM.isNaN() || accuracyM > MOVE_MAX_ACCURACY_M) return
@@ -144,14 +143,14 @@ class HeadingFilter {
 }
 
 /**
- * Two directions, like Google Maps (owner 2026-10-20):
+ * Two directions, like Google Maps (owner):
  * - **view** – where you face: compass standing, GPS bearing moving. Shown by the arrow at the position dot.
  * - **map** – how the map is turned in heading-up: on a followed route the route ahead (the way stays straight up),
  *   else the same as view.
  * MapLibre's [CompassEngine] (camera TRACKING_COMPASS and the puck's own arrow) gets the map direction while
  * [mapToCompass] (heading-up following – the app then draws the view arrow itself, see ui/FacingArrow), else the view
  * direction (camera not turned by it; the puck's arrow shows where you face). The app never moves the camera itself:
- * MapLibre ends its tracking on every app camera move (0.7.15–0.7.20 lesson).
+ * MapLibre ends its tracking on every app camera move.
  * Both are turned smoothly at display rate (ease-out, [TURN_TAU_S]); the sensor runs only while MapLibre listens (map
  * visible). Without a sensor it works from the GPS bearing; nothing here throws.
  */
@@ -281,7 +280,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         val sp = if (loc.hasSpeed()) loc.speed else null
         viewFilter.onGps(b, sp, now())?.let { view.set(it) }
         // every fix passes the map direction on, changed or not (after Plan → Navigate the camera must not wait for a
-        // change of direction – field test 2026-10-20)
+        // change of direction)
         val m = mapFilter.onGps(b, sp, now())
         if (m != null) mapCh.set(m) else reemit()
     }

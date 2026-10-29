@@ -4,12 +4,11 @@ import kotlin.system.exitProcess
 
 // A bike route follows a shared foot / cycle path with a compacted surface instead of zig-zagging through side streets
 // (KTTEST=.../ItterPathTest.kt run.sh <segmentsDir with E5_N50.rd5>; pass / fail).
-// Field case 2026-10-26, Hilden, Trekking bike: plan points 1–4 south of the station, 2–4 on the path along the Itter
+// Case (Hilden, Trekking bike): plan points 1–4 south of the station, 2–4 on the path along the Itter
 // (OSM ways 26650741 / 891696635: highway=path, bicycle=designated, foot=designated, surface=compacted; sign DE:240).
-// Between points 3 and 4 the route left the path for 700 m of residential / service streets: the profiles costed a
-// compacted surface like loose ground (5.15 per metre, Touring 11.15 – more than a primary road). Since the fix
-// (trekking.brf / touring.brf: compacted counts as firm, docs/design/bike-routing.md decision 11) the leg is ~460 m on
-// the path. The whole plan (to Rosellen, 20 km) keeps only real pushing: an 18 m sidewalk at the start and a 161 m
+// Costing a compacted surface like loose ground (5.15 per metre, Touring 11.15 – more than a primary road) sends the
+// route between points 3 and 4 over 700 m of residential / service streets; with compacted counted as firm
+// (trekking.brf / touring.brf, docs/design/bike-routing.md decision 11) the leg is ~460 m on the path. The whole plan (to Rosellen, 20 km) keeps only real pushing: an 18 m sidewalk at the start and a 161 m
 // footway without a bicycle tag at the destination.
 
 class FakeCtx(private val dir: File) : android.content.Context() {
@@ -38,7 +37,7 @@ fun main() {
     android.content.res.AssetManager.root = File("/home/user/onpath/app/src/main/assets")
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
-    // the owner's plan (app prefs "plan", 2026-10-26 09:27)
+    // the owner's plan (app prefs "plan")
     val p1 = GeoPoint(51.169296, 6.925455); val p2 = GeoPoint(51.164046, 6.928682)
     val p3 = GeoPoint(51.160713, 6.926101); val p4 = GeoPoint(51.158100, 6.921517)
     val rosellen = GeoPoint(51.13035, 6.7337)

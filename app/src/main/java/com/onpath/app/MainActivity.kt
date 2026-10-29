@@ -27,9 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -46,7 +44,6 @@ import com.onpath.app.ui.RouteDialogs
 import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
 import com.onpath.app.debug.ScreenLifecycle
-import kotlinx.coroutines.delay
 import com.onpath.strings.*
 
 class MainActivity : ComponentActivity() {
@@ -59,7 +56,9 @@ class MainActivity : ComponentActivity() {
         vm.locationAsking = false
         vm.tracker.start()
         if (vm.tracker.hasPermission()) afterPermission?.invoke()
-        else vm.message = Txt.s(Res.string.msg_no_location_permission)
+        // asked for an action (Start): it did not happen – say why; the plain start-up ask needs no message
+        else if (afterPermission != null) vm.sayError(Txt.s(Res.string.msg_no_location_permission), com.onpath.app.ui.NoticePlace.MAP)
+        else com.onpath.app.debug.Problems.info("gps", "Location permission not given at the start-up ask")
         afterPermission = null
     }
 
@@ -86,13 +85,13 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.showError(Txt.s(Res.string.msg_no_storage_permission))
+        else vm.sayError(Txt.s(Res.string.msg_no_storage_permission), com.onpath.app.ui.NoticePlace.SETTINGS)
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
         try { launcher.launch(com.onpath.app.backup.BackupFolder.initialUri) } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("backup", "No folder picker available", e)
-            vm.showError(Txt.s(Res.string.msg_no_folder_picker))
+            vm.sayError(Txt.s(Res.string.msg_no_folder_picker), com.onpath.app.ui.NoticePlace.SETTINGS)
         }
     }
 
@@ -100,7 +99,7 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // the app is light: dark status/nav bar icons also when the phone is in dark mode (polish audit A7)
+        // the app is light: dark status/nav bar icons also when the phone is in dark mode
         enableEdgeToEdge(
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
@@ -108,23 +107,28 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
-        if (savedInstanceState == null) handleIntent(intent)
+        incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
 
         announceLastCrash()
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
+            // Navigate over the lock screen (owner): while a tour runs in Navigate, a short press of the power button
+            // shows the navigation without unlocking; Plan (routes, settings) asks to unlock first.
+            val recNow by vm.recState.collectAsState()
+            val overLock = com.onpath.app.ui.LockScreenNav.shows(vm.mode == com.onpath.app.ui.AppMode.NAVIGATE, recNow != null)
+            LaunchedEffect(overLock) { showOverLockScreen(overLock) }
             // A new serious problem (error / crash) is said once per run – nothing stays unseen (owner).
             val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
-            LaunchedEffect(serious, vm.message == null) {
+            LaunchedEffect(serious, vm.errorCard == null) {
                 if (serious == null) return@LaunchedEffect
-                if (vm.message != null) return@LaunchedEffect // wait until the current message is gone
-                vm.showError(Txt.s(Res.string.msg_something_wrong))
+                if (vm.errorCard != null) return@LaunchedEffect // wait until the current error card is gone
+                vm.sayError(Txt.s(Res.string.msg_something_wrong), com.onpath.app.ui.NoticePlace.BACKGROUND)
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
-                // cells world: with the overview in the APK and map downloads, a fresh install opens on the map (DataFiles.blocking)
+                // with the overview in the APK and map downloads, a fresh install opens on the map (DataFiles.blocking)
                 val needData = vm.blockingMissing.isNotEmpty() && !vm.dataScreenDismissed
 
                 Box(Modifier.fillMaxSize()) {
@@ -164,6 +168,7 @@ class MainActivity : ComponentActivity() {
                                 onRename = { t, name -> vm.renameTour(t, name) },
                                 onExportAll = { vm.exportAll() },
                                 busy = vm.busy,
+                                note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                             )
@@ -208,6 +213,15 @@ class MainActivity : ComponentActivity() {
                                 status = com.onpath.app.map.StyleLoader.devStyleStatus(vm.dataFiles.dir, vm.devToolsShown),
                                 onRemove = vm::removeTestStyle,
                                 onReload = vm::reloadMapStyle,
+                            ),
+                            demo = if (!vm.devToolsShown) null else com.onpath.app.ui.DemoUi(
+                                state = com.onpath.app.recording.DemoLocation.state.collectAsState().value,
+                                rideLabel = vm.demoLine()?.first,
+                                onRide = vm::startDemoRide,
+                                onPlace = vm::startDemoAtMapCentre,
+                                onFactor = com.onpath.app.recording.DemoLocation::setFactor,
+                                onPause = com.onpath.app.recording.DemoLocation::setPaused,
+                                onStop = { com.onpath.app.recording.DemoLocation.stop() },
                             ),
                             diagnosticsSeenMs = vm.diagnosticsSeenMs,
                             diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
@@ -254,6 +268,7 @@ class MainActivity : ComponentActivity() {
                             onDownloadRouting = { vm.downloadRoutingData() },
                             onTimeFormulas = if (vm.route != null) ({ vm.openTimeDetails(technical = true) }) else null,
                             dataBusy = vm.dataBusy,
+                            note = vm.settingsNote,
                             update = vm.update.takeIf { vm.updatesEnabled },
                             onCheckUpdate = { vm.checkForUpdates(manual = true) },
                             onInstallUpdate = { vm.installUpdate() },
@@ -289,11 +304,11 @@ class MainActivity : ComponentActivity() {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
+                    // The one error card (no dark bar; results go where the user acted – vm.say).
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
-                    vm.message?.let { msg ->
-                        // errors get ⚠ and a red edge (review 2026-10-24 B10)
-                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null }, error = vm.messageIsError,
-                            // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
+                    vm.errorCard?.let { msg ->
+                        com.onpath.app.ui.ErrorCard(msg, onOk = { vm.errorCard = null },
+                            // below the blue strip while it shows – never over its buttons
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
                                     vm.backgroundStripHeightDp).dp))
@@ -302,7 +317,7 @@ class MainActivity : ComponentActivity() {
 
                 RouteDialogs(vm)
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
-                // "Allow all the time" is never asked (owner C2 2026-10-24) – only the quiet hint in Settings → Navigation
+                // "Allow all the time" is never asked (owner) – only the quiet hint in Settings → Navigation
                 if (vm.askUpdateDuringTour) {
                     AlertDialog(
                         onDismissRequest = { vm.askUpdateDuringTour = false },
@@ -335,7 +350,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
-        handleIntent(intent)
+        incoming(intent, IncomingIntent.Delivery.NEW_INTENT)
     }
 
     override fun onDestroy() {
@@ -344,7 +359,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    /** Number of this screen in the process (event log: field 0.10.1 had two at once at start – [ScreenLifecycle]). */
+    /** Number of this screen in the process (event log; two at once can happen at start – [ScreenLifecycle]). */
     private var screenNo = 0
 
     private fun traceCreated(restored: Boolean) {
@@ -371,6 +386,37 @@ class MainActivity : ComponentActivity() {
         recreate()
     }
 
+    /** Lets the activity show over the lock screen (Navigate during a tour) or not. Never throws. */
+    private fun showOverLockScreen(on: Boolean) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 27) setShowWhenLocked(on)
+            else @Suppress("DEPRECATION") if (on) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+            com.onpath.app.debug.Problems.trace("app", "Over the lock screen: $on")
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("app", "Show over the lock screen not changed ($on)", e)
+        }
+    }
+
+    /**
+     * Navigate → Plan while the phone is locked: unlock first (Plan shows routes and settings); unlocked → Plan at once.
+     * Without the unlock (cancelled) the navigation stays.
+     */
+    fun leaveNavigate(toPlan: () -> Unit) {
+        val km = getSystemService(android.app.KeyguardManager::class.java)
+        if (km == null || !km.isKeyguardLocked || android.os.Build.VERSION.SDK_INT < 26) { toPlan(); return }
+        try {
+            km.requestDismissKeyguard(this, object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() { toPlan() }
+                override fun onDismissCancelled() { com.onpath.app.debug.Problems.trace("app", "Unlock for Plan cancelled – Navigate stays") }
+                override fun onDismissError() { com.onpath.app.debug.Problems.info("app", "Unlock for Plan failed – Navigate stays") }
+            })
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("app", "Unlock request failed; Plan opened anyway", e)
+            toPlan()
+        }
+    }
+
     override fun onStart() {
         com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
@@ -387,12 +433,37 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    /**
+     * An incoming link / share / GPX, handled once ([IncomingIntent]): after a reinstall or restart Android starts the
+     * screen with the task's first intent again – that one is not handled a second time.
+     */
+    private fun incoming(intent: Intent?, delivery: IncomingIntent.Delivery) {
+        intent ?: return
+        val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        val fp = try {
+            IncomingIntent.fingerprint(intent.action, intent.dataString, intent.type, intent.getStringExtra(Intent.EXTRA_TEXT),
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.toString())
+        } catch (e: Exception) {
+            // a malformed intent from another app (bad extras): handled without the once-check, the handlers check it
+            com.onpath.app.debug.Problems.warn("app", "Incoming intent could not be fingerprinted; handled without the once-check", e)
+            if (delivery != IncomingIntent.Delivery.RESTORED) handleIntent(intent)
+            return
+        }
+        if (!IncomingIntent.shouldHandle(delivery, fromHistory, fp, IncomingIntent.lastHandled(this))) {
+            if (fp != null && delivery == IncomingIntent.Delivery.CREATE && !fromHistory)
+                com.onpath.app.debug.Problems.trace("app", "Incoming ${intent.action} handled before (restart / reinstall) – not again")
+            return
+        }
+        IncomingIntent.remember(this, fp!!)
+        handleIntent(intent)
+    }
+
     /** GPX from "open with" (VIEW) or "share" (SEND). */
     private fun handleIntent(intent: Intent?) {
         intent ?: return
         // Reopened from recents: that share was handled already.
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
-        // a plan link (planer.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
+        // a plan link (plan.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
         planLinkOf(intent)?.let { found ->
             vm.dataScreenDismissed = true
             vm.receivePlanLink(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
@@ -438,13 +509,13 @@ class MainActivity : ComponentActivity() {
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) == null ->
                 com.onpath.app.search.SharedPlaceParser.fromText(intent.getStringExtra(Intent.EXTRA_TEXT),
                     intent.getStringExtra(Intent.EXTRA_SUBJECT)).also {
-                    if (it == null) vm.message = Txt.s(Res.string.msg_shared_no_place)
+                    if (it == null) vm.sayError(Txt.s(Res.string.msg_shared_no_place), com.onpath.app.ui.NoticePlace.MAP)
                 }
             else -> null
         }
     } catch (e: Exception) {
         com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
-        vm.showError(Txt.s(Res.string.msg_shared_unreadable))
+        vm.sayError(Txt.s(Res.string.msg_shared_unreadable), com.onpath.app.ui.NoticePlace.MAP)
         null
     }
 
@@ -453,7 +524,7 @@ class MainActivity : ComponentActivity() {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
         } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("ui", "No file picker available for GPX import", e)
-            vm.showError(Txt.s(Res.string.msg_no_file_picker))
+            vm.sayError(Txt.s(Res.string.msg_no_file_picker), com.onpath.app.ui.NoticePlace.ROUTES)
         }
     }
 
@@ -485,7 +556,7 @@ class MainActivity : ComponentActivity() {
         val shown = sp.getLong("crashShownUntil", 0)
         val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
         sp.edit().putLong("crashShownUntil", crash.last).apply()
-        if (vm.message == null) vm.showError(Txt.s(Res.string.msg_crash_last_time))
+        if (vm.errorCard == null) vm.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
     }
 
     /**
@@ -511,11 +582,11 @@ class MainActivity : ComponentActivity() {
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     try { startActivity(Intent.createChooser(send, "Send diagnostics")) } catch (e: Exception) {
                         com.onpath.app.debug.Problems.warn("ui", "No app to share the diagnostics file", e)
-                        vm.message = "No app found to send the file with."
+                        vm.sayError("No app found to send the file with.", com.onpath.app.ui.NoticePlace.SETTINGS)
                     }
                 }.onFailure {
                     com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)
-                    vm.message = "Diagnostics could not be created – the phone's storage may be full. Please try again."
+                    vm.sayError("Diagnostics could not be created – the phone's storage may be full. Please try again.", com.onpath.app.ui.NoticePlace.SETTINGS)
                 }
             }
         }.start()
@@ -554,7 +625,6 @@ class MainActivity : ComponentActivity() {
     private fun copy(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("adb", text))
-        // Android 13+ confirms a copy itself; an extra message would only need another tap.
-        if (Build.VERSION.SDK_INT < 33) vm.message = Txt.s(Res.string.msg_copied)
+        // Android 13+ confirms a copy itself; below that the copied path is simply there – no message (owner)
     }
 }

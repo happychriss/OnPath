@@ -7,7 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Junction vibration (owner 2026-10-22): when, how often, which side. */
+/** Junction vibration: when, how often, which side. */
 class JunctionCuesTest {
     /** A straight line north, a point every 10 m (1 m ≈ 0.000009°), junctions at the given metres. */
     private fun line(lengthM: Int, junctions: Map<Int, JunctionCue>): List<GeoPoint> =
@@ -63,9 +63,15 @@ class JunctionCuesTest {
         assertNull("beyond 1 km", c.nextAhead(l, 1, 400.0))
     }
 
-    @Test fun patternsLeftTwoRightThree() {
-        assertEquals(2, JunctionCues.pattern(JunctionCue.Side.LEFT).size / 2)
-        assertEquals(3, JunctionCues.pattern(JunctionCue.Side.RIGHT).size / 2)
+    @Test fun patternsLeftOneRightTwo() {
+        assertEquals(1, JunctionCues.pattern(JunctionCue.Side.LEFT).size / 2)
+        assertEquals(2, JunctionCues.pattern(JunctionCue.Side.RIGHT).size / 2)
+    }
+
+    @Test fun junctionsOfALineAreCounted() {
+        val l = listOf(GeoPoint(46.0, 11.0), GeoPoint(46.001, 11.0, turn = JunctionCue.LEFT), GeoPoint(46.002, 11.0))
+        assertEquals(1, JunctionCues.count(l))
+        assertEquals(0, JunctionCues.count(l.map { it.copy(turn = null) }))
     }
 
     @Test fun brouterCommands() {
@@ -79,6 +85,41 @@ class JunctionCuesTest {
         assertEquals(listOf(null, null, JunctionCue.RIGHT, null, null), pts.map { it.turn })
     }
 
+    // roundabouts with their exit: router row → point → session file → lock screen / hint
+    @Test fun roundaboutExitFromTheRouter() {
+        val pts = MutableList(5) { GeoPoint(46.0 + it * 0.001, 11.0) }
+        JunctionCue.apply(pts, arrayOf(doubleArrayOf(1.0, 13.0, 30.0, 2.0), doubleArrayOf(3.0, 5.0, 90.0, 0.0)))
+        assertEquals(JunctionCue.ROUNDABOUT, pts[1].turn); assertEquals(2, pts[1].exit)
+        assertEquals(0, pts[3].exit)
+        // an old three-value row (no exit) still works
+        JunctionCue.apply(pts, arrayOf(doubleArrayOf(2.0, 13.0, 30.0)))
+        assertEquals(JunctionCue.ROUNDABOUT, pts[2].turn); assertEquals(0, pts[2].exit)
+    }
+
+    @Test fun roundaboutText() {
+        assertEquals("Roundabout · exit 2", JunctionCue.ROUNDABOUT.text(2))
+        assertEquals("Roundabout", JunctionCue.ROUNDABOUT.text(0))
+        assertEquals("Left", JunctionCue.LEFT.text(3))
+    }
+
+    @Test fun roundaboutAheadAndLockScreenText() {
+        val l = line(600, mapOf(100 to JunctionCue.LEFT, 300 to JunctionCue.ROUNDABOUT)).toMutableList()
+        val i = l.indexOfFirst { it.turn == JunctionCue.ROUNDABOUT }
+        l[i] = l[i].copy(exit = 3)
+        val c = JunctionCues()
+        assertEquals(3 to 250.0, c.roundaboutAhead(l, 1, 50.0)!!.let { it.first to Math.round(it.second / 10) * 10.0 })
+        assertNull("passed", c.roundaboutAhead(l, 1, 320.0))
+        assertEquals("Left", c.nextAheadText(l, 1, 50.0)!!.first)
+        assertEquals("Roundabout · exit 3", c.nextAheadText(l, 1, 150.0)!!.first)
+    }
+
+    @Test fun sessionFileKeepsTheRoundaboutExit() {
+        val l = line(500, mapOf(200 to JunctionCue.ROUNDABOUT)).map { if (it.turn != null) it.copy(exit = 2) else it }
+        val back = NavSessionStore.fromJson(NavSessionStore.toJson(NavSession(NavKind.PLAN, "Test",
+            com.onpath.app.routing.Activity.BIKE_TOURING, 3, l)))!!
+        assertEquals(listOf(2), back.original.filter { it.turn != null }.map { it.exit })
+    }
+
     @Test fun sessionFileKeepsTheJunctions() {
         val l = line(500, mapOf(100 to JunctionCue.LEFT, 400 to JunctionCue.KEEP_RIGHT))
         val s = NavSession(NavKind.PLAN, "Test", com.onpath.app.routing.Activity.HIKE, 3, l, current = l.drop(5))
@@ -88,7 +129,7 @@ class JunctionCuesTest {
     }
 
     @Test fun lockScreenText() {
-        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j, 4230.0, 5100.0, 0L,
+        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j?.let { it.first.text to it.second }, 4230.0, 5100.0, 0L,
             distance = { if (it < 1000) "${it.toInt()} m" else "%.1f km".format(java.util.Locale.ROOT, it / 1000) },
             duration = { "1:25 h" }, clock = { "15:40" })!!
         assertEquals("Left in 120 m", t("Recording", JunctionCue.LEFT to 117.0).title)
@@ -99,5 +140,13 @@ class JunctionCuesTest {
         assertEquals("4.2 km to go", t("Recording", JunctionCue.LEFT to 800.0).title)
         assertEquals("Off route", t("Off route", JunctionCue.LEFT to 50.0).title)
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
+    }
+
+    /** On the bike a slight bend does not vibrate; a real turn and a fork do. */
+    @Test fun bikeSkipsSlightBends() {
+        val l = line(800, mapOf(100 to JunctionCue.SLIGHT_LEFT, 300 to JunctionCue.LEFT, 500 to JunctionCue.KEEP_RIGHT, 700 to JunctionCue.SLIGHT_RIGHT))
+        fun walk(c: JunctionCues) = (0..800 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true) }
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues(80.0).apply { skipSlight = true }))
+        assertEquals("hiking: every junction", 4, walk(JunctionCues(40.0)).size)
     }
 }

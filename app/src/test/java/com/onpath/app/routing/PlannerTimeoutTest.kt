@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Perf report 2026-10-22: after a timeout the planner does not retry leg by leg (each leg its own limit). */
+/** After a timeout the planner does not retry leg by leg (each leg its own limit). */
 class PlannerTimeoutTest {
     private val pts = (0..3).map { GeoPoint(46.6 + it * 0.1, 11.1) }
 

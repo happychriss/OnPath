@@ -27,7 +27,7 @@ data class AreaPlan(val areas: List<AreaSpec>, val installed: Set<CellId> = empt
     companion object {
         /**
          * The areas of [dataDir]: the current store generation's cells (+ the region package when it is joined),
-         * or – without cells – the data folder as before cells existed. Never throws.
+         * or – without cells – the data folder. Never throws.
          */
         fun of(dataDir: File): AreaPlan {
             val region = AreaSpec(REGION, OfflineIndex.signature(dataDir), dataDir, null)
@@ -76,8 +76,8 @@ class SearchArea(
 }
 
 /**
- * The offline search index as the union of per-area parts (owner 2026-10-23, field: a full rebuild took 59 s after
- * every map store generation). Each area's names are extracted ONCE (from the joined map files, only that area's
+ * The offline search index as the union of per-area parts (a full rebuild after every map store generation takes
+ * close to a minute). Each area's names are extracted ONCE (from the joined map files, only that area's
  * tiles / points) into a small file in [dir] (`<key>@<version hash>.tsv`); a new generation only extracts the added
  * or changed areas and drops the removed ones – the others are reused from memory (or read from their file after an
  * app start). Old installs migrate lazily: the first build writes the files. Thread-safe (one build at a time).
@@ -130,7 +130,7 @@ class SearchAreas(val dir: File, private val legacyCache: File? = null) {
         val installed = plan.installed.map { SearchArea.pack(it) }.toHashSet()
         val entries = ArrayList<OfflineIndex.Entry>(areas.sumOf { it.entries.size } + 64)
         val trails = ArrayList<TrailPart>()
-        // same order as the former full build (POIs, trails, base-map places): equal scores keep their order
+        // same order as [OfflineIndex.load] (POIs, trails, base-map places): equal scores keep their order
         for (a in areas) { entries += a.entriesWithout(installed, pois = true); trails += a.trailsWithout(installed) }
         // trail pieces of one name merge across areas (as in the joined map); a few thousand – cheap
         OfflineIndex.mergeTrailParts(trails).forEach { entries += OfflineIndex.Entry(it) }

@@ -89,11 +89,11 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     }
 
     /**
-     * 1 → 2 (backup, 2026-10-21): uuid (backup files, restore dedupe), pinned stops, recycle bin (deleted_at).
+     * 1 → 2 (backup): uuid (backup files, restore dedupe), pinned stops, recycle bin (deleted_at).
      * Every existing tour gets its uuid here. A column already there is fine.
-     * 2 → 3 (field test 2026-10-22): GPS accuracy per recorded point (`points.acc`, metres, null = unknown / imported),
-     * so a later analysis can tell weak fixes from no fix.
-     * 3 → 4 (vehicle detection, 2026-10-22): `tours.rides` (JSON, [com.onpath.app.rides.RideRecord]); points untouched.
+     * 2 → 3: GPS accuracy per recorded point (`points.acc`, metres, null = unknown / imported), so a later analysis
+     * can tell weak fixes from no fix.
+     * 3 → 4 (vehicle detection): `tours.rides` (JSON, [com.onpath.app.rides.RideRecord]); points untouched.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -421,8 +421,8 @@ object TourSchema {
 
     /**
      * Columns to add for an upgrade from [old] (1 → 2 is done before in [TourDb.onUpgrade]), in order; the caller skips
-     * a column already there. From 3 both are listed: a test build of the ride branch wrote version 3 with `rides` but
-     * without `acc` (2026-10-22), and without `acc` every new point would fail to insert.
+     * a column already there. From 3 both are listed: some version-3 databases have `rides` but no `acc`, and without
+     * `acc` every new point would fail to insert.
      */
     fun stepsFrom(old: Int): List<Step> = buildList {
         if (old < 4) add(Step("points", "acc", ADD_ACC))

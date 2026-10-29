@@ -1,17 +1,17 @@
-# iPhone later: one shared Kotlin core (owner question 2026-10-26)
+# iPhone later: one shared Kotlin core (owner question)
 
 Not now – the product is in field tests (bike routing, maps, bug fixes). This note fixes the direction so that work
-done today does not have to be redone.
+done now does not have to be redone.
 
 ## Direction
 Kotlin Multiplatform + Compose Multiplatform: one repo, one Gradle build, one version, one release workflow (APK +
 iOS archive on a macOS runner). Map style, PMTiles, sprites, fonts and the data pipeline stay as they are; MapLibre
 Native exists for iOS.
 
-## Order (owner agreed 2026-10-26)
+## Order (owner agreed)
 1. Now: field tests, bike routing, map tuning, bug fixes.
-2. Next: EN + DE – strings in **Compose Multiplatform resources** (`composeResources/values/strings.xml`,
-   `values-de/…`), not Android `res/values`: same effort, and the texts never move twice.
+2. Done: EN + DE – strings in **Compose Multiplatform resources** (module `strings/`, `docs/i18n.md`), not Android
+   `res/values`: same effort, and the texts never move twice.
 3. Later, on a quiet stable release: split the app into a shared `core` module (no Android) and the Android layer –
    its own step, no features mixed in. Interfaces for location, files, clock, vibration, notifications; SQLite via
    SQLDelight; org.json replaced by a small JSON helper or kotlinx.serialization.
@@ -21,7 +21,7 @@ Native exists for iOS.
 5. iOS-only parts: background location mode instead of the foreground service, no in-app updater (App Store /
    TestFlight), share sheet, notifications.
 
-## Rules from today
+## Rules
 - Planner, navigation, time, rides, GPX stay free of Android / MapLibre / BRouter / org.json – guarded by
   `SharedCoreRuleTest` (known exceptions listed there; the list may only shrink).
-- New user texts go through the string resources once EN + DE is in.
+- New user texts go through the string resources (`docs/i18n.md`).

@@ -1,59 +1,29 @@
-# Plan: smart time estimate (planning + remaining time while navigating)
+# Smart time estimate (planning + remaining time while navigating)
 
+**Owner decisions:** one time model everywhere (plan sheet = Navigate); "to go" = moving time, the arrival clock adds a
+10 % break allowance; a pace setting per hiking / cycling (five levels, §4.1); no range shown; the owner's GPX tours
+are test fixtures in the repo (start / end 300 m trimmed). **Learning per tour only** (owner): every plan and every
+tour starts from the Settings pace; during a tour the arrival adapts gradually after ~15 min / 1 km, down / flat / up
+separately, breaks excluded; nothing is carried to the next tour (see "Learning per tour only" below).
 
-**Owner decisions (2026-10-18): all six recommendations accepted** – new model everywhere (Q1 yes), "to go" =
-moving time + arrival clock with 10 % break allowance (Q2), three pace chips Relaxed/Normal/Fit (Q3), learning across
-tours automatic with Reset (Q4), no range for now (Q5), owner's GPX tours as trimmed test files in the repo (Q6).
-
-**Owner decision 2026-10-22: learning per tour only** (replaces Q4) – every plan and every tour starts from the
-Settings pace (Relaxed / Normal / Fit); learning across tours (`PaceStore`) is removed with its stored data; during a
-tour the arrival adapts gradually after ~15 min / 1 km, down / flat / up separately, breaks excluded; nothing is
-carried to the next tour. See "Learning per tour only (2026-10-22)" below.
-
-Status: **P0–P3 implemented** on branch `feat/time-estimate` (2026-10-18, see "Implementation status" below); **P4
-way factors implemented** on `feat/time-p4` (SAC / surface / steps / MTB scale per span, see "P4" below); tuning with
-the owner's tours still open. Original proposal text follows unchanged. Owner request: "Estimation of remaining walking/hiking time –
-how to do it smart? Settings, learn from the current trip (consider up and down) – be cool and make sure we're not too
-far off." Experiment: `tools/routing/jvm-test/TimeTest.kt` (real BRouter routes from the Bozen / Meran data +
-synthetic replays), run with
+Status: **P0–P2 and P4 (way factors) implemented**; tuning with the owner's tours still open. Owner request:
+"Estimation of remaining walking/hiking time – how to do it smart? Settings, learn from the current trip (consider up
+and down) – be cool and make sure we're not too far off." Experiment: `tools/routing/jvm-test/TimeTest.kt` (real
+BRouter routes from the Bozen / Meran data + synthetic replays), run with
 `KTTEST=$PWD/tools/routing/jvm-test/TimeTest.kt tools/routing/jvm-test/run.sh /home/development/Projects/onpath-build/out/segments`.
+Sections §1–§7 further down are the original proposal (design background and measurements; "today" there means the
+times before this model).
 
-**Short version**
-
-- **Today the app shows two different times for the same route.** The plan sheet shows BRouter's time (Tobler's
-  function, 5 km/h on the flat and **500 m/h up steep hills**); Navigate "to go" shows our DIN 33466 formula. On
-  mountain hikes "to go" at the start is **+52 % to +94 %** of what the plan sheet just said (Hirzer hut: plan 1:31,
-  to go 2:56). That jump comes first. Fix it before any learning.
-- **One model for both**, worked out **per 50 m segment with its gradient** (option B, a small table: 4 km/h on the flat,
-  ~300–340 m/h up, ~500–550 m/h down, slower again on very steep descents). It gives the same time in Plan and
-  Navigate, and up and down are handled where they really are, not as route totals.
-- **Settings:** one "Pace" choice per hike / bike: *Relaxed · Normal · Fit* (×1.25 / ×1.0 / ×0.8), as F-ROUTE-03 says.
-- **Learning on the trip:** while you follow a route, OnPath compares your real **moving time** on each passed piece of
-  the route with what the model said, **separately for down / flat / up**. The rest of the route is then scaled
-  with your own factors. It learns slowly at first (it acts as if 20 min of "normal" walking were already done), so the
-  first minutes don't swing the number. Elevation comes from the route (terrain model), not from GPS altitude, so GPS
-  noise doesn't matter.
-- **Breaks** don't count as moving time (standing still ≥ 2 min). "To go" = walking time. The **arrival clock**
-  ("arrive ~16:40") adds a break allowance (default 10 %, later learned from your tours).
-- **Calm display:** updated every 100 m / 30 s, and the arrival clock moves at most 1 min + 2 % of the remaining time
-  per update. No jumping.
-- **Replay result** (synthetic hikers on 9 real routes, 900 runs): median error of the remaining time at half way
-  **20 % today → 8 % with learning**, p90 **53 % → 21 %**. Biggest arrival-clock jump per 100 m: 29 min → **8 min**
-  with the calm display.
-- **Across tours:** ~~after each tour your factors are stored per activity~~ – dropped 2026-10-22 (owner: learning per
-  tour only; every plan and tour starts from the pace setting).
-
-## Implementation status (2026-10-18, branch `feat/time-estimate`)
+## Implementation status
 
 | Phase | What is in the code | Where |
 | --- | --- | --- |
 | P0 | One model: table B (hiking), power model (bikes: rider power, e-assist to 25 km/h, rolling resistance and speed cap by surface, pushing = walking × 0.85 as the floor), per ~50 m DEM segment, cumulative per down/flat/up. Plan sheet, route list (planned routes re-timed on load), Navigate "to go", re-route scoring and the activity-check sheet all use it. BRouter's `durationS` stays in `RouteResult` but is not shown. | `time/PaceModel`, `time/RouteTimes`, `time/TimeEstimate`; `AppViewModel.withModelTime`, `Rerouter`, `ActivityCheck.timeS` |
-| P1 | Settings → "Your pace" (Relaxed / Normal / Fit for hiking and cycling). Navigate card: "2 h 50 min · 7.4 km", "arrive ≈ 16:40" (10 % break allowance) on the right, recording line "moving 1:12 · breaks 0:11". "Tour saved" shows moving time, breaks and "On the route: planned 3:10 – you needed 2:52". | `ui/PaceSettings.kt`, `NavigateScreen` (`recordingLine`, arrival column), `FinishedDialog(times)`, `time/TourTimesStore` (`tour-times.json`) |
+| P1 | Settings → "Your pace" (five levels for hiking and cycling, §4.1). Navigate card: "2 h 50 min · 7.4 km", "arrive ≈ 16:40" (10 % break allowance) on the right, recording line "moving 1:12 · breaks 0:11". "Tour saved" shows moving time, breaks and "On the route: planned 3:10 – you needed 2:52". | `ui/PaceSettings.kt`, `NavigateScreen` (`recordingLine`, arrival column), `FinishedDialog(times)`, `time/TourTimesStore` (`tour-times.json`) |
 | P2 | `TripPace` in the recording service (persisted in `trip-pace.json`): learning per group with τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2; pieces off route / jumps > 400 m / ratio outside 0.33…3 are not learned. Calm display. The opened Navigate card shows "Your pace on this trip: up 0.9× · down 1.1×" after 20 min of comparison. Replay harness for GPX pairs. | `time/TripPace`, `time/BreakDetector`, `RecordingService` (`timeLine`, `tripTime`), tests `TripReplay` / `TrackReplayTest` |
 | P4 | Way attributes per span of the routed line (`GeoPoint.way: WayAttrs`, from BRouter's track messages): hiking × SAC / rough ground / steps / faint-trail factor, bikes on the real surface with smoothness / MTB-scale caps and pushing. Used per 50 m piece; Time details has a second table "By way type / difficulty". Kept through leg fallback, chunks, re-route splice and the navigation session file; saved routes store their group times in `plan-times.json`. | `routing/RoutingContract` (`WayAttrs`), `BRouterWayStats.perNode`, `BRouterEngine.toResult`, `time/PaceModel` (`hikeWayFactor`, `ride`), `time/RouteTimes`, `time/TimeBreakdown`, `time/PlanTimesStore`, `NavSession` |
-| P3 (**removed 2026-10-22**) | `PaceStore` per activity (6 activities, not 3 groups): after a tour with ≥ 30 min moving time on a followed route, weighted by compared time per group, half-life 5 tours; break ratio stored (not yet used). Settings lists it with Reset (asks first). Plan = model × pace × stored factors. | `time/PaceStore`, `Prefs.paceStore`, `RecordingService.learnAcrossTours`, `AppViewModel.resetLearnedPace` |
 
-**Decisions taken while building** (open for the owner):
+**Decisions taken while building:**
 - *Breaks:* "within 25 m for 2 min" alone flagged slow steep walking as breaks (replay: 2:28 h of "breaks" instead of
   55 min). A stop now starts only when every fix of the last 2 min lies within **15 m** of the current one and, on a
   followed line, progress in those 2 min was < 10 m; it ends > 25 m away. A GPS gap ≥ 2 min with < 0.15 m/s average
@@ -61,10 +31,9 @@ synthetic replays), run with
 - *Calm display:* a new estimate is shown every **100 m** of progress (not more often than every 10 s); standing
   still, "to go" stays and the arrival clock only moves later as the time passes (checked every 30 s). Arrival
   rounded to 5 min, "to go" to 1 min under 20 min, else 5 min (the plan sheet shows the same rounded value).
-- *Stored factors* are relative to the pace setting at the time; changing the chip later applies on top.
-- *No "Learn from my tours" switch* (owner Q4: automatic + Reset); *no break-allowance setting* (fixed 10 %, Q2).
-- *Bikes:* since P4 each span uses its real surface; spans without attributes (straight legs, imported tracks) use the
-  activity's usual surface (touring asphalt, trekking / e-bike paved, MTB / e-MTB unpaved).
+- *No break-allowance setting* (fixed 10 %, owner).
+- *Bikes:* each span uses its real surface; spans without attributes (straight legs, imported tracks) use the
+  activity's usual surface (Bike asphalt, Gravelbike / E-bike paved, MTB / E-MTB unpaved).
 
 **Old vs. new times on the reference routes** (`ReferenceRoutesTest`, h:mm, Normal pace; new = plan sheet = Navigate at
 the start, shown rounded to 5 min):
@@ -77,7 +46,7 @@ the start, shown rounded to 5 min):
 | H8 Saltaus → Hirzer hut (up) | 1:30 | 2:55 | 2:20 |
 | H8r Hirzer hut → Saltaus (down) | 1:04 | 1:55 | 1:24 |
 | H9 Meran 2000 → Ifinger (T4) | 2:05 | 3:36 | 2:57 |
-| B1 Bozen → Meran, trekking | 1:38 | 2:12 | 1:41 |
+| B1 Bozen → Meran, Gravelbike | 1:38 | 2:12 | 1:41 |
 | B3 Lana → Vigiljoch, MTB | 1:16 | 1:32 | 1:19 |
 
 **Replay (synthetic walkers on H5 / H7 / H9, `TrackReplayTest`):** |error| of "to go" at 25 / 50 / 75 %: strong climber
@@ -86,11 +55,10 @@ with bad knees 24 / 24 / 0 %, relaxed ×1.3 11 / 11 / 10 %, fit ×0.8 11 / 13 / 
 1 min + 2 % rule allows ~8 min per update on a 6 h day). Real tracks: add folders to `app/src/test/resources/tracks/`
 (plan.gpx + track.gpx + info.txt, see `TripReplay`).
 
-### One time model for lines without timestamps (2026-10-26, captain decision)
+### One time model for lines without timestamps
 
-Until then `Geo.estimateSeconds` kept its own older speeds (hike DIN 33466 on the whole line; bikes fixed km/h + seconds
-per metre up: Touring 20, Trekking 16, E-bike 20, MTB 12, E-MTB 14 km/h) beside this model. An imported track without
-timestamps therefore showed another (mostly slower) time than the same line once planned. Now there is one source:
+Every line without timestamps is timed by this model, so an imported track shows the same time as the same line once
+planned (a separate `Geo.estimateSeconds` with fixed speeds gave mostly slower times):
 
 - **Imported GPX without timestamps:** `TimeEstimate.importedSeconds` = the model per segment (`RouteTimes`, the
   file's own elevation, no way attributes → the activity's usual surface / factor 1) × the pace level, the gap between
@@ -98,38 +66,36 @@ timestamps therefore showed another (mostly slower) time than the same line once
 - **My routes / the shown track:** imported tracks without timestamps are re-timed on load like planned routes
   (`AppViewModel.withModelTime`), so a pace change moves them too; recorded tours and timed imports stay as recorded.
 - **Straight lines:** `StraightLineEngine` (`RouteTimes`), the straight legs of `Planner` and the "longer than a
-  day?" question (`LongRoute`, flat) use `PaceModel.seconds`. `Geo.estimateSeconds` is removed.
+  day?" question (`LongRoute`, flat) use `PaceModel.seconds`.
 - Guard: `OneTimeModelTest` (import = plan for every reference route, activity and pace level).
 
-What moved (20 km line, Average pace, h:mm; with climb = 400 m up over the first half and down over the second):
+Old fixed speeds → model (20 km line, Average pace, h:mm; with climb = 400 m up over the first half and down over the second):
 
 | Activity | flat before → after | 400 m up / down before → after |
 | --- | --- | --- |
 | Hike (T2) | 5:00 → 5:00 | 6:05 → 5:15 |
-| Bike touring | 1:00 → 0:55 | 1:40 → 1:30 |
-| Bike trekking | 1:15 → 1:00 | 2:00 → 1:35 |
+| Bike | 1:00 → 0:55 | 1:40 → 1:30 |
+| Gravelbike | 1:15 → 1:00 | 2:00 → 1:35 |
 | E-bike | 1:00 → 0:50 | 1:15 → 0:50 |
 | MTB | 1:40 → 1:15 | 2:35 → 1:50 |
-| MTB e-bike | 1:25 → 0:50 | 1:45 → 1:05 |
+| E-MTB | 1:25 → 0:50 | 1:45 → 1:05 |
 
-Planned routes are unchanged (they already used this model); `ReferenceRoutesTest` numbers did not move (its "DIN"
-column now calls `Din33466` directly).
+Planned routes always used this model; `ReferenceRoutesTest`'s "DIN" column calls `Din33466` directly.
 
-### Learning per tour only (2026-10-22)
+### Learning per tour only
 
-Owner decision: "learning per tour only". What the code does now (`time/TripPace`, `TimeEstimate.planFactors`):
+Owner decision: "learning per tour only". What the code does (`time/TripPace`, `TimeEstimate.planFactors`):
 
 | Rule | Implementation |
 | --- | --- |
-| Every plan and every tour starts from the Settings pace | `TimeEstimate.planFactors(activity, settings)` = pace factor only; `RecordingService.priorFor` the same; `PaceStore`, `learnAcrossTours`, Settings "Learned · …" rows with Reset and the Time details "Learned from tours" row removed; the old Prefs value `paceStore` is deleted once at app start (`Prefs.dropOldLearnedPace`, Problems INFO) |
+| Every plan and every tour starts from the Settings pace | `TimeEstimate.planFactors(activity, settings)` = pace factor only; `RecordingService.priorFor` the same; no stored learned pace (an old Prefs value `paceStore` is deleted once at app start, `Prefs.dropOldLearnedPace`, Problems INFO) |
 | Warm-up: the setting alone for ~15 min / ~1 km | `factors()` = exactly 1 until **15 min of walking and 1 km of progress** were compared on the route (`WARMUP_S`, `WARMUP_M`; both, so a bike also waits 15 min and a slow walker 1 km). Compared walking only: breaks, pauses, off-route stretches never count |
-| Then gradually towards the measured pace, down / flat / up separately | the learned factors (unchanged: τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2) are blended in linearly over the next 15 min of compared walking (`BLEND_S`): `f = 1 + w · (f_learned − 1)`, w 0 → 1. No jump at the end of the warm-up (first step < 0.02, steps < 0.015 per fix in the test) |
+| Then gradually towards the measured pace, down / flat / up separately | the learned factors (τ = 20 min, τg = 15 min, ρ = 0.5, clamp 0.5…2) are blended in linearly over the next 15 min of compared walking (`BLEND_S`): `f = 1 + w · (f_learned − 1)`, w 0 → 1. No jump at the end of the warm-up (first step < 0.02, steps < 0.015 per fix in the test) |
 | Setting changed mid-tour | `setPrior` re-bases the start value (the new setting) and keeps what was measured (observed sums re-scaled); in the warm-up the new setting shows at once |
 | Nothing carried to the next tour | a new `TripPace(setting)` per tour; the trip file is deleted at the end (and only read back for the same tour id) |
-| Plan sheet | unchanged: setting-based times |
+| Plan sheet | setting-based times |
 
-**New line (plan edit, re-route) – backlog "arrival forecast after plan edits – rest":** `setLine` no longer throws
-away what the calm display held back. The arrival moves at once by what the new line changes, the rest (shown −
+**New line (plan edit, re-route):** `setLine` keeps what the calm display held back. The arrival moves at once by what the new line changes, the rest (shown −
 estimate on the old line at that moment) is kept as an offset and blended out linearly over 10 min
 (`OFFSET_BLEND_MS`). When the shown arrival moves by more than 5 min because of a new line (`NOTE_MIN_MS`),
 `TripTime.lineNote` carries "New route: arrival 12:45, was 13:15"; the Navigate card shows it as a line under the
@@ -153,9 +119,9 @@ The owner's tours are short (~1 h), so the warm-up costs a little accuracy early
 plan); the arrival is calmer. Long synthetic days are unchanged. Open: check on the next walk that the first quarter
 hour feels right ("setting" time) and that a re-route shows the note only when the arrival really moved.
 
-### P4: way type and difficulty (2026-10-18, branch `feat/time-p4`)
+### P4: way type and difficulty
 
-Owner: "Is the estimator considering up and down and way type?" – up / down yes (per 50 m piece), now also the way.
+Owner: "Is the estimator considering up and down and way type?" – up / down per 50 m piece, and the way.
 
 **How:** BRouter reports way tags per run of equal tags (`processUnusedTags=1`); `BRouterWayStats.perNode` matches the
 runs to the track nodes by position and puts a `WayAttrs` (way type, surface key, SAC 1–6, mtb:scale, smoothness,
@@ -197,18 +163,16 @@ caps are judgement – first in line for tuning with real rides.
 | H9 Meran 2000 → Ifinger (sac limit T5) | T1 5.2, **T3 1.4**, T2 1.1 | 2:57 | **3:05 (+5 %)** |
 | H10 Texel group traverse | **T4 5.1** | 2:17 | **3:05 (+35 %)** |
 | H11 Texel group section | **T5 3.2** | 2:53 | **4:37 (+60 %)** |
-| B1 Bozen → Meran, trekking | asphalt 32.8 | 1:41 | 1:36 (−5 %: asphalt instead of the assumed "paved") |
-| B1 Bozen → Meran, touring | asphalt 29.8 | 1:20 | 1:21 |
-| B2 Meran → Schenna → Meran, trekking | asphalt / paved / gravel, intermediate | 0:55 | 0:56 |
+| B1 Bozen → Meran, Gravelbike | asphalt 32.8 | 1:41 | 1:36 (−5 %: asphalt instead of the assumed "paved") |
+| B1 Bozen → Meran, Bike | asphalt 29.8 | 1:20 | 1:21 |
+| B2 Meran → Schenna → Meran, Gravelbike | asphalt / paved / gravel, intermediate | 0:55 | 0:56 |
 | B3 Lana → Vigiljoch, MTB | unknown 2.7, asphalt 2.2 | 1:19 | 1:14 (−6 %: asphalt part) |
 | B4 Algund → Vellau, MTB | gravel T1/T2 2.0 | 0:40 | 0:41 |
 
 The Ifinger summit path is tagged T3 in OSM (only the last 1.4 km), so it gets slower only there; real T4 / T5 routes
 get +35 % / +60 %. Valley and T1/T2 routes are unchanged.
 
-**Field test (owner):** see the checklist in `docs/project-status.md` (Last session).
-
-### Field test 2026-10-19 – arrival "never updated" (branch `fix/arrival-estimate`)
+### Field test – arrival "never updated"
 
 **What happened** (2000–2270 m, Hike T3): plan A→B (4.7 km). Tour 3 walked it forwards and turned after 3.7 km;
 tour 4 walked the same path back to A and ~1 km beyond. During the tour the plan was switched to round trip and back
@@ -224,14 +188,14 @@ was matching and following, not the pace model.
 2. **Walking backwards was hidden by the calm display:** the arrival may move only 1 min + 2 % per 100 m, so a growing
    time to go was shown *shrinking* (1:40 → 1:05 while walking away from B).
 3. **The arrival crept later while walking at the shown pace:** between the 100 m updates "to go" stayed and the
-   arrival was pushed to now + to go every 30 s (the backlog's 12:45 → 13:15).
+   arrival was pushed to now + to go every 30 s (12:45 → 13:15).
 4. **A new line started "from its start":** after Continue / a plan edit the time was set for progress 0 and then only
    allowed to move slowly. And the Navigate card's distance came from a second matcher (`FollowProgress`) that could
    disagree with the service's time.
 5. **Plan edits during a tour were not followed** until "Continue navigation" – the plan sheet showed A→B while the
    tour followed A→B→A.
 
-**Owner rules (decided 2026-10-19) and what the code does now**
+**Owner rules and what the code does**
 
 | # | Rule | Implementation |
 | --- | --- | --- |
@@ -298,7 +262,7 @@ keeps the old line (deleting the only target of A→B does not navigate home –
 - **foot profiles** (`hiking-mountain.brf` has `validForFoot 1`, no `maxSpeed` → default 6 km/h):
   **Tobler's hiking function** `v = 6 · exp(−3.5 · |incline + 0.05|)` km/h → 5.0 km/h flat, 6 km/h at −5 %.
 - **bike profiles:** power model, solves `S_C_x·v³ + m·g·(C_r + incline)·v = bikerPower` (defaults 100 W, 90 kg,
-  `C_r` 0.01 on every surface, `maxSpeed` 45 km/h). `trekking.brf` / `touring.brf` (before: `fastbike`) set exactly these; `mtb.brf` sets
+  `C_r` 0.01 on every surface, `maxSpeed` 45 km/h). `trekking.brf` / `touring.brf` set exactly these; `mtb.brf` sets
   nothing (same defaults → no surface effect); E-bike / E-MTB: `BRouterEngine.keyValues` sets 180 W, 25 km/h, 110–115 kg.
 - `hiking-mountain.brf` ignores the SAC level and surface for time (only for cost); no breaks.
 
@@ -387,8 +351,8 @@ messages already parsed by `BRouterWayStats`): SAC T1–T2 ×1.0, T3 ×1.1, T4 �
 off-path ×0.6), and the learned factor absorbs most of it, so this waits for field data.
 
 **Bikes:** keep a **power model** (physics is the right tool for bikes, like BRouter's), but compute it ourselves per
-segment so Plan and Navigate agree and learning works: rider power by activity (touring 100 W like trekking since 2026-10-25 – 120 W was road-bike like, ~24 km/h –,
-trekking 100 W, MTB 110 W; e-bike/e-MTB rider 100 W + assist up to 25 km/h), **rolling resistance by surface** (asphalt 0.006, paved 0.008,
+segment so Plan and Navigate agree and learning works: rider power by activity (Bike 100 W like Gravelbike – 120 W was road-bike like, ~24 km/h –,
+Gravelbike 100 W, MTB 110 W; e-bike/e-MTB rider 100 W + assist up to 25 km/h), **rolling resistance by surface** (asphalt 0.006, paved 0.008,
 gravel 0.012, unpaved/ground 0.02, trail 0.03), **downhill speed caps** by surface (asphalt 40, gravel 30, trail 15
 km/h; MTB trails T-scale later). Pace setting = factor on time (simple; same as hiking). Push sections (> 15 % on
 non-e-bikes for long stretches) are a later refinement.
@@ -400,12 +364,11 @@ BRouter's `durationS` stays in the `RouteResult` contract but is no longer shown
 
 ### 4.1 Settings (simple)
 
-Settings → "Your pace", hiking and cycling, **five levels** each (owner 2026-10-22; until then three: Relaxed ×1.25 /
-Normal / Fit ×0.8). Speeds about 15 % apart around **Average = DIN 33466** (4 km/h, 300 m up and 500 m down per hour;
+Settings → "Your pace", hiking and cycling, **five levels** each (owner). Speeds about 15 % apart around **Average = DIN 33466** (4 km/h, 300 m up and 500 m down per hour;
 `time/Din33466`; table B is anchored on it). Time factor = 1 / speed.
 Each level shows what it means for the activity (`Pace.meaning`): hiking from DIN, bikes from the power model of the
-current bike (flat speed, height per hour on a 6 % climb), both × speed. Table B stays the main hiking model (owner
-2026-10-22). **E-bikes / e-MTBs** (owner 2026-10-22): the flat speed is capped at about 25 km/h at every level (the
+current bike (flat speed, height per hour on a 6 % climb), both × speed. Table B stays the main hiking model (owner).
+**E-bikes / E-MTBs** (owner): the flat speed is capped at about 25 km/h at every level (the
 assist limit; `Pace.factors`: flat factor ≥ model flat speed / 25), so Fit / Very fit are only faster uphill (and down).
 
 | Level | Speed | Time factor | Hiking |
@@ -430,7 +393,7 @@ Own speeds (km/h, m/h up, m/h down) are **not** offered in v1 – the learning d
 elevation**, so GPS altitude noise, the ellipsoid offset and barometer quirks don't matter. Off-route stretches and
 detours are not learned (not comparable to the plan).
 
-**Moving time vs. breaks.** A break starts when you stay within 25 m for 2 min (or the recording is paused) and ends
+**Moving time vs. breaks.** (As built: 15 m, see "Decisions taken while building".) A break starts when you stay within 25 m for 2 min (or the recording is paused) and ends
 at the first fix > 25 m away. Break time is excluded from `a`. Shorter stops (photo, map check, gate) stay in moving
 time – they are part of normal walking, as in signpost times. The break total is stored separately.
 
@@ -456,7 +419,7 @@ remaining = Σ over remaining segments  p_segment × pace setting × f_group(seg
 - Cost: predicted time per group is precomputed as cumulative sums along the line, so `remaining` is three
   subtractions and three multiplications per fix.
 
-**Warm-up (2026-10-22).** The first 15 min / 1 km of compared walking use the setting alone; then the factors above
+**Warm-up.** The first 15 min / 1 km of compared walking use the setting alone; then the factors above
 are blended in over 15 min (see "Learning per tour only" at the top).
 
 **Calm display.**
@@ -500,21 +463,7 @@ Per hiker type at half way (median error): today E0 / one factor E3 / recommende
 - The calm display costs no accuracy and caps the worst jump at 8 min (from 29).
 - **Not shown:** whether table B is right for real people – the hikers were generated from table B. Absolute accuracy
   needs real tracks (§6). The literature says ~14 % per route for an unknown person with a good formula; learning across
-  tours (§4.4) is what closes that gap *before* the start.
-
-### 4.4 Learning across tours (optional, recommended) – **dropped 2026-10-22**
-
-Built as P3, removed by the owner's decision "learning per tour only": every plan and tour starts from the pace
-setting. Kept below as the original proposal.
-
-- After a tour with ≥ 30 min moving time on a followed route, store per activity group (hike / bike / e-bike):
-  `f_down, f_flat, f_up` (the trip's group factors) and the break ratio, as a weighted running average
-  (new tour weight = its moving hours, older tours fade with a half-life of ~5 tours).
-- The next plan uses `table B × pace setting × stored factors`. The trip learning then starts from these.
-- Settings shows it in one line: "Your hiking pace: 12 % faster than standard on climbs, 5 % slower downhill (4 tours)
-  · **Reset**". No hidden magic; the user can switch learning off.
-- Free recordings (no route) can feed this later: elevation from our terrain DEM (`terrain.pmtiles`, Terrarium z13)
-  at the recorded points instead of GPS altitude.
+  tours could close that gap *before* the start, but is not done (owner: learning per tour only).
 
 ### 4.5 Breaks in the arrival clock (`TimeTest.kt` Part 2b)
 
@@ -542,7 +491,7 @@ Breaks come in blocks (lunch at the hut), so a ratio learned during the trip is 
 | Settings | – | "Your pace" chips (hike / bike), "Learn from my tours" switch + Reset, break allowance 0 / **10** / 20 % |
 
 Owner UX rules are kept: nothing pops up, nothing disappears by itself, big text, no extra buttons in Navigate.
-Confidence/ranges are deliberately left out of v1 (one number, honestly computed, calm); see Q5.
+Confidence/ranges are deliberately left out of v1 (one number, honestly computed, calm; owner).
 
 ## 6. Accuracy plan – how we know we are "not too far off"
 
@@ -557,19 +506,18 @@ Confidence/ranges are deliberately left out of v1 (one number, honestly computed
 | Metric | Target |
 | --- | --- |
 | Plan time, first tours (no history) | median ≤ 20 %, never Plan vs. Navigate disagreement (0 % by construction) |
-| Plan time after ≥ 5 tours learned | median ≤ 10 % |
 | Remaining time at 25 / 50 / 75 % | median ≤ 10 %, p90 ≤ 25 % |
 | Arrival clock jump per 100 m | p90 ≤ 2 min, max ≤ 10 min (except after a re-route / plan edit) |
 
 **Replay tests with real tracks.** A JVM/unit test feeds recorded GPX (lat, lon, time) as fixes into the same pure
-estimator (`TripPace`) along the planned route GPX and prints/asserts the metrics. Today **no recorded tracks exist in
-the repo or on this machine** (searched `onpath-build`, test resources, home) – they are on the owner's phone.
+estimator (`TripPace`) along the planned route GPX and prints/asserts the metrics. Fixtures:
+`app/src/test/resources/tracks/` (owner tours + synthetic walkers).
 
 **Field data from the owner**
 1. Before a tour: save the plan (Manage routes → Export GPX).
 2. Record the tour while navigating (as now). After: My tours → Export GPX.
 3. Put both GPX files (+ one line: activity, pace setting, anything special such as "lunch 40 min", "rain") into the
-   fixture folder (see Q6), e.g. `app/src/test/resources/tracks/2026-10-25-hirzer/{plan,track}.gpx`.
+   fixture folder (in the repo, ends trimmed), e.g. `app/src/test/resources/tracks/2026-10-25-hirzer/{plan,track}.gpx`.
 4. The replay test runs in CI; each new tour adds one row to the accuracy table.
 5. After ~5 hikes: tune table B (if the owner is consistently off in one gradient group, that is the table, not him),
    the τ / ρ values and the break threshold.
@@ -583,7 +531,6 @@ New package `time/` (pure Kotlin, no Android, JVM-testable; like `navigation/`):
 | `time/PaceModel.kt` | `segmentSeconds(lenM, dz, activity, terrain?)`: table B for hiking, power model for bikes. Pace settings factors. |
 | `time/RouteTimes.kt` | For a line: per-point cumulative predicted seconds **per group** (down/flat/up). `total(f)`, `remainingFrom(index, partial, f)` – O(1). Used for plan sheet, to go, re-route scoring. |
 | `time/TripPace.kt` | State machine fed by the service: `onFix(timeMs, progressIndex, offM, moving)`, break detection, group sums, factors (formulas §4.2), calm display state, arrival. Serialisable (JSON) so it survives a service restart. |
-| `time/PaceStore.kt` | Per-activity stored factors + break ratio (Prefs JSON), update after a tour, reset. |
 
 **Where it plugs in**
 
@@ -592,35 +539,12 @@ New package `time/` (pure Kotlin, no Android, JVM-testable; like `navigation/`):
 | `Planner` sums `RouteResult.durationS`; straight-line legs `Geo.estimateSeconds` | `PlannedRoute.durationS = RouteTimes(points).total(user factors)` (points carry elevation; straight legs get DEM later or flat). `RoutingContract` unchanged. |
 | `FollowProgress.timeS` → `Geo.estimateSeconds` | `RouteTimes.remainingFrom(r.index, …)` with the live factors from `RecState`. `FollowProgress` keeps distance / ascent. |
 | `Rerouter` scoring with `Geo.estimateSeconds` | same `PaceModel` (consistency; optional) |
-| `RecordingService` (elapsed time only) | owns a `TripPace` next to the `Navigator` (the service runs with the screen off and knows progress); publishes `moving`, `breaks`, factors, remaining, arrival in `RecState`; persists with `nav-session.json`. On tour end → `PaceStore.update`. |
+| `RecordingService` (elapsed time only) | owns a `TripPace` next to the `Navigator` (the service runs with the screen off and knows progress); publishes `moving`, `breaks`, factors, remaining, arrival in `RecState`; persists with `nav-session.json`. |
 | `NavigateScreen` `ToGo(... timeS)` | shows `RecState` remaining + arrival (no own computation). |
-| `Geo.estimateSeconds` | kept for imported GPX without times and as fallback; **removed 2026-10-26** (one time model, see "One time model for lines without timestamps"). |
+| `Geo.estimateSeconds` | removed (one time model, see "One time model for lines without timestamps"). |
 
 Data: no new DB columns needed for v1 (break/moving can be recomputed from points); optional `accuracy` column later
 for better replay.
-
-## 8. Phases
-
-| Phase | What | Effort | Who |
-| --- | --- | --- | --- |
-| **P0** One model everywhere | `PaceModel` + `RouteTimes` (table B, bike power model), plan sheet + to go + re-route use it; unit tests; `TimeTest.kt` stays as a regression print | ~1 day | cloud (routing-adjacent, no device needed) |
-| **P1** Pace setting + arrival clock | Settings chips (hike / bike), arrival "~16:40" with 10 % break allowance, moving / breaks in the recording line; Paparazzi shots | ~1 day | laptop (feel on the phone) |
-| **P2** Learning on the trip | `TripPace` in the service (break detection, group factors, calm display, persisted), NavUi shows it; replay test harness for GPX pairs | ~2 days | cloud (pure logic + tests), laptop field test |
-| **P3** Learning across tours | `PaceStore`, after-tour summary ("planned vs. needed"), Settings line + Reset + switch | ~1 day | either |
-| **P4** Terrain + tuning | SAC / surface factors from BRouter tags, bike surface rolling resistance and downhill caps, tune table and τ/ρ with ≥ 5 real tours | ~1–2 days | cloud, with owner's GPX |
-
-P0 alone fixes the most visible problem (the jump between Plan and Navigate) and is small.
-
-## 9. Open questions for the owner
-
-| # | Question | Recommendation |
-| --- | --- | --- |
-| Q1 | Plan sheet times for mountain hikes get **~30–50 % longer** than today (BRouter's Tobler is fast uphill). OK to switch to the new model everywhere? | **Yes** – closer to the yellow signposts, and Plan = Navigate. |
-| Q2 | "To go" = walking time without breaks, and the arrival clock adds a break allowance (10 %)? | **Yes**; allowance setting 0 / 10 / 20 %, later learned from tours. |
-| Q3 | Pace setting: three chips (Relaxed / Normal / Fit) per hiking and cycling, or also own speeds (km/h, m/h)? | **Three chips**, no own speeds – learning does the fine-tuning. |
-| Q4 | Learn across tours automatically (stored per activity, visible in Settings with Reset)? | **Yes, on by default**, only from tours with ≥ 30 min on a followed route. |
-| Q5 | Show a range ("2:40–3:10") or confidence? | **No** for v1 – one calm number; maybe a "~" until 20 min of learning. |
-| Q6 | Your recorded GPX tours as test fixtures: in the public repo (start/end 300 m trimmed for privacy) or in a private folder outside git? | **Repo with trimmed ends** – CI can then guard accuracy. |
 
 ## Sources
 

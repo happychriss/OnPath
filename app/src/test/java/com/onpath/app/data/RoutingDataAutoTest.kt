@@ -13,14 +13,14 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * CORE FEATURE "routing data on a fresh install" (field test 2026-10-21: a fresh phone never downloaded routing data;
- * the plan showed a straight line and a notice with a file path). Which tiles a place needs, the plain notice, and the
+ * CORE FEATURE "routing data on a fresh install": a fresh phone downloads routing data by itself and never shows a
+ * file path. Which tiles a place needs, the plain notice, and the
  * loader: loads missing tiles by itself, respects "Maps only on Wi-Fi", waits offline, keeps partial files, and tells
  * the app when a tile arrived (the plan is then computed again).
  */
 class RoutingDataAutoTest {
 
-    // ---------------------------------------------------------------- which 1° parts (owner decision "D")
+    // ---------------------------------------------------------------- which 1° parts
 
     @Test fun pointInMeranNeedsOnePart() {
         assertEquals(listOf("E10_N45.rd5:E11_N46"), RoutingTiles.forPoints(listOf(GeoPoint(46.67, 11.16))))
@@ -78,7 +78,7 @@ class RoutingDataAutoTest {
         for (s in listOf(RoutingDataNotice.LOADING, RoutingDataNotice.NOT_YET)) {
             assertFalse(s, s.contains(".rd5") || s.contains("/") || s.contains("segments"))
         }
-        // owner 2026-10-22: never "routing data" – it is all "the map for this area"
+        // owner: never "routing data" – it is all "the map for this area"
         assertEquals("Map loading – straight line for now", RoutingDataNotice.text(true))
         assertEquals("Map loads when online – straight line for now", RoutingDataNotice.text(false))
         for (s in listOf(RoutingDataNotice.LOADING, RoutingDataNotice.NOT_YET)) assertFalse(s, s.contains("routing", ignoreCase = true))
@@ -208,7 +208,7 @@ class RoutingDataAutoTest {
         assertEquals(listOf(idx.size(6) + idx.size(1)), sizes)
     }
 
-    /** Perf report 2026-10-22: the wanted parts of one 5° file load in one batch – the local rd5 is written once. */
+    /** The wanted parts of one 5° file load in one batch – the local rd5 is written once. */
     @Test fun partsOfOneFileLoadTogether() {
         var rewrites = 0
         val own = Rd5PartStore(Files.createTempDirectory("seg2").toFile(), server, afterRd5Written = { rewrites++ })
@@ -226,7 +226,7 @@ class RoutingDataAutoTest {
         assertNull(l.status)
     }
 
-    /** Field bug 2026-10-22: routing parts loading for an older route's corridor are dropped; a point's part stays. */
+    /** Routing parts loading for an older route's corridor are dropped; a point's part stays. */
     @Test fun corridorPartsFollowThePlan() {
         val l = loader(Net(online = false))
         val other = "E10_N45.rd5:E10_N46"

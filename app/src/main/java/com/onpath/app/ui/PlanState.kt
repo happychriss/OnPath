@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.routing.GeoPoint
 
 /**
- * Undo / redo of the planned waypoints (pure, no Android – unit tested). Each entry is a full
+ * Undo / redo of the planned waypoints. Each entry is a full
  * snapshot of the point list, so a Clear is just one more step that Undo can revert.
  */
 class PlanHistory(private val limit: Int = 100) {
@@ -61,7 +61,7 @@ class RouteRequests {
 /**
  * The route point a point menu is open for: its index when opened AND its position (core feature C1). The menu acts
  * on the point the user held, not on whatever sits at that index later – the plan can change underneath an open menu
- * (route ⋯ → Points… delete, a tour opened, a snapped point moving). Pure, unit tested (CoreDeletePointTest).
+ * (route ⋯ → Points… delete, a tour opened, a snapped point moving).
  */
 data class PointMenuTarget(val index: Int, val point: GeoPoint) {
     /** The point's index in [plan] now: the same index while it still holds the point, else the nearest equal point. */

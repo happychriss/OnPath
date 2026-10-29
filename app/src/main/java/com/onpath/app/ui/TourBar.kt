@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.outlined.Warning
@@ -50,11 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 
 /**
- * Plan mode while a tour records: read-only status "● Tour running · 6.4 km · 1:23:45" plus the rare
- * "End tour" text button. The primary "Continue navigation" is the plan sheet's filled button.
- */
-/**
- * The tour card in Plan mode while a tour records (owner + UX review): the three answers to "what now with my
+ * The tour card in Plan mode while a tour records: the three answers to "what now with my
  * tour?" together in one row – Continue navigation (filled, most used), Pause / Resume (tonal), End tour (outlined
  * red, asks first). Continue also resumes a paused tour (back to navigating = walking again).
  */
@@ -78,7 +73,7 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 }
 
 /**
- * "End tour" (owner 2026-10-22): always Cancel · Delete · Save. Save stops and keeps the tour; Delete (red) asks once
+ * "End tour" (owner): always Cancel · Delete · Save. Save stops and keeps the tour; Delete (red) asks once
  * more, then the tour goes to the recycle bin (30 days) – for a short walk nobody wants to keep.
  * [cancelLabel]: "Cancel" from the End button, "Keep going" on arrival.
  */
@@ -104,7 +99,7 @@ fun EndTourDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
-        // no body: the buttons say it (review 2026-10-24 B11)
+        // no body: the buttons say it
         confirmButton = { TextButton(onClick = onSave) { Text(str(Res.string.common_save)) } },
         dismissButton = {
             Row {
@@ -116,7 +111,7 @@ fun EndTourDialog(
     )
 }
 
-/** Body of every "Delete …?" dialog that moves to the recycle bin (review 2026-10-24 B11). */
+/** Body of every "Delete …?" dialog that moves to the recycle bin. */
 internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_note, com.onpath.app.backup.RecycleBin.DAYS)
 
 /** Shown once in Navigate when the destination is reached: the same three choices. */
@@ -125,7 +120,7 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
     EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), cancelLabel = str(Res.string.nav_keep_going))
 
 
-/** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
+/** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */
 internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
     if (activity == null) Txt.s(Res.string.nav_continue) else Txt.s(Res.string.nav_continue_as, activity.navName)
 
@@ -169,8 +164,8 @@ fun TourControls(
 
 
 /**
- * Owner decision 9 (2026-10-22, RouteBack): the goal of a start → goal plan was deleted during a tour. Stays until
- * answered (no outside tap / back dismiss – never self-dismissing). Verb buttons (review 2026-10-24 B11).
+ * [RouteBack]: the goal of a start → goal plan was deleted during a tour. Stays until answered (no outside tap / back
+ * dismiss – never self-dismissing). Verb buttons.
  */
 @Composable
 fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
@@ -185,16 +180,16 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
     )
 }
 
-/** "About 29 days on foot. Calculating and loading its maps takes long." (review 2026-10-24 B11). */
+/** "About 29 days on foot. Calculating and loading its maps takes long." */
 internal fun longRouteText(seconds: Double, activity: com.onpath.app.routing.Activity): String {
     val how = if (activity == com.onpath.app.routing.Activity.HIKE) Res.string.nav_long_route_foot else Res.string.nav_long_route_bike
     return Txt.s(how, com.onpath.app.routing.LongRoute.describe(seconds)).replaceFirstChar { it.uppercase() }
 }
 
 /**
- * A plan far longer than a day (owner 2026-10-22: a point in another country by mistake). Asked before anything is
- * routed or loaded. Cancel takes back the change that made it so long (AppViewModel.cancelRun). Stays until a button
- * is tapped (UX review 2026-10-23, problem 9): an outside tap or Back must not undo anything.
+ * A plan far longer than a day (e.g. a point in another country by mistake). Asked before anything is routed or
+ * loaded. Cancel takes back the change that made it so long (AppViewModel.cancelRun). Stays until a button is tapped:
+ * an outside tap or Back must not undo anything.
  */
 @Composable
 fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {

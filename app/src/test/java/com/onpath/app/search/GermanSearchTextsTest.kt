@@ -7,7 +7,7 @@ import com.onpath.app.routing.Activity
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** German texts of search, POIs and import (EN + DE, owner 2026-10-26): whole sentences, decimal comma. */
+/** German texts of search, POIs and import (EN + DE): whole sentences, decimal comma. */
 class GermanSearchTextsTest {
     @Test fun addPreviewInGerman() = inGerman {
         assertEquals(" · ca. +1,2 km, +20 min", AddPreview.extraText(1200.0, 1.0))

@@ -13,6 +13,8 @@
     <string name="nav_dir_keep_right">Rechts halten</string>
     <string name="nav_dir_turn_around">Wenden</string>
     <string name="nav_dir_roundabout">Kreisverkehr</string>
+    <string name="nav_settings_cd">Navigationseinstellungen</string>
+    <string name="nav_roundabout_exit">Kreisverkehr · %1$d. Ausfahrt</string>
     <string name="nav_turn_now">%1$s – jetzt</string>
     <string name="nav_turn_in">%1$s in %2$s</string>
     <string name="nav_turn_distance_now">Jetzt</string>
@@ -57,6 +59,8 @@
     <string name="nav_title_kept">Abseits der Route – ursprüngliche Route bleibt</string>
     <string name="nav_state_searching">Rückweg wird gesucht…</string>
     <string name="nav_state_found">Neue Route gefunden</string>
+    <string name="nav_title_turn_round">Abseits der Route – umdrehen, neue Route gefunden</string>
+    <string name="nav_state_turn_round">Umdrehen – neue Route gefunden</string>
     <string name="nav_state_no_data">Hier keine Karte für einen Rückweg</string>
     <string name="nav_state_unavailable">Rückweg-Suche gerade nicht möglich</string>
     <string name="nav_state_no_way">Kein Rückweg gefunden</string>

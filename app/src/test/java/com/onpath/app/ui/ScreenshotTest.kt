@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -54,7 +55,7 @@ class ScreenshotTest {
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
                        eye: Boolean = false, peeking: Boolean = false, large: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
-            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large)
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large, onSettings = if (large) ({}) else null)
         }
 
     /**
@@ -128,7 +129,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Settings → Diagnostics → Developer tools → time estimate: slope bands, factors, result, formulas (owner 2026-10-23). */
+    /** Settings → Diagnostics → Developer tools → time estimate: slope bands, factors, result, formulas. */
     @Test fun timeDetails() = paparazzi.snapshot {
         OnPathTheme {
             TimeDetailsScreen(TimeDetailsUi(
@@ -145,7 +146,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Route sheet ⋯ → Time details: only plain lines – moving time, with breaks, pace level (owner 2026-10-23). */
+    /** Route sheet ⋯ → Time details: only plain lines – moving time, with breaks, pace level. */
     @Test fun timeDetailsPlain() = paparazzi.snapshot {
         OnPathTheme {
             TimeDetailsScreen(TimeDetailsUi(com.onpath.app.time.TimeBreakdown.of(routePts, Activity.HIKE,
@@ -162,7 +163,7 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
-    // ------------------------------------------------ Points section (owner 2026-10-21): three sheet sizes with points
+    // ------------------------------------------------ Points section: three sheet sizes with points
     private val stops = listOf(routePts[0], routePts[40], routePts[80], routePts[120])
     private val stopNames = listOf("Algund", null, "Leiter Alm", "Hochmuth")
     private fun pointRows(plan: List<GeoPoint> = stops, line: List<GeoPoint>? = routePts) =
@@ -171,7 +172,7 @@ class ScreenshotTest {
                                r: PlannedRoute? = route, routing: Boolean = false, roundTrip: Boolean = false) =
         planUi(n = rows.size, r = r, routing = routing, size = size).copy(points = rows, roundTrip = roundTrip)
 
-    /** Owner 2026-10-22, step "small": the summary line only (+ the primary button). */
+    /** The summary line only (+ the primary button). */
     @Test fun planPointsSmall() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.MINI), PlanCallbacks()) } }
 
     /** Step 1: summary + the large elevation profile (finger ruler); details via the difficulty badge. */
@@ -181,7 +182,7 @@ class ScreenshotTest {
     @Test fun planPointsFull() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) } }
 
     /**
-     * Owner screenshot 2026-10-22: with the points open, all four map controls (compass, eye, undo, locate) do not fit
+     * With the points open, all four map controls (compass, eye, undo, locate) do not fit
      * between the top bar and the sheet – they stay below the top bar and fade under the sheet instead of covering ☰.
      */
     @Test fun planPointsFullControlsNeverOverTheTopBar() = paparazzi.snapshot {
@@ -208,7 +209,7 @@ class ScreenshotTest {
     }
 
     /**
-     * E2E 2026-10-22 (swipeTheSheetHalfFullHalf): an unreachable point's red line + the amber warnings line + a map card
+     * An unreachable point's red line + the amber warnings line + a map card
      * never squeeze the points away in the point editor.
      */
     @Test fun planPointsFullWithGapAndWarnings() = paparazzi.snapshot {
@@ -222,12 +223,12 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
     }
 
-    /** Owner 2026-10-22: a long calculation shows "Calculating the route… Cancel". */
+    /** A long calculation shows "Calculating the route… Cancel". */
     @Test fun planRoutingSlowCancel() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
     }
 
-    /** Owner 2026-10-22: a plan much longer than a day is asked about before it is routed. */
+    /** A plan much longer than a day is asked about before it is routed. */
     @Test fun longRouteQuestion() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
@@ -235,7 +236,7 @@ class ScreenshotTest {
         }
     }
 
-    /** The destination deleted during a tour: verb buttons "Route back" / "Just record" (review 2026-10-24 B11). */
+    /** The destination deleted during a tour: verb buttons "Route back" / "Just record". */
     @Test fun routeBackQuestion() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
@@ -266,7 +267,7 @@ class ScreenshotTest {
     /** Route details (tap the profile or the difficulty badge): summary, large profile, way types / surfaces. */
     @Test fun routeDetails() = paparazzi.snapshot { OnPathTheme { RouteDetailsScreen(route, Activity.HIKE, onBack = {}) } }
 
-    /** A short hike with a T3 section (owner 2026-10-25, like Komoot): "Moderate · T3" and why, though 4.2 km / 280 m is Easy. */
+    /** A short hike with a T3 section: "Moderate · T3" and why, though 4.2 km / 280 m is Easy. */
     private val t3Route = PlannedRoute(listOf(PlannedLeg(routePts.mapIndexed { i, p ->
         p.copy(way = com.onpath.app.routing.WayAttrs("path", "natural_trail", if (i in 60..64) 3 else 2))
     }, false)), 4_200.0, 280.0, 280.0, 1.6 * 3600, null)
@@ -358,7 +359,7 @@ class ScreenshotTest {
         NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Searching, hint, arrowDeg = 45f)))
     }
 
-    /** No fix for 4 min: the amber "No GPS · position 4 min old" line, the time greyed "Time paused" (review B3). */
+    /** No fix for 4 min: the amber "No GPS · position 4 min old" line, the time greyed "Time paused". */
     @Test fun navigateNoGps() = paparazzi.snapshot {
         NavFrame(navUi.copy(toGo = navUi.toGo!!.copy(state = com.onpath.app.time.EstimateState.PAUSED,
             pausedBecause = com.onpath.app.time.PauseReason.NO_GPS.text), arriveAt = "16:40", waitingGps = true, fixAgeS = 250))
@@ -372,6 +373,11 @@ class ScreenshotTest {
     /** A shorter way back that starts on a way 300 m away. */
     @Test fun navigateRerouteQuestionShorter() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(extraM = -800.0, rejoinInM = 1_250.0, startOffM = 300.0), hint)))
+    }
+
+    /** The way back starts by turning round: U-turn sign + "turn round" in the question. */
+    @Test fun navigateRerouteQuestionTurnRound() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(turnRound = true), hint)))
     }
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
@@ -389,6 +395,18 @@ class ScreenshotTest {
     /** "Keep original" chosen: arrow banner, asked again only much later. */
     @Test fun navigateOffRouteKept() = paparazzi.snapshot {
         NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Kept, hint, arrowDeg = 160f)))
+    }
+
+    /** Roundabout with its exit: roundabout sign + "Roundabout · exit 2 in 120 m". */
+    @Test fun navigateRoundabout() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0, roundabout = 2, roundaboutAngle = 5f)))
+    }
+
+    /** The drawn roundabout for other exits: 1st right, 3rd left. */
+    @Test fun navigateRoundaboutExits() = paparazzi.snapshot {
+        androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)) {
+            for ((e, a) in listOf(1 to 80f, 2 to 0f, 3 to -85f, 4 to -170f)) RoundaboutSign(e, a, Modifier.size(64.dp))
+        }
     }
 
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
@@ -442,8 +460,8 @@ class ScreenshotTest {
     }
 
     /**
-     * Owner 2026-10-22: bike chips show a short name; a long day tour must still show time AND distance in full – with
-     * the longest bike name, Gravel bike (names of 2026-10-26; its chip says "Gravel" so the distance fits).
+     * Bike chips show a short name; a long day tour must still show time AND distance in full – with
+     * the longest bike name, Gravel bike (its chip says "Gravel" so the distance fits).
      */
     @Test fun planChipLongBikeTour() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 112_480.0, durationS = 12.6 * 3600))
@@ -476,7 +494,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Fresh install (field test 2026-10-21): routing data still loading – a plain notice, never a file path. */
+    /** Fresh install: routing data still loading – a plain notice, never a file path. */
     @Test fun planRoutingDataLoading() = paparazzi.snapshot {
         Frame {
             PlanPanel(planUi(2, route.copy(legs = listOf(PlannedLeg(routePts.take(2), true)), wayTypes = emptyList(), surfaces = emptyList()),
@@ -489,13 +507,13 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
     }
 
-    /** Owner 2026-10-22: a point the route does not reach – one red bold line in the small sheet (no message box). */
+    /** A point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
             gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike"), PlanCallbacks()) }
     }
 
-    /** Route hints (owner 2026-10-26): a ferry on the route – amber line first, before the way warnings. */
+    /** Route hints: a ferry on the route – amber line first, before the way warnings. */
     @Test fun planFerryHint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = Activity.BIKE_TOURING,
             warnText = RouteWarnings.text(listOf(RouteSpot(SpotKind.FERRY, 40, 41, 6200.0, 6516.0),
@@ -522,14 +540,14 @@ class ScreenshotTest {
         }
     }
 
-    /** Safety audit batch B (owner 2026-10-22): the amber warning line, under the red "not possible" line. */
+    /** Safety audit batch B: the amber warning line, under the red "not possible" line. */
     @Test fun planWarningsWithGap() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
             gapText = "Last 180 m to “Taser Alm”: no way for Gravel bike",
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
-    /** The grey INFO line after an activity change (review 2026-10-24 B6: not amber). */
+    /** The grey INFO line after an activity change. */
     @Test fun planRouteChanged() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
             changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.BIKE_TREKKING, 3)), PlanCallbacks()) }
@@ -639,16 +657,16 @@ class ScreenshotTest {
     @Test fun track() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
-                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, onPlan = {}, onHighlight = {})
         }
     }
 
-    /** A Komoot import switched the activity: one grey INFO line says so (captain 2026-10-26, "no surprises"). */
+    /** A Komoot import switched the activity: one grey INFO line says so. */
     @Test fun trackImportedActivityNote() = paparazzi.snapshot {
         Frame {
             TrackPanel(ShownTrack(1, "Komoot – Hirzer Bergtour", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600,
                 note = "Activity set to Hike T3 from the file"),
-                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {}, {})
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, {})
         }
     }
 
@@ -726,7 +744,7 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
     }
 
-    /** Interrupted recording at start: Continue · Delete · Save like End tour (UX review 2026-10-23, problem 2). */
+    /** Interrupted recording at start: Continue · Delete · Save like End tour. */
     @Test fun unfinishedTour() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
@@ -792,12 +810,12 @@ class ScreenshotTest {
 
     private fun planWithCard(n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) = planUi(n = n, r = r, size = size)
 
-    /** Owner 2026-10-23: what the map needs from the user shows in the blue strip at the top, not as a card in the sheet. */
+    /** What the map needs from the user shows in the blue strip at the top, not as a card in the sheet. */
     @Composable
     private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
         Frame(gps = gps, top = { mapNotice(card)?.let { MapNoticeStrip(it, CellCardCallbacks()) } }) { PlanPanel(ui, PlanCallbacks()) }
 
-    /** Owner 2026-10-23: the app opened where there is no detailed map – the strip asks, nothing loads by itself. */
+    /** The app opened where there is no detailed map – the strip asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {
         Frame(top = { HereAskStrip(2, 21L * 1_048_576, {}, {}) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
     }

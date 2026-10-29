@@ -3,8 +3,7 @@ package com.onpath.app.cells
 import com.onpath.app.routing.GeoPoint
 
 /**
- * Settings → Offline maps → "Clean up" (owner 2026-10-22): which installed map areas stay and which go. Pure, unit-tested
- * (`MapCleanupTest`). Kept: the areas along the current plan (its route, else its points), along every saved route,
+ * Settings → Offline maps → "Clean up": which installed map areas stay and which go. Pure, unit-tested (`MapCleanupTest`). Kept: the areas along the current plan (its route, else its points), along every saved route,
  * along a running tour (recorded line + followed route) and around the current position (+ [POSITION_MARGIN_M]).
  * Everything else installed goes – nothing automatic, the user sees [Plan] first.
  */

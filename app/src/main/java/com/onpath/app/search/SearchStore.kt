@@ -47,7 +47,7 @@ class SearchStore(context: Context) {
                 p[6].toIntOrNull(), p[3].ifEmpty { null }, p[7].ifEmpty { null },
                 // expected: unknown/old source name → POI
                 runCatching { Place.Source.valueOf(p[8]) }.getOrDefault(Place.Source.POI),
-                // fields 10–11 since 2026-10-22 (older entries have none)
+                // fields 10–11 (town, village) are missing in older entries
                 town = p.getOrNull(9)?.ifEmpty { null }, village = p.getOrNull(10)?.ifEmpty { null })
         }
     }

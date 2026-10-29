@@ -51,7 +51,7 @@ class PointFilterTest {
         assertEquals(25.0, PointFilter.minMoveM(80.0), 0.0)
     }
 
-    /** Field test 2026-10-22: a 30 s+ gap under forest broke the drawn track and lost its distance. */
+    /** A 30 s+ gap under forest must not break the drawn track or lose its distance. */
     @Test fun shortGpsGapAtWalkingSpeedIsBridged() {
         // 0.002° lon ≈ 153 m in 90 s ≈ 1.7 m/s
         assertTrue(PointFilter.bridgesGap(p(0.0, 0), p(0.002, 90_000)))
@@ -64,10 +64,7 @@ class PointFilterTest {
         assertFalse("no time", PointFilter.bridgesGap(TrackPoint(46.67, 11.1, null, null), p(0.001, 60_000)))
     }
 
-    /**
-     * Field test 2026-10-22: two walking gaps (96 s, 154 s) – the data could not tell weak fixes (> 50 m) from no fix
-     * at all. The gap trace now says which.
-     */
+    /** The gap trace tells weak fixes (> 50 m) from no fix at all. */
     @Test fun gapTraceSaysFixesWereTooInaccurate() {
         val w = PointFilter.GapWatch()
         w.onDropped(true, 80f); w.onDropped(true, 63f); w.onDropped(true, 120f); w.onDropped(false, 0f)

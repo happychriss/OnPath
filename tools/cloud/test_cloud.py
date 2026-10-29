@@ -91,7 +91,7 @@ class Cells(unittest.TestCase):
             self.assertIsNone(pr.route_of(tags), tags)
 
     def test_pinned_source(self):
-        # the mechanism stays; sources.json pins nothing (owner 2026-10-21: South Tyrol uses the automatic choice)
+        # the mechanism stays; sources.json pins nothing (owner: South Tyrol uses the automatic choice)
         with open(os.path.join(HERE, "sources.json")) as f:
             real = json.load(f)
         self.assertEqual(real["sources"], [])
@@ -258,7 +258,7 @@ class BuilderFlow(unittest.TestCase):
     def test_choose_sources(self):
         self.real_sources()
         b = self.builder()
-        # Meran: no pin any more – nord-est, plus austria where the 5 km buffer crosses the main ridge
+        # Meran: no pin – nord-est, plus austria where the 5 km buffer crosses the main ridge
         self.assertEqual([s["id"] for s in b.choose_sources(10, 543, 361)], ["nord-est", "austria"])
         self.assertEqual([s["id"] for s in b.choose_sources(10, 545, 362)], ["nord-est"])  # Bozen south
         got = b.choose_sources(10, 544, 359)  # Innsbruck
@@ -306,7 +306,7 @@ class BuilderFlow(unittest.TestCase):
         meta = json.load(open(self.src("geofabrik", "europe", "austria.meta.json")))
         self.assertEqual((meta["id"], meta["size"]), ("austria", 1_100_000))
         self.assertFalse(os.path.exists(self.src("geofabrik", "europe", "austria.osm.pbf.lock")))
-        self.assertFalse(os.path.exists(self.src("downloads.json")))  # no daily download limit any more
+        self.assertFalse(os.path.exists(self.src("downloads.json")))  # no daily download limit
 
     def test_old_extract_is_downloaded_again(self):
         self.real_sources()
@@ -325,7 +325,7 @@ class BuilderFlow(unittest.TestCase):
         self.assertEqual(self.downloads, [])
 
     def test_no_daily_download_limit(self):
-        # removed 2026-10-21 (owner): many downloads in the last day no longer hold back a new area
+        # owner: many downloads in the last day do not hold back a new area
         self.real_sources()
         with open(self.src("downloads.json"), "w") as f:
             json.dump({"downloads": [{"t": int(time.time()), "url": "x"}] * 50}, f)

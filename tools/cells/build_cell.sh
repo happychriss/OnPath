@@ -24,7 +24,7 @@
 #   KEEP_WORK=1              keep the temp folder (raw unclipped files, for the seam check)
 #
 # Memory of the cut: osmium's smart strategy keeps bit sets over the whole id range – with today's OSM node ids
-# (~13e9) that is ~4.0 GB for ANY raw source (measured 2026-10-21: trentino 136 MB 8 s, alps 2.3 GB 62 s, both
+# (~13e9) that is ~4.0 GB for ANY raw source (measured: trentino 136 MB 8 s, alps 2.3 GB 62 s, both
 # 3.9–4.1 GB peak; -s simple 2.2 GB but incomplete ways/relations), on dense ids (1..N) ~170 MB.
 #   CUT=raw (default, cloud job, 8 GiB): each source is cut raw (~4 GB, reads the source sequentially – it can stay
 #     on the bucket mount), several cuts are merged + reduced to the newest version of each object

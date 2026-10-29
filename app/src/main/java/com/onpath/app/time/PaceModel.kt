@@ -15,7 +15,7 @@ import com.onpath.app.routing.WayAttrs
  * - Bikes: a power model (like BRouter's, but computed here so Plan and Navigate agree): rider power by activity, e-bike
  *   assist up to 25 km/h, rolling resistance by surface, speed caps by surface (downhill), pushing (walking speed
  *   × 0.85) as the floor on very steep climbs.
- * - Way attributes (P4, [WayAttrs] per span of a routed line): hiking gets a factor for SAC grade, rough ground, steps
+ * - Way attributes ([WayAttrs] per span of a routed line): hiking gets a factor for SAC grade, rough ground, steps
  *   and faint trails ([hikeWayFactor]); bikes ride on the real surface, slower on bad smoothness / MTB scale and push
  *   where bikes are walked ([ride]). Unknown way (null) = exactly the times without attributes.
  *
@@ -60,8 +60,8 @@ object PaceModel {
     data class Bike(val riderW: Double, val assistW: Double, val massKg: Double, val drag: Double, val surface: String)
 
     fun bike(activity: Activity): Bike = when (activity) {
-        // touring = a normal bike like trekking (review 2026-10-25: 120 W gave ~24 km/h, road-bike like; now ~21.7 km/h on
-        // its usual asphalt, the same as trekking on the same surface)
+        // touring = a normal bike like trekking: ~21.7 km/h on its usual asphalt, the same as trekking on the same
+        // surface (120 W would give a road bike's ~24 km/h)
         Activity.BIKE_TOURING -> Bike(100.0, 0.0, 95.0, 0.30, "asphalt")
         Activity.BIKE_TREKKING -> Bike(100.0, 0.0, 95.0, 0.30, "paved")
         Activity.EBIKE -> Bike(100.0, 200.0, 115.0, 0.30, "paved")
@@ -123,7 +123,7 @@ object PaceModel {
         return (lo + hi) / 2
     }
 
-    // ---- way attributes (P4, docs/plan-time-estimate.md "P4") ------------------------------------------------
+    // ---- way attributes (docs/plan-time-estimate.md "P4") ----------------------------------------------------
 
     /**
      * Hiking time factor by SAC grade (index 0 = not tagged, 1..6 = T1..T6). Table B already has the slope; this is the
@@ -220,7 +220,7 @@ object PaceModel {
  * Alpine standard hiking time rule DIN 33466 (DAV / AVS / SAC signposts): 4 km/h on the flat, 300 m up and 500 m down
  * per hour; time = the larger of horizontal and vertical time + half of the smaller. It defines the "Average" pace level
  * (shown in Settings). Times themselves – planned routes, imported tracks, straight lines – all come from [PaceModel]
- * (one time model, captain 2026-10-26; the separate quick estimate `Geo.estimateSeconds` is gone).
+ * (one time model).
  * The per-segment model ([PaceModel.hikeMinPerKm], table B) is anchored on the same rule (docs/plan-time-estimate.md §3):
  * 4 km/h on the flat, ~300–340 m/h on steady climbs, but not as slow on descents as the whole-route formula.
  */
@@ -238,7 +238,7 @@ object Din33466 {
 }
 
 /**
- * Pace level in Settings (F-ROUTE-03, owner 2026-10-22: five levels): a factor on time only, the route stays the same.
+ * Pace level in Settings (F-ROUTE-03, owner: five levels): a factor on time only, the route stays the same.
  * [speed] is relative to "Average" (= [Din33466] for hiking, the power model for bikes), steps about 15 % apart;
  * [factor] = 1 / [speed] multiplies the model's times. Every plan and every tour ([TripPace]) starts from it.
  */
@@ -257,7 +257,7 @@ enum class Pace(private val res: org.jetbrains.compose.resources.StringResource,
 
     /**
      * Time factors (down / flat / up) of this level for [activity]: [factor] everywhere, except e-bikes on the flat
-     * (owner 2026-10-22): the motor stops at 25 km/h, so a fitter rider is not faster there – the flat speed stays at
+     * (owner): the motor stops at 25 km/h, so a fitter rider is not faster there – the flat speed stays at
      * most about [E_FLAT_CAP_KMH] at every level (climbs still get faster with the level).
      */
     fun factors(activity: com.onpath.app.routing.Activity): Factors {
@@ -301,7 +301,7 @@ enum class Pace(private val res: org.jetbrains.compose.resources.StringResource,
         fun of(name: String?): Pace = entries.firstOrNull { it.name == name } ?: if (name == "NORMAL") AVERAGE else DEFAULT
 
         /**
-         * The old three levels (stored until 2026-10-22 under "hikePace" / "bikePace"): Relaxed ×1.25 time = 0.8 speed
+         * The old three levels (older settings under "hikePace" / "bikePace"): Relaxed ×1.25 time = 0.8 speed
          * → Relaxed (0.75, the nearest), Normal → Average, Fit ×0.8 time = 1.25 speed → Very fit (1.3, the nearest).
          * So existing users keep (almost) the same times.
          */

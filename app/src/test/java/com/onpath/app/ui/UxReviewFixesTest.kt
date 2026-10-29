@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Wiring of the UX logic review fixes (docs/review-ux-2026-10-23.md, owner answers 2026-10-23) that live in Compose
+ * Wiring of the UX logic rules that live in Compose
  * screens / the ViewModel and so cannot be run on the JVM: the source is checked instead (like PlanStatusTest).
  */
 class UxReviewFixesTest {

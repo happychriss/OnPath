@@ -68,8 +68,7 @@ import kotlin.math.roundToInt
 
 /**
  * State of a [StepSheet]. Everything that changes while the sheet moves (finger height, spring value) is read only in
- * the layout pass – moving the sheet never recomposes its content (owner field report 0.9.3: the plan sheet stuttered
- * on a 120 Hz Pixel 8).
+ * the layout pass – moving the sheet never recomposes its content (else it stutters on a 120 Hz phone).
  */
 @Stable
 class StepSheetState internal constructor(stepCount: Int, initialStep: Int) {
@@ -131,7 +130,7 @@ interface StepSheetScope {
 }
 
 /**
- * A bottom sheet with steps (owner 2026-10-22: small → profile → points), Apple-like: the body is composed and laid out
+ * A bottom sheet with steps (small → profile → points), Apple-like: the body is composed and laid out
  * ONCE at its full height; a step is only how much of it shows. While the finger drags, the sheet follows it 1:1 (rubber
  * band beyond the ends); on release it goes to the nearest step, or the next one in a fling's direction
  * (SheetDrag.target), with a spring from where the finger left it. Moving it only re-places layers: the body (own
@@ -169,7 +168,7 @@ fun StepSheet(
     }
     SheetFrameMeter(state)
     // while the sheet is dragged or still springs after the finger let go, finished map regions wait to join the map
-    // and a style reload waits (same rule as a map drag, owner 2026-10-22; phone trace 0.10.0: the settle frames janked too)
+    // and a style reload waits (same rule as a map drag; the settle frames jank too otherwise)
     val onDraggingNow by rememberUpdatedState(onDragging)
     LaunchedEffect(state) { snapshotFlow { state.moving }.distinctUntilChanged().drop(1).collect { onDraggingNow(it) } }
     DisposableEffect(state) { onDispose { if (state.moving) onDraggingNow(false) } }
@@ -286,7 +285,7 @@ fun StepSheet(
     }
 }
 
-/** Frame times while the sheet moves → events trace (owner's next swipe gives numbers). Not in previews / tests. */
+/** Frame times while the sheet moves → events trace. Not in previews / tests. */
 @Composable
 private fun SheetFrameMeter(state: StepSheetState) {
     val view = LocalView.current

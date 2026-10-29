@@ -25,6 +25,8 @@ sealed interface NavPrompt {
          * for it. Stays until answered (also when on the route).
          */
         val switch: ActivitySwitch? = null,
+        /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round". */
+        val turnRound: Boolean = false,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -53,10 +55,12 @@ data class NavState(
     val progressM: Double = 0.0,
     /** Progress to show "to go" from; null = not on the route (not matched / confirmed off it). */
     val shownAlongM: Double? = null,
+    /** Where to turn round: the U-turn sign on the map (asked turn-round question, or taken until turned). */
+    val uTurnAt: GeoPoint? = null,
 )
 
 /**
- * The re-routing flow while navigating (pure; owner decisions 2026-10-18 in docs/plan-auto-reroute.md):
+ * The re-routing flow while navigating (pure; owner decisions in docs/plan-auto-reroute.md):
  * off route confirmed → vibrate → way back computed in the background → a question that stays until answered;
  * back on the route by yourself → the question goes away. After "Take new route" the original stays as a grey line
  * and is used again as soon as you are back on it. Passed stops are skipped. Never re-routes silently.
@@ -109,6 +113,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var origHits = 0
     private var forceCheck = false
     private var lastFix: OffRouteDetector.Fix? = null
+    /** A taken way back that starts by turning round: its start, until the rider has turned and moved on. */
+    private var turnRoundAt: GeoPoint? = null
+    /** The rider's latest positions, oldest first ([TurnRound]). */
+    private val recent = ArrayDeque<GeoPoint>()
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
@@ -121,7 +129,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     val state: NavState
         get() = NavState(session.active, session.version, if (session.rerouted) session.original else null, prompt, toRoute,
-            detector.lastDistanceM, session, detector.progressM, detector.shownAlongM)
+            detector.lastDistanceM, session, detector.progressM, detector.shownAlongM,
+            (prompt as? NavPrompt.Question)?.takeIf { it.turnRound && it.switch == null }?.line?.firstOrNull() ?: turnRoundAt)
 
     /** An activity switch is being asked (check sheet → chosen activity). */
     private val switchAsked: Boolean get() = (prompt as? NavPrompt.Question)?.switch != null
@@ -143,6 +152,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     fun onFix(f: OffRouteDetector.Fix): Step {
         lastFix = f
         val p = f.point
+        recent.addLast(p); while (recent.size > RECENT_FIXES) recent.removeFirst()
         var step = markVisited(p)
         if (forceCheck) {
             forceCheck = false
@@ -152,6 +162,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             }
         }
         val st = detector.onFix(f)
+        // turned round and on the way: the sign goes (also when the line changed again)
+        if (turnRoundAt != null && (!session.rerouted || detector.progressM > TURN_ROUND_DONE_M)) turnRoundAt = null
         if (!session.rerouted && (st.state != OffRouteDetector.State.OFF_ROUTE || st.confirmedNow)) leftAtM = detector.leftAtM
 
         // on a new route: back on the original (rest reached, or walked back onto it) → use the original again
@@ -198,7 +210,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return when (outcome) {
             is Rerouter.Found -> {
                 prompt = NavPrompt.Question(++questionId, outcome.extraM, outcome.rejoinInM, outcome.startOffM, outcome.line,
-                    outcome.legM, outcome.resumeAlongM)
+                    outcome.legM, outcome.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), outcome.line))
                 failures = 0
                 Step(vibrate = vib)
             }
@@ -227,6 +239,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
+        turnRoundAt = if (q.turnRound) q.line.firstOrNull() else null
         session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
             version = session.version + 1)
         detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
@@ -339,6 +352,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     }
 
     companion object {
+        /** Positions kept for the rider's direction (1 fix / s: the last half minute). */
+        const val RECENT_FIXES = 30
+        /** The U-turn sign stays until this far along the new line. */
+        const val TURN_ROUND_DONE_M = 40.0
         /** A question is recomputed (no vibration) after moving this far from where it was computed … */
         const val REFRESH_MOVE_M = 150.0
         /** … but not more often than this. */

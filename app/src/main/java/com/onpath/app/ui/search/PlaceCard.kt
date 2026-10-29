@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -31,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.onpath.app.poi.Poi
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
 import com.onpath.strings.*
@@ -56,7 +54,7 @@ data class PlaceCardActions(
 )
 
 /**
- * The one place card (proposal C) for search results and POIs tapped on the map while planning:
+ * The one place card for search results and POIs tapped on the map while planning:
  * name, kind / address, elevation, opening hours, ONE primary "Add to route" button that says what it
  * will do before the tap, and As start · As destination · Google Maps. All data is OpenStreetMap.
  */
@@ -84,7 +82,7 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     Icon(Icons.Filled.Close, contentDescription = str(Res.string.common_close))
                 }
             }
-            // owner 2026-10-22: stays on the card (never disappears by itself)
+            // the note stays on the card, never disappears by itself (owner)
             p.note?.let { n ->
                 Row(Modifier.padding(top = 4.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Info, contentDescription = null, Modifier.size(16.dp),

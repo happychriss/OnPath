@@ -54,7 +54,7 @@ data class SearchUi(
 ) {
     val active: Boolean get() = query.isNotBlank() || category != null
 
-    /** Offline and online results as ONE list, best first (owner 2026-10-22). */
+    /** Offline and online results as ONE list, best first. */
     val results: List<SearchHit> get() = SearchRanking.mix(hits, online, keepShown = onlineBelow)
 }
 
@@ -100,10 +100,14 @@ class SearchSession(
     private var onlineJob: Job? = null
     private var generation = 0
 
-    /** Called when the view opens: refreshes recents, (re)builds the index if the data files changed. */
+    /**
+     * Called when the view opens: a fresh, empty search (never the old text) with the recent places; (re)builds the
+     * index if the data files changed.
+     */
     fun onOpen() {
         val ctx = context()
-        ui = ui.copy(recent = recentHits(ctx), hasRoute = ctx.route != null)
+        ui = ui.copy(query = "", category = null, recent = recentHits(ctx), hasRoute = ctx.route != null)
+        run() // clears the old results and stops a search still on its way
         scope.launch { ensureIndex(force = true); if (ui.active) run() }
     }
 
@@ -129,8 +133,8 @@ class SearchSession(
 
     /**
      * The index to answer with now. When there is one it answers at once, and a newer one is built in the background
-     * if the map areas changed – no empty moment while a new map store generation is indexed (field 2026-10-23: "zons"
-     * found nothing for a minute). Only the very first time (no index yet) this waits; the view then shows
+     * if the map areas changed – no empty moment while a new map store generation is indexed. Only the very first time
+     * (no index yet) this waits; the view then shows
      * "Preparing offline search…" ([SearchUi.indexing]).
      */
     private suspend fun ensureIndex(force: Boolean = false): OfflineIndex {
@@ -159,7 +163,7 @@ class SearchSession(
         try {
             val plan = withContext(Dispatchers.IO) { areaPlan() }
             if (cur != null && cur.signature == plan.signature) { index = cur; return cur }
-            // SearchAreas logs "Search index: +n areas −m areas in N ms" (perf report 2026-10-22)
+            // SearchAreas logs "Search index: +n areas −m areas in N ms"
             val built = withContext(Dispatchers.IO) { areas.build(plan) }
             index = built
             built
@@ -243,7 +247,7 @@ class SearchSession(
                 try {
                     val r = online.search(text, bLat, bLon, 20)
                     val towns = OnlineRanking.queryTowns(text, named)
-                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns).take(10), towns, bLat, bLon)
+                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns, text).take(10), towns, bLat, bLon)
                 } catch (e: Exception) {
                     Problems.info("search", "Online search failed (offline or server unreachable)", e); null
                 }

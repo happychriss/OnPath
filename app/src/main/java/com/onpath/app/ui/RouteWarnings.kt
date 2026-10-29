@@ -26,29 +26,29 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
 }
 
 /**
- * Safety audit batch B (owner 2026-10-22): ONE amber line in the plan sheet when the route has something to know, e.g.
- * "1.2 km pushing · steps · 2 sections above T2"; tap → the list of spots. Pure, unit tested (RouteWarningsTest).
+ * ONE amber line in the plan sheet when the route has something to know, e.g. "1.2 km pushing · steps · 2 sections
+ * above T2"; tap → the list of spots. Pure, unit tested (RouteWarningsTest).
  *
  * What counts (only what the route's way attributes – BRouter way tags per span – and its elevations reliably give):
- * - FERRY (every activity, owner 2026-10-26: "a hint if the route contains a ferry or anything else that needs
- *   checking"): route=ferry, any length – timetables, season and the last boat are not in the map data.
+ * - FERRY (every activity, owner: anything that needs checking gets a hint): route=ferry, any length – timetables,
+ *   season and the last boat are not in the map data.
  * - CONSTRUCTION (every activity): highway=construction, any length – may be closed.
  * - FORD (every activity): a ford way or node (ford=yes / stepping_stones, highway=ford) – water to cross, may be deep
  *   after rain. The bike profiles do not avoid fords, mtb.brf and hiking-mountain.brf only make them costly.
  * - BARRIER (bikes): a stile, kissing gate or turnstile on the way ([WayAttrs.barrier]) – the bike has to be lifted over
- *   or may not fit. Bollards, gates, lift gates and cycle barriers are passable and on 12–67 % of routes: not listed.
+ *   or may not fit. Bollards, gates, lift gates and cycle barriers are passable and very common: not listed.
  * - PUSH (Bike / Gravel bike / E-bike): any way signed bicycle=dismount; footway / path with bicycle=no; footway /
- *   pedestrian without bike access (not a footway on a signed cycle route, owner 2026-10-25 – a pedestrian zone stays
- *   pushing); paths of SAC ≥ T2 or mtb:scale ≥ S2. A footway / path with bicycle=yes / designated / permissive (/ mtb)
- *   is never pushing. Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
+ *   pedestrian without bike access (not a footway on a signed cycle route – a pedestrian zone stays pushing); paths
+ *   of SAC ≥ T2 or mtb:scale ≥ S2. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing.
+ *   Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
  * - NO_BIKES / DISMOUNT (MTB / e-MTB instead of PUSH): only the signed cases, worded as legal information – footway /
  *   path with bicycle=no ("no bikes allowed"), any way with bicycle=dismount ("dismount (sign)"); same [PUSH_MIN_M].
- *   Owner 2026-10-26, "remove the rules for MTB – we don't want to look stupid": footways and hard trails are what
- *   they ride (the line was on 87 % of MTB routes, 75 % "pushing"); a sign on the way stays worth knowing.
+ *   Owner: footways and hard trails are what MTBs ride (a pushing hint would be on most MTB routes); a sign on the
+ *   way stays worth knowing.
  * - STEPS (bikes): highway=steps, any length. Hikers: steps are normal, not listed.
  * - ABOVE_T (hike): SAC level above the chosen T level, sections ≥ [ABOVE_T_MIN_M].
  * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, bikes 15 % – up or
- *   down, sections ≥ [STEEP_MIN_M]. Not for MTB / e-MTB (owner 2026-10-26: steep is normal there).
+ *   down, sections ≥ [STEEP_MIN_M]. Not for MTB / e-MTB (owner: steep is normal there).
  * Spans of the same kind less than [MERGE_GAP_M] apart are one spot.
  */
 object RouteWarnings {
@@ -62,15 +62,15 @@ object RouteWarnings {
 
     fun isBike(a: Activity) = a != Activity.HIKE
 
-    /** MTB / e-MTB: no "pushing" (signed ways: [SpotKind.NO_BIKES] / [SpotKind.DISMOUNT]) and no "steep" (owner 2026-10-26). */
+    /** MTB / e-MTB: no "pushing" (signed ways: [SpotKind.NO_BIKES] / [SpotKind.DISMOUNT]) and no "steep" (owner). */
     fun isMtb(a: Activity) = a == Activity.MTB || a == Activity.EMTB
 
     /** OSM `bicycle` values (as BRouter reports them) that open a footway / path to bikes. */
     val BIKES_ALLOWED = setOf("yes", "designated", "permissive", "mtb")
 
     /**
-     * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0, owner
-     * 2026-10-25). mtb.brf costs it as pushing, but MTB / e-MTB get no pushing hint at all ([isMtb]).
+     * Profiles that cost a footway without a bicycle tag on a signed cycle route as ridden (accesspenalty 0). mtb.brf
+     * costs it as pushing, but MTB / e-MTB get no pushing hint at all ([isMtb]).
      */
     private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
     private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
@@ -143,9 +143,9 @@ object RouteWarnings {
                 w.wayType != "footway" && w.wayType != "path" -> false
                 w.bicycle in BIKES_ALLOWED -> false // a footway / path open to bikes: ridden, no false warning (owner)
                 w.bicycle == "no" -> true
-                // a footway on a signed cycle route is ridden (owner 2026-10-25) – only where the profile costs
-                // it so: touring.brf / trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling
-                // there unless signed, German law)
+                // a footway on a signed cycle route is ridden (owner) – only where the profile costs it so: touring.brf /
+                // trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling there unless
+                // signed, German law)
                 w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a))
                 else -> w.sac >= 2 || w.mtb >= 2
             }
@@ -271,7 +271,7 @@ object RouteWarnings {
         return GeoPoint(mid.lat, mid.lon) to if (s.lengthM < 150) 17.0 else 16.0
     }
 
-    // ---------------- "route changed" (owner addition) ----------------
+    // ---------------- "route changed" ----------------
 
     const val CHANGE_SHARE = 0.10
     const val MOVED_M = 50.0

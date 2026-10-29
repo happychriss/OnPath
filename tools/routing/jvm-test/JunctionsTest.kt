@@ -3,7 +3,7 @@ import com.onpath.app.routing.*
 import java.io.File
 
 /**
- * Junction vibration on real routes (owner 2026-10-22): BRouter's turn instructions per route, and what JunctionCues
+ * Junction vibration on real routes: BRouter's turn instructions per route, and what JunctionCues
  * would vibrate when walking the route (merged switchbacks). Run: KTTEST=JunctionsTest.kt run.sh <segmentsDir>
  * Fails (exit 1) when a real route gets no junction at all or a cue density that would annoy (> 6 per km on foot).
  */

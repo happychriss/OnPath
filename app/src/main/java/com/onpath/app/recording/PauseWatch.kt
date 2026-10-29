@@ -3,7 +3,7 @@ package com.onpath.app.recording
 import com.onpath.app.data.Geo
 
 /**
- * While a tour is paused (owner 2026-10-20): GPS keeps running slowly and this notices when you walk on
+ * While a tour is paused (owner): GPS keeps running slowly and this notices when you walk on
  * without resuming – "Pause pressed, forgot, walked off". The first good fix of the pause is the anchor; a good fix
  * more than [MOVE_M] away from it asks once (vibration + notification with Resume). Never resumes by itself.
  * Pure, unit-tested.

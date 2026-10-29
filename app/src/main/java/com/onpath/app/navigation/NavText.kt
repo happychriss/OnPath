@@ -14,7 +14,8 @@ object NavText {
 
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
-        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: Txt.s(Res.string.nav_title_found)
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: Txt.s(if (p.turnRound) Res.string.nav_title_turn_round else Res.string.nav_title_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_title_unavailable)
@@ -24,12 +25,13 @@ object NavText {
     }
 
     /**
-     * The state line of the one amber off-route card in Navigate (review 2026-10-24 B2): the title there is just
+     * The state line of the one amber off-route card in Navigate: the title there is just
      * "Off route", the distance + direction under it, this in small text.
      */
     fun state(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_state_searching)
-        is NavPrompt.Question -> p.switch?.let { switchTitle(it) } ?: Txt.s(Res.string.nav_state_found)
+        is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: Txt.s(if (p.turnRound) Res.string.nav_state_turn_round else Res.string.nav_state_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_state_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_state_unavailable)
@@ -71,7 +73,7 @@ object NavText {
 
     /**
      * "120 m north-east (direct)" – a bearing, not a path: it may cross cliffs or water. Not "straight line": the plan
-     * uses that word for unrouted legs (review 2026-10-24 B16).
+     * uses that word for unrouted legs.
      */
     fun toRoute(h: RouteHint?): String? =
         h?.let { Txt.s(Res.string.nav_to_route_direct, Format.distance(round10(it.distanceM)), compass(it.bearingDeg)) }

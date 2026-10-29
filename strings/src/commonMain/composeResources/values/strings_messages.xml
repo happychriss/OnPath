@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Messages of the view model and the activity (message bar, dialogs, progress lines). Context: tools/i18n/meta/strings_messages.json -->
+<!-- Messages of the view model and the activity (error card, lines in My routes / Settings, dialogs, progress lines). Context: tools/i18n/meta/strings_messages.json -->
 <resources>
     <string name="msg_no_position_turn">No position yet – the map can turn with your direction of travel once GPS has found your position.</string>
     <string name="msg_routing_data_ready">Routing data for this area is ready.</string>
@@ -30,7 +30,6 @@
     <string name="msg_import_failed_damaged">Import failed – the file may be damaged or the phone's storage full. Your existing map data is unchanged.</string>
     <string name="msg_route_back_no_position">No GPS position yet, so no route back. The tour keeps recording; set a new destination any time.</string>
     <string name="msg_shared_place_not_found">Couldn't find this place. Try again when you have internet.</string>
-    <string name="msg_round_trip_already">The route already ends at the start.</string>
     <string name="msg_routing_failed">Routing failed.</string>
     <string name="msg_no_new_route">No new route found – still following the old one.</string>
     <string name="msg_route_save_failed">The route could not be saved. Your route is still here – please try again.</string>
@@ -50,11 +49,9 @@
     <string name="msg_check_no_route">No route found for it</string>
     <string name="msg_rides_read_failed">The rides of this track could not be read.</string>
     <string name="msg_rides_change_failed">The rides could not be changed. Please try again.</string>
-    <string name="msg_track_saved">Track saved to My routes.</string>
-    <string name="msg_track_to_bin">Track moved to the recycle bin (My routes → ⋮ → Recycle bin).</string>
     <string name="msg_track_delete_failed">The track could not be deleted – it is in My routes, delete it there.</string>
     <string name="msg_track_recording_now">This track is being recorded – end the tour first.</string>
-    <string name="msg_gpx_imported_skipped">Imported “%1$s” – some parts were skipped.</string>
+    <string name="msg_gpx_parts_skipped">Some parts of the file were skipped.</string>
     <string name="msg_export_all_chooser">Export all</string>
     <string name="msg_export_reason">Export: %1$s.</string>
     <string name="msg_export_failed">Export failed – the phone's storage may be full. Your tracks and routes are unchanged.</string>
@@ -78,7 +75,6 @@
     <string name="msg_shared_unreadable">OnPath could not read the shared place.</string>
     <string name="msg_no_file_picker">No file picker available.</string>
     <string name="msg_crash_last_time">OnPath stopped unexpectedly last time. Details: Settings → Diagnostics.</string>
-    <string name="msg_copied">Copied.</string>
     <plurals name="msg_maps_checking">
         <item quantity="one">Checking %1$d map area for a newer version.</item>
         <item quantity="other">Checking %1$d map areas for a newer version.</item>

@@ -14,6 +14,8 @@
     <string name="nav_dir_keep_right">Keep right</string>
     <string name="nav_dir_turn_around">Turn around</string>
     <string name="nav_dir_roundabout">Roundabout</string>
+    <string name="nav_settings_cd">Navigation settings</string>
+    <string name="nav_roundabout_exit">Roundabout · exit %1$d</string>
     <string name="nav_turn_now">%1$s now</string>
     <string name="nav_turn_in">%1$s in %2$s</string>
     <string name="nav_turn_distance_now">Now</string>
@@ -58,6 +60,8 @@
     <string name="nav_title_kept">Off route – original route kept</string>
     <string name="nav_state_searching">Looking for a way back…</string>
     <string name="nav_state_found">New route found</string>
+    <string name="nav_title_turn_round">Off route – turn round, new route found</string>
+    <string name="nav_state_turn_round">Turn round – new route found</string>
     <string name="nav_state_no_data">No map here to find a way back</string>
     <string name="nav_state_unavailable">Can't search a way back right now</string>
     <string name="nav_state_no_way">No way back found</string>

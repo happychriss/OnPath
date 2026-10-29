@@ -66,7 +66,7 @@ class SearchRankingTest {
     }
 
     @Test fun nearRouteHelpsButExactNameStaysFirst() {
-        // owner 2026-10-22: one list by relevance – "Meran" (exact) stays first; among the prefix matches the hut on
+        // owner: one list by relevance – "Meran" (exact) stays first; among the prefix matches the hut on
         // the route beats the trail that is nearer to the map centre but off the route.
         val route = listOf(GeoPoint(46.72, 11.08), GeoPoint(46.732, 11.0915), GeoPoint(46.74, 11.10))
         val hits = index.search(q("meran", route = route))
@@ -144,7 +144,7 @@ class SearchRankingTest {
     }
 
     @Test fun loadsRealRegionFastWhenAvailable() {
-        // Optional: the cloud machine has a built region in /home/user/data/out (not in git).
+        // Optional: a built region in /home/user/data/out (not in git).
         val dir = File("/home/user/data/out")
         if (!File(dir, "pois.geojson").isFile) return
         val cache = File(System.getProperty("java.io.tmpdir"), "onpath-search-test").apply { mkdirs() }

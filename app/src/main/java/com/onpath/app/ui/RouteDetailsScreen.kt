@@ -29,7 +29,7 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.PlannedRoute
 
 /**
- * Route details (owner 2026-10-21): opened by tapping the profile or the difficulty badge in the plan sheet – the
+ * Route details: opened by tapping the profile or the difficulty badge in the plan sheet – the
  * summary with difficulty, the large elevation profile and the way types / surfaces. Read-only, Back closes it.
  */
 @Composable

@@ -149,7 +149,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, 
     }
 }
 
-/** "Moderate", or "Moderate · T3" when the trail technique raised the label (owner 2026-10-25, like Komoot). */
+/** "Moderate", or "Moderate · T3" when the trail technique raised the label (like Komoot). */
 @Composable
 fun DifficultyBadge(r: RouteSummary.Rating, modifier: Modifier = Modifier) {
     val (bg, fg) = when (r.level) {

@@ -12,7 +12,7 @@ import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
-/** Field 2026-10-21: the update download broke 4× on mobile data ("connection abort") – it must resume. */
+/** An update download broken on mobile data ("connection abort") must resume where it stopped. */
 class UpdateDownloadTest {
     @get:Rule val tmp = TemporaryFolder()
     private val apk = ByteArray(1_000_000) { (it * 31).toByte() }

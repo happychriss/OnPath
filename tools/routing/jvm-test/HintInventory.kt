@@ -5,7 +5,7 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 
 /*
- * Inventory of "needs checking" tags on real routes (route hints, owner 2026-10-26): random point pairs per box and
+ * Inventory of "needs checking" tags on real routes (route hints): random point pairs per box and
  * activity, BRouter's full way AND node tags of every found track (RAW_TAP), counted per candidate hint – how many
  * routes would show it (noise) and how much of the route it covers.
  *   RAW_TAP=1 KTTEST=tools/routing/jvm-test/HintInventory.kt JAVA_XMX=1g run.sh <segmentsDir> <workDir>

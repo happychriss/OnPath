@@ -3,7 +3,7 @@ import com.onpath.app.ui.RouteWarnings
 import com.onpath.app.ui.SpotKind
 import java.io.File
 
-// Route hints (owner 2026-10-26): a route over a Rhine ferry gets the amber "Ferry … – check times" line, from the app's
+// Route hints: a route over a Rhine ferry gets the amber "Ferry … – check times" line, from the app's
 // real route line (way attributes per point, RouteWarnings.detect). Pass / fail, needs E5_N50.rd5:
 //   KTTEST=tools/routing/jvm-test/FerryHintTest.kt run.sh <segmentsDir> <workDir>
 // Cases: Zons ⇄ Düsseldorf-Urdenbach and Kaiserswerth ⇄ Meerbusch-Langst (the next bridges are 6–10 km away), every

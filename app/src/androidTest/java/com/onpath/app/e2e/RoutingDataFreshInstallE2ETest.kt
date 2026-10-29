@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * CORE FEATURE "routing data on a fresh install" (field test 2026-10-21): no routing data on the phone → set points →
+ * CORE FEATURE "routing data on a fresh install": no routing data on the phone → set points →
  * the 1° routing parts load by themselves (brouter.de, ~10 MB each) → the plan is computed again and is no longer a straight line;
  * the notice never shows a file name or path. Downloads for real, so it runs only when asked:
  * `-Pandroid.testInstrumentationRunnerArguments.routingDownload=true` (phone with internet; not in CI by default).

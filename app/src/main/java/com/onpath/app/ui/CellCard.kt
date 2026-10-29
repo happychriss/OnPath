@@ -1,42 +1,22 @@
 package com.onpath.app.ui
 
 import com.onpath.strings.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.CloudDownload
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,9 +28,9 @@ import com.onpath.app.cells.label
 import kotlin.math.atan2
 
 /**
- * What happens with the detailed map of the area the user plans in (docs/design/map-cells.md §9). Since 2026-10-23
- * (owner) it is shown in the blue strip at the top ([mapNotice] / [MapNoticeStrip] in BackgroundDownloads.kt), no longer
- * as a card in the plan sheet: Load now / Only on Wi-Fi for mobile data, Try again / Not now when it failed, × to hide.
+ * What happens with the detailed map of the area the user plans in (docs/design/map-cells.md §9). Shown in the blue strip
+ * at the top ([mapNotice] / [MapNoticeStrip] in BackgroundDownloads.kt), not in the plan sheet (owner): Load now / Only
+ * on Wi-Fi for mobile data, Try again / Not now when it failed, × to hide.
  */
 sealed interface CellCardUi {
     val title: String
@@ -71,8 +51,8 @@ sealed interface CellCardUi {
         /** "3 map areas wait for Wi-Fi · 25 MB" when the question was answered or Settings says Wi-Fi only. */
         val wifiNote: String?,
         /**
-         * With [wifiNote]: "Load now" over mobile data is offered (Settings says Wi-Fi only – owner Q6 2026-10-23). The
-         * user who just answered "Wi-Fi only" gets a quiet grey pill without a choice.
+         * With [wifiNote]: "Load now" over mobile data is offered (Settings says Wi-Fi only). The user who just answered
+         * "Wi-Fi only" gets a quiet grey pill without a choice.
          */
         val canLoadNow: Boolean = true,
     ) : CellCardUi
@@ -90,7 +70,7 @@ sealed interface CellCardUi {
         companion object {
             /** A question (blue, "Allow location"). */
             val ALLOW: String get() = Txt.s(Res.string.maps_need_position_allow)
-            /** A status (grey pill, review 2026-10-24 C8). */
+            /** A status (grey pill). */
             val WAITING: String get() = Txt.s(Res.string.maps_need_position_waiting)
         }
     }
@@ -102,7 +82,7 @@ sealed interface CellCardUi {
 
 data class CellRow(val name: String, val state: String, val own: Boolean)
 
-/** "Use mobile data? · 3 map areas, 25 MB" (review 2026-10-24 B9) · Wi-Fi only · Load now. */
+/** "Use mobile data? · 3 map areas, 25 MB" · Wi-Fi only · Load now. */
 data class MobileQuestion(val areas: Int, val bytes: Long?) {
     val text: String get() = if (bytes == null) Txt.p(Res.plurals.maps_mobile_question, areas, areas)
         else Txt.p(Res.plurals.maps_mobile_question_mb, areas, areas, mb(bytes))
@@ -127,7 +107,7 @@ object CellCards {
     ): CellCardUi.NeedPosition? =
         if (job == null && available && noDetailedMap && waitingForPosition && !hidden) CellCardUi.NeedPosition(permission) else null
 
-    /** Why an area loads – for the events trace / Diagnostics only; the strip shows no "why" line (review 2026-10-24 B7). */
+    /** Why an area loads – for the events trace / Diagnostics only; the strip shows no "why" line. */
     fun why(w: CellWhy): String = when (w) {
         CellWhy.PLANNED -> "Getting the detailed map because you planned here."
         CellWhy.HERE -> "Getting the detailed map because you are here."
@@ -257,7 +237,7 @@ class CellCardCallbacks(
 fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(str(Res.string.maps_overview_hint), Icons.Outlined.Map, modifier = modifier)
 
 /**
- * The quiet grey pill under the search bar (review 2026-10-24 C8): a status with nothing to decide ("Overview only – …",
+ * The quiet grey pill under the search bar: a status with nothing to decide ("Overview only – …",
  * "No detailed map – loads when online", "Waiting for GPS …"). No ×: it goes when the state goes. [action]: one small
  * text button for the rare status that still needs an OK.
  */
@@ -281,12 +261,10 @@ fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVecto
 private fun Modifier.androidxSemantics(text: String) =
     this.then(Modifier.semantics(mergeDescendants = true) { contentDescription = text })
 
-val OVERVIEW_HINT: String get() = Txt.s(Res.string.maps_overview_hint)
-
 /**
  * When the "Overview only" hint shows (Plan, z ≥ [MIN_ZOOM]): when a large part of the visible map has no detailed
- * map – not just the centre (field test 0.8.7: centre inside a downloaded area, half the screen overview only, no
- * hint). The view is sampled on a [GRID] × [GRID] grid. Pure, unit-tested.
+ * map – not just the centre (the centre can lie in a downloaded area while half the screen is overview only). The view
+ * is sampled on a [GRID] × [GRID] grid. Pure, unit-tested.
  */
 object OverviewHintRule {
     const val MIN_ZOOM = 10.0
@@ -306,9 +284,8 @@ object OverviewHintRule {
 }
 
 /**
- * A newer version of a map area the user already has (checked after each route, owner 2026-10-21) – never modal; shown
- * only through the background-download strip and its details (owner 2026-10-22: one loading indicator), [Preparing]
- * gives the "about N min" there.
+ * A newer version of a map area the user already has (checked after each route) – never modal; shown only through the
+ * background-download strip and its details (one loading indicator), [Preparing] gives the "about N min" there.
  */
 sealed interface MapUpdateUi {
     data class Loading(val progress: Float?) : MapUpdateUi

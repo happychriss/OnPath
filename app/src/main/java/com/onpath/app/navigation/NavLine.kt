@@ -118,13 +118,6 @@ class NavLine(val points: List<GeoPoint>) {
         return out
     }
 
-    /** Direction of the line at [alongM] (degrees from north), over ±[spanM] so tiny segments do not matter. */
-    fun bearingAt(alongM: Double, spanM: Double = 15.0): Double {
-        val a = (alongM - spanM).coerceAtLeast(0.0)
-        val b = (alongM + spanM).coerceAtMost(lengthM)
-        return com.onpath.app.routing.TurnDetector.bearing(pointAt(a), pointAt(b))
-    }
-
     /**
      * Direction of the route ahead of [alongM] (degrees from north): from the position on the line to the point
      * [aheadM] further on, so the next stretch points straight up in heading-up. null near the end (< 10 m left).

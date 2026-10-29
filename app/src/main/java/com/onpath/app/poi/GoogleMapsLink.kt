@@ -28,7 +28,7 @@ object PoiLinks {
     /**
      * Link to [name] at [lat],[lon] in Google Maps – built offline from our own data, nothing is fetched.
      *
-     * Why not `maps/search/?api=1&query=<name lat,lon>` (what we did until v0.x): that `query` is one free-text
+     * Why not `maps/search/?api=1&query=<name lat,lon>`: that `query` is one free-text
      * string. Google either reads the coordinates and drops the name (bare pin, no business card) or searches the
      * whole text, and the documented search URL has **no location-bias parameter** – it ranks by the visible map /
      * the phone's own location. A German OSM name that Google lists under its Italian name, or a common name

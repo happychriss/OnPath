@@ -175,9 +175,9 @@ class CellApi(
          * Content schema this app's style needs (tools/cells/cells.py CELL_SCHEMA): 2 = overlays layer "streets"
          * (small streets at z13+), 3 = router classes per way, blocking barriers, SAC on hiking route pieces
          * (docs/map-style-notes.md "Router classes"). Installed cells of an older schema are requested again
-         * (MapCells.outdated); until then the style draws them with the tag rules. Schema 4 (POI priority "pr",
-         * server since 2026-10-23) is not needed: s3 cells only place same-kind POIs in tile order, they get the s4
-         * version on the normal refresh / after-routing check; newer schemas are accepted as any version.
+         * (MapCells.outdated); until then the style draws them with the tag rules. Schema 4 (POI priority "pr") is not
+         * required: s3 cells only place same-kind POIs in tile order and get s4 on the normal refresh; newer schemas are
+         * accepted as any version.
          */
         const val CELL_SCHEMA = 3
 

@@ -9,7 +9,7 @@ Usage:
 
 Options:
   --format 1|2     1 (default) = today's PNG z5-13; 2 = --webp --round 0.25 --maxzoom 13 (docs/design/map-data-size.md;
-                   12 until 2026-10-22 – finer relief for the balanced hill shading, owner)
+                   z13 = finer relief for the balanced hill shading, owner)
   --minzoom N      lowest zoom (default 5; with --cell at least 10, the cell's own tiles only)
   --maxzoom N      highest zoom (default 13, also format 2); the positional maxzoom does the same
   --webp           store tiles as WebP lossless (MapLibre Native Android decodes them with BitmapFactory)

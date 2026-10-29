@@ -4,15 +4,15 @@ import com.onpath.app.debug.Problems
 import com.onpath.strings.*
 import org.jetbrains.compose.resources.StringResource
 
-/**
+/*
  * Shared contract between the app UI and the on-device routing engine.
  * Do not change without updating docs/architecture-contract.md.
  */
+
 /**
  * The six activities. [label] is the one name the user sees (picker, chip, button, messages) and [line] the one short
- * explaining line under it in the activity picker (owner 2026-10-26: names only, routing unchanged); [chip] = the name on
- * the plan sheet's activity chip, shorter only where the full name would cut the route's distance ("Gravel": with
- * "Gravel bike" a 112 km day tour showed "11…", owner rule 2026-10-22: time and distance in full). Stored values
+ * explaining line under it in the activity picker; [chip] = the name on the plan sheet's activity chip, shorter only
+ * where the full name would cut the route's distance ("Gravel"; owner rule: time and distance in full). Stored values
  * (prefs, DB, nav session, backups) use the enum name, never [label].
  */
 enum class Activity(private val labelRes: StringResource, private val lineRes: StringResource, private val chipRes: StringResource) {
@@ -30,13 +30,14 @@ enum class Activity(private val labelRes: StringResource, private val lineRes: S
 }
 
 /**
- * A point; [way] (optional) = what the way from this point to the next one is like (routed lines only, see
- * [WayAttrs]). Equality ignores [way] (two points at the same place are the same point), so lines with and without way
- * attributes compare as before.
+ * A point. [way]: what the way from this point to the next one is like (routed lines only, see [WayAttrs]; time model);
+ * [turn]: a junction instruction at this point (navigation); [exit]: with a roundabout [turn], the exit to take (1, 2, …;
+ * 0 = unknown); [turnAngle]: BRouter's angle of that turn in degrees (> 0 right, < 0 left; the roundabout sign draws its
+ * exit there). Equality uses only lat, lon and ele (two points at the same place are the same point), so lines with and
+ * without way attributes compare equal.
  */
-/** [way]: way attributes from here on (time model); [turn]: a junction instruction at this point (navigation). */
 data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null,
-                    val turn: JunctionCue? = null) {
+                    val turn: JunctionCue? = null, val exit: Int = 0, val turnAngle: Float = 0f) {
     override fun equals(other: Any?): Boolean =
         this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
 
@@ -65,30 +66,30 @@ data class WayAttrs(
     val rough: String? = null,
     /**
      * Bike access as BRouter reports the OSM `bicycle` tag (yes, designated, permissive, no, dismount, ...; BRouter's
-     * lookups fold synonyms, e.g. allowed → yes), null = not tagged / unknown. Added 2026-10-22 (route warnings).
+     * lookups fold synonyms, e.g. allowed → yes), null = not tagged / unknown. Used for route warnings.
      */
     val bicycle: String? = null,
     /**
      * Part of a signed cycle route (BRouter's route_bicycle_icn / ncn / rcn / lcn). A footway without a bicycle tag on a
-     * route is ridden, not pushed (owner 2026-10-25; touring.brf / trekking.brf cost it so). Added 2026-10-25.
+     * route is ridden, not pushed (owner; touring.brf / trekking.brf cost it so).
      */
     val cycleRoute: Boolean = false,
     /**
      * highway=pedestrian (a pedestrian zone; [wayType] says "footway" for it too). No cycling there unless signed
-     * (bicycle=yes / designated), also on a cycle route (German law) – stays "pushing". Added 2026-10-26.
+     * (bicycle=yes / designated), also on a cycle route (German law) – stays "pushing".
      */
     val pedestrian: Boolean = false,
     /**
      * Water to cross: the way is a ford (ford=yes / stepping_stones) or the span ends at a ford node. Route hints
-     * (owner 2026-10-26: "a hint on a route if it contains anything that requires validation"). Added 2026-10-26.
+     * (owner: "a hint on a route if it contains anything that requires validation").
      */
     val ford: Boolean = false,
     /**
      * A barrier a bike does not simply pass (stile, kissing_gate, turnstile, full-height_turnstile – OSM value) at the
-     * node ending this span; null = none of those (bollards, gates, lift gates are passable and not kept). Added 2026-10-26.
+     * node ending this span; null = none of those (bollards, gates, lift gates are passable and not kept).
      */
     val barrier: String? = null,
-    /** highway=construction: the way is being built or rebuilt and may be closed. Added 2026-10-26. */
+    /** highway=construction: the way is being built or rebuilt and may be closed. */
     val construction: Boolean = false,
 ) {
     /**
@@ -139,12 +140,12 @@ data class Share(val key: String, val meters: Double)
 
 /**
  * [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the
- * same or shorter budget (leg by leg) would time out too, so the planner does not retry (perf report 2026-10-22).
+ * same or shorter budget (leg by leg) would time out too, so the planner does not retry.
  */
 class RoutingException(message: String, val timedOut: Boolean = false, kind: Kind? = null) : Exception(message) {
     /**
-     * What failed, for code that must not read the message (it is in the user's language since EN + DE, owner
-     * 2026-10-26). Without [kind] it is found from the message (the app's own texts for these cases); a timed-out
+     * What failed, for code that must not read the message (it is in the user's language).
+     * Without [kind] it is found from the message (the app's own texts for these cases); a timed-out
      * request that is nothing else is [Kind.TIMEOUT].
      */
     val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }

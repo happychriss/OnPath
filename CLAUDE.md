@@ -17,10 +17,10 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | Path | What |
 | --- | --- |
 | `app/src/main/java/com/onpath/app/` | Kotlin app (Jetpack Compose + MapLibre) |
-| `  ui/` | `AppViewModel` (all UI state, Plan ⇄ Navigate switching), `AppMode` (PLAN / NAVIGATE + mode on start, see `docs/ux-two-modes.md`), `MapScreen` (map + Plan mode controls), `NavigateScreen` (Navigate: remaining strip, recording chip, arrival check), `SlideToUnlock` (slide-to-plan switch + `SlideThreshold`), `PlanTopBar` (search pill + round ☰ menu: My routes, Start recording, Settings; Import GPX is in My routes), `MapFooter` (scale, attribution, small map FABs: locate with GPS dot), `TourBar` (Tour running status + End tour, arrival dialogs), `MapHost` (MapView in Compose; map taps edit only when `canEditMap`), `PlanPanel` (plan sheet in three steps – summary with activity, profile, Points list; one primary button, route actions in ⋯; route lines by kind: red ERROR, amber WARNING, grey INFO), `RouteBreakdown` (way type / surface bars, difficulty badge), `SettingsScreen` (topic list → one page per topic, `SettingsPage` in `SettingsSummary`: Pace, POIs, Map, Navigation, Offline maps, Backup, Privacy, Updates, Diagnostics, About), `Panels`, `Screens`, `ElevationProfile` (gradient colours), `Theme` (`OnPathColors` message tokens + `OnPathType` type scale 12/14/16/22/30 – no hand-set `fontSize` in ui/, `FontSizeRuleTest`), `MessageBar` (top message bar: errors ⚠ + red edge; `Busy` = spinner where work was started) |
+| `  ui/` | `AppViewModel` (all UI state, Plan ⇄ Navigate switching), `AppMode` (PLAN / NAVIGATE + mode on start, see `docs/ux-two-modes.md`), `MapScreen` (map + Plan mode controls), `NavigateScreen` (Navigate: remaining strip, recording chip, arrival check), `SlideToUnlock` (slide-to-plan switch + `SlideThreshold`), `PlanTopBar` (search pill + round ☰ menu: My routes, Start recording, Settings; Import GPX is in My routes), `MapFooter` (scale, attribution, small map FABs: locate with GPS dot), `TourBar` (Tour running status + End tour, arrival dialogs), `MapHost` (MapView in Compose; map taps edit only when `canEditMap`), `PlanPanel` (plan sheet in three steps – summary with activity, profile, Points list; one primary button, route actions in ⋯; route lines by kind: red ERROR, amber WARNING, grey INFO), `RouteBreakdown` (way type / surface bars, difficulty badge), `SettingsScreen` (topic list → one page per topic, `SettingsPage` in `SettingsSummary`: Pace, POIs, Map, Navigation, Offline maps, Backup, Privacy, Updates, Diagnostics, About), `Panels`, `Screens`, `ElevationProfile` (gradient colours), `Theme` (`OnPathColors` message tokens + `OnPathType` type scale 12/14/16/22/30 – no hand-set `fontSize` in ui/, `FontSizeRuleTest`), `Notices` (`vm.say(text, kind, place)` → `NoticeRouting`: a line in My routes / Settings where the user acted, else the light `ErrorCard` for errors only; `Busy` = spinner where work was started) |
 | `  map/` | `MapController` (sources/layers the app adds, camera, location), `StyleLoader` ({DATA_DIR} substitution, format 1 / 2 style choice, fallback style), `LayerSettings` (Settings → POI filters, contour/hillshade visibility) |
-| `  routing/` | `RoutingContract.kt` (shared interface – change with care), `BRouterEngine` (offline BRouter), `EngineProvider` (single place choosing the engine, falls back to `StraightLineEngine`), `Planner` (leg-by-leg fallback, splits at pinned POI points), `WaypointInsertion` (where a tapped point goes), `RouteProgress` (stops already passed for "Continue navigation", arrival check), `ArrivalGate` (when to ask "arrived": round trips, poor fixes), `PlanEdits` (reverse, round trip, move), `RouteSummary` (breakdown merge, difficulty label = distance + ascent raised by trail technique T3+ / S2+, a hike's ≥ 2 km at T2, a Bike / E-bike route ≥ 25 % unpaved or ≥ 5 km loose (`rating`), gradient classes) |
-| `  recording/` | `RecordingService` (foreground location service, owns navigation / re-routing; every DB write guarded, failures are loud – see `safeDb` / `failLoud`), `LocationTracker`, `PointFilter` (which fixes become points: accuracy, jumps, standing still) |
+| `  routing/` | `RoutingContract.kt` (shared interface – change with care), `BRouterEngine` (offline BRouter), `EngineProvider` (single place choosing the engine, falls back to `StraightLineEngine`), `Planner` (leg-by-leg fallback, splits at pinned POI points), `WaypointInsertion` (where a tapped point goes), `RouteProgress` (arrival check), `ArrivalGate` (when to ask "arrived": round trips, poor fixes), `PlanEdits` (reverse, round trip, move), `RouteSummary` (breakdown merge, difficulty label = distance + ascent raised by trail technique T3+ / S2+, a hike's ≥ 2 km at T2, a Bike / E-bike route ≥ 25 % unpaved or ≥ 5 km loose (`rating`), gradient classes) |
+| `  recording/` | `RecordingService` (foreground location service, owns navigation / re-routing; every DB write guarded, failures are loud – see `safeDb` / `failLoud`), `LocationTracker`, `PointFilter` (which fixes become points: accuracy, jumps, standing still), `DemoLocation` + `DemoPath` (Developer tools → Demo: simulated fixes along the plan into both trackers, real GPS ignored, tours "Demo · …" – `docs/core-features.md`) |
 | `  gpx/` | Tolerant `GpxParser`, `GpxWriter` (GPX 1.1), model, `SportType` (Komoot's `<trk><type>` ⇄ activity + T level on import / export) |
 | `  data/` | `TourDb` (SQLite WAL), `Prefs`, `DataFiles` (required data check), `Geo` helpers, `AppSettings` (Settings page model), `FollowProgress` (remaining distance while following) |
 | `  poi/` | POIs: model, kinds (+ `defaultHidden`), `PoiFilter` (layer filter JSON), tap lookup, details sheet, Google Maps link-out |
@@ -38,7 +38,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `tools/hetzner/` | Superseded region server (Hetzner): `onpath_hetzner.py` (laptop: creates only its own labelled Hetzner server), `server/` (install.sh, API, worker, web page) – see its README |
 | `strings/` | User texts EN + DE as Compose Multiplatform resources (small KMP module), `Txt` / `str()` – see `docs/i18n.md`; review round trip `tools/i18n/` |
 | `docs/` | Requirements, architecture contract, project status |
-| *(other repo)* | **Website onpath.earth** lives in its own repo `happychriss/onpath.earth` (Cloudflare Pages, owner 2026-10-27) – not in this repo; app sessions don't add website files here. The browser planner (`web/`, branch `web-spike`) is a different thing: its code stays here, it is served under onpath.earth (proposed `plan.onpath.earth`). onpath.earth is OnPath's main address (welcome, help, privacy, imprint); 44-2.de is parked (owner 2026-10-27). |
+| *(other repo)* | **Website onpath.earth** lives in its own repo `happychriss/onpath.earth` (Cloudflare Pages, owner) – not in this repo; app sessions don't add website files here. The browser planner (`web/`, branch `web-spike`) is a different thing: its code stays here, it is served under onpath.earth (`plan.onpath.earth`, owner). onpath.earth is OnPath's main address (welcome, help, privacy, imprint); 44-2.de is parked. |
 
 ## Build and test
 - Requirements: JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed).
@@ -48,8 +48,8 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   (map replaced by a placeholder). Images in `app/src/test/snapshots/images/`. Use these to check layouts
   when no device/emulator is available.
 - **Emulator (core features end to end):** `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (needs an x86_64
-  emulator; CI: `.github/workflows/e2e.yml` on every push to main – owner 2026-10-22: it runs beside releases; a red
-  run is fixed at once. Release gate = only the short `StartSmokeE2ETest`, the app opens). `-Ponpath.e2e=true` adds
+  emulator; CI: `.github/workflows/e2e.yml` on every push to main, beside releases; a red run is
+  fixed at once. Release gate = only the short `StartSmokeE2ETest`, the app opens). `-Ponpath.e2e=true` adds
   x86_64 libs – never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>` (header lists the test mains, e.g.
   `GpxCompare.kt` + `gpx_compare_report.py`: our route vs a reference GPX line – aggregate numbers only in the repo).
@@ -101,7 +101,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - Version: default `appVersion` in `app/build.gradle.kts` (versionCode = major*10000+minor*100+patch).
 - To release: bump that version, add `docs/release-notes/vX.Y.Z.md`, push to `main`.
   `.github/workflows/release.yml` then tests, builds, signs (test key), creates tag `vX.Y.Z` and the
-  GitHub Release with the APK – once per version (re-runs skip existing releases). Cloud sessions may not
+  GitHub Release with the APK – once per version (re-runs skip existing releases). The release runs
+  **risk-based unit tests** (`tools/ci/risk_tests.py`: core-feature packages always + packages changed since the last
+  release; build files → all) beside the emulator start test; the **full** unit suite runs after every push in
+  `unit.yml` (not a gate – a red run is fixed at once, like E2E). Cloud sessions may not
   push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
 
@@ -109,42 +112,46 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
 - **No Google Play Services** (LocationManager directly); keep dependencies few.
 - **Core features** (`docs/core-features.md`, e.g. hold a route point → menu → Delete): each has regression tests;
-  a field bug in one first gets a test that reproduces it, then the fix (owner 2026-10-21, after the second regression).
+  a field bug in one first gets a test that reproduces it, then the fix (owner).
 - **No silent errors:** every `catch` / `runCatching` that recovers reports to `debug/Problems`
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
   without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs
   once, and goes into the diagnostics export; MapLibre's native warnings/errors and crashes are captured too (`OnPathApp`).
-- **Messages** (owner 2026-10-24, `docs/review-simplify-2026-10-24.md` A): INFO = grey text, no box; ACTION = blue strip
+- **Messages** (owner): INFO = grey text, no box; ACTION = blue strip
   only for a question with buttons; WARNING = amber + ⚠ (tappable); ERROR = red, what failed + one way out. Colours from
   `OnPathColors`, sizes from `OnPathType` only. Dialogs only for decisions that can lose something, verb buttons, no body
-  that repeats them. Progress = a spinner where the user started it. Developer tools (Settings → Diagnostics) appear
+  that repeats them. Progress = a spinner where the user started it. **No dark message bar** (owner): a
+  result goes where the user acted (`vm.say(text, NoticeKind, NoticePlace)` → grey / red line at the top of My routes or
+  the open Settings page, gone when that screen is left; route state → plan sheet lines); a result visible anyway is not
+  said; an ERROR without such a place (background, link / share into the app) → the one light `ErrorCard` (red edge, ⚠,
+  OK, never self-dismissing); an INFO without a place → problem log only (`NoticeRouting`, `NoticesTest`). Developer tools (Settings → Diagnostics) appear
   after 7 taps on the version in Settings → About (remembered; debug builds always).
 - **Robustness rules** (requirements section 4): never crash on missing files – show a clear screen;
   write every recorded point to SQLite immediately; long work off the main thread; show plain-language
   errors (no stack traces) to the user.
-- **Map camera** (lesson of 2026-10-20): MapLibre ends location tracking on every camera move made by the app
+- **Map camera**: MapLibre ends location tracking on every camera move made by the app
   (`moveCamera` / `easeCamera` / `animateCamera`) and reports it like a gesture. While tracking, never move the camera
   from code – turn it via the `CompassEngine` (`HeadingEngine`, TRACKING_COMPASS) and draw extras (the "where I face"
   arrow) as overlays. Before an intended camera fly (search result, fit a route) stop following first.
 - **Routing**: always via the `RoutingEngine` interface; blocking calls on a background thread;
   newer requests supersede older ones in the UI.
-- **Map style**: one style since 0.7.0 (`tools/themes/classic.json`; why each colour: `docs/design/map-colour-analysis.md`).
+- **Map style**: one style (`tools/themes/classic.json`; why each colour: `docs/design/map-colour-analysis.md`).
   Edit `tools/make_style.py`, regenerate JSON, keep to MapLibre Native features (no JS-only). Ground symbols are
   sprite images (`tools/make_sprite.py`). Layers with metadata `onpath:fallback-for` are drawn only when that source is missing.
   Layer ids the app depends on: `routes-hike`, `routes-bike` (MTB shows the cycle band), `poi-*`; the app's own layers
   (`planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`) go on top.
-- **Map labels** in German (`name:de` → `name`). **UI texts EN + DE** (owner 2026-10-26, `docs/i18n.md`): every user
+- **Map labels** in German (`name:de` → `name`). **UI texts EN + DE** (owner, `docs/i18n.md`): every user
   text in `strings/…/composeResources/values[-de]/strings_<area>.xml` (Compose Multiplatform resources), used via
   `str(Res.string.x)` in Compose / `Txt.s(…)` elsewhere – no new hard-coded texts; review sheet round trip
   `tools/i18n/i18n.py export|import`. Diagnostics, Developer tools and the problem log stay English.
 - **Data/licences**: the map shows a short "© OpenStreetMap"; a tap opens Settings → About with the full credits
   ("© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution). Google
-  content is never stored or drawn; only link out to Google Maps. Exception (owner decision 2026-10-20): the coordinate
+  content is never stored or drawn; only link out to Google Maps. Exception (owner): the coordinate
   of a place the user shares from Google Maps (share sheet / link, `search/SharedPlace.kt`) may be used to place our own
   marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name.
 - **Activities** (exactly six): Bike, Gravelbike, E-bike, MTB, E-MTB, Hike (SAC T1–T5,
   default T2, chosen in the activity picker; the app remembers the last activity and T level). Names + the one picker line
-  under each: `Activity.label` / `line`, chip `Activity.chip` ("Gravel") (owner 2026-10-26; enum names BIKE_TOURING / BIKE_TREKKING … unchanged and the only
+  under each: `Activity.label` / `line`, chip `Activity.chip` ("Gravel") (enum names BIKE_TOURING / BIKE_TREKKING … unchanged and the only
   stored form). Profiles
   (`BRouterEngine.profileFile` – the one source; map layers, route warnings and the activity check ask it): Bike +
   E-bike → `touring.brf`, Gravelbike → `trekking.brf`, MTB + E-MTB → `mtb.brf`, Hike → `hiking-mountain.brf` with the

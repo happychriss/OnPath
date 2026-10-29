@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Owner decisions 2026-10-22: the shared-place note; recents keep the village / municipality. */
+/** Owner decisions: the shared-place note; recents keep the village / municipality. */
 class SearchNotesTest {
 
     @Test fun noteOnlyWhenPositionedFromTheAddress() {
@@ -23,7 +23,7 @@ class SearchNotesTest {
         val back = SearchStore.decode(SearchStore.encode(p))!!
         assertEquals("Völlan", back.village)
         assertEquals("Lana", back.municipality)
-        // a line written before 2026-10-22 (9 fields)
+        // an older line (9 fields)
         val old = SearchStore.decode("n1\tMeraner Hütte\thut\t\t46.732000\t11.091000\t1960\t\tPOI")!!
         assertEquals("Meraner Hütte", old.name)
         assertNull(old.village); assertNull(old.municipality)

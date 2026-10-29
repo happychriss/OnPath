@@ -69,7 +69,7 @@ class NoFlashTest {
         assertEquals("Map ready", g.update("Map ready", 3_600_000).shown)
     }
 
-    /** First start (field test 0.8.7): "Preparing…" for 300 ms, then "Downloading" – only "Downloading" appears. */
+    /** First start: "Preparing…" for 300 ms, then "Downloading" – only "Downloading" appears. */
     @Test fun firstStartCardSkipsTheShortPreparingStep() {
         val own = CellId(543, 361)
         val job = CellJob(listOf(own), own, CellWhy.HERE)

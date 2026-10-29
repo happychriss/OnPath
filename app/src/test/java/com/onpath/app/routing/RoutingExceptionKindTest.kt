@@ -4,7 +4,7 @@ import com.onpath.strings.*
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Code decides by [RoutingException.kind], never by the (translated) message (EN + DE, owner 2026-10-26). */
+/** Code decides by [RoutingException.kind], never by the (translated) message (EN + DE). */
 class RoutingExceptionKindTest {
     @Test fun kindFromTheAppsOwnTexts() {
         assertEquals(RoutingException.Kind.NO_DATA, RoutingException(BRouterEngine.NO_DATA).kind)

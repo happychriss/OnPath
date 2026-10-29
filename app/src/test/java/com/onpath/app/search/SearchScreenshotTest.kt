@@ -12,7 +12,6 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
 import com.onpath.app.poi.Poi
-import com.onpath.app.routing.Activity
 import com.onpath.app.ui.MapPlaceholder
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.PlanTopBar
@@ -41,7 +40,7 @@ class SearchScreenshotTest {
     private val hut = Place("n1", "Meraner Hütte", "hut", 46.732, 11.091, ele = 1960,
         poi = Poi("n1", "hut", "Meraner Hütte", 46.732, 11.091, 1960, openingHours = "Jun-Oct Mo-Su 07:00-22:00"))
 
-    /** One mixed list (owner 2026-10-22): offline places, trails, an address with its village, an online result. */
+    /** One mixed list (owner): offline places, trails, an address with its village, an online result. */
     @Test fun searchResults() = paparazzi.snapshot {
         OnPathTheme {
             SearchScreen(SearchUi(
@@ -94,7 +93,7 @@ class SearchScreenshotTest {
                             com.onpath.app.ui.search.PlaceCardActions())
                         PlaceCard(PlaceCardUi(Place("o:N1", "Laubengasse 10", "address", 46.67, 11.16, address = "39012 Meran",
                             source = Place.Source.ONLINE), 2, 3, "is the destination"), com.onpath.app.ui.search.PlaceCardActions())
-                        // a shared place positioned from its address keeps the note (owner 2026-10-22)
+                        // a shared place positioned from its address keeps the note
                         PlaceCard(PlaceCardUi(Place("shared:1", "Gelateria Costantin", "other", 46.67, 11.16,
                             address = "Passeggiata Lungo Passirio 1, Meran", note = SharedPosition.NOTE)),
                             com.onpath.app.ui.search.PlaceCardActions())

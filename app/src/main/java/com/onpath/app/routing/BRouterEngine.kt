@@ -128,9 +128,9 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     /**
      * Runs BRouter and returns the track with the nodes it was given. A point that BRouter snapped onto an "island" (a
-     * way without a connection to the rest of the network, e.g. a footway inside Köln cathedral, field case
-     * 2026-10-26) is snapped again to the next way: BRouter's own island retry snaps to the same way again, so the app
-     * hands it the ways to skip (owner rule: a point that cannot be routed takes the closest usable way).
+     * way without a connection to the rest of the network, e.g. a footway inside a cathedral) is snapped again to the
+     * next way: BRouter's own island retry snaps to the same way again, so the app hands it the ways to skip (owner rule:
+     * a point that cannot be routed takes the closest usable way).
      */
     private fun search(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?,
@@ -330,7 +330,6 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                     }
                 }
             }
-            // a profile the app no longer ships (fastbike-verylowtraffic.brf before 2026-10-26) is removed
             for (name in removeObsoleteProfiles(profileDir)) Problems.warn("routing", "Old routing profile could not be deleted: $name")
         } catch (e: RoutingException) {
             throw e
@@ -343,9 +342,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     /**
      * Longest out-and-back spike (one way) BRouter cuts at a via point. Much shorter for hiking, where a
-     * via point on a spur is usually a deliberate goal (summit, viewpoint, a spot on a Waalweg): with
-     * 250 m the owner's point 3 on the Algunder Waalweg was cut off and left unconnected (100 m away).
-     * 50 m still trims small snapping spikes.
+     * via point on a spur is usually a deliberate goal (summit, viewpoint): 250 m cut off a point 100 m
+     * up a spur. 50 m still trims small snapping spikes.
      */
     private fun viaCorrectionM(activity: Activity): Double =
         if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
@@ -353,7 +351,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
     private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
-        // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner 2026-10-22).
+        // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner).
         // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
         // only changes output formats we do not use. 4 = comment style.
         kv["turnInstructionMode"] = "4"
@@ -505,8 +503,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
         /**
          * Profile per activity. Bike (BIKE_TOURING) and E-bike = touring.brf, OnPath's copy of trekking.brf for a normal bike
-         * (owner 2026-10-25: paved bike ways and quiet ways, traffic and rough
-         * gravel avoided; replaces the road-bike fastbike profile). E-bike changes only power, speed and mass (keyValues).
+         * (owner: paved bike ways and quiet ways, traffic and rough gravel avoided). E-bike changes only power, speed and
+         * mass (keyValues).
          */
         internal fun profileFile(activity: Activity): String = when (activity) {
             Activity.BIKE_TOURING, Activity.EBIKE -> "touring.brf"
@@ -516,8 +514,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         }
 
         /**
-         * Deletes the profiles in [dir] that the app no longer ships (*.brf not in [PROFILE_ASSETS], e.g. the road-bike
-         * fastbike-verylowtraffic.brf replaced by touring.brf on 2026-10-26). Returns the names that could not be deleted.
+         * Deletes the profiles in [dir] that the app no longer ships (*.brf not in [PROFILE_ASSETS]).
+         * Returns the names that could not be deleted.
          */
         internal fun removeObsoleteProfiles(dir: File): List<String> =
             (dir.listFiles() ?: emptyArray())

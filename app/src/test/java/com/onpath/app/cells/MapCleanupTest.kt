@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Settings → Offline maps → "Clean up" (owner 2026-10-22): which installed map areas stay. */
+/** Settings → Offline maps → "Clean up": which installed map areas stay. */
 class MapCleanupTest {
     // Meran, Bozen, far away: Vienna, Rome, Munich
     private val meran = GeoPoint(46.67, 11.16)

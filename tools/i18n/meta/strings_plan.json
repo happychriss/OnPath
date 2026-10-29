@@ -996,8 +996,8 @@
     "confidence": "sicher"
   },
   "plan_error": {
-    "area": "Message bar",
-    "context": "Accessibility of the ⚠ in an error message",
+    "area": "Messages",
+    "context": "Accessibility of the ⚠ in an error message (error card, red lines in My routes / Settings)",
     "priority": 3,
     "confidence": "sicher"
   },
@@ -1218,7 +1218,7 @@
   },
   "plan_share_plan": {
     "area": "Plan sheet",
-    "context": "Item in the plan sheet's ⋯ menu (from two points) and title of Android's share sheet: sends the plan as a link to the web planner (https://planer.onpath.earth/#p=…), which OnPath and the web planner open.",
+    "context": "Item in the plan sheet's ⋯ menu (from two points) and title of Android's share sheet: sends the plan as a link to the web planner (https://plan.onpath.earth/#p=…), which OnPath and the web planner open.",
     "priority": 1,
     "confidence": "sicher",
     "max": 24

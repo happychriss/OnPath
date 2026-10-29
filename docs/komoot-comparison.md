@@ -1,7 +1,7 @@
 # Komoot vs OnPath – what to copy, what to skip
 
-Research note, 2026-10-17. Based on Komoot help pages, reviews and forum threads (sources at the end) and
-OnPath test build 1.1 (`docs/project-status.md`). Requirement IDs refer to `docs/requirements.md`.
+Research note, 2026-10-17. Based on Komoot help pages, reviews and forum threads (sources at the end), compared with
+OnPath's first test build. Requirement IDs refer to `docs/requirements.md`.
 
 ## 1. How Komoot does it (short)
 
@@ -39,15 +39,9 @@ even in the 2026 watch app. Offline maps are a corridor about 3 km wide around a
 note bugs in the off-route alert, and that the free tier gives one free offline region.
 
 ## 2. Where OnPath stands
-Already comparable: offline routing (better than Komoot, which needs data to reroute), SAC-aware hiking,
-route bands, interactive elevation profile, undo, off-route warning, Komoot GPX import, POI sheet with
-Google link-out.
-Missing: insert-in-middle / drag line / move / reorder (F-PLAN-04), redo, round trip (F-PLAN-03),
-reverse, surface and way-type breakdown (the `RouteResult.wayTypes/surfaces` fields exist but are not
-filled or shown), difficulty grade, gradient colouring, route warnings (F-PLAN-11), remaining distance
-while navigating (F-NAV-01), a way to hide the route and see the map underneath.
-Today a tap always appends a point at the end, so tapping a spot halfway along the route makes an
-out-and-back spike.
+OnPath routes offline (Komoot needs data to reroute). Most of the "Adopt now" items below and several "Adopt later"
+ones are in the app now (current behaviour: `docs/ux-two-modes.md`, `docs/core-features.md`). Decided differently
+since: no dragging of points or the route line – Plan uses hold-only gestures (owner).
 
 ## 3. Recommendations
 

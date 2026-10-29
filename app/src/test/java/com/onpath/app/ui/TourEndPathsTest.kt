@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * UX review 2026-10-23, problem 2 (owner Q5): there are three ways to end a tour – End tour, "You have arrived" → Save
+ * There are three ways to end a tour – End tour, "You have arrived" → Save
  * and the "Unfinished tour" dialog after a restart. All three show the bus / car / lift summary when a ride was found
  * (core feature C12), and the unfinished dialog has Continue · Delete · Save like End tour.
  */

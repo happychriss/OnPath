@@ -123,7 +123,7 @@ class CellDownloadTest {
         assertEquals(emptyList<CellId>(), mc.request(listOf(a), CellReason.NEAR)) // installed
     }
 
-    /** Owner 2026-10-21: mobile data by default – own point, neighbours and refreshes; no question. */
+    /** Mobile data by default (owner) – own point, neighbours and refreshes; no question. */
     @Test fun mobileDataRule() {
         server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
         val net = Net(unmetered = false)
@@ -149,9 +149,8 @@ class CellDownloadTest {
         waitFor("neighbour after yes") { mc.state(b) is CellState.Ready }
     }
 
-    /** A tour runs: the newer version of an installed area waits; back in Plan it loads (no switch mid-tour). */
     /**
-     * A tour runs (owner 2026-10-22): areas still download – a new one at the edge (T5) and the newer version of an
+     * A tour runs: areas still download – a new one at the edge (T5) and the newer version of an
      * installed one – but the map does not switch; both are joined after the tour.
      */
     @Test fun downloadsDuringATourAreJoinedAfterIt() {
@@ -186,7 +185,7 @@ class CellDownloadTest {
         waitFor("built and loaded in the background") { mc.state(a) == CellState.Ready("v1") }
     }
 
-    /** Owner 2026-10-24: opening the app loads quietly only what the server has built – the check starts no build. */
+    /** Opening the app loads quietly only what the server has built (owner) – the check starts no build. */
     @Test fun builtOnServerOnlyReadsTheStatus() {
         server.publish(a, "v1")
         val other = CellId(a.x + 7, a.y)
@@ -196,7 +195,7 @@ class CellDownloadTest {
         assertEquals(null, cells(Net(connected = false), tmp.newFolder("data-offline")).builtOnServer(listOf(a)))
     }
 
-    /** Owner 2026-10-23: phone put aside while the map loads – MapLoadService keeps the polling going. */
+    /** Phone put aside while the map loads: MapLoadService keeps the polling going. */
     @Test fun loadingServiceKeepsItGoingInTheBackground() {
         server.publish(a, "v1"); server.buildPolls = 1
         val mc = cells(Net())
@@ -234,7 +233,7 @@ class CellDownloadTest {
         val mc = cells(Net())
         mc.request(listOf(a), CellReason.POINT)
         waitFor("failed") { mc.state(a) is CellState.Failed }
-        // the server's reason goes to Diagnostics only; the user reads one plain sentence (text review 2026-10-23)
+        // the server's reason goes to Diagnostics only; the user reads one plain sentence
         assertEquals("Map for this area failed",
             (mc.state(a) as CellState.Failed).message)
     }
@@ -255,9 +254,8 @@ class CellDownloadTest {
     }
 
     /**
-     * Field 2026-10-26 (s5 → s6, Hilden): the server answered the refresh "ready + updating" while it rebuilt the cells;
-     * the app then waited its 15-minute idle time before asking again – the new cells came 10 min after they were
-     * built. Now an updating cell is polled at the server's pace and the new version loads right after the rebuild.
+     * The server answers a refresh "ready + updating" while it rebuilds the cells: an updating cell is polled at the
+     * server's pace (not after the 15-minute idle time) and the new version loads right after the rebuild.
      */
     @Test fun updatingCellIsPolledUntilTheRebuildIsDone() {
         server.publish(a, "2026-10-20-s5"); server.buildPolls = 0
@@ -301,7 +299,7 @@ class CellDownloadTest {
     }
 
     /**
-     * Field report 2026-10-21: cells built before the "streets" overlay (content schema 1, version = OSM date) are found
+     * Cells built before the "streets" overlay (content schema 1, version = OSM date) are found
      * as outdated and loaded again as soon as the server has the schema-2 build – also on mobile data.
      */
     @Test fun outdatedSchemaIsLoadedAgain() {
@@ -319,7 +317,7 @@ class CellDownloadTest {
     }
 
     /**
-     * Fresh-install simulation (owner 2026-10-21): empty phone → own point → the server builds → download over mobile
+     * Fresh-install simulation: empty phone → own point → the server builds → download over mobile
      * data (own point) → map installed; "Clear all" deletes everything → asked again → installed again, same version.
      */
     @Test fun freshInstallAndResetLoadTheMapAgain() {
@@ -330,7 +328,7 @@ class CellDownloadTest {
         waitFor("built + downloaded") { mc.state(a) == CellState.Ready("2026-10-21-s3") }
         assertTrue(File(mc.mapDir()!!, "base.pmtiles").isFile)
         assertEquals(emptyList<CellId>(), mc.outdated())
-        // Settings → Offline maps → Clear all (replaced Diagnostics → Reset maps, owner 2026-10-22)
+        // Settings → Offline maps → Clear all
         assertEquals(listOf(a), mc.clearAll())
         waitFor("deleted") { mc.installed.value.isEmpty() }
         assertEquals(listOf(a), mc.missing(listOf(a)))
@@ -339,7 +337,7 @@ class CellDownloadTest {
     }
 
     /**
-     * Modal → Cancel (owner 2026-10-21: "Cancel = stop"): a cell still being built is dropped – no more polling, no
+     * Modal → Cancel (owner: "Cancel = stop"): a cell still being built is dropped – no more polling, no
      * download, no state – even when the server finishes it; asking again (a point / search there) loads it.
      */
     @Test fun cancelStopsLoadingAndAskingAgainLoads() {
@@ -378,7 +376,7 @@ class CellDownloadTest {
         assertNotNull(second.mapDir())
     }
 
-    /** Field 0.10.1: two screens at start – the older ViewModel, cleared last, must not remove the newer one's relevance. */
+    /** Two screens at start – the older ViewModel, cleared last, must not remove the newer one's relevance. */
     @Test fun olderScreenDoesNotClearNewerRelevance() {
         val mc = cells(Net())
         fun rel() = object : MapCells.Relevance {
@@ -406,7 +404,7 @@ class CellDownloadTest {
     }
 
     /**
-     * Clean up / Clear all (owner 2026-10-22): removal goes through the store generation path – batched into one
+     * Clean up / Clear all: removal goes through the store generation path – batched into one
      * generation, not while the map is dragged, not during a tour (the map does not switch under the user's feet).
      */
     @Test fun removalWaitsForTheTourAndTheGestureAndIsBatched() {
@@ -432,9 +430,9 @@ class CellDownloadTest {
     }
 
     /**
-     * Phone check 2026-10-23 (laptop, Pixel): a place opened from a link flew the camera (MapLibre reports app camera
-     * moves like a gesture → userBusy), the app was left before the camera came to rest – no "camera idle" ever came, so
-     * two downloaded areas waited 4 min unjoined until the app was opened again. Nobody drags a map that is not on screen.
+     * A camera fly (MapLibre reports app camera moves like a gesture → userBusy) and the app left before the camera
+     * came to rest: no "camera idle" ever comes. Downloaded areas must not wait unjoined until the app is opened again –
+     * nobody drags a map that is not on screen.
      */
     @Test fun leavingTheAppEndsAStuckGesture() {
         server.publish(a, "v1"); server.buildPolls = 0

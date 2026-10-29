@@ -4,7 +4,7 @@ import kotlin.math.roundToLong
 
 /**
  * A plan as it travels between devices: in a QR code, in a shared link, later in the phone ⇄ browser sync
- * (web planner phase 1 and 2, docs/design/web-planner.md §8). The same code runs in the app and – compiled to
+ * (docs/design/web-planner.md §8). The same code runs in the app and – compiled to
  * WebAssembly – in the web planner, so both sides always read and write exactly the same format.
  */
 data class SharedPlan(
@@ -22,8 +22,8 @@ data class SharedPlan(
 )
 
 /**
- * The plan code: compact, URL safe text for a [SharedPlan] (owner decision 2026-10-26, plan "App + browser",
- * phase 1). Pure Kotlin, no Android (SharedCoreRuleTest), no platform Base64 (it also runs in the browser).
+ * The plan code: compact, URL safe text for a [SharedPlan] (owner).
+ * Pure Kotlin, no Android (SharedCoreRuleTest), no platform Base64 (it also runs in the browser).
  *
  * Link: `<web planner>/#p=<code>` – the plan sits after "#", so it never reaches a server.
  * The app accepts the whole link, `p=<code>` or the bare code ([parse]).

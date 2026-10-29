@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.cells.CellId
@@ -34,9 +33,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The one modal while the user waits for the map of their area (owner 2026-10-21, field test 0.8.7): first start (T3)
- * and a point set where there is no detailed map (T1). Plain words, one bar with %, the time left, one button. Closes
- * by itself only when the map is there; Cancel stops it ([MapLoadCancel], owner 2026-10-21: "Cancel = stop").
+ * The one modal while the user waits for the map of their area: first start (T3) and a point set where there is no
+ * detailed map (T1). Plain words, one bar with %, the time left, one button. Closes by itself only when the map is
+ * there; Cancel stops it ([MapLoadCancel]).
  * Background loads (route corridor, on tour, newer versions) never show it.
  */
 data class MapLoadUi(
@@ -53,7 +52,7 @@ data class MapLoadUi(
     val bytes: Long? = null,
     /**
      * Routing data loads too (its size is in [bytes]); [regions] 0 = only routing data ([RoutingLoads]). Never named on
-     * screen (owner 2026-10-22: it is all "the map for your area").
+     * screen (it is all "the map for your area").
      */
     val routing: Boolean = false,
 ) {
@@ -95,8 +94,8 @@ data class MapLoadUi(
 }
 
 /**
- * One overall % for the map of the user's area from the server / download states, updated about every second
- * (owner 2026-10-21): preparing (queued + building) = 0–[BUILD_END] %, using the server's progress and ETA and moving on
+ * One overall % for the map of the user's area from the server / download states, updated about every second:
+ * preparing (queued + building) = 0–[BUILD_END] %, using the server's progress and ETA and moving on
  * by elapsed time between polls; download = [BUILD_END]–99 % by bytes; added to the map = 100 %. Never backwards, never
  * 100 before the map is there. Pure (time passed in), unit-tested.
  */
@@ -161,8 +160,7 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
 }
 
 /**
- * The modal for several regions at once (owner 2026-10-21: "N regions · about X MB"): one bar over all of them. Pure,
- * unit-tested.
+ * The modal for several regions at once ("N regions · about X MB"): one bar over all of them. Pure, unit-tested.
  */
 object MapLoads {
     /** "2 regions · ≈ 18 MB" (the tap question). */
@@ -212,11 +210,10 @@ object MapLoads {
 }
 
 /**
- * Modal → Cancel (owner 2026-10-21, field test: searched Hilden → "about 30 minutes" → Cancel): **Cancel = stop.** The
- * regions the modal waited for stop loading (installed ones stay; the server may finish its build – the next request is
- * then quick), no card follows for that job, the searched place's ring goes when a search / shared place started it, a
- * point the user set stays in the plan, the map stays where it is. Setting a point or searching there again loads anew.
- * Pure, unit-tested.
+ * Modal → Cancel: **Cancel = stop** (owner). The regions the modal waited for stop loading (installed ones stay; the
+ * server may finish its build – the next request is then quick), no card follows for that job, the searched place's
+ * ring goes when a search / shared place started it, a point the user set stays in the plan, the map stays where it is.
+ * Setting a point or searching there again loads anew. Pure, unit-tested.
  */
 object MapLoadCancel {
     data class Outcome(
@@ -245,7 +242,7 @@ object MapLoadCancel {
 
 class MapLoadCallbacks(
     val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {},
-    /** "Load now over mobile data" while it waits for Wi-Fi (once; the setting stays – owner Q6 2026-10-23). */
+    /** "Load now over mobile data" while it waits for Wi-Fi (once; the setting stays). */
     val onLoadOnMobile: () -> Unit = {},
 )
 
@@ -307,7 +304,7 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
     }
 }
 
-/** A tap on the world map where there is no detailed map (owner 2026-10-21): never a silent download from a tap. */
+/** A tap on the world map where there is no detailed map: never a silent download from a tap (owner). */
 @Composable
 fun LoadAskDialog(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit) {
     androidx.compose.material3.AlertDialog(

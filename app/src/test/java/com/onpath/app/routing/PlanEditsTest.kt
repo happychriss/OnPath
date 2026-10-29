@@ -39,15 +39,13 @@ class PlanEditsTest {
         assertEquals(1, PlanEdits.bestViaIndex(listOf(a, b, c), GeoPoint(46.68, 11.15)))
     }
 
-    // --- owner concept (2026-10-18): start / end here drop points, round trip rotates ---
+    // --- start here drops points, round trip rotates ---
     private val r = listOf(GeoPoint(46.0, 11.0), GeoPoint(46.01, 11.0), GeoPoint(46.02, 11.0), GeoPoint(46.03, 11.0), GeoPoint(46.04, 11.0))
     private val loop = listOf(GeoPoint(46.0, 11.0), GeoPoint(46.01, 11.0), GeoPoint(46.01, 11.01), GeoPoint(46.0, 11.01), GeoPoint(46.0, 11.0))
 
     @Test fun startAtDropsEarlierPoints() = assertEquals(r.subList(2, 5), PlanEdits.startAt(r, 2))
-    @Test fun endAtDropsLaterPoints() = assertEquals(r.subList(0, 3), PlanEdits.endAt(r, 2))
-    @Test fun startAndEndIgnoreStartAndDestination() {
+    @Test fun startAtIgnoresStartAndDestination() {
         assertEquals(r, PlanEdits.startAt(r, 0)); assertEquals(r, PlanEdits.startAt(r, 4))
-        assertEquals(r, PlanEdits.endAt(r, 0)); assertEquals(r, PlanEdits.endAt(r, 4))
     }
     @Test fun roundTripDetected() {
         assertTrue(PlanEdits.isRoundTrip(loop)); assertFalse(PlanEdits.isRoundTrip(r))
@@ -62,10 +60,7 @@ class PlanEditsTest {
         assertEquals(r, PlanEdits.rotateLoop(r, 2)); assertEquals(loop, PlanEdits.rotateLoop(loop, 0))
     }
 
-    /**
-     * UX review 2026-10-23, problem 8 (owner Q3): the search card's "As start" moved a planned place to the front and
-     * kept all points, the map's "Start here" dropped the points before it. Now both are [PlanEdits.startHere].
-     */
+    /** The search card's "As start" and the map's "Start here" are the same edit: [PlanEdits.startHere] (owner). */
     @Test fun asStartIsStartHere() {
         val p = GeoPoint(46.60, 11.10); val q = GeoPoint(46.62, 11.12); val r = GeoPoint(46.64, 11.14); val d = GeoPoint(46.66, 11.16)
         assertEquals("a middle point drops the points before it", listOf(r, d), PlanEdits.startHere(listOf(p, q, r, d), 2))

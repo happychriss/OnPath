@@ -27,8 +27,8 @@ object PlanEdits {
         w.size >= 3 && Geo.distance(w.first(), w.last()) <= sameM
 
     /**
-     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner Q3
-     * 2026-10-23): a middle point drops the points before it ([startAt]), a round trip rotates the loop ([rotateLoop]),
+     * "Start here" on planned point [index] – the map's point menu and the search card's "As start" (owner):
+     * a middle point drops the points before it ([startAt]), a round trip rotates the loop ([rotateLoop]),
      * the destination (not in the point menu) moves to the front. The start itself: unchanged.
      */
     fun startHere(w: List<GeoPoint>, index: Int): List<GeoPoint> = when {
@@ -41,10 +41,6 @@ object PlanEdits {
     /** "Start here": drop the points before [index]; the rest of the route stays as it is. */
     fun startAt(w: List<GeoPoint>, index: Int): List<GeoPoint> =
         if (index <= 0 || index >= w.lastIndex) w else w.subList(index, w.size).toList()
-
-    /** "End here": drop the points after [index]. */
-    fun endAt(w: List<GeoPoint>, index: Int): List<GeoPoint> =
-        if (index <= 0 || index >= w.lastIndex) w else w.subList(0, index + 1).toList()
 
     /**
      * Round trip "Start & finish here": rotate the loop so it starts and ends at [index] – same points,

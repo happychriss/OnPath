@@ -109,9 +109,9 @@ class RecordingService : Service() {
     private var elapsedS = 0L
     private var last: TrackPoint? = null
     private var lastGoodFixElapsed = 0L
-    /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix (field 2026-10-22). */
+    /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix. */
     private val gapWatch = PointFilter.GapWatch()
-    private val track =mutableListOf<MutableList<GeoPoint>>()
+    private val track = mutableListOf<MutableList<GeoPoint>>()
     private var trackSeg = -1
     /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
     private var trackSnapshot: List<List<GeoPoint>> = emptyList()
@@ -122,8 +122,10 @@ class RecordingService : Service() {
     private var follow: Pair<String, List<GeoPoint>>? = null
     /** Navigation session + off-route flow; null for free recording. */
     private var navigator: Navigator? = null
-    /** Vibration before junctions of the followed line + the next junction for the lock screen (owner 2026-10-22). */
+    /** Vibration before junctions of the followed line + the next junction for the lock screen (owner). */
     private val junctions = com.onpath.app.navigation.JunctionCues()
+    /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
+    private var junctionsTracedVersion = Int.MIN_VALUE
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
     private val routeExec = Executors.newSingleThreadExecutor()
     private val routeDispatcher = routeExec.asCoroutineDispatcher()
@@ -143,13 +145,17 @@ class RecordingService : Service() {
     /** Activity of the recording (the navigated session's activity wins for the time model). */
     private var recActivity = com.onpath.app.routing.Activity.HIKE
     private var tripSaved = 0L
+    /** This tour carries the "Demo · " name (Developer tools → Demo fed it simulated fixes). */
+    private var demoMarked = false
+    /** The last fix was simulated: a switch between demo and real GPS starts a new track piece (never a jump). */
+    private var lastFixDemo = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         db = TourDb.get(this)
-        tracker = LocationTracker(this, 1000L, useNetwork = false) // network fixes were never recorded (battery audit)
+        tracker = LocationTracker(this, 1000L, useNetwork = false) // the track is GPS only; no network fixes (battery)
         createChannels(this)
     }
 
@@ -232,15 +238,20 @@ class RecordingService : Service() {
                 eleRef = segs.lastOrNull()?.lastOrNull()?.ele
                 last = null
                 recActivity = activityOf(existing.activity)
+                demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
                 loadTrip()
             } else {
-                val name = com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis())
-                // the tour keeps the T level it was recorded at (was a fixed 3 until 2026-10-26: reopening a T2 hike set
-                // the user's level to T3, and its GPX said "mountaineering")
+                // a tour started during a demo is marked as such (easy to find and delete)
+                demoMarked = DemoLocation.active
+                val name = (if (demoMarked) DemoLocation.TOUR_PREFIX else "") +
+                    com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis())
+                // the tour keeps the T level it was recorded at: reopening it sets the user's level, and its GPX type
+                // follows it
                 val sac = newTourSac(intent?.getIntExtra(EXTRA_SAC, 0) ?: 0, Prefs(this).sac)
                 tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
+                firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 saveTrip()
             }
@@ -253,7 +264,7 @@ class RecordingService : Service() {
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
-        // T5 in the background (owner 2026-10-22): map areas ahead load also with the screen off; joined after the tour
+        // T5 in the background (owner): map areas ahead load also with the screen off; joined after the tour
         try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = true; holdUpdates = true } } catch (e: Exception) {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
         }
@@ -301,7 +312,7 @@ class RecordingService : Service() {
                 if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
                 pausedBefore = paused
                 lastTick = now
-                // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery audit, 0.7.5)
+                // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
                 if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
                 if (now - lastStats >= 10_000) {
@@ -319,7 +330,7 @@ class RecordingService : Service() {
 
     private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
 
-    /** Slower GPS while standing still (owner decision 10, battery); the paused rate is [PauseWatch]'s. */
+    /** Slower GPS while standing still (owner, battery); the paused rate is [PauseWatch]'s. */
     private val restWatch = RestWatch()
 
     /** Feeds [restWatch] with a usable fix of a running tour and applies the rate change; never costs the track. */
@@ -348,7 +359,15 @@ class RecordingService : Service() {
         }
         if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
+        val demoFix = DemoLocation.isDemo(loc)
+        if (!demoMarked && demoFix) markDemoTour()
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
+        if (demoFix != lastFixDemo) {
+            // the simulated place is far from the real one: without a new piece every later fix would be a "GPS jump"
+            lastFixDemo = demoFix
+            if (last != null) { last = null; seg++; eleRef = null }
+            Problems.trace("gps", "Demo location ${if (demoFix) "started" else "ended"} during the tour: new track piece")
+        }
         // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
         restRate(loc)
 
@@ -358,7 +377,7 @@ class RecordingService : Service() {
         lastGoodFixElapsed = nowEl
         val gapWhy = gapWatch.why()
         gapWatch.reset()
-        val p = TrackPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null, loc.time)
+        val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
         try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
@@ -403,6 +422,15 @@ class RecordingService : Service() {
         track.last() += p.toGeo()
         snapshotDirty = true
         publish()
+    }
+
+    /** A demo started during this tour: its name gets the "Demo · " prefix (once). */
+    private fun markDemoTour() {
+        demoMarked = true
+        safeDb("demo name") {
+            val name = db.getTour(tourId)?.name ?: return@safeDb
+            if (!name.startsWith(DemoLocation.TOUR_PREFIX)) db.rename(tourId, DemoLocation.TOUR_PREFIX + name)
+        }
     }
 
     /**
@@ -563,27 +591,79 @@ class RecordingService : Service() {
         com.onpath.app.data.AppRouting.get(this).ensure(com.onpath.app.data.RoutingTiles.forPoints(listOf(g), T5_ROUTING_MARGIN_M))
     }
 
-    /** Before a junction of the followed line: 2 short pulses = left, 3 = right ([JunctionCues]). */
+    /** Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. */
     private fun junctionCue() {
         val st = navigator?.state ?: return
+        junctions.skipSlight = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
             com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
+        if (st.version != junctionsTracedVersion) {
+            junctionsTracedVersion = st.version
+            val n = com.onpath.app.navigation.JunctionCues.count(st.line)
+            val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
+            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts" +
+                (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
+        }
         val onRoute = st.prompt == null && st.shownAlongM != null
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
-        if ((settings ?: Prefs(this).settings).junctionVibrate) {
-            vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
-            Problems.trace("navigation", "Junction cue: ${cue.name}")
-        }
+        val choice = (settings ?: Prefs(this).settings).junctionVibration
+        val locked = screenLocked()
+        if (choice.plays(locked)) {
+            val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
+            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
+        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
     }
 
-    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert") {
-        try {
+    // ---- heights above sea level ([SeaLevel]) ----
+    @Volatile private var geoid: SeaLevel.Offset? = null
+    @Volatile private var geoidJob = false
+    private var firstFixElapsed = 0L
+    private val geoidExec by lazy { Executors.newSingleThreadExecutor() }
+
+    private fun seaLevelHeight(loc: Location, nowEl: Long): Double? {
+        if (firstFixElapsed == 0L) firstFixElapsed = nowEl
+        val ell = if (loc.hasAltitude()) loc.altitude else null
+        val msl = if (Build.VERSION.SDK_INT >= 34 && loc.hasMslAltitude()) loc.mslAltitudeMeters else null
+        if (ell != null && msl == null && Build.VERSION.SDK_INT >= 34 && !geoidJob && SeaLevel.needsOffset(geoid, loc.latitude, loc.longitude)) {
+            geoidJob = true
+            val copy = Location(loc)
+            // the converter reads its geoid data from disk: never on the main thread
+            geoidExec.execute {
+                try {
+                    android.location.altitude.AltitudeConverter().addMslAltitudeToLocation(applicationContext, copy)
+                    if (copy.hasMslAltitude()) {
+                        geoid = SeaLevel.Offset(copy.latitude, copy.longitude, copy.altitude - copy.mslAltitudeMeters)
+                        Problems.trace("gps", "Geoid offset here: ${"%.1f".format(geoid!!.metres)} m (heights now above sea level)")
+                    }
+                } catch (e: Exception) {
+                    Problems.warn("gps", "Sea-level height not available; heights stay as the GPS gives them", e)
+                } finally { geoidJob = false }
+            }
+        }
+        return SeaLevel.height(ell, msl, geoid, loc.latitude, loc.longitude, nowEl - firstFixElapsed)
+    }
+
+    /** Screen off or the lock screen showing (junction vibration "only when locked"). */
+    private fun screenLocked(): Boolean = try {
+        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        val off = !pm.isInteractive
+        off || km.isKeyguardLocked
+    } catch (e: Exception) {
+        Problems.warn("sensor", "Screen lock state not readable; taken as locked (junction vibration plays)", e)
+        true
+    }
+
+    /** Plays [pattern]; false when the phone has no vibrator or it failed (reported). */
+    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean {
+        return try {
             val vib = if (Build.VERSION.SDK_INT >= 31) {
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
             } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+            if (!vib.hasVibrator()) { Problems.warn("sensor", "This phone reports no vibrator ($what); given without vibration"); return false }
             val effect = VibrationEffect.createWaveform(pattern, -1)
             // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
-            // pocket – field test 2026-10-20: the warning only blinked). Alarm vibrations also pass the touch setting.
+            // pocket). Alarm vibrations also pass the touch setting.
             if (Build.VERSION.SDK_INT >= 33) {
                 vib.vibrate(effect, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
             } else {
@@ -591,8 +671,10 @@ class RecordingService : Service() {
                 vib.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             }
+            true
         } catch (e: Exception) {
             Problems.warn("sensor", "Vibration failed ($what); given without vibration", e)
+            false
         }
     }
 
@@ -670,8 +752,8 @@ class RecordingService : Service() {
         if (paused == p) return
         paused = p
         if (!p) { seg++; last = null } // resume = new segment, distance not bridged
-        // Battery: a pause records nothing – GPS runs slowly (never off: owner 2026-10-20, walking on with the pause
-        // still on is noticed by PauseWatch), the wake lock rests until Resume.
+        // Battery: a pause records nothing – GPS runs slowly (never off (owner): walking on with the pause still on
+        // is noticed by PauseWatch), the wake lock rests until Resume.
         pauseWatch.reset()
         restWatch.reset() // the pause has its own rate; after Resume the standing-still minute starts anew
         nm().cancel(PAUSE_ALERT_ID)
@@ -707,7 +789,7 @@ class RecordingService : Service() {
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes())
-                // learning per tour only (owner 2026-10-22): this tour's pace ends with it
+                // learning per tour only (owner): this tour's pace ends with it
                 File(filesDir, TRIP_FILE).delete()
             } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
             _finished.value = tourId
@@ -777,7 +859,7 @@ class RecordingService : Service() {
 
     private var estimatePaused: com.onpath.app.time.PauseReason? = null
 
-    /** "Estimate paused" is never silent (owner rule 8): reported once per pause in Settings → Diagnostics. */
+    /** "Estimate paused" is never silent (owner): reported once per pause in Settings → Diagnostics. */
     private fun reportEstimate(t: com.onpath.app.time.TripTime) {
         val why = t.pausedBecause.takeIf { t.state == com.onpath.app.time.EstimateState.PAUSED }
         if (why == estimatePaused) return
@@ -872,7 +954,7 @@ class RecordingService : Service() {
             val t = _state.value?.time
             val ok = t?.state == com.onpath.app.time.EstimateState.OK
             com.onpath.app.navigation.NavNotification.of(notifStatus(),
-                junctions.nextAhead(st.line, st.version, along), toGo,
+                junctions.nextAheadText(st.line, st.version, along), toGo,
                 t?.toGoS?.takeIf { ok }, t?.arrivalMs?.takeIf { ok },
                 distance = { Format.distance(it) }, duration = { Format.duration(it) },
                 clock = { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) })
@@ -900,7 +982,7 @@ class RecordingService : Service() {
             .setUsesChronometer(!paused)
             .setWhen(System.currentTimeMillis() - elapsedS * 1000)
             .setContentText(follow?.let { Txt.s(Res.string.nav_notif_following, status, it.first) } ?: status)
-            // readable on the lock screen (owner 2026-10-22); no button here ends a tour
+            // readable on the lock screen (owner); no button here ends a tour
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -916,7 +998,7 @@ class RecordingService : Service() {
         }
         if (paused) b.addAction(0, Txt.s(Res.string.common_resume), actionIntent(ACTION_RESUME, 2))
         else b.addAction(0, Txt.s(Res.string.nav_pause), actionIntent(ACTION_PAUSE, 1))
-        // No "Stop & save" here (owner 2026-10-20: ending a tour must be deliberate) – one tap on the lock screen or
+        // No "Stop & save" here (owner: ending a tour must be deliberate) – one tap on the lock screen or
         // in the pocket would end the recording. Ending is in the app, with a question first.
         return b.build()
     }
@@ -967,12 +1049,10 @@ class RecordingService : Service() {
         /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
         private const val SAVE_FAIL_ID = 44
 
-        const val MAX_ACCURACY_M = PointFilter.MAX_ACCURACY_M
-        const val MAX_SPEED_MS = PointFilter.MAX_SPEED_MS
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
         /** Trip state (breaks, pace learning) of the running tour. */
         const val TRIP_FILE = "trip-pace.json"
-        
+
         private val _state = MutableStateFlow<RecState?>(null)
         val state: StateFlow<RecState?> = _state
         private val _finished = MutableStateFlow<Long?>(null)

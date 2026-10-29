@@ -28,8 +28,7 @@ import org.junit.Test
 import kotlin.math.sin
 
 /**
- * Owner field report 0.9.3 (Pixel 8, 120 Hz): opening / pulling the plan sheet stuttered, most with the points list.
- * Frames run on the JVM (Paparazzi, no images kept); the heavy parts count their compositions (RecomposeProbe).
+ * Opening / pulling the plan sheet must not stutter (Pixel 8, 120 Hz), also with the points list open. Frames run on the JVM (Paparazzi, no images kept); the heavy parts count their compositions (RecomposeProbe).
  * Moving the sheet must not recompose the points list or the elevation profile.
  */
 class SheetSmoothnessTest {

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
 
-/** Owner 2026-10-26: German buttons say "Navigation starten · MTB" / "… · E-MTB"; after the review the picker says MTB / E-MTB too. */
+/** German buttons say "Navigation starten · MTB" / "… · E-MTB" (owner); the picker says MTB / E-MTB too. */
 class ButtonActivityNameTest {
     private fun <T> inGerman(block: () -> T): T {
         val before = Locale.getDefault()

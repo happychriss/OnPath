@@ -9,8 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * One loading modal for map + routing data (field test 2026-10-21): texts (routing data never named – owner
- * 2026-10-22), one % by bytes, auto-recalculate rule.
+ * One loading modal for map + routing data: texts (routing data never named – owner), one % by bytes, auto-recalculate
+ * rule.
  */
 class RoutingLoadsTest {
     private val mb = 1_048_576L

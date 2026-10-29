@@ -6,7 +6,7 @@
 #
 # A package is what a region view at z7-9 needs and the world overview in the APK (z0-5) lacks: main roads, towns,
 # forests, water, rivers, railways, borders, long-distance routes and relief – for ~200 x 200 km (8 x 8 cells).
-# Measured (laptop, 2026-10-26): ≈ 2.7 MB median per package (≤ 3.3 MB), Germany ≈ 32 MB.
+# Measured (laptop): ≈ 2.7 MB median per package (≤ 3.3 MB), Germany ≈ 32 MB.
 #
 # Same env as build_cell.sh (SRC_PBF, CUT, DATA_ROOT, WORK, PLANETILER_JAR, PLANETILER_SOURCES, TERRARIUM_CACHE,
 # JAVA_XMX, TIPPECANOE, TILE_JOIN, KEEP_WORK); PKG_BUFFER_KM=10 (the cut buffer – BUFFER_KM is the cells' 5 km).

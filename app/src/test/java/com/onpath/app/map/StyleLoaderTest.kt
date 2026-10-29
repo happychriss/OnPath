@@ -43,7 +43,7 @@ class StyleLoaderTest {
         val dir = Files.createTempDirectory("onpath-style").toFile()
         try {
             val f = File(dir, StyleLoader.DEV_STYLE).apply { parentFile!!.mkdirs(); writeText("""{"version":8}""") }
-            // a normal style failing is no test style failure: the caller falls back as before
+            // a normal style failing is no test style failure: the caller uses the fallback style
             assertFalse(StyleLoader.noteFailure("other style broken"))
             assertEquals(f, StyleLoader.devStyleFile(dir, devTools = true))
             // the map rejects the test style: reported as a warning, skipped, the caller loads the normal style

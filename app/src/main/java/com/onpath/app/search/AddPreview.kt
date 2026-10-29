@@ -8,7 +8,7 @@ import com.onpath.strings.*
 import kotlin.math.roundToInt
 
 /**
- * What "Add to route" will do, said before the tap (proposal C): computed with the same
+ * What "Add to route" will do, said before the tap: computed with the same
  * [WaypointInsertion.decide] the map hold uses, so the card never promises something else.
  */
 object AddPreview {

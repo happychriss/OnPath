@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,7 +86,7 @@ val PoiGroup.label: String
     }
 
 /**
- * Settings (☰ → Settings), owner 2026-10-22: a list of topics (icon, title, one line of the current values –
+ * Settings (☰ → Settings): a list of topics (icon, title, one line of the current values –
  * [SettingsSummary]); a topic opens its own page ([page]; back returns to the list). Every change is applied and saved
  * at once. [page] is hoisted (AppViewModel.settingsPage) so other places can open a topic directly (map credits → About).
  */
@@ -109,11 +108,13 @@ fun SettingsScreen(
     onImportData: () -> Unit = {},
     /** Opens Android's app settings (battery usage). */
     onAppSettings: () -> Unit = {},
-    /** Diagnostics → "Download routing data" (normally it comes with the map by itself – owner 2026-10-22). */
+    /** Diagnostics → "Download routing data" (normally it comes with the map by itself). */
     onDownloadRouting: () -> Unit = {},
     /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
     onTimeFormulas: (() -> Unit)? = null,
     dataBusy: String? = null,
+    /** The result of something done on the open page (restored, a failure …): a line at its top. */
+    note: Notice? = null,
     /** null = updates handled elsewhere (installed from Google Play) – topic hidden. */
     update: AppViewModel.UpdateState? = null,
     onCheckUpdate: () -> Unit = {},
@@ -122,7 +123,7 @@ fun SettingsScreen(
     mapPackage: DataFiles.PackageCheck? = null,
     /** Settings → Diagnostics shown (problem report button + problem list); false = topic hidden. */
     diagnostics: Boolean = false,
-    /** The problem report is being created: a spinner on its button (review 2026-10-24 C9). */
+    /** The problem report is being created: a spinner on its button. */
     diagnosticsBusy: Boolean = false,
     onExportDiagnostics: () -> Unit = {},
     /** Problem log (debug/Problems), most recent first. */
@@ -141,19 +142,21 @@ fun SettingsScreen(
     /** Diagnostics → "Developer tools" open at first (screenshots). */
     devToolsOpen: Boolean = false,
     /**
-     * Developer tools shown in Diagnostics (owner C5 2026-10-24): hidden until the version line in About is tapped 7
-     * times (remembered); debug builds always.
+     * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
+     * (remembered); debug builds always.
      */
     devTools: Boolean = true,
     onUnlockDevTools: () -> Unit = {},
-    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner C6). */
+    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner). */
     diagnosticsSeenMs: Long = 0L,
     /** Developer tools: the map server line (MapServer.describe; fixed in screenshots). */
     mapServer: String = com.onpath.app.data.MapServer.describe(),
     /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
     testStyle: TestStyleUi? = null,
-    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch (owner 2026-10-26). */
+    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch. */
     language: LanguageUi = LanguageUi(),
+    /** Developer tools → Demo location (simulated GPS for screenshots); null = hidden. */
+    demo: DemoUi? = null,
     now: Long = System.currentTimeMillis(),
 ) {
     val topics = SettingsPage.entries.filter {
@@ -173,9 +176,10 @@ fun SettingsScreen(
                 }
                 Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
+            note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    // two groups (owner C7 2026-10-24): what the user sets, then the smaller "App" group
+                    // two groups (owner): what the user sets, then the smaller "App" group
                     listOf(false, true).forEach { app ->
                         val group = topics.filter { it.app == app }
                         if (group.isEmpty()) return@forEach
@@ -225,7 +229,7 @@ fun SettingsScreen(
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas, testStyle, language)
+                                    onTimeFormulas, testStyle, language, demo)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -357,8 +361,9 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
 }
 
 /** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
+internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
     Section(SettingsPage.NAVIGATION.title) {
         SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
@@ -375,12 +380,27 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
             onChange(settings.copy(offRouteVibrate = it))
         }
-        SwitchRow(str(Res.string.settings_nav_junction), str(Res.string.settings_nav_junction_sub),
-            settings.junctionVibrate) { onChange(settings.copy(junctionVibrate = it)) }
+        // three choices (owner): off / always / only with the screen locked
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+            Text(str(Res.string.settings_nav_junction), style = MaterialTheme.typography.bodyLarge)
+            Text(str(Res.string.settings_nav_junction_sub), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(com.onpath.app.data.JunctionVibration.OFF to Res.string.settings_nav_junction_off,
+                    com.onpath.app.data.JunctionVibration.ALWAYS to Res.string.settings_nav_junction_always,
+                    com.onpath.app.data.JunctionVibration.LOCKED to Res.string.settings_nav_junction_locked).forEach { (v, label) ->
+                    FilterChip(selected = settings.junctionVibration == v, onClick = { onChange(settings.copy(junctionVibration = v)) },
+                        label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
+                }
+            }
+        }
+        SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
+            onChange(settings.copy(positionOnRoute = it))
+        }
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
-        // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
+        // a quiet hint, never a pop-up (owner)
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.settings_nav_battery_hint),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -391,7 +411,7 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
             val ctx = androidx.compose.ui.platform.LocalContext.current
             val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // the quiet hint instead of a question (owner C2 2026-10-24: never ask); nothing to say once it is set
+            // a quiet hint instead of a question (owner: never ask); nothing to say once it is set
             if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(str(Res.string.settings_nav_location_hint),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -402,7 +422,7 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
     }
 }
 
-/** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
+/** Diagnostics: the problem report button (no switch), then the problem list. */
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
@@ -422,7 +442,7 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
     }
 }
 
-/** Developer tools → app language (owner 2026-10-26): the phone's, or fixed to English / Deutsch; kept across restarts. */
+/** Developer tools → app language: the phone's, or fixed to English / Deutsch; kept across restarts. */
 data class LanguageUi(
     val choice: com.onpath.app.data.LanguageChoice = com.onpath.app.data.LanguageChoice.SYSTEM,
     val active: String = "English (phone language)",
@@ -446,7 +466,7 @@ private fun LanguageRow(l: LanguageUi) {
 
 /**
  * Diagnostics → "Developer tools" (closed at first): map server, routing data by hand, the map areas list, the map
- * data import and the data folder / file checks / map package (moved from About and "Map data", owner 2026-10-22).
+ * data import and the data folder / file checks / map package.
  */
 @Composable
 private fun DeveloperTools(
@@ -455,6 +475,7 @@ private fun DeveloperTools(
     onTimeFormulas: (() -> Unit)? = null,
     testStyle: TestStyleUi? = null,
     language: LanguageUi = LanguageUi(),
+    demo: DemoUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -472,17 +493,18 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
                 if (dataBusy != null) Text(dataBusy, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 mapCells?.let { MapCellsDebugList(it) }
-                // the formulas behind the plan sheet's time (moved here from ⋯ → Time details, owner 2026-10-23)
+                // the formulas behind the plan sheet's time
                 OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 testStyle?.let { TestStyleRow(it) }
+                demo?.let { DemoRow(it) }
                 LanguageRow(language)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // routing data is part of the map (owner 2026-10-22): no own button here, see above
+                // routing data is part of the map (owner): no own button here, see above
                 DataActions(routingMissing = false, busy = dataBusy, onImport = onImportData, onDownloadRouting = {})
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Data folder", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -522,6 +544,60 @@ private fun TestStyleRow(t: TestStyleUi) {
     } else Text("No test style (tools/dev/push_style.sh puts one in ${com.onpath.app.map.StyleLoader.DEV_STYLE}).",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     OutlinedButton(onClick = t.onReload, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reload map style") }
+}
+
+/**
+ * Developer tools → Demo location (recording/DemoLocation): simulated GPS fixes for screenshots. [state] null = off;
+ * [rideLabel] = what a ride would follow ("planned route", a shown track), null = nothing to ride.
+ */
+data class DemoUi(
+    val state: com.onpath.app.recording.DemoLocation.State?,
+    val rideLabel: String?,
+    val onRide: () -> Unit = {},
+    val onPlace: () -> Unit = {},
+    val onFactor: (Int) -> Unit = {},
+    val onPause: (Boolean) -> Unit = {},
+    val onStop: () -> Unit = {},
+)
+
+@Composable
+private fun DemoRow(d: DemoUi) {
+    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    Text("Demo location", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    val st = d.state
+    if (st == null) {
+        Text("Simulated GPS for screenshots: real GPS is ignored while it runs, the map shows DEMO, tours are named " +
+            "\"${com.onpath.app.recording.DemoLocation.TOUR_PREFIX}…\". Ends with Stop or an app restart.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = d.onRide, enabled = d.rideLabel != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Demo: ride the ${d.rideLabel ?: "planned route"}")
+        }
+        if (d.rideLabel == null) Text("Plan a route or open a track first.", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = d.onPlace, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Demo: stand at the map centre") }
+        return
+    }
+    val where = when (st.kind) {
+        com.onpath.app.recording.DemoLocation.Kind.RIDE -> "riding the ${st.label}: " +
+            "${"%.1f".format(java.util.Locale.ROOT, st.alongM / 1000)} of ${"%.1f".format(java.util.Locale.ROOT, st.lengthM / 1000)} km" +
+            when { st.ended -> " – at the end"; st.paused -> " – standing"; else -> " at ${st.factor}×" }
+        com.onpath.app.recording.DemoLocation.Kind.PLACE -> "standing at the ${st.label}"
+    }
+    Text("DEMO on – $where", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Warn)
+    if (st.kind == com.onpath.app.recording.DemoLocation.Kind.RIDE) {
+        val all = com.onpath.app.recording.DemoLocation.FACTORS
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            all.forEachIndexed { i, f ->
+                SegmentedButton(selected = f == st.factor, onClick = { d.onFactor(f) },
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, all.size),
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("$f×", style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
+        if (!st.ended) OutlinedButton(onClick = { d.onPause(!st.paused) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text(if (st.paused) "Go on" else "Stand still")
+        }
+    }
+    OutlinedButton(onClick = d.onStop, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Stop demo – real GPS again") }
 }
 
 /** Data of the "Map areas (debug)" block: installed areas, areas in progress, two actions (end-to-end test only). */
@@ -576,7 +652,7 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
 }
 
 /**
- * Privacy (owner 2026-10-22): what leaves the phone, to whom, when – checked against the code's network calls
+ * Privacy: what leaves the phone, to whom, when – checked against the code's network calls
  * (CellApi, Rd5PartStore / SegmentDownloader, PhotonProvider, AppUpdater, ShortLinkResolver, link-outs). Keep in step.
  */
 @Composable
@@ -623,7 +699,7 @@ private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevT
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // tapped 7 times: Developer tools in Diagnostics (owner C5 2026-10-24, the Android convention); remembered
+            // tapped 7 times: Developer tools in Diagnostics (the Android convention); remembered
             Text("OnPath $version", fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
                     .clickable(enabled = !devTools, indication = null,

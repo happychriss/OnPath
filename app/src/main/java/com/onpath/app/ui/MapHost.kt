@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import android.view.MotionEvent
 import kotlin.math.hypot
 import android.graphics.PointF
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +59,7 @@ fun MapHost(
     val myCtrl = remember { arrayOfNulls<MapController>(1) }
     /** Theme of this host's loaded style. */
     val myTheme = remember { arrayOfNulls<String>(1) }
-    // No frame-rate cap (owner 2026-10-20): the map runs at the display's full rate while you look at it.
+    // No frame-rate cap (owner): the map runs at the display's full rate while you look at it.
     // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
     val hold = remember { HoldTracker() }
@@ -102,15 +101,17 @@ fun MapHost(
                 isTiltGesturesEnabled = false
             }
             var fallbackUsed = false
+            fun styleJson() = StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(),
+                vm.detailedAreas(), vm.devToolsShown, vm.packageAreas())
             fun load(json: String) {
                 val loadedFrom = StyleLoader.lastMapDir
                 host.loading(loadedFrom ?: vm.dataFiles.dir)
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val n = ++styleLoads
-                // asked and done are both in the event log (field test 0.10.1: new map areas never showed until restart)
+                // asked and done are both in the event log (a load that never finishes is visible there)
                 com.onpath.app.debug.Problems.trace("map", "Style load #$n asked (${loadedFrom?.name ?: "data folder"})")
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
-                    // each load in the event log: native memory grew per reload (perf report 2026-10-22)
+                    // each load in the event log with the native heap (it can grow per reload)
                     com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
                         "${android.os.SystemClock.elapsedRealtime() - t0} ms, native heap " +
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
@@ -138,7 +139,7 @@ fun MapHost(
             }
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
-            // move the map – field test 2026-10-20: holding a point added a new one instead of opening its menu).
+            // move the map – else holding a point can add a new one instead of opening its menu).
             var downMarker = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
                 val c = myCtrl[0]
@@ -147,7 +148,7 @@ fun MapHost(
                 }
                 if (vm.routePeek) return true // peeking at the map: no edits
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
-                // closed the menu just opened ("held spot left the visible map"; real phone 2026-10-21, fix after ~5 s).
+                // would close the menu just opened ("held spot left the visible map").
                 if (press == MapGestures.Press.HOLD) vm.userMovedMap = true
                 val edit = vm.canEditMap
                 val pts = vm.waypoints.toList()
@@ -156,7 +157,7 @@ fun MapHost(
                     press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
                 val dpOf: (Int) -> Int? = { i -> pts.getOrNull(i)?.let { p -> c?.toScreen(p)?.let { (kotlin.math.hypot(it.x - screen.x, it.y - screen.y) / c.dpToPx(1f)).toInt() } } }
                 if (press == MapGestures.Press.HOLD && edit && c != null) {
-                    // every hold in Plan goes into Diagnostics, each as its own line (core feature C1 – field 0.8.3 / 0.8.5)
+                    // every hold in Plan goes into Diagnostics, each as its own line (core feature C1)
                     val near = pts.indices.minByOrNull { i -> c.toScreen(pts[i])?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
                     com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
@@ -182,7 +183,7 @@ fun MapHost(
                     MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
                     MapGestures.Action.None -> {
-                        // a short tap on the world map where there is no detailed map: ask to load it (owner 2026-10-21)
+                        // a short tap on the world map where there is no detailed map: ask to load it
                         if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
                         edit
                     }
@@ -193,7 +194,7 @@ fun MapHost(
                 handle(ll, if (hold.lastHoldMs >= HOLD_MS) MapGestures.Press.HOLD else MapGestures.Press.TAP)
             }
             map.addOnMapLongClickListener { ll ->
-                // A longer press is just a hold (no dragging any more).
+                // A longer press is just a hold (no dragging).
                 holdAt.value = null
                 handle(ll, MapGestures.Press.HOLD)
             }
@@ -218,18 +219,18 @@ fun MapHost(
                 // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style); a rejected
                 // developer test style (dev/style.json) is a WARN and the normal style loads again
                 if (StyleLoader.noteFailure(msg ?: "?")) {
-                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown, vm.packageAreas()))
+                    load(styleJson())
                 // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
                 } else if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
-                    load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown, vm.packageAreas()))
+                    load(styleJson())
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             myTheme[0] = vm.settings.mapTheme
-            // this host's own reload (MapReload: two activities' hosts may live at once – field test 0.10.1)
-            host.ready { load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown, vm.packageAreas())) }
-            load(StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(), vm.detailedAreas(), vm.devToolsShown, vm.packageAreas()))
+            // this host's own reload (MapReload: two activities' hosts may live at once)
+            host.ready { load(styleJson()) }
+            load(styleJson())
         }
-        // only clear what is ours: another (short-lived) map host must never switch off this one (0.10.1)
+        // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
             host.disposed()
             ctrlRef.clear(host)
@@ -237,7 +238,7 @@ fun MapHost(
     }
 
     // This host's map shows an older map store than the one on the phone (new areas joined while the reload could not
-    // run): load it now – on every return to the app and on every new generation (0.10.1 fix). Per host: another
+    // run): load it now – on every return to the app and on every new generation. Per host: another
     // activity's map having loaded the new data says nothing about this one.
     val generation = vm.cells.generation.collectAsState().value
     LaunchedEffect(generation, vm.appOnScreen) {
@@ -301,7 +302,7 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
         }
     }
     if (at == null) return
-    // a pan or quick tap ends within the first third: show nothing then, fade in after it (polish audit A1)
+    // a pan or quick tap ends within the first third: show nothing then, fade in after it
     val a = ((progress.value - 0.33f) / 0.27f).coerceIn(0f, 1f)
     if (a <= 0f) return
     val color = OnPathColors.Route.copy(alpha = a)

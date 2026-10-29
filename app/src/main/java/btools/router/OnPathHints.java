@@ -14,7 +14,10 @@ public final class OnPathHints {
         return "hints " + (track.voiceHints.list == null ? 0 : track.voiceHints.list.size());
     }
 
-    /** One row per hint: { indexInTrack, cmd, angle }. cmd = BRouter's VoiceHint command (TL=2, TR=5, …). */
+    /**
+     * One row per hint: { indexInTrack, cmd, angle, roundaboutExit }. cmd = BRouter's VoiceHint command (TL=2, TR=5, …);
+     * roundaboutExit = the exit to take in a roundabout (1, 2, …; negative in left-hand roundabouts; 0 = none).
+     */
     public static double[][] of(OsmTrack track) {
         try {
             VoiceHintList l = track == null ? null : track.voiceHints;
@@ -22,10 +25,11 @@ public final class OnPathHints {
             double[][] out = new double[l.list.size()][];
             for (int i = 0; i < l.list.size(); i++) {
                 VoiceHint h = l.list.get(i);
-                out[i] = new double[] { h.indexInTrack, h.cmd, h.angle };
+                out[i] = new double[] { h.indexInTrack, h.cmd, h.angle, h.roundaboutExit };
             }
             return out;
         } catch (RuntimeException e) {
+            // expected: hints are optional – an unreadable list means a route without junction cues
             return new double[0][];
         }
     }

@@ -8,9 +8,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Owner decision 9 (2026-10-22): during a tour, deleting the GOAL of a 2-point plan (only the start is left) asks a
- * persistent question "Route back to the start?". Yes = the plan becomes position → start and the guidance follows it;
- * No = plain recording (decision 12: what Plan shows = what Navigate follows). Undo works after either answer. The
+ * Owner rule: during a tour, deleting the GOAL of a 2-point plan (only the start is left) asks a persistent question
+ * "Route back to the start?". Yes = the plan becomes position → start and the guidance follows it; No = plain
+ * recording (what Plan shows = what Navigate follows). Undo works after either answer. The
  * steps are AppViewModel's (PlanHistory + RouteBack + PlanGuidance).
  */
 class RouteBackTest {

@@ -1,12 +1,12 @@
 package com.onpath.app.ui
 
 /**
- * Turns a burst of changes into one action (perf report 2026-10-22): the map style reloaded once per map store
- * generation, the plan recomputed once per arriving routing part – each costly, together they heated the phone.
+ * Turns a burst of changes into one action, e.g. one map style reload for many map store generations, one plan
+ * recompute for many arriving routing parts – each costly, together they heat the phone.
  *
  * Due [quietMs] after the last [changed], but at the latest [maxWaitMs] after the first one of the burst. While the
  * user is busy (dragging the map or the sheet, scrubbing the profile) it waits – up to [maxBusyMs] after the first
- * change, so a stuck "busy" never blocks it for good. Pure, unit-tested (QuietGateTest); not thread-safe (main thread).
+ * change, so a stuck "busy" never blocks it for good. Not thread-safe (main thread).
  */
 class QuietGate(private val quietMs: Long, private val maxWaitMs: Long, private val maxBusyMs: Long = 120_000L) {
     private var first = 0L

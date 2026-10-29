@@ -1,9 +1,8 @@
 package com.onpath.app.ui
 
 /**
- * Owner rule (2026-10-22, after the field test's invisible followed route): what Plan shows = what Navigate follows;
- * an empty plan = nothing followed. Pure, unit-tested (PlanGuidanceTest); AppViewModel applies it after every change of
- * the planned points (edit, Clear, Undo, Redo).
+ * Owner rule: what Plan shows = what Navigate follows; an empty plan = nothing followed. AppViewModel applies it after
+ * every change of the planned points (edit, Clear, Undo, Redo).
  */
 object PlanGuidance {
     /**
@@ -21,7 +20,7 @@ object PlanGuidance {
         endedByEmptyPlan && recording && !following && routePoints >= 2
 
     /**
-     * Owner Q7 (2026-10-23): a GPX track is followed during the tour and the plan was edited since ([planAtTrackFollow] =
+     * Owner rule: a GPX track is followed during the tour and the plan was edited since ([planAtTrackFollow] =
      * the plan's points when the track was taken; null = unknown, e.g. after an app restart). Then "Continue" follows the
      * plan again, and Plan draws the followed track grey behind it. An unedited plan (or Undo back to it) keeps the track.
      */

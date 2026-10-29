@@ -15,12 +15,12 @@ import org.json.JSONObject
  * - below [SPLIT_ZOOM] every base-map / relief layer is drawn from the overview (a copy of the layer, same look,
  *   source `overview` / `overview-terrain`, id `<id>~overview`); cells only carry z ≥ 10, so nothing doubles;
  * - from [SPLIT_ZOOM] the original layers draw the detailed data. Underneath them (right above the background) the
- *   overview goes on – fills, lines and relief, no labels (`<id>~under`; owner field test 0.8.7: "everything outside
- *   the downloaded areas is empty beige at z10"). Over those lies [COVER]: an opaque fill in the background colour over
+ *   overview goes on – fills, lines and relief, no labels (`<id>~under`; owner: outside the downloaded areas z10 must
+ *   not turn empty beige). Over those lies [COVER]: an opaque fill in the background colour over
  *   the areas that have the detailed map (installed cells, the region package) – there the overview is hidden
  *   completely (no offset Natural Earth lakes, no doubled relief); outside it shows through.
  * Labels of the overview stop at [SPLIT_ZOOM]: hidden under the cover they would still take label space.
- * Natural Earth urban areas (`landuse`) are left out of the overview: magnified they are grey smudges (owner 0.8.7).
+ * Natural Earth urban areas (`landuse`) are left out of the overview: magnified they are grey smudges (owner).
  * Prefix-based code (LayerSettings "hillshade", "poi-", …) still finds the copies because the id keeps its start.
  *
  * Relief: a pre-rendered hill-shade raster ([HILLSHADE_FILE], one `raster` layer – magnifies smoothly, no tile seams)
@@ -51,8 +51,8 @@ object Overview {
     /** Overview label copies from [PACKAGE_ZOOM] on, kept out of the packages' boxes. */
     const val OUTSIDE = "~outside"
     /**
-     * Paint of the pre-rendered hill shade (its look is baked into the images; tools/build_hillshade.py); hill shading
-     * balanced (c), owner 2026-10-22: a little more contrast, highlights not pure white.
+     * Paint of the pre-rendered hill shade (its look is baked into the images; tools/build_hillshade.py): a little more
+     * contrast, highlights not pure white (owner).
      */
     private const val HILLSHADE_PAINT =
         """{"raster-resampling":"linear","raster-fade-duration":0,"raster-contrast":0.25,"raster-brightness-max":0.9}"""
@@ -165,7 +165,7 @@ object Overview {
                         !label -> lowCopies.put(copy)
                         minOf(max, SPLIT_ZOOM) <= PACKAGE_ZOOM -> out.put(copy)
                         else -> {
-                            // below z7 as before; from z7 only outside the packages (their own labels draw there)
+                            // below z7 unchanged; from z7 only outside the packages (their own labels draw there)
                             if (min < PACKAGE_ZOOM) out.put(JSONObject(copy.toString()).put("maxzoom", PACKAGE_ZOOM))
                             val o = JSONObject(copy.toString()).put("id", copy.getString("id") + OUTSIDE)
                                 .put("minzoom", maxOf(min, PACKAGE_ZOOM))
@@ -215,25 +215,22 @@ object Overview {
     /** [west, south, east, north] boxes as one GeoJSON MultiPolygon (the `within` filter's geometry). */
     internal fun multiPolygon(boxes: List<DoubleArray>): JSONObject {
         val polys = JSONArray()
-        for (b in boxes) {
-            if (b.size < 4) continue
-            val ring = JSONArray()
-            for ((x, y) in listOf(b[0] to b[1], b[2] to b[1], b[2] to b[3], b[0] to b[3], b[0] to b[1])) ring.put(JSONArray().put(x).put(y))
-            polys.put(JSONArray().put(ring))
-        }
+        for (b in boxes) if (b.size >= 4) polys.put(JSONArray().put(ring(b)))
         return JSONObject().put("type", "MultiPolygon").put("coordinates", polys)
     }
 
     /** [west, south, east, north] boxes as a GeoJSON FeatureCollection of rectangles. */
     internal fun coverGeoJson(boxes: List<DoubleArray>): JSONObject {
         val features = JSONArray()
-        for (b in boxes) {
-            if (b.size < 4) continue
-            val ring = JSONArray()
-            for ((x, y) in listOf(b[0] to b[1], b[2] to b[1], b[2] to b[3], b[0] to b[3], b[0] to b[1])) ring.put(JSONArray().put(x).put(y))
-            features.put(JSONObject().put("type", "Feature").put("properties", JSONObject())
-                .put("geometry", JSONObject().put("type", "Polygon").put("coordinates", JSONArray().put(ring))))
-        }
+        for (b in boxes) if (b.size >= 4) features.put(JSONObject().put("type", "Feature").put("properties", JSONObject())
+            .put("geometry", JSONObject().put("type", "Polygon").put("coordinates", JSONArray().put(ring(b)))))
         return JSONObject().put("type", "FeatureCollection").put("features", features)
+    }
+
+    /** Closed GeoJSON ring of one [west, south, east, north] box. */
+    private fun ring(b: DoubleArray): JSONArray {
+        val ring = JSONArray()
+        for ((x, y) in listOf(b[0] to b[1], b[2] to b[1], b[2] to b[3], b[0] to b[3], b[0] to b[1])) ring.put(JSONArray().put(x).put(y))
+        return ring
     }
 }

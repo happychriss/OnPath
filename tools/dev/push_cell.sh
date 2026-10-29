@@ -21,7 +21,7 @@
 #     (CellTriggers.freshenAlong – also the restored plan's route at every start); for a dev cell the app ignores that
 #     answer for MapCells.DEV_KEEP_MS (24 h) after it was joined, then loads the server's version instead
 #   - at once: Settings → Offline maps → delete the area; it loads again from the server the next time it is needed
-# Phone detail (Pixel 8, 2026-10-26): folders adb creates are owned by "shell" (mode 2770) – the app cannot list them,
+# Phone detail (Pixel 8): folders adb creates are owned by "shell" (mode 2770) – the app cannot list them,
 # so the script opens them (777 / 666) before the app starts; the app then joins and deletes them as usual.
 # Needs: docker, adb, the phone with OnPath installed (debug or release build of com.onpath.app).
 set -euo pipefail
@@ -41,7 +41,7 @@ command -v adb >/dev/null || cell_die "adb is missing"
 adb get-state >/dev/null 2>&1 || cell_die "no phone attached (adb get-state); set ANDROID_SERIAL when several are attached"
 adb shell pm path "$PKG" >/dev/null 2>&1 || cell_die "OnPath ($PKG) is not installed on the phone"
 # never stop a running tour (the app is force-stopped below): RecordingService = recording / navigating; no usable adb
-# answer = unknown = refuse (2026-10-26 an empty answer read as "not running" let a style push interrupt a tour).
+# answer = unknown = refuse (an empty answer read as "not running" once let a style push interrupt a tour).
 # Checked now and again right before the force-stop (the build takes minutes). --force skips it.
 not_recording() {
   [ "$FORCE" = 1 ] && { cell_log "--force: not checking for a running tour"; return 0; }
@@ -101,8 +101,8 @@ not_recording
 adb shell am force-stop "$PKG"
 adb shell "mkdir -p '$DL' && rm -rf '$DL/$DEV.part' '$DL/$DEV'"
 adb push "$STAGE/$DEV/." "$DL/$DEV.part/" >/dev/null
-# folders adb creates belong to "shell" with mode 2770: the app could not even list them (checked on the Pixel 8,
-# 2026-10-26 – the cell was silently not joined). Open them for the app, which reads, renames and deletes them.
+# folders adb creates belong to "shell" with mode 2770: the app could not even list them (checked on the Pixel 8:
+# the cell was silently not joined). Open them for the app, which reads, renames and deletes them.
 adb shell "chmod 777 '$DL' && find '$DL/$DEV.part' -type d -exec chmod 777 {} + && find '$DL/$DEV.part' -type f -exec chmod 666 {} +"
 adb shell "mv '$DL/$DEV.part' '$DL/$DEV'"
 adb shell am start -n "$PKG/.MainActivity" >/dev/null

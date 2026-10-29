@@ -8,9 +8,8 @@ import java.io.File
 
 /**
  * touring.brf (Touring bike, E-bike) is OnPath's copy of trekking.brf for a normal bike
- * (owner 2026-10-25, docs/design/bike-routing.md). It must stay a copy: a change to trekking.brf has to be
- * made in both, and only the values below may differ. Since 2026-10-26 (Trekking got Touring's busy-traffic penalty)
- * the two differ in exactly two rules: unpavedPenalty (2.5 vs 1.0) and the rough-way rule "v_rough" (a rough way on a
+ * (owner, docs/design/bike-routing.md). It must stay a copy: a change to trekking.brf has to be
+ * made in both, and only the values below may differ. The two differ in exactly two rules: unpavedPenalty (2.5 vs 1.0) and the rough-way rule "v_rough" (a rough way on a
  * cycle route is not "perfect" in touring.brf).
  */
 class TouringProfileTest {
@@ -39,7 +38,7 @@ class TouringProfileTest {
             val f = BRouterEngine.profileFile(a)
             assertTrue("$f shipped", f in BRouterEngine.PROFILE_ASSETS && File(dir, f).isFile)
         }
-        // the road-bike profile is gone (owner 2026-10-25: exactly six activities, no road bike)
+        // the road-bike profile is gone (owner: exactly six activities, no road bike)
         assertFalse(File(dir, "fastbike-verylowtraffic.brf").exists())
     }
 
@@ -61,9 +60,9 @@ class TouringProfileTest {
     companion object {
         /** trekking.brf line → touring.brf line, in file order. */
         val EXPECTED = listOf(
-            // the busy-traffic penalty is the same in both since 2026-10-26 (decision 3); these two are the difference
+            // the busy-traffic penalty is the same in both (decision 3); these two are the difference
             "assign unpavedPenalty = 1.0" to "assign unpavedPenalty = 2.5",
-            // v_rough (captain 2026-10-26): a rough track on a cycle route is not "perfect", the unpaved penalty applies
+            // v_rough: a rough track on a cycle route is not "perfect", the unpaved penalty applies
             "else if ( and is_ldcr not ldcr_busy ) then 1" to "else if ( and is_ldcr not or ldcr_busy ldcr_rough ) then 1",
         )
 

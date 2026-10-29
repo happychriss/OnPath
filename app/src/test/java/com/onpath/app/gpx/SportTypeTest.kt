@@ -7,7 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Komoot's sport in `<trk><type>` preselects the activity on import and is written on export (owner 2026-10-25). */
+/** Komoot's sport in `<trk><type>` preselects the activity on import and is written on export (owner). */
 class SportTypeTest {
 
     /** A small synthetic GPX like Komoot's export (name, type, two points); [type] null = no `<type>`. */
@@ -49,7 +49,7 @@ class SportTypeTest {
     }
 
     /**
-     * Captain 2026-10-26 ("no surprises"): a Komoot hiking type covers a band of T levels – `hike` (and `jogging`) T1–T2,
+     * Owner ("no surprises"): a Komoot hiking type covers a band of T levels – `hike` (and `jogging`) T1–T2,
      * `mountaineering` T3–T5. The user's own T level is kept when it is inside the band, else the band's default.
      */
     @Test fun theUsersTLevelIsKeptInsideTheTypesBand() {
@@ -100,7 +100,7 @@ class SportTypeTest {
     }
 
     /**
-     * Owner 2026-10-26: opening a tour from My routes (imported or recorded) switches to the tour's stored activity and
+     * Owner: opening a tour from My routes (imported or recorded) switches to the tour's stored activity and
      * says so in one grey line – the same rules as the import (T level kept inside the band, nothing during a tour).
      */
     @Test fun openingATourSwitchesToItsActivity() {

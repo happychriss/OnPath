@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,7 +43,7 @@ import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellState
 
 /**
- * What loads in the background right now (owner 2026-10-22: downloads must be visible and stoppable): map regions along
+ * What loads in the background right now (owner: downloads must be visible and stoppable): map regions along
  * the plan's route, the map ahead on a tour, newer versions, routing data – anything the user is not waiting for in the
  * big loading modal. [percent] over everything loading since the strip appeared (never backwards).
  */
@@ -60,7 +59,7 @@ data class BackgroundDownloadUi(
     val newer: Int = 0,
     /** The server still builds some newer version: about this many minutes (null = unknown / none). */
     val newerEtaMin: Int? = null,
-    /** What loads, by name (owner 2026-10-23: "around Bad Waldsee", "along your route to …"), most important first. */
+    /** What loads, by name ("around Bad Waldsee", "along your route to …"), most important first. */
     val groups: List<LoadGroup> = emptyList(),
 ) {
     /** The chip's name ("Bad Waldsee") and how many other names load ("+1"). */
@@ -69,7 +68,7 @@ data class BackgroundDownloadUi(
     /** "⬇ Bad Waldsee +1 · 34 %" without the arrow (accessibility, tests). */
     val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + " · $percent %" }
 
-    /** "Loading newer map" when only newer versions load (owner 2026-10-22: the strip is the one indicator for them). */
+    /** "Loading newer map" when only newer versions load (the strip is the one indicator for them). */
     val title: String get() = Txt.s(if (regions > 0 && newer >= regions && routingParts == 0) Res.string.maps_bg_title_newer
         else Res.string.maps_bg_title)
 
@@ -79,10 +78,7 @@ data class BackgroundDownloadUi(
 
     /** "3 areas · 24 MB · 40 %" (the strip); "24 MB · 40 %" when only the route planning part of the map loads (never named). */
     val line: String get() {
-        val what = when {
-            regions > 0 -> Txt.p(Res.plurals.maps_areas_count, regions, regions)
-            else -> null
-        }
+        val what = if (regions > 0) Txt.p(Res.plurals.maps_areas_count, regions, regions) else null
         return listOfNotNull(what, if (bytes > 0) "${mb(bytes)} MB" else null, "$percent %").joinToString(" · ")
     }
 }
@@ -127,8 +123,8 @@ class BackgroundProgress {
          * The background items of the cell [states] (those in [waitedFor] are the modal's, not the strip's). An
          * [installed] area only asked for a newer version ([CellState.Requested]: the server has not answered) is no
          * loading yet. With [progress] (one [MapLoadProgress] per cell, kept by the caller; [now] uptime ms) the
-         * server's preparing time counts too, as in the loading window (field test 0.10.1: the strip stood at 0 % for
-         * the ~10 minutes the server prepared two areas); without it only downloaded bytes count.
+     * server's preparing time counts too, as in the loading window (else the strip stands at 0 % while the server
+         * prepares); without it only downloaded bytes count.
          */
         fun cellItems(
             states: Map<CellId, CellState>, waitedFor: Set<CellId>, installed: Set<CellId> = emptySet(),
@@ -149,12 +145,10 @@ class BackgroundProgress {
     }
 }
 
-/** Information colour of the chip and the map notice: blue – not the amber of warnings, not the green brand. */
-
 /**
- * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (owner 2026-10-23: the full-width strip looked crowded).
- * Plan: under the ☰ button; Navigate: under the status card. The name is cut with "…" at about half the screen width (owner: ~45 %),
- * "+N" (more names) and the % always show. Tap → details.
+ * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (not a full-width strip: too crowded). Plan: under the ☰
+ * button; Navigate: under the status card. The name is cut with "…" at about half the screen width, "+N" (more names)
+ * and the % always show. Tap → details.
  */
 @Composable
 fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -184,7 +178,7 @@ fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (ui.groups.isNotEmpty()) {
-                    // one line per name (owner 2026-10-23): "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
+                    // one line per name: "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
                     ui.groups.forEach { Text(it.line) }
                     if (ui.newer > 0) ui.newerEtaMin?.let { Text(str(Res.string.maps_bg_newer_ready, it), style = MaterialTheme.typography.bodyMedium) }
                 } else {
@@ -227,14 +221,14 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
 }
 
 /**
- * Where the general message bar ("… OK") sits (UX review 2026-10-23, problem 11): it stays until OK, so it must never
- * cover the blue strip's buttons (Try again, Allow location, Load now) – below the strip while it shows. The loading
- * chip under ☰ (owner 2026-10-23) uses the same place: the message goes below it too, never over it. Pure, tested.
+ * Where the error card (stays until OK) sits: it must never cover the blue strip's buttons (Try again, Allow location,
+ * Load now) – below the strip while it shows. The loading chip under ☰ uses the same place: the card goes below it too.
+ * Pure, tested.
  */
 object MessagePlacement {
     /** Top of the blue strip / the loading chip's touch area below the status bar (search pill + ☰ row above it). */
     const val STRIP_TOP_DP = 68
-    /** The message bar without a strip. */
+    /** The error card without a strip. */
     const val MESSAGE_TOP_DP = 70
 
     fun topDp(stripShown: Boolean, stripHeightDp: Int): Int =
@@ -250,8 +244,8 @@ internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadU
 }
 
 /**
- * What of the map card still needs the user (owner 2026-10-23: no second map card in the plan sheet – the blue strip at
- * the top says it and asks there): the mobile-data question, areas waiting for Wi-Fi, a failure, offline, no position
+ * What of the map card still needs the user (no second map card in the plan sheet – the blue strip at the top says it
+ * and asks there): the mobile-data question, areas waiting for Wi-Fi, a failure, offline, no position
  * yet on a fresh install, no downloads in this build. Plain progress is the [BackgroundDownloadChip]'s; "ready" needs
  * nothing. Pure, unit-tested.
  */
@@ -261,7 +255,7 @@ fun mapNotice(card: CellCardUi?): CellCardUi? = when (card) {
     is CellCardUi.Done, null -> null
 }
 
-/** How the map notice looks (review 2026-10-24 A / C8): one colour = one meaning. Pure, unit-tested. */
+/** How the map notice looks: one colour = one meaning. Pure, unit-tested. */
 enum class NoticeLook { QUESTION, WARNING, QUIET }
 
 fun noticeLook(card: CellCardUi): NoticeLook = when (card) {
@@ -275,7 +269,7 @@ fun noticeLook(card: CellCardUi): NoticeLook = when (card) {
  * The map notice at the top (see [mapNotice]); same place as the progress chip. Blue strip only for a question with
  * buttons (mobile data, Allow location, "Load now" while Settings says Wi-Fi only); a failure = amber strip with Try
  * again; a pure status (offline, waiting for GPS, waiting for Wi-Fi after "Wi-Fi only") = the quiet grey pill, no ×.
- * No "why" lines (review 2026-10-24 B7).
+ * No "why" lines.
  */
 @Composable
 fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier = Modifier) {
@@ -294,7 +288,7 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
         NoticeLook.QUESTION -> {
             val buttons: List<Pair<String, () -> Unit>> = when {
                 working?.question != null -> listOf(str(Res.string.maps_btn_wifi_only) to cb.onWifiOnly, str(Res.string.maps_btn_load_now) to cb.onMobileYes)
-                // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
+                // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner)
                 working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
                 else -> listOf(str(Res.string.maps_btn_allow_location) to cb.onAllowLocation)
             }
@@ -304,20 +298,18 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
     }
 }
 
-/**
- * Owner 2026-10-23 (e.g. in a car): the app opened where there is no detailed map – the strip asks instead of loading.
- */
+/** The app opened where there is no detailed map: the strip asks instead of loading (e.g. in a car – owner). */
 @Composable
 fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
                  mustBuild: Boolean = true) =
-    // short (owner 2026-10-24: simplify – title ≤ 5 words, one detail line at most)
+    // short (owner): title ≤ 5 words, one detail line at most
     Notice(str(Res.string.maps_here_ask, mb(bytes)),
         warning = false, onClose = null, listOf(str(Res.string.common_not_now) to onNotNow, str(Res.string.maps_btn_load) to onLoad), modifier,
         detail = if (mustBuild) str(Res.string.maps_here_ask_detail) else null)
 
 /**
- * One strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). Blue
- * (ACTION) for a question; amber with ⚠ (WARNING) for a failure that offers "Try again" (review 2026-10-24 C8).
+ * One strip at the top: a title, an optional detail line, buttons right-aligned (last = main). Blue (ACTION) for a
+ * question; amber with ⚠ (WARNING) for a failure that offers "Try again".
  */
 @Composable
 private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,

@@ -13,10 +13,10 @@ import com.onpath.app.routing.GeoPoint
 data class PlanGap(val index: Int, val point: GeoPoint, val routeEnd: GeoPoint, val distanceM: Double)
 
 /**
- * Unreachable plan points (owner 2026-10-22): no message box – the map draws the missing piece grey dashed and the point
+ * Unreachable plan points (owner): no message box – the map draws the missing piece grey dashed and the point
  * grey and hollow; the plan sheet shows ONE red line while it holds, e.g. `Last 180 m to "Taser Alm" not possible by
  * gravel bike` (+ "Show"). One reason only: the ways near the point are not known to the app, so it says just "not
- * possible by <activity>". Pure, unit tested (PlanGapsTest).
+ * possible by <activity>".
  */
 object PlanGaps {
     /** Closer = the router's normal snapping onto the way next to the point (no gap worth a word). */

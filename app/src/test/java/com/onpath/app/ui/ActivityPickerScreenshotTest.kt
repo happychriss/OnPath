@@ -6,7 +6,7 @@ import com.onpath.app.routing.Activity
 import org.junit.Rule
 import org.junit.Test
 
-/** Activity picker (owner 2026-10-22): with Hike the T1–T5 row and the level's text; bike activities without it. */
+/** Activity picker: with Hike the T1–T5 row and the level's text; bike activities without it. */
 class ActivityPickerScreenshotTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, showSystemUi = false)

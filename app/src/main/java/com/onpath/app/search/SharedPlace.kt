@@ -11,7 +11,7 @@ import kotlin.math.abs
 /**
  * A place another app handed to OnPath: "Share" from Google Maps (name, address, link), a `geo:` URI, a map link.
  *
- * Owner decision 2026-10-20: the coordinate inside a Google Maps link may be used to place our own marker (the
+ * Owner decision: the coordinate inside a Google Maps link may be used to place our own marker (the
  * orange search ring). Nothing else from Google is drawn or stored – only that point and the shared name.
  *
  * [lat]/[lon] are set when the coordinate is known; otherwise [link] (a short link to resolve online) and / or
@@ -145,8 +145,7 @@ object SharedPlaceParser {
         if (!isMapsLink(raw) && !host.endsWith("openstreetmap.org") && !host.endsWith("osm.org")) return null
         val c = coordsInUrl(raw)
         // Google's place path is "Name, Street, No, Postcode Town, Country": name and address apart, so the address
-        // can be searched on its own (field test 2026-10-20: "PRIMUS Garden Bistrot, Via Goethe, 28, 39012 Merano"
-        // found nothing online and landed far away; "Via Goethe, 28, 39012 Merano" is found exactly)
+        // can be searched on its own (the whole string often finds nothing online; the address alone is found exactly)
         val (name, addr) = splitPlace(placeName(raw))
         val q = (param(raw, "q") ?: param(raw, "query"))?.takeIf { PAIR_RX.matchEntire(it.replace('+', ' ')) == null }?.trim()?.takeIf { it.isNotEmpty() }
         if (c == null && name == null && q == null) return null
@@ -168,9 +167,9 @@ object SharedPlaceParser {
     }
 
     /**
-     * Coordinates in a downloaded page – only the place marker (`!3d…!4d…`), never the page's start view: tested
-     * 2026-10-20, a Google Maps page for a link without coordinates opens centred on the requester's IP location
-     * (APP_INITIALIZATION_STATE / `center=` pointed to Germany for a place in India).
+     * Coordinates in a downloaded page – only the place marker (`!3d…!4d…`), never the page's start view: a Google
+     * Maps page for a link without coordinates opens centred on the requester's IP location
+     * (APP_INITIALIZATION_STATE / `center=`).
      */
     fun coordsInHtml(body: String): Pair<Double, Double>? {
         val d = body.replace("\\u0021", "!").replace("\\u003d", "=").replace("\\u0026", "&").replace("%21", "!")
@@ -362,7 +361,7 @@ class ShortLinkResolver(
 }
 
 /**
- * Where the position of a shared place came from. Owner 2026-10-22: a place positioned by searching its address
+ * Where the position of a shared place came from. A place positioned by searching its address
  * (not a coordinate in the link / text / map page) gets a small note on its card that stays ("Position from the
  * address") – the address search may land on the street rather than the door, or on a namesake.
  */

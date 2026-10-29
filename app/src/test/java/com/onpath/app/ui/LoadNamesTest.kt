@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Human names for loading map areas (owner 2026-10-23): by reason, else the nearest overview town; grouped; shortened. */
+/** Human names for loading map areas: by reason, else the nearest overview town; grouped; shortened. */
 class LoadNamesTest {
     private val mb = 1_048_576L
 
@@ -37,7 +37,7 @@ class LoadNamesTest {
             LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", bytes = 14 * mb, phase = LoadPhase.LOADING),
         ))
         assertEquals(listOf("along your route to Gasthof Taser Alm", "around Bad Waldsee", "newer map near Meran"), g.map { it.label })
-        // the route-planning part's 2 MB join the most important line (never a line of its own, owner Q5)
+        // the route-planning part's 2 MB join the most important line (never a line of its own, owner)
         assertEquals("Along your route to Gasthof Taser Alm (2 areas) · 26 MB · loading", g[0].line)
         assertEquals("Around Bad Waldsee · 5 MB · loading", g[1].line)
         assertEquals("Newer map near Meran · 3 MB · being prepared", g[2].line)
@@ -81,7 +81,7 @@ class LoadNamesTest {
         assertEquals(LoadPhase.FINISHING, LoadNames.phaseOf(CellState.Installing))
     }
 
-    /** Owner texts Q5 (2026-10-23): route-planning data is part of "the map" – never a line or a word of its own. */
+    /** Route-planning data is part of "the map" (owner) – never a line or a word of its own. */
     @Test fun routePlanningDataIsNeverNamed() {
         assertTrue(LoadNames.groups(listOf(LoadEntry(null, paths = true, bytes = 9 * mb))).isEmpty()) // only in the total
         val g = LoadNames.groups(listOf(LoadEntry(null, paths = true, bytes = 2 * mb), LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 5 * mb)))

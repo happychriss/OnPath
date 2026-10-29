@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * One type scale (review 2026-10-24 A, owner): 12 caption / 14 small / 16 body / 22 title / 30 bold display, set once in
+ * One type scale (owner): 12 caption / 14 small / 16 body / 22 title / 30 bold display, set once in
  * [OnPathType] (ui/Theme.kt). Screens take `style = MaterialTheme.typography.…`; a hand-set `fontSize =` is allowed only
  * for map furniture drawn on a canvas and for the glyphs / numbers inside round markers (they scale with the marker).
  */

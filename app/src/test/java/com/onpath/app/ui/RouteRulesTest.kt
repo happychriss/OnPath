@@ -42,7 +42,7 @@ class RouteRulesTest {
     @Test fun clearRules() {
         assertFalse(RouteRules.canClear(0))
         assertTrue(RouteRules.canClear(1))
-        // owner Q2 2026-10-23: also during a tour – it ends the route guidance like deleting all points (PlanGuidanceTest)
+        // also during a tour (owner) – it ends the route guidance like deleting all points (PlanGuidanceTest)
         assertTrue(RouteRules.canClear(3))
     }
 

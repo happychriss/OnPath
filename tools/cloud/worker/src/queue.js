@@ -379,7 +379,7 @@ async function startNext(env, cfg, now, fetchImpl, free, slots) {
     n = batchSize(cfg, w.n, free);
   } else if (slots > 1) {
     // background (refresh, schema rebuild, corridor) spread over the free slots but the one kept for someone waiting:
-    // 6 cells on 3 slots = 3 × 2 cells, not 4 + 2 built one after the other (field 2026-10-26: s5 → s6 for Hilden,
+    // 6 cells on 3 slots = 3 × 2 cells, not 4 + 2 built one after the other (field: s5 → s6 for Hilden,
     // the last of 4 serial cells came 36 min after the start). Long queues still go 4 per execution (hourly cap).
     const b = await db.prepare("SELECT COUNT(*) AS n FROM cells WHERE job = 'queued' AND format = ?").bind(first.format).first();
     n = batchSize(cfg, b.n, free - 1);

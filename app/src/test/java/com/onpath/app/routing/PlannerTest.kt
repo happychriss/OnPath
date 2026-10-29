@@ -87,9 +87,9 @@ class PlannerTest {
     }
 
     /**
-     * Field bug Hilden 2026-10-24 (core feature C-plan): point 2 lay ON a footway by the Itter, reachable only there and
-     * back; BRouter's via correction cut that detour and the plan said "Last 370 m: no way for Trekking bike".
-     * Engine: with a via point it draws the line past it (≈ 370 m away) but reports it matched on its way.
+     * A point ON a footway, reachable only there and back: BRouter's via correction cuts that detour and the plan would
+     * say "no way" for the rest. Engine: with a via point it draws the line past it (≈ 370 m away) but reports it
+     * matched on its way.
      */
     private class SpurCutEngine : RoutingEngine {
         val calls = mutableListOf<List<GeoPoint>>()

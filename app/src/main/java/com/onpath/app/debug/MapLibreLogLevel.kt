@@ -31,7 +31,7 @@ object MapLibreLogLevel {
     private val BREAKING = listOf(
         "failed to load style", "style failed", "failed to parse style", "parse style", "style parse",
         "error loading style", "invalid style",
-        "glyph", // missing glyph ranges make MapLibre drop whole tiles (owner, 2026-10-19)
+        "glyph", // missing glyph ranges make MapLibre drop whole tiles
         "unable to open", "unable to read", "could not open", "cannot open", "can't open", "no such file",
         "failed to open", "failed to read", "file not found", "permission denied",
         "sqlite", "database", "pmtiles",

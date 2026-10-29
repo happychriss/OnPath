@@ -28,7 +28,7 @@ object RouteSummary {
      * Difficulty from distance and ascent alone ("effort kilometres", fitness only):
      *   effort = km + ascentM / climbFactor
      * Hike uses the Swiss/DIN "Leistungskilometer" (100 m up = 1 km, about 4 per hour at an average pace) with
-     * Komoot's documented hiking bands (owner 2026-10-25): easy ≤ 8 (≈ 2 h) and ≤ 300 m up, moderate ≤ 20 (≈ 5 h) and
+     * Komoot's documented hiking bands (owner): easy ≤ 8 (≈ 2 h) and ≤ 300 m up, moderate ≤ 20 (≈ 5 h) and
      * ≤ 900 m up. Bikes count climbing more cheaply (100 m up = 4 km touring/e-bike, 5 km MTB), no ascent cap:
      *   BIKE_TOURING /
      *   BIKE_TREKKING   easy ≤ 40, moderate ≤ 80
@@ -58,11 +58,11 @@ object RouteSummary {
     const val HIKE_MODERATE_UP_M = 900.0
     /** A trail grade counts only from this many metres (summed over the route): a few tagged metres are noise. */
     const val TECHNIQUE_MIN_M = 100.0
-    /** Hike: this much T2 or harder makes it at least Moderate – hours on a mountain path ask for sure-footedness (owner 2026-10-26). */
+    /** Hike: this much T2 or harder makes it at least Moderate – hours on a mountain path ask for sure-footedness (owner). */
     const val HIKE_T2_MIN_M = 2_000.0
-    /** Bike / E-bike: this share unpaved (in whole %) makes it at least Moderate – a quarter off the tarmac is felt on a touring bike (owner 2026-10-26). */
+    /** Bike / E-bike: this share unpaved (in whole %) makes it at least Moderate – a quarter off the tarmac is felt on a touring bike (owner). */
     const val BIKE_UNPAVED_SHARE_PCT = 25
-    /** Bike / E-bike: this much loose ground makes it at least Moderate, however long the route – a long loose stretch is hard on a touring bike even when it is a small share (owner 2026-10-26). */
+    /** Bike / E-bike: this much loose ground makes it at least Moderate, however long the route – a long loose stretch is hard on a touring bike even when it is a small share (owner). */
     const val BIKE_LOOSE_MIN_M = 5_000.0
 
     /** Surface keys ([WayAttrs.surface]) that are not paved: every one of them counts for the unpaved share. */
@@ -106,9 +106,9 @@ object RouteSummary {
     }
 
     /**
-     * Difficulty like Komoot's ("fitness, sport and technical complexity", owner 2026-10-25): [difficulty] from distance
+     * Difficulty like Komoot's ("fitness, sport and technical complexity", owner): [difficulty] from distance
      * and ascent, raised to what [technique] asks for when that is higher (trail grade T3+ / S2+, a hike's long T2, a
-     * Bike's or E-bike's unpaved share or long loose stretch; owner 2026-10-26). Never lowered.
+     * Bike's or E-bike's unpaved share or long loose stretch). Never lowered.
      */
     fun rating(activity: Activity, distanceM: Double, ascentM: Double, points: List<GeoPoint>): Rating {
         val fitness = difficulty(activity, distanceM, ascentM)
@@ -121,11 +121,11 @@ object RouteSummary {
      * harder (summed over the route), from the way attributes of the points (lines without them – straight legs,
      * imported tracks – have none: null).
      * - Hike (SAC): T3 → at least Moderate, T4 or harder → Difficult (Komoot: SAC 1 easy, 2–3 moderate, 4–6 difficult);
-     *   T2, the everyday mountain path, raises to Moderate only from [HIKE_T2_MIN_M] at T2 or harder (owner 2026-10-26).
+     *   T2, the everyday mountain path, raises to Moderate only from [HIKE_T2_MIN_M] at T2 or harder.
      * - Every bike activity (mtb:scale, Komoot's legend S0–S1 easy, S2 moderate, S3–S5 difficult): S2 → at least
      *   Moderate, S3 or harder → Difficult; a hiking trail of T3 or harder counts like S3 (Komoot: T3+ trails are
      *   highly dangerous on a bike).
-     * - Bike and E-bike only (touring.brf; owner 2026-10-26 – Gravel bike, MTB, E-MTB are made for it): at least
+     * - Bike and E-bike only (touring.brf; owner: Gravel bike, MTB, E-MTB are made for it): at least
      *   Moderate when [BIKE_UNPAVED_SHARE_PCT] % or more of the route is unpaved ([UNPAVED]) or [BIKE_LOOSE_MIN_M] or
      *   more is loose ground ([LOOSE], smoothness bad or worse) – badge word "unpaved". The share is of the whole line;
      *   spans without way attributes count as not unpaved. A grade (S2, S3+, T3+) is named first.

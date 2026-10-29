@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Owner screenshot 2026-10-22: with the points open the map controls went up over the ☰ button. */
+/** With the points open the map controls must not go up over the ☰ button. */
 class FooterPlacementTest {
     private fun place(sheetTop: Int, footerH: Int = 200) = FooterPlacement.place(sheetTop, footerH, limitPx = 300, fadePx = 100)
 

@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Technical error texts do not belong in the app (owner 2026-10-23: "Update download failed: Unable to resolve host
+ * Technical error texts do not belong in the app (owner: "Update download failed: Unable to resolve host
  * api.github.com…", "Export failed: ENOSPC…"). A raw exception message or class name may only go to the problem log
  * (Problems / Log); the user gets one plain sentence – our own exception types through [UserText.of].
  *

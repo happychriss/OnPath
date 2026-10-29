@@ -23,7 +23,7 @@ import kotlin.math.sqrt
  * 3. Traces the reference line once per piece (via points every CMP_TRACE_M along it, profile trace.brf: every way
  *    costs the same) to learn its BRouter way tags; cached in CMP_TRACE_DIR, reused by later runs (variants).
  *    A trace run that times out or returns an empty track counts as failed: its chunk is split, a leg that still fails
- *    is a gap (traceGaps). Caches made before 2026-10-26 could count such legs as traced – delete them to re-trace.
+ *    is a gap (traceGaps).
  * 4. Samples every line every 10 m and writes, per sample: arc position, lat, lon, way tags (id into the file's tag
  *    table), distance to the other line and the arc position of the nearest point there. The report script derives
  *    overlap, way-type / surface mixes and deviations from these files.

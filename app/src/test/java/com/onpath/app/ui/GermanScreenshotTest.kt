@@ -10,7 +10,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * A few screens in German (owner 2026-10-26, EN + DE) to see that the longer German texts fit: plan sheet, route
+ * A few screens in German to see that the longer German texts fit: plan sheet, route
  * hints, activity picker, Navigate, My routes, settings. Same pictures as the English tests of the same name – the
  * test body is borrowed from there and drawn with this class's Paparazzi under a German default locale.
  */

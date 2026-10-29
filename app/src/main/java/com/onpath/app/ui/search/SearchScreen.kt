@@ -54,7 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
-import com.onpath.app.poi.Poi
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
@@ -73,7 +72,7 @@ data class SearchActions(
 
 /**
  * Full-screen search (Plan mode only): text field, category chips, ONE mixed result list – offline places, POIs,
- * trails, addresses and online results, best match first (owner 2026-10-22); each row keeps its kind icon and says
+ * trails, addresses and online results, best match first; each row keeps its kind icon and says
  * "near your route" / "online" – and a last row that hands the query to Google Maps.
  */
 @Composable
@@ -179,15 +178,9 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
     }
 }
 
-@Composable
-private fun Header(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
-}
-
 /**
  * The very first offline index is being built (no previous one to answer): spinner + grey text where the user is
- * waiting (INFO look, progress = spinner, review 2026-10-24). Stays until the index is ready.
+ * waiting (INFO look, progress = spinner). Stays until the index is ready.
  */
 @Composable
 private fun Preparing() {

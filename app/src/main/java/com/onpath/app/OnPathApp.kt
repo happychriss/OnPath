@@ -15,14 +15,14 @@ class OnPathApp : Application() {
         // Problems first: everything after this may report into it (debug/Problems.kt).
         Problems.init(filesDir)
         installCrashCapture()
-        // English + German (owner 2026-10-26): the chosen language first; a text that cannot be read is a problem, not a crash
+        // the chosen language first; a text that cannot be read is a problem, not a crash
         com.onpath.app.data.AppLanguage.apply(this)
         com.onpath.strings.Txt.onError = { msg, e -> Problems.error("text", msg, e) }
         installMapLibreLogger()
         // Must happen before any MapView is created. No API key / network needed.
         MapLibre.getInstance(this)
         RecordingService.createChannels(this)
-        com.onpath.app.debug.Health.start() // a health line every 10 min in the event log (perf report 2026-10-22)
+        com.onpath.app.debug.Health.start() // a health line every 10 min in the event log
     }
 
     /** Android may reset the default locale to the phone's on a configuration change: keep the chosen language. */
@@ -42,7 +42,7 @@ class OnPathApp : Application() {
 
     /**
      * MapLibre's own warnings and errors – including those of the native map engine (missing glyphs, tiles that
-     * cannot be parsed, style problems) – go to the problem log instead of only logcat. These used to be invisible.
+     * cannot be parsed, style problems) – go to the problem log instead of only logcat.
      * MapLibre also reports harmless internal notes via Logger.e/w; [MapLibreLogLevel] decides the level, so only
      * errors that break the map are announced on screen.
      */

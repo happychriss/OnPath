@@ -15,7 +15,7 @@ import com.onpath.app.routing.Activity
 import org.junit.Rule
 import org.junit.Test
 
-/** Background downloads, visible and stoppable (owner 2026-10-22): Plan strip, Navigate chip, details, Settings line. */
+/** Background downloads, visible and stoppable: Plan strip, Navigate chip, details, Settings line. */
 class BackgroundDownloadScreenshotTest {
 
     @get:Rule
@@ -35,7 +35,7 @@ class BackgroundDownloadScreenshotTest {
     private val longName = ui.copy(groups = LoadNames.groups(listOf(
         LoadEntry(LoadWhy.ROUTE, "Berggasthof Gampenalm am Hochplateau über Unsere Liebe Frau im Walde", bytes = 9 * mb))))
 
-    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %" (owner 2026-10-23, replaces the full-width strip). */
+    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %". */
     @Test fun planChip() = planWith(ui)
 
     /** A long name is cut with "…" at about half the width; the % always shows. */
@@ -49,11 +49,10 @@ class BackgroundDownloadScreenshotTest {
                     PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     BackgroundDownloadChip(u, onClick = {},
                         modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.STRIP_TOP_DP.dp, end = 12.dp))
-                    // the message bar goes below the chip (MessagePlacement), never over it
-                    androidx.compose.material3.Snackbar(Modifier.align(Alignment.TopCenter)
-                        .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp),
-                        action = { androidx.compose.material3.TextButton(onClick = {}) { androidx.compose.material3.Text("OK") } },
-                    ) { androidx.compose.material3.Text("Route saved as \"Taser Alm\".") }
+                    // the error card goes below the chip (MessagePlacement), never over it
+                    ErrorCard("Couldn't find this place. Try again when you have internet.", onOk = {},
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp))
                 }
             }
         }

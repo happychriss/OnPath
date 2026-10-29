@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +47,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
+import org.jetbrains.compose.resources.StringResource
 import androidx.compose.ui.unit.dp
 import com.onpath.app.recording.GpsStatus
 
@@ -55,15 +58,22 @@ import com.onpath.app.recording.GpsStatus
  * (locate; in Navigate also the orientation button above it) stacked on the right.
  */
 @Composable
-fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Composable ColumnScope.() -> Unit) {
+fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolean = false,
+              fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             scale?.let { (label, width) -> ScaleBar(label, width) }
-            // short credit on the map (owner 2026-10-22); a tap opens the full credits (Settings → About)
-            Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
-                modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
-                    .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
-                    .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // short credit on the map; a tap opens the full credits (Settings → About)
+                Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
+                    modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
+                        .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
+                // simulated GPS (Developer tools → Demo): said honestly, also in screenshots
+                if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
+                    modifier = Modifier.padding(start = 6.dp, top = 4.dp).clip(RoundedCornerShape(4.dp))
+                        .background(OnPathColors.Warn).padding(horizontal = 5.dp, vertical = 3.dp))
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
     }
@@ -71,7 +81,7 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Compo
 
 /** Size of one map control (48 dp = full touch target). */
 val MAP_FAB = 48.dp
-/** Navigate (owner, 2026-10-20): used while walking, so bigger and a little apart from each other. */
+/** Navigate (owner): used while walking, so bigger and a little apart from each other. */
 val MAP_FAB_LARGE = 56.dp
 private val LARGE_GAP = 8.dp
 
@@ -115,26 +125,19 @@ fun MapControls(
     peeking: Boolean = false,
     /** Plan: undo the last edit (shown only when there is something to undo). */
     onUndo: (() -> Unit)? = null,
-    /** Plan: redo the last undone edit – shown only when there is something to redo (owner Q8 2026-10-23). */
+    /** Plan: redo the last undone edit (shown only when there is something to redo). */
     onRedo: (() -> Unit)? = null,
     large: Boolean = false,
+    /** Navigate: the navigation settings on the way – a gear on top of the controls. */
+    onSettings: (() -> Unit)? = null,
 ) {
     val size = if (large) MAP_FAB_LARGE else MAP_FAB
     val items = buildList<@Composable () -> Unit> {
+        if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size) }
         if (compass != null) add { CompassControl(compass, size) }
         if (showEye) add { EyeControl(onPeek, peeking, size) }
-        if (onUndo != null) add {
-            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onUndo).semantics { contentDescription = Txt.s(Res.string.plan_undo) },
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Filled.Undo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
-            }
-        }
-        if (onRedo != null) add {
-            Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onRedo).semantics { contentDescription = Txt.s(Res.string.plan_redo) },
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Filled.Redo, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
-            }
-        }
+        if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size) }
+        if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size) }
         add { LocateControl(gps, following, onLocate, size) }
     }
     if (large) {
@@ -156,6 +159,15 @@ fun MapControls(
 }
 
 private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
+
+/** A plain round map control: [icon] in the control colour, [desc] for TalkBack. */
+@Composable
+private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp) {
+    Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = Txt.s(desc) },
+        contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+    }
+}
 
 @Composable
 private fun GroupDivider() =

@@ -1,8 +1,8 @@
 # Map packages as grid cells, built on demand
 
-Status: **design, decided by the owner 2026-10-19.** Reference for both sessions: the cloud session builds the
-pipeline and server parts, the laptop session builds the app parts and sets up zo.
-Related: `docs/map-pipeline.md` (today's region pipeline), `tools/hetzner/README.md` (today's region server),
+Status: **built** – cells, app store and cloud hosting (owner decisions §16; hosting: `docs/design/map-hosting.md`;
+when maps update: `docs/design/map-updates-ux.md`).
+Related: `docs/map-pipeline.md` (region pipeline), `tools/hetzner/README.md` (superseded region server),
 **`docs/design/map-data-size.md`** (how to make the data smaller – file formats may change, so this design keeps the
 cell format versioned and does not fix the file list).
 Requirements touched: F-OFF-01 (download an area), F-OFF-02 (route corridor secured automatically), F-OFF-03
@@ -94,7 +94,7 @@ refreshed. Accepted; refreshes of a used area happen together (§9).
 
 ## 5. Server: doorman + builder
 
-> **Hosting decided 2026-10-20 (owner): Cloudflare Worker (doorman, D1 queue) + R2 (cells) + Google Cloud Run
+> **Hosting decided (owner): Cloudflare Worker (doorman, D1 queue) + R2 (cells) + Google Cloud Run
 > Jobs (builder) – see `docs/design/map-hosting.md`.** It replaces the Hetzner mode below (`BUILDER_MODE=hetzner`,
 > `STORAGE=s3` on Hetzner, the Hetzner builder rules); zo keeps `BUILDER_MODE=local` as the test machine. Queue,
 > dedupe and priorities below are implemented as described, in D1.
@@ -184,7 +184,7 @@ borders, country and city names) and a pre-rendered hill shade z0–7, no specia
 From zoom 10 the overview goes on **underneath** the detailed layers (fills, lines, relief – no labels, no Natural Earth
 urban areas), so the map is never empty beige outside the downloaded cells; an opaque cover in the background colour
 over the installed cells / region package hides it there (no offset lakes, no doubled relief) – `map/Overview.kt`
-(owner field test 0.8.7).
+(owner field test).
 Size and exact zoom range: see map-data-size.md. Where a large part of the visible map (≥ 30 % of a 5 × 5 sample
 grid, not just the centre) has no cell, the map shows a light persistent hint (z ≥ 10, Plan):
 **"Overview only – set a point and the detailed map follows."**
@@ -232,22 +232,22 @@ asks again (requests are idempotent). Stop polling when all cells are `ready` or
 
 ## 9. On the phone
 
-### Trigger – when the map is fetched (owner, updated 2026-10-21)
+### Trigger – when the map is fetched (owner)
 Rule: **the map comes where you plan, look something up, ask for it or are** – a point you set, a search result, a
 tap you confirm, the route, or your own position. Scrolling and zooming alone never download.
 
-| # | Situation | What is requested | Since |
+| # | Situation | What is requested | Decided |
 |---|---|---|---|
-| T1 | **Setting a point** (hold on map / hold on ring → Start here / Go here, POI → Go here) where no cell is on the phone | that cell (`point`) + close neighbours (`near`, Q1) | 2026-10-19 |
-| T2 | **Search result** (search, or a place shared from Google Maps / geo: link) where there is no detailed map: the map flies there | that cell + close neighbours, at once (`CellWhy.SEARCHED`) | **2026-10-21 (owner, reverses the 2026-10-20 "no T2")** |
-| T2b | **Short tap on the world map** where there is no detailed map | first a question "Load the map for this area? N regions · ≈ X MB" – **Load** / **Not now**; on Load that cell + close neighbours (`CellWhy.TAPPED`). Never a silent download from a tap; a tap where detail exists does nothing (as before) | **2026-10-21 (owner)** |
-| T3 | **App opened in Plan mode at a new place** – own GPS position has no cell on the phone (first start, holiday, travel) | own cell (`point`) + close neighbours | **2026-10-20 (owner)** |
-| T4 | **Route computed** | every missing corridor cell (within ~10 km of the route, F-OFF-02) | 2026-10-19 |
-| T5 | **Navigate / recording** and the own position moves towards the edge of the cells on the phone (e.g. a tour leaves the planned corridor) | the next cell ahead (`near`) | **2026-10-20 (owner)** |
-| T6 | **Refresh** – a cell used in the last 6 months is older than the monthly build | new version (`refresh`, Wi-Fi only, Q5) | 2026-10-19 |
+| T1 | **Setting a point** (hold on map / hold on ring → Start here / Go here, POI → Go here) where no cell is on the phone | that cell (`point`) + close neighbours (`near`, Q1) | |
+| T2 | **Search result** (search, or a place shared from Google Maps / geo: link) where there is no detailed map: the map flies there | that cell + close neighbours, at once (`CellWhy.SEARCHED`) | owner |
+| T2b | **Short tap on the world map** where there is no detailed map | first a question "Load the map for this area? N regions · ≈ X MB" – **Load** / **Not now**; on Load that cell + close neighbours (`CellWhy.TAPPED`). Never a silent download from a tap; a tap where detail exists does nothing | owner |
+| T3 | **App opened in Plan mode at a new place** – own GPS position has no cell on the phone (first start, holiday, travel) | own cell (`point`) + close neighbours | owner |
+| T4 | **Route computed** | every missing corridor cell (within ~10 km of the route, F-OFF-02) | |
+| T5 | **Navigate / recording** and the own position moves towards the edge of the cells on the phone (e.g. a tour leaves the planned corridor) | the next cell ahead (`near`) | owner |
+| T6 | **Refresh** – after every route computed in Plan, installed cells along it (10 km) are checked for a newer version (`CellTriggers.freshenAlong`, each at most hourly; `docs/design/map-updates-ux.md`) | new version (`refresh`) | – |
 | – | Scrolling / zooming the map, looking at a POI, opening a saved tour that is fully covered | nothing | – |
 
-**How it is shown (owner 2026-10-21, `ui/MapLoad.kt`, docs/design/map-updates-ux.md):** when the user waits for the
+**How it is shown (owner, `ui/MapLoad.kt`, `docs/design/map-updates-ux.md`):** when the user waits for the
 map – T1, T2, T2b, T3, and T4 while the visible map has no detailed map (≥ 30 % of a 5 × 5 sample grid) – ONE modal
 over the world map: "Preparing / Loading the map for your area", "N regions · about X MB" (sizes from the server when
 known, else ≈ 9 MB per region), a bar with %, "About N minutes left", **Cancel** (hides it; the download goes on and
@@ -279,9 +279,9 @@ Own cell first. Until routing data covers the route, the route is drawn as a str
 the rd5 and cell arrive the route **recalculates by itself** (no question needed – nothing the user decided changes).
 The card stays until all cells are on the phone or the user closes it.
 
-### Mobile data (proposal)
-Own point cell (~28 MB today, ≈ 10 MB in format 2): automatic. Neighbours / corridor on mobile data: the card asks once with the size
-("3 more cells, 85 MB – download now or on Wi-Fi?"). Settings: "Wi-Fi only" (F-OFF-03).
+### Mobile data
+Mobile data by default for everything (owner, `docs/design/map-updates-ux.md`); Settings → "Maps only on Wi-Fi" turns
+it off (F-OFF-03).
 
 ### Download, verify, activate
 1. Download each file to `cells/10-543-361/<osm_date>.part/` with Range resume (R-02).
@@ -290,7 +290,7 @@ Own point cell (~28 MB today, ≈ 10 MB in format 2): automatic. Neighbours / co
    used. The previous version stays until the new one is active and the map loaded fine; then it is deleted (R-16,
    F-OFF-04).
 
-### Joining cells into the local store – decided 2026-10-21: B (PMTiles generations), see §19
+### Joining cells into the local store – decided: B (PMTiles generations), see §19
 Many cells as separate MapLibre sources would multiply the layers (too slow). Options considered:
 
 | Option | How | For / against |
@@ -299,14 +299,14 @@ Many cells as separate MapLibre sources would multiply the layers (too slow). Op
 | B. Rewrite one PMTiles per layer when a cell is added | Simple reading | Rewrites large files on each add |
 | C. Concatenate GeoJSON overlays per kind (format 1 only) | Works with today's files | Large in-memory GeoJSON, rebuild on each add; fine as a bridge |
 
-**Decision (2026-10-21):** B, written as a new store generation per change – robust offline, no second SQLite
+**Decision:** B, written as a new store generation per change – robust offline, no second SQLite
 library writing next to MapLibre's, testable on the JVM; reasons and measurements in §19.1. C is not needed (cells
 ship in format 2 only, Q11).
 
 ### Refresh and storage
 - Downloaded cells are kept. The app lists them (F-OFF-05: area, size, date, delete; total storage).
-- **Monthly refresh on Wi-Fi, only for cells used** (planned/navigated in) in the last 6 months: the app asks for the
-  manifest; newer → download in the background (`refresh`), activate after verification. Old data keeps working.
+- **Refresh** along a computed route (T6): the app asks for the manifest; newer → download in the background
+  (`refresh`), activate after verification. Old data keeps working.
 - Server side: a refresh request of an old cell queues its rebuild, so used areas stay fresh and unused ones cost
   nothing.
 
@@ -326,30 +326,7 @@ ship in format 2 only, Q11).
 
 ## 11. Costs
 
-> Superseded for phase 3 by `docs/design/map-hosting.md` §3 (Cloudflare + Cloud Run: ≈ 0–1 €/month at test use).
-
-| Item | zo (phase 1–2) | Hetzner (phase 3) |
-| --- | --- | --- |
-| Doorman | 0 € (zo runs anyway) | smallest shared server, ~4–5 €/month |
-| Builder | 0 € | 8 GB server for the hours it runs: a few cents per hour, several cells per hour |
-| Volume (OSM extracts + Planetiler caches, ~30–50 GB) | zo disk | ~2–3 €/month |
-| Storage + traffic | zo disk, tunnel | Object Storage ~5 €/month incl. 1 TB storage + 1 TB egress (≈ 35 000 cell downloads) |
-| Snapshot of builder image | – | < 1 €/month |
-| **Total** | **~0 €** | **~12–15 €/month** at low use |
-
-Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones); 2026 prices rose.
-
-## 12. Migration zo → Hetzner
-
-> **Superseded:** the target is Cloudflare + Google Cloud (`docs/design/map-hosting.md`, owner setup §6). Cells
-> built on zo can be copied into the R2 bucket with the same keys (`cells/f1/…`), e.g. `rclone sync` with the R2
-> S3 endpoint; the doorman then needs their rows (or a refresh request) in D1.
-
-1. Same compose files; on Hetzner set `BUILDER_MODE=hetzner`, `STORAGE=s3`.
-2. Copy `~/onpath-data/store` to the bucket (`rclone sync`), queue DB along.
-3. Point `maps.free-your-pictures.org` at the Hetzner doorman (Cloudflare tunnel or DNS) – or change the address
-   setting. Manifests contain relative URLs, so nothing in the app changes.
-4. Keep zo running read-only for a week as fallback, then stop it.
+See `docs/design/map-hosting.md` §3 (Cloudflare + Cloud Run).
 
 ## 13. Payment later (do not block it)
 
@@ -360,30 +337,12 @@ Prices: check the Hetzner console (`onpath_hetzner.py plan` shows current ones);
   manifests and the API do not change.
 - ODbL: we charge for the **service** (building, hosting, updates), not for the data; attribution stays.
 
-## 14. Who builds what
+## 16. Owner decisions ("all as recommended")
 
-| Part | Owner |
-| --- | --- |
-| Cell math (id ↔ bbox) as Python + Kotlin, shared test values | cloud (Python), laptop (Kotlin) |
-| `build_cell.sh` (cut, clip, owner rule, manifest), contours ring, overview pack | cloud |
-| Doorman (API, queue, storage modes), builder image, Hetzner mode, compose files | cloud |
-| zo setup (clone, compose up, Cloudflare tunnel route, app keys), measurements on zo | laptop (with the owner) |
-| App: server setting + key, request/status client, card, triggers T1, T3–T6 (§9: point, own position on open, corridor, position near the edge while on tour, refresh), corridor request | laptop |
-| App: download/verify/activate, local store join, overview hint, cells list in Settings | laptop (store format agreed with cloud via map-data-size.md) |
+All questions below are decided as recommended (owner). Later owner decisions changed Q2 and Q5 (mobile data by
+default, refresh along a route – `docs/design/map-updates-ux.md`) and Q4 (one world overview, §7).
 
-## 15. Phases
-
-| Phase | Goal | Done when |
-| --- | --- | --- |
-| **1. zo + manual test** | `build_cell.sh` with osmium cut + clipping; doorman + builder in Docker on zo; API reachable via the tunnel | Two neighbouring cells built on zo, measured (target 3–4 min/cell), pushed to the phone by hand, **no seam visible** at the border (headless render + phone) |
-| **2. App trigger + card** | Overview in the APK, trigger on setting a point, card, download/verify/activate, corridor cells, monthly refresh | Owner plans in a new valley with an empty phone and gets the detailed map + route without touching Settings |
-| **3. Cloud** (was Hetzner) | Doorman = Cloudflare Worker + D1, cells in R2, builder = Cloud Run Job (`docs/design/map-hosting.md`) | test + production deployed by GitHub Actions; cost as in map-hosting.md §3 |
-
-## 16. Owner decisions (2026-10-19: "all as recommended")
-
-All questions below are decided as recommended (owner, 2026-10-19). The "Recommendation" column is now the decision.
-
-| # | Question | Recommendation |
+| # | Question | Decision |
 | --- | --- | --- |
 | Q1 | Request all 8 neighbours or only close ones? | Only neighbours within ~5 km of the point (usually 0–3). Saves 20–30 min of building on zo; the corridor covers the rest |
 | Q2 | Mobile data: own cell automatic, rest asks with size? | Yes |
@@ -397,7 +356,7 @@ All questions below are decided as recommended (owner, 2026-10-19). The "Recomme
 | Q10 | Routing: rd5 from brouter.de – fetch only the 1° parts (5–13 MB) by HTTP range, or whole 200 MB files? | 1° parts (map-data-size.md §6); own part automatic, others ask with size like neighbours |
 | Q11 | Go straight to format 2 (≈ 10 MB/cell) for the first app release with cells, skipping GeoJSON cells? | Yes – phase 1 may test with format 1, but the app ships cells only in format 2 |
 
-## 17. Phase 1 results on zo (2026-10-20)
+## 17. Phase 1 results on zo (measured 2026-10-20)
 
 Built with `tools/cells/run.sh` (Docker `onpath-cell-builder`, `--memory 3g --cpus 3 --cpu-shares 512 --network host`),
 format 1, source = Trentino extract of 2026-10-19, 5 km buffer.
@@ -414,13 +373,10 @@ format 1, source = Trentino extract of 2026-10-19, 5 km buffer.
   0 POIs in both cells, 0 pmtiles tiles (z ≥ 10) in both cells; line ends on the border pair up (paths 70/73, trails
   27/29, ways 44/46, routes 57/59 – the few unpaired ends are lines that end at the border in OSM or are merged
   differently); visual check of the lines across the border: they join.
-- **zo impact:** load stayed low, Immich/Forgejo healthy. Docker containers on the default bridge made the owner's
-  Docbox mDNS daemon crash and systemd restart the Docbox services (converter 7×, scanner 2× on 2026-10-20 during the
-  first tests) → `--network host` is now the default; no further restarts over two builds.
-- **Next:** doorman (API + queue) as a second container on zo, then `maps.free-your-pictures.org` in the Cloudflare
-  tunnel (owner-approved step), then format 2 (map-data-size.md).
+- **zo impact:** load stayed low. Docker containers on the default bridge made the owner's Docbox mDNS daemon crash
+  (systemd restarted the Docbox services) → `--network host` is the default.
 
-## 18. Format 2 cells (2026-10-20, laptop)
+## 18. Format 2 cells (measured 2026-10-20)
 
 `tools/cells/build_cell.sh` builds **format 2 by default** (`FORMAT=2`, `FORMAT=1` still works; output under
 `cells/f<FORMAT>/…`). File set and how each file is made: `tools/cells/README.md` "Format 1 and 2". In short:
@@ -428,7 +384,7 @@ trimmed base (Planetiler `--exclude_layers … --languages=de` + `trim_base.sh`)
 (`extract_overlays.py --tiles --smooth` on the buffered cut → tippecanoe with `--clip <buffered bbox>` → only the
 cell's own z ≥ 10 tiles), WebP terrain z10–12 (`build_terrain.py --cell`), contours from the AWS z12/z13 PNGs
 (shared `TERRARIUM_CACHE`), `pois.geojson` (owner rule), **`addresses/10-X-Y.sqlite`** (`extract_addresses.py
---owner`: streets / places by the half-open owner rule; municipalities from whole boundaries – the cut now also
+--owner`: streets / places by the half-open owner rule; municipalities from whole boundaries – the cut also
 completes `boundary` relations). Manifest `format: 2`; files in sub folders are listed with their path
 (`addresses/10-543-361.sqlite`), `job_build.py` uploads them too.
 
@@ -465,13 +421,12 @@ effect of cells. The format 1 check still passes unchanged (0 crossing lines, 0 
 
 Test region package in format 2 (`tools/build_region.sh --format 2`, bbox 10.70,46.30,11.60,46.85, OSM 2026-10-17):
 base 21.1 MB, overlays 14.2, terrain 8.7, contours 4.1, pois 2.6, addresses 2.5 → **53 MB, zip 50 MB** (format 1, older build in
-`onpath-build/out/`: ~125 MB without addresses). `build_region.sh` has one `--format` switch for every file now (terrain and overlays branches merged).
+`onpath-build/out/`: ~125 MB without addresses). `build_region.sh` has one `--format` switch for every file.
 
-The cloud builds and serves format 2 only since 2026-10-21 (first cloud builds of both cells: identical sizes and
-seam check, map-hosting.md §7b). Open: the builder image on zo must be rebuilt (tippecanoe). App download + store
-(joining cell tiles into one store, §9 "Joining cells"): §19.
+The cloud builds and serves format 2 only (cloud builds of both cells: identical sizes and seam check, map-hosting.md
+§7b). App download + store (joining cell tiles into one store, §9 "Joining cells"): §19.
 
-## 19. App side: cell store, downloads, API for the UI (2026-10-21, laptop, step 8)
+## 19. App side: cell store, downloads, API for the UI
 
 Code: `app/src/main/java/com/onpath/app/cells/`. No UI beyond a debug block (Settings → Diagnostics → "Map cells
 (debug)": installed cells with version + size, Delete, cells in progress, "Request cell at map centre"). The triggers
@@ -557,7 +512,7 @@ store error → `Failed`.
 | `wifiOnly` (var) | Settings "Wi-Fi only" (F-OFF-03) – not stored yet, the UI keeps it in AppSettings |
 | `installed: StateFlow<List<InstalledCell>>` (id, version, built, `bytes` per file, `totalBytes`, installedAt) · `delete(cells)` | Settings list (F-OFF-05) |
 | `cancel(cells)` | user closed the card / does not want them |
-| `markUsed(cells)` · `refreshDue(ageDays = 30)` | T6: mark cells when planning / navigating; request `refreshDue()` with `REFRESH` once a day on Wi-Fi |
+| `markUsed(cells)` | mark cells when planning / navigating |
 | `generation: StateFlow<Int>` · `mapDir()` | the VM reloads the style when the map folder changed (done) |
 | `setForeground(on)`, `networkChanged()` | done by MapHost / AndroidNetworkStatus |
 
@@ -573,7 +528,7 @@ socket-based fake doorman (request / status / manifest, 401, offline, Range resu
 download → join, mobile-data rule, Wi-Fi only, offline → online, server failure, refresh, restart resume, delete).
 Optional: `RealCellsTest` with `ONPATH_CELLS_DIR=…/cells-data/cells/f2` (+ `ONPATH_REGION_DIR=…/out-f2/onpath-data`)
 joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from the test doorman (key from
-`~/.gradle/gradle.properties`, never printed) – passed 2026-10-21. Gradle caches test results: add `--rerun`.
+`~/.gradle/gradle.properties`, never printed). Gradle caches test results: add `--rerun`.
 
 ### 19.6 To check on the phone
 
@@ -586,14 +541,14 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
    switching off Wi-Fi mid-download; app killed mid-join → joined at next start.
 
 
-### 19.7 Step 9: triggers, card, hint, Settings (2026-10-21, laptop)
+### 19.7 Triggers, card, hint, Settings
 
 - **Triggers** (`cells/CellTriggers.kt`, pure, on the `CellSource` interface that `MapCells` implements; called by
   `AppViewModel`): T1 every new point value in a plan edit (hold → Start here / Go here, stops, moved points; more than 3
   new points at once = a loaded route → T4 only) → own cell `POINT` + neighbours within 5 km `NEAR`; T3 first fix ≤ 500 m
   after start / return in Plan; T4 every computed route → corridor 10 km `CORRIDOR` (+ `markUsed`); T5 on tour every
   300 m → cells within 5 km of the position without detailed map, `NEAR` + own-point rule, each cell at most every
-  30 min, no card; T6 once a day (start / return) `refreshDue()` → `REFRESH`, no card. A cell counts as covered when an
+  30 min, no card; T6 after a computed route `freshenAlong` → `REFRESH`, no card. A cell counts as covered when an
   installed cell or the region package covers its centre (no cells inside the region package are fetched).
 - **Card** (`ui/CellCard.kt`, `CellCards.build` pure): in the plan sheet under the route note; one line in the MINI
   sheet (an open mobile-data question stays visible). Closed only by the user: OK (ready / not available), Not now
@@ -608,7 +563,7 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
 - **No app key** (release builds today): `MapCells.downloadsAvailable = false` → nothing is requested; the card says
   "Map downloads not available in this build" once per app run; Settings says so too.
 
-### 19.8 Routing data comes with the map (2026-10-22, owner: "it's all the map for my area")
+### 19.8 Routing data comes with the map (owner: "it's all the map for my area")
 
 The user never sees "routing data" as a separate thing. BRouter's data loads as **1° × 1° parts** of the 5° rd5 files
 (~5–19 MB each instead of ~200 MB; `Rd5PartStore`, map-data-size.md §6) by `RoutingDataLoader`, triggered with the map:
@@ -622,18 +577,18 @@ The user never sees "routing data" as a separate thing. BRouter's data loads as 
   as a straight line until then.";
 - **Settings → Offline maps**: a region's size includes its routing parts (a part under several regions counts once, for
   the first in the list – approximate); **Delete** removes the parts no other installed region needs (parts loaded for a
-  point or a route outside every region stay; not during a tour). "Reset maps" removes the parts under all regions;
+  point or a route outside every region stay; not during a tour). "Clear all" removes the parts under all regions;
 - "Download routing data" is only in Settings → Diagnostics (parts at the map centre).
 
-## 20. Region packages: the region view at z7–9 (owner 2026-10-26)
+## 20. Region packages: the region view at z7–9 (owner)
 
-Below z10 only the world overview in the APK used to show (z0–5 Natural Earth, magnified: coast, borders, city names
+Without packages, below z10 only the world overview in the APK shows (z0–5 Natural Earth, magnified: coast, borders, city names
 – no roads, forests, routes). A **region package** brings what a region view needs where the user has cells.
 
 | Item | Decision |
 | --- | --- |
 | Id | the z7 tile: `7-66-42` (Düsseldorf / Ruhr; Bonn lies just south in `7-66-43`) – same API, queue, manifest, R2 paths as a cell (`cells/f2/7/66/42/<version>/`) |
-| Size | ~200 × 200 km (8 × 8 cells); measured 3.2 / 3.3 MB (estimate before: median 2.7, ≤ 3.3); Germany ≈ 32 MB |
+| Size | ~200 × 200 km (8 × 8 cells); measured 3.2 / 3.3 MB; Germany ≈ 32 MB |
 | Owns | the map tiles z7–9 under it (cells own z10+, the overview z0–6) |
 | Files | `base.pmtiles` (OpenMapTiles z7–9, the cells' layer trim, landcover farmland dropped – ≈ 23 % of z8–9), `overlays.pmtiles` (layer `routes`: hiking / cycle routes of national and international networks, net ≥ 3 incl. EuroVelo; no regional / local / node networks), `hillshade.pmtiles` (the overview's pre-rendered relief for z7–9, every tile written) |
 | Version / schema | `<osm_date>-s<N>`, N = `cells.py PACKAGE_SCHEMA` (1) – its own schema; the doorman compares it with `PACKAGE_SCHEMA` (wrangler vars), never with `CELL_SCHEMA`; cells and `CELL_SCHEMA` are unchanged |

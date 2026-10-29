@@ -7,7 +7,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
 
 /**
- * When to vibrate before a junction of the followed line (owner 2026-10-22). Pure, unit-tested; the recording service
+ * When to vibrate before a junction of the followed line. Pure, unit-tested; the recording service
  * calls [update] on every GPS fix and plays the returned cue.
  *
  * - A junction = a route point with [GeoPoint.turn] (BRouter's turn instructions – real junctions only).
@@ -18,10 +18,18 @@ import com.onpath.app.routing.JunctionCue
  * - A new line (re-route, edited plan: [version]) starts over; junctions behind the position are skipped.
  */
 class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
+    /**
+     * No vibration for a slight bend (SLIGHT_LEFT / SLIGHT_RIGHT) – on the bike (else ~40 cues in 50 min, many of them
+     * slight). Forks (keep left / right) and real turns still vibrate; the lock screen still names
+     * every junction.
+     */
+    var skipSlight: Boolean = false
     private var version = Int.MIN_VALUE
     private var size = -1
     private var alongs = DoubleArray(0)
     private var cues = emptyList<JunctionCue>()
+    private var exits = IntArray(0)
+    private var angles = FloatArray(0)
     private var next = 0
 
     /** The cue to play now, or null. [alongM] = progress on [line] (null = not matched). */
@@ -36,6 +44,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         val at = alongs[next]; val cue = cues[next]
         val prev = if (next > 0) alongs[next - 1] else Double.NEGATIVE_INFINITY
         next++
+        if (skipSlight && (cue == JunctionCue.SLIGHT_LEFT || cue == JunctionCue.SLIGHT_RIGHT)) return null
         return if (at - prev < MERGE_M) null else cue // switchback chain: felt once, at its first junction
     }
 
@@ -51,6 +60,41 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         return null
     }
 
+    /** Like [nextAhead], as the lock screen says it: "Roundabout · exit 2" / "Left" and the distance. */
+    fun nextAheadText(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 1_000.0): Pair<String, Double>? {
+        load(line, version)
+        if (alongM == null) return null
+        for (i in alongs.indices) {
+            val d = alongs[i] - alongM
+            if (d < -PASSED_M) continue
+            return if (d <= maxM) cues[i].text(exits[i]) to d.coerceAtLeast(0.0) else null
+        }
+        return null
+    }
+
+    /**
+     * Next roundabout ahead within [maxM]: its exit (0 = unknown) and distance – the on-screen hint shows a roundabout
+     * sign instead of the plain arrow.
+     */
+    fun roundaboutAhead(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Pair<Int, Double>? =
+        roundabout(line, version, alongM, maxM)?.let { it.exit to it.distanceM }
+
+    /** The next roundabout ahead within [maxM] with exit, angle and distance (the drawn roundabout sign). */
+    fun roundabout(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Roundabout? {
+        load(line, version)
+        if (alongM == null) return null
+        for (i in alongs.indices) {
+            val d = alongs[i] - alongM
+            if (d < -PASSED_M) continue
+            if (d > maxM) return null
+            if (cues[i] == JunctionCue.ROUNDABOUT) return Roundabout(exits[i], angles[i], d.coerceAtLeast(0.0))
+        }
+        return null
+    }
+
+    /** A roundabout ahead: [exit] to take (0 = unknown), [angle] of the whole turn (> 0 right), [distanceM] to it. */
+    data class Roundabout(val exit: Int, val angle: Float, val distanceM: Double)
+
     private fun load(line: List<GeoPoint>, v: Int) {
         if (v == version && line.size == size) return
         version = v; size = line.size
@@ -58,6 +102,8 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         val idx = line.indices.filter { line[it].turn != null }
         alongs = DoubleArray(idx.size) { cum[idx[it]] }
         cues = idx.map { line[it].turn!! }
+        exits = IntArray(idx.size) { line[idx[it]].exit }
+        angles = FloatArray(idx.size) { line[idx[it]].turnAngle }
         next = 0
     }
 
@@ -67,16 +113,24 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         const val MERGE_M = 50.0
         const val PASSED_M = 5.0
 
-        /** Vibration timings (off, on, off, on …): 2 short pulses = left, 3 = right. */
+        /** Junctions on [line] – traced once per followed line ("0" = a GPX track / straight line: nothing to cue). */
+        fun count(line: List<GeoPoint>): Int = line.count { it.turn != null }
+
+        /**
+         * Vibration timings (off, on, off, on …): 1 pulse = left, 2 pulses = right (owner). Pulses of a
+         * quarter second, so one is felt through a jacket on the bike, the gap clearly apart.
+         */
         fun pattern(side: JunctionCue.Side): LongArray = when (side) {
-            JunctionCue.Side.LEFT -> longArrayOf(0, 110, 140, 110)
-            JunctionCue.Side.RIGHT -> longArrayOf(0, 110, 140, 110, 140, 110)
+            JunctionCue.Side.LEFT -> longArrayOf(0, PULSE_MS)
+            JunctionCue.Side.RIGHT -> longArrayOf(0, PULSE_MS, GAP_MS, PULSE_MS)
         }
+        const val PULSE_MS = 250L
+        const val GAP_MS = 220L
     }
 }
 
 /**
- * The recording notification while a route is followed – readable on the lock screen (owner 2026-10-22): next
+ * The recording notification while a route is followed – readable on the lock screen: next
  * junction, time to go, arrival, distance to go. Pure, unit-tested.
  */
 object NavNotification {
@@ -86,7 +140,7 @@ object NavNotification {
      * [status]: "Recording" / "Paused" / "Off route" / "Searching GPS…" ("Recording" is not repeated);
      * [junction] within [JUNCTION_TITLE_M] becomes the title; [clock] formats the arrival (epoch ms → "15:40").
      */
-    fun of(status: String, junction: Pair<JunctionCue, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
+    fun of(status: String, junction: Pair<String, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
            distance: (Double) -> String, duration: (Double) -> String, clock: (Long) -> String): Text? {
         if (toGoM == null) return null
         // the plain status (same text as RecordingService.notifStatus, so it works in every language)
@@ -94,7 +148,7 @@ object NavNotification {
         val distanceInTitle = recording && !(junction != null && junction.second <= JUNCTION_TITLE_M)
         val title = when {
             !recording -> status
-            !distanceInTitle -> Txt.s(Res.string.nav_turn_in, junction!!.first.text, distance(roundDist(junction.second)))
+            !distanceInTitle -> Txt.s(Res.string.nav_turn_in, junction!!.first, distance(roundDist(junction.second)))
             else -> Txt.s(Res.string.nav_notif_to_go, distance(toGoM))
         }
         // The distance is said once: in the title ("8.2 km to go") or, when the title is a status / junction, here.

@@ -161,7 +161,8 @@ class NavSessionStore(private val file: File) {
         private fun turns(l: List<GeoPoint>): JSONArray? {
             if (l.none { it.turn != null }) return null
             val a = JSONArray()
-            l.forEachIndexed { i, p -> p.turn?.let { a.put(i); a.put(it.code) } }
+            // "RNDB:2:-85" = roundabout, 2nd exit, angle (older sessions: "RNDB:2" or the code alone)
+            l.forEachIndexed { i, p -> p.turn?.let { a.put(i); a.put(if (p.exit > 0) "${it.code}:${p.exit}:${p.turnAngle.toInt()}" else it.code) } }
             return a
         }
 
@@ -172,8 +173,11 @@ class NavSessionStore(private val file: File) {
                 var r = 0
                 while (r + 1 < a.length()) {
                     val i = a.getInt(r)
-                    val cue = com.onpath.app.routing.JunctionCue.ofCode(a.optString(r + 1))
-                    if (cue != null && i in out.indices) out[i] = out[i].copy(turn = cue)
+                    val parts = a.optString(r + 1).split(':')
+                    val cue = com.onpath.app.routing.JunctionCue.ofCode(parts[0])
+                    val exit = parts.getOrNull(1)?.toIntOrNull() ?: 0
+                    val angle = parts.getOrNull(2)?.toFloatOrNull() ?: 0f
+                    if (cue != null && i in out.indices) out[i] = out[i].copy(turn = cue, exit = exit, turnAngle = angle)
                     r += 2
                 }
                 out

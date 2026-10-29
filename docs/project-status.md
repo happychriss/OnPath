@@ -1,436 +1,56 @@
-# OnPath – project status and decision log
+# OnPath – project status and decisions
 
-Last update: 2026-10-26 – current release **0.11.5** (2026-10-26). 0.9.1 crashed at start, fixed in 0.9.2; never use 0.9.1.
-Open work and owner decisions: `docs/backlog.md`. Core features: `docs/core-features.md`.
+Current release **0.12.0** (2026-10-28). Open work: `docs/backlog.md`. Core features and their tests:
+`docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
+the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
-- **desktop (donald, captain), 2026-10-26 late – 0.11.5.** App bilingual EN + DE (`:strings` KMP module with Compose
-  resources, `Txt` / `str()`, language override in Developer tools, guards `StringFilesTest` + `HardCodedTextRuleTest`,
-  round trip `tools/i18n/i18n.py` – docs/i18n.md; owner reviewed the sheet in Drive). Region look r3b: greener land
-  (land-tint), pink only long-distance (net ≥ 3, hiking band too), regional green line, darker built-up close in.
-  push_style.sh / push_cell.sh refuse while OnPath records (or adb gives no answer).
-- **desktop (donald, captain), 2026-10-26 night – 0.11.4.** Region packages (z7 ids, map z7–9: base without farmland,
-  long-distance routes, relief as cover; doorman `PACKAGE_SCHEMA` 1, builder `build_package.sh`, app `ensurePackages`,
-  Overview `!within` labels – map-cells.md §20); route hints (ferry/ford/construction/stiles; `WayAttrs` ford/barrier/
-  construction); MTB: no pushing/steep, signed ways "no bikes allowed"/"dismount (sign)"; route tiers by zoom; opening a
-  tour switches activity; difficulty T2 ≥ 2 km / Bike unpaved ≥ 25 % or loose ≥ 5 km → Moderate; build_hillshade loop fix.
-  Owner decisions today (all in backlog Done). Private material: external-docs/ (local) + Drive OnPath/External-Docs (text).
-  - **Open:** AGP 9.4.1 upgrade later (owner); Drive order A-001 (website screenshots, phone); hint ideas in backlog Next
-    (ferry names, Navigate hints, trail visibility); region packages: neighbour edge, pink density at z7.
-- **desktop (donald, captain), 2026-10-26 evening – 0.11.3.** Map look tuned with the owner on the phone (fast loop:
-  `tools/dev/push_style.sh` test style in developer tools, `tools/dev/push_cell.sh` local cells): town contrast,
-  bike view like hiking (green good ways, mint route band + names, pink-green long-distance, quiet tracks, dotted loose
-  edge), zoomed-out overview (thin route lines, paths hidden / faint for hike), one-way arrows dark / green ⟷, calmer
-  forbidden ways, street areas + sidewalk outlines, underpasses (`tn` p/t). Map data schema 7 (signed cycle networks
-  only, route name label lines `lb`, bicycle streets `bs`, footbridges `br`, `areas` layer, `fw`, hidden footway
-  stubs). Faster refresh: doorman adopts cells built on donald (`tools/dev/publish_cells.sh`, TEST bucket only, token in
-  ~/.config/onpath/r2-test.env), background rebuilds spread, pre-warm after a schema bump, app polls updating cells.
-  - **Next (in progress):** routes by zoom tier (only long-distance zoomed out, regional from z11, local from z12.5 –
-    needs a new APK); coarse region-view data z6–9 (measuring sizes; owner decides).
-- **desktop (donald, captain), 2026-10-26 – 0.11.2.** All on `main`: quiet town map + path gap links + calmer
-  forbidden ways + thin cycle-route lines (cell schema 6, look-only – also refreshes router classes; maps-deploy test
-  done), compacted counts as firm / cheap footway only without a bicycle tag (Hilden Itter, `ItterPathTest`), Trekking
-  gets Touring's busy-traffic penalty (profiles now differ only in unpavedPenalty + v_rough), bike names Bike / Gravel
-  bike with one line each (chip says "Gravel" so long distances fit), GpxCompare counts empty trace runs as gaps,
-  builder test probe fix. Git history was rewritten on 2026-10-26: other checkouts must `git fetch && git reset --hard
-  origin/main` (or re-clone) before pushing.
-  - **Open:** phone check of rebuilt cells (Hilden / Düsseldorf / Meran; small stray link stubs near roundabouts at
-    z17?), plan-sheet finger-follow check on the Pixel, owner items in backlog "Waiting for the owner", requirements.md
-    names (owner / cloud).
-- **0.11.1** (2026-10-26): no app change; route profile comments and bike-routing notes tidied
-  (`docs/design/bike-routing.md`).
-- **0.11.0 released** by the captain on donald, 2026-10-26 (everything below since 0.10.3; notes
-  `docs/release-notes/v0.11.0.md`).
-- **desktop (donald), 2026-10-25/26 – bike routing, difficulty, Komoot GPX type, senior review.** All on
-  `main`, released in **0.11.0**.
-  - **Changed since 0.10.3:** offline search index per map area (laptop, 8174874); planner via-point spur fix (a point on
-    a way is always visited); E2E points-list flakiness fixed (`E2EBase.findFresh`, UiAutomator cache); way attributes
-    no longer lost on 22 % of routes (`BRouterWayStats` zero-length run); GPX comparison tool
-    (`tools/routing/jvm-test/GpxCompare.kt` + report script, run.sh options); difficulty with trail technique like
-    Komoot (`RouteSummary.rating`, badge "Moderate · T3", Route details line; hike bands ≈ 2 h / 300 m and 5 h / 900 m);
-    Komoot GPX `<type>` → activity on import, written on export (`gpx/SportType`, T level kept inside the type's band,
-    grey "Activity set to … from the file" line); unit tests run in UTC; bike profiles tuned – new
-    `touring.brf` for Touring bike + E-bike (replaces fastbike-verylowtraffic, deleted on the phone), `trekking.brf`
-    tuned, v_rough, footway on a cycle route ridden (not in a pedestrian zone), ActivityCheck follows the profile,
-    Touring time ~21.7 km/h, greenways per profile; cell schema 5 (look-only, router classes rebuilt; app stays 3).
-  - **Senior review (this session's end):** recorded tours were always stored as T3 – fixed with a test; one
-    "Hike T3" form for the activity in sentences; ~20 dead functions / settings and 21 unused theme tokens removed;
-    docs brought to one current story (CLAUDE.md, README activity names, map-pipeline, map-hosting, dated notes and
-    reviews marked as history); working agreement: donald claims `[desktop]`. Details: backlog "Done".
-  - **Open:** backlog "Next" (bike follow-ups: Köln Dom route + ferries with bicycle=no – another desktop agent had
-    them claimed; requirements.md sync for the cloud / owner; quick time estimate vs PaceModel; interrupted paths at
-    junctions; Hilden footways for bikes) and "Waiting for the owner" (imported tour → switch activity?, map server
-    access, Play internal test, field tests of 0.10.x).
-- **laptop, 2026-10-23 evening/late:** 0.10.1 field-test TODO 1–6 done (two screens at start → per-host map state
-  `ui/MapReload.kt`; time-based loading %; `RouteRules.linkedToSaved`; churches shown by default; POI priority `pr` +
-  cell schema 4), loading chip with place names, README rewrite + tester Discussions thread, design notes
-  `docs/design/map-access.md` and `docs/design/web-planner.md`. Released in 0.10.2 / 0.10.3 (cloud, 2026-10-24).
-- **2026-10-22/23 (laptop + cloud):** releases 0.9.0 → 0.9.1 (start crash) → 0.9.2 (fix) → **0.10.0** (router-class map
-  colours, bus / car / lift at End tour, route warnings, mixed search, Settings topic list + Privacy + Offline maps Clean
-  up / Clear all, smooth Plan ⇄ Navigate, route back to the start, slower GPS at rest, 5 pace levels). All handovers
-  (`docs/handover-2026-10-2*.md`) are done; every open item is in `docs/backlog.md` "Next". Only `main` exists on GitHub.
-  Entries below are history.
-- **laptop, 2026-10-21/22:** see `docs/handover-2026-10-22-laptop.md` (map loading modal, world overview, routing data in 1° parts, points editor, haptics, tour backup, cloud any-area + priority; 0.9.0 on the owner's phone for testing, not released).
-- **cloud, 2026-10-21 evening – HANDOVER to the laptop: read `docs/handover-2026-10-21-cloud.md`.** Releases 0.8.1–0.8.5
-  (map-loading UX, route bands over streets, check after routing, mobile data default, routing data refresh, update
-  download resume), core-feature tests + emulator gate before every release. **Open core bug C1** (hold a point →
-  new point instead of menu, owner on 0.8.5) – not reproduced on the emulator yet; 0.8.6 has the hold log, the
-  Points… delete list and field-condition emulator tests (6/6 green). Owner: one world overview map (no
-  Alps special case); testing starts as a fresh install.
-- **cloud, 2026-10-21 – cloud takes over cells / map hosting (owner: laptop not used):**
-  - Crash fix (elevation profile drawn tiny), content schema for cells (`-s2` versions; old cells rebuilt + reloaded
-    automatically – fixes missing small streets), modal map-loading overlay (Cancel only, Wi-Fi/mobile question),
-    Settings → Diagnostics → Reset maps (like a fresh install), release APKs carry the test map key → **release 0.8.1**.
-  - Docs: `docs/design/map-hosting.md` §7c–7d, backlog "Next". Open: production deploy, owner phone test of 0.8.1,
-    first-start "path not found" for base/terrain (backlog), cleanup of old version folders.
-- **laptop, 2026-10-20 (map rework format 2 + cloud hosting):**
-  - **Done on main:** format 2 = one `overlays.pmtiles` (tippecanoe; paths smoothed, green ways/bike/via-ferrata data),
-    trimmed base, terrain WebP z12, contours from z12, overview map (Alps, optional APK assets), format-2 cells
-    (`tools/cells/build_cell.sh`, ~9 MB/cell, seams checked; map-cells.md §18), addresses search + import, share-to-OnPath,
-    route names. Test region package (format 2): `/home/development/Projects/onpath-build/out-f2/` (laptop only).
-  - **Cloud hosting live (test):** Cloudflare Worker `maps-test.free-your-pictures.org` (D1 queue, R2 EU bucket
-    `onpath-maps-test`) + Google Cloud Run job `onpath-cell-test` (project `onpath-maps`, europe-west1), deploy via
-    `.github/workflows/maps-deploy.yml` (push to main → test; production needs owner approval). Secrets in GitHub
-    environments (set with `tools/cloud/set-secrets.sh`), app keys in laptop `~/.gradle/gradle.properties`.
-    `/v1/health` OK. **First real cloud build of cell 10/543/361 (format 1) was started 2026-10-20 ~21:00 – check
-    status** (`/v1/cells/status?ids=10-543-361` with the test app key; Cloud Run → Jobs log). Doorman offers only
-    format 1 (`formats:[1]`) – switch it + job.yaml to format 2, rebuild image (needs tippecanoe – merged Dockerfiles).
-  - **Next (laptop):** (1) check the cloud build; (2) phone test of format 2: APK with overview
-    `/home/development/Projects/onpath-build/f2-test.apk` + data `out-f2/onpath-data/` – back up the phone's format-1
-    data to `files/onpath-f1-backup/` first, keep `segments/`; check WebP hillshade + `pmtiles://asset://` overview on
-    the device; (3) steps 8–9 (app cell store, downloads, card, triggers); (4) release.yml: production URL + app key
-    for release APKs (open decision). zo: test machine only (`~/onpath`, `~/onpath-data`, builder `--network host`).
-- **cloud, 2026-10-20 – HANDOFF to the laptop (end of the hike day, releases 0.7.2 → 0.7.26):**
-  - **Read first:** `docs/owner-list-2026-10-20.md` (every release of the day with what to field-test, owner rules,
-    open items, questions for the owner) and `docs/requirements-review-2026-10-20.md` (review of all owner
-    requirements of 19.–20.10. against the code).
-  - **Most important lesson (now in CLAUDE.md):** MapLibre 13.7.1 ends location tracking on *every* camera move made
-    by the app (moveCamera / easeCamera / animateCamera) and reports it like a user gesture. 0.7.15 turned the camera
-    itself every frame → "walking direction up" switched itself off, jerky turning, route points not holdable.
-    Reverted in 0.7.21. Rule: while MapLibre tracks, never move the camera from code; heading-up = TRACKING_COMPASS
-    fed by `HeadingEngine` (map direction); the "where I face" arrow (0.7.23) is a Compose overlay
-    (`ui/FacingArrow.kt`, `MapController.Facing`) at the camera target, not a camera or layer change.
-  - **Done today (all released):** route-up (route 40 m ahead, never upside down, kept while standing), bigger
-    Navigate buttons, smooth heading at display rate, view vs map direction (`HeadingEngine` two channels,
-    `mapToCompass`), free look (back after 25 m), one compass setting for Plan + Navigate, recording safety (no Stop in
-    the notification, running tour not deletable, update asks, `TourInterruptedReceiver`, "Allow all the time" offered
-    once), pause = slow GPS + `PauseWatch` reminder, off-route vibration as alarm + setting, pocket-aware keep-screen-on
-    (`ui/PocketScreen.kt`), no network provider in the service, Wi-Fi position indoors when GPS is silent (≤ 150 m),
-    bike profiles respect oneways (×100, `tools/routing/jvm-test/OnewayTest.kt`), green ways by activity
-    (`make_style.py green_ways`) + pedestrian zones back, Google Maps share (address split + address first, page
-    cross-check, fast path, "Finding…" pill), re-route = fresh route via the remaining stops (`Rerouter.fresh`),
-    polish quick wins (A1–A3, A6, A7, B1). Audits: `docs/design/battery-audit.md`, `docs/design/polish-audit.md`.
-  - **Not field-tested yet:** 0.7.23 arrow, 0.7.26 fresh re-route, pocket screen-off, restart-continue, pause reminder.
-  - **Open for the owner / laptop:** questions list in the owner list (Plan turning by itself with heading-up?, values
-    150 m / 25 m / 40 m, "End tour…" in the notification?, background location for Play, Samsung battery hint, path
-    smoothing examples); bike map on the map (oneway arrows, cycle lanes – pipeline); battery batch 2; polish audit
-    rest (A4, A5, A8–A18, B2–B6); map package on `downloads` out of date; routing JVM test "unreachable T1 Ifinger"
-    fails since the 0.6.8 profiles (check expectation); map loading (cells) not released until the laptop says so.
-  - The cloud did not touch the laptop's cells / map-loading work; map style changes today: only `green_ways` +
-    `pedestrian-line` (base map, no new package).
-- **cloud, 2026-10-20 (0.7.3–0.7.7, owner on a hike):** battery batch 1 (0.7.3, `docs/design/battery-audit.md`);
-  off-route vibration as alarm usage + setting (0.7.4); pause keeps GPS at 10 s + `PauseWatch` reminder after 150 m
-  (0.7.5); free look in Navigate, back after 25 m (0.7.6); **recording safety (0.7.7, owner: "ending a recording must
-  be deliberate")**: no Stop in the notification, running tour not deletable, update asks during a tour,
-  `TourInterruptedReceiver` (boot / package replaced: continue with background location, else notify). Plan mode
-  never stopped recording (checked). Open ideas: auto-continue needs "Allow all the time" – ask the owner whether
-  to suggest it once at the first tour.
-- **cloud, 2026-10-20 – release 0.7.2 (owner: "alles von main"):** everything on main incl. the laptop's arrival fix,
-  address search, share-to-OnPath, route names and small map-style changes. Owner rule: map **loading** (cells)
-  is not released until the laptop says it is ready (not in the app yet); UI work may be released.
-- **cloud, 2026-10-20 (Navigate buttons + route-up, in 0.7.2):** Navigate map controls are separate round
-  buttons, 56 dp (was 48), 8 dp apart (`MapControls(large = true)`; Plan keeps the compact pill). Heading-up on a
-  followed route now turns the map by the **route ahead** (40 m look-ahead from the matched position,
-  `NavLine.aheadBearing`) instead of compass / GPS bearing – owner: map looked slightly turned, the way should be a
-  straight line ahead. Used only in Navigate, matched (`shownAlongM`), ≤ 30 m off, no off-route prompt; walking
-  clearly against the route (GPS bearing > 100° off) or no update for 15 s falls back to GPS / compass
-  (`HeadingFilter.onRoute`, tests). Cause before: below 1 m/s (steep uphill) the compass was used, which depends on
-  how the phone is held. No map-style changes (laptop owns the current map work).
-- **laptop, 2026-10-19 (arrival estimate + map packages):** arrival/time-to-go fix merged (see backlog Done,
-  `docs/plan-time-estimate.md` "Field test 2026-10-19"). Map packages: owner chose **grid cells (z10) built on
-  demand**, server first on the owner's home server *zo* (code `~/onpath`, data `~/onpath-data`, Cloudflare tunnel,
-  domain free-your-pictures.org for now), later Hetzner (small always-on doorman + builder created from a snapshot,
-  deleted after). Running: build-time test of one cell on zo; proposal "map data size on the phone"
-  (`docs/design/map-data-size.md`, coming) – pipeline changes need the cloud's agreement.
-- **cloud, 2026-10-19 (0.7.1 owner todos):** compass cycle in both modes (`AppViewModel.onCompass`: turned → north
-  → walking direction (follows) → north; no fix = hint; editing the plan stops the turning map); Navigate re-centres
-  when the app comes back (`onReturnToApp`, MapHost ON_START); profile scrub in Navigate (`navScrub`/`navScrubEnd`:
-  dot + map at the spot, back to the position 4 s after release); search ring added below MapLibre's position layers
-  (`addBelowPosition`); "Clear route from map" in the Tour-saved dialog when an unsaved plan is left. Arrival time:
-  laptop.
-- **cloud, 2026-10-19 (map design 0.7.0, owner pick):** one map style from a colour analysis
-  (`docs/design/map-colour-analysis.md`, script `tools/style_analysis/route_green.py`): route band #168403 at 40 %
-  without edges; no white casings; streets = two grey edges; tracks brown, one dashed line < z14.5, then two dotted
-  edges whose spacing shows tracktype (paved track = street); paths/tracks drawn from new `paths.geojson` (exact, from
-  `extract_overlays.py`) from z13, base-map lines only as fallback (`onpath:fallback-for`, OptionalSources); routes
-  merged into continuous lines (+ `majoronly` copies for the pink highlight); ground symbols in the sprite (wetland,
-  farmland, rock, sand); residential light grey; lighter forest/meadow; greenish hill shadow; wider cable-car ropes;
-  high-contrast theme removed (Settings shows no style choice; an old "high-contrast" pref falls back silently).
-  New map package on `downloads` (part2 44 MB; both zips carry the new package.json). Also 0.6.8 trail safety and
-  0.6.9 (saved plan leaves the map after the tour). Field-test status: `docs/field-test-2026-10-19.md`.
-  Next: owner tests 0.7.0 + new map part; open owner todos in backlog (dot on top, recentre, compass, ...).
-- **cloud, 2026-10-19 (trail safety 0.6.8, owner hiking):** audit batch A (routing profiles) + Navigate tweaks.
-  Profiles (`# OnPath:` comments): hiking SAC above the limit forbidden (was 9000), preferred = min(limit, T3), via
-  ferrata / abandoned / trail_visibility=no forbidden, bad visibility +1.5, informal +1, fords ×3/+500; trekking,
-  e-bike, touring: via ferrata and T3+/S3+ forbidden, T2/S2 +30; MTB: via ferrata and T4+ forbidden (9000 timed out),
-  T3 +15. JVM check: `KTTEST=tools/routing/jvm-test/SafetyTest.kt SAFETY_VF=<via-ferrata node list> run.sh <segments>`
-  – no case uses a via ferrata any more (before: 820 m Heini-Holzer on a T2 hike). Plan shows a message when the
-  router stops ≥ 150 m from a point (summit above the T level). Navigate: open off-route question re-vibrates,
-  "Hairpin" wording, "straight line" on the arrow banner, own position line (tap = copy) in the opened card, network
-  fixes ignored after the first GPS fix, "last fix N min ago". Next: audit batches B (plan warning line) and D (pipeline).
-- **cloud, 2026-10-19 (Hetzner map server):** `tools/hetzner/` – `onpath_hetzner.py plan|apply|status|destroy` on the
-  laptop creates ONE separate labelled server (+ firewall, + SSH key if new) via the Hetzner API and nothing else;
-  the server installs itself (`server/install.sh`: Caddy HTTPS on `<ip>.sslip.io` + password, API, worker, weekly
-  refresh). Web page: search a place / my position → 100/150/200 km square → build from Geofabrik leaf extracts
-  (osmium extract + merge) → `build_region.sh` → public unguessable download link. Tested here end to end (30 km
-  around Zoggler Stausee: 2 min, 31 MB) and 13 offline unit tests; not yet run on a real Hetzner account (owner).
-- **cloud, 2026-10-19 (Ultental package + POIs, 0.6.2):** region bbox extended to `10.70,46.30,11.60,46.85` (Ultental
-  / Zoggler Stausee test), package rebuilt with OSM 2026-10-19 and the laptop's new overlay files; published as two
-  zips on the `downloads` branch (README there has the phone steps). POI rules per owner: bus stops and all food on
-  by default from z14; bus-stop pairs are one symbol (`merged`) until z16, then each stop (`detail`) – needs the new
-  package. Safety audit of the whole app (routing profiles, navigation, planning): backlog "Safety audit" link,
-  batches A–D wait for the owner's pick. **Test at the lake:** POIs at z14 (bus "Zoggler Staudamm", Café Seerast,
-  water), zoom to z16 → two bus stops; routing into the upper valley (Weißbrunn) now inside the map.
-- **laptop, 2026-10-18 (late evening):** merged many owner-driven changes (all on main, installed on the Pixel 8 as
-  clean installs): hold-only gestures + smart menus, re-routing (ask always), time estimate P0–P4 + Time details
-  screen, plan sheet redesign (tour controls on top, mini profile, Undo on map), layout (search + ☰, route actions in
-  sheet), Komoot-like map (black paths solid/dotted by SAC, track grades, faint trails, routes as thin lines zoomed out
-  then bands, major routes pink, yellow road scale, relief stronger zoomed out), search pin (orange ring) + Bozen fix,
-  POI menu on empty plan, start at current location. **New data files** (`routes.geojson` with `net`, `trails`/`ways`/
-  `lowways.geojson`) are on the phone only – **cloud: rebuild the region package / downloads zip.** Open owner
-  questions: attribution style, unverified paths (todo). Field tests pending: re-routing, times, activity switch,
-  Google link.
-- **cloud, 2026-10-18 (0.6.1 track safety):** read-only robustness review of 0.6.0 (five areas, report:
-  https://claude.ai/artifact/DRLGzEaWQBYKW4KVSFJeDd), then the "must fix" items as release 0.6.1 (notes in
-  `docs/release-notes/v0.6.1.md`): `TourDb` throws on a failed point insert and keeps a corrupt DB file; the service
-  wraps every write in `safeDb` (notification "Recording cannot be saved" + `RecState.saveFailed`, shown in the app),
-  stops with `failLoud()` instead of a silent `stopSelf()` (precise location / GPS / foreground refused → notification
-  "Recording stopped: …" + `RecordingService.startFailed` → message in the app), calls `startForeground` on every start,
-  renews the 12 h wake lock, counts real time per tick, uses `recording/PointFilter` (50 m accuracy, jitter by
-  accuracy) and a cached track snapshot. `MapController` ignores updates while a new style loads (theme change /
-  import crashed before). `AppViewModel.startNavigation` enters Navigate only after the service's first state (6 s,
-  else message); plans with straight legs ask "Navigate anyway?" (`StraightLegsDialog`); `routing/ArrivalGate` decides
-  arrival (away first, accuracy ≤ 50 m, asks again after leaving). `DataImporter` renames over the old file.
-  376 tests + Paparazzi verify green. **Field test (short):** (1) start a recording with location set to
-  "Approximate" → "Recording stopped: … precise location" and Plan stays; (2) a round trip: no "arrived" at the start,
-  asked at the end; (3) switch the map theme in Settings during a tour → no crash; (4) plan a route with an unreachable
-  point → "Navigate anyway?"; (5) under trees the track has no gaps and "Searching GPS…" is rare; (6) double-tap Start.
-  **Next (from the review, in order):** plain-language error texts; Online-search switch + coarse position to Photon;
-  validate downloaded routing tiles; BRouter cancel + planning budget; CI on every push; backup rules.
-- **laptop (background agent), 2026-10-18 (time estimate):** implemented `docs/plan-time-estimate.md` P0–P3 on branch
-  **`feat/time-estimate`** (merged with main, not merged into main): new `time/` package (one model for plan sheet,
-  route list, Navigate, re-route, activity check; pace chips in Settings; arrival clock; moving time / breaks;
-  learning on the trip in the recording service; learning across tours with Reset). Details and old vs. new times in
-  the plan's "Implementation status". **Field test:** (1) plan a mountain hike – note the sheet time, Start navigation:
-  "to go" must be the same; (2) Settings → Your pace Fit / Relaxed changes plan and route-list times, not the route;
-  (3) walk ≥ 20 min on the route: card stays calm (no jumps > a few min per 100 m), opened card shows "Your pace on
-  this trip" once it differs; (4) a 5+ min stop counts as break ("moving · breaks" line), a photo stop does not; slow
-  steep climbing must not count as break; (5) arrival clock moves later during a long break, not while walking
-  normally; (6) End tour: "Tour saved" shows moving time, breaks and "On the route: planned … – you needed …";
-  (7) after ≥ 30 min on a route, Settings → Your pace shows "Learned · Hike …" with Reset; the next plan uses it;
-  (8) kill the app / reboot during a tour: breaks and learning continue; (9) bikes: e-bike / MTB times plausible?
-  (10) export plan + track GPX of the tours for `app/src/test/resources/tracks/`.
-- **laptop (background agent), 2026-10-18 (re-routing):** implemented `docs/plan-auto-reroute.md` P0–P4 on branch
-  **`feat/reroute`** (not merged): `navigation/` (OffRouteDetector, RerouteTargets, Rerouter, Navigator, NavSession,
-  NavText), optional timeout/cancel in `RoutingContract` + `BRouterEngine`, the service owns the flow (ask every time,
-  question in the app and in the ongoing notification, grey original line, arrow mode), Continue navigation no longer
-  edits the plan. Unit + JVM (real data) + Paparazzi tests green. **Next:** owner field test (checklist in the plan's
-  status table / report), then merge to `main` and release.
-- **agent, 2026-10-18 (branch `feat/polish-1`, not merged):** polish batch. App start in Plan centres once on the
-  position (`ui/StartCamera.kt`, never after the user moved the map); own position = small blue dot + accuracy circle +
-  direction triangle in both modes (MapLibre COMPASS render mode instead of the big GPS puck); compass always in the map
-  controls (MapLibre's own compass off); "Start from my location" button removed from the empty sheet; "Tour saved" →
-  Delete asks first; ⋮ Save route offers Save (overwrite) / Save as new… for a loaded or saved plan
-  (`RouteRules.saveMode`, `TourDb.replacePlanned`); Manage routes items have ⋮ Rename / Export GPX / Delete.
-  **Test on the phone:** position dot look + direction triangle while standing / walking (Plan and Navigate, heading-up
-  still smooth?), start centring (cold start indoors / outdoors, pan before the fix → no jump), compass tap in Plan,
-  save over a loaded route → list shows the new distance, rename → sheet "Saved as" follows.
-- **agent, 2026-10-18 (branch `feat/route-menus`, not merged):** route menus per owner spec – top ⋮ Load / Save /
-  Manage routes / Start recording / Settings / Updates (enabled-when rules in `ui/RouteRules.kt`), sheet ⋯ = Reverse /
-  Round trip / Clear, Manage routes list with import / export / delete / pick, "Replace current plan?" question.
-  Details: `docs/ux-two-modes.md` "Menus". **Test on the phone:** save → "Saved as …" in the sheet; edit → "changed";
-  Load over an unsaved plan (Save first / Replace); delete dialog; menu items greyed during a tour.
-- **laptop, 2026-10-18 (evening):** merged three background branches into `main`: Gradle 9 toolchain (AGP 9.4.1,
-  Gradle 9.6, Kotlin 2.2.10, Paparazzi 2.0.0-alpha05.1), snapping of free plan points onto the routed way
-  (`WaypointSnap`), plan gestures v2 (see backlog Done). Also: hiking via-point spike correction 250 → 50 m (owner's
-  point on the Algunder Waalweg was skipped). In progress (laptop): design proposal for automatic re-routing
-  (`docs/plan-auto-reroute.md` on branch `docs/auto-reroute-plan`, not implemented). Owner installs: laptop dev
-  builds start as a clean first install (app data + permissions reset, map files kept).
-- **cloud, 2026-10-18 (0.6.0):** three features landed. (1) Navigate: heading-up / north-up (`map/HeadingEngine`,
-  orientation FAB above locate, setting "Map direction while navigating") and next-turn hints (`routing/TurnDetector`,
-  green turn card on top + arrow on the map, only on route and ≤ 500 m ahead). (2) Place / address search
-  (`search/`, `ui/search/`): offline index (POIs, base-map places, trails) + Photon online when available, results
-  "near your route" first, one place card for search results and tapped POIs ("Add to route" with a preview of where it
-  goes, As start / As destination, Google Maps link-out); stops keep their names (`vm.stopName`). (3) Material 3 UI
-  cleanup: Plan top = one search pill with a ⋮ menu (My tours, Import GPX, Settings, Check for updates) + activity
-  chip; plan sheet = M3 drag handle, status text (time, distance, ↑/↓, highest point, difficulty badge), named stop
-  chips, undo/redo, one filled primary button (Start navigation / Start recording / Continue navigation); profile and
-  breakdown behind "Elevation & surfaces" (sheet opens COMPACT); reverse / round trip / from my location / save / GPX /
-  clear in the sheet's ⋯. Tour running bar is status + End tour only. Map controls are 48 dp round small FABs on the
-  right; scale + attribution smaller. Navigate: turn card → status card (to go + recording) → off-route banner on
-  top, FABs right, slide-to-plan bottom. The place card replaces the plan sheet while open. Theme: neutral surface
-  containers / outlines (no M3 purple tint). Screenshot tests now render at 390 dp width and include both menus.
-  **Test on the phone:** heading-up while walking (smooth? jumps when standing still?), turn card distances and arrow
-  position, north-up toggle; search offline (airplane mode) and online, add a result as stop / start / destination,
-  Google Maps link; stop names in the sheet; ⋮ Import GPX and Check for updates; sheet ⋯ actions; swipe the sheet
-  (mini / compact / full) and "Elevation & surfaces"; Continue navigation + End tour while recording; one-hand reach of
-  the FABs and the slider with gloves.
-- **cloud, 2026-10-18 (two modes, 0.5.0):** implemented `docs/ux-two-modes.md`. `AppMode { PLAN, NAVIGATE }` replaces
-  BROWSE/PLAN; Plan is home (top bar My tours / Settings / activity, GPS dot on the locate button, eye button, GPS chip,
-  browse bar and record panel removed). "Start navigation" follows the plan, a shown track or nothing (free recording)
-  and starts recording; Navigate = remaining strip + recording chip + "Slide to plan" (`SlideToUnlock`, ≥ 85 %,
-  TalkBack action), map taps add/move nothing, POI tap = read-only details. Recording never stops on a switch; in Plan a
-  "Tour running" bar offers Continue navigation (re-route from the position through the stops not yet passed,
-  `RouteProgress.remainingStops`) and End tour (confirmation). Arrival within 50 m asks once "end tour?". The service
-  pauses off-route checks in Plan (`ACTION_NAVIGATING`). App start opens Navigate when a recording is active.
-  Version bumped to 0.5.0 + release notes. Next: feel test on the Pixel 8 (slider with gloves, re-route, arrival,
-  pocket safety), then tune.
-- **laptop, 2026-10-18 (after 0.4.1, all in 0.5.0/0.6.0):** fixed the `LayerSettings` crash on style reload; blocked
-  ways (OSM access=no/private) get a red tint + no-entry signs (`access_restrictions()` in `make_style.py`, sprite
-  `access-no`); plan-mode POI card (now the cloud's place card); adding a point needs a 0.3 s hold with a ring
-  (`HOLD_MS` in `MapHost`). Owner confirmed the in-app update 0.4.0 → 0.4.1 works; phone now on 0.6.0 via the
-  updater. Open owner question: show trails / hiking bands earlier when zoomed out (around z10)? Nothing half done.
-- **cloud, 2026-10-18:** released 0.4.0 (in-app updates + release workflow); wrote `docs/working-agreement.md`
-  and `docs/backlog.md`.
+- **cloud, 2026-10-29 – clean-up after 0.12.0 (owner: "no history in comments or docs, no duplicates, dead code
+  out").** Code comments say what the code does (history left to git); repeated code folded into helpers; test-only
+  and unused code removed. Docs: the dated one-off files (field tests, handovers, owner list, review sheets) are
+  deleted – their open points are in the backlog; this file and the backlog hold only the current state. Drive: new
+  handoff in `00 Übergabe`. **Next:** see backlog "Next" – top: memory (donald), phone checks of 0.11.6–0.12.0,
+  smarter rejoin, Knotenpunkte.
 
-## Where we are (history: builds 1–2, 0.5.0 – for today see "Last session" and the backlog)
+## Where we are
+- Android app, Kotlin + Compose + MapLibre, fully offline: map cells and routing data load per area from the map
+  server (`docs/design/map-cells.md`, `docs/design/map-hosting.md`), offline BRouter routing, recording as a
+  foreground service, Plan ⇄ Navigate (`docs/ux-two-modes.md`), place search (offline index + Photon), GPX in / out,
+  backups, in-app updates, UI in English and German (`docs/i18n.md`).
+- Owner tests on a Pixel 8 (Android 17). Releases go out from `main` (see CLAUDE.md "Releases"); E2E (emulator) and
+  the full unit suite run after every push.
+- Map pipeline and cell builds: `docs/map-pipeline.md`, `tools/cells/`, `tools/cloud/`, dev loop `tools/dev/`.
 
-Note (build 2): the way types & surfaces breakdown in the planning panel is collapsed by default to a one-line summary so the panel leaves enough map to tap on.
-
-**Test build 1.1** (versionName 0.1.0, build 1 + POIs) was delivered for a first field test on a Pixel 8 in South Tyrol.
-It compiles, unit and screenshot tests pass, routing was verified on the JVM – but it has **not yet run on
-a real device**. Expect first-run issues (MapLibre pmtiles loading, permissions, background service).
-
-### New in build 2 (app side, versionName 0.2.0)
-- **Eye button** in the plan panel: hides planned line, markers and followed/GPX line; the panel collapses to a slim
-  "Route hidden" bar and map taps are paused (a POI tap still opens its details). Tap the eye again → route is back unchanged.
-- **Smart insertion** (F-PLAN-13, `WaypointInsertion`): a tap within ~24 dp of the line becomes a stop in that leg;
-  elsewhere cheapest insertion vs. new destination. A notice above the panel says what happened ("Added as stop 2 of 4")
-  with one alternative ("Make it the destination" / "Insert as stop instead"); one undo reverts add + correction.
-  POI taps in plan mode use the same logic.
-- **Pinned POI points**: a point added by tapping a POI is kept exactly (gold ring on the marker). `Planner` splits the
-  request at pinned points so BRouter's out-and-back spur correction never removes a deliberately chosen hut/viewpoint.
-- **Drag & edit on the map** (F-PLAN-04): long-press a marker and drag → moves it (dashed preview, reroute on release);
-  long-press without moving → menu (Remove / Make start / Make destination; also from the number chips); long-press the
-  route line (optionally drag) → inserts a stop into that leg. **Redo** next to undo; **Reverse route** and
-  **Round trip (back to start)** in the panel's ⋮ menu.
-- **Route summary**: way types and surfaces as two slim stacked bars with km legend (only when the engine sends data;
-  <3 % merged into "Other"); elevation profile coloured by gradient (<5 % route blue, 5–10 amber, 10–15 orange, >15 red,
-  slope over a 100 m window); **difficulty badge** Easy/Moderate/Difficult (formula in `RouteSummary.difficulty`).
-- **Settings page** (gear on the home screen): POI groups with per-kind checkboxes, Show all / Hide all / Defaults
-  (calm defaults like Komoot, `PoiKinds.defaultHidden`); route networks, contours, hillshade; off-route warning on/off and
-  25/40/75 m; keep screen on while following; About (version, data folder + status, attributions, Apache-2.0).
-  Applied live: POI filters wrap each `poi-*` layer's original filter (`LayerSettings`, `PoiFilter`).
-- **Remaining distance / ascent / time** strip at the top while following a route (F-NAV-01, `FollowProgress`).
-  The follow file now stores elevations (old files still load).
-- Tests: unit tests for PoiFilter, RouteSummary (merge, difficulty, gradient), PlanEdits, Planner chunking (fake engine),
-  FollowProgress, breakdown folding; Paparazzi screenshots incl. plan with breakdown + gradient, eye-off, notice,
-  point menu, settings (+ full page), follow strip.
-
-### Working in build 1
-- Offline map of Bozen/Meran/Algund: Komoot-like style, two-direction hillshade, contours, trails coloured by
-  SAC difficulty (T1–T2 brown dashed, T3 orange, T4+ red dotted), official route bands (hike green, bike
-  apricot, MTB lilac), German labels.
-- Own position (blue dot, accuracy, heading), GPS status chip, center-on-me, compass, scale bar.
-- Missing-data screen with the exact `adb push` command (app never crashes without data).
-- Activity selector with six profiles; route planning by tapping points, delete by long-press, undo, clear,
-  from-my-position; offline BRouter routing; distance / ascent / descent / time; interactive elevation
-  profile; leg-by-leg fallback with dashed straight lines and plain-language errors.
-- GPX import (file picker, open-with, share; tolerant parser incl. Komoot exports) and GPX 1.1 export.
-- Recording as a foreground service, every point in SQLite, resume after kill/restart, live track,
-  off-route warning (>40 m for 15 s) while following.
-- "My tours" list (planned, recorded, imported).
-
-### Routing test results (JVM, desktop)
-| Route | Profile | km | ascent m | min |
-| --- | --- | --- | --- | --- |
-| Bozen → Meran | Bike touring | 30.4 | 101 | 92 |
-| Bozen → Meran | Bike trekking | 33.4 | 63 | 98 |
-| Bozen → Meran | E-bike | 33.4 | 63 | 83 |
-| Bozen → Meran | Hike | 32.9 | 62 | 393 |
-| Meran 2000 area | Hike T3 | 8.1 | 481 | 126 |
-
-### Known gaps (build 1)
-- No drag-to-move / reorder of points, no redo, no place search.
-- No "reroute back to route" after off-route alert; no remaining-distance view while navigating.
-- Off-route only while recording; followed route drawn in GPX purple.
-- Missing GPX elevation not filled from terrain; no "recently deleted"; no DB backup.
-- English UI only; strings hard-coded.
-- Unreachable points take ~30 s to fail (BRouter search); very long routes (>80 km) may time out on phone.
-- Huts appear from z14 only; hillshade softens above z13.
-- POIs (F-MAP-09) integrated in build 1.1: ~12,000 OSM POIs (viewpoints, restaurants, huts, water, …) as
-  coloured dots; tap (outside plan mode) opens a details sheet with "Open in Google Maps". In plan mode a tap
-  on a POI adds a route point snapped to it. `pois.geojson` is optional (style strips POI layers if missing).
-  Huts now come only from `pois.geojson`. See `docs/poi-integration.md`.
-
-### Known gaps (build 2, app side)
-- Drag gestures are untested on a device (MapLibre touch handling verified only by reasoning): check long-press → drag
-  on the Pixel 8 first; if it misbehaves, tap-on-line insertion and the point menu still cover all edits.
-- Pinned points are not saved with tours ("My tours" → reopen: points are routed normally); a route straightened
-  around an unpinned via is still possible.
-- Difficulty ignores trail technique (SAC / MTB scale) – done 2026-10-25 (`RouteSummary.rating`); thresholds still to tune after field tests.
-- Remaining strip uses straight-segment matching to the followed line; no "reroute back to route" yet.
-- Plan panel is tall with breakdown bars (~60 % of the screen); the eye button helps, a collapsible details
-  section may be needed.
-- UI strings still English and hard-coded.
-
-### Known gaps (0.5.0, two modes)
-- Untested on a device: slide switch with gloves, map following in Navigate, re-route on Continue (BRouter call from
-  the current position), arrival dialog (50 m and at most 150 m of the followed line left).
-- Pause is only in the notification (Navigate shows Resume when paused); no pause button in the app.
-- Continue navigation replaces the plan's start with the current position (one Undo brings the old plan back).
-- Navigate shows the followed line only (no stop markers); the followed line is still drawn in GPX purple.
-- Back in Navigate leaves the app (recording goes on); only the slide switch goes to Plan.
-- A GPX opened from another app while navigating switches to Plan to show it (recording goes on).
-
-## Decisions (from the planning discussion, 2026-10-17/18 – later changes: backlog and CLAUDE.md)
+## Decisions (still valid; product rules also in CLAUDE.md and `docs/owner-preferences.md`)
 | Topic | Decision |
 | --- | --- |
-| Platform | Android first (Kotlin, Compose), iOS later |
-| Name / repo | OnPath, github.com/happychriss/OnPath |
-| Licence | Apache-2.0 |
-| Distribution | Google Play only to start; test builds via `adb install` |
-| Map rendering | MapLibre Native Android 13.7.1, PMTiles files, own style generated by `tools/make_style.py` |
-| Routing | BRouter (MIT) embedded, fully offline, rd5 segment files |
-| Activities | Bike touring, Bike trekking, E-bike, MTB, MTB e-bike, Hike T1–T5 (covers ~70% of use cases); road bike and gravel later |
-| Priorities | Bike and hike first; MTB overlays/profiles "Should" |
-| Route overlays | Hiking, cycling, MTB route relations as soft bands (Komoot style), auto-selected by activity |
-| Voice | Not needed in v1; off-route warning (vibration + notification) is enough |
-| Komoot GPX | Must import correctly (F-GPX-08) |
-| Offline corridor | Always download ~10 km around saved/imported routes (F-OFF-02, Must) – built: corridor map areas + routing parts follow the plan (C10, C13) |
-| Place search | Hybrid: offline OSM index + optional online provider (Google Places or Photon/Pelias) behind one interface – built with Photon (0.6.0; rough position only, 0.10.0); no Google Places |
-| POIs | From OSM, offline; "Open in Google Maps" link-out for reviews/photos/tips; never store Google data |
-| Building data on the phone | Rejected: raw data bigger than result, too heavy; phone renders, routes, records |
-| Test data delivery | `adb push` into `Android/data/com.onpath.app/files/onpath/` |
+| Platform | Android first (Kotlin, Compose); iPhone later (`docs/design/multiplatform.md`, core logic free of Android) |
+| Licence / repo | Apache-2.0, public repo github.com/happychriss/OnPath |
+| Distribution | Sideloaded test builds (GitHub Releases + in-app updater); Google Play internal track later |
+| Map | MapLibre Native 13.7.1, PMTiles, own style from `tools/make_style.py` (one style, `tools/themes/classic.json`) |
+| Routing | BRouter (MIT) embedded, offline, rd5 segments; profiles per activity (CLAUDE.md "Activities") |
+| Activities | Exactly six: Bike, Gravelbike, E-bike, MTB, E-MTB, Hike T1–T5 |
+| Voice | Not planned; off-route warning and junction vibration instead |
+| Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
+| Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
+| Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
+| Google | Never store or draw Google content; link out only (exception: a place shared from Google Maps) |
+| POIs | From OSM, offline; calm defaults like Komoot |
+| Pace | Settings pace (5 levels); during a tour the arrival adapts after ~15 min / 1 km; nothing carried across tours |
+| Battery | Slower GPS at rest, never lose a point; no battery % in the summary |
+| Map ↔ route colours | Green = good, black = possible, red / dashed = forbidden; difficulty = grey line |
+| Navigate | Only the followed line (no numbered points); what Plan shows = what Navigate follows |
+| Deleting all points in a tour | Guidance ends, recording goes on, Undo restores |
+| Messages | INFO grey / ACTION blue strip for questions / WARNING amber ⚠ / ERROR red with one way out; no dark bar |
+| Settings | Topic list, one page per topic; developer tools after 7 taps on the version |
+| Vehicle detection | Nothing during the ride; a summary with four choices at End tour; raw points kept |
+| Ideas dropped | Sunset warning, emergency screen, battery check at start, weather |
 
-## Proposed next steps (history, 2026-10-18 – mostly done; today: backlog "Next")
-1. **Field test feedback** on build 1 → fix crashes and layout issues (user sends `adb exec-out screencap`
-   screenshots and `adb logcat` output).
-2. ~~Build 1.1: integrate POIs~~ (done).
-3. **Build 2 – "works everywhere" like Komoot** (proposed, not yet confirmed by the owner):
-   - Outside prepared regions, stream the base map from **OpenFreeMap** (free, OpenMapTiles schema, same
-     style works) and terrain from AWS Terrain Tiles; MapLibre caches tiles automatically.
-   - "Save area offline" and automatic route-corridor download (MapLibre OfflineManager).
-   - Automatic download of BRouter rd5 tiles from brouter.de for the current position / planned route.
-   - Extras (trail difficulty, route bands, POIs, contours) stay per-region packages for now; later a
-     monthly worldwide build on a server and static hosting (GitHub Releases or a storage bucket).
-4. Place search (F-PLAN-12), German UI strings, DB backup.
-5. From `docs/komoot-comparison.md` "Adopt later": reorder points in a list sheet; route warnings list (F-PLAN-11:
-   steps, push sections, >15 %, ferry, private); per-leg "straight line" option (F-PLAN-09); offline "reroute back
-   to route / to destination" after an off-route alert (F-NAV-02); fitness/speed setting for time estimates;
-   route corridor download (F-OFF-02). (POI layer filter: done in Settings in build 2.)
-
-## Environment notes (for cloud/AI sessions)
-- No Android emulator available in the cloud container (no KVM) – rely on unit tests, Paparazzi screenshots,
-  JVM routing tests and headless-browser map rendering; the owner tests on a real Pixel 8.
-- Reachable: download.openstreetmap.fr, brouter.de, AWS S3 terrain tiles, osmdata.openstreetmap.de,
-  naciscdn.org, raw.githubusercontent.com, maven.google.com, Maven Central (sometimes HTTP 429 – retry).
+## Environment notes (for cloud / AI sessions)
+- No Android emulator in the cloud container (no KVM): rely on unit tests, Paparazzi screenshots, JVM routing tests
+  (`tools/routing/jvm-test/run.sh`) and headless-browser map renders; CI runs the emulator tests.
+- Reachable: download.openstreetmap.fr, brouter.de, AWS S3 terrain tiles, osmdata.openstreetmap.de, naciscdn.org,
+  raw.githubusercontent.com, maven.google.com, Maven Central (sometimes HTTP 429 – retry).
   Not reachable: download.geofabrik.de, overpass-api.de.
-
-## Planned: updates directly on the phone (decided 2026-10-18)
-1. GitHub Actions workflow (`release.yml`) runs on a push to `main` with a new version: it builds, tags `vX.Y.Z` and
-   publishes the GitHub Release with the APK (cloud sessions push neither tags nor releases – done, see CLAUDE.md).
-2. In-app "Check for updates" (Settings → About, plus a quiet daily check when online) reads the latest
-   release, shows the notes and installs the APK in place via the Android installer (requirement F-OFF-06).
-3. Later: Google Play Console developer registration + secret release key to avoid Play Protect warnings.
+- Private material (owner's GPX, Komoot data, orders) lives in Google Drive "OnPath" – never copied into this repo.

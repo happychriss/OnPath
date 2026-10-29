@@ -25,7 +25,7 @@ import com.onpath.app.time.TimeEstimate
 import com.onpath.strings.*
 
 /**
- * Settings → "Your pace" (docs/plan-time-estimate.md §4.1, owner 2026-10-22: five levels): one level for hiking and one
+ * Settings → "Your pace" (docs/plan-time-estimate.md §4.1, five levels): one level for hiking and one
  * for cycling, a factor on the times only (the route stays the same). Under each level what it means: hiking from the
  * DIN 33466 rule (Average = 4 km/h · 300 m up per hour), cycling from the bike model of [activity] (the current one;
  * a trekking bike while hiking). Every plan and every tour starts from it; during a tour the arrival adapts to today's

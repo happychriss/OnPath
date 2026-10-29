@@ -7,7 +7,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * CORE FEATURE C15 (A-005, web planner phase 1): a plan link (`https://planer.onpath.earth/#p=<code>`) from the phone's
+ * CORE FEATURE C15: a plan link (`https://plan.onpath.earth/#p=<code>`) from the phone's
  * camera (QR code), a tapped link, shared text or the search box opens as the plan; a broken link is said, never
  * loaded; Share plan writes the link that opens again. The intent arrives here as its plain strings
  * (MainActivity.planLinkOf → [PlanLinks.fromIntent]).
@@ -17,7 +17,7 @@ class PlanLinksTest {
     private val send = PlanLinks.Via.SHARED
     /** The frozen version-1 code (PlanCodeTest.formatVersion1IsFrozen, also checked by the web planner's browser test). */
     private val frozen = "AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU"
-    private val frozenLink = "https://planer.onpath.earth/#p=$frozen"
+    private val frozenLink = "https://plan.onpath.earth/#p=$frozen"
 
     private val meran = GeoPoint(46.67170, 11.15000)
     private val algund = GeoPoint(46.68012, 11.12640)
@@ -69,7 +69,7 @@ class PlanLinksTest {
         val names = mapOf(meran to "Meran", vellau to "Gasthaus Vellau")
         val shared = PlanLinks.share(pts, Activity.HIKE, 4, setOf(2, 7), { names[it] }, "Waalweg")
         val link = PlanLinks.link(shared)
-        assertTrue(link, link.startsWith("https://planer.onpath.earth/#p="))
+        assertTrue(link, link.startsWith("https://plan.onpath.earth/#p="))
         val back = planOf(PlanLinks.fromLink(link))
         assertEquals(pts, back.points) // 1e-5° steps: these points are on the grid
         assertEquals(Activity.HIKE, back.activity)
@@ -95,13 +95,13 @@ class PlanLinksTest {
 
     @Test fun brokenLinksAreSaidNeverLoaded() {
         val broken = listOf(
-            "https://planer.onpath.earth/#p=" + frozen.dropLast(9), // cut off (half a QR code, copied short)
-            "https://planer.onpath.earth/#p=" + frozen.replace('Q', '*'), // damaged
-            "https://planer.onpath.earth/#p=" + "Ag" + frozen.drop(2), // a newer format version
-            "https://planer.onpath.earth/#p=",
-            "https://planer.onpath.earth/#p=AQUDAA", // no points
-            "https://planer.onpath.earth/", // the planner itself, no plan in it
-            "https://planer.onpath.earth/#x=1",
+            "https://plan.onpath.earth/#p=" + frozen.dropLast(9), // cut off (half a QR code, copied short)
+            "https://plan.onpath.earth/#p=" + frozen.replace('Q', '*'), // damaged
+            "https://plan.onpath.earth/#p=" + "Ag" + frozen.drop(2), // a newer format version
+            "https://plan.onpath.earth/#p=",
+            "https://plan.onpath.earth/#p=AQUDAA", // no points
+            "https://plan.onpath.earth/", // the planner itself, no plan in it
+            "https://plan.onpath.earth/#x=1",
         )
         for (l in broken) assertEquals(l, PlanLinks.Found.Broken, PlanLinks.fromIntent(view, l, null, null, false))
         assertEquals(PlanLinks.Found.Broken, PlanLinks.fromText("look: https://example.org/#p=%%%"))
@@ -113,7 +113,7 @@ class PlanLinksTest {
         assertNull(PlanLinks.fromIntent(view, "content://com.android.providers/document/12", "application/gpx+xml", null, false))
         assertNull(PlanLinks.fromIntent(view, "geo:46.67,11.15?q=Meran", null, null, false))
         assertNull(PlanLinks.fromIntent(view, "https://maps.app.goo.gl/abc?p=1", null, null, false))
-        assertNull(PlanLinks.fromIntent(view, "https://planer.onpath.earth.evil.com/#q", null, null, false))
+        assertNull(PlanLinks.fromIntent(view, "https://plan.onpath.earth.evil.com/#q", null, null, false))
         assertNull(PlanLinks.fromIntent(view, null, null, null, false))
         assertNull(PlanLinks.fromIntent(send, null, "text/plain", "Hotel Meran https://maps.app.goo.gl/xyz", false))
         assertNull(PlanLinks.fromIntent(send, null, "text/plain", null, false))

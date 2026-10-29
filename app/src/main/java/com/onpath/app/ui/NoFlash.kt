@@ -9,8 +9,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 
 /**
- * Owner rule "no self-dismissing messages" (field test 0.8.7: "a very short message I couldn't read, then another
- * one: downloading"): nothing may appear and vanish – or turn into something else – faster than it can be read.
+ * Owner rule "no self-dismissing messages": nothing may appear and vanish – or turn into something else – faster than
+ * it can be read.
  *
  * A gate between what the app state says ([update]'s target) and what is on screen:
  * - a passing step ([urgent] false: "Preparing…", "Downloading…", a hint) appears only after it lasted [showDelayMs] –
@@ -19,7 +19,7 @@ import kotlinx.coroutines.delay
  * - whatever is shown stays at least [minShowMs] before it goes or turns into a different step ([stepKey]); updates of
  *   the same step (progress, MB count) show at once;
  * - after the user acted ([userActed]) the next change shows at once (a tap must answer immediately).
- * Pure (time passed in), unit-tested; [rememberNoFlash] runs it in Compose.
+ * Time is passed in; [rememberNoFlash] runs it in Compose.
  */
 class NoFlash<T : Any>(
     val showDelayMs: Long = SHOW_DELAY_MS,

@@ -17,7 +17,7 @@ import java.util.zip.ZipOutputStream
 import com.onpath.strings.*
 
 /**
- * Tour & plan backup of the app (owner 2026-10-21, docs/core-features.md C11): the hooks call [tourChanged] /
+ * Tour & plan backup of the app (docs/core-features.md C11): the hooks call [tourChanged] /
  * [purgeAndSync]; files go to Documents/OnPath or the folder chosen in Settings → Backup. One background thread –
  * recording and the UI never wait for it. A failure is reported to Problems and kept as a notice ([failure]) until
  * the user has seen it.

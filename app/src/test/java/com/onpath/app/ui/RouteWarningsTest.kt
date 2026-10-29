@@ -9,7 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Safety audit batch B (owner 2026-10-22): the amber line's spots, its text and the "route changed" rule. */
+/** The amber route-warning line: its spots, its text and the "route changed" rule. */
 class RouteWarningsTest {
     /** ~10 m per step northwards. */
     private val stepDeg = 10.0 / 111_195.0
@@ -50,7 +50,7 @@ class RouteWarningsTest {
         val trek = RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3)
         assertEquals(listOf(SpotKind.PUSH), trek.map { it.kind })
         assertEquals(600.0, trek.single().lengthM, 1.0) // T2 + T4 in one piece
-        // MTB / e-MTB: hard paths are what they ride – no pushing (owner 2026-10-26)
+        // MTB / e-MTB: hard paths are what they ride – no pushing (owner)
         assertTrue(RouteWarnings.detect(r, Activity.MTB, 3).isEmpty())
         assertTrue(RouteWarnings.detect(r, Activity.EMTB, 3).isEmpty())
     }
@@ -102,9 +102,9 @@ class RouteWarningsTest {
     }
 
     /**
-     * Owner decision 2026-10-25: a footway without a bicycle tag that is part of a signed cycle route is
-     * ridden – the touring / trekking profiles cost it like a cycleway, so no "pushing" there. A footway off a route,
-     * or with bicycle=no / dismount, stays pushing.
+     * Owner: a footway without a bicycle tag that is part of a signed cycle route is ridden – the touring / trekking
+     * profiles cost it like a cycleway, so no "pushing" there. A footway off a route, or with bicycle=no / dismount,
+     * stays pushing.
      */
     @Test fun footwayOnACycleRouteIsNotPushing() {
         val onRoute = WayAttrs("footway", "paved", cycleRoute = true)
@@ -120,9 +120,8 @@ class RouteWarningsTest {
     }
 
     /**
-     * Owner decision 2026-10-26 ("remove the rules for MTB – we don't want to look stupid"): the amber line was on 87 %
-     * of MTB routes, mostly "… m pushing". For MTB / e-MTB footways and steep sections are normal: no pushing (unless
-     * signed bicycle=no / dismount) and no steep hint. Other bikes keep both.
+     * Owner: for MTB / e-MTB footways and steep sections are normal: no pushing (unless signed bicycle=no / dismount)
+     * and no steep hint. Other bikes keep both.
      */
     @Test fun mtbHasNoPushingOrSteepHint() {
         val r = route(p(road, 500), p(footway, 300), p(road, 200), p(WayAttrs("footway", "paved", cycleRoute = true), 300),
@@ -137,7 +136,7 @@ class RouteWarningsTest {
     }
 
     /**
-     * Owner decision 2026-10-26: for MTB / e-MTB a signed way is legal information, not "pushing": bicycle=no →
+     * Owner: for MTB / e-MTB a signed way is legal information, not "pushing": bicycle=no →
      * "no bikes allowed", bicycle=dismount → "dismount (sign)". Other bikes keep "pushing".
      */
     @Test fun mtbSignedWaysAreLegalInfoNotPushing() {
@@ -178,7 +177,7 @@ class RouteWarningsTest {
     }
 
     /**
-     * Review 2026-10-26: a pedestrian zone (highway=pedestrian) is no footway to ride on a cycle route – no cycling there
+     * A pedestrian zone (highway=pedestrian) is no footway to ride on a cycle route – no cycling there
      * unless signed (German law). Without bicycle=yes / designated it stays "pushing", with it it is ridden.
      */
     @Test fun pedestrianZoneOnACycleRouteStaysPushing() {
@@ -252,7 +251,7 @@ class RouteWarningsTest {
         assertFalse(RouteWarnings.changedNoticeably(emptyList(), 0.0, 0.0, a, 5000.0, 300.0))
     }
 
-    // ---------------- route hints (owner 2026-10-26: ferry and anything else to check before going) ----------------
+    // ---------------- route hints (owner: ferry and anything else to check before going) ----------------
 
     private val ferry = WayAttrs("ferry", "unknown")
 
