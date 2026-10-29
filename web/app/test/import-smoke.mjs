@@ -62,7 +62,7 @@ check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking a
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 check(await pins() === 2, 'short plan from a link: 2 points, routed, no question');
-await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 49.3], zoom: 5.5 }));
+await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5 }));
 await page.waitForTimeout(500);
 await clickAt(11.16, 52.05);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
