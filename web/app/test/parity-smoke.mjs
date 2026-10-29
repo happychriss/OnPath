@@ -120,13 +120,14 @@ console.log('google tab:', tab.url());
 check(/^https:\/\/www\.google\.com\/maps\/search\/Vellau\/@46\.\d+,11\.\d+,16z$/.test(tab.url()), 'Google Maps opens in a new tab with the place name near its point');
 await tab.close();
 
-// 9. route warnings (the app's RouteWarnings): MTB up the Ifinger → amber line, click → "On this route" rows
+// 9. route warnings (the app's RouteWarnings): MTB up the Ifinger (a ford) → amber line, click → "On this route" rows
 const steep = await page.evaluate(() => window.__engine.encode({ points: [[46.6870, 11.2350], [46.7006, 11.2585]], activity: 'MTB', sac: 2, pinned: [], names: {}, title: null }));
 await page.goto(url + 'index.html#p=' + steep); // only the hash changes: the page opens the plan (hashchange)
 await page.waitForFunction(() => !document.getElementById('warning').hidden, null, { timeout: 120_000 }).catch(() => {});
 const wl = await page.textContent('#warning');
 console.log('warning:', wl);
-check(await page.isVisible('#warning') && /steep/.test(wl), 'route warning line (steep sections) shown');
+// MTB: no 'steep' line any more (app's RouteWarnings.isMtb, main 2026-10-27); the ford there stays
+check(await page.isVisible('#warning') && /ford/.test(wl) && !/steep/.test(wl), 'route warning line (ford, no steep for MTB) shown');
 await page.click('#warning');
 check(await page.locator('#spots li').count() > 0, 'click → the spots on this route');
 

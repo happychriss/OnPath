@@ -74,6 +74,12 @@ export class Cells {
       [src.minzoom, src.maxzoom] = [0, ZOOMS[layer][1]];
     }
     if (s.sources.pois) (s.sources.pois as { data: unknown }).data = { type: 'FeatureCollection', features: [] };
+    // any other file source (region packages' relief "region-shade", map-cells.md §20) has no cell here: left out
+    // with its layers, like the app's OptionalSources.strip does for a missing file
+    const gone = Object.entries(s.sources).filter(([id, src]) => id !== 'pois' && !(LAYERS as readonly string[]).includes(id) &&
+      /file:\/\//.test(String((src as { url?: unknown }).url ?? (src as { data?: unknown }).data ?? ''))).map(([id]) => id);
+    for (const id of gone) delete s.sources[id];
+    s.layers = s.layers.filter((l) => !('source' in l) || !gone.includes(l.source as string));
     return s;
   }
 
