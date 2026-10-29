@@ -16,8 +16,8 @@ data class RemoteItem(val item: SyncItem, val rev: Long)
  * - "Newer" is a total order: updatedAt, then device id, then the item bytes – so every device picks the same winner,
  *   whatever order changes arrive in ([merge] is commutative and idempotent).
  * - The older version, when it is a live plan with other content, becomes a copy: id derived from the older version
- *   (every device derives the same copy, so it never doubles), title "… (copy)". Device hellos and tombstones are
- *   never copied. A delete that is newer than an edit still keeps the edit as a copy – a plan is never lost.
+ *   (every device derives the same copy, so it never doubles), title "… (copy)". Only plans and tracks are copied –
+ *   never device hellos, tombstones or kinds this app does not know. A delete that is newer than an edit still keeps the edit as a copy – a plan is never lost.
  * - A remote change on an entry not edited here is a plain update (the mailbox's compare-and-set guarantees the other
  *   device saw this version before writing).
  */
@@ -37,7 +37,7 @@ object SyncMerge {
 
     fun merge(a: SyncItem, b: SyncItem): Merged {
         val (w, l) = if (newer(b, a)) b to a else a to b
-        if (w.sameContent(l) || l.deleted || l.kind != SyncItem.PLAN) return Merged(w, null)
+        if (w.sameContent(l) || l.deleted || !l.isUserItem) return Merged(w, null)
         return Merged(w, copyOf(l))
     }
 

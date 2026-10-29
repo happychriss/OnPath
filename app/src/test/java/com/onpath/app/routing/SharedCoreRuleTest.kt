@@ -6,12 +6,12 @@ import java.io.File
 
 /**
  * Keeps the app's logic free of Android (owner: an iPhone version may come later, with one shared Kotlin
- * core – docs/design/multiplatform.md). Planner, navigation, time, rides and GPX must not use Android, MapLibre,
+ * core – docs/design/multiplatform.md). Planner, navigation, time, rides, GPX and the plan sync must not use Android, MapLibre,
  * BRouter or org.json, so they can later move into a shared module unchanged. The files below already do and are
  * the known exceptions (each needs an interface or a JSON helper when the split happens); the list may only shrink.
  */
 class SharedCoreRuleTest {
-    private val packages = listOf("routing", "navigation", "time", "rides", "gpx")
+    private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */
