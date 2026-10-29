@@ -29,7 +29,10 @@ the git log.
   → SQLite FTS on disk or a smaller form; (3) MapLibre's tile cache and the 254 layers; (4) old PMTiles generations
   still open after a style reload. Goal: < 800 MB PSS in Plan with 20 regions. Add a memory number per part to the
   health line. Baseline measured 2026-10-29 (POI GeoJSON 0.8 GB, join leaves 0.7 GB, tiles 0.1–0.5 GB, search 70–90 MB);
-  being fixed: join leak + tile limits + health line, POIs as vector tiles, search index → SQLite.
+  Done: POIs as vector tiles built on the phone (7afdc46, Plan 1.49 → 0.45 GB PSS), search index on disk (156c265, search
+  +67 → +13 MB Java heap). Still: join leak + tile limits + health line.
+- **Search: first letter is slow (340–930 ms)** – the address search takes 430–780 ms for a one-letter query (measured
+  2026-10-30 on the Pixel 8, `~/onpath-cells-work/search-mem/`); the place index itself is 22 ms median per keystroke.
 - **Check on the phone (0.11.6 – 0.12.0, built without a phone):**
   - junction vibration: the app vibrated at every junction on the 2026-10-28 ride (trace "vibrated=true"), the owner
     felt nothing → Pixel Settings → Sound & vibration → Vibration & haptics → *Alarm vibration*, Do Not Disturb /
