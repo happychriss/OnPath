@@ -9,6 +9,13 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **Web planner (branch web-spike): take over the app's plan-sync format (A-007, main 880850d)** – additive, old web code stays
+  safe. New `SyncItem.kind = 3` (TRACK), field tag 4 = raw `TrackCode` bytes (`sync/TrackCode.kt`, frozen in `SyncTrackTest`;
+  max 16,000 bytes, thinned by Douglas–Peucker); `PlanCode.activityCode` / `activityOf` now public; merge copies the losing
+  track too; `saveTrack` / `tracks()`, `SyncFormat.cleanTitle`, optional `SyncRound` + `Mailbox`. To do: add
+  `sync/TrackCode.kt` (+ `SyncRound.kt`) to `appFiles` in `web/engine/build.gradle.kts`; show tracks in My plans (line,
+  rename, delete, never open as a plan); web-sync.md §5 / §11 / §13.1 (owner: tracks are synced); German menu text to
+  match the app ("Handy verbinden"). Note: `fake-d1.js` fails on Node 22.14 (`?1` placeholders) – `tools/sync/mailbox-server.mjs` rewrites them.
 - **Plan sync phone ⇄ browser (A-007) – app part built, check on the phone once the mailbox is deployed** – ☰ → Pair
   with browser / Settings → Browser sync (camera opens the `#pair=` link, check digits, Pair; Sync now; Unpair asks).
   Saved routes and imported GPX tracks sync both ways (a delete from the browser → recycle bin; never during a tour).
