@@ -9,6 +9,13 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **Onboarding + "Phone check" (owner: older users, step by step, must survive the phone removing things)** – concept
+  `docs/design/onboarding-phone-check.md`: one pure `PhoneCheck` model (location precise / on, notifications,
+  vibration felt, battery restricted, brand killers, battery saver GPS mode, unused-app reset), one step-by-step guide,
+  three entry points (first start "Set up now / Later" instead of today's start-up dialog, before the tour, Settings →
+  Phone setup), re-check on every return, calm "your phone removed it" message after months unused. Waiting for the
+  owner's 4 decisions (§12: first start card, remove background location before Play, hibernation only optional,
+  vibration test). Build plan §11 (6 steps); Pixel checklist in the appendix.
 - **Web planner (branch web-spike): take over the app's plan-sync format (A-007, main 880850d)** – additive, old web code stays
   safe. New `SyncItem.kind = 3` (TRACK), field tag 4 = raw `TrackCode` bytes (`sync/TrackCode.kt`, frozen in `SyncTrackTest`;
   max 16,000 bytes, thinned by Douglas–Peucker); `PlanCode.activityCode` / `activityOf` now public; merge copies the losing
