@@ -2,7 +2,7 @@
 """Risk-based unit tests for a release (owner: the full suite takes too long for every release).
 
 Prints the Gradle arguments for `testDebugUnitTest`:
-- always the core-feature packages (robust first – never lose a track): recording, navigation, data, gpx, backup;
+- always the core-feature packages (robust first – never lose a track): recording, navigation, data, gpx, backup, plansync, sync;
 - plus every app package whose main or test code changed since the last release tag;
 - ui/ or the texts (strings/) changed → the ui tests (with the screenshot tests);
 - build files, BRouter jars / profiles, or nothing to compare with → "" = the full suite.
@@ -12,7 +12,7 @@ Usage: risk_tests.py <changed file> …  (one path per argument, relative to the
 """
 import re, sys
 
-CORE = ["recording", "navigation", "data", "gpx", "backup"]
+CORE = ["recording", "navigation", "data", "gpx", "backup", "plansync", "sync"]
 FULL_TRIGGERS = (
     "app/build.gradle.kts", "build.gradle.kts", "settings.gradle.kts", "gradle.properties", "gradle/",
     "app/libs/", "app/src/main/assets/brouter/", "strings/build.gradle.kts", "app/src/test/resources/",
