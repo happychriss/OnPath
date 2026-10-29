@@ -11,9 +11,11 @@ The app part is still to do** (§11, desktop session with the phone).
 
 **Branches:** `feat/plan-sync` = one commit with only new files (`app/.../sync/` + tests) on top of main `cf181ae` –
 it can be merged into main (or cherry-picked) as it is. Merging it into `web-spike` also brought main's newer app
-code, which the web engine cannot compile yet (main's string resources `Txt` / `Res`); commit `72a84218` on
-`web-spike` takes that part out again. **When the engine learns the string resources: `git revert 72a84218`, then
-merge origin/main** – otherwise git keeps the old app files on web-spike.
+code, which the web engine could not compile then (main's string resources `Txt` / `Res`); commit `72a84218` on
+`web-spike` took that part out again. **Done 2026-10-29:** the engine now generates `Res.string.*` / `Res.plurals.*`
+from the same English `strings/…/values/*.xml` (`generateStrings` in `web/engine/build.gradle.kts`, stand-ins
+`com/onpath/strings/Txt.kt` + `org/jetbrains/compose/resources/StringResource.kt`); `72a84218` was reverted and
+origin/main merged – web-spike carries main's app code again and merges main regularly (web-planner.md §13).
 
 ## 1. Pieces
 
