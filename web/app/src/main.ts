@@ -28,6 +28,7 @@ import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
 import { setupGpxImport } from './gpximport';
+import { overviewStyle, followCover } from './overview';
 import './style.css';
 
 const ROUTE = '#1E3FAE';
@@ -153,6 +154,7 @@ const map = new maplibregl.Map({
 $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }).onAdd(map));
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
+if (useCells) followCover(map, cells.found); // the overview hides where the cells' detailed map is
 map.on('load', () => {
   if (useCells) cells.loadPois(map);
   map.addSource('planned-route', { type: 'geojson', data: empty() });
@@ -176,7 +178,8 @@ map.on('load', () => {
 
 // The style the app ships, pointed at web URLs; sources whose file is not there are left out (no blank errors).
 async function loadStyle(): Promise<StyleSpecification> {
-  const s: StyleSpecification = await (await fetch(base + 'style/onpath.json')).json();
+  // cells: with the world overview below z10 when its files are deployed (overview.ts – the app's Overview.merge)
+  const s: StyleSpecification = (useCells ? await overviewStyle(base) : null) ?? await (await fetch(base + 'style/onpath.json')).json();
   if (useCells) {
     s.glyphs = PACKED ? packedGlyphs(base) : base + 'fonts/{fontstack}/{range}.pbf';
     s.sprite = base + 'sprites/onpath';

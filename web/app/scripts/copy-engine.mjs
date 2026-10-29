@@ -26,3 +26,17 @@ fs.mkdirSync(path.join(pub, 'style'), { recursive: true });
 fs.copyFileSync(path.join(a, 'style/f2/onpath.json'), path.join(pub, 'style/onpath.json'));
 fs.cpSync(path.join(a, 'fonts'), path.join(pub, 'fonts'), { recursive: true });
 fs.cpSync(path.join(a, 'sprites'), path.join(pub, 'sprites'), { recursive: true });
+
+// The world overview below the cells (docs/design/web-planner.md §16): the style with the app's Overview.merge applied
+// (web/engine task overviewStyle) and – when ONPATH_OVERVIEW_DIR points at the APK's overview files (CI downloads
+// them from the GitHub release the app's release workflow uses) – the files themselves. Without them the page draws
+// the plain style (nothing below z10), as before.
+const ovStyle = path.join(repo, 'web/engine/build/style/onpath-overview.json');
+if (fs.existsSync(ovStyle)) fs.copyFileSync(ovStyle, path.join(pub, 'style/onpath-overview.json'));
+else console.warn('no overview style – run: ./gradlew -p web/engine overviewStyle');
+const ovDir = process.env.ONPATH_OVERVIEW_DIR;
+if (ovDir) {
+  fs.mkdirSync(path.join(pub, 'overview'), { recursive: true });
+  for (const f of ['base.pmtiles', 'hillshade.pmtiles']) fs.copyFileSync(path.join(ovDir, f), path.join(pub, 'overview', f));
+  console.log('overview files copied from ' + ovDir);
+}

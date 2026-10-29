@@ -164,7 +164,10 @@ object Engine {
             val act = Activity.valueOf(activity)
             val p = Planner(engine()).plan(wps, act, sac, parseIndices(pinned))
             lastPlan = wps to p
-            val times = if (p.points.size >= 2) RouteTimes.of(p.points, act).total() else 0.0
+            // the plan sheet's time like the app's (AppViewModel.withModelTime): the one time model with the pace setting –
+            // the app's default (Average; e-bikes capped on the flat) – rounded for display (TimeEstimate.round)
+            val times = if (p.points.size >= 2) com.onpath.app.time.TimeEstimate.planSeconds(p.points, act,
+                com.onpath.app.time.TimeEstimate.planFactors(act, com.onpath.app.data.AppSettings())) else 0.0
             buildString {
                 append("{\"distanceM\":").append(num(p.distanceM))
                 append(",\"ascentM\":").append(num(p.ascentM))
@@ -498,7 +501,6 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)
-
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----
 @JSExport fun syncPairNew(random: String): String = WebSync.pairNew(random)
 @JSExport fun syncPairParse(text: String): String = WebSync.pairParse(text)

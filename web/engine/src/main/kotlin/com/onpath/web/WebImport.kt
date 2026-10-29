@@ -7,7 +7,6 @@ import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.SportType
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.TrackToPlan
-import com.onpath.app.time.Factors
 import com.onpath.app.time.TimeEstimate
 import com.onpath.strings.*
 
@@ -31,8 +30,8 @@ object WebImport {
         val dist = geo.sumOf { Geo.length(it) }
         var up = 0.0; var down = 0.0
         segs.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
-        // the page plans with the average pace (Factors.ONE), as everywhere on the web
-        val dur = TimeEstimate.importedSeconds(segs, pick.activity, Factors.ONE)
+        // the file's own time, else the one time model with the pace setting (the app's default: the web has no Settings)
+        val dur = TimeEstimate.importedSeconds(segs, pick.activity, TimeEstimate.planFactors(pick.activity, com.onpath.app.data.AppSettings()))
         data.type?.let { t ->
             val to = if (SportType.activityOf(t) == null) "unknown, kept ${pick.activity.name}"
                 else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""

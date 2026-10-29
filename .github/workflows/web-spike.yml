@@ -30,6 +30,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The web never drifts silently from the app (docs/design/web-planner.md §14): an app file the web mirrors that
+      # changed since it was last checked turns this run red; perf / memory-relevant changes in shared code are listed.
+      - name: Web ⇄ app parity (web/parity.json)
+        run: |
+          node web/parity/check.mjs --report "$RUNNER_TEMP/parity.md" || { cat "$RUNNER_TEMP/parity.md" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          cat "$RUNNER_TEMP/parity.md" >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -59,7 +66,7 @@ jobs:
           ls -la segments
 
       - name: Build the Wasm engine (TeaVM)
-        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime  # test = the app's own tests of the shared files (appTests) + WebImportTest
+        run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime overviewStyle  # test = the app's own tests of the shared files (appTests) + WebImportTest
 
       - name: Plan sync in Wasm = the JVM's frozen bytes (keys, blob)
         run: node web/app/test/sync-engine.mjs
@@ -69,6 +76,20 @@ jobs:
 
       - name: Routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon runJvm -Psegments=$GITHUB_WORKSPACE/segments
+
+      # The APK's world overview (docs/map-pipeline.md §9b), from the same GitHub release the app's release workflow
+      # downloads (repository variable ONPATH_OVERVIEW_URL there); checked against its SHA256SUMS. Served next to the
+      # page so the map is never blank below zoom 10 (docs/design/web-planner.md §16).
+      - name: World overview files
+        env:
+          OVERVIEW_URL: ${{ vars.ONPATH_OVERVIEW_URL || 'https://github.com/happychriss/OnPath/releases/download/overview-2026-10-22/' }}
+        run: |
+          DIR="$RUNNER_TEMP/overview"; mkdir -p "$DIR"
+          for f in SHA256SUMS base.pmtiles hillshade.pmtiles; do
+            curl -fsSL --retry 5 --retry-delay 5 -o "$DIR/$f" "${OVERVIEW_URL%/}/$f"
+          done
+          (cd "$DIR" && grep -E ' \*?(base|hillshade)\.pmtiles$' SHA256SUMS | sha256sum -c -)
+          echo "ONPATH_OVERVIEW_DIR=$DIR" >> "$GITHUB_ENV"
 
       - name: Build the web page
         working-directory: web/app
@@ -101,6 +122,10 @@ jobs:
       - name: Plan sync (phase 2) – two browsers pair, sync both ways, offline + conflict copy, delete, unpair
         working-directory: web/app
         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: World overview below the cells (the app's Overview.merge; zoom 5 / 8 never blank)
+        working-directory: web/app
+        run: node test/overview-smoke.mjs $GITHUB_WORKSPACE/segments
 
       - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
         working-directory: web/app

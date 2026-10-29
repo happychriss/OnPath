@@ -28,6 +28,9 @@ val appFiles = listOf(
     "routing/LongRoute.kt", "ui/PlanStatus.kt",
     // GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
     "gpx/GpxParser.kt", "routing/TrackToPlan.kt", "time/TimeEstimate.kt", "data/AppSettings.kt",
+    // the world overview below the cells (web-planner.md §16): the app's style merge (org.json, as on Android; run on
+    // the JVM at build time – task overviewStyle – so it adds nothing to the Wasm)
+    "map/Overview.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -40,8 +43,9 @@ sourceSets {
     main {
         java.setSrcDirs(listOf("src/main/java", stubs, root.resolve("app/src/main/java/btools/router")))
         java.include("android/**", "org/**", "btools/**", "com/google/**", "OnPathHints.java", "onpathweb/**", "com/onpath/web/**")
-        // our Context (src/main/java) adds startActivity for poi/GoogleMapsLink.kt; the JVM test stubs' one steps aside
-        java.exclude { it.relativePath.pathString == "android/content/Context.java" && !it.file.canonicalPath.startsWith(projectDir.canonicalPath) }
+        // our Context / AssetManager (src/main/java) add startActivity (poi/GoogleMapsLink.kt) and list (map/Overview.kt); the JVM test stubs step aside
+        java.exclude { it.relativePath.pathString in setOf("android/content/Context.java", "android/content/res/AssetManager.java") &&
+            !it.file.canonicalPath.startsWith(projectDir.canonicalPath) }
     }
 }
 kotlin {
@@ -57,6 +61,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0") // the app gets it with MapLibre; search reads GeoJSON with it
     // TeaVM maps java.time to ThreeTen backport (its classlib's substitution); gpx/GpxParser reads GPX times with it
     implementation("org.threeten:threetenbp:1.6.9")
+    implementation("org.json:json:20240303") // Android ships org.json; map/Overview.kt builds the style with it
     compileOnly("org.teavm:teavm-extension-spi:0.16.0") // XmlSubstitution (onpathweb SAX stand-ins for the Wasm build)
     testImplementation("junit:junit:4.13.2")
 }
@@ -165,6 +170,13 @@ tasks.register<JavaExec>("runJvm") {
     args((project.findProperty("cases") as String?) ?: "../test/cases.json",
         (project.findProperty("segments") as String?) ?: "/home/user/build/routing-test/segments",
         (project.findProperty("out") as String?) ?: "build/jvm-results.json")
+}
+// The app's style with the world overview merged in (map/Overview.kt, the app's own code, run here at build time;
+// docs/design/web-planner.md §16): the page loads it when the overview files are deployed next to it.
+tasks.register<JavaExec>("overviewStyle") {
+    classpath = jvm.runtimeClasspath
+    mainClass = "com.onpath.web.OverviewStyleKt"
+    args(root.resolve("app/src/main/assets/style/f2/onpath.json").path, layout.buildDirectory.file("style/onpath-overview.json").get().asFile.path)
 }
 // A small rd5 with only some parts (previews / tests): -Ptile=E5_N50.rd5 -Pdir=<head/tail/part files> -Pout=<file>
 tasks.register<JavaExec>("partialRd5") {
