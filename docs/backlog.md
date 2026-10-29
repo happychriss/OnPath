@@ -9,14 +9,15 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
-- **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
+- **[desktop] Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
   PSS ~1.9 GB all day (native heap 1.34 GB), 3.18 GB / native 2.24 GB after the New York test (2 regions + search
   index rebuilt, 167 k entries). Measure each suspect with `dumpsys meminfo` / `showmap` / the native profiler, before
   and after: (1) the POIs as ONE GeoJSON source (`pois.geojson`, 23 MB for 19 regions, indexed in native memory) → a
   vector-tile layer in the cell pipeline (tippecanoe, like `overlays.pmtiles`); (2) the offline search index in memory
   → SQLite FTS on disk or a smaller form; (3) MapLibre's tile cache and the 254 layers; (4) old PMTiles generations
   still open after a style reload. Goal: < 800 MB PSS in Plan with 20 regions. Add a memory number per part to the
-  health line.
+  health line. Baseline measured 2026-10-29 (POI GeoJSON 0.8 GB, join leaves 0.7 GB, tiles 0.1–0.5 GB, search 70–90 MB);
+  being fixed: join leak + tile limits + health line, POIs as vector tiles, search index → SQLite.
 - **Check on the phone (0.11.6 – 0.12.0, built without a phone):**
   - junction vibration: the app vibrated at every junction on the 2026-10-28 ride (trace "vibrated=true"), the owner
     felt nothing → Pixel Settings → Sound & vibration → Vibration & haptics → *Alarm vibration*, Do Not Disturb /
