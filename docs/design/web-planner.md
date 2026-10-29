@@ -352,15 +352,21 @@ Still real: the first plan in a new area waits for its part (2–10 MB); BRouter
 (same on the phone). Next, if needed: prefetch parts along the line while points are placed; keep parts in the
 browser's cache storage (IndexedDB) across visits.
 
-### 11.3 Page structure
+### 11.3 Page structure (web layout since 2026-10-28, §13)
 
-- **Wide screen (> 700 px)**: search pill + ☰ top left, the plan sheet below it as a side panel (384 px), map controls
-  bottom right, scale + "© OpenStreetMap" bottom left beside the panel. Everything of the sheet is shown.
-- **Phone width**: search pill + ☰ across the top, the plan sheet as a bottom sheet (handle: summary + profile +
-  button ↔ + Points), map controls and footer above the sheet (`--sheet-h`).
-- Menus: point / POI / first-point menus are map popups at the point; ☰ and ⋯ are drop-down menus; activity picker,
-  share and credits are dialogs. Colours and type follow `OnPathColors` (green primary, route blue, amber warnings,
-  red errors); icons are the app's Material icons.
+- **Header line** (56 px; onpath.earth's look: logo, Manrope, site colours): OnPath · PLANNER, then the entries
+  My plans · Pair phone · Send to phone · Help & credits (one list, `NAV` in `main.ts` – new entries go there), right
+  "No account · plans stay in this browser". Phone width: 48 px, the entries behind ☰.
+- **Wide screen (> 700 px)**: search pill top left, the **map toolbar** right of it (undo, redo | eye, compass,
+  locate + GPS dot | Map content ▾ – always there, greyed when not possible), the plan sheet below the pill as a side
+  panel (384 px; summary, profile and the primary button stay in view, a long Points list scrolls inside), zoom ±
+  bottom right, scale + "© OpenStreetMap" bottom left beside the panel. The place card floats beside the sheet.
+- **Phone width**: search pill across the top, the toolbar (icons only) under it on the right, the plan sheet as a
+  bottom sheet (handle: summary + profile + button ↔ + Points); the place card is a bottom card that stands in for the
+  sheet while it is open.
+- Menus: point / POI / first-point menus are map popups at the point; ⋯ is a drop-down; the activity picker is a
+  drop-down at the chip; Map content is a large panel; share, save and credits are dialogs. Colours and type follow
+  `OnPathColors` (green primary, route blue, amber warnings, red errors); icons are the app's Material icons.
 
 ### 11.4 Still different from the phone, and why
 
@@ -392,3 +398,25 @@ host (`/sync/v1/…`, D1). Newer wins, the older stays as a copy; unpair on both
 (`app/.../sync/`, branch `feat/plan-sync`) runs in the app and – in the engine – in the browser; the page has
 ☰ → My plans and ☰ → Pair phone. Everything – threat model, formats, API, limits, the owner's Cloudflare steps
 (D1, Access bypass for `/sync/*`), the app-side task list and the privacy text – is in **`docs/design/web-sync.md`**.
+
+## 13. Web layout (cloud, 2026-10-28) – owner feedback on the live test page
+
+| # | Owner | Now |
+| --- | --- | --- |
+| 1 | Place card stayed over the sheet after "As start" | Card beside the sheet (phone: bottom card in place of it); every action and every new search closes it. Cause of the "stays": a late online search answer re-opened the results list – a pick now cancels it. |
+| 2 | Map buttons bottom right hard to find | Toolbar right of the search pill (komoot-like), Map content ▾ in it; zoom ± bottom right. |
+| 3 | Activity picker = modal with Done | Drop-down at the chip; a click picks and closes; Hike's T1–T5 row (with the SAC line) in the same list. |
+| 6 | Header like komoot's, onpath.earth's design | Header line, §11.3. |
+| 7 | Save made duplicates, dialog again and again, "planer.1" | The app's flow (AppViewModel.requestSave, RouteRules.saveMode): a plan shown from My plans asks **Save** (new version, name kept) / **Save as new…**; else the name dialog with the app's proposal (`RouteNamer`, e.g. "Vellau → Ifinger Hütte"); saving closes it, the sheet says "Saved as …" (+ "changed since"). My plans keeps the list + "Save the current plan…". |
+| 8 | Direction arrows as on the phone | `planned-route-arrows`: the app's chevron and spacing / size (MapController.addDirectionArrows). |
+| 9 | Drag & drop in Points | Rows move live (≡ lifts the row, the others make room – the app's PlanPoints.dropIndex / shift), touch and mouse, auto-scroll at the edges, Arrow up / down on ≡; long lists scroll inside the sheet (the app's sheet scrolls too – no "show all" folding there). |
+| 11 | POI choice using the screen | Toolbar → Map content: large panel, groups with tri-state boxes, Show all / Hide all / Reset, a filter box, contour lines + hill shading; live on the `poi-*` layers with the app's `PoiKinds` defaults and `PoiFilter` (engine), names from the app's strings; kept in localStorage. |
+
+Engine calls added (`WebUi.kt`): `routeName`, `poiKinds`, `poiFilter`. Tests: parity-smoke (toolbar place, arrows layer,
+live drag + undo, activity drop-down, Map content filter + storage, Save / Save again without duplicate, ☰ on phones),
+search-smoke (card beside the sheet, closes, results stay closed, name proposal), sync-smoke (save via My plans,
+"Saved as"); `test/ui-shots.mjs` takes desktop + phone screenshots for a look (nothing checked).
+
+Open: header entry "Plan" (the page itself) left out; Help is the credits dialog with four how-to lines (a real help
+page could link onpath.earth/help); Manrope is named but not loaded (system font fallback – loading it from
+onpath.earth or bundling it is the owner's call).
