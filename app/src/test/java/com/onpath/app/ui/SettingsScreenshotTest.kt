@@ -45,7 +45,8 @@ class SettingsScreenshotTest {
 
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
-        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now) = OnPathTheme {
+        waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
+        demo: DemoUi? = null) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -63,6 +64,7 @@ class SettingsScreenshotTest {
             devTools = devTools,
             diagnosticsSeenMs = seenMs,
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
+            demo = demo,
             now = now,
         )
     }
@@ -83,6 +85,16 @@ class SettingsScreenshotTest {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot { Screen(SettingsPage.DIAGNOSTICS, devTools = true) }
+    }
+    /** Developer tools → Demo location while a demo ride runs (speed, stand still, stop). */
+    @Test fun diagnosticsDemoRunning() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)))
+        paparazzi.snapshot {
+            Screen(SettingsPage.DIAGNOSTICS, devTools = true, demo = DemoUi(com.onpath.app.recording.DemoLocation.State(
+                com.onpath.app.recording.DemoLocation.Kind.RIDE, "planned route", factor = 5, paused = false, alongM = 3400.0,
+                lengthM = 12_600.0, ended = false), "planned route"))
+        }
     }
     @Test fun about() = paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
 

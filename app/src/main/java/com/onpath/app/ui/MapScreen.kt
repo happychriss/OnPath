@@ -39,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.rememberUpdatedState
 import kotlin.math.floor
 import kotlin.math.log10
@@ -67,6 +69,9 @@ fun MapScreen(
 
     val rec by vm.recState.collectAsState()
     val location by vm.tracker.location.collectAsState()
+    // only on / off: the demo state changes every second, the map screen need not recompose for that
+    val demoOn by remember { com.onpath.app.recording.DemoLocation.state.map { it != null }.distinctUntilChanged() }
+        .collectAsState(com.onpath.app.recording.DemoLocation.active)
 
     // GPS status for the dot on the locate button, refreshed every second (age of the last fix matters).
     val gps by produceState(GpsStatus.SEARCHING, vm.tracker) {
@@ -89,7 +94,7 @@ fun MapScreen(
     val footer = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
-        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }) {
+        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
             MapControls(
                 // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
                 compass = if (pointsOpen) null

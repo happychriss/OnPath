@@ -155,6 +155,8 @@ fun SettingsScreen(
     testStyle: TestStyleUi? = null,
     /** Diagnostics: the active language line; Developer tools: System / English / Deutsch. */
     language: LanguageUi = LanguageUi(),
+    /** Developer tools → Demo location (simulated GPS for screenshots); null = hidden. */
+    demo: DemoUi? = null,
     now: Long = System.currentTimeMillis(),
 ) {
     val topics = SettingsPage.entries.filter {
@@ -227,7 +229,7 @@ fun SettingsScreen(
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas, testStyle, language)
+                                    onTimeFormulas, testStyle, language, demo)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -473,6 +475,7 @@ private fun DeveloperTools(
     onTimeFormulas: (() -> Unit)? = null,
     testStyle: TestStyleUi? = null,
     language: LanguageUi = LanguageUi(),
+    demo: DemoUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -495,6 +498,7 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 testStyle?.let { TestStyleRow(it) }
+                demo?.let { DemoRow(it) }
                 LanguageRow(language)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -540,6 +544,60 @@ private fun TestStyleRow(t: TestStyleUi) {
     } else Text("No test style (tools/dev/push_style.sh puts one in ${com.onpath.app.map.StyleLoader.DEV_STYLE}).",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     OutlinedButton(onClick = t.onReload, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Reload map style") }
+}
+
+/**
+ * Developer tools → Demo location (recording/DemoLocation): simulated GPS fixes for screenshots. [state] null = off;
+ * [rideLabel] = what a ride would follow ("planned route", a shown track), null = nothing to ride.
+ */
+data class DemoUi(
+    val state: com.onpath.app.recording.DemoLocation.State?,
+    val rideLabel: String?,
+    val onRide: () -> Unit = {},
+    val onPlace: () -> Unit = {},
+    val onFactor: (Int) -> Unit = {},
+    val onPause: (Boolean) -> Unit = {},
+    val onStop: () -> Unit = {},
+)
+
+@Composable
+private fun DemoRow(d: DemoUi) {
+    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    Text("Demo location", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    val st = d.state
+    if (st == null) {
+        Text("Simulated GPS for screenshots: real GPS is ignored while it runs, the map shows DEMO, tours are named " +
+            "\"${com.onpath.app.recording.DemoLocation.TOUR_PREFIX}…\". Ends with Stop or an app restart.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = d.onRide, enabled = d.rideLabel != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Demo: ride the ${d.rideLabel ?: "planned route"}")
+        }
+        if (d.rideLabel == null) Text("Plan a route or open a track first.", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = d.onPlace, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Demo: stand at the map centre") }
+        return
+    }
+    val where = when (st.kind) {
+        com.onpath.app.recording.DemoLocation.Kind.RIDE -> "riding the ${st.label}: " +
+            "${"%.1f".format(java.util.Locale.ROOT, st.alongM / 1000)} of ${"%.1f".format(java.util.Locale.ROOT, st.lengthM / 1000)} km" +
+            when { st.ended -> " – at the end"; st.paused -> " – standing"; else -> " at ${st.factor}×" }
+        com.onpath.app.recording.DemoLocation.Kind.PLACE -> "standing at the ${st.label}"
+    }
+    Text("DEMO on – $where", style = MaterialTheme.typography.bodySmall, color = OnPathColors.Warn)
+    if (st.kind == com.onpath.app.recording.DemoLocation.Kind.RIDE) {
+        val all = com.onpath.app.recording.DemoLocation.FACTORS
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            all.forEachIndexed { i, f ->
+                SegmentedButton(selected = f == st.factor, onClick = { d.onFactor(f) },
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, all.size),
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("$f×", style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
+        if (!st.ended) OutlinedButton(onClick = { d.onPause(!st.paused) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text(if (st.paused) "Go on" else "Stand still")
+        }
+    }
+    OutlinedButton(onClick = d.onStop, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Stop demo – real GPS again") }
 }
 
 /** Data of the "Map areas (debug)" block: installed areas, areas in progress, two actions (end-to-end test only). */

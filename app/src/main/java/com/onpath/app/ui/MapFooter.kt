@@ -58,15 +58,22 @@ import com.onpath.app.recording.GpsStatus
  * (locate; in Navigate also the orientation button above it) stacked on the right.
  */
 @Composable
-fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, fabs: @Composable ColumnScope.() -> Unit) {
+fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolean = false,
+              fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             scale?.let { (label, width) -> ScaleBar(label, width) }
-            // short credit on the map; a tap opens the full credits (Settings → About)
-            Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
-                modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
-                    .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
-                    .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // short credit on the map; a tap opens the full credits (Settings → About)
+                Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
+                    modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
+                        .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
+                // simulated GPS (Developer tools → Demo): said honestly, also in screenshots
+                if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
+                    modifier = Modifier.padding(start = 6.dp, top = 4.dp).clip(RoundedCornerShape(4.dp))
+                        .background(OnPathColors.Warn).padding(horizontal = 5.dp, vertical = 3.dp))
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
     }

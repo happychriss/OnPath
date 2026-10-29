@@ -17,11 +17,11 @@ class HardCodedTextRuleTest {
     private val literal = Regex("""(\bText\(|contentDescription\s*=\s*|\btext\s*=\s*)"([^"$]*[A-Za-z]{3,}[^"]*)"""")
 
     /** Functions whose texts stay English: Settings → Diagnostics and Developer tools. */
-    private val englishFunctions = setOf("DiagnosticsSection", "LanguageRow", "DeveloperTools", "TestStyleRow",
+    private val englishFunctions = setOf("DiagnosticsSection", "LanguageRow", "DeveloperTools", "TestStyleRow", "DemoRow",
         "MapCellsDebugList", "ProblemList")
 
     /** Same in every language: names, attribution, the placeholder of the map in screenshots. */
-    private val sameEverywhere = setOf("OnPath", "Google", "© OpenStreetMap", "map")
+    private val sameEverywhere = setOf("OnPath", "Google", "© OpenStreetMap", "map", "DEMO")
 
     private fun hits() = sources.flatMap { f ->
         var fn = ""

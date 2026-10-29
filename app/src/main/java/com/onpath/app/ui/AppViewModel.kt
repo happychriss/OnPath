@@ -334,6 +334,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return cells.rollback(gen)
     }
 
+    // ---------------- demo location (Developer tools → Demo, recording/DemoLocation) ----------------
+
+    /** What "Demo: ride" would ride: the planned route, else the shown track (a GPX file / tour); null = nothing. */
+    fun demoLine(): Pair<String, List<GeoPoint>>? {
+        route?.points?.takeIf { it.size >= 2 }?.let { return "planned route" to it }
+        shown?.let { t -> t.segments.flatten().takeIf { it.size >= 2 }?.let { return "track \"${t.name}\"" to it } }
+        return null
+    }
+
+    /** Rides [demoLine] from its start at the activity's modelled speed (user's pace); real GPS is ignored meanwhile. */
+    fun startDemoRide() {
+        val (label, line) = demoLine() ?: return
+        val path = com.onpath.app.recording.DemoPath.timed(line, activity, planFactors())
+        if (path == null) { sayInfo("This line is too short for a demo ride.", NoticePlace.SETTINGS); return }
+        com.onpath.app.recording.DemoLocation.startRide(path, label)
+    }
+
+    /** Stands at the map centre (non-moving shots). */
+    fun startDemoAtMapCentre() {
+        val (lat, lon, _) = initialCamera()
+        com.onpath.app.recording.DemoLocation.jumpTo(lat, lon, null, "map centre")
+    }
+
     /** Settings → Diagnostics → "Map cells (debug)": request the cell under the map centre (own-point rule). */
     fun requestCellAtMapCentre() {
         val (lat, lon, _) = initialCamera()
@@ -1442,6 +1465,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
+            .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
+                .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
+                .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
             .put("location", loc?.let { org.json.JSONObject().put("lat", "%.5f".format(java.util.Locale.ROOT, it.latitude))
                 .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
                 .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
@@ -2801,7 +2827,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun nameRecordedTour(t: Tour) {
         // the date name in the language it was made in (EN "Tour 20 Oct…", the German pattern starts the same today)
         val datePrefix = Txt.s(Res.string.nav_tour_date_name, "\u0000").substringBefore("\u0000")
-        if (!t.name.startsWith("Tour ") && !t.name.startsWith(datePrefix)) return
+        // a demo tour (Developer tools → Demo) gets a place name too and keeps its "Demo · " mark
+        val demo = t.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
+        val dateName = t.name.removePrefix(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
+        if (!dateName.startsWith("Tour ") && !dateName.startsWith(datePrefix)) return
         viewModelScope.launch {
             val name = try {
                 val places = search.offlineIndex().entries.map { it.place }
@@ -2809,7 +2838,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // "Save only until …": named after the part that is the tour
                     val line = com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides).flatten().map { GeoPoint(it.lat, it.lon) }
                     com.onpath.app.search.RouteNamer.name(line, places)
-                }
+                }?.let { if (demo) com.onpath.app.recording.DemoLocation.TOUR_PREFIX + it else it }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
             } ?: return@launch

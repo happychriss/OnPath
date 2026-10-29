@@ -62,6 +62,7 @@ enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringReso
  * and the Wi-Fi fix twice as accurate (train station roof) – but only when it is at least
  * [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
  * [useNetwork] = false never asks for it (recording service: the track is GPS only).
+ * While a [DemoLocation] demo runs, real fixes are ignored and the simulated ones are published instead.
  */
 class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
     private val app = context.applicationContext
@@ -83,6 +84,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
 
     private val gpsListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
+            if (!DemoLocation.takesRealFix()) return
             val now = SystemClock.elapsedRealtime()
             lastGpsElapsed = now
             lastGpsAccuracy = if (loc.hasAccuracy()) loc.accuracy else 0f
@@ -95,6 +97,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     }
     private val netListener = object : LocationListener {
         override fun onLocationChanged(loc: Location) {
+            if (!DemoLocation.takesRealFix()) return
             val now = SystemClock.elapsedRealtime()
             if (useNetworkFix(lastGpsElapsed, now, loc.hasAccuracy(), loc.accuracy, lastGpsAccuracy)) {
                 lastNetElapsed = now; lastNetAccuracy = loc.accuracy
@@ -106,6 +109,28 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
         @Deprecated("Deprecated in Java")
         override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
     }
+
+    /** Simulated fixes (Developer tools → Demo) take the place of GPS; at its end the phone's own last fix. */
+    private val demoSink = object : DemoLocation.Sink {
+        override fun onDemo(fix: DemoFix, timeMs: Long) {
+            val loc = DemoLocation.toLocation(fix, timeMs)
+            lastGpsElapsed = SystemClock.elapsedRealtime(); lastGpsAccuracy = loc.accuracy
+            _enabled.value = true
+            publish(loc)
+        }
+        override fun onDemoEnd() {
+            lastGpsElapsed = 0L; lastGpsAccuracy = 0f; lastNetElapsed = 0L
+            _location.value = if (hasPermission()) lastKnownReal() else null
+            _enabled.value = isEnabled()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun lastKnownReal(): Location? = listOfNotNull(
+        // expected: a provider may be missing or have no last fix; the next real fix follows from the listener
+        runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
+        if (useNetwork) runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull() else null,
+    ).maxByOrNull { it.elapsedRealtimeNanos }
 
     private fun publish(loc: Location) {
         _location.value = loc
@@ -121,12 +146,12 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
         ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     /** The device has a GPS provider at all (emulators and some tablets do not). */
-    fun hasGps(): Boolean = try { LocationManager.GPS_PROVIDER in lm.allProviders } catch (e: Exception) {
+    fun hasGps(): Boolean = DemoLocation.active || try { LocationManager.GPS_PROVIDER in lm.allProviders } catch (e: Exception) {
         Problems.warn("gps", "Location providers could not be listed; treating device as without GPS", e)
         false
     }
 
-    fun isEnabled(): Boolean = try {
+    fun isEnabled(): Boolean = DemoLocation.active || try {
         if (Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled
         else lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     } catch (e: Exception) {
@@ -134,10 +159,14 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
         false
     }
 
-    @SuppressLint("MissingPermission")
     fun start() {
         _enabled.value = isEnabled()
-        if (running || !hasPermission()) return
+        if (!running && hasPermission()) startReal()
+        DemoLocation.register(demoSink) // a running demo gives its position at once
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startReal() {
         try {
             val providers = lm.allProviders
             if (LocationManager.GPS_PROVIDER in providers) {
@@ -148,13 +177,10 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
                 netRunning = true
             }
             running = true
-            // Seed with the last known position so the map has something immediately.
-            if (_location.value == null) {
-                val last = listOfNotNull(
-                    // expected: a provider may be missing or have no last fix; it is only a seed for the map
-                    runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
-                    if (useNetwork) runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull() else null,
-                ).maxByOrNull { it.elapsedRealtimeNanos }
+            // Seed with the last known position so the map has something immediately (not during a demo: never real).
+            if (!DemoLocation.takesRealFix()) Unit
+            else if (_location.value == null) {
+                val last = lastKnownReal()
                 if (last != null) _location.value = last
             } else {
                 // Back from the lock screen / background: the position we hold is from before. A tour keeps GPS on in
@@ -177,6 +203,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     }
 
     fun stop() {
+        DemoLocation.unregister(demoSink)
         if (!running) return
         try { lm.removeUpdates(gpsListener) } catch (e: Exception) {
             Problems.warn("gps", "Location updates could not be removed on stop", e)

@@ -145,6 +145,10 @@ class RecordingService : Service() {
     /** Activity of the recording (the navigated session's activity wins for the time model). */
     private var recActivity = com.onpath.app.routing.Activity.HIKE
     private var tripSaved = 0L
+    /** This tour carries the "Demo · " name (Developer tools → Demo fed it simulated fixes). */
+    private var demoMarked = false
+    /** The last fix was simulated: a switch between demo and real GPS starts a new track piece (never a jump). */
+    private var lastFixDemo = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -234,9 +238,13 @@ class RecordingService : Service() {
                 eleRef = segs.lastOrNull()?.lastOrNull()?.ele
                 last = null
                 recActivity = activityOf(existing.activity)
+                demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
                 loadTrip()
             } else {
-                val name = com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis())
+                // a tour started during a demo is marked as such (easy to find and delete)
+                demoMarked = DemoLocation.active
+                val name = (if (demoMarked) DemoLocation.TOUR_PREFIX else "") +
+                    com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis())
                 // the tour keeps the T level it was recorded at: reopening it sets the user's level, and its GPX type
                 // follows it
                 val sac = newTourSac(intent?.getIntExtra(EXTRA_SAC, 0) ?: 0, Prefs(this).sac)
@@ -351,7 +359,15 @@ class RecordingService : Service() {
         }
         if (tourId < 0) return
         if (loc.provider != LocationManager.GPS_PROVIDER) return
+        val demoFix = DemoLocation.isDemo(loc)
+        if (!demoMarked && demoFix) markDemoTour()
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
+        if (demoFix != lastFixDemo) {
+            // the simulated place is far from the real one: without a new piece every later fix would be a "GPS jump"
+            lastFixDemo = demoFix
+            if (last != null) { last = null; seg++; eleRef = null }
+            Problems.trace("gps", "Demo location ${if (demoFix) "started" else "ended"} during the tour: new track piece")
+        }
         // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
         restRate(loc)
 
@@ -406,6 +422,15 @@ class RecordingService : Service() {
         track.last() += p.toGeo()
         snapshotDirty = true
         publish()
+    }
+
+    /** A demo started during this tour: its name gets the "Demo · " prefix (once). */
+    private fun markDemoTour() {
+        demoMarked = true
+        safeDb("demo name") {
+            val name = db.getTour(tourId)?.name ?: return@safeDb
+            if (!name.startsWith(DemoLocation.TOUR_PREFIX)) db.rename(tourId, DemoLocation.TOUR_PREFIX + name)
+        }
     }
 
     /**
