@@ -31,7 +31,7 @@ region (name, bbox, OSM URL)
   │                           │                            ├► trails.geojson      (required)
   │                           │                            ├► ways.geojson        (optional)
   │                           │                            ├► lowways.geojson     (optional)
-  │                           │                            ├► paths.geojson       (optional, 0.7.0)
+  │                           │                            ├► paths.geojson       (optional)
   │                           │                            └► trailnames.geojson  (optional)
   │                           ├─ extract_pois.py ──────────► pois.geojson        (optional)
   │                           └─ extract_addresses.py ─────► addresses.sqlite    (optional, offline address search)
@@ -124,7 +124,7 @@ Notes per step:
 - **4 Terrain** downloads every tile z5–13 of the bbox (16 threads, 6 tries with back-off). It does not depend on
   the OSM data, so the script only rebuilds it when the bbox, the script or the format changes. Tile ranges treat
   the bbox's east/south edge as exclusive (a bbox ending exactly on a tile edge – a z10 cell – takes no extra
-  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 13`; 12 until 2026-10-22), `--cell 10/543/361` (only the
+  column/row). Other modes: `--format 2` (= `--webp --round 0.25 --maxzoom 13`), `--cell 10/543/361` (only the
   cell's own tiles z10–max), `--cache DIR` (keep the AWS PNGs; contours read the same folder). WebP needs Pillow
   with WebP support (the normal wheels have it).
 - **5 Overlays** do two passes over the PBF (relations, then ways with node locations, in memory –
@@ -140,23 +140,23 @@ Notes per step:
 | Refinement | Data (pipeline) | Style (`tools/make_style.py` + modules) | App |
 | --- | --- | --- | --- |
 | **Trail names + route numbers** | `extract_overlays.py` → `trailnames.geojson`: `t="n"` trail name lines (German name: `name:de` or the German half of "DE - IT"; unnamed member ways get the hiking relation's name; same-name ways merged, simplified + Chaikin-smoothed; `tier` 1 = Waalweg/Höhenweg/≥2.5 km, 2 = normal, 3 = short or not a "…weg"; `len` m). `t="r"`: AVS route numbers of the way's hiking relations ("25", "24 · 25") | `tools/style_trail_names.py`: layers `trail-ref` (z14+, upright red numbers), `trail-name-t3/t2/t1` (z15/z14/z13, longer first) | optional, stripped by `OptionalSources` when missing |
-| **Trail difficulty** | `trails.geojson`: `sac` 0–6 from `sac_scale`, `mtb` "0"–"6" from `mtb:scale`, `vis` 0–5 from `trail_visibility` (see "Way quality fields") | `trails-*` layers: rhythm by SAC (solid / dots / dot-dash), faint trails sparser + lighter, no underlay (0.7.0); `trails-sac-label` (T, hiking), `trails-mtb-label` (S, MTB) | required |
-| **Paths and tracks (0.7.0)** | `paths.geojson`: every path / footway / bridleway / track (+ ways with sac_scale), exact geometry; `k` t/p, `sac`, `vis`, `st` (steps), `tt` (tracktype), `pv` (paved track) | `paths-own` (black line), `track-own-single` (< z14.5 brown dashed), `track-own-compact/medium/loose/soft` (two dotted brown edges, spacing by `tt`), `track-own-paved` (like a street) | optional; without it the base map's lines are drawn (`path-base`, `track-base` carry metadata `onpath:fallback-for: paths`, kept by `OptionalSources` only then) |
+| **Trail difficulty** | `trails.geojson`: `sac` 0–6 from `sac_scale`, `mtb` "0"–"6" from `mtb:scale`, `vis` 0–5 from `trail_visibility` (see "Way quality fields") | `trails-*` layers: rhythm by SAC (solid / dots / dot-dash), faint trails sparser + lighter, no underlay; `trails-sac-label` (T, hiking), `trails-mtb-label` (S, MTB) | required |
+| **Paths and tracks** | `paths.geojson`: every path / footway / bridleway / track (+ ways with sac_scale), exact geometry; `k` t/p, `sac`, `vis`, `st` (steps), `tt` (tracktype), `pv` (paved track) | `paths-own` (black line), `track-own-single` (< z14.5 brown dashed), `track-own-compact/medium/loose/soft` (two dotted brown edges, spacing by `tt`), `track-own-paved` (like a street) | optional; without it the base map's lines are drawn (`path-base`, `track-base` carry metadata `onpath:fallback-for: paths`, kept by `OptionalSources` only then) |
 | **Way quality** | `ways.geojson`: `k`, `tt`, `surf`, `smooth` (see "Way quality fields") | `surface-loose-*` (bike activities) | optional, stripped by `OptionalSources` when missing; toggled per activity (`MapController.setOverlay`) |
 | **Route bands** | `routes.geojson`: route relations `hiking/foot` → `hike`, `bicycle` → `bike`, `mtb` → `mtb`, **merged per kind into continuous lines** (the band is transparent); major routes (net ≥ 2) again as original pieces with `majoronly`, `ref`, `name`, `net` | `route_bands()`: transparent band #168403 at 40 % **below** roads/paths/trails (excludes `majoronly`); pink highlight + name from the `majoronly` pieces; ids `routes-hike/-bike/-mtb` | toggled per activity (`MapController`) |
 | **POIs + tiers** | `extract_pois.py`: 28 kinds (`classify()`), ways/areas → representative point; **bus de-dup**: same-name stops within 40 m merged to their midpoint (`MERGE_KINDS`) | `POI_TIERS` in `make_style.py`: `poi-tier1` (icon z12, dot until z13, label z14), `poi-tier2` (z14/z15), `poi-tier3` (z15/z16); sort key = kind rank, named first, then the fixed per-POI priority `pr` (`extract_pois.priority()`: tag importance + position tie-break – the same POI wins at every zoom and in every tile; cell schema 4); see `docs/poi-categories.md` | Settings filter wraps every `poi-*` layer filter; tap lookup |
 | **Railways + stations** | rails from base tiles (`transportation` class `rail`); stations = POI kind `train` (railway station/halt, no subway/funicular/tourist) | `rail-casing`, `rail` (from z8), `rail-hatch` (z12); `poi-station` top POI layer, icon z10, name z11 (`station.*` tokens) | station follows the POI filter (`train`) |
 | **Sprite (POI icons)** | `tools/make_sprite.py` + `tools/icons/*.svg` → `app/src/main/assets/sprites/onpath{,@2x}.{json,png}` | `"sprite": "asset://sprites/onpath"`, images `poi-<kind>`, `poi-<kind>-small` | **APK asset** – a new kind/icon needs a new app build |
-| **Design tokens** | `tools/themes/classic.json` (the one style since 0.7.0; rationale `docs/design/map-colour-analysis.md`), read by `tools/style_theme.py`; proposals in `tools/themes-proposals/` | `make_style.py` → `onpath.json` | bundled in APK; `styles/` override in the data folder wins (`StyleLoader`); extra themes only as overrides |
-| **Ground symbols (0.7.0)** | `tools/make_sprite.py` `PATTERNS` (wetland, farmland, rock, sand tiles in the sprite) | `landcover-<cls>-pattern` (fill-pattern, z14+) | bundled sprite |
+| **Design tokens** | `tools/themes/classic.json` (the one style; rationale `docs/design/map-colour-analysis.md`), read by `tools/style_theme.py` | `make_style.py` → `onpath.json` | bundled in APK; `styles/` override in the data folder wins (`StyleLoader`); extra themes only as overrides |
+| **Ground symbols** | `tools/make_sprite.py` `PATTERNS` (wetland, farmland, rock, sand tiles in the sprite) | `landcover-<cls>-pattern` (fill-pattern, z14+) | bundled sprite |
 | **Contours** | `build_contours.py`: 50 m lines at z12, 20 m at z13 (MVT layer `contour`, props `ele`, `idx`=1 every 100 m) | `contour-*` layers | optional, toggle in Settings |
 | **Hillshade / 3-D relief** | `terrain.pmtiles` (Terrarium) | `hillshade.*` tokens | required |
 | **Base map** | Planetiler OpenMapTiles z0–14 | land cover, water, roads, paths, labels (German) | required |
 
 ### Way quality fields (stable names – other code may read them)
 `trails.geojson` and `ways.geojson` keep a near-exact geometry (0.5 m simplification, 5 decimals, source
-`maxzoom` 16 / `tolerance` 0.25) because they are drawn right over the base map's own path / track lines; the
-earlier 3 m simplification showed as a second line beside the path at z17+.
+`maxzoom` 16 / `tolerance` 0.25) because they are drawn right over the base map's own path / track lines; a
+3 m simplification showed as a second line beside the path at z17+.
 
 | File | Key | Values | From OSM |
 | --- | --- | --- | --- |
@@ -196,28 +196,28 @@ once the style reads them from `overlays`.
 | Layer | Zooms | Content |
 | --- | --- | --- |
 | `paths` | 11–12 | former `lowways.geojson`: every path / track coarse (~8 m), only `k` "t" / "p" and the town flag `u` (schema 6) |
-| `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` tunnel – since schema 7 `t` a real underpass (any tunnel value but building_passage, or `layer` < 0 on a way that is no bridge; by the tag alone, no check of a road / railway above) or `p` a building passage (tunnel=building_passage, or covered=yes / indoor=yes without a tunnel tag or negative layer – a tunnel tag wins: the Hilden station underpass is tunnel=yes + indoor=yes); before 7 `tn` 1 for any tunnel. Hilden cut: 2 062 `p`, 2 180 `t` (527 by layer alone) on z13–14 paths, was 2 624 × 1, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded), `mtb` 1–6 mtb:scale (number; since 2026-10-21, older packages lack it), `ar` 1 area=yes (pedestrian square outline; schema 6), `br` 1 bridge (OSM `bridge` other than no; schema 7: a town footbridge stays above the streets), `fw` on hidden footways (schema 7): `s` sidewalk, `c` crossing, `t` traffic island (footway=traffic_island is hidden like a sidewalk since schema 7). **Towns (schema 6, 2026-10-26):** `u` 1 built-up land / 2 town green (park, cemetery, allotments …) on footways, paths, bridleways, cycleways, steps and pedestrian ways – never on tracks or graded trails (T2+, faint); `k` = "l" link pieces: the hidden sidewalk / crossing chain (≤ 30 m) from a loose path end to the nearest drawn way, with the path's `u` (`extract_overlays.py` `TownIndex`, `link_pieces`; docs/design/map-colour-analysis.md "Quiet towns") |
-| `streets` | 13–14 | small streets (owner 2026-10-21), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. `u` 1 = a town street (built-up land, schema 6). `bs` 1 = bicycle street (`bicycle_road=yes` or `cyclestreet=yes`, schema 7: the bike map draws it as a bike way). Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
-| `paths`, `streets` | 13–14 | **router classes** (with `extract_overlays.py --wayclass`, since cell schema 3, rebuilt with the tuned bike profiles in schema 5; docs/map-style-notes.md "Router classes"): `ch` hike, `ct` trekking, `cf` touring + e-bike (touring.brf), `cm` MTB + e-MTB, each 0 good / 1 possible / 2 forbidden; `cr` 1 / −1 bikes may ride only along / against the line |
-| `areas` | 14 | **street areas** (schema 7, Hilden Hagelkreuz 2026-10-26; the style draws them from z16, over-zoomed): polygons simplified ~0.5 m, pieces under 2 m² left out; `a` = `foot` (area:highway footway / pedestrian / path / sidewalk / steps / cycleway; highway footway / path / cycleway + area=yes), `square` (highway=pedestrian + area=yes, place=square), `island` (area:highway=traffic_island, traffic_calming=island), `platform` (area:highway / highway=platform, public_transport=platform + area=yes), `bridge` (man_made=bridge). Optional (no file when the cell has none) |
+| `paths` | 13–14 | every way of `paths.geojson` with its props (`k` t/p, `sac`, `vis`, `st`, `tt`, `pv`) **plus** ways the style used to read from the base map, `k` = "x" (never drawn as a path line): cycleways, steps, pedestrian streets / areas, sidewalks / crossings, via ferratas, roads with cycle lanes or `oneway:bicycle`. Extra props (only when set): `sub` OSM highway unless path / track (footway, bridleway, cycleway, steps, pedestrian, via_ferrata, or a road class), `tn` tunnel – since schema 7 `t` a real underpass (any tunnel value but building_passage, or `layer` < 0 on a way that is no bridge; by the tag alone, no check of a road / railway above) or `p` a building passage (tunnel=building_passage, or covered=yes / indoor=yes without a tunnel tag or negative layer – a tunnel tag wins: the Hilden station underpass is tunnel=yes + indoor=yes); before 7 `tn` 1 for any tunnel. Hilden cut: 2 062 `p`, 2 180 `t` (527 by layer alone) on z13–14 paths, `ac` 1 access=no/private, `foot` / `bicycle` (OSM values), `uv` 1 unpaved cycleway (OpenMapTiles' unpaved list), `ow` 1 / −1 oneway, `owb` oneway:bicycle (0 no, 1 yes, −1), `cwl` / `cwr` cycle infrastructure left / right (`l` lane, `t` track, `s` shared lane, `b` bus lane, `o` opposite), `vf` via ferrata (via_ferrata_scale 1–6, 0 = not graded), `mtb` 1–6 mtb:scale (number; older packages lack it), `ar` 1 area=yes (pedestrian square outline; schema 6), `br` 1 bridge (OSM `bridge` other than no; schema 7: a town footbridge stays above the streets), `fw` on hidden footways (schema 7): `s` sidewalk, `c` crossing, `t` traffic island (footway=traffic_island is hidden like a sidewalk since schema 7). **Towns (schema 6):** `u` 1 built-up land / 2 town green (park, cemetery, allotments …) on footways, paths, bridleways, cycleways, steps and pedestrian ways – never on tracks or graded trails (T2+, faint); `k` = "l" link pieces: the hidden sidewalk / crossing chain (≤ 30 m) from a loose path end to the nearest drawn way, with the path's `u` (`extract_overlays.py` `TownIndex`, `link_pieces`; `docs/design/map-colour-analysis.md` "Quiet towns") |
+| `streets` | 13–14 | small streets (owner), smoothed: OpenMapTiles classes `minor` (highway residential, living_street, unclassified, road) and `service` – the trimmed base map has none at z13–14; tertiary and bigger stay in the base map. OpenMapTiles attribute names so the style keeps its filters: `class`, `brunnel` bridge / tunnel, `service` (OSM value), `access` "no" (access no / private), `oneway` 1 / −1, `foot` / `bicycle`. Driveways / parking aisles / drive-throughs only at z14. `u` 1 = a town street (built-up land, schema 6). `bs` 1 = bicycle street (`bicycle_road=yes` or `cyclestreet=yes`, schema 7: the bike map draws it as a bike way). Street names stay in the base map's `transportation_name`. Optional (a cell without streets has no such layer) |
+| `paths`, `streets` | 13–14 | **router classes** (with `extract_overlays.py --wayclass`, cell schema 3+, with the tuned bike profiles from schema 5; `docs/map-style-notes.md` "Router classes"): `ch` hike, `ct` Gravelbike (trekking.brf), `cf` Bike + E-bike (touring.brf), `cm` MTB + E-MTB, each 0 good / 1 possible / 2 forbidden; `cr` 1 / −1 bikes may ride only along / against the line |
+| `areas` | 14 | **street areas** (schema 7; the style draws them from z16, over-zoomed): polygons simplified ~0.5 m, pieces under 2 m² left out; `a` = `foot` (area:highway footway / pedestrian / path / sidewalk / steps / cycleway; highway footway / path / cycleway + area=yes), `square` (highway=pedestrian + area=yes, place=square), `island` (area:highway=traffic_island, traffic_calming=island), `platform` (area:highway / highway=platform, public_transport=platform + area=yes), `bridge` (man_made=bridge). Optional (no file when the cell has none) |
 | `barriers` | 14 | barrier nodes that block at least one activity (`--wayclass`): `b` mask 1 hike, 2 trekking, 4 touring, 8 MTB. Optional |
 | `trails` | 13–14 | as `trails.geojson` |
 | `ways` | 13–14 | as `ways.geojson` |
-| `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped); hiking pieces split by SAC grade: `sac` 1–6 where graded, `hx` 1 where the hiking profile forbids the way (`--wayclass`) – the app greys the band above the user's T level. **Bike (schema 7, Hilden field review 2026-10-26):** cycle routes only of the networks `lcn` / `rcn` / `ncn` / `icn` (relations with `network=bcn`, `bicycle` or none drew a route line along ways without a signposted route; the router's route pseudo-tags are unchanged); label lines `lb` 1 (+ `majoronly` 1, `name`, `ref`, no `net`): for every way whose best-ranked *named* cycle route is not already named by its `majoronly` piece (a local route such as "Radweg Rund um Hilden", or a named route under an unnamed regional one), merged per name; names of whole networks ("Radverkehrsnetz …", "… Restnetz") left out. The highlight (`net`) still comes from the highest-ranked route |
+| `routes` | 9–14 | as `routes.geojson` (empty `ref` / `name` dropped); hiking pieces split by SAC grade: `sac` 1–6 where graded, `hx` 1 where the hiking profile forbids the way (`--wayclass`) – the app greys the band above the user's T level. **Bike (schema 7):** cycle routes only of the networks `lcn` / `rcn` / `ncn` / `icn` (relations with `network=bcn`, `bicycle` or none drew a route line along ways without a signposted route; the router's route pseudo-tags are unchanged); label lines `lb` 1 (+ `majoronly` 1, `name`, `ref`, no `net`): for every way whose best-ranked *named* cycle route is not already named by its `majoronly` piece (a local route such as "Radweg Rund um Hilden", or a named route under an unnamed regional one), merged per name; names of whole networks ("Radverkehrsnetz …", "… Restnetz") left out. The highlight (`net`) still comes from the highest-ranked route |
 | `trailnames` | 13–14 | as `trailnames.geojson` (the app's search reads them from here when the GeoJSON is missing) |
 | (`contour`) | 12–13 | later: the layer of `contours.pmtiles` |
 
-**Smoothing (`--smooth`, default for format 2, owner 2026-10-20, stronger 2026-10-21):** every bend ≥ 15°
-(`--smooth-angle`, was 20°) of a path / track / cycleway / steps / pedestrian way (or any way with `sac_scale`) and, in
+**Smoothing (`--smooth`, default for format 2, owner):** every bend ≥ 15°
+(`--smooth-angle`) of a path / track / cycleway / steps / pedestrian way (or any way with `sac_scale`) and, in
 format 2, of every small street (layer `streets`) becomes a short quadratic curve that stays within 3 m
-(`--smooth-dev`, was 1.5 m) of the OSM line (cut ≤ 45 % of each leg, ≤ 20 m). Way ends and junction nodes (shared with
+(`--smooth-dev`) of the OSM line (cut ≤ 45 % of each leg, ≤ 20 m). Way ends and junction nodes (shared with
 any other highway – also where a small street meets a base-map road) stay exact, so the network stays connected and
 small streets still meet the unsmoothed tertiary+ roads; a way is smoothed whole before any clipping, so neighbouring
 cells compute the same line. Tertiary and bigger roads are not smoothed (the base map draws them). Route bands use the
-same 0.5 m / smoothed geometry as the way below them – the former 3 m simplification put the band ~3 m beside the path
+same 0.5 m / smoothed geometry as the way below them – a 3 m simplification put the band ~3 m beside the path
 at z16+. Smoothed lines keep 6 decimals.
 
-**Towns and path links (schema 6, 2026-10-26).** `extract_overlays.py` reads the extract once more with osmium's area
+**Towns and path links (schema 6).** `extract_overlays.py` reads the extract once more with osmium's area
 assembly (landuse / leisure / natural / amenity areas only) and the centre of every building way, before the way pass.
 Built-up = residential / commercial / retail / industrial / garages / railway / education landuse or a school /
 university / college / hospital / kindergarten area, grown by 25 m, or ≥ 8 buildings in the 3 × 3 squares of 40 m
@@ -229,11 +229,11 @@ straight gap, when the path piece is shorter than 20 m, or when the end node is 
 cut (cells 10/531/341–342 + 5 km, 88 MB PBF): whole overlay step 69 s, 1.5 GB peak; `overlays.pmtiles` +1.8 %;
 1 191 link pieces.
 
-**Sidewalk fragments (schema 7, Hilden Hagelkreuz 2026-10-26).** A town footway / path (`u` 1) shorter than 25 m, without
+**Sidewalk fragments (schema 7).** A town footway / path (`u` 1) shorter than 25 m, without
 a name, that touches no other drawn way at either end (a stub of the sidewalk network across a traffic island or a
 corner, untagged as sidewalk) is written as `k` "x" like a sidewalk and gets no link pieces; footway=traffic_island
-ways are hidden like sidewalks / crossings. Hilden cut (cell + 5 km): 765 fragments + 154 traffic-island footways no
-longer drawn (drawn town footways 36 888 → 36 090), link pieces 620 → 604; street areas 3 897 (`areas.ndjson` 1.3 MB
+ways are hidden like sidewalks / crossings. Hilden cut (cell + 5 km): 765 fragments + 154 traffic-island footways not
+drawn (drawn town footways 36 888 → 36 090), link pieces 620 → 604; street areas 3 897 (`areas.ndjson` 1.3 MB
 next to 57 MB of paths). Meran cut: 16 fragments, 105 areas.
 
 **Sizes** (test region 10.70–11.60 E / 46.30–46.85 N, OSM of 17 Oct 2026; cell = z10 10/543/361 Meran, own z ≥ 10 tiles):
@@ -248,7 +248,7 @@ next to 57 MB of paths). Meran cut: 16 fragments, 105 areas.
 
 Smoothing costs ~3 MB (region) because curves have more vertices and route bands now follow the exact path.
 
-Small streets + stronger smoothing (2026-10-21, package `out-f2c`): `overlays.pmtiles` 14.2 → **16.5 MB** (layer
+Small streets + 15° / 3 m smoothing (package `out-f2c`): `overlays.pmtiles` 14.2 → **16.5 MB** (layer
 `streets` ~2.0 MB, 15° / 3 m smoothing +0.3 MB), base map 21.0 → **19.9 MB** (no minor / service lines at z13–14);
 net +1.3 MB for the region. Overlay build ~80 s.
 
@@ -382,7 +382,7 @@ importer does not verify checksums yet (the app could read `manifest.json` later
 ## 9b. Overview map (in the APK, optional)
 
 The app ships one small **world overview** so a place without downloaded data is never blank at low zoom
-(map-cells.md §7; owner 2026-10-21: one world overview, no special case for the Alps). `tools/build_overview.sh
+(map-cells.md §7; owner: one world overview, no special case for the Alps). `tools/build_overview.sh
 [OUT_DIR]` builds two files into `OUT_DIR/overview/` (plus `OUT_DIR/SHA256SUMS`), without any OSM download:
 
 | File | What | Built by |
@@ -397,17 +397,17 @@ carry what the over-zoomed views up to z9 need) and, because OpenMapTiles takes 
 rivers / land use from z6, copies the last Natural Earth level of those layers into the deeper tiles (z5 borders from
 z4; with `BASE_MAXZOOM=6` also z6 water, rivers, land use from z5).
 
-Measured 2026-10-21 on the laptop: Planetiler 1 m 10 s (1.6 GB RAM), `overview_merge.py` ~10 s, hill shade ~4 min
+Measured on the laptop: Planetiler 1 m 10 s (1.6 GB RAM), `overview_merge.py` ~10 s, hill shade ~4 min
 (14 373 AWS tiles, cached in `WORK/terrarium`; 4 workers under `nice -n 19 ionice -c3`).
 
 | Variant | base | relief | together |
 | --- | --- | --- | --- |
-| **base z0–5 + pre-rendered hill shade z0–7, WebP q60 (default since 0.8.8)** | 2.8 MB | 11.5 MB | **14.3 MB** |
+| **base z0–5 + pre-rendered hill shade z0–7, WebP q60 (default)** | 2.8 MB | 11.5 MB | **14.3 MB** |
 | base z0–5 + pre-rendered hill shade z0–7, q80 | 2.8 MB | 17.2 MB | 20.0 MB |
-| base z0–5 + raster-dem terrain z0–6, 32 m (0.8.7) | 2.8 MB | 17.4 MB | 20.1 MB |
+| base z0–5 + raster-dem terrain z0–6, 32 m | 2.8 MB | 17.4 MB | 20.1 MB |
 | base z0–6 + raster-dem terrain z0–5, 16 m | 7.0 MB | 7.6 MB | 14.7 MB |
 
-**Why pre-rendered (owner field test 0.8.7):** MapLibre draws an over-zoomed raster-dem with a straight seam at every
+**Why pre-rendered (owner field test):** MapLibre draws an over-zoomed raster-dem with a straight seam at every
 tile edge (the DEM border is only back-filled from loaded neighbours of the same zoom), magnifies the coarse, rounded
 DEM into blurry "worms", and parent / child tiles shade with different strength (tone blocks). `build_hillshade.py`
 shades with MapLibre's own hillshade formula and the style's two hillshade layers, from a DEM block with a border from
@@ -439,18 +439,18 @@ over-zooms the last level) drawn below z10, and the original starts at z10. MapL
 another source has no data, so the split is by zoom: no doubled hill shade, lines or labels, and cells (z ≥ 10 only)
 fit exactly. From z10 the overview's fills, lines and relief go on underneath (`<id>~under`, no labels), and an opaque
 fill in the background colour (`detail-cover`, GeoJSON of the installed cells' / region package's boxes) hides them
-where the detailed map is – so outside the downloaded areas the map is never empty beige (owner field test 0.8.7).
+where the detailed map is – so outside the downloaded areas the map is never empty beige (owner field test).
 `hillshade.pmtiles` (when bundled) replaces the DEM copies by one `raster` layer `hillshade~overview` right above the
 background. PMTiles assets are stored uncompressed (`noCompress`): MapLibre's `AssetManagerFileSource`
 reads byte ranges with `AAsset_seek64`, which would otherwise inflate from the start for every tile.
 
 **Release builds** (`.github/workflows/release.yml`, step "Overview map"): the files live in a versioned folder in R2
-(`overview/<date>/`: `base.pmtiles`, `terrain.pmtiles`, `SHA256SUMS`, uploaded by hand from the laptop); the
+(`overview/<date>/`: `base.pmtiles`, `hillshade.pmtiles`, `SHA256SUMS`, uploaded by hand from the laptop); the
 repository variable `ONPATH_OVERVIEW_URL` (folder URL ending in `/`) points at it. The workflow downloads the three
 files, checks the hashes and sets `ONPATH_OVERVIEW_ASSETS`; without the variable the APK has no overview (warning in
 the run). A new overview = a new folder + a new variable value; old APKs are unaffected.
 
-**Region packages (z7–9, since 2026-10-26, `docs/design/map-cells.md` §20):** where the user has map cells, a
+**Region packages (z7–9, `docs/design/map-cells.md` §20):** where the user has map cells, a
 package per z7 tile (`tools/cells/build_package.sh`, ~3 MB: OpenMapTiles z7–9 without farmland, long-distance routes,
 the same pre-rendered relief for z7–9) gives the region view the overview cannot; the overview stays for z0–6 and
 everywhere else.

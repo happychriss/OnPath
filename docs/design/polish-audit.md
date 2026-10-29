@@ -1,8 +1,8 @@
 # OnPath – UI smoothness & polish audit (read-only, 2026-10-20)
 
-Status 2026-10-20: **done in 0.7.13:** A1 (hold ring fades in after ⅓ of the hold), A2 (padding re-applied after the follow transition), A3 (Navigate cards glide in/out), A6 (profile scrub: eased first move, gesture survives new fixes), A7 (dark status-bar icons), B1 (heading turned at display rate with ease-out, MapLibre compass animation off, deadband 2°). Open: A4, A5, A8–A18, B2–B6 – owner picks.
+Status: audit of app 0.7.11 (line numbers as of that code). **Done:** A1 (hold ring fades in after ⅓ of the hold), A2 (padding re-applied after the follow transition), A3 (Navigate cards glide in/out), A6 (profile scrub: eased first move, gesture survives new fixes), A7 (dark status-bar icons), B1 (heading turned at display rate with ease-out, MapLibre compass animation off, deadband 2°). Open: A4, A5, A8–A18, B2–B6 – owner picks.
 
-I read the code at `main` (0.7.11) and checked MapLibre 13.7.1's own behaviour in the bytecode of the cached AAR
+I read the code and checked MapLibre 13.7.1's own behaviour in the bytecode of the cached AAR
 (`LocationComponentConstants`, `LocationAnimatorCoordinator`, `LocationComponent`, `LocationCameraController`).
 Items marked **[verified]** are confirmed in code or library bytecode. Items marked **[guess]** are likely but need
 a look on the phone or a profiler trace.
@@ -260,7 +260,7 @@ jerkiness comes from four other things:
 - **Fix:** `AnchoredDraggable` sheet with velocity, rubber band and three anchors, plus `AnimatedContent` (fade and
   size) when the sheet content changes. This replaces A9.
 - **Effort:** M · **Risk:** low–medium (Paparazzi snapshots will change).
-- **Done (sheet part, after field test 0.8.9):** the plan sheet follows the finger, settles with a spring by distance
+- **Done (sheet part):** the plan sheet follows the finger, settles with a spring by distance
   and fling (`SheetDrag`), nested scroll with the Points list. `AnimatedContent` between panels still open.
 
 ### B5 · MEDIUM – Main-thread work exactly when Navigate starts or a re-route arrives

@@ -1,8 +1,9 @@
-# Web planner – handover laptop → cloud (2026-10-23)
+# Web planner
 
-Status: **idea + proposal, nothing built.** Owner hands this to the cloud session (start 2026-10-24).
+Status: **phase 1 is built** – plan links / QR codes open in the app (core feature C15, `PlanCode`). The browser
+planner's code and its full design (spike result, phase 1 plan links, test page host, plan edits) live on branch
+`web-spike` (`web/`, this file's §6–§10 there); this copy on `main` keeps the background.
 Owner's wish: a web version for planning a route online, built **with as much of one codebase as possible**.
-Not decided yet: the purpose (§2) – ask the owner first, one question at a time.
 
 ## 1. Why one codebase is realistic
 
@@ -13,7 +14,7 @@ The app already separates "what to do" from "how the phone does it":
 - **Routing behind an interface** (`routing/RoutingContract.kt`, `RoutingEngine`).
 - **The map is a style + PMTiles files.** maplibre-gl JS reads the same style JSON and the same area files (we
   already render the style with maplibre-gl JS in headless Chrome for checks). Keep one style valid for both
-  (lesson 2026-10-22: Native rejected zoom-interpolated hillshade colours – `StyleFormatTest` guards Native).
+  (Native rejects zoom-interpolated hillshade colours – `StyleFormatTest` guards Native).
 
 So: **Kotlin Multiplatform** – the same Kotlin compiled for Android and for the browser (Kotlin/Wasm).
 
@@ -34,9 +35,9 @@ computed on the user's computer, the server only sees which areas are needed. Sa
 **Browser → phone without an account:** the plan's points in a link / QR code; scanning or tapping it opens the plan
 in OnPath. Nothing stored on a server.
 
-## 2. Purpose – to decide with the owner first
+## 2. Purpose
 
-- **A. Plan at home on a big screen, send to the phone** (laptop recommendation; what Komoot users know). Map,
+- **A. Plan at home on a big screen, send to the phone** (what Komoot users know). Map,
   points, route, profile, warnings, activity + T level, link/QR to the phone.
 - **B. Full planner for people without Android** (iPhone / desktop): plus saving routes in the browser, GPX
   import/export. Build A so B can grow from it.
@@ -56,22 +57,7 @@ in OnPath. Nothing stored on a server.
    (anonymous quota, supporter code). Decide together.
 6. Side effect: shared logic/UI would also carry an iOS app later (routing on iOS stays the hard part; no Java).
 
-## 4. Proposed steps
-
-0. Ask the owner the purpose (§2), one question at a time.
-1. **Two spikes in parallel, 1–2 days each, on a separate branch (nothing in main, app unchanged):**
-   - **Spike 1 – BRouter in the browser:** TeaVM → Wasm, range-reader adapter for rd5 1° parts, run 10–20 real
-     routes from `tools/routing/jvm-test` in the browser and compare with the JVM/phone result (same line, same
-     length); measure Wasm size, load time, route time.
-   - **Spike 2 – shared UI on the web:** Compose Multiplatform wasmJs mini page with maplibre-gl JS underneath:
-     set points (click), call the shared planning logic, draw route + elevation profile. Judge feel, size, speed.
-2. Short report to the owner with numbers and a recommendation (full Compose web vs TypeScript UI + shared logic).
-3. If yes: move the pure logic into a KMP `shared` module first (worth it anyway; no user-visible change), then a
-   minimal web planner for purpose A.
-
-## 5. Owner context to keep
+## 4. Owner context
 
 - Owner principles: robust first, offline by design, everything on the device, simple; no account, no tracking.
-- Public texts factual (see laptop memory "public text tone": like telling a friend, no marketing).
-- Ask the owner one question at a time (AskUserQuestion), with a recommendation.
-- Laptop load / builds: cloud session builds in its own environment.
+- Public texts factual (`docs/owner-preferences.md`: like telling a friend, no marketing).

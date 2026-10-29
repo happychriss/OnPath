@@ -9,7 +9,7 @@ OnPath is developed by Claude Code sessions on several machines that the owner u
 | Gets the app to the phone by | `./gradlew installDebug` / `adb install -r` | GitHub Release → in-app update (Settings → Updates) |
 | Map data | `adb push` or zip import | builds packages with `tools/build_region.sh` |
 
-Since 2026-10-25 the owner also works from the desktop PC **donald** (local network): a session there follows the
+The owner also works from the desktop PC **donald** (local network): a session there follows the
 laptop column (no phone attached unless the owner says so) and claims with **`[desktop]`** (laptop `[laptop]`, cloud
 `[cloud]`). Every session reads this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
 work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; the sessions never
@@ -88,7 +88,7 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
 | Why something was done | commit messages (say *why*, not only *what*) |
 | Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
-| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access; read **LIESMICH – privat** first) – never copied into this repo. Drive documents are never edited: a change = a new version, the old one is renamed "(… ersetzt)" and moved to **Archiv** (owner 2026-10-27) |
+| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access; read **LIESMICH – privat** first) – never copied into this repo. Drive documents are never edited: a change = a new version, the old one is renamed "(… ersetzt)" and moved to **Archiv** (owner) |
 
 Never rely on chat history of another session – if it matters, it must be in the repo.
 

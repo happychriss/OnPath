@@ -1,8 +1,7 @@
 # How the owner likes to work (for every Claude session)
 
-Collected by the laptop session 2026-10-18 … 2026-10-25 (moved here from its local memory so every machine – laptop,
-desktop "donald", cloud – has it). Product rules (UX, texts) are also in `CLAUDE.md`, `docs/backlog.md` owner
-decisions and the reviews; this file is about **how we work together**.
+Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, texts) are in `CLAUDE.md` and the
+`docs/backlog.md` owner decisions; this file is about **how we work together**.
 
 ## Talking with the owner
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
@@ -32,7 +31,7 @@ decisions and the reviews; this file is about **how we work together**.
   CI or on the owner's phone.
 - **Code first for bugs:** when diagnostics exist, find the cause by reading the code and reproduce it in a JVM test.
   Use the phone only briefly to confirm, say how long, say when it is free again, and restore the owner's app state
-  before handing it back. (2026-10-23: a long trial-and-error session on the phone at bedtime was not OK.)
+  before handing it back (a long trial-and-error session on the phone at bedtime was not OK).
 - **Don't weaken CI gates** without the owner's explicit words. Releases are batched unless the owner asks.
 
 ## The owner's phone (Pixel 8, adb)
@@ -50,4 +49,4 @@ decisions and the reviews; this file is about **how we work together**.
 - Remove an agent's worktree only after its completion notice AND when no message to it is pending (twice a resumed
   agent lost its work).
 - Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo, the
-  Marketing repo, or a project folder (2026-10-25: research files were lost this way).
+  Marketing repo, or a project folder (research files were lost this way).

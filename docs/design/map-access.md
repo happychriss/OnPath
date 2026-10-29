@@ -1,9 +1,9 @@
 # Map server access without registration (design note, not built)
 
-Status: **idea for later – decide before the public launch** (owner discussion 2026-10-23). Nothing here is built.
+Status: **idea for later – decide before the public launch** (owner discussion). Nothing here is built.
 Related: `docs/design/map-hosting.md` (Worker, R2, Cloud Run), Settings → Privacy (what leaves the phone).
 
-## 1. Today (0.10.x)
+## 1. Today
 
 - The app sends one shared app key in the header `X-OnPath-Key` (+ `X-OnPath-App` = app version) on every `/v1/`
   call (`cells/CellApi.kt`). The key is compiled in from `onpath.mapKey.test` / `onpath.mapKey.production`

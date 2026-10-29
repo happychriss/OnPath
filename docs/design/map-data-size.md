@@ -1,7 +1,8 @@
 # Map data size – how to make it compact on the phone (proposal)
 
 Status: **built as "format 2"** – the cells and the app use format 2 only (format-1 cells are deleted by the daily
-cloud cleanup, `map-hosting.md` §7g). Below: the proposal and measurements of 2026-10-19/20 (history).
+cloud cleanup, `map-hosting.md` §7g). Below: the proposal and its measurements (design background;
+terrain later went back to z13, `docs/map-style-notes.md` "Hill shading").
 Measured 2026-10-19 (laptop) on the Bozen/Meran data (OSM of 17 Oct 2026), Planetiler 0.10.2, tippecanoe 2.79.0,
 MapLibre Native Android 13.7.1. Scratch scripts were not committed; the method for each number is described below.
 
@@ -17,7 +18,7 @@ MapLibre Native Android 13.7.1. Scratch scripts were not committed; the method f
 | **Total per cell (unzipped)** | **38 MB** | **≈ 10 MB** | −74 % | | |
 | Download per cell (zip) | 28 MB | ≈ 10 MB | tiles are already compressed, zip gains little | | |
 | **3 × 3 cells (holiday area ~80 × 80 km)** | **≈ 340 MB** | **≈ 90 MB** | | | |
-| Routing (`.rd5`) | 199 MB per 5° × 5° | **1–19 MB per 1° × 1°** (median 8 MB) | phone fetches only the 1° parts it needs (HTTP range) – **done 2026-10-21**, §6 | app | medium |
+| Routing (`.rd5`) | 199 MB per 5° × 5° | **1–19 MB per 1° × 1°** (median 8 MB) | phone fetches only the 1° parts it needs (HTTP range) – **done**, §6 | app | medium |
 | Routing for Meran / Hilden | 199 / 182 MB | **9.7 / 14.5 MB** (1 part each) | | | |
 
 "Today per cell" = the real z10 cell x543 y361 (Meran, 10.90–11.25 E, 46.56–46.80 N) built on the owner's server
@@ -177,7 +178,7 @@ Same bbox, Planetiler run three times:
 | `trails` / `ways` vs `paths` | same geometry, different properties | could become properties of `paths` (one line instead of three) – not measured, needs style work |
 | `routes` merged + `majoronly` pieces | major routes stored twice | small; leave |
 
-## 6. Routing (`.rd5`) – implemented 2026-10-21 (laptop): the phone loads 1° parts
+## 6. Routing (`.rd5`) – implemented: the phone loads 1° parts
 
 BRouter's `.rd5` (one per 5° × 5°) is 25 separate 1° × 1° parts (checked in `brouter-mapaccess` 1.7.11
 `PhysicalFile` / `OsmFile`, decompiled from `app/libs`):
@@ -255,7 +256,7 @@ Live check (laptop, 21 Oct 2026): `Rd5PartStoreTest.livePartDownload` (`ONPATH_L
 `checkFileIntegrity` passed and `PartialTest` routed Bozen → Meran on it (32.82 km); `liveBrouterDeIndex`
 (`ONPATH_LIVE=1`) checks ranges / ETag / tail format only.
 
-User-facing (owner 2026-10-22): routing data is never named – it comes with the map (map-cells.md §19.8).
+User-facing (owner): routing data is never named – it comes with the map (map-cells.md §19.8).
 
 Open: one part at a time rewrites the local file (copies the parts already there, ~10–40 MB, < 1 s); a corridor across
 many parts (long bike tour) loads them one after the other.
@@ -276,25 +277,12 @@ The server must build each cell from data reaching past the cell edge (Planetile
 
 Recommendation: a one-day spike for A on the phone; if it fails, B. The download format per cell can stay three
 small PMTiles (or MBTiles) in a zip either way.
-**Decided 2026-10-21: B** – one PMTiles per layer, rewritten as a new store generation (new paths, atomic rename);
+**Decided: B** – one PMTiles per layer, rewritten as a new store generation (new paths, atomic rename);
 the full copy costs ~1 s for 2 cells + region on the laptop. Why not A: MapLibre's bundled SQLite reading while
 Android's SQLite writes the same file in one process is a known corruption risk, and a style reload is needed anyway.
 Details: map-cells.md §19.
 
-## Risks
+## Notes
 
-- WebP raster-dem and MBTiles are not yet proven on the phone – test both before the pipeline switches.
-- Overlays to tiles touches the style and three app classes; ship it in one release with the pipeline change, and keep
-  `OptionalSources` able to strip the new source when missing.
-- 0.25 m / z12 terrain: if the owner sees a difference in the 3-D relief, z13 with WebP exact (−31 %) is the fallback.
-- Range requests depend on brouter.de's server (verified: nginx, 206 + ETag); without them the part download fails with a plain message.
-
-## Who does what
-
-| Step | Pipeline (cloud) | App (laptop) |
-| --- | --- | --- |
-| 1 Terrain | `build_terrain.py`: max zoom 12, B rounded to 0.25 m, WebP, fix `tile_range` edge; `build_contours.py` from z13 | test WebP hill shade on the phone; none else |
-| 2 Overlays | tippecanoe step, `overlays.pmtiles`, style sources → `source-layer` (`make_style.py`), search name list | `DataFiles`, `OptionalSources`, `StyleLoader`, `OfflineIndex` |
-| 3 Routing | – | done: `Rd5Parts` + `Rd5PartStore` (§6a) |
-| 4 Base | two Planetiler flags + path/track filter | none (style already falls back to `paths`) |
-| 5 Join store | cells = z10–14 tiles only | spike MBTiles, then cell store + overview map |
+- Range requests depend on brouter.de's server (verified: nginx, 206 + ETag); without them the part download fails with
+  a plain message.
