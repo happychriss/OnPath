@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TriStateCheckbox
@@ -72,16 +73,17 @@ import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
 import com.onpath.app.poi.PoiGroup
 import com.onpath.app.poi.PoiKinds
+import com.onpath.strings.*
 
 val PoiGroup.label: String
     get() = when (this) {
-        PoiGroup.FOOD -> "Food & drink"
-        PoiGroup.HUT -> "Huts & camping"
-        PoiGroup.WATER -> "Water"
-        PoiGroup.SIGHT -> "Sights & views"
-        PoiGroup.TRANSPORT -> "Transport"
-        PoiGroup.FACILITY -> "Facilities"
-        PoiGroup.OTHER -> "Other"
+        PoiGroup.FOOD -> Txt.s(Res.string.settings_poi_group_food)
+        PoiGroup.HUT -> Txt.s(Res.string.settings_poi_group_hut)
+        PoiGroup.WATER -> Txt.s(Res.string.settings_poi_group_water)
+        PoiGroup.SIGHT -> Txt.s(Res.string.settings_poi_group_sight)
+        PoiGroup.TRANSPORT -> Txt.s(Res.string.settings_poi_group_transport)
+        PoiGroup.FACILITY -> Txt.s(Res.string.settings_poi_group_facility)
+        PoiGroup.OTHER -> Txt.s(Res.string.settings_poi_group_other)
     }
 
 /**
@@ -150,6 +152,8 @@ fun SettingsScreen(
     mapServer: String = com.onpath.app.data.MapServer.describe(),
     /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
     testStyle: TestStyleUi? = null,
+    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch (owner 2026-10-26). */
+    language: LanguageUi = LanguageUi(),
     now: Long = System.currentTimeMillis(),
 ) {
     val topics = SettingsPage.entries.filter {
@@ -165,9 +169,9 @@ fun SettingsScreen(
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { if (page != null) onPage(null) else onBack() }, Modifier.size(56.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back))
                 }
-                Text(page?.title ?: "Settings", style = MaterialTheme.typography.titleLarge)
+                Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
@@ -176,7 +180,7 @@ fun SettingsScreen(
                         val group = topics.filter { it.app == app }
                         if (group.isEmpty()) return@forEach
                         item {
-                            Text(if (app) "App" else "Your settings", style = MaterialTheme.typography.bodyMedium,
+                            Text(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours), style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 16.dp, top = if (app) 20.dp else 4.dp, bottom = 6.dp))
                         }
@@ -215,13 +219,13 @@ fun SettingsScreen(
                         SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                         SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
                         SettingsPage.UPDATES -> if (update != null) item {
-                            Section("Updates") { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
+                            Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
-                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems) }
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas, testStyle)
+                                    onTimeFormulas, testStyle, language)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
@@ -277,11 +281,11 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
     val expanded = remember { mutableStateMapOf<PoiGroup, Boolean>().apply { initiallyExpanded.forEach { put(it, true) } } }
     val hidden = settings.hiddenPoiKinds
     fun setHidden(h: Set<String>) = onChange(settings.copy(hiddenPoiKinds = h))
-    Section("Points of interest") {
+    Section(SettingsPage.POI.title) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { setHidden(emptySet()) }) { Text("Show all") }
-            TextButton(onClick = { setHidden(PoiKinds.all.map { it.key }.toSet()) }) { Text("Hide all") }
-            TextButton(onClick = { setHidden(PoiKinds.defaultHidden) }) { Text("Reset") }
+            TextButton(onClick = { setHidden(emptySet()) }) { Text(str(Res.string.common_show_all)) }
+            TextButton(onClick = { setHidden(PoiKinds.all.map { it.key }.toSet()) }) { Text(str(Res.string.settings_poi_hide_all)) }
+            TextButton(onClick = { setHidden(PoiKinds.defaultHidden) }) { Text(str(Res.string.common_reset)) }
         }
         PoiGroup.entries.forEach { g ->
             val kinds = PoiKinds.inGroup(g)
@@ -299,9 +303,9 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(g.label, style = MaterialTheme.typography.bodyLarge)
-                    Text("$on of ${kinds.size} shown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(Res.string.settings_poi_shown, on, kinds.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, if (open) "Collapse" else "Expand")
+                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, str(if (open) Res.string.settings_cd_collapse else Res.string.settings_cd_expand))
                 Spacer(Modifier.width(8.dp))
             }
             if (open) kinds.forEach { k ->
@@ -310,7 +314,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
                     .toggleable(value = shown, role = Role.Checkbox) { setHidden(if (shown) hidden + k.key else hidden - k.key) }
                     .padding(start = 40.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = shown, onCheckedChange = null, modifier = Modifier.padding(12.dp))
-                    Text(k.en, style = MaterialTheme.typography.bodyLarge)
+                    Text(k.label, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -321,9 +325,9 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
-    Section("Map") {
+    Section(SettingsPage.MAP.title) {
         if (themes.size > 1) {
-            Text("Map style", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+            Text(str(Res.string.settings_map_style), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
             androidx.compose.foundation.layout.FlowRow(
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -335,19 +339,19 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
                 }
             }
         }
-        SwitchRow("Contour lines", null, settings.contours) { onChange(settings.copy(contours = it)) }
-        SwitchRow("Hill shading", null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
-        Text("Map direction (Plan and Navigate)", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+        SwitchRow(str(Res.string.settings_map_contours), null, settings.contours) { onChange(settings.copy(contours = it)) }
+        SwitchRow(str(Res.string.settings_map_hillshade), null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
+        Text(str(Res.string.settings_map_direction), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(true to "Direction of travel", false to "North up").forEach { (up, label) ->
+            listOf(true to str(Res.string.settings_map_travel), false to str(Res.string.settings_map_north)).forEach { (up, label) ->
                 FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
                     label = { Text(label) }, modifier = Modifier.heightIn(min = 44.dp))
             }
         }
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-        Text("Planning", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
+        Text(str(Res.string.settings_map_planning), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
-        SwitchRow("Vibrate when planning", "Short buzz when you hold the map, two buzzes on a route point",
+        SwitchRow(str(Res.string.settings_map_vibrate), str(Res.string.settings_map_vibrate_sub),
             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
     }
 }
@@ -355,33 +359,33 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
 /** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
 @Composable
 private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
-    Section("Navigation") {
-        SwitchRow("Off-route warning", "Vibration and notification when you leave the followed route",
+    Section(SettingsPage.NAVIGATION.title) {
+        SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Warn after", style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_nav_warn_after), style = MaterialTheme.typography.bodyMedium)
             AppSettings.OFF_ROUTE_CHOICES.forEach { m ->
                 FilterChip(selected = settings.offRouteM == m, enabled = settings.offRouteWarning,
-                    onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text("$m m") },
+                    onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text(str(Res.string.settings_nav_meters, m)) },
                     modifier = Modifier.heightIn(min = 44.dp))
             }
         }
-        SwitchRow("Vibrate when off route", "Felt in the pocket, also with the screen off",
+        SwitchRow(str(Res.string.settings_nav_vibrate_off), str(Res.string.settings_nav_vibrate_off_sub),
             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
             onChange(settings.copy(offRouteVibrate = it))
         }
-        SwitchRow("Vibrate at junctions", "Before a turn of the followed route: 2× left, 3× right",
+        SwitchRow(str(Res.string.settings_nav_junction), str(Res.string.settings_nav_junction_sub),
             settings.junctionVibrate) { onChange(settings.copy(junctionVibrate = it)) }
-        SwitchRow("Keep screen on while navigating", "Only while following a route; off in your pocket", settings.keepScreenOn) {
+        SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
         // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Recording with the screen off: best with battery “Unrestricted”.",
+            Text(str(Res.string.settings_nav_battery_hint),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f))
-            TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
+            TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
         }
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -389,10 +393,10 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
             // the quiet hint instead of a question (owner C2 2026-10-24: never ask); nothing to say once it is set
             if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("After a restart, tap Continue. Automatic with location “Allow all the time”.",
+                Text(str(Res.string.settings_nav_location_hint),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f))
-                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("App settings") }
+                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
             }
         }
     }
@@ -401,7 +405,8 @@ private fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> 
 /** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
-                               problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit) {
+                               problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
+                               language: String = "English (phone language)") {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -409,8 +414,32 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
             }
             Text("Leave the map at the problem spot first.", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("App language: $language", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ProblemList(problems, onClearProblems)
+        }
+    }
+}
+
+/** Developer tools → app language (owner 2026-10-26): the phone's, or fixed to English / Deutsch; kept across restarts. */
+data class LanguageUi(
+    val choice: com.onpath.app.data.LanguageChoice = com.onpath.app.data.LanguageChoice.SYSTEM,
+    val active: String = "English (phone language)",
+    val onChoose: (com.onpath.app.data.LanguageChoice) -> Unit = {},
+)
+
+@Composable
+private fun LanguageRow(l: LanguageUi) {
+    Text("App language", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val all = com.onpath.app.data.LanguageChoice.entries
+    androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        all.forEachIndexed { i, c ->
+            SegmentedButton(
+                selected = c == l.choice, onClick = { if (c != l.choice) l.onChoose(c) },
+                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, all.size),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(c.label, style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
@@ -425,6 +454,7 @@ private fun DeveloperTools(
     checks: List<DataFiles.Check>, mapPackage: DataFiles.PackageCheck?, dataDir: String,
     onTimeFormulas: (() -> Unit)? = null,
     testStyle: TestStyleUi? = null,
+    language: LanguageUi = LanguageUi(),
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
@@ -447,6 +477,7 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 testStyle?.let { TestStyleRow(it) }
+                LanguageRow(language)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
@@ -550,12 +581,12 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
  */
 @Composable
 private fun PrivacySection() {
-    Section("Privacy") {
+    Section(SettingsPage.PRIVACY.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Nothing is tracked. No account, no analytics, no ads.", fontWeight = FontWeight.SemiBold)
-            Text("Your tracks and routes never leave the phone – only to your own backup folder.", style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_privacy_lead), fontWeight = FontWeight.SemiBold)
+            Text(str(Res.string.settings_privacy_tracks), style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
-            Text("What leaves your phone", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_privacy_what), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             PRIVACY_FLOWS.forEach { f ->
                 Column {
                     Text(f.what, style = MaterialTheme.typography.bodyMedium)
@@ -570,24 +601,27 @@ private fun PrivacySection() {
 /** One thing that leaves the phone: what, to whom, when. */
 data class PrivacyFlow(val what: String, val to: String, val whenText: String)
 
-val PRIVACY_FLOWS = listOf(
-    PrivacyFlow("Which map area you need (an area of about 30 × 40 km, not your position)", "OnPath map server",
-        "when maps load"),
-    PrivacyFlow("Which map area you need for route planning (an area of about 80 × 110 km)", "brouter.de", "when maps load"),
-    PrivacyFlow("Your search text and a rough position (about 1 km)", "komoot (Germany)", "only for online search"),
-    PrivacyFlow("A request for the newest app version (no personal data)", "GitHub",
-        "update check, once a day and when you tap Check"),
-    PrivacyFlow("A Google Maps link you share into OnPath", "Google", "only to find the place of a short link"),
-    PrivacyFlow("The place you tapped", "Google Maps", "only when you tap “Open in Google Maps”"),
-    PrivacyFlow("A place's website or Wikipedia page", "that website", "only when you tap the link"),
-    PrivacyFlow("The diagnostics file", "whoever you send it to", "only when you share it"),
+/** In the app's language (strings_settings.xml); service names stay as they are. */
+val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOf(
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_maps_what), Txt.s(Res.string.settings_privacy_maps_to),
+        Txt.s(Res.string.settings_privacy_when_maps)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_routing_what), "brouter.de", Txt.s(Res.string.settings_privacy_when_maps)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_search_what), Txt.s(Res.string.settings_privacy_search_to, "komoot"),
+        Txt.s(Res.string.settings_privacy_search_when)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_update_what), "GitHub", Txt.s(Res.string.settings_privacy_update_when)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_link_what), "Google", Txt.s(Res.string.settings_privacy_link_when)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_tap_what), "Google Maps", Txt.s(Res.string.settings_privacy_tap_when)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_web_what), Txt.s(Res.string.settings_privacy_web_to),
+        Txt.s(Res.string.settings_privacy_web_when)),
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_diag_what), Txt.s(Res.string.settings_privacy_diag_to),
+        Txt.s(Res.string.settings_privacy_diag_when)),
 )
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
 @Composable
 private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevTools: () -> Unit = {}) {
     var taps by remember { mutableStateOf(0) }
-    Section("About") {
+    Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // tapped 7 times: Developer tools in Diagnostics (owner C5 2026-10-24, the Android convention); remembered
             Text("OnPath $version", fontWeight = FontWeight.SemiBold,
@@ -597,26 +631,22 @@ private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevT
                         taps++
                         if (DevToolsUnlock.unlocked(taps)) onUnlockDevTools()
                     })
-            if (devTools && taps > 0) Text("Developer tools are on – Settings → Diagnostics.", style = MaterialTheme.typography.bodySmall,
+            if (devTools && taps > 0) Text(str(Res.string.settings_about_devtools_on), style = MaterialTheme.typography.bodySmall,
                 color = OnPathColors.Green)
-            Text("Licence: Apache-2.0", style = MaterialTheme.typography.bodySmall)
+            Text(str(Res.string.settings_about_licence), style = MaterialTheme.typography.bodySmall)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            Text("Credits", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_about_credits), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             MAP_CREDITS.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
 
 /** Full credits (Settings → About); the map shows only "© OpenStreetMap" and opens these on a tap. */
-val MAP_CREDITS = listOf(
-    "Map data © OpenStreetMap contributors (ODbL)",
-    "Vector tile schema © OpenMapTiles",
-    "Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)",
-    "World overview: Natural Earth (public domain)",
-    "Routing: BRouter (MIT)",
-    "POI icons: Maki and Temaki (CC0)",
-    "Map renderer: MapLibre Native (BSD licence)",
-)
+val MAP_CREDITS: List<String> get() = listOf(
+    Res.string.settings_credit_osm, Res.string.settings_credit_omt, Res.string.settings_credit_terrain,
+    Res.string.settings_credit_ne, Res.string.settings_credit_brouter, Res.string.settings_credit_icons,
+    Res.string.settings_credit_maplibre,
+).map { Txt.s(it) }
 
 /** False inside a topic page: the page's top bar already names the topic, the card does not repeat it. */
 internal val LocalSectionTitle = compositionLocalOf { true }

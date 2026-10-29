@@ -3,14 +3,15 @@
 
 A cell is the web-mercator tile z10/x/y. It owns every map tile at zoom >= 10 inside it and every point with
 west <= lon < east, south < lat <= north (half-open: a point on a border has exactly one owner).
+A region package (map-cells.md §20, build_package.sh) is the tile z7/x/y: it owns the map tiles z7-9 inside it.
 
   cells.py bbox Z X Y [--buffer-km K | --ring-z12] [--inset]
                                              print minlon,minlat,maxlon,maxlat: the cell, the cell + K km, or the
                                              cell + one z12 tile all round (terrain for contours); --inset moves
                                              every edge 1e-7 deg inwards so tools that turn a bbox into a tile
                                              range do not pick up the neighbour's tiles on an exact border
-  cells.py tiles Z X Y IN.pmtiles OUT.pmtiles [--minzoom 10]
-                                             keep only the tiles the cell owns (zoom >= minzoom)
+  cells.py tiles Z X Y IN.pmtiles OUT.pmtiles [--minzoom 10] [--maxzoom M]
+                                             keep only the tiles the cell owns (minzoom <= zoom <= maxzoom)
   cells.py clip Z X Y IN_DIR OUT_DIR         GeoJSON: lines cut at the cell border (pieces inside kept),
                                              points kept by the owner rule; other files copied unchanged
   cells.py remap-ids IDX_DIR FILE.geojson    POI ids of a renumbered extract ("n12", "w3") back to OSM ids
@@ -18,7 +19,8 @@ west <= lon < east, south < lat <= north (half-open: a point on a border has exa
   cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX [--format N] [--wayclass wayclass.json]
                                              write DIR/manifest.json (sizes + sha256 of every file in DIR and its
                                              sub folders, e.g. addresses/10-543-361.sqlite; format default 1)
-  cells.py selftest                          checks the Meran example (10/543/361)
+  cells.py version-name OSM_DATE [--package] "2026-10-20-s7" (a package: its own schema, PACKAGE_SCHEMA)
+  cells.py selftest                          checks the Meran example (10/543/361) and a package (7/66/42)
 """
 import hashlib
 import json
@@ -44,6 +46,13 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 # bike routes as before). Keep builder
 # and doorman in step.
 CELL_SCHEMA = 7
+# Region packages (z7 tile, map z7-9: main roads, towns, forests, rivers, long-distance routes, relief) have their own
+# content schema – the doorman compares a package version with PACKAGE_SCHEMA (wrangler.toml), never with CELL_SCHEMA.
+# 1 = OpenMapTiles base z7-9 without farmland, overlays layer "routes" (net >= 3), hillshade.pmtiles (2026-10-26).
+PACKAGE_Z = 7
+PACKAGE_MAXZOOM = 9
+PACKAGE_SCHEMA = 1
+PACKAGE_MIN_APP = "0.11.3"  # apps up to 0.11.3 never ask for a package (their cell ids are z10 only)
 MIN_APP = "0.8.0"  # the first app that downloads cells; it reads format 1 and 2 (style f2 since 0.7.x)
 ATTRIBUTION = ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 
@@ -74,9 +83,9 @@ def owns_point(bbox, lon, lat):
     return w <= lon < e and s < lat <= n
 
 
-def owns_tile(z, x, y, tz, tx, ty, minzoom=10):
-    """Does cell z/x/y own map tile tz/tx/ty?"""
-    if tz < max(minzoom, z):
+def owns_tile(z, x, y, tz, tx, ty, minzoom=10, maxzoom=None):
+    """Does cell z/x/y own map tile tz/tx/ty (minzoom <= tz <= maxzoom)?"""
+    if tz < max(minzoom, z) or (maxzoom is not None and tz > maxzoom):
         return False
     d = tz - z
     return tx >> d == x and ty >> d == y
@@ -87,7 +96,7 @@ def cell_id(z, x, y):
 
 
 # ------------------------------------------------------------------------------------------- pmtiles
-def filter_tiles(z, x, y, src, dst, minzoom=10):
+def filter_tiles(z, x, y, src, dst, minzoom=10, maxzoom=None):
     from pmtiles.reader import MmapSource, Reader, all_tiles
     from pmtiles.tile import zxy_to_tileid
     from pmtiles.writer import Writer
@@ -100,7 +109,7 @@ def filter_tiles(z, x, y, src, dst, minzoom=10):
         tiles = []
         maxz = minzoom
         for (tz, tx, ty), data in all_tiles(get):
-            if owns_tile(z, x, y, tz, tx, ty, minzoom):
+            if owns_tile(z, x, y, tz, tx, ty, minzoom, maxzoom):
                 tiles.append((zxy_to_tileid(tz, tx, ty), bytes(data)))
                 maxz = max(maxz, tz)
                 kept += 1
@@ -113,7 +122,7 @@ def filter_tiles(z, x, y, src, dst, minzoom=10):
         for tid, data in tiles:
             w.write_tile(tid, data)
         h = {k: header[k] for k in ("tile_type", "tile_compression")}
-        h.update(min_zoom=minzoom, max_zoom=max(maxz, header.get("max_zoom", maxz)),
+        h.update(min_zoom=minzoom, max_zoom=maxz if maxzoom is not None else max(maxz, header.get("max_zoom", maxz)),
                  min_lon_e7=int(w_ * 1e7), min_lat_e7=int(s_ * 1e7),
                  max_lon_e7=int(e_ * 1e7), max_lat_e7=int(n_ * 1e7),
                  center_zoom=max(minzoom, min(12, h.get("max_zoom", 12))),
@@ -229,8 +238,13 @@ def list_files(d):
 
 
 def version_name(osm_date, schema=CELL_SCHEMA):
-    """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone)."""
+    """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone); a region
+    package: version_name(date, PACKAGE_SCHEMA)."""
     return f"{osm_date}-s{schema}"
+
+
+def is_package(z):
+    return z == PACKAGE_Z
 
 
 def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None, wayclass=None):
@@ -241,10 +255,15 @@ def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, versio
         p = os.path.join(d, name)
         files.append({"name": name, "size": os.path.getsize(p), "sha256": sha256(p),
                       "url": f"{url_prefix.rstrip('/')}/{name}"})
+    pkg = is_package(z)
     m = {"cell": cell_id(z, x, y), "format": fmt, "bbox": [round(v, 6) for v in cell_bbox(z, x, y)],
-         "osm_date": osm_date, "version": version or osm_date, "schema": CELL_SCHEMA, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-         "pipeline": f"git:{git_rev}", "min_app": MIN_APP, "files": files,
+         "osm_date": osm_date, "version": version or osm_date, "schema": PACKAGE_SCHEMA if pkg else CELL_SCHEMA,
+         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+         "pipeline": f"git:{git_rev}", "min_app": PACKAGE_MIN_APP if pkg else MIN_APP, "files": files,
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
+    if pkg:
+        m["kind"] = "package"
+        m["zooms"] = [PACKAGE_Z, PACKAGE_MAXZOOM]
     if sources:
         m["sources"] = [{k: s.get(k) for k in ("id", "date", "url")} for s in sources]
     if wayclass:
@@ -264,6 +283,14 @@ def selftest():
     assert owns_point(cell_bbox(10, 544, 361), 11.25, 46.7)                            # ...owned by the east one
     assert owns_tile(10, 543, 361, 10, 543, 361) and owns_tile(10, 543, 361, 14, 543 * 16 + 15, 361 * 16)
     assert not owns_tile(10, 543, 361, 14, 544 * 16, 361 * 16) and not owns_tile(10, 543, 361, 9, 271, 180)
+    # region package 7/66/42 (Düsseldorf / Hilden; Bonn lies just south of it in 7/66/43): z7-9 under it, nothing else
+    p = cell_bbox(7, 66, 42)
+    assert abs(p[0] - 5.625) < 1e-9 and abs(p[2] - 8.4375) < 1e-9 and 50.73 < p[1] < 50.75 and 52.47 < p[3] < 52.49, p
+    assert owns_point(p, 6.78, 51.22) and not owns_point(p, 7.10, 50.73)
+    assert owns_tile(7, 66, 42, 7, 66, 42, 7, 9) and owns_tile(7, 66, 42, 9, 66 * 4 + 3, 42 * 4, 7, 9)
+    assert not owns_tile(7, 66, 42, 10, 531, 342, 7, 9) and not owns_tile(7, 66, 42, 6, 33, 21, 7, 9)
+    assert (531 >> 3, 342 >> 3) == (66, 42)  # the Hilden cell lies under it
+    assert version_name("2026-10-26", PACKAGE_SCHEMA) == f"2026-10-26-s{PACKAGE_SCHEMA}"
     print("ok")
 
 
@@ -275,8 +302,8 @@ def main(argv):
     if cmd == "selftest":
         selftest()
         return 0
-    if cmd == "version-name":   # cells.py version-name OSM_DATE → "2026-10-20-s2"
-        print(version_name(rest[0]))
+    if cmd == "version-name":   # cells.py version-name OSM_DATE [--package] → "2026-10-20-s2"
+        print(version_name(rest[0], PACKAGE_SCHEMA if "--package" in rest[1:] else CELL_SCHEMA))
         return 0
     if cmd == "remap-ids":
         print(f"    {os.path.basename(rest[1])}: {remap_ids(rest[0], rest[1])} ids mapped back to OSM ids")
@@ -296,9 +323,11 @@ def main(argv):
             b = (b[0] + 1e-7, b[1] + 1e-7, b[2] - 1e-7, b[3] - 1e-7)
         print(",".join(repr(v) for v in b))
     elif cmd == "tiles":
-        minzoom = int(a[3]) if a[2:3] == ["--minzoom"] else 10
-        kept, dropped = filter_tiles(z, x, y, a[0], a[1], minzoom)
-        print(f"    {os.path.basename(a[1])}: kept {kept} tiles, dropped {dropped} (not owned / below z{minzoom})")
+        minzoom = int(a[a.index("--minzoom") + 1]) if "--minzoom" in a else 10
+        maxzoom = int(a[a.index("--maxzoom") + 1]) if "--maxzoom" in a else None
+        kept, dropped = filter_tiles(z, x, y, a[0], a[1], minzoom, maxzoom)
+        print(f"    {os.path.basename(a[1])}: kept {kept} tiles, dropped {dropped} (not owned / outside "
+              f"z{minzoom}-{maxzoom if maxzoom is not None else ''})")
     elif cmd == "clip":
         clip_dir(z, x, y, a[0], a[1])
     elif cmd == "manifest":

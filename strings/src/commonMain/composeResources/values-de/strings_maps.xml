@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Einstellungen → Offline-Karten -->
+    <string name="maps_offline_title">Offline-Karten</string>
+    <string name="maps_not_available">Karten-Downloads sind in dieser Version nicht verfügbar.</string>
+    <string name="maps_no_areas">Noch keine Kartengebiete heruntergeladen.</string>
+    <string name="maps_delete_question">Dieses Gebiet löschen? Es wird wieder geladen, wenn du dort planst.</string>
+    <plurals name="maps_total">
+        <item quantity="one">%1$d Gebiet · %2$s insgesamt</item>
+        <item quantity="other">%1$d Gebiete · %2$s insgesamt</item>
+    </plurals>
+    <plurals name="maps_more_loading">
+        <item quantity="one">%1$d weiteres Gebiet wird geladen.</item>
+        <item quantity="other">%1$d weitere Gebiete werden geladen.</item>
+    </plurals>
+    <string name="maps_wifi_only">Karten nur über WLAN laden</string>
+    <string name="maps_wifi_only_on">Über mobile Daten wird nichts geladen, auch nicht dort, wo du bist</string>
+    <string name="maps_wifi_only_off">Wo du bist, wird über mobile Daten geladen; bei anderen Gebieten wird erst gefragt</string>
+    <string name="maps_update_now">Karten jetzt aktualisieren</string>
+    <string name="maps_update_now_note">Monatlich von selbst; hiermit sofort.</string>
+    <string name="maps_clean_up">Aufräumen</string>
+    <string name="maps_clean_up_note">Zeigt vorher, was entfernt wird.</string>
+    <string name="maps_clear_all_note">Die Weltübersicht bleibt.</string>
+    <string name="maps_cleanup_removed_note">Entfernte Gebiete werden wieder geladen, wenn du dort planst oder unterwegs bist.</string>
+    <string name="maps_cleanup_all_in_use">Alle heruntergeladenen Gebiete werden gebraucht.</string>
+    <string name="maps_clear_all_title">Alle Kartengebiete löschen?</string>
+    <plurals name="maps_clear_all_text">
+        <item quantity="one">Das heruntergeladene Gebiet (%2$s) wird entfernt, auch wenn es zu deiner aktuellen oder einer gespeicherten Route gehört. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Tracks und Routen bleiben erhalten.</item>
+        <item quantity="other">Alle %1$d heruntergeladenen Gebiete (%2$s) werden entfernt, auch die deiner aktuellen und gespeicherten Routen. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Tracks und Routen bleiben erhalten.</item>
+    </plurals>
+    <string name="maps_result_none">Keine Kartengebiete zum Entfernen</string>
+    <plurals name="maps_result_removed">
+        <item quantity="one">%1$d Gebiet entfernt</item>
+        <item quantity="other">%1$d Gebiete entfernt</item>
+    </plurals>
+    <string name="maps_result_freed">%1$s freigegeben</string>
+    <string name="maps_result_after_tour">die Karte ändert sich nach der Tour</string>
+    <string name="maps_cleanup_nothing">Nichts zu entfernen</string>
+    <plurals name="maps_cleanup_title">
+        <item quantity="one">%1$d Gebiet entfernen · %2$s</item>
+        <item quantity="other">%1$d Gebiete entfernen · %2$s</item>
+    </plurals>
+    <string name="maps_cleanup_keeps_none">Nichts wird gebraucht – alle heruntergeladenen Gebiete werden entfernt.</string>
+    <string name="maps_cleanup_keeps">Bleibt erhalten: %1$s</string>
+    <string name="maps_waiting">Wartet auf Download</string>
+    <string name="maps_waiting_mb">Wartet auf Download · etwa %1$d MB</string>
+    <plurals name="maps_waiting_areas">
+        <item quantity="one">Wartet auf Download: %1$d Gebiet</item>
+        <item quantity="other">Wartet auf Download: %1$d Gebiete</item>
+    </plurals>
+    <plurals name="maps_waiting_areas_mb">
+        <item quantity="one">Wartet auf Download: %1$d Gebiet · etwa %2$d MB</item>
+        <item quantity="other">Wartet auf Download: %1$d Gebiete · etwa %2$d MB</item>
+    </plurals>
+
+    <!-- Hinweis oben auf der Karte -->
+    <string name="maps_card_not_available">Karten-Downloads sind in dieser Version nicht verfügbar</string>
+    <string name="maps_need_position_allow">Detailkarte für deinen Standort?</string>
+    <string name="maps_need_position_waiting">Warte auf GPS für die Detailkarte</string>
+    <plurals name="maps_card_done">
+        <item quantity="one">Karte offline bereit ✓ (%1$d Gebiet, %2$d MB)</item>
+        <item quantity="other">Karte offline bereit ✓ (%1$d Gebiete, %2$d MB)</item>
+    </plurals>
+    <plurals name="maps_mobile_question">
+        <item quantity="one">Mobile Daten nutzen? · %1$d Kartengebiet</item>
+        <item quantity="other">Mobile Daten nutzen? · %1$d Kartengebiete</item>
+    </plurals>
+    <plurals name="maps_mobile_question_mb">
+        <item quantity="one">Mobile Daten nutzen? · %1$d Kartengebiet, %2$d MB</item>
+        <item quantity="other">Mobile Daten nutzen? · %1$d Kartengebiete, %2$d MB</item>
+    </plurals>
+    <string name="maps_card_offline">Keine Detailkarte – lädt, sobald du online bist</string>
+    <string name="maps_card_failed_many">%1$d Kartengebiete nicht geladen: %2$s</string>
+    <string name="maps_card_downloading">Lade %1$d von %2$d · %3$d MB</string>
+    <string name="maps_card_ready_to_download">Detailkarte bereit zum Laden</string>
+    <string name="maps_card_preparing">Karte für dieses Gebiet wird vorbereitet</string>
+    <string name="maps_card_preparing_min">Karte für dieses Gebiet wird vorbereitet – etwa %1$d min</string>
+    <plurals name="maps_card_more_ready">
+        <item quantity="one">%1$d weiteres Gebiet · bereit</item>
+        <item quantity="other">%1$d weitere Gebiete · bereit</item>
+    </plurals>
+    <plurals name="maps_card_more_some_ready">
+        <item quantity="one">%1$d weiteres Gebiet · %2$d bereit</item>
+        <item quantity="other">%1$d weitere Gebiete · %2$d bereit</item>
+    </plurals>
+    <plurals name="maps_card_more_waiting">
+        <item quantity="one">%1$d weiteres Gebiet · wartet</item>
+        <item quantity="other">%1$d weitere Gebiete · warten</item>
+    </plurals>
+    <plurals name="maps_card_wait_wifi">
+        <item quantity="one">%1$d Kartengebiet wartet auf WLAN</item>
+        <item quantity="other">%1$d Kartengebiete warten auf WLAN</item>
+    </plurals>
+    <plurals name="maps_card_wait_wifi_mb">
+        <item quantity="one">%1$d Kartengebiet wartet auf WLAN · %2$d MB</item>
+        <item quantity="other">%1$d Kartengebiete warten auf WLAN · %2$d MB</item>
+    </plurals>
+    <string name="maps_row_ready">bereit ✓</string>
+    <string name="maps_row_your_position">Dein Standort</string>
+    <string name="maps_row_your_point">Dein Punkt</string>
+    <string name="maps_row_area_n">Kartengebiet %1$d</string>
+    <string name="maps_row_area_east">Gebiet im Osten</string>
+    <string name="maps_row_area_north_east">Gebiet im Nordosten</string>
+    <string name="maps_row_area_north">Gebiet im Norden</string>
+    <string name="maps_row_area_north_west">Gebiet im Nordwesten</string>
+    <string name="maps_row_area_west">Gebiet im Westen</string>
+    <string name="maps_row_area_south_west">Gebiet im Südwesten</string>
+    <string name="maps_row_area_south">Gebiet im Süden</string>
+    <string name="maps_row_area_south_east">Gebiet im Südosten</string>
+    <string name="maps_overview_hint">Nur Übersicht – für die Detailkarte hier lange drücken</string>
+    <string name="maps_update_loading">Neuere Karte wird geladen…</string>
+    <string name="maps_update_preparing">Neuere Karte für dieses Gebiet wird vorbereitet</string>
+    <string name="maps_update_preparing_min">Neuere Karte für dieses Gebiet wird vorbereitet · etwa %1$d min</string>
+    <string name="maps_btn_wifi_only">Nur WLAN</string>
+    <string name="maps_btn_load_now">Jetzt laden</string>
+    <string name="maps_btn_allow_location">Standort erlauben</string>
+    <string name="maps_btn_load">Laden</string>
+    <string name="maps_here_ask">Detailkarte für hier? · %1$d MB</string>
+    <string name="maps_here_ask_detail">Die Vorbereitung dauert ein paar Minuten.</string>
+    <string name="maps_hide_cd">Ausblenden (die Karte lädt weiter)</string>
+
+    <!-- Laden im Hintergrund -->
+    <string name="maps_bg_title">Karte wird geladen</string>
+    <string name="maps_bg_title_newer">Neuere Karte wird geladen</string>
+    <string name="maps_bg_newer">Neuere Karte für %1$d deiner Gebiete – ersetzt die alte, sobald sie geladen ist</string>
+    <string name="maps_bg_newer_eta">Neuere Karte für %1$d deiner Gebiete – ersetzt die alte, sobald sie geladen ist (wird vorbereitet, etwa %2$d min)</string>
+    <plurals name="maps_areas_count">
+        <item quantity="one">%1$d Gebiet</item>
+        <item quantity="other">%1$d Gebiete</item>
+    </plurals>
+    <string name="maps_bg_chip_cd">Karte wird geladen: %1$s</string>
+    <string name="maps_bg_chip_click">Downloads im Hintergrund anzeigen</string>
+    <string name="maps_bg_dialog_title">Laden im Hintergrund</string>
+    <string name="maps_bg_newer_ready">Neuere Karte in etwa %1$d min bereit.</string>
+    <plurals name="maps_bg_fresh">
+        <item quantity="one">Karte: %1$d Gebiet entlang deiner Route oder um dich herum</item>
+        <item quantity="other">Karte: %1$d Gebiete entlang deiner Route oder um dich herum</item>
+    </plurals>
+    <string name="maps_bg_total">Insgesamt etwa %1$d MB</string>
+    <string name="maps_bg_done">%1$d % fertig</string>
+    <string name="maps_bg_maps_stay">Deine vorhandenen Karten bleiben.</string>
+    <string name="maps_group_areas">%1$s (%2$d Gebiete)</string>
+    <string name="maps_name_near">bei %1$s</string>
+    <string name="maps_name_area">Kartengebiet</string>
+    <string name="maps_name_around">rund um %1$s</string>
+    <string name="maps_name_route_to">entlang deiner Route nach %1$s</string>
+    <string name="maps_name_route">entlang deiner Route</string>
+    <string name="maps_chip_your_route">deine Route</string>
+    <string name="maps_name_newer_near">neuere Karte bei %1$s</string>
+    <string name="maps_name_newer">neuere Karte</string>
+    <string name="maps_name_ahead">weiter vorn auf deiner Tour</string>
+    <string name="maps_chip_map">Karte</string>
+    <string name="maps_phase_loading">lädt</string>
+    <string name="maps_phase_finishing">fast fertig</string>
+    <string name="maps_phase_preparing">wird vorbereitet</string>
+    <string name="maps_phase_waiting">wartet</string>
+
+    <!-- Ladefenster -->
+    <string name="maps_load_preparing">Karte für deine Gegend wird vorbereitet</string>
+    <string name="maps_load_failed">Die Karte für deine Gegend konnte nicht geladen werden</string>
+    <string name="maps_load_loading">Karte für deine Gegend wird geladen</string>
+    <string name="maps_about_mb">etwa %1$d MB</string>
+    <plurals name="maps_load_totals">
+        <item quantity="one">%1$d Kartengebiet</item>
+        <item quantity="other">%1$d Kartengebiete</item>
+    </plurals>
+    <plurals name="maps_load_totals_mb">
+        <item quantity="one">%1$d Kartengebiet · etwa %2$d MB</item>
+        <item quantity="other">%1$d Kartengebiete · etwa %2$d MB</item>
+    </plurals>
+    <string name="maps_offline_text">Keine Internetverbindung – die Karte wird geladen, sobald du online bist.</string>
+    <string name="maps_wifi_text">Die Karte wird geladen, sobald du im WLAN bist (Einstellung „Karten nur über WLAN laden“).</string>
+    <string name="maps_load_on_mobile">Jetzt über mobile Daten laden</string>
+    <string name="maps_time_lt_minute">Noch weniger als eine Minute</string>
+    <string name="maps_time_one_minute">Noch etwa 1 Minute</string>
+    <string name="maps_time_minutes">Noch etwa %1$d Minuten</string>
+    <string name="maps_load_failed_retry">Beim Vorbereiten ist etwas schiefgegangen. Bitte versuche es noch einmal.</string>
+    <plurals name="maps_ask_text">
+        <item quantity="one">%1$d Kartengebiet · ≈ %2$d MB</item>
+        <item quantity="other">%1$d Kartengebiete · ≈ %2$d MB</item>
+    </plurals>
+    <string name="maps_ask_title">Karte für dieses Gebiet laden?</string>
+    <string name="maps_notif_channel">Karten laden</string>
+    <string name="maps_notif_progress">%1$d % – du kannst das Handy weglegen</string>
+    <string name="maps_notif_preparing">Wird vorbereitet – du kannst das Handy weglegen</string>
+
+    <!-- Zustand eines Kartengebiets -->
+    <string name="maps_state_not_on_phone">nicht auf dem Handy</string>
+    <string name="maps_state_waiting">wartet</string>
+    <string name="maps_state_waiting_min">wartet – etwa %1$d min</string>
+    <string name="maps_state_building">wird vorbereitet – %1$d %</string>
+    <string name="maps_state_building_min">wird vorbereitet – %1$d %, etwa %2$d min</string>
+    <string name="maps_state_wifi">wartet auf WLAN</string>
+    <string name="maps_state_wifi_mb">wartet auf WLAN (%1$d MB)</string>
+    <string name="maps_state_downloading">lädt</string>
+    <string name="maps_state_downloading_pct">lädt %1$d %</string>
+    <string name="maps_state_installing">fast fertig</string>
+    <string name="maps_state_downloaded">auf dem Handy – erscheint nach der Tour</string>
+    <string name="maps_state_ready">bereit (%1$s)</string>
+
+    <!-- Fehler beim Laden der Karte -->
+    <string name="maps_err_not_saved">Die Karte konnte nicht gespeichert werden.</string>
+    <string name="maps_err_app_version">Diese App-Version kann keine Karten laden. Bitte installiere die neueste Version.</string>
+    <string name="maps_err_no_connection">Keine Verbindung – die Detailkarte für dieses Gebiet wird geladen, sobald du online bist.</string>
+    <string name="maps_err_unreachable">Kartenserver nicht erreichbar – neuer Versuch folgt.</string>
+    <string name="maps_err_region_view">Regionsansicht nicht verfügbar</string>
+    <string name="maps_err_area_failed">Karte für dieses Gebiet konnte nicht erstellt werden</string>
+    <string name="maps_err_refused">Der Kartenserver hat die Anfrage abgelehnt – bitte aktualisiere die App.</string>
+    <string name="maps_err_other_version">Dieses Gebiet gibt es nur für eine andere App-Version.</string>
+    <string name="maps_err_needs_app">Aktualisiere OnPath, um dieses Gebiet zu laden (benötigt %1$s).</string>
+    <string name="maps_err_space_needs">Nicht genug Speicherplatz (benötigt %1$d MB). Lösche alte Gebiete unter Einstellungen → Offline-Karten.</string>
+    <string name="maps_err_damaged">Download beschädigt – bitte versuche es später noch einmal.</string>
+    <string name="maps_err_stopped">Download unterbrochen – geht weiter, sobald du verbunden bist.</string>
+    <string name="maps_err_failed">Download fehlgeschlagen. Bitte versuche es später noch einmal.</string>
+    <string name="maps_err_bad_list">Der Kartenserver hat eine unbrauchbare Dateiliste für dieses Gebiet geschickt.</string>
+    <string name="maps_err_restart">Download von %1$s muss neu beginnen – neuer Versuch folgt.</string>
+    <string name="maps_err_stopped_at">Karten-Download bei %1$d % unterbrochen – geht weiter, sobald du verbunden bist.</string>
+    <string name="maps_err_checksum">Karten-Download beschädigt – wird neu geladen.</string>
+    <string name="maps_err_busy">Der Kartenserver ist ausgelastet – später neuer Versuch.</string>
+    <string name="maps_err_not_ready">Die Karte für dieses Gebiet ist noch nicht fertig.</string>
+    <string name="maps_err_unexpected">Der Kartenserver hat unerwartet geantwortet – später neuer Versuch.</string>
+    <string name="maps_err_broke">Verbindung zum Kartenserver abgebrochen – neuer Versuch folgt.</string>
+    <string name="maps_err_bad_answer">Der Kartenserver hat eine unbrauchbare Antwort geschickt.</string>
+    <string name="maps_err_store_not_writable">Die Karte konnte nicht gespeichert werden – der Speicher des Handys ist nicht beschreibbar. Die bisherige Karte bleibt erhalten.</string>
+    <string name="maps_err_store_space">Nicht genug Speicherplatz für die Karte (benötigt %1$d MB, %2$d MB frei). Lösche Kartengebiete in den Einstellungen.</string>
+    <string name="maps_err_store_incompatible">Die geladene Karte passt nicht zur Karte auf dem Handy. Die bisherige Karte bleibt erhalten.</string>
+    <string name="maps_err_store_failed">Die Karte konnte nicht gespeichert werden. Die bisherige Karte bleibt erhalten.</string>
+    <string name="maps_err_store_low">Nicht genug Speicherplatz zum Speichern der Karte. Lösche Kartengebiete in den Einstellungen.</string>
+
+    <!-- Planen: Routing-Daten fehlen -->
+    <string name="maps_routing_loading">Karte lädt – vorerst gerade Linie</string>
+    <string name="maps_routing_not_yet">Karte lädt, sobald du online bist – vorerst gerade Linie</string>
+
+    <!-- Fehlende Kartendaten -->
+    <string name="maps_check_base">Grundkarte</string>
+    <string name="maps_check_terrain">Relief / Höhen</string>
+    <string name="maps_check_routing">Routing-Daten</string>
+    <string name="maps_check_overlays">Wege und Routennetze</string>
+    <string name="maps_check_routes">Markierte Routennetze</string>
+    <string name="maps_check_trails">Wegschwierigkeit</string>
+
+    <!-- Kartendaten aus einer Datei importieren -->
+    <string name="maps_import_nothing">Nichts importiert.</string>
+    <string name="maps_import_done">%1$d Datei(en) importiert: %2$s.</string>
+    <string name="maps_import_skipped">Übersprungen: %1$s.</string>
+    <string name="maps_import_not_map_data">„%1$s“ sind keine OnPath-Kartendaten. Wähle die ZIP-Datei onpath-data oder eine .pmtiles-, .geojson-, .rd5-, Adress-.sqlite- oder Stil-.json-Datei.</string>
+    <string name="maps_import_none_found">Keine Kartendaten in „%1$s“ gefunden.</string>
+    <string name="maps_import_no_space">Nicht genug freier Speicher für %1$s (benötigt %2$d MB).</string>
+    <string name="maps_import_empty">%1$s ist leer.</string>
+    <string name="maps_import_cant_replace">%1$s konnte nicht ersetzt werden.</string>
+    <string name="maps_import_cant_save">%1$s konnte nicht gespeichert werden.</string>
+</resources>

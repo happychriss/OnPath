@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.onpath.app.debug.Problems
 import java.io.File
 import java.io.FileNotFoundException
+import com.onpath.strings.*
 
 /**
  * Operations on one backup file, whatever folder it lies in – a MediaStore entry (Documents/OnPath on Android 10+),
@@ -99,7 +100,7 @@ internal class MediaStoreBackupStore(context: Context) : BackupStore {
     override val label = "Documents/OnPath"
 
     override fun create(fileName: String, deleted: Boolean, bytes: ByteArray): BackupStore.Created {
-        if (Build.VERSION.SDK_INT < 29) throw BackupException("needs Android 10")
+        if (Build.VERSION.SDK_INT < 29) throw BackupException(Txt.s(Res.string.backup_err_android10))
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             // generic type: MediaStore keeps the ".gpx" name (a type it does not know could get another extension)
@@ -108,14 +109,14 @@ internal class MediaStoreBackupStore(context: Context) : BackupStore {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val uri = try { resolver.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) } catch (e: Exception) {
-            throw BackupException("the Documents folder cannot be written", e)
-        } ?: throw BackupException("the Documents folder cannot be written (storage not available)")
+            throw BackupException(Txt.s(Res.string.backup_err_documents), e)
+        } ?: throw BackupException(Txt.s(Res.string.backup_err_documents_storage))
         try {
             (resolver.openOutputStream(uri, "w") ?: throw java.io.IOException("no output stream")).use { it.write(bytes) }
             resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         } catch (e: Exception) {
             try { resolver.delete(uri, null, null) } catch (d: Exception) { Problems.info("backup", "Half-written backup file not removed", d) }
-            throw BackupException(if (e.message?.contains("ENOSPC") == true) "storage full" else "the file could not be written – the phone's storage may be full", e)
+            throw BackupException(if (e.message?.contains("ENOSPC") == true) Txt.s(Res.string.backup_err_storage_full) else Txt.s(Res.string.backup_err_file_storage), e)
         }
         return BackupStore.Created(uri.toString(), ops.displayName(uri) ?: fileName)
     }
@@ -134,10 +135,10 @@ internal class LegacyBackupStore(private val context: Context) : BackupStore {
     @Suppress("DEPRECATION")
     private fun dir(deleted: Boolean): File {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            throw BackupException("storage access not allowed – Settings → Backup → Allow")
-        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) throw BackupException("storage not available")
+            throw BackupException(Txt.s(Res.string.backup_err_no_access))
+        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) throw BackupException(Txt.s(Res.string.backup_err_storage_unavailable))
         val d = File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "OnPath"), if (deleted) "Deleted" else "")
-        if (!d.isDirectory && !d.mkdirs()) throw BackupException("the backup folder cannot be created")
+        if (!d.isDirectory && !d.mkdirs()) throw BackupException(Txt.s(Res.string.backup_err_create_folder))
         return d
     }
 
@@ -147,7 +148,7 @@ internal class LegacyBackupStore(private val context: Context) : BackupStore {
         var n = 1
         while (f.exists()) f = File(d, fileName.removeSuffix(".gpx") + " (${n++}).gpx") // a file from an earlier install
         try { FileOps.writeFile(f, bytes) } catch (e: Exception) {
-            throw BackupException(if (d.usableSpace < bytes.size) "storage full" else "the file could not be written – the phone's storage may be full", e)
+            throw BackupException(if (d.usableSpace < bytes.size) Txt.s(Res.string.backup_err_storage_full) else Txt.s(Res.string.backup_err_file_storage), e)
         }
         return BackupStore.Created(Uri.fromFile(f).toString(), f.name)
     }
@@ -164,28 +165,28 @@ internal class TreeBackupStore(context: Context, private val tree: Uri, override
     override val key = Backups.treeKey(tree)
 
     private fun parent(deleted: Boolean): Uri {
-        val root = try { BackupFolder.rootDoc(tree) } catch (e: Exception) { throw BackupException("the chosen folder is not available", e) }
+        val root = try { BackupFolder.rootDoc(tree) } catch (e: Exception) { throw BackupException(Txt.s(Res.string.backup_err_chosen_unavailable), e) }
         if (!deleted) return root
         return BackupFolder.children(resolver, tree, DocumentsContract.getDocumentId(root))
             .firstOrNull { it.isDir && it.name == "Deleted" }?.uri
             ?: try {
                 DocumentsContract.createDocument(resolver, root, DocumentsContract.Document.MIME_TYPE_DIR, "Deleted")
-            } catch (e: Exception) { throw BackupException("the chosen folder cannot be written", e) }
-            ?: throw BackupException("the chosen folder cannot be written")
+            } catch (e: Exception) { throw BackupException(Txt.s(Res.string.backup_err_chosen_write), e) }
+            ?: throw BackupException(Txt.s(Res.string.backup_err_chosen_write))
     }
 
     override fun create(fileName: String, deleted: Boolean, bytes: ByteArray): BackupStore.Created {
         val p = parent(deleted)
         val uri = try { DocumentsContract.createDocument(resolver, p, "application/octet-stream", fileName) } catch (e: SecurityException) {
-            throw BackupException("no access to the chosen folder any more – choose it again in Settings → Backup", e)
+            throw BackupException(Txt.s(Res.string.backup_err_chosen_access), e)
         } catch (e: Exception) {
-            throw BackupException("the chosen folder cannot be written", e)
-        } ?: throw BackupException("the chosen folder cannot be written")
+            throw BackupException(Txt.s(Res.string.backup_err_chosen_write), e)
+        } ?: throw BackupException(Txt.s(Res.string.backup_err_chosen_write))
         try {
             (resolver.openOutputStream(uri, "w") ?: throw java.io.IOException("no output stream")).use { it.write(bytes) }
         } catch (e: Exception) {
             ops.delete(uri.toString())
-            throw BackupException("the file could not be written – the folder may be full or offline", e)
+            throw BackupException(Txt.s(Res.string.backup_err_file_folder), e)
         }
         return BackupStore.Created(uri.toString(), ops.displayName(uri) ?: fileName)
     }
@@ -212,7 +213,7 @@ object BackupFolder {
 
     fun label(context: Context, tree: Uri): String = try {
         val id = DocumentsContract.getTreeDocumentId(tree)
-        if (tree.authority == "com.android.externalstorage.documents") id.substringAfter(':').ifBlank { "Phone storage" }
+        if (tree.authority == "com.android.externalstorage.documents") id.substringAfter(':').ifBlank { Txt.s(Res.string.backup_folder_phone) }
         else FileOps(context.contentResolver).displayName(rootDoc(tree)) ?: id
     } catch (e: Exception) { Problems.info("backup", "Picked folder name unreadable", e); "chosen folder" }
 

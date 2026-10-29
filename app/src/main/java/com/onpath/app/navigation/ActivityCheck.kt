@@ -1,5 +1,7 @@
 package com.onpath.app.navigation
 
+import com.onpath.strings.*
+
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
@@ -105,28 +107,28 @@ object ActivityCheck {
         val problems = ArrayList<String>()
         val avoided = avoidedM(restLine, r.points)
         if (avoided >= max(AVOID_MIN_M, AVOID_MIN_SHARE * restM)) {
-            problems += "${Format.distance(round10(avoided))} not suited for ${who(activity, sac)}"
+            problems += Txt.s(Res.string.nav_check_not_suited, Format.distance(round10(avoided)), who(activity, sac))
         }
         fun way(vararg keys: String) = r.wayTypes.filter { it.key in keys }.sumOf { it.meters }
         fun surf(vararg keys: String) = r.surfaces.filter { it.key in keys }.sumOf { it.meters }
         if (activity != Activity.HIKE) {
             val steps = way("steps")
-            if (steps >= STEPS_MIN_M) problems += "steps ${Format.distance(round10(steps))}"
+            if (steps >= STEPS_MIN_M) problems += Txt.s(Res.string.nav_check_steps, Format.distance(round10(steps)))
         }
         // the surface check follows the routing profile (review 2026-10-25: E-bike was checked like BIKE_TOURING but routed
         // like BIKE_TREKKING) – touring.brf avoids gravel, trekking.brf only rough trails
         when {
             activity == Activity.HIKE -> {
                 val busy = way("busy_road")
-                if (busy >= BUSY_MIN_M) problems += "${Format.distance(round10(busy))} busy road"
+                if (busy >= BUSY_MIN_M) problems += Txt.s(Res.string.nav_check_busy_road, Format.distance(round10(busy)))
             }
             BRouterEngine.profileFile(activity) == "touring.brf" -> {
                 val rough = surf("gravel", "ground", "unpaved", "natural_trail", "alpine")
-                if (rough >= ROUGH_MIN_M) problems += "${Format.distance(round10(rough))} unpaved"
+                if (rough >= ROUGH_MIN_M) problems += Txt.s(Res.string.nav_check_unpaved, Format.distance(round10(rough)))
             }
             BRouterEngine.profileFile(activity) == "trekking.brf" -> {
                 val rough = surf("ground", "natural_trail", "alpine")
-                if (rough >= ROUGH_MIN_M) problems += "${Format.distance(round10(rough))} rough trail"
+                if (rough >= ROUGH_MIN_M) problems += Txt.s(Res.string.nav_check_rough, Format.distance(round10(rough)))
             }
             else -> Unit
         }
@@ -153,11 +155,14 @@ object ActivityCheck {
         return off.coerceAtMost(r.lengthM)
     }
 
-    /** "gravel bikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
-    fun who(activity: Activity, sac: Int): String = when {
-        activity == Activity.HIKE -> "hiking (T${sac.coerceIn(1, 5)})"
-        activity.label.endsWith("bike", ignoreCase = true) -> activity.label.lowercase() + "s"
-        else -> activity.label + "s"
+    /** "gravelbikes" / "MTBs" / "hiking (T3)": the plural of [Activity.label] (owner 2026-10-26 names). */
+    fun who(activity: Activity, sac: Int): String = when (activity) {
+        Activity.HIKE -> Txt.s(Res.string.nav_who_hike, sac.coerceIn(1, 5))
+        Activity.BIKE_TOURING -> Txt.s(Res.string.nav_who_bike_touring)
+        Activity.BIKE_TREKKING -> Txt.s(Res.string.nav_who_bike_trekking)
+        Activity.EBIKE -> Txt.s(Res.string.nav_who_ebike)
+        Activity.MTB -> Txt.s(Res.string.nav_who_mtb)
+        Activity.EMTB -> Txt.s(Res.string.nav_who_emtb)
     }
 
     private fun round10(m: Double) = Math.round(m / 10) * 10.0

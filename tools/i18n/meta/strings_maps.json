@@ -1,0 +1,1070 @@
+{
+  "maps_offline_title": {
+    "area": "Settings → Offline maps",
+    "context": "Page / section title",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_not_available": {
+    "area": "Settings → Offline maps",
+    "context": "Grey line when this app build has no map server key (test builds)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_no_areas": {
+    "area": "Settings → Offline maps",
+    "context": "Shown when no map area is downloaded yet",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_delete_question": {
+    "area": "Settings → Offline maps",
+    "context": "Inline question after tapping Delete on one area row; buttons Cancel / Delete",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_total": {
+    "area": "Settings → Offline maps",
+    "context": "Line under the list: %1$d = number of areas, %2$s = total size (\"410 MB\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_more_loading": {
+    "area": "Settings → Offline maps",
+    "context": "Grey line: %1$d areas still downloading (not installed yet)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_wifi_only": {
+    "area": "Settings → Offline maps",
+    "context": "Switch title",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 36
+  },
+  "maps_wifi_only_on": {
+    "area": "Settings → Offline maps",
+    "context": "Line under the switch when it is on",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_wifi_only_off": {
+    "area": "Settings → Offline maps",
+    "context": "Line under the switch when it is off",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_update_now": {
+    "area": "Settings → Offline maps",
+    "context": "Button: check every installed area for a newer map now",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "maps_update_now_note": {
+    "area": "Settings → Offline maps",
+    "context": "Small line under \"Update maps now\": maps update monthly on their own; the button does it now",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Short wording \"Monatlich von selbst; hiermit sofort.\" – maybe \"Sonst monatlich automatisch.\""
+  },
+  "maps_clean_up": {
+    "area": "Settings → Offline maps",
+    "context": "Button: remove map areas not needed (shows a question first)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "maps_clean_up_note": {
+    "area": "Settings → Offline maps",
+    "context": "Small line under \"Clean up\"",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_clear_all_note": {
+    "area": "Settings → Offline maps",
+    "context": "Small line under \"Clear all\": the built-in world overview map is not removed",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_removed_note": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up question: small line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_all_in_use": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up question when nothing can be removed",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_clear_all_title": {
+    "area": "Settings → Offline maps",
+    "context": "Dialog title before removing all map areas",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_clear_all_text": {
+    "area": "Settings → Offline maps",
+    "context": "Dialog text: %1$d = number of areas, %2$s = size like \"410 MB\" / \"4,5 MB\"",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German \"one\" form rephrased (\"Das heruntergeladene Gebiet …\"); the English one form (\"All 1 … area … are\") is unchanged on purpose"
+  },
+  "maps_result_none": {
+    "area": "Settings → Offline maps",
+    "context": "Result line after Clean up / Clear all when nothing was removed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_result_removed": {
+    "area": "Settings → Offline maps",
+    "context": "Result line part: %1$d areas removed (joined with \" · \")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_result_freed": {
+    "area": "Settings → Offline maps",
+    "context": "Result line part: %1$s = size freed (\"450 MB\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"freigegeben\" for storage – alternative \"%1$s frei\""
+  },
+  "maps_result_after_tour": {
+    "area": "Settings → Offline maps",
+    "context": "Result line part while a tour runs: the areas go after the tour",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_nothing": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up dialog title when nothing can go",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_title": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up dialog title: %1$d = areas, %2$s = size like \"410 MB\" / \"4,5 MB\"",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_keeps_none": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up dialog: nothing is in use",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_cleanup_keeps": {
+    "area": "Settings → Offline maps",
+    "context": "Clean up dialog: %1$s = what is kept, e.g. \"your current plan · saved routes\" (texts from the view model)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Bleibt erhalten:\" followed by a list of things"
+  },
+  "maps_waiting": {
+    "area": "Settings → Offline maps",
+    "context": "Line: downloads are waiting (only route-planning data, size unknown)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_waiting_mb": {
+    "area": "Settings → Offline maps",
+    "context": "Line: downloads waiting, %1$d = MB",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_waiting_areas": {
+    "area": "Settings → Offline maps",
+    "context": "Line: %1$d map areas waiting to download",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_waiting_areas_mb": {
+    "area": "Settings → Offline maps",
+    "context": "Line: %1$d map areas waiting, %2$d = MB",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_card_not_available": {
+    "area": "Map notice (top of map)",
+    "context": "Grey pill when this build cannot download maps (test builds); button OK",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_need_position_allow": {
+    "area": "Map notice (top of map)",
+    "context": "Blue strip on first start without location permission; button \"Allow location\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "maps_need_position_waiting": {
+    "area": "Map notice (top of map)",
+    "context": "Grey pill on first start while GPS has no position yet",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "maps_card_done": {
+    "area": "Map notice (top of map)",
+    "context": "Map ready: %1$d = areas, %2$d = MB (rarely shown)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_mobile_question": {
+    "area": "Map notice (top of map)",
+    "context": "Blue strip question: %1$d = map areas to load over mobile data; buttons \"Wi-Fi only\" / \"Load now\"",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "maps_mobile_question_mb": {
+    "area": "Map notice (top of map)",
+    "context": "Same with size: %1$d = areas, %2$d = MB",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 50
+  },
+  "maps_card_offline": {
+    "area": "Map notice (top of map)",
+    "context": "Grey pill: no connection, the detailed map loads when online",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "maps_card_failed_many": {
+    "area": "Map notice (top of map)",
+    "context": "Amber strip: %1$d = number of areas that failed, %2$s = the reason (a sentence)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_card_downloading": {
+    "area": "Map notice (top of map)",
+    "context": "Title while areas download: \"Downloading 2 of 3 · 12 MB\" (%1$d = current, %2$d = all, %3$d = MB)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "German \"Lade 2 von 3\" – the first word also tells the steps apart (no-flash rule), must differ from the other two titles"
+  },
+  "maps_card_ready_to_download": {
+    "area": "Map notice (top of map)",
+    "context": "Title: detailed map waits for download (Wi-Fi / yes)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_card_preparing": {
+    "area": "Map notice (top of map)",
+    "context": "Title: the server prepares the map of this area",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_card_preparing_min": {
+    "area": "Map notice (top of map)",
+    "context": "Same with time: %1$d = minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_card_more_ready": {
+    "area": "Map notice (top of map)",
+    "context": "Row under the first 3 areas: %1$d more areas, all ready",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_card_more_some_ready": {
+    "area": "Map notice (top of map)",
+    "context": "Row: %1$d more areas, %2$d of them ready",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_card_more_waiting": {
+    "area": "Map notice (top of map)",
+    "context": "Row: %1$d more areas, waiting",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_card_wait_wifi": {
+    "area": "Map notice (top of map)",
+    "context": "Pill / strip: %1$d map areas wait for Wi-Fi",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
+  },
+  "maps_card_wait_wifi_mb": {
+    "area": "Map notice (top of map)",
+    "context": "Same with %2$d = MB",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 50
+  },
+  "maps_row_ready": {
+    "area": "Map notice (top of map)",
+    "context": "State of one area row: ready",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_your_position": {
+    "area": "Map notice (top of map)",
+    "context": "Name of the area row where the user is",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_your_point": {
+    "area": "Map notice (top of map)",
+    "context": "Name of the area row of the point the user set",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_n": {
+    "area": "Map notice (top of map)",
+    "context": "Name of an area row: \"Map area 2\"",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_east": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_north_east": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_north": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_north_west": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_west": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_south_west": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_south": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_row_area_south_east": {
+    "area": "Map notice (top of map)",
+    "context": "Name of a neighbouring area row, by direction from the user's point",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_overview_hint": {
+    "area": "Map (Plan)",
+    "context": "Grey pill when zoomed in where only the world overview exists; holding the map there loads the detailed map",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Wording of the hold gesture (\"lange drücken\") and length (pill under the search bar)",
+    "max": 60
+  },
+  "maps_update_loading": {
+    "area": "Background downloads",
+    "context": "A newer version of an installed area loads",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_update_preparing": {
+    "area": "Background downloads",
+    "context": "A newer version of an area is being prepared on the server",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_update_preparing_min": {
+    "area": "Background downloads",
+    "context": "Same with %1$d = minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_btn_wifi_only": {
+    "area": "Map notice (top of map)",
+    "context": "Button in the mobile-data question: wait for Wi-Fi",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "maps_btn_load_now": {
+    "area": "Map notice (top of map)",
+    "context": "Button in the mobile-data question: load over mobile data now",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "maps_btn_allow_location": {
+    "area": "Map notice (top of map)",
+    "context": "Button: opens the location permission dialog",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "maps_btn_load": {
+    "area": "Map notice (top of map)",
+    "context": "Button: load the map for this area",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "maps_here_ask": {
+    "area": "Map notice (top of map)",
+    "context": "Blue strip when the app opens where there is no detailed map: %1$d = MB",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "maps_here_ask_detail": {
+    "area": "Map notice (top of map)",
+    "context": "Detail line under it: the server has to prepare the area first",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_hide_cd": {
+    "area": "Map notice (top of map)",
+    "context": "Accessibility: the × of the strip (hides it, loading goes on)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_bg_title": {
+    "area": "Background downloads",
+    "context": "Title: map loads in the background",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_title_newer": {
+    "area": "Background downloads",
+    "context": "Title when only newer versions load",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_newer": {
+    "area": "Background downloads",
+    "context": "Details line: %1$d = number of the user's areas getting a newer map",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_newer_eta": {
+    "area": "Background downloads",
+    "context": "Same with %2$d = minutes until the server has prepared it",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_areas_count": {
+    "area": "Background downloads",
+    "context": "Part of a line: \"3 areas\" (joined with MB and % by \" · \")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_chip_cd": {
+    "area": "Background downloads",
+    "context": "Accessibility text of the blue loading chip: %1$s = \"Meran +1 · 34 %\"",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_bg_chip_click": {
+    "area": "Background downloads",
+    "context": "Accessibility: what a tap on the chip does",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_bg_dialog_title": {
+    "area": "Background downloads",
+    "context": "Dialog title (tap on the loading chip)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_newer_ready": {
+    "area": "Background downloads",
+    "context": "Dialog line: %1$d = minutes until the newer map is ready",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_fresh": {
+    "area": "Background downloads",
+    "context": "Dialog line: %1$d = new map areas loading",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_total": {
+    "area": "Background downloads",
+    "context": "Dialog line part: %1$d = MB in all",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_done": {
+    "area": "Background downloads",
+    "context": "Dialog line part: %1$d = percent done",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_bg_maps_stay": {
+    "area": "Background downloads",
+    "context": "Dialog line: Cancel all keeps the installed maps",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_group_areas": {
+    "area": "Background downloads",
+    "context": "Dialog line head: %1$s = name like \"Around Meran\", %2$d = areas (only for 2 or more)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_near": {
+    "area": "Background downloads",
+    "context": "Name of a loading area: %1$s = nearest town (\"near Meran\")",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"bei Meran\" – alternative \"nahe Meran\""
+  },
+  "maps_name_area": {
+    "area": "Background downloads",
+    "context": "Name of a loading area when no town is near",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_around": {
+    "area": "Background downloads",
+    "context": "Name: %1$s = the point / search result the user set",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_route_to": {
+    "area": "Background downloads",
+    "context": "Name: %1$s = destination of the planned route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_route": {
+    "area": "Background downloads",
+    "context": "Name: along the planned route (destination unknown)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_chip_your_route": {
+    "area": "Background downloads",
+    "context": "Chip name when the route has no destination name",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "maps_name_newer_near": {
+    "area": "Background downloads",
+    "context": "Name: newer map near %1$s = town",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_newer": {
+    "area": "Background downloads",
+    "context": "Name: newer map (no town)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_name_ahead": {
+    "area": "Background downloads",
+    "context": "Name (also on the chip): the map ahead while a tour runs",
+    "priority": 2,
+    "confidence": "Zweifel",
+    "doubt": "\"weiter vorn auf deiner Tour\" – long for the chip; alternative \"auf deiner Tour voraus\"",
+    "max": 24
+  },
+  "maps_chip_map": {
+    "area": "Background downloads",
+    "context": "Chip name when nothing can be named",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "maps_phase_loading": {
+    "area": "Background downloads",
+    "context": "Phase at the end of a details line",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_phase_finishing": {
+    "area": "Background downloads",
+    "context": "Phase: being joined into the map",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_phase_preparing": {
+    "area": "Background downloads",
+    "context": "Phase: the server prepares the area",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_phase_waiting": {
+    "area": "Background downloads",
+    "context": "Phase: waiting",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_load_preparing": {
+    "area": "Map loading window",
+    "context": "Title of the loading window (first start, point where no detailed map is) while the server prepares",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_load_failed": {
+    "area": "Map loading window",
+    "context": "Title when it failed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_load_loading": {
+    "area": "Map loading window",
+    "context": "Title while it downloads; also the title of the \"loading maps\" notification",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_about_mb": {
+    "area": "Map loading window",
+    "context": "Line: only route-planning data loads, %1$d = MB",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_load_totals": {
+    "area": "Map loading window",
+    "context": "Line: %1$d = map areas",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_load_totals_mb": {
+    "area": "Map loading window",
+    "context": "Line: %1$d = map areas, %2$d = MB",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_offline_text": {
+    "area": "Map loading window",
+    "context": "Line when offline",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_wifi_text": {
+    "area": "Map loading window",
+    "context": "Line when it waits for Wi-Fi; quotes the Settings switch \"Download maps only on Wi-Fi\" (keep in step with maps_wifi_only)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_load_on_mobile": {
+    "area": "Map loading window",
+    "context": "Button (window and blue strip) to load once over mobile data",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "maps_time_lt_minute": {
+    "area": "Map loading window",
+    "context": "Time left under the bar",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_time_one_minute": {
+    "area": "Map loading window",
+    "context": "Time left under the bar",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_time_minutes": {
+    "area": "Map loading window",
+    "context": "Time left: %1$d = minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_load_failed_retry": {
+    "area": "Map loading window",
+    "context": "Reason when the server failed to prepare the map; button Try again",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_ask_text": {
+    "area": "Map (Plan)",
+    "context": "Dialog text after a tap where only the overview exists: %1$d = areas, %2$d = MB",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_ask_title": {
+    "area": "Map (Plan)",
+    "context": "Dialog title; buttons Not now / Load",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_notif_channel": {
+    "area": "Notification",
+    "context": "Android notification channel name (Settings → Apps → OnPath → Notifications)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_notif_progress": {
+    "area": "Notification",
+    "context": "Text of the notification while the map loads with the screen off: %1$d = percent",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_notif_preparing": {
+    "area": "Notification",
+    "context": "Same while the server still prepares",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_not_on_phone": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name)",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Handy\" for the phone (everyday German); alternative \"Smartphone\""
+  },
+  "maps_state_waiting": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_waiting_min": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$d = minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_building": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$d = percent",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_building_min": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$d = percent, %2$d = minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_wifi": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_wifi_mb": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$d = MB",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_downloading": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_downloading_pct": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$d = percent",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_installing": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_state_downloaded": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name) (during a tour the map does not change)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_state_ready": {
+    "area": "Map area state",
+    "context": "One map area's state in Offline maps and the loading rows (lower case, after a name); %1$s = map version / date",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_not_saved": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_app_version": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_no_connection": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails – the most common one (no internet)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_err_unreachable": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_err_region_view": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_area_failed": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: the server could not build the map of this area",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "EN \"Map for this area failed\" is terse; German says \"could not be created\""
+  },
+  "maps_err_refused": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_other_version": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_needs_app": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: %1$s = the app version needed (\"0.12.0\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_space_needs": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: %1$d = MB needed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_damaged": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_stopped": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_err_failed": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_bad_list": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_restart": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: %1$s = a file name of the map download",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_stopped_at": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: %1$d = percent done",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_checksum": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_busy": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_not_ready": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_unexpected": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_broke": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_bad_answer": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_store_not_writable": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_store_space": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails: %1$d = MB needed, %2$d = MB free",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_store_incompatible": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_store_failed": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_err_store_low": {
+    "area": "Map download errors",
+    "context": "Shown in the amber strip / loading window / Offline maps when a map download fails",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_routing_loading": {
+    "area": "Plan sheet",
+    "context": "Grey notice while the map for route planning loads; the route is drawn as a straight line meanwhile",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"vorerst gerade Linie\" – alternative \"solange Luftlinie\"",
+    "max": 50
+  },
+  "maps_routing_not_yet": {
+    "area": "Plan sheet",
+    "context": "Same when offline: loads when online",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Same as above",
+    "max": 60
+  },
+  "maps_check_base": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_check_terrain": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_check_routing": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Routing-Daten\" (technical word, as in English)"
+  },
+  "maps_check_overlays": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_check_routes": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_check_trails": {
+    "area": "Missing map data",
+    "context": "Missing map data screen: what one required file is (list with ✓ / ✗)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_nothing": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_done": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$d = files, %2$s = their names",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Datei(en)\" kept like the English \"file(s)\""
+  },
+  "maps_import_skipped": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = skipped file names (follows the line above)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_not_map_data": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = the picked file name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_none_found": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = the picked file name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_no_space": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name, %2$d = MB needed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_empty": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_cant_replace": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "maps_import_cant_save": {
+    "area": "Map data import",
+    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
+    "priority": 3,
+    "confidence": "sicher"
+  }
+}

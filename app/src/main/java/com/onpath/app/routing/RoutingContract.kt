@@ -1,6 +1,8 @@
 package com.onpath.app.routing
 
 import com.onpath.app.debug.Problems
+import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Shared contract between the app UI and the on-device routing engine.
@@ -13,13 +15,18 @@ import com.onpath.app.debug.Problems
  * "Gravel bike" a 112 km day tour showed "11…", owner rule 2026-10-22: time and distance in full). Stored values
  * (prefs, DB, nav session, backups) use the enum name, never [label].
  */
-enum class Activity(val label: String, val line: String, val chip: String = label) {
-    BIKE_TOURING("Bike", "Paved cycleways, quiet roads"),
-    BIKE_TREKKING("Gravel bike", "Gravel tracks welcome", chip = "Gravel"),
-    EBIKE("E-bike", "Bike with motor, 25 km/h"),
-    MTB("MTB", "Trails and singletrails"),
-    EMTB("E-MTB", "MTB with motor"),
-    HIKE("Hike", "T1 … T5"),
+enum class Activity(private val labelRes: StringResource, private val lineRes: StringResource, private val chipRes: StringResource) {
+    BIKE_TOURING(Res.string.activity_bike_touring, Res.string.activity_bike_touring_line, Res.string.activity_bike_touring_chip),
+    BIKE_TREKKING(Res.string.activity_bike_trekking, Res.string.activity_bike_trekking_line, Res.string.activity_bike_trekking_chip),
+    EBIKE(Res.string.activity_ebike, Res.string.activity_ebike_line, Res.string.activity_ebike_chip),
+    MTB(Res.string.activity_mtb, Res.string.activity_mtb_line, Res.string.activity_mtb_chip),
+    EMTB(Res.string.activity_emtb, Res.string.activity_emtb_line, Res.string.activity_emtb_chip),
+    HIKE(Res.string.activity_hike, Res.string.activity_hike_line, Res.string.activity_hike_chip);
+
+    /** Texts in the app's language (strings_activity.xml; German: Fahrrad, Gravel-Rad, …). */
+    val label: String get() = Txt.s(labelRes)
+    val line: String get() = Txt.s(lineRes)
+    val chip: String get() = Txt.s(chipRes)
 }
 
 /**
@@ -134,7 +141,43 @@ data class Share(val key: String, val meters: Double)
  * [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the
  * same or shorter budget (leg by leg) would time out too, so the planner does not retry (perf report 2026-10-22).
  */
-class RoutingException(message: String, val timedOut: Boolean = false) : Exception(message)
+class RoutingException(message: String, val timedOut: Boolean = false, kind: Kind? = null) : Exception(message) {
+    /**
+     * What failed, for code that must not read the message (it is in the user's language since EN + DE, owner
+     * 2026-10-26). Without [kind] it is found from the message (the app's own texts for these cases); a timed-out
+     * request that is nothing else is [Kind.TIMEOUT].
+     */
+    val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }
+
+    enum class Kind {
+        OTHER,
+        /** Routing data for the area is missing (the map loads it). */
+        NO_DATA,
+        /** The request was cancelled (a newer one, or the user). */
+        CANCELLED,
+        /** Another route is being calculated. */
+        BUSY,
+        /** Out of memory / too complex: fewer or closer points help. */
+        TOO_COMPLEX,
+        /** The routing engine could not be loaded. */
+        UNAVAILABLE,
+        /** The request took too long (also: no route within the time limit). */
+        TIMEOUT,
+        /** The start point is too far from any usable way (re-routing: nothing to retry from here). */
+        START_POINT;
+
+        companion object {
+            fun of(message: String): Kind = when (message) {
+                Txt.s(Res.string.plan_err_no_data) -> NO_DATA
+                Txt.s(Res.string.plan_err_cancelled) -> CANCELLED
+                Txt.s(Res.string.plan_err_busy) -> BUSY
+                Txt.s(Res.string.plan_err_memory), Txt.s(Res.string.plan_err_complex) -> TOO_COMPLEX
+                Txt.s(Res.string.plan_err_engine) -> UNAVAILABLE
+                else -> if (message.startsWith(Txt.s(Res.string.plan_err_start_point))) START_POINT else OTHER
+            }
+        }
+    }
+}
 
 /**
  * Cancel signal for one routing request (re-routing while navigating: a newer request supersedes an older one).

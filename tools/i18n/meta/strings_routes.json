@@ -1,0 +1,367 @@
+{
+  "routes_missing_title": {
+    "area": "Missing map data screen",
+    "context": "Title of the full screen shown when required map files are missing (rare since the map downloads itself)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_missing_body": {
+    "area": "Missing map data screen",
+    "context": "Explanation under the title",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_missing_found": {
+    "area": "Missing map data screen",
+    "context": "Status at the end of a file row (green): the file is on the phone",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "routes_missing_missing": {
+    "area": "Missing map data screen",
+    "context": "Status at the end of a file row (red): the file is missing",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 10
+  },
+  "routes_missing_adb": {
+    "area": "Missing map data screen",
+    "context": "Line above the adb command box (for developers copying data with a computer)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_missing_copy_command": {
+    "area": "Missing map data screen",
+    "context": "Content description (accessibility) of the copy button next to the adb command",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_missing_target": {
+    "area": "Missing map data screen",
+    "context": "Small grey text; %1$s = the data folder path on the phone (after a line break)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_missing_check_again": {
+    "area": "Missing map data screen",
+    "context": "Main button: look for the files again",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "routes_missing_continue": {
+    "area": "Missing map data screen",
+    "context": "Second button: open the app anyway",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "routes_data_import": {
+    "area": "Missing map data screen",
+    "context": "Button: pick a map package zip from the phone's storage (also in Developer tools)",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 48
+  },
+  "routes_data_download_paths": {
+    "area": "Missing map data screen",
+    "context": "Button: download the routing data (paths the planner uses), about 10 MB",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "'Wege … laden' for routing data; the English 'paths' means the data the route planner needs",
+    "max": 48
+  },
+  "routes_activity_title": {
+    "area": "Activity picker",
+    "context": "Title of the activity picker dialog (tap on the activity chip of the plan sheet)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_title": {
+    "area": "Activity picker",
+    "context": "Small label above the T1–T5 row, shown when Hike is chosen",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 32
+  },
+  "routes_sac_button_desc": {
+    "area": "Activity picker",
+    "context": "Content description (accessibility) of one T-level button: 'T3 · Demanding mountain hiking'. %1$d = level 1-5, %2$s = level name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_sac_line": {
+    "area": "Activity picker",
+    "context": "Line under the T1–T5 row describing the chosen level: 'T2 · Mountain hiking – Continuous path, …'. %1$d = level, %2$s = level name, %3$s = level description",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_1_name": {
+    "area": "Activity picker",
+    "context": "SAC hiking scale T1 name (official SAC wording)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_1_text": {
+    "area": "Activity picker",
+    "context": "Short description of SAC T1 (official SAC description, shortened)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Own short form of the SAC table; 'Turnschuhe' as in the SAC table ('Turnschuhe geeignet')"
+  },
+  "routes_sac_2_name": {
+    "area": "Activity picker",
+    "context": "SAC hiking scale T2 name (official SAC wording)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_2_text": {
+    "area": "Activity picker",
+    "context": "Short description of SAC T2",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Own short form of the SAC table"
+  },
+  "routes_sac_3_name": {
+    "area": "Activity picker",
+    "context": "SAC hiking scale T3 name (official SAC wording)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_3_text": {
+    "area": "Activity picker",
+    "context": "Short description of SAC T3",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Own short form of the SAC table; long line"
+  },
+  "routes_sac_4_name": {
+    "area": "Activity picker",
+    "context": "SAC hiking scale T4 name (official SAC wording)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_4_text": {
+    "area": "Activity picker",
+    "context": "Short description of SAC T4",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Own short form of the SAC table; 'Grashalden' is the SAC word for steep grass"
+  },
+  "routes_sac_5_name": {
+    "area": "Activity picker",
+    "context": "SAC hiking scale T5 name (official SAC wording)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_sac_5_text": {
+    "area": "Activity picker",
+    "context": "Short description of SAC T5",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Own short form of the SAC table"
+  },
+  "routes_title": {
+    "area": "My routes",
+    "context": "Title of My routes (☰ → My routes): saved routes, recorded tours, imported GPX",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_importing": {
+    "area": "My routes",
+    "context": "Replaces the Import GPX button while a file is imported (with a spinner)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Wird importiert…' (passive like other progress lines) – or 'Importiere…'",
+    "max": 16
+  },
+  "routes_import_gpx": {
+    "area": "My routes",
+    "context": "Button in the title bar: import a GPX file",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "routes_empty": {
+    "area": "My routes",
+    "context": "Shown when the list is empty (two lines)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_kind_planned": {
+    "area": "My routes",
+    "context": "Kind of an item (line 2 of each card, icon description, backup list): a saved planned route",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "routes_kind_recorded": {
+    "area": "My routes",
+    "context": "Kind of an item: a recorded tour",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Aufgezeichneter Track' – or 'Aufgezeichnete Tour'",
+    "max": 22
+  },
+  "routes_kind_imported": {
+    "area": "My routes",
+    "context": "Kind of an item: an imported GPX file",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Importierte GPX' – or 'Importierte GPX-Datei' (longer)",
+    "max": 22
+  },
+  "routes_rename_planned": {
+    "area": "My routes",
+    "context": "Title of the rename dialog for a planned route",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_rename_recorded": {
+    "area": "My routes",
+    "context": "Title of the rename dialog for a recorded track",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_rename_imported": {
+    "area": "My routes",
+    "context": "Title of the rename dialog for an imported GPX. English kept as before ('gpx' in lower case – came from lowercasing 'Imported GPX'); owner may fix",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_recording_now": {
+    "area": "My routes",
+    "context": "Red line on the card of the tour that is being recorded right now",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_after_tour": {
+    "area": "My routes",
+    "context": "Grey line on a card that cannot be opened during navigation",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Nach der Tour ladbar' is short; 'Kann nach der Tour geladen werden' is the literal form"
+  },
+  "routes_export_all": {
+    "area": "My routes",
+    "context": "⋮ menu: all routes and tours as one ZIP of GPX files",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_options_desc": {
+    "area": "My routes",
+    "context": "Content description (accessibility) of an item's ⋮ button. %1$s = item name",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_edit_rides": {
+    "area": "My routes",
+    "context": "⋮ menu of a recorded tour with bus / car / lift rides: edit those rides",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Fahrten' for bus/car/lift rides – check against the ride screens"
+  },
+  "routes_delete_title": {
+    "area": "My routes",
+    "context": "Delete dialog title. %1$s = route / tour name (German quotes „…“)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_replace_title": {
+    "area": "Dialogs",
+    "context": "Dialog when opening a route would overwrite an unsaved plan",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_replace_text": {
+    "area": "Dialogs",
+    "context": "Body of the replace dialog",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_save_first": {
+    "area": "Dialogs",
+    "context": "Button in the replace dialog: save the current plan first",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 18
+  },
+  "routes_name_label": {
+    "area": "Dialogs",
+    "context": "Label of the name field in Save / Rename dialogs",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_unfinished_title": {
+    "area": "Dialogs",
+    "context": "Dialog after a restart when a recording was interrupted (app or phone restarted)",
+    "priority": 3,
+    "confidence": "bitte prüfen",
+    "doubt": "'Unterbrochene Tour' (what happened) instead of literal 'Unvollständige Tour'"
+  },
+  "routes_unfinished_text": {
+    "area": "Dialogs",
+    "context": "Body: %1$s = distance ('12.5 km'), %2$s = duration ('1 h 05 min')",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_unfinished_continue": {
+    "area": "Dialogs",
+    "context": "Button: continue recording the interrupted tour",
+    "priority": 3,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "routes_unfinished_delete_title": {
+    "area": "Dialogs",
+    "context": "Confirmation before deleting the interrupted tour (goes to the recycle bin)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_track_saved": {
+    "area": "Dialogs",
+    "context": "Title of the dialog after End tour (stats, Export GPX, Delete, Done)",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "'Track gespeichert' – or 'Tour gespeichert' (glossary: recorded trip = Tour)"
+  },
+  "routes_activity_from_file": {
+    "area": "Messages",
+    "context": "Grey line in the track panel after a GPX import changed the activity. %1$s = activity in a sentence ('Hike T3'); German word order changed so the name stands at the end",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Rephrased: 'Aktivität aus der Datei übernommen: Wandern T3'"
+  },
+  "routes_activity_from_tour": {
+    "area": "Messages",
+    "context": "Grey line after opening a tour from My routes changed the activity. %1$s = activity in a sentence",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Rephrased like routes_activity_from_file"
+  },
+  "routes_gpx_empty": {
+    "area": "GPX import",
+    "context": "Error when an imported file is empty or not GPX",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_gpx_nothing": {
+    "area": "GPX import",
+    "context": "Error when a GPX file has no track, route or waypoint",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_gpx_too_large": {
+    "area": "GPX import",
+    "context": "Error when the file is too large. %1$d = size limit in MB (60)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "routes_replace_text_link": {
+    "area": "Dialogs",
+    "context": "Text of the 'Replace current route?' dialog when a plan link (QR code, shared link) is opened while the plan has unsaved changes. Buttons: Save first / Replace.",
+    "priority": 1,
+    "confidence": "sicher"
+  }
+}

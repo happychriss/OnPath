@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Search screen, place card, search kinds, "Add to route" preview, route names (ui/search/, search/). Context: tools/i18n/meta/strings_search.json -->
+<resources>
+    <string name="search_placeholder">Search places or addresses</string>
+    <string name="search_clear_query">Clear</string>
+    <string name="search_clear_recent">Clear</string>
+    <string name="search_intro">Find huts, peaks, villages, trails and addresses. The offline map is searched first; online results are added when you are connected.</string>
+    <string name="search_recent">Recent</string>
+    <string name="search_nothing_of_kind">Nothing of this kind in the offline map.</string>
+    <string name="search_no_match">No match in the offline map – try online results or Google Maps.</string>
+    <string name="search_online_attribution">Online results © OpenStreetMap</string>
+    <string name="search_searching_online">Searching online…</string>
+    <string name="search_in_google">Search “%1$s” in Google Maps</string>
+    <string name="search_google_line">Opens Google Maps – shops, opening times, reviews</string>
+    <string name="search_preparing">Preparing offline search…</string>
+    <string name="search_near_route">near your route</string>
+    <string name="search_online">online</string>
+
+    <string name="search_cat_huts">Huts</string>
+    <string name="search_cat_peaks">Peaks</string>
+    <string name="search_cat_water">Water</string>
+    <string name="search_cat_places">Places</string>
+    <string name="search_cat_stations">Stations</string>
+
+    <string name="search_kind_peak">Peak</string>
+    <string name="search_kind_saddle">Pass / saddle</string>
+    <string name="search_kind_place">Place</string>
+    <string name="search_kind_trail">Trail</string>
+    <string name="search_kind_address">Address</string>
+    <string name="search_kind_street">Street</string>
+    <string name="search_kind_store">Shop</string>
+    <string name="search_place_city">City</string>
+    <string name="search_place_town">Town</string>
+    <string name="search_place_village">Village</string>
+    <string name="search_place_hamlet">Hamlet</string>
+    <string name="search_place_suburb">District</string>
+    <string name="search_place_neighbourhood">District</string>
+    <string name="search_place_quarter">District</string>
+    <string name="search_place_isolated_dwelling">Farm / house</string>
+    <string name="search_place_locality">Locality</string>
+
+    <string name="search_card_add">Add to route</string>
+    <string name="search_card_remove">Remove from route</string>
+    <string name="search_card_as_start">As start</string>
+    <string name="search_card_as_destination">As destination</string>
+    <string name="search_add_as_start">as start</string>
+    <string name="search_add_as_destination">as destination</string>
+    <string name="search_add_as_new_destination">as new destination</string>
+    <string name="search_add_as_stop_on_route">as stop %1$d – on your route</string>
+    <string name="search_add_as_stop_best">as stop %1$d – fits best</string>
+    <string name="search_add_about">about %1$s</string>
+    <string name="search_is_start">is the start</string>
+    <string name="search_is_destination">is the destination</string>
+    <string name="search_is_stop">is stop %1$d</string>
+    <string name="search_note_from_address">Position from the address</string>
+
+    <string name="search_route_round_to">Round trip to %1$s</string>
+    <string name="search_route_round_from">Round trip from %1$s</string>
+    <string name="search_route_from">From %1$s</string>
+    <string name="search_route_to">To %1$s</string>
+    <string name="search_route_via">%1$s (via %2$s)</string>
+</resources>

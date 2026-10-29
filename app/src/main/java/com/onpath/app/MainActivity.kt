@@ -47,6 +47,7 @@ import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
 import com.onpath.app.debug.ScreenLifecycle
 import kotlinx.coroutines.delay
+import com.onpath.strings.*
 
 class MainActivity : ComponentActivity() {
 
@@ -58,7 +59,7 @@ class MainActivity : ComponentActivity() {
         vm.locationAsking = false
         vm.tracker.start()
         if (vm.tracker.hasPermission()) afterPermission?.invoke()
-        else vm.message = "Without location permission the map works, but position and recording do not."
+        else vm.message = Txt.s(Res.string.msg_no_location_permission)
         afterPermission = null
     }
 
@@ -85,13 +86,13 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.message = "Without storage access OnPath cannot copy tracks and routes to Documents/OnPath. Choose another folder in Settings → Backup."
+        else vm.showError(Txt.s(Res.string.msg_no_storage_permission))
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
         try { launcher.launch(com.onpath.app.backup.BackupFolder.initialUri) } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("backup", "No folder picker available", e)
-            vm.message = "This phone has no folder picker – restore and folder choice are not possible."
+            vm.showError(Txt.s(Res.string.msg_no_folder_picker))
         }
     }
 
@@ -104,6 +105,7 @@ class MainActivity : ComponentActivity() {
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
+        com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
         if (savedInstanceState == null) handleIntent(intent)
@@ -118,7 +120,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(serious, vm.message == null) {
                 if (serious == null) return@LaunchedEffect
                 if (vm.message != null) return@LaunchedEffect // wait until the current message is gone
-                vm.message = "Something went wrong. It was noted in Settings → Diagnostics."
+                vm.showError(Txt.s(Res.string.msg_something_wrong))
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
@@ -168,7 +170,7 @@ class MainActivity : ComponentActivity() {
                         }
                         vm.editRides?.let { (t, s) ->
                             com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.applyEditRides(t, it) }, onDelete = null,
-                                onDismiss = { vm.editRides = null }, title = "Rides in “${t.name}”", initial = t.rides?.choice)
+                                onDismiss = { vm.editRides = null }, title = str(Res.string.msg_rides_title, t.name), initial = t.rides?.choice)
                         }
                         vm.recycleBin?.let { bin ->
                             BackHandler { vm.recycleBin = null }
@@ -212,6 +214,8 @@ class MainActivity : ComponentActivity() {
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
+                            language = com.onpath.app.ui.LanguageUi(com.onpath.app.data.AppLanguage.choice(this@MainActivity),
+                                com.onpath.app.data.AppLanguage.describe(this@MainActivity), ::setLanguage),
                             mapCells = run {
                                 val installed by vm.cells.installed.collectAsState()
                                 val states by vm.cells.states.collectAsState()
@@ -288,7 +292,7 @@ class MainActivity : ComponentActivity() {
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.message?.let { msg ->
                         // errors get ⚠ and a red edge (review 2026-10-24 B10)
-                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null },
+                        com.onpath.app.ui.MessageBar(msg, onOk = { vm.message = null }, error = vm.messageIsError,
                             // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
@@ -302,11 +306,10 @@ class MainActivity : ComponentActivity() {
                 if (vm.askUpdateDuringTour) {
                     AlertDialog(
                         onDismissRequest = { vm.askUpdateDuringTour = false },
-                        title = { Text("A tour is being recorded") },
-                        text = { com.onpath.app.ui.DialogText("Installing the update closes OnPath and recording stops. Your track so far is kept – " +
-                            "open OnPath afterwards and tap Continue. Better: install after the tour.") },
-                        confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text("After the tour") } },
-                        dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text("Install now") } },
+                        title = { Text(str(Res.string.msg_update_tour_title)) },
+                        text = { com.onpath.app.ui.DialogText(str(Res.string.msg_update_tour_text)) },
+                        confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text(str(Res.string.msg_update_after_tour)) } },
+                        dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text(str(Res.string.msg_update_install_now)) } },
                     )
                 }
                 vm.unfinished?.let { t ->
@@ -315,7 +318,7 @@ class MainActivity : ComponentActivity() {
                 }
                 vm.unfinishedRides?.let { (t, s) ->
                     com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
-                        onDismiss = { vm.backToUnfinished() }, title = "Save the unfinished tour?")
+                        onDismiss = { vm.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
                 }
                 vm.finishedTour?.let { t ->
                     FinishedTourDialogs(t,
@@ -356,7 +359,20 @@ class MainActivity : ComponentActivity() {
         i.action, i.data?.scheme, i.type, i.categories, i.flags, i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0,
         try { referrer?.host } catch (e: Exception) { null }) // expected: referrer is best effort (event log only)
 
+    /** Android may reset the default locale to the phone's on a configuration change: keep the chosen language. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.onpath.app.data.AppLanguage.apply(this)
+    }
+
+    /** Developer tools → language: store it, then build the screen again in that language. */
+    private fun setLanguage(c: com.onpath.app.data.LanguageChoice) {
+        com.onpath.app.data.AppLanguage.set(this, c)
+        recreate()
+    }
+
     override fun onStart() {
+        com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
         vm.tracker.start()
         vm.recheckData()
@@ -376,6 +392,12 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         // Reopened from recents: that share was handled already.
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        // a plan link (planer.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
+        planLinkOf(intent)?.let { found ->
+            vm.dataScreenDismissed = true
+            vm.receivePlanLink(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
+            return
+        }
         sharedPlaceOf(intent)?.let { place ->
             vm.dataScreenDismissed = true
             vm.receiveSharedPlace(place)
@@ -392,6 +414,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** A plan link opened (VIEW) or shared as text (SEND); null for everything else (PlanLinks.fromIntent). */
+    private fun planLinkOf(intent: Intent): com.onpath.app.routing.PlanLinks.Found? = try {
+        com.onpath.app.routing.PlanLinks.fromIntent(when (intent.action) {
+            Intent.ACTION_VIEW -> com.onpath.app.routing.PlanLinks.Via.OPENED
+            Intent.ACTION_SEND -> com.onpath.app.routing.PlanLinks.Via.SHARED
+            else -> null
+        }, intent.dataString, intent.type,
+            intent.getStringExtra(Intent.EXTRA_TEXT),
+            hasStream = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) != null)
+    } catch (e: Exception) {
+        // a malformed intent from another app (bad extras): not a plan link – the other handlers decide
+        com.onpath.app.debug.Problems.warn("plan", "Intent could not be checked for a plan link", e)
+        null
+    }
+
     /** A place shared as text (Google Maps "Share") or opened as a `geo:` link; null for files and everything else. */
     private fun sharedPlaceOf(intent: Intent): com.onpath.app.search.SharedPlace? = try {
         when {
@@ -401,13 +438,13 @@ class MainActivity : ComponentActivity() {
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) == null ->
                 com.onpath.app.search.SharedPlaceParser.fromText(intent.getStringExtra(Intent.EXTRA_TEXT),
                     intent.getStringExtra(Intent.EXTRA_SUBJECT)).also {
-                    if (it == null) vm.message = "OnPath found no place in the shared text."
+                    if (it == null) vm.message = Txt.s(Res.string.msg_shared_no_place)
                 }
             else -> null
         }
     } catch (e: Exception) {
         com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
-        vm.message = "OnPath could not read the shared place."
+        vm.showError(Txt.s(Res.string.msg_shared_unreadable))
         null
     }
 
@@ -416,7 +453,7 @@ class MainActivity : ComponentActivity() {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
         } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("ui", "No file picker available for GPX import", e)
-            vm.message = "No file picker available."
+            vm.showError(Txt.s(Res.string.msg_no_file_picker))
         }
     }
 
@@ -448,8 +485,7 @@ class MainActivity : ComponentActivity() {
         val shown = sp.getLong("crashShownUntil", 0)
         val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
         sp.edit().putLong("crashShownUntil", crash.last).apply()
-        if (vm.message == null) vm.message = "OnPath stopped unexpectedly last time. " +
-            "Details: Settings → Diagnostics."
+        if (vm.message == null) vm.showError(Txt.s(Res.string.msg_crash_last_time))
     }
 
     /**
@@ -519,6 +555,6 @@ class MainActivity : ComponentActivity() {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("adb", text))
         // Android 13+ confirms a copy itself; an extra message would only need another tap.
-        if (Build.VERSION.SDK_INT < 33) vm.message = "Copied."
+        if (Build.VERSION.SDK_INT < 33) vm.message = Txt.s(Res.string.msg_copied)
     }
 }

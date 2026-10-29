@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -103,17 +104,17 @@ fun PointsSection(
     RecomposeProbe.hit("points")
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Points", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+            Text(str(Res.string.plan_points), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
             TextButton(onClick = onReverse, enabled = canReverse) {
-                Icon(Icons.Outlined.SwapVert, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Reverse")
+                Icon(Icons.Outlined.SwapVert, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.plan_reverse))
             }
             TextButton(onClick = onRoundTrip, enabled = canRoundTrip) {
-                Icon(Icons.Outlined.Loop, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Round trip")
+                Icon(Icons.Outlined.Loop, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.plan_round_trip))
             }
         }
         if (rows.isEmpty()) {
-            Text("No points yet – hold the map to add one.", style = MaterialTheme.typography.bodyMedium,
+            Text(str(Res.string.plan_no_points), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
             return@Column
         }
@@ -251,13 +252,13 @@ private fun PointRow(i: Int, r: PlanPointRow, count: Int, onDelete: (row: Int) -
         // ≡: drag it (the list's detector does the work)
         Box(
             Modifier.size(HANDLE_WIDTH, ROW_HEIGHT)
-                .semantics { contentDescription = "Move point ${i + 1} (hold and drag)" },
+                .semantics { contentDescription = Txt.s(Res.string.plan_point_move_desc, i + 1) },
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Filled.DragHandle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         Row(
             Modifier.weight(1f).fillMaxHeight()
-                .clickable(role = Role.Button, onClickLabel = "Show on the map") { onShow(i) }
-                .semantics { contentDescription = "Show point ${i + 1} on the map: ${r.name}" },
+                .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_on_map)) { onShow(i) }
+                .semantics { contentDescription = Txt.s(Res.string.plan_point_show_desc, i + 1, r.name) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PointMarker(r, count)
@@ -276,7 +277,7 @@ private fun PointRow(i: Int, r: PlanPointRow, count: Int, onDelete: (row: Int) -
             }
         }
         IconButton(onClick = { onDelete(i) }, modifier = Modifier.size(48.dp)
-            .semantics { contentDescription = "Delete point ${i + 1}" }) {
+            .semantics { contentDescription = Txt.s(Res.string.plan_point_delete_desc, i + 1) }) {
             Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -285,10 +286,10 @@ private fun PointRow(i: Int, r: PlanPointRow, count: Int, onDelete: (row: Int) -
 /** The row just deleted, for a moment in its old place (no buttons: a second tap there does nothing). */
 @Composable
 private fun DeletedRow(r: PlanPointRow) {
-    Row(Modifier.fillMaxWidth().height(ROW_HEIGHT).semantics { contentDescription = "Point deleted: ${r.name}" },
+    Row(Modifier.fillMaxWidth().height(ROW_HEIGHT).semantics { contentDescription = Txt.s(Res.string.plan_point_deleted_desc, r.name) },
         verticalAlignment = Alignment.CenterVertically) {
         Spacer(Modifier.width(HANDLE_WIDTH))
-        Text("Deleted – Undo brings it back", style = MaterialTheme.typography.bodyMedium,
+        Text(str(Res.string.plan_point_deleted), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
     }
@@ -310,9 +311,9 @@ private fun PointMarker(r: PlanPointRow, count: Int) {
 
 /** The role under the name; not repeated when an unnamed point is already called by it ("Start", "Destination"). */
 private fun roleText(r: PlanPointRow): String? = when {
-    r.loop -> "Start & finish"
-    r.role == PointRole.START -> "Start"
-    r.role == PointRole.GOAL -> "Destination"
+    r.loop -> Txt.s(Res.string.plan_point_start_finish)
+    r.role == PointRole.START -> Txt.s(Res.string.plan_point_start)
+    r.role == PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
     else -> null
 }?.takeIf { it != r.name }
 

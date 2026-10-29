@@ -21,6 +21,7 @@ ENVIRONMENT = "dev"
 FORMATS = "2"
 CELL_SCHEMA = "7"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
+PACKAGE_SCHEMA = "1"   # = tools/cells/build_package.sh PACKAGE_SCHEMA (region packages, z7 ids; map-hosting.md §7i)
 BUILDS_ENABLED = "false"
 GCP_JOB = "onpath-cell-dev"
 
@@ -44,6 +45,7 @@ ENVIRONMENT = "test"
 FORMATS = "2"
 CELL_SCHEMA = "7"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
+PACKAGE_SCHEMA = "1"   # = tools/cells/build_package.sh PACKAGE_SCHEMA (region packages, z7 ids; map-hosting.md §7i)
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-test"
 MAX_CELLS_PER_REQUEST = "40"
@@ -75,6 +77,7 @@ ENVIRONMENT = "production"
 FORMATS = "2"
 CELL_SCHEMA = "7"   # = tools/cells/cells.py CELL_SCHEMA; older published cells are rebuilt when asked
 CELL_SCHEMA_SERVE = "3"   # older cells of at least this schema stay "ready" while rebuilt (the style works with them)
+PACKAGE_SCHEMA = "1"   # = tools/cells/build_package.sh PACKAGE_SCHEMA (region packages, z7 ids; map-hosting.md §7i)
 BUILDS_ENABLED = "true"
 GCP_JOB = "onpath-cell-prod"
 MAX_CELLS_PER_REQUEST = "40"

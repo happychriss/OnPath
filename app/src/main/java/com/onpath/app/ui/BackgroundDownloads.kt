@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,17 +70,17 @@ data class BackgroundDownloadUi(
     val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + " · $percent %" }
 
     /** "Loading newer map" when only newer versions load (owner 2026-10-22: the strip is the one indicator for them). */
-    val title: String get() = if (regions > 0 && newer >= regions && routingParts == 0) "Loading newer map" else "Loading map"
+    val title: String get() = Txt.s(if (regions > 0 && newer >= regions && routingParts == 0) Res.string.maps_bg_title_newer
+        else Res.string.maps_bg_title)
 
     /** Details line about the newer versions, null when none loads. */
     val newerLine: String? get() = if (newer <= 0) null else
-        "Newer map for ${if (newer == 1) "1 of your areas" else "$newer of your areas"} – replaces the old one when loaded" +
-            (newerEtaMin?.let { " (being prepared, about $it min)" } ?: "")
+        newerEtaMin?.let { Txt.s(Res.string.maps_bg_newer_eta, newer, it) } ?: Txt.s(Res.string.maps_bg_newer, newer)
 
     /** "3 areas · 24 MB · 40 %" (the strip); "24 MB · 40 %" when only the route planning part of the map loads (never named). */
     val line: String get() {
         val what = when {
-            regions > 0 -> "$regions ${if (regions == 1) "area" else "areas"}"
+            regions > 0 -> Txt.p(Res.plurals.maps_areas_count, regions, regions)
             else -> null
         }
         return listOfNotNull(what, if (bytes > 0) "${mb(bytes)} MB" else null, "$percent %").joinToString(" · ")
@@ -158,9 +159,9 @@ class BackgroundProgress {
 @Composable
 fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (name, more) = ui.chip
-    val text = "Loading map: ${ui.chipText}"
+    val text = str(Res.string.maps_bg_chip_cd, ui.chipText)
     val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
-    Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "Show background downloads", onClick = onClick)
+    Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = str(Res.string.maps_bg_chip_click), onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
         Row(Modifier.widthIn(max = maxW).background(OnPathColors.InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -179,27 +180,28 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
 fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Loading in the background") },
+        title = { Text(str(Res.string.maps_bg_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (ui.groups.isNotEmpty()) {
                     // one line per name (owner 2026-10-23): "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
                     ui.groups.forEach { Text(it.line) }
-                    if (ui.newer > 0) ui.newerEtaMin?.let { Text("Newer map ready in about $it min.", style = MaterialTheme.typography.bodyMedium) }
+                    if (ui.newer > 0) ui.newerEtaMin?.let { Text(str(Res.string.maps_bg_newer_ready, it), style = MaterialTheme.typography.bodyMedium) }
                 } else {
                     val fresh = ui.regions - ui.newer
-                    if (fresh > 0) Text("Map: $fresh ${if (fresh == 1) "area" else "areas"} along your route or around you")
+                    if (fresh > 0) Text(plural(Res.plurals.maps_bg_fresh, fresh, fresh))
                     ui.newerLine?.let { Text(it) }
                 }
-                Text(listOfNotNull(if (ui.bytes > 0) "In all about ${mb(ui.bytes)} MB" else null, "${ui.percent} % done").joinToString(" · "),
+                Text(listOfNotNull(if (ui.bytes > 0) str(Res.string.maps_bg_total, mb(ui.bytes)) else null,
+                    str(Res.string.maps_bg_done, ui.percent)).joinToString(" · "),
                     fontWeight = FontWeight.Medium)
-                Text("The maps you have stay.", style = MaterialTheme.typography.bodyMedium)
+                Text(str(Res.string.maps_bg_maps_stay), style = MaterialTheme.typography.bodyMedium)
             }
         },
-        confirmButton = { TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_close)) } },
         dismissButton = {
             TextButton(onClick = onCancelAll, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("Cancel all", color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
+                Text(str(Res.string.common_cancel_all), color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
             }
         },
     )
@@ -282,19 +284,19 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
     when (noticeLook(card)) {
         NoticeLook.QUIET -> Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             QuietPill(title, if (card is CellCardUi.NeedPosition) Icons.Outlined.LocationSearching else Icons.Outlined.CloudOff,
-                action = if (card == CellCardUi.NotAvailable) "OK" to cb.onClose else null)
+                action = if (card == CellCardUi.NotAvailable) str(Res.string.common_ok) to cb.onClose else null)
         }
         NoticeLook.WARNING -> {
             val f = card as CellCardUi.Failed
             Notice(title, warning = true, onClose = null,
-                listOfNotNull("Not now" to cb.onClose, if (f.retryable) "Try again" to cb.onRetry else null), modifier)
+                listOfNotNull(str(Res.string.common_not_now) to cb.onClose, if (f.retryable) str(Res.string.common_try_again) to cb.onRetry else null), modifier)
         }
         NoticeLook.QUESTION -> {
             val buttons: List<Pair<String, () -> Unit>> = when {
-                working?.question != null -> listOf("Wi-Fi only" to cb.onWifiOnly, "Load now" to cb.onMobileYes)
+                working?.question != null -> listOf(str(Res.string.maps_btn_wifi_only) to cb.onWifiOnly, str(Res.string.maps_btn_load_now) to cb.onMobileYes)
                 // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner Q6 2026-10-23)
                 working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
-                else -> listOf("Allow location" to cb.onAllowLocation)
+                else -> listOf(str(Res.string.maps_btn_allow_location) to cb.onAllowLocation)
             }
             // the Wi-Fi note can be hidden (the areas keep waiting); a question is answered with its buttons
             Notice(title, warning = false, onClose = if (working != null && working.question == null) cb.onClose else null, buttons, modifier)
@@ -309,9 +311,9 @@ fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier =
 fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
                  mustBuild: Boolean = true) =
     // short (owner 2026-10-24: simplify – title ≤ 5 words, one detail line at most)
-    Notice("Detailed map for here? · ${mb(bytes)} MB",
-        warning = false, onClose = null, listOf("Not now" to onNotNow, "Load" to onLoad), modifier,
-        detail = if (mustBuild) "Takes a few minutes to prepare." else null)
+    Notice(str(Res.string.maps_here_ask, mb(bytes)),
+        warning = false, onClose = null, listOf(str(Res.string.common_not_now) to onNotNow, str(Res.string.maps_btn_load) to onLoad), modifier,
+        detail = if (mustBuild) str(Res.string.maps_here_ask_detail) else null)
 
 /**
  * One strip at the top (owner 2026-10-23): a title, an optional detail line, buttons right-aligned (last = main). Blue
@@ -332,7 +334,7 @@ private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                 // 48 dp like every other target (gloves)
                 if (onClose != null) androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.Close, "Hide (the map keeps loading)", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.Close, str(Res.string.maps_hide_cd), modifier = Modifier.size(20.dp))
                 } else Spacer(Modifier.width(8.dp))
             }
             detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = fg.copy(alpha = 0.9f),

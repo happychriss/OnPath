@@ -111,7 +111,7 @@ class AddressSearchTest {
         assertEquals("Gratsch", p.village)
         assertEquals("Meran", p.town)
         assertEquals("Meran", p.municipality)
-        assertTrue(com.onpath.app.ui.search.resultSubtitle(SearchHit(p, 0.0, 3, 1200.0, false), german = false)
+        assertTrue(com.onpath.app.ui.search.resultSubtitle(SearchHit(p, 0.0, 3, 1200.0, false))
             .startsWith("Address · Meran · "))
         // no village near: the municipality is the name, nothing repeated on line 2
         val bz = find("via Roma 3 Bolzano").first().place

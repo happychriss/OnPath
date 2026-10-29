@@ -73,7 +73,7 @@ class PoiTest {
         assertEquals(1839, p.ele)
         assertEquals(listOf("May-Oct 08:00-18:00", "Nov off"), p.openingHoursLines)
         assertEquals("Regional, Pizza", p.cuisineLabel)
-        assertEquals("Hochganghaus", p.title(german = true))
+        assertEquals("Hochganghaus", inGerman { p.title() })
         assertEquals("https://www.openstreetmap.org/node/42", p.osmUrl)
         assertNull(p.website)
     }
@@ -82,8 +82,8 @@ class PoiTest {
     fun fromPropertiesUnnamedAndStringEle() {
         val p = Poi.fromProperties(mapOf("id" to "w7", "kind" to "water", "ele" to "1200.6"), 1.0, 2.0)!!
         assertEquals(1201, p.ele)
-        assertEquals("Trinkwasser", p.title(german = true))
-        assertEquals("Drinking water", p.title(german = false))
+        assertEquals("Trinkwasser", inGerman { p.title() })
+        assertEquals("Drinking water", p.title())
         assertNull(Poi.fromProperties(mapOf("name" to "x"), 1.0, 2.0))
     }
 
@@ -104,6 +104,14 @@ class PoiTest {
     fun unknownKindFallsBack() {
         val k = PoiKinds.of("ski_rental")
         assertEquals(PoiGroup.OTHER, k.group)
-        assertEquals("Ski rental", k.en)
+        assertEquals("Ski rental", k.label)
+        assertEquals("Ski rental", inGerman { k.label }) // an OSM value without a name of ours: as it is
     }
+}
+
+/** Runs [block] with the app's texts in German (EN + DE, strings_*.xml), then back to the test default. */
+internal fun <T> inGerman(block: () -> T): T {
+    val old = java.util.Locale.getDefault()
+    java.util.Locale.setDefault(java.util.Locale.GERMAN)
+    try { return block() } finally { java.util.Locale.setDefault(old) }
 }

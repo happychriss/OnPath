@@ -450,6 +450,11 @@ repository variable `ONPATH_OVERVIEW_URL` (folder URL ending in `/`) points at i
 files, checks the hashes and sets `ONPATH_OVERVIEW_ASSETS`; without the variable the APK has no overview (warning in
 the run). A new overview = a new folder + a new variable value; old APKs are unaffected.
 
+**Region packages (z7–9, since 2026-10-26, `docs/design/map-cells.md` §20):** where the user has map cells, a
+package per z7 tile (`tools/cells/build_package.sh`, ~3 MB: OpenMapTiles z7–9 without farmland, long-distance routes,
+the same pre-rendered relief for z7–9) gives the region view the overview cannot; the overview stays for z0–6 and
+everywhere else.
+
 ## 10. Troubleshooting
 
 - *Step skipped although data changed*: run with `--force` (or delete the output file). Outputs are

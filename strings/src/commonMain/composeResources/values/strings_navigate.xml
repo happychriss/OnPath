@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Navigate: tour, navigation, recording (notifications), rides, time. Context: tools/i18n/meta/strings_navigate.json -->
+<resources>
+    <!-- turn / junction directions -->
+    <string name="nav_dir_left">Left</string>
+    <string name="nav_dir_slight_left">Slight left</string>
+    <string name="nav_dir_sharp_left">Sharp left</string>
+    <string name="nav_dir_hairpin_left">Hairpin left</string>
+    <string name="nav_dir_keep_left">Keep left</string>
+    <string name="nav_dir_right">Right</string>
+    <string name="nav_dir_slight_right">Slight right</string>
+    <string name="nav_dir_sharp_right">Sharp right</string>
+    <string name="nav_dir_hairpin_right">Hairpin right</string>
+    <string name="nav_dir_keep_right">Keep right</string>
+    <string name="nav_dir_turn_around">Turn around</string>
+    <string name="nav_dir_roundabout">Roundabout</string>
+    <string name="nav_turn_now">%1$s now</string>
+    <string name="nav_turn_in">%1$s in %2$s</string>
+    <string name="nav_turn_distance_now">Now</string>
+
+    <!-- status card -->
+    <string name="nav_activity_cd">Activity: %1$s. Tap to check or switch</string>
+    <string name="nav_not_on_route">Not on the route</string>
+    <string name="nav_from_route">%1$s from the route</string>
+    <string name="nav_arrive">Arrive</string>
+    <string name="nav_profile_show">Show elevation profile</string>
+    <string name="nav_profile_hide">Hide elevation profile</string>
+    <string name="nav_copy_position">Copy position</string>
+    <string name="nav_position_clip">Position</string>
+    <string name="nav_copied">%1$s · copied ✓</string>
+    <string name="nav_status_recording">Recording</string>
+    <string name="nav_status_paused">Paused</string>
+    <string name="nav_status_searching_gps">Searching GPS…</string>
+    <string name="nav_moving_lower">moving %1$s</string>
+    <string name="nav_moving">Moving %1$s</string>
+    <string name="nav_breaks">breaks %1$s</string>
+    <string name="nav_no_gps">No GPS</string>
+    <string name="nav_position_age">position %1$d min old</string>
+    <string name="nav_time_paused">Time paused</string>
+    <string name="nav_off_route">Off route</string>
+    <string name="nav_pace_faster">faster than planned</string>
+    <string name="nav_pace_slower">slower than planned</string>
+    <string name="nav_pace_faster_where">faster than planned %1$s</string>
+    <string name="nav_pace_slower_where">slower than planned %1$s</string>
+    <string name="nav_pace_uphill">uphill</string>
+    <string name="nav_pace_flat">on the flat</string>
+    <string name="nav_pace_downhill">downhill</string>
+    <string name="nav_pace_and">%1$s and %2$s</string>
+
+    <!-- off route: question, card, notification -->
+    <string name="nav_take_new_route">Take new route</string>
+    <string name="nav_keep_original">Keep original</string>
+    <string name="nav_title_searching">Off route – finding a way back…</string>
+    <string name="nav_title_found">Off route – new route found</string>
+    <string name="nav_title_no_data">Off route – no map here to find a way back</string>
+    <string name="nav_title_unavailable">Off route – can't search a way back right now</string>
+    <string name="nav_title_no_way">Off route – no way back found</string>
+    <string name="nav_title_kept">Off route – original route kept</string>
+    <string name="nav_state_searching">Looking for a way back…</string>
+    <string name="nav_state_found">New route found</string>
+    <string name="nav_state_no_data">No map here to find a way back</string>
+    <string name="nav_state_unavailable">Can't search a way back right now</string>
+    <string name="nav_state_no_way">No way back found</string>
+    <string name="nav_state_kept">Following the original route</string>
+    <string name="nav_switch_title">New route for %1$s</string>
+    <string name="nav_rest_of_route">Rest of the route %1$s</string>
+    <string name="nav_nearest_way">nearest way %1$s away</string>
+    <string name="nav_new_route_length">new route %1$s</string>
+    <string name="nav_rejoins_in">rejoins in %1$s</string>
+    <string name="nav_about_as_long">About as long</string>
+    <string name="nav_shorter">%1$s shorter</string>
+    <string name="nav_to_route_direct">%1$s %2$s (direct)</string>
+    <string name="nav_compass_n">north</string>
+    <string name="nav_compass_ne">north-east</string>
+    <string name="nav_compass_e">east</string>
+    <string name="nav_compass_se">south-east</string>
+    <string name="nav_compass_s">south</string>
+    <string name="nav_compass_sw">south-west</string>
+    <string name="nav_compass_w">west</string>
+    <string name="nav_compass_nw">north-west</string>
+    <string name="nav_back_to">Back to %1$s</string>
+    <string name="nav_back_to_route">Back to the route</string>
+
+    <!-- lock screen notification while following a route -->
+    <string name="nav_notif_to_go">%1$s to go</string>
+    <string name="nav_notif_arrival">arrival %1$s</string>
+    <string name="nav_notif_left">%1$s left</string>
+    <string name="nav_notif_following">%1$s · following %2$s</string>
+    <string name="nav_notif_recorded">Recorded %1$s · %2$s</string>
+    <string name="nav_pause">Pause</string>
+    <string name="nav_route_fallback">Route</string>
+
+    <!-- recording notifications and problems -->
+    <string name="nav_channel_recording">Recording</string>
+    <string name="nav_channel_recording_desc">Shows distance and time while recording</string>
+    <string name="nav_channel_off_route">Off route</string>
+    <string name="nav_channel_off_route_desc">Asks when you leave the route you follow: take a new route or keep the original</string>
+    <string name="nav_rec_stopped_title">Recording stopped</string>
+    <string name="nav_rec_fail_read">Recording could not start: your saved tracks cannot be read.</string>
+    <string name="nav_rec_fail_permission">Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.</string>
+    <string name="nav_rec_fail_no_gps">Recording stopped: this device has no GPS.</string>
+    <string name="nav_rec_fail_blocked">Recording could not start – Android blocked it. Open OnPath and try again.</string>
+    <string name="nav_rec_fail_storage">Recording could not start: the track cannot be saved (phone storage full or damaged).</string>
+    <string name="nav_rec_save_failed_title">Recording cannot be saved</string>
+    <string name="nav_rec_save_failed">The track cannot be saved any more (phone storage full or damaged). Free up space; recording keeps trying.</string>
+    <string name="nav_rec_paused_title">Recording is paused</string>
+    <string name="nav_rec_paused_moving">You are moving – resume recording?</string>
+    <string name="nav_interrupted_title">Tour recording interrupted</string>
+    <string name="nav_interrupted_boot">The phone restarted – open OnPath and tap Continue to record on.</string>
+    <string name="nav_interrupted_update">OnPath was updated – open OnPath and tap Continue to record on.</string>
+    <string name="nav_interrupted_boot_long">The phone restarted while “%1$s” was recording. The track so far is saved. Open OnPath and tap Continue to record on.</string>
+    <string name="nav_interrupted_update_long">OnPath was updated while “%1$s” was recording. The track so far is saved. Open OnPath and tap Continue to record on.</string>
+
+    <!-- GPS status -->
+    <string name="nav_gps_no_permission">No location permission</string>
+    <string name="nav_gps_off">Location is off</string>
+    <string name="nav_gps_searching">Searching GPS</string>
+    <string name="nav_gps_weak">GPS weak</string>
+    <string name="nav_gps_good">GPS good</string>
+
+    <!-- tour card, end tour, arrival -->
+    <string name="nav_end_tour_title">End this tour?</string>
+    <string name="nav_delete_track_title">Delete this track?</string>
+    <string name="nav_recycle_bin_note">It stays in the recycle bin for %1$d days.</string>
+    <string name="nav_arrived_title">You have arrived – end tour?</string>
+    <string name="nav_keep_going">Keep going</string>
+    <string name="nav_continue">Continue</string>
+    <string name="nav_continue_as">Continue · %1$s</string>
+    <string name="nav_tour_running">Tour running · %1$s · %2$s</string>
+    <string name="nav_tour_paused">Tour paused · %1$s · %2$s</string>
+    <string name="nav_end_tour">End tour</string>
+    <string name="nav_route_back_title">Route back to the start?</string>
+    <string name="nav_route_back_text">You deleted the destination. Undo brings it back.</string>
+    <string name="nav_route_back">Route back</string>
+    <string name="nav_just_record">Just record</string>
+    <string name="nav_long_route_foot">%1$s on foot. Calculating and loading its maps takes long.</string>
+    <string name="nav_long_route_bike">%1$s by bike. Calculating and loading its maps takes long.</string>
+    <string name="nav_long_route_title">This route is very long</string>
+    <string name="nav_plan_anyway">Plan anyway</string>
+
+    <!-- activity check sheet -->
+    <string name="nav_check_checking">Checking the rest of the route…</string>
+    <string name="nav_check_fits">✓ fits</string>
+    <string name="nav_check_recording_as">You are recording as</string>
+    <string name="nav_check_navigating_as">You are navigating as</string>
+    <string name="nav_check_switch_to">Switch to</string>
+    <string name="nav_check_rest_of_route">for the rest of the route</string>
+    <string name="nav_check_keep">Keep %1$s</string>
+    <string name="nav_check_switch_to_cd">Switch to %1$s</string>
+    <string name="nav_check_not_suited">%1$s not suited for %2$s</string>
+    <string name="nav_check_steps">steps %1$s</string>
+    <string name="nav_check_busy_road">%1$s busy road</string>
+    <string name="nav_check_unpaved">%1$s unpaved</string>
+    <string name="nav_check_rough">%1$s rough trail</string>
+    <string name="nav_who_bike_touring">bikes</string>
+    <string name="nav_who_bike_trekking">gravelbikes</string>
+    <string name="nav_who_ebike">e-bikes</string>
+    <string name="nav_who_mtb">MTBs</string>
+    <string name="nav_who_emtb">E-MTBs</string>
+    <string name="nav_who_hike">hiking (T%1$d)</string>
+
+    <!-- rides (bus / car / lift) in a tour -->
+    <plurals name="nav_rides_question">
+        <item quantity="one">Part of this tour looks like a ride (bus, car or lift). What should count?</item>
+        <item quantity="other">%1$d parts of this tour look like rides (bus, car or lift). What should count?</item>
+    </plurals>
+    <string name="nav_rides_kept_note">All recorded points are kept – you can change this later in My routes (⋮ → Edit rides).</string>
+    <string name="nav_row_on_foot">On foot</string>
+    <string name="nav_row_by_bike">By bike</string>
+    <string name="nav_row_vehicle">Bus / car</string>
+    <string name="nav_row_lift">Lift</string>
+    <string name="nav_ride_until_time">Save only until %1$s</string>
+    <string name="nav_ride_until_ride">Save only until the ride</string>
+    <string name="nav_ride_until_last_detail">The last ride and everything after it dropped; earlier rides not counted</string>
+    <string name="nav_ride_until_detail">The ride and everything after it dropped</string>
+    <string name="nav_ride_not_counted">Save all, rides not counted</string>
+    <string name="nav_ride_not_counted_detail">Rides grey on the map, not in km, time or pace</string>
+    <string name="nav_ride_split_two">Split into two tracks</string>
+    <string name="nav_ride_split_n">Split into %1$d tracks</string>
+    <string name="nav_ride_split_two_detail">Before and after the ride</string>
+    <string name="nav_ride_split_n_detail">One track between rides</string>
+    <string name="nav_ride_as_recorded">Save as recorded</string>
+    <string name="nav_ride_as_recorded_detail">Everything counts, the rides too</string>
+    <string name="nav_tour_date_name">Tour %1$s</string>
+
+    <!-- time -->
+    <string name="nav_line_note">New route · was %1$s</string>
+    <string name="nav_pause_no_gps">no GPS</string>
+    <string name="nav_pause_no_progress">no progress</string>
+    <string name="nav_moving_breaks">Moving %1$s · breaks %2$s</string>
+    <string name="nav_plan_vs_needed">On the route: planned %1$s – you needed %2$s</string>
+    <string name="nav_pace_relaxed">Relaxed</string>
+    <string name="nav_pace_easy">Easy</string>
+    <string name="nav_pace_average">Average</string>
+    <string name="nav_pace_fit">Fit</string>
+    <string name="nav_pace_very_fit">Very fit</string>
+    <string name="nav_pace_meaning">about %1$s km/h · %2$d m up per hour</string>
+    <string name="nav_time_details">Time details</string>
+    <string name="nav_time_moving">Moving time</string>
+    <string name="nav_time_with_breaks">With breaks</string>
+    <string name="nav_time_pace_level">Pace level</string>
+</resources>

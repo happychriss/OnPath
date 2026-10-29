@@ -1,5 +1,7 @@
 package com.onpath.app.recording
 
+import com.onpath.strings.*
+
 import android.Manifest
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -50,10 +52,10 @@ class TourInterruptedReceiver : BroadcastReceiver() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(app, RecordingService.CHANNEL_NAV)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Tour recording interrupted")
-            .setContentText("${if (boot) "The phone restarted" else "OnPath was updated"} – open OnPath and tap Continue to record on.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${if (boot) "The phone restarted" else "OnPath was updated"} " +
-                "while “${tour.name}” was recording. The track so far is saved. Open OnPath and tap Continue to record on."))
+            .setContentTitle(Txt.s(Res.string.nav_interrupted_title))
+            .setContentText(Txt.s(if (boot) Res.string.nav_interrupted_boot else Res.string.nav_interrupted_update))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                Txt.s(if (boot) Res.string.nav_interrupted_boot_long else Res.string.nav_interrupted_update_long, tour.name)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(open)

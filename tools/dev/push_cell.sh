@@ -3,7 +3,12 @@
 # working tree (uncommitted changes included) and put it straight into OnPath on the phone – no cloud involved.
 #
 #   tools/dev/push_cell.sh 10-531-342          (Hilden; ANDROID_SERIAL picks the phone when several are attached)
+#   tools/dev/push_cell.sh 7-66-42             a region package (z7-9 around Düsseldorf, map-cells.md §20) – same way
 #   PUSH_ONLY=<dir> tools/dev/push_cell.sh 10-531-342   push an already built version folder again (no build)
+#   tools/dev/push_cell.sh --force 10-531-342  skip the tour check – only when you know nobody records
+#
+# OnPath is force-stopped: the script refuses (exit 3) while it records / navigates a tour (RecordingService) and when
+# adb gives no usable answer (unknown = refuse).
 #
 # How it reaches the map: the cell is pushed as a complete download (cells/download/<cell>/<version>/ with
 # manifest.json) – the same folder MapCells writes after a verified download. At the next start, MapCells.recover()
@@ -25,6 +30,8 @@ REPO=$(cd "$HERE/../.." && pwd)
 # shellcheck source=cell_lib.sh
 . "$HERE/cell_lib.sh"
 
+FORCE=0
+if [ "${1:-}" = "--force" ]; then FORCE=1; shift; fi
 [ $# -eq 1 ] || { sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 2; }
 CELL=$(cell_norm "$1")
 IFS=- read -r Z X Y <<<"$CELL"
@@ -33,9 +40,22 @@ PHONE_CELLS=/sdcard/Android/data/$PKG/files/onpath/cells
 command -v adb >/dev/null || cell_die "adb is missing"
 adb get-state >/dev/null 2>&1 || cell_die "no phone attached (adb get-state); set ANDROID_SERIAL when several are attached"
 adb shell pm path "$PKG" >/dev/null 2>&1 || cell_die "OnPath ($PKG) is not installed on the phone"
-# never stop a running tour (the app is force-stopped below)
-adb shell dumpsys activity services "$PKG" 2>/dev/null | grep -q "RecordingService" \
-  && cell_die "OnPath is recording a tour right now – not stopping it; try again after the tour"
+# never stop a running tour (the app is force-stopped below): RecordingService = recording / navigating; no usable adb
+# answer = unknown = refuse (2026-10-26 an empty answer read as "not running" let a style push interrupt a tour).
+# Checked now and again right before the force-stop (the build takes minutes). --force skips it.
+not_recording() {
+  [ "$FORCE" = 1 ] && { cell_log "--force: not checking for a running tour"; return 0; }
+  local out
+  if ! out=$(adb shell dumpsys activity services "$PKG" 2>/dev/null) || [ -z "${out//[[:space:]]/}" ]; then
+    cell_log "ERROR: no answer from the phone (adb) whether OnPath records a tour – not stopping it; --force skips this check"
+    exit 3
+  fi
+  if grep -q "RecordingService" <<<"$out"; then
+    cell_log "ERROR: OnPath is recording / navigating a tour right now – not stopping it; try again after the tour"
+    exit 3
+  fi
+}
+not_recording
 
 if [ -n "${PUSH_ONLY:-}" ]; then
   VDIR=$PUSH_ONLY
@@ -77,6 +97,7 @@ SIZE=$(du -sh "$STAGE/$DEV" | cut -f1)
 cell_log "pushing $CELL as version $DEV ($SIZE)"
 
 DL="$PHONE_CELLS/download/$CELL"
+not_recording
 adb shell am force-stop "$PKG"
 adb shell "mkdir -p '$DL' && rm -rf '$DL/$DEV.part' '$DL/$DEV'"
 adb push "$STAGE/$DEV/." "$DL/$DEV.part/" >/dev/null

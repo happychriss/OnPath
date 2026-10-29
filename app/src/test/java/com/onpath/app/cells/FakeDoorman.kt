@@ -28,6 +28,10 @@ class FakeDoorman(val root: File, val key: String = "test-key", var buildPolls: 
     @Volatile var cutAfter: Long? = null
     /** Corrupt one byte in the next file response. */
     @Volatile var corruptNext = false
+    /** Like a doorman before region packages: any request / status naming a z7 id is a 400 "bad cell id". */
+    @Volatile var rejectPackages = false
+    /** Ids named in request calls, one list per call (to see that packages go in calls of their own). */
+    val requestCalls = CopyOnWriteArrayList<List<String>>()
 
     /** Minimal HTTP/1.1 exchange (one request per connection, Connection: close) – the Android test classpath has no JDK http server. */
     private class Exchange(val s: Socket) {
@@ -80,10 +84,13 @@ class FakeDoorman(val root: File, val key: String = "test-key", var buildPolls: 
         val path = ex.path
         log += "${ex.method} ${path}${ex.query?.let { "?$it" } ?: ""}" + (ex.header("Range")?.let { " Range:$it" } ?: "")
         if (ex.header("X-OnPath-Key") != key) return send(ex, 401, """{"error":"unknown app key"}""")
+        val named = if (path == "/v1/cells/request") JSONObject(ex.body).getJSONArray("cells").let { a -> (0 until a.length()).map { a.getString(it) } }
+            else if (path == "/v1/cells/status") ex.query!!.substringAfter("ids=").substringBefore("&").split(",") else emptyList()
+        if (rejectPackages && named.any { it.startsWith("7-") }) return send(ex, 400, """{"error":"bad cell id"}""")
         when {
             path == "/v1/cells/request" -> {
-                val body = JSONObject(ex.body)
-                val ids = body.getJSONArray("cells").let { a -> (0 until a.length()).map { a.getString(it) } }
+                val ids = named
+                requestCalls += ids
                 send(ex, 200, JSONObject().put("cells", JSONArray(ids.map { stateOf(it) })).put("poll_s", 15).toString())
             }
             path == "/v1/cells/status" -> {
@@ -118,6 +125,14 @@ class FakeDoorman(val root: File, val key: String = "test-key", var buildPolls: 
             }
             else -> send(ex, 404, """{"error":"not found"}""")
         }
+    }
+
+    /** Publishes a synthetic region package version (z7, map-cells.md §20) under cells/f2/7/x/y/version/. */
+    fun publishPackage(p: CellId, version: String, tag: String = "$p@$version"): CellManifest {
+        val m = CellFixtures.pkg(File(root, "cells/f2/${p.path}/$version"), p, version, tag)
+        versions[p.id] = version
+        polls.remove(p.id)
+        return m
     }
 
     /** Publishes a synthetic cell version under cells/f2/z/x/y/version/ (as the builder would). */

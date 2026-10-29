@@ -39,7 +39,7 @@ version, roll back).
 | Id | `z10/x/y` in URLs, `10-x-y` in file and folder names. Example: `10-543-361` |
 | Example | x 543, y 361 = bbox `10.8984,46.5589,11.2500,46.8001` (Meran) |
 | Ownership rule | A cell **owns** every map tile at zoom ≥ 10 inside it, and every point with `west ≤ lon < east`, `south < lat ≤ north` (half-open, so a point on a border has exactly one owner) |
-| Low zooms (z0–9) | Not in cells (a z9 tile spans 4 cells). They come from the **overview** (see §7) |
+| Low zooms (z0–9) | Not in cells (a z9 tile spans 4 cells). They come from the **overview** (see §7) and, where the user has cells, from **region packages** (z7–9, §20) |
 
 Bbox of a cell (standard tile formula): `lon = x/1024·360 − 180`, `lat = atan(sinh(π·(1 − 2·y/1024)))`.
 App and server use one shared function with a unit test on the Meran example.
@@ -624,3 +624,32 @@ The user never sees "routing data" as a separate thing. BRouter's data loads as 
   the first in the list – approximate); **Delete** removes the parts no other installed region needs (parts loaded for a
   point or a route outside every region stay; not during a tour). "Reset maps" removes the parts under all regions;
 - "Download routing data" is only in Settings → Diagnostics (parts at the map centre).
+
+## 20. Region packages: the region view at z7–9 (owner 2026-10-26)
+
+Below z10 only the world overview in the APK used to show (z0–5 Natural Earth, magnified: coast, borders, city names
+– no roads, forests, routes). A **region package** brings what a region view needs where the user has cells.
+
+| Item | Decision |
+| --- | --- |
+| Id | the z7 tile: `7-66-42` (Düsseldorf / Ruhr; Bonn lies just south in `7-66-43`) – same API, queue, manifest, R2 paths as a cell (`cells/f2/7/66/42/<version>/`) |
+| Size | ~200 × 200 km (8 × 8 cells); measured 3.2 / 3.3 MB (estimate before: median 2.7, ≤ 3.3); Germany ≈ 32 MB |
+| Owns | the map tiles z7–9 under it (cells own z10+, the overview z0–6) |
+| Files | `base.pmtiles` (OpenMapTiles z7–9, the cells' layer trim, landcover farmland dropped – ≈ 23 % of z8–9), `overlays.pmtiles` (layer `routes`: hiking / cycle routes of national and international networks, net ≥ 3 incl. EuroVelo; no regional / local / node networks), `hillshade.pmtiles` (the overview's pre-rendered relief for z7–9, every tile written) |
+| Version / schema | `<osm_date>-s<N>`, N = `cells.py PACKAGE_SCHEMA` (1) – its own schema; the doorman compares it with `PACKAGE_SCHEMA` (wrangler vars), never with `CELL_SCHEMA`; cells and `CELL_SCHEMA` are unchanged |
+| Build | `build_cell.sh 7 X Y` → `tools/cells/build_package.sh`: cut z7 tile + 10 km from the Geofabrik leaves (up to 20 for a package, `job_build.py`), Planetiler `--minzoom 7 --maxzoom 9`, tile-join farmland filter, `package_routes.py` + tippecanoe, `build_hillshade.py --keep-flat`. Measured on donald: 208 s / 138 s with cached sources (15 / 11 extracts) |
+| Who asks | the app, quietly (`MapCells.ensurePackages`, reason `refresh` = background priority on the server): the packages under every installed or asked-for cell, plus the package across an edge a cell lies on; at start, with every request and after every join. Never in the card, the modal or Settings; dropped when no cell needs it any more; removed with the last cell under it; asked again after 30 days (newer version?) |
+| Doorman | accepts z7 ids (map-hosting.md §7i); never queues a package by itself |
+
+**On the map** (`map/Overview.kt`, `tools/make_style.py region_view`): with packages installed the detailed base /
+relief layers start at z7 (instead of z10); outside the packages they find no tiles. The overview's fills and lines
+lie at the bottom, and the packages' relief (`region-relief`, opaque tiles: shade composited onto the background, same
+look as the overview's relief – its z7 equals the overview's z7) is drawn over them: inside a package the overview is
+hidden and the relief is there, without a second cover polygon. Overview labels from z7 carry
+`["!", ["within", <packages' boxes>]]` – checked on the Pixel 8 (MapLibre Native 13.x): no doubled town names. The
+long-distance route lines (`routes-<kind>-major-low`) start at z7. The hill-shading switch in Settings does not hide
+`region-relief` (it is also the cover).
+
+Known: where the neighbouring package is not on the phone, the region view ends at a straight edge at z7–9 (the
+overview goes on outside it) – a cell on a package edge asks for the neighbour too, so this shows only further away.
+In the dense cycle network of NRW the long-distance (pink) lines are many at z7.

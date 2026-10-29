@@ -1,5 +1,6 @@
 package com.onpath.app.search
 
+import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import java.net.HttpURLConnection
 import java.net.URI
@@ -377,7 +378,8 @@ enum class SharedPosition {
     val note: String? get() = if (this == ADDRESS) NOTE else null
 
     companion object {
-        const val NOTE = "Position from the address"
+        /** The note in the app's language (strings_search.xml). */
+        val NOTE: String get() = Txt.s(Res.string.search_note_from_address)
 
         /** [point]: the shown point came from the link / page; [addressWon]: the address search replaced it. */
         fun of(point: Boolean, fromPage: Boolean, addressWon: Boolean): SharedPosition = when {

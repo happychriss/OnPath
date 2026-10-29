@@ -41,7 +41,8 @@ fun SearchHost(vm: AppViewModel) {
     SearchScreen(
         s.ui,
         SearchActions(
-            onQuery = s::onQuery, onCategory = s::onCategory, onClear = s::clear,
+            // a plan link pasted into the box opens the plan (A-005); anything else is searched
+            onQuery = { q -> if (!vm.pastedPlanLink(q)) s.onQuery(q) }, onCategory = s::onCategory, onClear = s::clear,
             onBack = vm::closeSearch, onPick = vm::pickSearchResult,
             onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
             onClearRecent = s::clearRecent,

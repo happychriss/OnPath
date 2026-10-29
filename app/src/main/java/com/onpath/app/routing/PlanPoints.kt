@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.strings.*
 import com.onpath.app.data.Geo
 import kotlin.math.roundToInt
 
@@ -49,9 +50,9 @@ object PlanPoints {
                 planIndex = i, role = role,
                 // unnamed: the same words as the map labels (owner 2026-10-23: Start / Stop 2 / Destination)
                 name = name(i)?.trim()?.takeIf { it.isNotEmpty() } ?: when (role) {
-                    PointRole.START -> "Start"
-                    PointRole.GOAL -> "Destination"
-                    PointRole.STOP -> "Stop ${i + 1}"
+                    PointRole.START -> Txt.s(Res.string.plan_point_start)
+                    PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
+                    PointRole.STOP -> Txt.s(Res.string.plan_point_stop, i + 1)
                 },
                 legM = if (loop && i == 0) legM[plan.lastIndex] else legM[i],
                 approx = !exact, loop = loop && i == 0,

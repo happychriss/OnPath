@@ -1,5 +1,7 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -65,7 +67,7 @@ private val LiftPurple = Color(0xFF8E24AA)
 @Composable
 fun RideSummaryDialog(
     summary: RideView.Summary, onSave: (RideChoice) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit,
-    title: String = "End this tour?", saveLabel: String = "Save", initial: RideChoice? = null,
+    title: String = str(Res.string.nav_end_tour_title), saveLabel: String = str(Res.string.common_save), initial: RideChoice? = null,
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
     var choice by remember(summary) { mutableStateOf(initial?.takeIf { c -> summary.options.any { it.choice == c } } ?: summary.preselected) }
@@ -74,11 +76,11 @@ fun RideSummaryDialog(
         AlertDialog(
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete this track?") },
+            title = { Text(str(Res.string.nav_delete_track_title)) },
             text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
+            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
         )
         return
     }
@@ -89,8 +91,7 @@ fun RideSummaryDialog(
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(if (rides == 1) "Part of this tour looks like a ride (bus, car or lift). What should count?"
-                    else "$rides parts of this tour look like rides (bus, car or lift). What should count?")
+                Text(plural(Res.plurals.nav_rides_question, rides, rides))
                 RideMap(summary.lines[choice].orEmpty(), Modifier.fillMaxWidth().height(120.dp))
                 summary.rows.forEach { TimelineRow(it, zone) }
                 Spacer(Modifier.height(2.dp))
@@ -109,16 +110,16 @@ fun RideSummaryDialog(
                         }
                     }
                 }
-                Text("All recorded points are kept – you can change this later in My routes (⋮ → Edit rides).",
+                Text(str(Res.string.nav_rides_kept_note),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { TextButton(onClick = { onSave(choice) }) { Text(saveLabel) } },
         dismissButton = {
             Row {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(str(Res.string.common_cancel)) }
                 if (onDelete != null) TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
             }
         },
     )

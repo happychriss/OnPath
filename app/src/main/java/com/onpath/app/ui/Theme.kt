@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.ElectricBike
@@ -122,6 +123,16 @@ val Activity.icon: ImageVector
         Activity.HIKE -> Icons.Filled.Hiking
     }
 
-/** Name on the primary button: "Start navigation · Gravel bike". */
+/**
+ * Name on buttons: "Start navigation · Gravel bike". German uses the short MTB / E-MTB there (owner 2026-10-26:
+ * "Navigation starten · E-Mountainbike" was cut); the picker keeps the full names ([Activity.label]).
+ */
 val Activity.navName: String
-    get() = label
+    get() = Txt.s(when (this) {
+        Activity.BIKE_TOURING -> Res.string.activity_bike_touring_button
+        Activity.BIKE_TREKKING -> Res.string.activity_bike_trekking_button
+        Activity.EBIKE -> Res.string.activity_ebike_button
+        Activity.MTB -> Res.string.activity_mtb_button
+        Activity.EMTB -> Res.string.activity_emtb_button
+        Activity.HIKE -> Res.string.activity_hike_button
+    })

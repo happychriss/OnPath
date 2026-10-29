@@ -1,5 +1,7 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
+
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
@@ -83,18 +85,18 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun EndTourDialog(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit,
-    title: String = "End this tour?", cancelLabel: String = "Cancel",
+    title: String = str(Res.string.nav_end_tour_title), cancelLabel: String = str(Res.string.common_cancel),
 ) {
     var askDelete by remember { mutableStateOf(false) }
     if (askDelete) {
         AlertDialog(
             onDismissRequest = { askDelete = false },
             icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete this track?") },
+            title = { Text(str(Res.string.nav_delete_track_title)) },
             text = { DialogText(RECYCLE_BIN_NOTE) },
             confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text("Cancel") } },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
+            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
         )
         return
     }
@@ -103,29 +105,29 @@ fun EndTourDialog(
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
         // no body: the buttons say it (review 2026-10-24 B11)
-        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        confirmButton = { TextButton(onClick = onSave) { Text(str(Res.string.common_save)) } },
         dismissButton = {
             Row {
                 TextButton(onClick = onDismiss) { Text(cancelLabel) }
                 TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
             }
         },
     )
 }
 
 /** Body of every "Delete …?" dialog that moves to the recycle bin (review 2026-10-24 B11). */
-internal val RECYCLE_BIN_NOTE = "It stays in the recycle bin for ${com.onpath.app.backup.RecycleBin.DAYS} days."
+internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_note, com.onpath.app.backup.RecycleBin.DAYS)
 
 /** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
 fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit) =
-    EndTourDialog(onSave, onDelete, onKeepGoing, title = "You have arrived – end tour?", cancelLabel = "Keep going")
+    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), cancelLabel = str(Res.string.nav_keep_going))
 
 
 /** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity; UX review 2026-10-23, problem 14). */
 internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
-    if (activity == null) "Continue" else "Continue · ${activity.navName}"
+    if (activity == null) Txt.s(Res.string.nav_continue) else Txt.s(Res.string.nav_continue_as, activity.navName)
 
 /**
  * Status line + the three tour buttons: Continue (filled, full width, names the activity; also resumes), then Pause /
@@ -138,7 +140,7 @@ fun TourControls(
     onPause: (Boolean) -> Unit, onContinue: () -> Unit, onEnd: () -> Unit,
     activity: com.onpath.app.routing.Activity? = null,
 ) {
-    val status = (if (paused) "Tour paused" else "Tour running") + " · ${Format.distance(distanceM)} · ${Format.clock(elapsedS)}"
+    val status = str(if (paused) Res.string.nav_tour_paused else Res.string.nav_tour_running, Format.distance(distanceM), Format.clock(elapsedS))
     Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
         RecDot(paused)
         Spacer(Modifier.width(10.dp))
@@ -155,12 +157,12 @@ fun TourControls(
         FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
             Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(if (paused) "Resume" else "Pause", maxLines = 1)
+            Text(str(if (paused) Res.string.common_resume else Res.string.nav_pause), maxLines = 1)
         }
         OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
             Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
-            Text("End tour", color = MaterialTheme.colorScheme.error, maxLines = 1)
+            Text(str(Res.string.nav_end_tour), color = MaterialTheme.colorScheme.error, maxLines = 1)
         }
     }
 }
@@ -175,19 +177,18 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Filled.Flag, null) },
-        title = { Text("Route back to the start?") },
-        text = { DialogText("You deleted the destination. Undo brings it back.") },
-        confirmButton = { TextButton(onClick = onYes) { Text("Route back") } },
-        dismissButton = { TextButton(onClick = onNo) { Text("Just record") } },
+        title = { Text(str(Res.string.nav_route_back_title)) },
+        text = { DialogText(str(Res.string.nav_route_back_text)) },
+        confirmButton = { TextButton(onClick = onYes) { Text(str(Res.string.nav_route_back)) } },
+        dismissButton = { TextButton(onClick = onNo) { Text(str(Res.string.nav_just_record)) } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )
 }
 
 /** "About 29 days on foot. Calculating and loading its maps takes long." (review 2026-10-24 B11). */
 internal fun longRouteText(seconds: Double, activity: com.onpath.app.routing.Activity): String {
-    val how = if (activity == com.onpath.app.routing.Activity.HIKE) "on foot" else "by bike"
-    return com.onpath.app.routing.LongRoute.describe(seconds).replaceFirstChar { it.uppercase() } +
-        " $how. Calculating and loading its maps takes long."
+    val how = if (activity == com.onpath.app.routing.Activity.HIKE) Res.string.nav_long_route_foot else Res.string.nav_long_route_bike
+    return Txt.s(how, com.onpath.app.routing.LongRoute.describe(seconds)).replaceFirstChar { it.uppercase() }
 }
 
 /**
@@ -200,10 +201,10 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
-        title = { Text("This route is very long") },
+        title = { Text(str(Res.string.nav_long_route_title)) },
         text = { DialogText(longRouteText(seconds, activity)) },
-        confirmButton = { TextButton(onClick = onPlan) { Text("Plan anyway") } },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )
 }

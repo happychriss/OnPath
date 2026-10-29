@@ -129,6 +129,11 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
 
+    /** The plan's points as the last plan link brought them (snapped by the router); null = none (A-005). */
+    var planLinkPoints: List<GeoPoint>?
+        get() = sp.getString("planLinkPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
+        set(v) = sp.edit().putString("planLinkPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
+
     /** Waypoints placed on a POI: passed exactly, never straightened by the router. */
     var planPinned: Set<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("planPinned", null)).map { GeoPoint(it.lat, it.lon) }.toSet()
