@@ -10,10 +10,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * One time model (captain 2026-10-26, "no surprises"): a line without timestamps – an imported GPX track, its entry in
+ * One time model ("no surprises"): a line without timestamps – an imported GPX track, its entry in
  * My routes, a straight-line fallback, the "longer than a day?" question – gets its time from the same model as a
- * planned route ([RouteTimes] with the pace level), so the same line shows the same time wherever it appears. Until
- * 2026-10-26 `Geo.estimateSeconds` kept its own older bike speeds (Trekking 16, Touring 20 km/h, …).
+ * planned route ([RouteTimes] with the pace level), so the same line shows the same time wherever it appears.
  */
 class OneTimeModelTest {
 

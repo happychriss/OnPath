@@ -8,7 +8,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Builds the style JSON for a map theme (e.g. "classic", "high-contrast"), with {DATA_DIR} replaced.
+ * Builds the style JSON for a map theme ("classic"; others only as overrides), with {DATA_DIR} replaced.
  *
  * Styling is meant to change often, so the app looks for the theme file in this order:
  * 0. developer tools only: the test style `<dataDir>/dev/style.json` ([devStyleFile], tools/dev/push_style.sh);
@@ -146,7 +146,7 @@ object StyleLoader {
     fun load(context: Context, dataDir: File, theme: String = DEFAULT_THEME, mapDir: File = dataDir,
              cover: List<DoubleArray> = emptyList(), devTools: Boolean = false,
              packages: List<DoubleArray> = emptyList()): String {
-        // a theme that no longer exists (e.g. "high-contrast", removed in 0.7.0) is simply the default – no error
+        // a theme that no longer exists is simply the default – no error
         @Suppress("NAME_SHADOWING")
         val theme = if (theme == DEFAULT_THEME || theme in themes(context, dataDir)) theme else DEFAULT_THEME
         val dir = mapDir.absolutePath
@@ -196,8 +196,8 @@ object StyleLoader {
     /**
      * [styleJson] (with {DATA_DIR} replaced) plus the overview map ([overviewFiles] = files bundled in the APK), with
      * every source whose local file is missing dropped – the base map and relief too (fresh install, no map cell yet,
-     * no region package: the overview draws the low zooms, MapLibre never tries to open a file that is not there –
-     * phone test 2026-10-21: "Failed to load source terrain … path not found" was announced as a problem).
+     * no region package: the overview draws the low zooms, and MapLibre never tries to open a file that is not there,
+     * which it would report as "path not found").
      * [cover]: areas with the detailed map (Overview.merge hides the overview there from zoom 10); [packages]: the
      * installed region packages (the detailed map from zoom 7 there, map-cells.md §20).
      * Pure apart from file checks ([exists]); unit-tested.

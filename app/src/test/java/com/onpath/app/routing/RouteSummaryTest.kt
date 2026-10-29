@@ -22,7 +22,7 @@ class RouteSummaryTest {
     }
 
     @Test fun hikeDifficulty() {
-        // effort = km + ascent/100; Komoot's bands (owner 2026-10-25): easy ≤ 8 (≈ 2 h) and ≤ 300 m, moderate ≤ 20 and ≤ 900 m
+        // effort = km + ascent/100; Komoot's bands (owner): easy ≤ 8 (≈ 2 h) and ≤ 300 m, moderate ≤ 20 and ≤ 900 m
         assertEquals(Difficulty.EASY, RouteSummary.difficulty(Activity.HIKE, 6_000.0, 200.0))       // 8
         assertEquals(Difficulty.EASY, RouteSummary.difficulty(Activity.HIKE, 5_000.0, 300.0))       // 8, cap exactly
         assertEquals(Difficulty.MODERATE, RouteSummary.difficulty(Activity.HIKE, 8_000.0, 300.0))   // 11
@@ -57,7 +57,7 @@ class RouteSummaryTest {
     private fun road(surface: String = "asphalt", smoothness: String? = null) =
         WayAttrs("track", surface, smoothness = smoothness)
 
-    // ---- long T2 raises a hike (owner 2026-10-26) ----
+    // ---- long T2 raises a hike (owner) ----
 
     @Test fun hikeLongT2RaisesToModerate() {
         // 2 km at T2 on a 3 km walk with little climbing: fitness says Easy, the long mountain path Moderate
@@ -95,7 +95,7 @@ class RouteSummaryTest {
             assertEquals(a.name, Difficulty.EASY, RouteSummary.rating(a, 7_500.0, 20.0, pts).level)
     }
 
-    // ---- unpaved Bike / E-bike routes (owner 2026-10-26) ----
+    // ---- unpaved Bike / E-bike routes (owner) ----
 
     @Test fun bikeUnpavedShareRaisesToModerate() {
         // 10 km, 2.5 km gravel (25 %): Bike and E-bike → Moderate · unpaved

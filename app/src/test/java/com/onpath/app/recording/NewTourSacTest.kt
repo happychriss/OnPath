@@ -4,8 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * A recorded tour keeps the T level it was recorded at (bug found in the review 2026-10-26: every recorded tour was
- * stored as T3, so reopening a T2 hike set the user's level to T3 and its GPX export said "mountaineering").
+ * A recorded tour keeps the T level it was recorded at – a fixed level would set the user's level when the tour is
+ * reopened (a T2 hike → T3) and mislabel its GPX export ("mountaineering").
  */
 class NewTourSacTest {
     @Test fun theLevelSentWithTheStartIsStored() {

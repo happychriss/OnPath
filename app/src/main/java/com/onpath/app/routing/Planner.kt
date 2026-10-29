@@ -41,7 +41,7 @@ data class PlannedRoute(
  */
 class Planner(
     private val engine: RoutingEngine,
-    /** "Cancel" while a route is calculated (owner 2026-10-22): stops the router at once, no leg-by-leg fallback. */
+    /** "Cancel" while a route is calculated: stops the router at once, no leg-by-leg fallback. */
     private val cancel: RouteCancel? = null,
 ) {
     /** One engine request of this planner: points, time, outcome ("ok", "timeout", "failed"), wait for the engine lock. */
@@ -74,7 +74,6 @@ class Planner(
 
     private fun stopIfCancelled() { if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED) }
 
-
     /**
      * @param pinned indices of waypoints that must be passed exactly (e.g. a tapped hut). The engine
      *   may straighten out-and-back spurs at vias; chunk endpoints are never moved, so the list is
@@ -83,9 +82,9 @@ class Planner(
     fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
         require(waypoints.size >= 2)
         val first = planPinned(waypoints, activity, sac, pinned)
-        // Field bug Hilden 2026-10-24: a point ON a way, reachable only there and back, was cut out by BRouter's
-        // via correction (up to 400 m for bikes) and then shown as "no way for Gravel bike". Owner: a point on a way
-        // is always visited – route again with it as a chunk end (chunk ends are never corrected).
+        // A point ON a way, reachable only there and back, can be cut out by BRouter's via correction (up to 400 m
+        // for bikes) and then reads as "no way". Owner rule: a point on a way is always visited – route again with it
+        // as a chunk end (chunk ends are never corrected).
         val spurs = first.spurs - pinned
         if (spurs.isEmpty()) return first
         Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
@@ -132,8 +131,8 @@ class Planner(
                     flatSeconds(d, activity),
                     legError(1, 2, e))
             }
-            // Timed out: each leg would get its own limit and the wait multiplies (perf report 2026-10-22: a 4-point
-            // plan up to 120 s) – straight lines at once, the user adds points or tries again.
+            // Timed out: each leg would get its own limit and the wait multiplies (a 4-point plan up to 120 s) –
+            // straight lines at once, the user adds points or tries again.
             if (e is RoutingException && e.timedOut) return straight(waypoints, activity, TOOK_TOO_LONG)
             // otherwise fall through to per-leg routing
         }
@@ -199,7 +198,7 @@ class Planner(
         val TOOK_TOO_LONG: String get() = Txt.s(Res.string.plan_err_took_too_long)
 
         /**
-         * One short ERROR line for a leg the router could not do (review 2026-10-24 B4): "Point 1 → 2: no path found" –
+         * One short ERROR line for a leg the router could not do: "Point 1 → 2: no path found" –
          * no "Leg", no "shown as a straight dashed line" (the map shows it), no advice sentence. Missing routing data
          * keeps the engine's text so the plain "map loading" notice still recognises it (RoutingDataNotice).
          */

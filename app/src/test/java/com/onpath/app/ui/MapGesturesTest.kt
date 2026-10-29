@@ -33,7 +33,7 @@ class MapGesturesTest {
         // a POI already on the route has its marker on top of it: never added twice
         assertEquals(Action.PointMenu(2), plan(Press.HOLD, marker = 2, poi = true))
 
-    /** Owner 2026-10-22: no question next to a point – a hold beside it is a new point (undo / hold again if wrong). */
+    /** No question next to a point (owner) – a hold beside it is a new point (undo / hold again if wrong). */
     @Test fun noQuestionNextToAPoint() =
         assertEquals(Action.AddPoint, MapGestures.decide(true, Press.HOLD, false, -1, false, false))
 
@@ -60,7 +60,7 @@ class MapGesturesTest {
         assertEquals(Action.PoiMenu, plan(Press.HOLD, poi = true, menu = true))
     }
 
-    // --- vibration at the moment the hold is recognised (owner 2026-10-21: on the press, never after the action) ---
+    // --- vibration at the moment the hold is recognised (owner: on the press, never after the action) ---
     @Test fun holdVibratesOnceOnMapLineOrPoi() {
         assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, false)) // empty map / line → add point, first-point menu
         assertEquals(Buzz.ONE, MapGestures.buzz(true, false, -1, true))  // POI menu

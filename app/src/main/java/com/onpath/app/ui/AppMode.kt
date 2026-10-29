@@ -17,7 +17,7 @@ enum class AppMode {
             if (recordingRunning || unfinishedRecording) NAVIGATE else PLAN
 
         /**
-         * Map zoom when Navigate starts (owner 2026-10-28): Hike 17 (paths readable), every bike 16 (more ahead).
+         * Map zoom when Navigate starts (owner): Hike 17 (paths readable), every bike 16 (more ahead).
          * Only on entering Navigate – after that the user's own zoom stays until the next start.
          */
         fun navStartZoom(activity: com.onpath.app.routing.Activity): Double =

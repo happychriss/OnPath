@@ -12,7 +12,7 @@ import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.StraightLineEngine
 
 /**
- * "Take new route" (owner 2026-10-20: compute it completely new, like Google Maps): for a plan with stops, a fresh
+ * "Take new route" (owner: compute it completely new, like Google Maps): for a plan with stops, a fresh
  * route from the position via the stops not yet passed to the destination ([fresh]) – the old line no longer counts.
  * A followed track (no stops), or when the fresh route cannot be found, falls back to the way back below.
  *
@@ -173,7 +173,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         const val SKIP_RATIO = 0.8
         const val SKIP_SLACK_M = 100.0
 
-        /** The engine's error kind (never its message: that is in the user's language since EN + DE). */
+        /** The engine's error kind (never its message: that is in the user's language). */
         fun reasonOf(kind: RoutingException.Kind): Reason = when (kind) {
             RoutingException.Kind.NO_DATA -> Reason.NO_DATA
             RoutingException.Kind.CANCELLED -> Reason.CANCELLED

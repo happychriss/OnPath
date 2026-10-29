@@ -9,8 +9,8 @@ import com.onpath.app.routing.Rd5Parts
 import java.io.File
 
 /**
- * Which BRouter routing data a place needs, as 1° parts of the 5° rd5 files (owner decision "D", 2026-10-21: ~10 MB per
- * part instead of ~200 MB per file; docs/design/map-data-size.md §6). Keys are [Rd5Parts.Part.key]
+ * Which BRouter routing data a place needs, as 1° parts of the 5° rd5 files (owner: ~10 MB per part instead of
+ * ~200 MB per file; docs/design/map-data-size.md §6). Keys are [Rd5Parts.Part.key]
  * ("E10_N45.rd5:E11_N46"). Pure, unit-tested.
  */
 object RoutingTiles {
@@ -68,7 +68,7 @@ object RoutingDataNotice {
      */
     fun forRoute(error: String?, missing: Boolean, loading: Boolean): String? = when {
         missing -> text(loading)
-        // the router's own sentence (English before EN + DE, in the app's language since) or a file name
+        // the router's own sentence (in English or the app's language) or a file name
         error != null && (error.contains("No routing data") || error.contains(com.onpath.app.routing.BRouterEngine.NO_DATA) ||
             error.contains(".rd5")) -> text(loading)
         else -> error
@@ -76,10 +76,10 @@ object RoutingDataNotice {
 }
 
 /**
- * Loads missing routing data from brouter.de by itself (owner 2026-10-21): when a map area is loaded or a route is
+ * Loads missing routing data from brouter.de by itself (owner): when a map area is loaded or a route is
  * planned where it is missing. On mobile data too, unless "Maps only on Wi-Fi" is set. The unit is a 1° part
  * ([RoutingTiles] keys, [Rd5PartStore]: HTTP range, resume, atomic rewrite, no mixed versions); a plain 5° file name
- * ("E10_N45.rd5") still works for an old caller and means the whole file. Failures go to Problems and are tried again
+ * ("E10_N45.rd5") means the whole file. Failures go to Problems and are tried again
  * when the network changes ([retry]) or the next time the part is needed. One 5° file at a time; the real sizes are read
  * from the server's index before the first part loads, so the modal can say "about X MB". The wanted parts of one 5° file
  * load together and are written into its rd5 once.
@@ -182,7 +182,7 @@ class RoutingDataLoader(
     }
 
     /**
-     * The plan's route corridor changed (field bug 2026-10-22): parts wanted only for an older corridor and not in
+     * The plan's route corridor changed: parts wanted only for an older corridor and not in
      * [keep] are dropped – a running download of one stops (its partial file stays for resuming). Returns them.
      */
     fun keepCorridor(keep: Collection<String>): List<String> {
@@ -202,7 +202,7 @@ class RoutingDataLoader(
     }
 
     /**
-     * "Load now over mobile data" while "Maps only on Wi-Fi" holds the download (owner Q6 2026-10-23): the tiles wanted
+     * "Load now over mobile data" while "Maps only on Wi-Fi" holds the download (owner): the tiles wanted
      * now load once over mobile data; the setting stays (the override ends when the queue is empty or cancelled).
      */
     fun loadOnMobileOnce() {
@@ -223,7 +223,7 @@ class RoutingDataLoader(
     companion object {
         const val RETRY_AFTER_FAIL_MS = 60_000L
 
-        /** Default download: part keys through the part store (all at once), a whole file name as before. */
+        /** Default download: part keys via the part store (all at once), a whole 5° file via [SegmentDownloader]. */
         fun fetch(store: Rd5PartStore, names: List<String>, dir: File, progress: (Long, Long) -> Unit, cancelled: () -> Boolean) {
             val parts = names.mapNotNull { Rd5Parts.Part.parse(it) }
             if (parts.isNotEmpty()) store.download(parts, progress, cancelled)
@@ -258,8 +258,8 @@ class RoutingDataLoader(
 
     /**
      * The next download: the first wanted key and, when it is a part, every other wanted part of the same 5° file –
-     * the local rd5 is rewritten once for all of them instead of once per part (perf report 2026-10-22: 20 parts one
-     * by one wrote 1.82 GB for 157 MB downloaded).
+     * the local rd5 is rewritten once for all of them instead of once per part (20 parts one by one wrote 1.8 GB for
+     * 157 MB downloaded).
      */
     private fun nextBatch(): List<String>? = synchronized(lock) {
         if (cancelled) return null

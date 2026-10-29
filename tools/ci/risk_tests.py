@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Risk-based unit tests for a release (owner 2026-10-28: "yes, risk-based tests, else it takes too long").
+"""Risk-based unit tests for a release (owner: the full suite takes too long for every release).
 
 Prints the Gradle arguments for `testDebugUnitTest`:
 - always the core-feature packages (robust first – never lose a track): recording, navigation, data, gpx, backup;

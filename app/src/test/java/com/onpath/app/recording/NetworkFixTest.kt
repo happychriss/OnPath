@@ -11,7 +11,7 @@ class NetworkFixTest {
     @Test fun cellGuessNeverOnceGpsWasSeen() = assertFalse(useNetworkFix(100_000, 400_000, true, 1_500f))
     @Test fun noAccuracyNoTrust() = assertFalse(useNetworkFix(100_000, 400_000, false, 0f))
 
-    // weak GPS under a station roof (owner 2026-10-28): a clearly better Wi-Fi fix wins, without jumping back and forth
+    // weak GPS under a station roof (owner): a clearly better Wi-Fi fix wins, without jumping back and forth
     @Test fun weakGpsGivesWayToMuchBetterWifi() = assertTrue(useNetworkFix(100_000, 101_000, true, 20f, lastGpsAccuracyM = 60f))
     @Test fun weakGpsKeptWhenWifiIsNotClearlyBetter() = assertFalse(useNetworkFix(100_000, 101_000, true, 40f, lastGpsAccuracyM = 60f))
     @Test fun goodGpsNeverGivesWay() = assertFalse(useNetworkFix(100_000, 101_000, true, 5f, lastGpsAccuracyM = 12f))

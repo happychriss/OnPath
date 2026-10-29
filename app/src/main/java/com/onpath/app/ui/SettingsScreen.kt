@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,7 +86,7 @@ val PoiGroup.label: String
     }
 
 /**
- * Settings (☰ → Settings), owner 2026-10-22: a list of topics (icon, title, one line of the current values –
+ * Settings (☰ → Settings): a list of topics (icon, title, one line of the current values –
  * [SettingsSummary]); a topic opens its own page ([page]; back returns to the list). Every change is applied and saved
  * at once. [page] is hoisted (AppViewModel.settingsPage) so other places can open a topic directly (map credits → About).
  */
@@ -109,12 +108,12 @@ fun SettingsScreen(
     onImportData: () -> Unit = {},
     /** Opens Android's app settings (battery usage). */
     onAppSettings: () -> Unit = {},
-    /** Diagnostics → "Download routing data" (normally it comes with the map by itself – owner 2026-10-22). */
+    /** Diagnostics → "Download routing data" (normally it comes with the map by itself). */
     onDownloadRouting: () -> Unit = {},
     /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
     onTimeFormulas: (() -> Unit)? = null,
     dataBusy: String? = null,
-    /** The result of something done on the open page (restored, a failure …): a line at its top (owner 2026-10-27). */
+    /** The result of something done on the open page (restored, a failure …): a line at its top. */
     note: Notice? = null,
     /** null = updates handled elsewhere (installed from Google Play) – topic hidden. */
     update: AppViewModel.UpdateState? = null,
@@ -124,7 +123,7 @@ fun SettingsScreen(
     mapPackage: DataFiles.PackageCheck? = null,
     /** Settings → Diagnostics shown (problem report button + problem list); false = topic hidden. */
     diagnostics: Boolean = false,
-    /** The problem report is being created: a spinner on its button (review 2026-10-24 C9). */
+    /** The problem report is being created: a spinner on its button. */
     diagnosticsBusy: Boolean = false,
     onExportDiagnostics: () -> Unit = {},
     /** Problem log (debug/Problems), most recent first. */
@@ -143,18 +142,18 @@ fun SettingsScreen(
     /** Diagnostics → "Developer tools" open at first (screenshots). */
     devToolsOpen: Boolean = false,
     /**
-     * Developer tools shown in Diagnostics (owner C5 2026-10-24): hidden until the version line in About is tapped 7
-     * times (remembered); debug builds always.
+     * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
+     * (remembered); debug builds always.
      */
     devTools: Boolean = true,
     onUnlockDevTools: () -> Unit = {},
-    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner C6). */
+    /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner). */
     diagnosticsSeenMs: Long = 0L,
     /** Developer tools: the map server line (MapServer.describe; fixed in screenshots). */
     mapServer: String = com.onpath.app.data.MapServer.describe(),
     /** Developer tools: the test style line + Reload map style (tools/dev/push_style.sh); null = hidden. */
     testStyle: TestStyleUi? = null,
-    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch (owner 2026-10-26). */
+    /** Diagnostics: the active language line; Developer tools: System / English / Deutsch. */
     language: LanguageUi = LanguageUi(),
     now: Long = System.currentTimeMillis(),
 ) {
@@ -178,7 +177,7 @@ fun SettingsScreen(
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    // two groups (owner C7 2026-10-24): what the user sets, then the smaller "App" group
+                    // two groups (owner): what the user sets, then the smaller "App" group
                     listOf(false, true).forEach { app ->
                         val group = topics.filter { it.app == app }
                         if (group.isEmpty()) return@forEach
@@ -379,7 +378,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
             settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
             onChange(settings.copy(offRouteVibrate = it))
         }
-        // three choices (owner 2026-10-28): off / always / only with the screen locked
+        // three choices (owner): off / always / only with the screen locked
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
             Text(str(Res.string.settings_nav_junction), style = MaterialTheme.typography.bodyLarge)
             Text(str(Res.string.settings_nav_junction_sub), style = MaterialTheme.typography.bodySmall,
@@ -399,7 +398,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
-        // Was a pop-up on the first recording (owner: remove it) – now a quiet hint here.
+        // a quiet hint, never a pop-up (owner)
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.settings_nav_battery_hint),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -410,7 +409,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
             val ctx = androidx.compose.ui.platform.LocalContext.current
             val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // the quiet hint instead of a question (owner C2 2026-10-24: never ask); nothing to say once it is set
+            // a quiet hint instead of a question (owner: never ask); nothing to say once it is set
             if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(str(Res.string.settings_nav_location_hint),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -421,7 +420,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
     }
 }
 
-/** Diagnostics: the problem report button (no switch – review 2026-10-24 B23), then the problem list. */
+/** Diagnostics: the problem report button (no switch), then the problem list. */
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
@@ -441,7 +440,7 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
     }
 }
 
-/** Developer tools → app language (owner 2026-10-26): the phone's, or fixed to English / Deutsch; kept across restarts. */
+/** Developer tools → app language: the phone's, or fixed to English / Deutsch; kept across restarts. */
 data class LanguageUi(
     val choice: com.onpath.app.data.LanguageChoice = com.onpath.app.data.LanguageChoice.SYSTEM,
     val active: String = "English (phone language)",
@@ -465,7 +464,7 @@ private fun LanguageRow(l: LanguageUi) {
 
 /**
  * Diagnostics → "Developer tools" (closed at first): map server, routing data by hand, the map areas list, the map
- * data import and the data folder / file checks / map package (moved from About and "Map data", owner 2026-10-22).
+ * data import and the data folder / file checks / map package.
  */
 @Composable
 private fun DeveloperTools(
@@ -491,7 +490,7 @@ private fun DeveloperTools(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download routing data (map centre)") }
                 if (dataBusy != null) Text(dataBusy, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 mapCells?.let { MapCellsDebugList(it) }
-                // the formulas behind the plan sheet's time (moved here from ⋯ → Time details, owner 2026-10-23)
+                // the formulas behind the plan sheet's time
                 OutlinedButton(onClick = { onTimeFormulas?.invoke() }, enabled = onTimeFormulas != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Time estimate of the route (formulas)") }
                 if (onTimeFormulas == null) Text("Plan a route first.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -501,7 +500,7 @@ private fun DeveloperTools(
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text("Import a map package or a map style file (.zip, .pmtiles, .geojson, .rd5, onpath-*.json) from this phone.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // routing data is part of the map (owner 2026-10-22): no own button here, see above
+                // routing data is part of the map (owner): no own button here, see above
                 DataActions(routingMissing = false, busy = dataBusy, onImport = onImportData, onDownloadRouting = {})
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Data folder", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -595,7 +594,7 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
 }
 
 /**
- * Privacy (owner 2026-10-22): what leaves the phone, to whom, when – checked against the code's network calls
+ * Privacy: what leaves the phone, to whom, when – checked against the code's network calls
  * (CellApi, Rd5PartStore / SegmentDownloader, PhotonProvider, AppUpdater, ShortLinkResolver, link-outs). Keep in step.
  */
 @Composable
@@ -642,7 +641,7 @@ private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevT
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // tapped 7 times: Developer tools in Diagnostics (owner C5 2026-10-24, the Android convention); remembered
+            // tapped 7 times: Developer tools in Diagnostics (the Android convention); remembered
             Text("OnPath $version", fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
                     .clickable(enabled = !devTools, indication = null,

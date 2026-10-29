@@ -2,7 +2,6 @@ package com.onpath.app.time
 
 import com.onpath.app.gpx.GpxParser
 import com.onpath.app.gpx.TrackPoint
-import com.onpath.app.navigation.OffRouteDetector.State
 import com.onpath.app.navigation.Trace
 import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
@@ -16,8 +15,8 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * Arrival / time to go through the service pipeline ([NavReplay]): the owner's field test 2026-10-19 and synthetic
- * walks for the owner's rules (docs/plan-time-estimate.md, "Field test 2026-10-19").
+ * Arrival / time to go through the service pipeline ([NavReplay]): the owner's recorded tours and synthetic walks for
+ * the owner's rules (docs/plan-time-estimate.md).
  */
 class NavReplayTest {
 
@@ -43,7 +42,7 @@ class NavReplayTest {
         assertEquals(0, r.confirms)
         assertTrue(r.frozenMaxM() < 150)
         r.errors().forEach { assertTrue("error $it", it <= 0.30) }
-        // learning per tour only (owner 2026-10-22): the setting alone in the warm-up, the owner's pace after it
+        // learning per tour only (owner): the setting alone in the warm-up, the owner's pace after it
         val warm = r.frames.filter { it.time.movingS < 10 * 60 }
         assertTrue(warm.size > 50 && warm.all { it.factors == Factors.ONE })
         assertTrue(r.frames.last().factors != Factors.ONE)
@@ -193,7 +192,7 @@ class NavReplayTest {
     }
 
     @Test fun planEditedMidWalkIsFollowedAtOnce() {
-        // rule 1 (the field test): A-B, after 1.2 km "round trip" (A-B-A), walk to B and back; on the way back "Undo"
+        // rule 1: A-B, after 1.2 km "round trip" (A-B-A), walk to B and back; on the way back "Undo"
         // (A-B again): the round trip counts down to A; after Undo the tour walks A-B backwards (rule 2)
         val track = walk(0.0 to 0.0, 2000.0 to 0.0, 300.0 to 0.0)
         val r = NavReplay(ab).run(track, listOf(NavReplay.Edit(1200.0, aba), NavReplay.Edit(3000.0, ab)))

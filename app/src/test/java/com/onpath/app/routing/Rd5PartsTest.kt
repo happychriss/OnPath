@@ -111,7 +111,7 @@ class Rd5PartsTest {
         }
     }
 
-    /** With the real brouter.de file (laptop only; skipped elsewhere): only part 6 kept, BRouter's integrity check passes. */
+    /** With the real brouter.de file (ONPATH_RD5; skipped when it is missing): only part 6 kept, BRouter's integrity check passes. */
     @Test fun realFileIntegrity() {
         val src = File(System.getenv("ONPATH_RD5") ?: "/home/development/Projects/onpath-build/out/segments/E10_N45.rd5")
         assumeTrue(src.isFile)

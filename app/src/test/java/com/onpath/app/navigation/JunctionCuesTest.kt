@@ -7,7 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Junction vibration (owner 2026-10-22): when, how often, which side. */
+/** Junction vibration: when, how often, which side. */
 class JunctionCuesTest {
     /** A straight line north, a point every 10 m (1 m ≈ 0.000009°), junctions at the given metres. */
     private fun line(lengthM: Int, junctions: Map<Int, JunctionCue>): List<GeoPoint> =
@@ -85,7 +85,7 @@ class JunctionCuesTest {
         assertEquals(listOf(null, null, JunctionCue.RIGHT, null, null), pts.map { it.turn })
     }
 
-    // roundabouts with their exit (owner 2026-10-28): router row → point → session file → lock screen / hint
+    // roundabouts with their exit: router row → point → session file → lock screen / hint
     @Test fun roundaboutExitFromTheRouter() {
         val pts = MutableList(5) { GeoPoint(46.0 + it * 0.001, 11.0) }
         JunctionCue.apply(pts, arrayOf(doubleArrayOf(1.0, 13.0, 30.0, 2.0), doubleArrayOf(3.0, 5.0, 90.0, 0.0)))
@@ -142,7 +142,7 @@ class JunctionCuesTest {
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
     }
 
-    /** On the bike a slight bend does not vibrate; a real turn and a fork do (owner's ride 2026-10-28). */
+    /** On the bike a slight bend does not vibrate; a real turn and a fork do. */
     @Test fun bikeSkipsSlightBends() {
         val l = line(800, mapOf(100 to JunctionCue.SLIGHT_LEFT, 300 to JunctionCue.LEFT, 500 to JunctionCue.KEEP_RIGHT, 700 to JunctionCue.SLIGHT_RIGHT))
         fun walk(c: JunctionCues) = (0..800 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true) }

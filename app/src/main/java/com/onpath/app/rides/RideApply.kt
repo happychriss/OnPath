@@ -72,7 +72,7 @@ object RideApply {
         emptyList()
     }
 
-    /** "Edit rides" on a saved tour: another reading of the same points. False when it has no rides. */
+    /** "Edit rides" on a saved tour: another reading of the same points. Null when it has no rides. */
     fun edit(store: RideStore, id: Long, choice: RideChoice, nameAt: (Long) -> String = ::dateName): List<Long>? {
         val t = store.tour(id) ?: return null
         val rec = t.rides ?: return null

@@ -6,16 +6,14 @@ import android.view.FrameMetrics
 import android.view.Window
 
 /**
- * Frame times while something moves (owner field report 0.9.3: the plan sheet "ruckelt" on a 120 Hz Pixel 8). [start]
- * listens to the window's FrameMetrics (API 24+, no extra library), [stop] returns the summary of the frames since.
- * The plan sheet writes it into the Problems events trace ("Sheet drag: N frames, J janky (p95 X ms)"), so the owner's
- * next swipe gives numbers in the diagnostics export. Never throws.
+ * Frame times while something moves (the plan sheet on a 120 Hz phone). [start] listens to the window's FrameMetrics
+ * (API 24+, no extra library), [stop] returns the summary of the frames since. The plan sheet writes it into the
+ * Problems events trace ("Sheet drag: N frames, J janky (p95 X ms)"), so a swipe gives numbers in the diagnostics
+ * export. Never throws.
  */
 class FrameJankMeter(private val window: Window) {
     private val durationsNs = ArrayList<Long>()
     private var listener: Window.OnFrameMetricsAvailableListener? = null
-
-    val running: Boolean get() = listener != null
 
     fun start() {
         if (listener != null) return

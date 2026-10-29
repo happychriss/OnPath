@@ -4,9 +4,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The loading window's % by TIME, not by bytes (owner 2026-10-23: "it races to 50 %, then stands still and looks
- * stuck"). Byte-weighting made the quick routing data look like half the job while the server still built the map for
- * minutes. Here the bar shows the share of the expected total time that has passed: elapsed / (elapsed + time left),
+ * The loading window's % by TIME, not by bytes (owner): byte-weighting makes the quick routing data look like half the
+ * job while the server still builds the map for minutes, so the bar races to 50 % and then looks stuck. The bar shows
+ * the share of the expected total time that has passed: elapsed / (elapsed + time left),
  * with "time left" from the loading states (server estimate while it prepares, download speed while it loads).
  *
  * - Never backwards; never 100 before the map is there (the caller closes the window then).
@@ -14,7 +14,7 @@ import kotlin.math.min
  *   up to [CREEP_CAP] – the user sees that it is still working.
  * - It does not jump either: at most [MAX_STEP_PER_S] per second towards the target.
  *
- * Pure (time passed in), unit-tested. One instance per loading window (reset when the window closes).
+ * Time is passed in. One instance per loading window (reset when the window closes).
  */
 class LoadSmoother {
     private var startAt = -1L

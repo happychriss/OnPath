@@ -61,7 +61,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         open(frozenLink.dropLast(9))
         waitUntil("error card") { var m: String? = null; scenario.onActivity { m = vm(it).errorCard }; m != null }
         scenario.onActivity { a ->
-            // no place for it (the link came from outside): the light error card, never the old dark bar (owner 2026-10-27)
+            // no place for it (the link came from outside): the light error card
             assertTrue(vm(a).errorCard!!, vm(a).errorCard!!.startsWith("This plan link can't be read"))
             assertNull(vm(a).replaceAsk)
         }
@@ -79,7 +79,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         scenario.onActivity { assertEquals(Activity.HIKE, vm(it).activity) }
     }
 
-    /** Owner 2026-10-27: the next QR code replaces an unchanged link plan silently; a changed one asks. */
+    /** The next QR code replaces an unchanged link plan silently; a changed one asks (owner). */
     @Test fun secondLinkReplacesAnUnchangedLinkPlanWithoutAsking() {
         val second = PlanLinks.link(com.onpath.app.routing.SharedPlan(
             listOf(GeoPoint(46.68012, 11.1264), GeoPoint(46.6879, 11.1111), GeoPoint(46.6923, 11.0986)), Activity.MTB,

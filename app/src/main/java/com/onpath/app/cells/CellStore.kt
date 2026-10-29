@@ -87,7 +87,7 @@ class CellStore(
 
     /**
      * Folder the map, POI tap and search read from: the current generation when it holds at least one cell, else null
-     * (then the data folder is used exactly as before cells existed).
+     * (then the data folder is used).
      */
     fun mapDir(): File? = current()?.takeIf { g -> g.cells.any { !it.id.isPackage } }?.dir
 
@@ -95,7 +95,7 @@ class CellStore(
 
     /**
      * Complete generations, oldest first; unreadable ones are skipped (and reported). Only `gNNNNNN` folders: a `.tmp`
-     * may be half written by [apply] right now, a `.bad` was set aside (field 2026-10-22: false ERROR on g000013.tmp).
+     * may be half written by [apply] right now, a `.bad` was set aside.
      * [GEN] (with the suffixes) is only for numbering.
      */
     private fun generations(): List<Generation> =
@@ -230,7 +230,7 @@ class CellStore(
             for (d in add) installAddresses(d)
             for (c in remove - addIds) deleteAddresses(c)
             prune(keep = setOfNotNull(number, cur?.number, inUse))
-            // the cost of each generation in the event log (perf report 2026-10-22: ~360 MB written per 7 MB region)
+            // the cost of each generation in the event log (a whole region is rewritten per generation)
             Problems.trace("cells", "Generation ${final.name}: +${add.size} −${(remove - addIds).size} cells (${cells.size} total), " +
                 "${files.values.sum() / MB} MB written in ${System.currentTimeMillis() - t0} ms (POIs ${(files[POIS] ?: 0L) / MB} MB)")
             return gen

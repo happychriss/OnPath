@@ -13,8 +13,7 @@ import org.junit.runner.RunWith
 import kotlin.concurrent.thread
 
 /**
- * CORE FEATURE C1 under field conditions (owner 2026-10-21: "latest version still doesn't work" – the plain emulator
- * test passed): a moving GPS position in Meran, the map following it in Plan, "Go here" from my location, real
+ * CORE FEATURE C1 under field conditions (the plain emulator test alone is not enough): a moving GPS position in Meran, the map following it in Plan, "Go here" from my location, real
  * routing data when available (points snapped to ways), Navigate → back to Plan with the plan being followed.
  */
 @RunWith(AndroidJUnit4::class)
@@ -28,7 +27,7 @@ class CoreFieldE2ETest : E2EBase() {
     @Before fun setUp() {
         sh("appops set com.android.shell android:mock_location allow")
         // Both providers the app listens to: on a real phone the network provider otherwise reports where the phone
-        // really is, the map follows that and the plan's points end up off screen (owner's Pixel, 2026-10-21).
+        // really is, the map follows that and the plan's points end up off screen.
         for (p in PROVIDERS) {
             sh("cmd location providers add-test-provider $p")
             sh("cmd location providers set-test-provider-enabled $p true")
@@ -82,7 +81,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         Thread.sleep(2_000)
         assertPositionDotOnTop("navigate")
-        // Navigate shows only the route line, no numbered plan points (owner 2026-10-22)
+        // Navigate shows only the route line, no numbered plan points (owner)
         waitUntil("no plan markers in Navigate", 10_000) { drawnMarkers() == 0 }
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.PLAN }
@@ -107,8 +106,8 @@ class CoreFieldE2ETest : E2EBase() {
     private fun recording(): Boolean { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; return r }
 
     /**
-     * Owner decision after field test 2026-10-22 (tour 5: all points deleted in Plan, the tour kept following the old
-     * route unseen): what Plan shows = what Navigate follows. Navigate → Plan → delete all points (✕ in the list) →
+     * Owner rule: what Plan shows = what Navigate follows (never an old route followed unseen). Navigate → Plan → delete
+     * all points (✕ in the list) →
      * Navigate: no route line, no guidance, the recording goes on. Undo → the points and the guidance are back.
      */
     @Test fun deletingAllPointsDuringATourEndsTheGuidanceUndoBringsItBack() {
@@ -136,7 +135,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("Undo: two points back", 10_000) { waypointCount() == 2 }
         waitUntil("the route is followed again", 30_000) { guided() }
         assertTrue(recording())
-        // every step is in the event trace (field test 2026-10-22: Undo / Clear / tour start had to be guessed)
+        // every step is in the event trace (Undo / Clear / tour start must not have to be guessed)
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         for (step in listOf("Tour start", "All points deleted during the tour", "Undo: plan 0 → 1 points",
                 "Undo: plan 1 → 2 points", "Plan points back during the tour")) {

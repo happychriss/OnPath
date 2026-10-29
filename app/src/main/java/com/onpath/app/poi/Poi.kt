@@ -19,7 +19,7 @@ data class Poi(
 ) {
     val kindInfo: PoiKind get() = PoiKinds.of(kind)
 
-    /** Name, or the kind label (app language) when unnamed; [german] is not used any more. */
+    /** Name, or the kind label (app language) when unnamed; [german] is ignored (the app's language decides). */
     @Suppress("UNUSED_PARAMETER")
     fun title(german: Boolean = isGerman()): String = name ?: kindInfo.label
 
@@ -34,14 +34,6 @@ data class Poi(
 
     /** First phone number when several are given ("+39 1; +39 2"). */
     val firstPhone: String? get() = phone?.split(';')?.firstOrNull()?.trim()?.ifEmpty { null }
-
-    /** OSM element URL, e.g. https://www.openstreetmap.org/node/123. */
-    val osmUrl: String?
-        get() {
-            val type = when (id.firstOrNull()) { 'n' -> "node"; 'w' -> "way"; 'r' -> "relation"; else -> return null }
-            val num = id.drop(1).toLongOrNull() ?: return null
-            return "https://www.openstreetmap.org/$type/$num"
-        }
 
     companion object {
         /** The app's texts are German (phone language or the Developer tools override, com.onpath.strings.Txt). */

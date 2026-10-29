@@ -79,7 +79,7 @@ Findings:
 Limits: these are screen colours (sRGB, ideal display). Sunlight and glare on the glass reduce all contrasts, so
 the real map renders and a field test have the last word. Symbols and relief texture are not part of the numbers.
 
-## Chosen style (proposal `tools/themes-proposals/d-final.json`)
+## Chosen style (now `tools/themes/classic.json`)
 
 - **Route band:** `#168403`, 40 % opacity at every zoom, no edge. Route pieces are merged into continuous lines
   in the pipeline, so the transparent band does not darken where pieces meet. Only real junctions and tight
@@ -115,7 +115,7 @@ the real map renders and a field test have the last word. Symbols and relief tex
 1. **Pipeline:** `extract_overlays.py` writes `paths.geojson` (every path and track, exact geometry, `k`, `sac`,
    `vis`, steps flag) and merges route pieces per kind into continuous lines.
 2. **Style:**
-   - Move the post-processing in `tools/themes-proposals/d-final-post.py` into `make_style.py`:
+   - Move the proposal's post-processing into `make_style.py`:
      - own path layer
      - track variant A
      - symbol layers
@@ -132,7 +132,7 @@ the real map renders and a field test have the last word. Symbols and relief tex
 For hiking and cycling the key question is the surface. Is it a paved street, an unpaved track (forest or farm
 road, `highway=track`, theoretically drivable) or a path? The owner rejected white street fills with a dark casing
 as too busy. Four variants without any white were rendered
-(https://claude.ai/artifact/JfUteXEasokSfqgJeCn8hq, `tools/themes-proposals/roads-post.py`):
+(https://claude.ai/artifact/JfUteXEasokSfqgJeCn8hq):
 
 | Variant | Street (minor, service) | Track |
 |---|---|---|

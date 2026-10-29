@@ -3,10 +3,9 @@ package com.onpath.app
 import android.content.Context
 
 /**
- * An incoming link / share / GPX (VIEW or SEND) is handled once (field bug 2026-10-27): after a reinstall or a process
- * restart Android starts the screen again with the task's FIRST intent – a plan link handled long ago came back ("This
- * plan link can't be read" again). The last handled one is remembered (a fingerprint in the app's preferences); a new
- * one is always handled. Pure rule + small storage helpers.
+ * An incoming link / share / GPX (VIEW or SEND) is handled once: after a reinstall or a process restart Android starts
+ * the screen again with the task's FIRST intent, so a link handled long ago would come back. The last handled one is
+ * remembered (a fingerprint in the app's preferences); a new one is always handled.
  */
 object IncomingIntent {
     enum class Delivery {

@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** Owner 2026-10-23: all sights and viewpoints on by default – also for users who never touched the POI filter. */
+/** Owner: all sights and viewpoints on by default – also for users who never touched the POI filter. */
 class PoiDefaultsTest {
     private val dir = File(System.getProperty("java.io.tmpdir"))
 

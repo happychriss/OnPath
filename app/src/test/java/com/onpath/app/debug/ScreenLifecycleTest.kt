@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Field 0.10.1: two MainActivity instances at a cold start – the event log must name each screen and why it went. */
+/** Two MainActivity instances at a cold start: the event log must name each screen and why it went. */
 class ScreenLifecycleTest {
     @Test fun secondScreenWhileFirstAliveIsCounted() {
         val (a, before) = ScreenLifecycle.created()

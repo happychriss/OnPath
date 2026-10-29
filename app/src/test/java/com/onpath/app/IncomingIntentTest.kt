@@ -10,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Field bug 2026-10-27: after a reinstall the app showed "This plan link can't be read" again – Android started the
+ * After a reinstall the app showed "This plan link can't be read" again – Android started the
  * screen anew with the task's first intent (a VIEW plan link handled long ago). An incoming link / share / GPX is
  * handled once; a new one (onNewIntent, or another link on a cold start) still is.
  */

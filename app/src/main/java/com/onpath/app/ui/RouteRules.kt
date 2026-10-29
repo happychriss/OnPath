@@ -17,7 +17,7 @@ data class RouteMenuState(
 enum class SaveMode { NAME_DIALOG, OVERWRITE_OR_NEW }
 
 /**
- * "Enabled when" rules of the menus and route management (pure, unit tested; docs/ux-two-modes.md "Menus").
+ * "Enabled when" rules of the menus and route management (docs/ux-two-modes.md "Menus").
  * Navigating = Navigate mode or a tour recording (also when looked at from Plan).
  */
 object RouteRules {
@@ -45,7 +45,7 @@ object RouteRules {
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 
     /**
-     * Clear in the sheet's ⋯: something to clear – also during a tour (owner Q2 2026-10-23): like deleting every point,
+     * Clear in the sheet's ⋯: something to clear – also during a tour (owner): like deleting every point,
      * the route guidance ends and the recording goes on; Undo brings plan and guidance back (PlanGuidance).
      */
     fun canClear(pointCount: Int): Boolean = pointCount > 0
@@ -67,7 +67,7 @@ object RouteRules {
 
     /**
      * The plan still belongs to the route it was last saved or loaded as ([saved], null = never): at least one of its
-     * points is one of that route's points (lat/lon; owner 2026-10-23, Hilden field test). Real edits of a loaded route –
+     * points is one of that route's points (lat/lon; owner). Real edits of a loaded route –
      * moving, adding, deleting some points – keep the link ("· changed, not saved", Save offers overwrite). After Clear,
      * or when every point was replaced (a new plan somewhere else), the link is gone: no saved name, Save asks for a new
      * name. The link itself is kept, so Undo back to the old points brings it back.
@@ -86,7 +86,7 @@ object RouteRules {
      * A plan from a link (plan.onpath.earth, QR code, share, paste – A-005): during a tour it waits (the followed plan
      * stays), unsaved changes ask "Replace current route?" like loading a saved route, else it opens at once. The same
      * link opened twice never asks, and neither does a plan that is still exactly what an earlier link brought ([opened],
-     * owner 2026-10-27: scanning the next QR code replaces it silently; changed on the phone → asks).
+     * owner: scanning the next QR code replaces it silently; changed on the phone → asks).
      */
     fun linkOpen(navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?, incoming: List<GeoPoint>,
                  opened: List<GeoPoint>? = null): LinkOpen =

@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Fresh install in the cell world (phone test 2026-10-21): when the missing-data screen blocks, and the style format. */
+/** Fresh install with map cells: when the missing-data screen blocks, and the style format. */
 class FirstStartTest {
     private val nothing = listOf(
         DataFiles.Check("base.pmtiles", false, "Base map"),

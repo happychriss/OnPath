@@ -157,7 +157,7 @@ class TripPaceTest {
     }
 
     @Test fun walkingAsShownDoesNotCreepTheArrival() {
-        // field test: at a steady pace the arrival crept later every 30 s between the 100 m updates
+        // at a steady pace the arrival must not creep later every 30 s between the 100 m updates
         val trip = TripPace(); trip.setLine(times, 0.0)
         val arrivals = ArrayList<Long>()
         walk(trip, Factors.ONE, 0.6) { _, a -> if (a % 500 < 5) trip.snapshot().arrivalMs?.let { arrivals += it } }
@@ -182,8 +182,8 @@ class TripPaceTest {
     }
 
     /**
-     * Field 2026-10-22 15:49: standing at the Taser lift top station (stored points 0.03–0.1 m/s) gave "moving for
-     * 2 min but no progress". GPS jitter (and one wild fix) is not movement: the positions around the start and the
+     * Standing at a lift top station (stored points 0.03–0.1 m/s) must not read as "moving for 2 min but no progress".
+     * GPS jitter (and one wild fix) is not movement: the positions around the start and the
      * end of the window are compared, not two single fixes.
      */
     @Test fun gpsJitterWhileStandingIsNotMoving() {
@@ -215,7 +215,7 @@ class TripPaceTest {
         assertEquals(toGo, trip2.snapshot().toGoS)
     }
 
-    // ---- learning per tour only (owner decision 2026-10-22) ----------------------------------------------------
+    // ---- learning per tour only (owner) -----------------------------------------------------------------------
 
     private fun wall(s: Double) = 1_000_000L + (s * 1000).toLong()
 

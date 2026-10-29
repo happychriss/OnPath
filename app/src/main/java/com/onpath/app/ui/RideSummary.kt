@@ -59,7 +59,7 @@ private val RideGrey = Color(0xFF8A8F98)
 private val LiftPurple = Color(0xFF8E24AA)
 
 /**
- * "End tour" when a bus / car / lift was found (docs/design/vehicle-detection.md, owner 2026-10-22): instead of the
+ * "End tour" when a bus / car / lift was found (docs/design/vehicle-detection.md): instead of the
  * short question, a timeline (on foot / ride / lift with times, km, ascent, Ø speed), a small map (walked blue, ridden
  * grey dashed, lift purple; what a choice drops is faint) and one of four choices – Cancel · Delete · Save as always.
  * [onDelete] null = "Edit rides" on a saved tour (no Delete there; Cancel keeps it as it is).

@@ -32,12 +32,11 @@ class PhotonProvider(
 
     fun url(query: String, lat: Double, lon: Double, limit: Int): String {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
-        // Owner 2026-10-22: the server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix
-        // (Settings → Privacy says ~1 km);
-        // results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
+        // The server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix (owner; Settings →
+        // Privacy says ~1 km); results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
         val f = { v: Double -> coarse(v) }
         // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
-        // with higher importance win; a stronger bias dropped towns named in the query (tested 2026-10-19).
+        // with higher importance win; a stronger bias dropped towns named in the query.
         return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
     }
 
@@ -46,8 +45,8 @@ class PhotonProvider(
         url(query, lat, lon, limit) + PLACE_LAYERS.joinToString("") { "&layer=$it" }
 
     /**
-     * Two requests (owner 2026-10-28: "New York" from South Tyrol gave ten nearby shops and no city – the location
-     * bias wins over the far city): the normal one, and one for places only, merged with [mergePlaces]. The places
+     * Two requests (owner: a far city like "New York" must not be lost behind nearby shops – the location bias wins
+     * over it): the normal one, and one for places only, merged with [mergePlaces]. The places
      * request failing never costs the normal results.
      */
     override fun search(query: String, lat: Double, lon: Double, limit: Int): List<Place> {
@@ -114,8 +113,8 @@ object PhotonParser {
             val p = o.get("properties") as? JsonObject ?: JsonObject()
             fun s(k: String) = p.get(k)?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.takeIf { it.isNotEmpty() }
             val key = s("osm_key") ?: ""; val value = s("osm_value") ?: ""
-            // Not places you can go to: an administrative area's "centre" is just a point somewhere inside it (owner:
-            // "Bozen" landed in the forest above Meran – the province's centroid), likewise traffic signs.
+            // Not places you can go to: an administrative area's "centre" is just a point somewhere inside it (the
+            // province's centroid lies in a forest, not in the town), likewise traffic signs.
             if (key in SKIP_KEYS || (key == "highway" && value in SKIP_HIGHWAY)) continue
             val (kind, sub) = kindOf(key, value, s("type"))
             val street = listOfNotNull(s("street"), s("housenumber")).joinToString(" ").ifEmpty { null }
@@ -229,8 +228,8 @@ object OnlineRanking {
             val d = Geo.distance(refLat, refLon, p.lat, p.lon)
             var s = -1.5 * i - SearchRanking.distancePenalty(d)
             if (userCc != null && p.cc == userCc) s += 15.0
-            if (p.town != null && SearchText.normalize(p.town) in queryTowns) s += 30.0
-            // a town / city named exactly like the query is what was meant, however far ("New York", owner 2026-10-28)
+            if (p.town != null && SearchText.normalize(p.town) in queryTowns) s += SearchRanking.QUERY_TOWN_BONUS
+            // a town / city named exactly like the query is what was meant, however far ("New York"; owner)
             if (q.isNotEmpty() && p.kind == "place" && p.name != null && SearchText.normalize(p.name) == q) s += EXACT_PLACE_BONUS
             s
         }.map { it.value }

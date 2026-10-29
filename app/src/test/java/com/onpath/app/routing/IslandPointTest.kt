@@ -5,8 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Field case 2026-10-26 (core feature C3): Köln Dom → Neumarkt found no route for any activity – the Dom point snapped
- * onto a footway inside the cathedral that connects to nothing. Which point BRouter put on such an "island" decides
+ * Core feature C3: a point snapped onto a footway that connects to nothing (inside Köln cathedral) gave no route for
+ * any activity. Which point BRouter put on such an "island" decides
  * which one the engine snaps again (real data: tools/routing/jvm-test/IslandTest.kt).
  */
 class IslandPointTest {

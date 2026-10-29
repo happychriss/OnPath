@@ -24,7 +24,7 @@ enum class CellReason(val api: String) {
     NEAR("near"),
     /** T4: cells along a computed route. */
     CORRIDOR("corridor"),
-    /** Newer version of an installed cell – checked after a route was computed there (owner 2026-10-21). */
+    /** Newer version of an installed cell – checked after a route was computed there. */
     REFRESH("refresh"),
     /**
      * An installed cell built for an older style (content schema below [CellApi.CELL_SCHEMA], e.g. without small
@@ -89,9 +89,10 @@ interface NetworkStatus {
  * The app side of map cells (docs/design/map-cells.md §9, §19): requests cells from the doorman, polls their status
  * while the app is in the foreground, downloads ready cells (`.part` + Range resume + sha256), joins them into the
  * [CellStore] and tells the map to reload ([generation]). Requests are kept in `cells/requests.json` and continue on
- * the next app start (no background polling, map-cells.md §8).
+ * the next app start. Polling runs in the foreground, and in the background only while a tour ([tourInBackground]) or
+ * MapLoadService ([loadInBackground]) runs.
  *
- * Mobile data rule (owner 2026-10-21): everything loads on mobile data by default; Settings → "Maps only on Wi-Fi"
+ * Mobile data rule (owner): everything loads on mobile data by default; Settings → "Maps only on Wi-Fi"
  * ([wifiOnly]) makes cells wait as [CellState.WaitingForWifi] (or until [approveMobile]). Newer versions of installed
  * cells are not downloaded while [holdUpdates] (a tour runs: no map switch under the user's feet).
  *
@@ -119,9 +120,9 @@ class MapCells(
     private val backgroundPollMs: Long = BACKGROUND_POLL_MS,
     private val now: () -> Long = System::currentTimeMillis,
     /**
-     * Generation churn (field bug 2026-10-22: 40 store generations for one long route): cells finished within this
-     * window are joined into the map in ONE generation – while other cells are still being built or downloaded, the
-     * worker waits up to this long after the last finished one (at most [maxBatchMs] after the first).
+     * Few store generations (a long route must not write dozens): cells finished within this window are joined into
+     * the map in ONE generation – while other cells are still being built or downloaded, the worker waits up to this
+     * long after the last finished one (at most [maxBatchMs] after the first).
      */
     private val batchMs: Long = BATCH_MS,
     private val maxBatchMs: Long = MAX_BATCH_MS,
@@ -168,12 +169,12 @@ class MapCells(
 
     /**
      * The recording service runs a tour: requests are sent and polled also while the app is not on screen (T5 in the
-     * background, owner 2026-10-22) – at most every [BACKGROUND_POLL_MS].
+     * background) – at most every [BACKGROUND_POLL_MS].
      */
     @Volatile var tourInBackground: Boolean = false
         set(v) { field = v; if (v) wake() }
 
-    /** MapLoadService runs (owner 2026-10-23): areas being loaded keep going with the screen off / app in the background. */
+    /** MapLoadService runs: areas being loaded keep going with the screen off / app in the background. */
     @Volatile var loadInBackground: Boolean = false
         set(v) { field = v; if (v) wake() }
 
@@ -185,8 +186,8 @@ class MapCells(
         set(v) { val was = field; field = v; if (was && !v) wake() }
 
     /**
-     * What the app knows about the user right now, asked right before each download (owner 2026-10-22: never a stale or
-     * unexpected download). Null (no screen, e.g. only the recording service runs): point requests stay valid.
+     * What the app knows about the user right now, asked right before each download (owner: never a stale or unexpected
+     * download). Null (no screen, e.g. only the recording service runs): point requests stay valid.
      */
     interface Relevance {
         /** Cells the user waits for right now (the load modal / the open map card) – always valid. */
@@ -198,7 +199,7 @@ class MapCells(
 
     /**
      * A screen's state is gone: [r] is removed only when it is still the current one. Two screens (each its own
-     * ViewModel) can overlap at start (field 0.10.1) – the older one, cleared last, must not remove the newer one's.
+     * ViewModel) can overlap at start – the older one, cleared last, must not remove the newer one's.
      */
     @Synchronized fun releaseRelevance(r: Relevance) { if (relevance === r) relevance = null }
 
@@ -207,7 +208,7 @@ class MapCells(
     /** False when this build has no map server key: the UI says "Map downloads not available in this build". */
     override val downloadsAvailable: Boolean get() = api != null
 
-    /** Folder the map, POI tap and search read from (the store), or null = the data folder as before cells. */
+    /** Folder the map, POI tap and search read from (the store), or null = the data folder. */
     fun mapDir(): File? = store.mapDir()
 
     // ------------------------------------------------------------------------------------------- cells for places
@@ -255,8 +256,8 @@ class MapCells(
     // ------------------------------------------------------------------------------------------- actions
 
     /**
-     * Which of [cells] the map server has built already (owner 2026-10-24: opening the app loads the map for here
-     * silently when it is ready on the server, and asks only when it must be built first). Only reads the status –
+     * Which of [cells] the map server has built already (owner: opening the app loads the map for here silently when
+     * it is ready on the server, and asks only when it must be built first). Only reads the status –
      * starts no build. Null when it cannot tell (no key, offline, server error). Blocking: call off the main thread.
      */
     fun builtOnServer(cells: List<CellId>): Set<CellId>? {
@@ -351,11 +352,10 @@ class MapCells(
         _states.value.mapNotNull { (c, s) -> (s as? CellState.WaitingForWifi)?.let { c to it.bytes } }
 
     /**
-     * T4 belongs to the current plan (field bug 2026-10-22: 16 corridor regions of a long route planned once kept
-     * downloading after every app start): [keep] = the corridor of the current plan's route, empty when the plan has no
-     * route (cleared, long-route question, Cancel, not routed, routing failed). Corridor requests outside it are dropped
-     * (a running download stops; installed cells stay); those inside belong to the plan again (after a restart they wait
-     * for this). Returns the dropped cells.
+     * T4 belongs to the current plan (a long route planned once must not keep downloading after every app start):
+     * [keep] = the corridor of the current plan's route, empty when the plan has no route (cleared, long-route question,
+     * Cancel, not routed, routing failed). Corridor requests outside it are dropped (a running download stops; installed
+     * cells stay); those inside belong to the plan again (after a restart they wait for this). Returns the dropped cells.
      */
     override fun keepCorridor(keep: Collection<CellId>): List<CellId> {
         val k = keep.toSet()
@@ -422,7 +422,7 @@ class MapCells(
     }
 
     /**
-     * Settings → Offline maps → "Clear all" (owner 2026-10-22): every request goes and every downloaded area is removed
+     * Settings → Offline maps → "Clear all": every request goes and every downloaded area is removed
      * (the world overview in the APK stays); areas load again when needed. Returns the removed areas.
      */
     fun clearAll(): List<CellId> {
@@ -449,7 +449,7 @@ class MapCells(
     fun setForeground(on: Boolean) {
         foreground = on
         // nobody drags a map that is not on screen: a gesture whose "camera idle" never came (app left while the camera
-        // moved) must not hold back joins / removals until the app is opened again (phone check 2026-10-23)
+        // moved) must not hold back joins / removals until the app is opened again
         if (!on && userBusy) { userBusy = false; wake() }
         if (on) wake()
     }
@@ -529,7 +529,7 @@ class MapCells(
     private val sent = java.util.Collections.synchronizedSet(HashSet<CellId>())
     /**
      * Installed cells the server is rebuilding right now ("ready" + updating, e.g. for a new map style): polled at the
-     * server's pace like cells being built, not after [IDLE_MS] (field 2026-10-26: rebuilt Hilden cells came 10 min late).
+     * server's pace like cells being built, not after [IDLE_MS].
      */
     private val updatingOnServer = java.util.Collections.synchronizedSet(HashSet<CellId>())
     private val wakeup = Channel<Unit>(Channel.CONFLATED)
@@ -559,7 +559,7 @@ class MapCells(
 
     /**
      * Installed list → generation → states, in this order: whoever sees a cell "ready" also sees the map generation that
-     * contains it (CI flake 2026-10-21: Ready was visible while the generation still had the old number).
+     * contains it.
      */
     private fun refreshInstalled(gen: Int? = null) {
         val inst = store.installed()
@@ -574,7 +574,6 @@ class MapCells(
 
     private fun publish(gen: CellStore.Generation) {
         refreshInstalled(gen.number)
-        _generation.value = gen.number
     }
 
     private fun recover() {
@@ -663,7 +662,7 @@ class MapCells(
 
     /**
      * Why [p] is no longer wanted (null = still wanted) – checked right before each round of sending and downloading
-     * (owner 2026-10-22: never a stale or unexpected download).
+     * ([Relevance]).
      */
     private fun whyInvalid(p: Pending, rel: Relevance?, inst: Set<CellId>, t: Long): String? = when (p.reason) {
         CellReason.CORRIDOR -> if (planCorridor?.let { p.id !in it } == true) "no longer on the plan's route" else null
@@ -816,7 +815,7 @@ class MapCells(
                 pkgs.forEach { set(it.id, CellState.Offline(Txt.s(Res.string.maps_err_unreachable))) }
             else -> {
                 Problems.info("cells", "Region packages not available from the map server (${e.failure}); asked again at the next start", e)
-                packagesRefused = true // not after every join of this run (phone test 2026-10-26: a 400 per join)
+                packagesRefused = true // else every join of this run asks again and is refused again
                 synchronized(queue) { pkgs.forEach { queue.remove(it.id) }; saveQueue() }
                 pkgs.forEach { set(it.id, CellState.Failed(Txt.s(Res.string.maps_err_region_view), retryable = true)) }
             }
@@ -872,7 +871,7 @@ class MapCells(
         synchronized(queue) { saveQueue() }
     }
 
-    /** Mobile data rule (owner 2026-10-21): mobile data by default; "Maps only on Wi-Fi" waits unless the user said yes. */
+    /** Mobile data rule: mobile data by default; "Maps only on Wi-Fi" waits unless the user said yes. */
     private fun allowed(p: Pending): Boolean = network.unmetered() || !wifiOnly || p.approvedMobile
 
     private fun failed(e: CellApi.ApiException, pending: List<Pending>): Long {
@@ -993,7 +992,7 @@ class MapCells(
                 val c = CellId.parse(o.optString("id")) ?: continue
                 val r = runCatching { CellReason.valueOf(o.optString("reason")) }.getOrNull() ?: CellReason.NEAR
                 val at = o.optLong("at")
-                // revalidated at start (field bug 2026-10-22): a point request from yesterday – nobody waits for it;
+                // revalidated at start: a point request from yesterday – nobody waits for it;
                 // a corridor waits until the restored plan's route says it still needs it ([keepCorridor])
                 if ((r == CellReason.POINT || r == CellReason.NEAR) && t - at > STALE_MS) { stale += c; continue }
                 queue[c] = Pending(c, r, o.optBoolean("own"), at, o.optBoolean("mobileOk"), confirmed = r != CellReason.CORRIDOR)

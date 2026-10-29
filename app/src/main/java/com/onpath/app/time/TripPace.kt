@@ -14,7 +14,7 @@ import kotlin.math.roundToLong
  * - **What is learned:** while you are on the followed line and it moves forward, every ~50 m of progress adds
  *   (predicted seconds, real moving seconds) to the group of that piece (down / flat / up). Elevation comes from the
  *   line (DEM), never from GPS. Off-route stretches, jumps and implausible pieces are not learned.
- * - **Learning per tour only** (owner 2026-10-22): every tour starts from the pace setting ([prior]); nothing is kept
+ * - **Learning per tour only** (owner): every tour starts from the pace setting ([prior]); nothing is kept
  *   for the next tour. **Warm-up:** the setting alone until [WARMUP_S] of walking *and* [WARMUP_M] of progress were
  *   compared (breaks never count), then the learned factors are blended in over the next [BLEND_S] (no jump).
  * - **Factors:** shrunk towards the setting (as if [TAU_S] of "normal" walking were already done), groups not walked
@@ -230,7 +230,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         } else if (wallMs - lastShowWall >= SHOW_EVERY_MS) {
             // between updates: "to go" follows the progress made (at the shown pace) and stays while standing; the
             // arrival only moves later once the clock eats into it (a break, slower than shown) – it does not creep
-            // later while walking as shown (field test 2026-10-19: 12:45 → 13:15 at a steady pace)
+            // later while walking as shown
             val base = showToGoS ?: shownToGoS ?: return
             val toGo = if (matched && showRawS > 0) base * (raw / showRawS).coerceIn(0.0, 1.0) else shownToGoS ?: base
             shownToGoS = toGo
@@ -257,7 +257,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /**
      * Moved at least [STUCK_MOVE_M] during the last [STALE_S] on the line, but the progress hardly changed. "Moved" =
      * the mean position of the fixes in the first [STUCK_AVG_S] of the window vs. that of the last [STUCK_AVG_S] – GPS
-     * jitter and single wild fixes while standing are not movement (field 2026-10-22, lift top station).
+     * jitter and single wild fixes while standing (e.g. at a lift top station) are not movement.
      */
     private fun stuck(): Boolean {
         if (history.size < 3) return false
@@ -332,7 +332,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val STUCK_AVG_S = 20.0
         /** The learned pace is shown after this much comparison (s). */
         const val SHOW_LEARNED_S = 1200.0
-        /** Warm-up (owner 2026-10-22): the setting alone until this much walking (s, breaks excluded) … */
+        /** Warm-up (owner): the setting alone until this much walking (s, breaks excluded) … */
         const val WARMUP_S = 900.0
         /** … and this much progress (m) were compared on the route. */
         const val WARMUP_M = 1000.0

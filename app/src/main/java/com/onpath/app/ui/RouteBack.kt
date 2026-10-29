@@ -4,10 +4,10 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 
 /**
- * Owner decision 9 (2026-10-22): during a tour, deleting the GOAL of a 2-point plan leaves only the start – asked with a
- * persistent question "Route back to the start?". Yes = the plan becomes position → start (the guidance follows it);
- * No = plain recording (PlanGuidance: what Plan shows = what Navigate follows). Pure, unit-tested (RouteBackTest);
- * AppViewModel asks after the edit and applies the answer.
+ * Owner rule: during a tour, deleting the GOAL of a 2-point plan leaves only the start – asked with a persistent
+ * question "Route back to the start?". Yes = the plan becomes position → start (the guidance follows it); No = plain
+ * recording (PlanGuidance: what Plan shows = what Navigate follows). AppViewModel asks after the edit and applies the
+ * answer.
  */
 object RouteBack {
     /** Closer than this to the start there is no way back to ask about. */

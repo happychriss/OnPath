@@ -7,8 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Owner decision after field test 2026-10-22 (tour 5: all points deleted in Plan, the tour kept following the old
- * route invisibly): what Plan shows = what Navigate follows. Deleting all points during a tour ends the route
+ * Owner rule: what Plan shows = what Navigate follows (never an old route followed invisibly). Deleting all points
+ * during a tour ends the route
  * guidance (the recording goes on); Undo brings the points and the guidance back. The steps are AppViewModel's
  * (PlanHistory + PlanGuidance).
  */
@@ -52,7 +52,7 @@ class PlanGuidanceTest {
         assertEquals(listOf(a, c), t.plan)
     }
 
-    /** Owner Q2 2026-10-23: sheet ⋯ → Clear route is allowed during a tour and goes through the same plan change. */
+    /** Sheet ⋯ → Clear route is allowed during a tour (owner) and goes through the same plan change. */
     @Test fun clearRouteDuringATourEndsTheGuidanceToo() {
         val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         val clear = vm.substringAfter("fun clearPlan() {").substringBefore("\n    }")
@@ -75,9 +75,8 @@ class PlanGuidanceTest {
     }
 
     /**
-     * UX review 2026-10-23, problem 4 (owner Q7): a track was taken to follow during the tour; afterwards "Continue"
-     * never went back to the plan. Now an edited plan wins (Continue follows it, the track is drawn grey); the plan as it
-     * was when the track was taken (also by Undo) keeps the track.
+     * A track was taken to follow during the tour, then the plan was edited (owner): the edited plan wins (Continue
+     * follows it, the track is drawn grey); the plan as it was when the track was taken (also by Undo) keeps the track.
      */
     @Test fun anEditedPlanReplacesAFollowedTrack() {
         val atFollow = listOf(a, b)

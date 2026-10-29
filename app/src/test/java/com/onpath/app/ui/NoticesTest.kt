@@ -20,9 +20,8 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Owner 2026-10-27 ("die komischen schwarzen Status-Codes … rausnehmen"): no dark message bar. A result goes where the
- * user acted (a line in My routes / Settings), an error without such a place gets the light error card, an INFO without
- * a place is not shown. Review 2026-10-24 A / B10 / C9.
+ * No dark message bar (owner). A result goes where the user acted (a line in My routes / Settings), an error without
+ * such a place gets the light error card, an INFO without a place is not shown.
  */
 class NoticesTest {
     @get:Rule

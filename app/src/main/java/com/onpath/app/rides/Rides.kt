@@ -5,7 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Bus / car / lift during a recording (docs/design/vehicle-detection.md, owner 2026-10-22). Nothing happens during the
+ * Bus / car / lift during a recording (docs/design/vehicle-detection.md). Nothing happens during the
  * ride; at "End tour" the rides found ([RideDetector]) are shown with four choices, and the choice decides what counts.
  * The recorded points are never changed or removed – a [RideRecord] on the tour only says how to read them.
  */

@@ -4,7 +4,7 @@ import kotlin.system.exitProcess
 
 // A point that BRouter snaps onto a way without a connection to the rest of the network ("island") must still get a
 // route: the app moves it to the next way (KTTEST=.../IslandTest.kt run.sh <segmentsDir with E5_N50.rd5>).
-// Field case 2026-10-26: Köln Dom → Neumarkt (~1 km) gave "no route" for every activity. A point in the middle of the
+// Case: Köln Dom → Neumarkt (~1 km) must route for every activity. A point in the middle of the
 // cathedral is 38 m from a short footway inside it that connects to nothing BRouter knows; BRouter's own island retry
 // snaps to the same way five times ("no track found"), as a destination it gives up at once ("target island").
 

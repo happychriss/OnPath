@@ -25,7 +25,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Plan ⇄ Navigate transition (owner decision 0.10.0, ModeSwitch): the control layers animate, the map beside them is
+ * Plan ⇄ Navigate transition (ModeSwitch): the control layers animate, the map beside them is
  * neither recomposed, re-laid out nor recreated; at the end of each transition only the new mode's layer is left.
  * Frames run on the JVM (Paparazzi, no images kept), like SheetSmoothnessTest.
  */

@@ -6,8 +6,8 @@ import com.onpath.app.routing.TurnDetector
 import kotlin.math.abs
 
 /**
- * Does a way back start by turning round (owner 2026-10-28, bike: "the new route looked like nothing happened – it
- * sent me back the same way")? Compares the direction of the last [MOVE_M] the rider moved with the first [AHEAD_M]
+ * Does a way back start by turning round (otherwise a new route that sends the rider back the same way looks like
+ * nothing happened)? Compares the direction of the last [MOVE_M] the rider moved with the first [AHEAD_M]
  * of the new line. Pure, unit-tested. Unknown (standing still, short line) = false.
  */
 object TurnRound {

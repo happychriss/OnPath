@@ -29,6 +29,7 @@ public final class OnPathHints {
             }
             return out;
         } catch (RuntimeException e) {
+            // expected: hints are optional – an unreadable list means a route without junction cues
             return new double[0][];
         }
     }

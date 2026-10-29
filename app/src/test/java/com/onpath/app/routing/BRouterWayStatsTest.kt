@@ -118,9 +118,9 @@ class BRouterWayStatsTest {
     }
 
     /**
-     * Field data 2026-10-25 (22 % of 296 planned test routes): BRouter can open the message list with a
-     * zero-length run reported AT the first node. The matcher searched from the next node, found nothing and dropped
-     * all way attributes – no "pushing" hint, times without surfaces on that whole route.
+     * BRouter can open the message list with a zero-length run reported AT the first node (22 % of 296 test routes).
+     * Searching from the next node would find nothing and drop all way attributes of the route (no "pushing" hint,
+     * times without surfaces).
      */
     @Test fun perNodeSkipsAZeroLengthRunAtTheCurrentNode() {
         fun m(lon: Int, lat: Int, d: Int, tags: String) = "$lon\t$lat\t300\t$d\t1000\t0\t0\t0\t0\t$tags\t\t10\t100"
@@ -138,7 +138,7 @@ class BRouterWayStatsTest {
     }
 
     /**
-     * Route hints (owner 2026-10-26): a ferry, a ford (way or node), a stile / kissing gate / turnstile (node) and a way
+     * Route hints: a ferry, a ford (way or node), a stile / kissing gate / turnstile (node) and a way
      * under construction reach the route's way attributes; bollards, gates and lift gates do not (passable, too common).
      */
     @Test fun hintTagsReachTheWayAttributes() {

@@ -49,7 +49,7 @@ class NavigatorTest {
         assertNotNull(r.nav.state.toRoute)
     }
 
-    /** Rode past the corner: the way back starts westwards, against the ride – "turn round" + the sign (owner 2026-10-28). */
+    /** Rode past the corner: the way back starts westwards, against the ride – "turn round" + the sign. */
     @Test fun wayBackAgainstTheRideIsATurnRoundWithASign() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))

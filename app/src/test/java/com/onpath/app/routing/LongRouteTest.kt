@@ -12,7 +12,7 @@ class LongRouteTest {
 
     @Test fun aDayHikeIsNotAsked() = assertFalse(LongRoute.needsAsk(listOf(meran, dorfTirol), Activity.HIKE))
 
-    /** Field test 2026-10-22: Italy → Germany on foot by mistake. */
+    /** Italy → Germany on foot (a point set there by mistake). */
     @Test fun italyToGermanyOnFootIsAsked() {
         assertTrue(LongRoute.needsAsk(listOf(meran, munich), Activity.HIKE))
         assertTrue(LongRoute.describe(LongRoute.estimateS(listOf(meran, munich), Activity.HIKE)).endsWith("days"))

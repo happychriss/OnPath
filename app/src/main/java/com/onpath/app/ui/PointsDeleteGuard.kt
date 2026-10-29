@@ -3,11 +3,11 @@ package com.onpath.app.ui
 import com.onpath.app.routing.PlanPointRow
 
 /**
- * Safe ✕ in the Points list (owner decision after field test 2026-10-22: two deletes 1 s apart – the rows moved up
- * under the finger and the second tap deleted the next point). After a ✕ the deleted row stays in place as a quiet
+ * Safe ✕ in the Points list (owner): rows moving up under the finger must not let a second quick tap delete the next
+ * point. After a ✕ the deleted row stays in place as a quiet
  * "Deleted" placeholder for [QUIET_MS], so nothing shifts under the finger; meanwhile taps on the list (✕, row, drag)
  * are ignored. Then the placeholder goes and the list is the plan again. Undo on the map brings the point back as
- * always. Pure (unit-tested); the composable keeps one instance per list.
+ * always. The composable keeps one instance per list.
  */
 class PointsDeleteGuard {
     /** One shown row: a plan row ([rowIndex] = its index in the plan's rows) or the deleted placeholder. */
@@ -47,7 +47,7 @@ class PointsDeleteGuard {
     fun clear() { ghostRow = null; ghostAt = -1; since = Long.MIN_VALUE / 2 }
 
     companion object {
-        /** Long enough for the field case (second tap 1 s later), short enough to delete several points calmly. */
+        /** Long enough for a second tap 1 s later, short enough to delete several points calmly. */
         const val QUIET_MS = 1_200L
     }
 }

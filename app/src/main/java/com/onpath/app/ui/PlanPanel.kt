@@ -1,27 +1,16 @@
 package com.onpath.app.ui
 
 import com.onpath.strings.*
-import androidx.compose.material.icons.outlined.Delete
-
-import androidx.compose.material.icons.outlined.Place
-
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Save
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,22 +20,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.Landscape
-import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Info
@@ -134,14 +116,13 @@ class PlanCallbacks(
 data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
 
 /**
- * Plan sheet steps (owner 2026-10-22): MINI = summary only (time, distance), COMPACT = + the large elevation profile
+ * Plan sheet steps: MINI = summary only (time, distance), COMPACT = + the large elevation profile
  * with the finger ruler (default), FULL = + the Points list (Reverse / Round trip). The primary button stays at the
  * bottom in every step. Way types & surfaces are in the route details only.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
 
-    fun smaller() = if (this == FULL) COMPACT else MINI
     fun bigger() = if (this == MINI) COMPACT else FULL
     /** Handle tap: grow one step; on FULL go back to COMPACT. */
     fun tapped() = if (this == FULL) COMPACT else bigger()
@@ -192,7 +173,7 @@ data class PlanUi(
 }
 
 /**
- * The plan bottom sheet (owner 2026-10-22), three steps of ONE body (StepSheet: composed once, a step is only how much
+ * The plan bottom sheet, three steps of ONE body (StepSheet: composed once, a step is only how much
  * shows – dragging never rebuilds it): small = the summary line (activity · time + distance · ⋯); profile = + ascent /
  * descent, difficulty badge (→ route details) and the large elevation profile (slide a finger: the dot runs along the
  * route on the map); points = + the Points list (≡ drag, ✕ delete, tap → map; Reverse / Round trip). Way types and
@@ -213,7 +194,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
         onDragging = cb.onSheetDrag,
         bottomBar = { PlanBar(ui, cb) },
     ) {
-        // the pulled-up sheet has ONE fixed height (owner 2026-10-22): deleting / adding / moving points (or the routing
+        // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
         // bar) never makes its top edge jump; the scrolling area takes what is left
         val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - PRIMARY_BAR
         val sheet = this
@@ -235,7 +216,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
-    // Line 1: activity · time + distance · ⋯ (Undo and Redo are map buttons, owner Q8 2026-10-23).
+    // Line 1: activity · time + distance · ⋯ (Undo and Redo are map buttons).
     Row(verticalAlignment = Alignment.CenterVertically) {
         ActivityButton(ui.activity, ui.sac, cb.onActivity)
         Spacer(Modifier.width(8.dp))
@@ -243,7 +224,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         SheetOverflow(ui, cb, menuInitiallyOpen)
     }
     if (ui.routing && ui.routingSlow) {
-        // owner 2026-10-22: a long calculation can be stopped (the last change is taken back)
+        // a long calculation can be stopped (the last change is taken back)
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodySmall,
@@ -254,7 +235,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         }
     } else if (ui.routing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
-    // route state, one line per kind (review 2026-10-24 A): ERROR, WARNING, INFO
+    // route state, one line per kind: ERROR, WARNING, INFO
     val loadingNotice = RoutingDataNotice.isNotice(ui.error)
     val routeError = ui.error?.takeIf { !loadingNotice }
     when {
@@ -276,7 +257,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
-                // the gradient legend lives on Route details only (review 2026-10-24 B21)
+                // the gradient legend lives on Route details only
                 ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                     onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
             }
@@ -295,7 +276,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     }
 }
 
-/** The large profile of the profile step (owner 2026-10-22). */
+/** The large profile of the profile step. */
 private val PROFILE_HEIGHT = 120.dp
 
 /** Bottom of the sheet: the one primary button – not during a tour (Continue is in the tour controls above). */
@@ -318,9 +299,9 @@ private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
 }
 
 /**
- * ERROR line (review 2026-10-24 B4): the route does not do what was asked – a plan point it does not reach (owner
- * 2026-10-22) or a leg the router could not do ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary
- * (visible in the small step), no OK and never self-dismissing – it goes when the plan changes. "Show" = the map goes there.
+ * ERROR line: the route does not do what was asked – a plan point it does not reach or a leg the router could not do
+ * ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary (visible in the small step), no OK and never
+ * self-dismissing – it goes when the plan changes. "Show" = the map goes there.
  */
 @Composable
 private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
@@ -337,8 +318,8 @@ private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
 }
 
 /**
- * INFO line: good to know, nothing to do – grey text, no box, a small spinner while something loads (review 2026-10-24
- * A / B5 / B6). Tappable when [onTap] is set (then a ›).
+ * INFO line: good to know, nothing to do – grey text, no box, a small spinner while something loads. Tappable when
+ * [onTap] is set (then a ›).
  */
 @Composable
 internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit)? = null) {
@@ -356,7 +337,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
 }
 
 /**
- * Safety audit batch B (owner 2026-10-22): ONE amber line when the route has something to know ("1.2 km pushing ·
+ * WARNING line: ONE amber line when the route has something to know ("1.2 km pushing ·
  * steps · 2 sections above T2") or changed with the activity. The whole line is the tap target (→ list of spots).
  */
 @Composable
@@ -411,7 +392,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     if (route == null) {
         if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
-        // "Calculating the route…" only while a request runs (0.9.3 bug: shown forever after Cancel)
+        // "Calculating the route…" only while a request runs (not after Cancel)
         Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
             style = MaterialTheme.typography.bodyMedium, color = variant)
         return
@@ -438,21 +419,14 @@ internal fun stopColor(i: Int, count: Int): Color = when {
     else -> OnPathColors.Route
 }
 
-
 /** The one filled button of the sheet. */
 @Composable
 private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
-    val m = Modifier.fillMaxWidth().height(56.dp)
-    when {
-        // the button names the activity (owner: a wrong activity is a disaster)
-        ui.tourRunning -> Button(onClick = cb.onContinue, modifier = m) {
-            Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        else -> Button(onClick = cb.onStartNavigation, enabled = ui.canStart, modifier = m) {
-            Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-            Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+    // the button names the activity (owner: a wrong activity is a disaster)
+    Button(onClick = if (ui.tourRunning) cb.onContinue else cb.onStartNavigation, enabled = ui.tourRunning || ui.canStart,
+        modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
+        Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -478,29 +452,27 @@ private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean)
 @Composable
 internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    // About this route: save, share, time details, clear. No "Export GPX" here (owner 2026-10-28: it only clutters next
-    // to saving) – export lives in My routes (⋮ Export GPX / Export all).
+    // About this route: save, share, time details, clear. No "Export GPX" here (owner: it clutters next to saving) –
+    // export lives in My routes (⋮ Export GPX / Export all).
     MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
     MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
     MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
-    // Reverse / Round trip live above the points (full sheet) only – owner 2026-10-22: not twice
+    // Reverse / Round trip live above the points (full sheet) only – not twice
     HorizontalDivider()
     MenuItem(Icons.Outlined.DeleteSweep, str(Res.string.plan_clear_route), enabled = RouteRules.canClear(ui.pointCount),
         onClick = run(cb.onClear))
 }
 
-
-
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
 @Composable
 private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit) {
-    val name = com.onpath.app.data.LastActivity.chipText(activity, sac) // "Hike · T2" (owner 2026-10-22)
+    val name = com.onpath.app.data.LastActivity.chipText(activity, sac) // "Hike · T2"
     androidx.compose.material3.Surface(onClick = onClick, shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) }) {
         Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
-            // short names ("Gravel", "E-MTB"; Activity.chip) so time and distance keep their room (owner 2026-10-22)
+            // short names ("Gravel", "E-MTB"; Activity.chip) so time and distance keep their room
             Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
             Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }

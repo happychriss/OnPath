@@ -9,8 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * CORE FEATURE C1 (docs/core-features.md): point menu → Delete. Field 2026-10-21 (Pixel 8, 0.8.5): "the menu opened,
- * I tapped Delete, nothing happened – the point stayed". Each test is one way the plan can change while a menu is open
+ * CORE FEATURE C1 (docs/core-features.md): point menu → Delete always deletes the held point – never "Delete tapped,
+ * nothing happened". Each test is one way the plan can change while a menu is open
  * or a route is still being calculated; the steps are the ones AppViewModel takes (PointMenuTarget, RouteRequests,
  * PlanHistory, WaypointSnap).
  */
@@ -41,7 +41,7 @@ class CoreDeletePointTest {
         val plan = listOf(b, c, d) // point 1 (a) deleted from the point list meanwhile
         assertEquals("by index the menu would delete d", d, plan[2])
         assertEquals(listOf(b, d), delete(plan, menu))
-        // the last point deleted underneath: index 3 is past the end of [a, b, c] → before: nothing happened
+        // the last point deleted underneath: index 3 is past the end of [a, b, c] → no point, nothing deleted by mistake
         val menu4 = PointMenuTarget(3, d)
         assertNull(menu4.indexIn(listOf(a, b, c)))
     }

@@ -17,7 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Walk-readiness edge cases (review 2026-10-20): degenerate lines, duplicate points, far / jumping fixes, a line
+ * Walk-readiness edge cases: degenerate lines, duplicate points, far / jumping fixes, a line
  * replaced or removed mid-walk. Nothing may throw, and no NaN may reach "to go".
  */
 class NavEdgeCasesTest {
@@ -47,7 +47,7 @@ class NavEdgeCasesTest {
             }
             for (a in listOf(-10.0, 0.0, 5.0, 1e9)) {
                 l.pointAt(a); l.restFrom(a); l.segmentAt(a)
-                if (l.isUsable) l.bearingAt(a)
+                if (l.isUsable) l.aheadBearing(a)
             }
             NavLine.sameRoute(pts, pts.reversed())
         }

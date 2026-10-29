@@ -19,9 +19,9 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Field 2026-10-23: typing "zons" right after a new map store generation showed only "Searching online…" – the index
- * was rebuilt from scratch (59 s) and answered nothing meanwhile. Now the previous index answers until the new one is
- * ready; only the very first build shows "Preparing offline search…".
+ * Typing right after a new map store generation must find offline results: while the index is rebuilt (it can take a
+ * minute) the previous index answers until the new one is ready; only the very first build shows "Preparing offline
+ * search…".
  */
 class SearchIndexSwapTest {
     @get:Rule val tmp = TemporaryFolder()

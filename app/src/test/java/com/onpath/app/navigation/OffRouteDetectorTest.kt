@@ -112,7 +112,7 @@ class OffRouteDetectorTest {
     }
 
     @Test fun walkingBackMoreThan200mIsOffRoute() {
-        // owner rule 2026-10-19: ~200 m backwards = the normal off-route warning; the position stays known (time grows)
+        // owner rule: ~200 m backwards = the normal off-route warning; the position stays known (time grows)
         val d = detector(corner)
         run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 500.0))
         val s = run(d, walk(1000.0 to 500.0, 1000.0 to 0.0, 600.0 to 0.0, t0Ms = 2_000_000))

@@ -13,10 +13,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Where the arms of the drawn roundabout go (owner 2026-10-28: "a small roundabout with the roads, the one to take
- * marked"). Compass degrees on the sign: 0 = up (straight on), clockwise; you come in from below (180°) and drive
- * anticlockwise (right-hand traffic) to the exit at [exitDeg]; [passedDeg] = the exits you pass before it, spread
- * evenly – BRouter gives the exit's number and the turn's angle, not the other roads' exact directions. Pure.
+ * Where the arms of the drawn roundabout go (a small roundabout with the roads, the one to take marked). Compass
+ * degrees on the sign: 0 = up (straight on), clockwise; you come in from below (180°) and drive anticlockwise
+ * (right-hand traffic) to the exit at [exitDeg]; [passedDeg] = the exits you pass before it, spread evenly – BRouter
+ * gives the exit's number and the turn's angle, not the other roads' exact directions.
  */
 object RoundaboutGeometry {
     data class Arms(val exitDeg: Float, val sweepDeg: Float, val passedDeg: List<Float>)

@@ -11,7 +11,7 @@ import java.io.File
 import java.util.Locale
 
 /**
- * Every user text of the app (owner 2026-10-26: English + German, the phone's language or the override in
+ * Every user text of the app (owner: English + German, the phone's language or the override in
  * Settings → Diagnostics → Developer tools). Texts live in `composeResources/values/strings_*.xml` (English) and
  * `values-de/` (German); `Res.string.<key>` / `Res.plurals.<key>` are generated from them.
  *

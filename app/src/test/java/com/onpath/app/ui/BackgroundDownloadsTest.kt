@@ -8,7 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The background-download strip (owner 2026-10-22): what counts, progress, and when it shows / hides. */
+/** The background-download strip: what counts, progress, and when it shows / hides. */
 class BackgroundDownloadsTest {
     private val a = CellId(543, 361)
     private val b = CellId(544, 361)
@@ -28,8 +28,8 @@ class BackgroundDownloadsTest {
     }
 
     /**
-     * Field test 0.10.1 (Hilden): "Loading map · 2 areas · 0 %" for ~10 minutes while the server prepared two corridor
-     * areas – the strip counted only downloaded bytes. The preparing time moves the % now (as in the loading window).
+     * While the server prepares areas the strip must not stand at 0 %: the preparing time moves the % (as in the loading
+     * window), not only downloaded bytes.
      */
     @Test fun preparingOnTheServerMovesThePercent() {
         val progress = HashMap<CellId, MapLoadProgress>()
@@ -66,7 +66,7 @@ class BackgroundDownloadsTest {
         assertEquals(0, p.update(listOf(BackgroundProgress.Item("d", 0, mb)), 1, 0)!!.percent)
     }
 
-    /** Owner 2026-10-23: a small named chip under ☰ instead of the full-width strip; the names ride along with the progress. */
+    /** A small named chip under ☰ instead of a full-width strip; the names ride along with the progress. */
     @Test fun namesRideAlongAndThePlanShowsAChip() {
         val groups = LoadNames.groups(listOf(LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 10 * mb)))
         val p = BackgroundProgress()
@@ -112,7 +112,7 @@ class BackgroundDownloadsTest {
         assertEquals(false, WaitingDownloads(0, 0, 0).any)
     }
 
-    /** Owner 2026-10-22: one loading indicator – a newer version of an area is told by the strip, no veil on the map. */
+    /** One loading indicator – a newer version of an area is told by the strip, no veil on the map. */
     @Test fun newerMapIsToldByTheStrip() {
         val onlyNewer = BackgroundProgress().update(listOf(BackgroundProgress.Item("cell:${a.id}", 0, 10 * mb)), 1, 0, newer = 1, newerEtaMin = 6)!!
         assertEquals("Loading newer map", onlyNewer.title)

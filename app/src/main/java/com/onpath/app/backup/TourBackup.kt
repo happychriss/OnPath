@@ -43,7 +43,6 @@ class BackupIndex(private val file: File?) {
     init { load() }
 
     @Synchronized fun get(uuid: String): Entry? = map[uuid]
-    @Synchronized fun all(): Map<String, Entry> = LinkedHashMap(map)
     @Synchronized fun put(uuid: String, e: Entry) { map[uuid] = e; save() }
     @Synchronized fun remove(uuid: String) { if (map.remove(uuid) != null) save() }
 

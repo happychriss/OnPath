@@ -15,7 +15,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * Per-area offline search index (owner 2026-10-23, field: a full rebuild took 59 s after every map store generation):
+ * Per-area offline search index (a full rebuild after every map store generation is too slow):
  * an incremental change gives the same index as a full build, old installs migrate, a one-area change is fast.
  */
 class SearchAreasTest {
@@ -47,7 +47,7 @@ class SearchAreasTest {
             assertEquals("added", expectAdded, s.added); assertEquals("removed", expectRemoved, s.removed)
             val full = SearchAreas(tmp.newFolder()).build(plan)
             assertEquals(keys(full), keys(inc))
-            // the same POIs as a full read of the joined map store (the index before 2026-10-23)
+            // the same POIs as a full read of the joined map store ([OfflineIndex.load])
             val gen = store.mapDir()!!
             assertEquals(OfflineIndex.load(gen, tmp.newFolder()).entries.map { it.place.id }.sorted(), inc.entries.map { it.place.id }.sorted())
         }
@@ -66,7 +66,7 @@ class SearchAreasTest {
         assertEquals(3, now.entries.count { it.place.name?.startsWith("region") == true }) // 4 region POIs, one inside a
     }
 
-    /** Without cells: the data folder is one area, and the index equals the former full build (POIs, trails, places). */
+    /** Without cells: the data folder is one area, and the index equals [OfflineIndex.load] (POIs, trails, places). */
     @Test fun dataFolderAreaEqualsFormerIndex() {
         val dir = tmp.newFolder("data")
         File(dir, OfflineIndex.POIS).writeText("""{"type":"FeatureCollection","features":[

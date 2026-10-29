@@ -25,7 +25,7 @@ sealed interface NavPrompt {
          * for it. Stays until answered (also when on the route).
          */
         val switch: ActivitySwitch? = null,
-        /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round" (owner 2026-10-28). */
+        /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round". */
         val turnRound: Boolean = false,
     ) : NavPrompt
 
@@ -60,7 +60,7 @@ data class NavState(
 )
 
 /**
- * The re-routing flow while navigating (pure; owner decisions 2026-10-18 in docs/plan-auto-reroute.md):
+ * The re-routing flow while navigating (pure; owner decisions in docs/plan-auto-reroute.md):
  * off route confirmed → vibrate → way back computed in the background → a question that stays until answered;
  * back on the route by yourself → the question goes away. After "Take new route" the original stays as a grey line
  * and is used again as soon as you are back on it. Passed stops are skipped. Never re-routes silently.

@@ -32,8 +32,8 @@ class PlanPointsTest {
     }
 
     /**
-     * Owner field report 0.9.3 (the sheet stuttered with the points list): the leg matching walks the whole line per
-     * point; for the same plan + route it runs once, later rows are a lookup. A new route (new line) calculates again.
+     * The leg matching walks the whole line per point (the sheet would stutter): for the same plan + route it runs once,
+     * later rows are a lookup. A new route (new line) calculates again.
      */
     @Test fun legsAreCalculatedOncePerPlanAndRoute() {
         val line = (0..400).map { GeoPoint(46.67 + it * 0.0002, 11.10 + it * 0.00025) }
@@ -120,7 +120,7 @@ class PlanPointsTest {
         assertEquals(listOf(0, 0, 0), (0..2).map { PlanPoints.shift(it, 1, 1) })
     }
 
-    /** Field test 0.8.9: a drag that starts on ≡ picks the row under the finger (one detector for the whole list). */
+    /** A drag that starts on ≡ picks the row under the finger (one detector for the whole list). */
     @Test fun rowUnderTheFinger() {
         assertEquals(0, PlanPoints.rowAt(10f, 100f, 3))
         assertEquals(2, PlanPoints.rowAt(299f, 100f, 3))

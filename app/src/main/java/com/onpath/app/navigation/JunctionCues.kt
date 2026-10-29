@@ -7,7 +7,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
 
 /**
- * When to vibrate before a junction of the followed line (owner 2026-10-22). Pure, unit-tested; the recording service
+ * When to vibrate before a junction of the followed line. Pure, unit-tested; the recording service
  * calls [update] on every GPS fix and plays the returned cue.
  *
  * - A junction = a route point with [GeoPoint.turn] (BRouter's turn instructions – real junctions only).
@@ -19,8 +19,8 @@ import com.onpath.app.routing.JunctionCue
  */
 class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
     /**
-     * No vibration for a slight bend (SLIGHT_LEFT / SLIGHT_RIGHT) – on the bike (owner's ride 2026-10-28: 40 cues in
-     * 50 min, many of them slight). Forks (keep left / right) and real turns still vibrate; the lock screen still names
+     * No vibration for a slight bend (SLIGHT_LEFT / SLIGHT_RIGHT) – on the bike (else ~40 cues in 50 min, many of them
+     * slight). Forks (keep left / right) and real turns still vibrate; the lock screen still names
      * every junction.
      */
     var skipSlight: Boolean = false
@@ -74,7 +74,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
 
     /**
      * Next roundabout ahead within [maxM]: its exit (0 = unknown) and distance – the on-screen hint shows a roundabout
-     * sign instead of the plain arrow (owner 2026-10-28).
+     * sign instead of the plain arrow.
      */
     fun roundaboutAhead(line: List<GeoPoint>, version: Int, alongM: Double?, maxM: Double = 500.0): Pair<Int, Double>? =
         roundabout(line, version, alongM, maxM)?.let { it.exit to it.distanceM }
@@ -117,7 +117,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         fun count(line: List<GeoPoint>): Int = line.count { it.turn != null }
 
         /**
-         * Vibration timings (off, on, off, on …): 1 pulse = left, 2 pulses = right (owner 2026-10-28). Pulses of a
+         * Vibration timings (off, on, off, on …): 1 pulse = left, 2 pulses = right (owner). Pulses of a
          * quarter second, so one is felt through a jacket on the bike, the gap clearly apart.
          */
         fun pattern(side: JunctionCue.Side): LongArray = when (side) {
@@ -130,7 +130,7 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
 }
 
 /**
- * The recording notification while a route is followed – readable on the lock screen (owner 2026-10-22): next
+ * The recording notification while a route is followed – readable on the lock screen: next
  * junction, time to go, arrival, distance to go. Pure, unit-tested.
  */
 object NavNotification {

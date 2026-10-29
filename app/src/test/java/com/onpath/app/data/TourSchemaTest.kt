@@ -21,7 +21,7 @@ class TourSchemaTest {
     private fun Connection.upgrade(from: Int) =
         TourSchema.stepsFrom(from).forEach { if (it.column !in columns(it.table)) exec(it.sql) }
 
-    /** Version 2 as shipped until 0.9.2; [acc] / [rides] = the columns a version 3 had. */
+    /** Version 2; [acc] / [rides] = the columns a version 3 had. */
     private fun Connection.oldSchema(acc: Boolean = false, rides: Boolean = false) {
         exec("""CREATE TABLE tours(id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL,
             created INTEGER NOT NULL, activity TEXT, sac INTEGER NOT NULL DEFAULT 3, distance REAL NOT NULL DEFAULT 0,

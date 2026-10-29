@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import androidx.test.uiautomator.By
@@ -18,13 +17,8 @@ import com.onpath.app.MainActivity
 import com.onpath.app.cells.PmTiles
 import com.onpath.app.ui.AppViewModel
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.fail
-import org.junit.Before
 import org.junit.Rule
-import org.junit.Test
-import org.junit.runner.RunWith
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import java.io.ByteArrayOutputStream
@@ -86,15 +80,15 @@ abstract class E2EBase {
     }
 
     /**
-     * A real phone (owner's Pixel, 2026-10-21) dozes and keeps a PIN/fingerprint lock: every injected touch then went
-     * to a black, locked screen ("Start here" never shown, no hold event at all). Wake it and keep it awake for the run.
+     * A real phone dozes and keeps a PIN/fingerprint lock: every injected touch then goes to a black, locked screen
+     * ("Start here" never shown, no hold event at all). Wake it and keep it awake for the run.
      * A secure lock cannot be dismissed from adb, so the activity is shown over it instead (see [showOverLockScreen]).
      */
     protected fun wakeScreen() {
         if (!device.isScreenOn) device.wakeUp()
         device.executeShellCommand("svc power stayon true")
         // Swipe-only lock: dismiss it. Never with a PIN/fingerprint lock: there "dismiss" opens the fingerprint bouncer,
-        // which lies over our (shown-when-locked) window and swallows every touch – the 2026-10-21 phone failure.
+        // which lies over our (shown-when-locked) window and swallows every touch.
         val km = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.app.KeyguardManager::class.java)
         if (km?.isDeviceSecure == false) device.executeShellCommand("wm dismiss-keyguard")
         Thread.sleep(300)
@@ -146,9 +140,8 @@ abstract class E2EBase {
 
     /**
      * Points snapped onto ways can end up under the search pill (top) or the plan sheet (bottom) – a finger there never
-     * reaches the map (CI 2026-10-22: point 3 at y 361), or under the map buttons on the right (CI 2026-10-28: Navigate
-     * now starts at zoom 17, back in Plan point 2 sat at x 999 under the button column). Centre the map on the point
-     * first, like a user would.
+     * reaches the map, or under the map buttons on the right (e.g. back in Plan after Navigate zoomed in). Centre the map
+     * on the point first, like a user would.
      */
     protected fun ensureOnOpenMap(index: Int) {
         val (w, h) = mapSize()
@@ -172,7 +165,7 @@ abstract class E2EBase {
 
     /**
      * Waits until nothing matches [selector], looking afresh each time: UiAutomator may keep serving a cached node that
-     * Compose already removed (CI 2026-10-22: screenshot without the list, `Until.gone` still saw "Delete point").
+     * Compose already removed (`Until.gone` can still see "Delete point" after the list is gone).
      */
     protected fun goneFresh(selector: androidx.test.uiautomator.BySelector, timeoutMs: Long): Boolean {
         val end = System.currentTimeMillis() + timeoutMs
@@ -189,7 +182,7 @@ abstract class E2EBase {
      * The other half of [goneFresh]: waits until [selector] matches, looking afresh each time. Content that appears in
      * place inside the same window (the plan sheet's points list when it reaches the full step) can stay invisible to
      * UiAutomator: on Android 14 its node cache keeps the old tree and `device.wait(Until.findObject…)` asks that cache
-     * again and again (CI 2026-10-25: screenshot shows the rows with ✕, "Delete point" not found for 10 s).
+     * again and again (rows with ✕ on screen, "Delete point" not found).
      */
     protected fun findFresh(selector: androidx.test.uiautomator.BySelector, timeoutMs: Long): androidx.test.uiautomator.UiObject2? {
         val end = System.currentTimeMillis() + timeoutMs
@@ -212,8 +205,8 @@ abstract class E2EBase {
     }
 
     /**
-     * The "I am here" dot is the top of the map: every layer above its first layer is one of its own
-     * (owner 2026-10-22, after the dot vanished under route items twice). [where] names the moment for the message.
+     * The "I am here" dot is the top of the map: every layer above its first layer is one of its own (owner).
+     * [where] names the moment for the message.
      */
     protected fun assertPositionDotOnTop(where: String) {
         var ids = emptyList<String>()

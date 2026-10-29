@@ -18,8 +18,8 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Phone trace 0.10.0 (Pixel 8): the plan sheet janked while map areas downloaded – every download tick recomposed it.
- * Download progress ticks must not recompose the sheet; only a really changed card does (rememberDerived).
+ * Download progress ticks must not recompose the plan sheet (it janks while map areas download); only a really changed
+ * card does (rememberDerived).
  */
 class CellStateReadsTest {
     private object NoImages : SnapshotHandler {

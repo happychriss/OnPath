@@ -1,42 +1,19 @@
 package com.onpath.app.e2e
 
-import android.Manifest
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.os.Build
-import android.view.View
-import android.view.ViewGroup
-import androidx.lifecycle.ViewModelProvider
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.rule.GrantPermissionRule
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
-import com.onpath.app.MainActivity
-import com.onpath.app.cells.PmTiles
-import com.onpath.app.ui.AppViewModel
-import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapView
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 /**
  * CORE FEATURES C1 / C2 end to end (docs/core-features.md): the real app, the real MapLibre map, a finger held on the
- * screen (UiAutomator). Runs on an emulator before every release (.github/workflows/e2e.yml, release.yml) – owner
- * 2026-10-21: "not good to find out during walking".
+ * screen (UiAutomator). Runs on an emulator beside every release (.github/workflows/e2e.yml) – better than finding out
+ * during a walk.
  *
  * Map data: a tiny generated package (empty base tile, flat terrain, empty overlays, a dummy routing file → straight
  * lines). Enough for the gestures, which do not depend on what the map shows.
@@ -67,7 +44,7 @@ class CorePlanE2ETest : E2EBase() {
         waitUntil("point deleted after reload") { waypointCount() == 1 }
     }
 
-    /** Field test 2026-10-22: after a style reload the route points were drawn above the "I am here" dot. */
+    /** After a style reload the route points must not be drawn above the "I am here" dot. */
     @Test fun positionDotStaysAboveRoutePointsAfterAReload() {
         startPlanWithTwoPoints()
         assertPositionDotOnTop("plan")
@@ -85,7 +62,7 @@ class CorePlanE2ETest : E2EBase() {
         assertPositionDotOnTop("with a highlight")
     }
 
-    /** C1 on a turned map (compass, hand rotation – the 0.7.19 bug class). */
+    /** C1 on a turned map (compass, hand rotation). */
     @Test fun holdOnAPointWorksOnATurnedMap() {
         startPlanWithTwoPoints()
         // turn around the middle of the route, so both points stay above the plan sheet

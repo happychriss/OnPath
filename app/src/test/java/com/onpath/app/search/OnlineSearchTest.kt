@@ -7,7 +7,7 @@ import org.junit.Test
 
 class OnlineSearchTest {
 
-    // Real Photon responses (2026-10-18), shortened.
+    // Real Photon responses, shortened.
     private val algund = """{"type":"FeatureCollection","features":[
       {"type":"Feature","properties":{"osm_type":"R","osm_id":47284,"osm_key":"place","osm_value":"village","type":"city","name":"Algund","county":"Bozen","state":"Trentino-Südtirol","country":"Italien","postcode":"39022","countrycode":"IT","extra":{"admin_level":"8"}},"geometry":{"type":"Point","coordinates":[11.1230691,46.6825194]}},
       {"type":"Feature","properties":{"osm_type":"N","osm_id":7416709365,"osm_key":"railway","osm_value":"halt","type":"house","name":"Algund","street":"Bahnhofsplatz","district":"Dorf","city":"Algund","county":"Bozen","state":"Trentino-Südtirol","country":"Italien","postcode":"39022","countrycode":"IT"},"geometry":{"type":"Point","coordinates":[11.1318251,46.6788576]}}]}"""
@@ -62,7 +62,7 @@ class OnlineSearchTest {
     }
 
     @Test fun requestSendsOnlyARoughPosition() {
-        // owner 2026-10-22: never the exact GPS fix – at most 2 decimals (~1 km) in the request
+        // owner: never the exact GPS fix – at most 2 decimals (~1 km) in the request
         val p = PhotonProvider("x")
         val precise = Regex("""[?&](lat|lon)=(-?\d+)(?:\.(\d+))?""")
         for ((lat, lon) in listOf(46.684213 to 11.144987, -33.868820 to 151.209290, 46.675 to 11.165, 0.0 to -0.004999, 89.999999 to 179.999999)) {
@@ -98,7 +98,7 @@ class OnlineSearchTest {
         assertNull(PhotonParser.addressLine("X", "other", null, null, null, null, null, null, null))
     }
 
-    /** Owner bug: "Bozen" landed on the province boundary's centroid in the forest above Meran. */
+    /** An administrative boundary's centroid (e.g. the province "Bozen") lies in a forest, not in the town: skipped. */
     @Test fun skipsAdministrativeBoundariesAndSigns() {
         val json = """{"features":[
           {"geometry":{"coordinates":[11.2301833,46.6559296]},"properties":{"name":"Bozen","osm_key":"boundary","osm_value":"administrative","osm_type":"R","osm_id":1}},

@@ -8,7 +8,7 @@ import com.onpath.app.gpx.GpxException
 import com.onpath.app.routing.RoutingException
 
 /**
- * The sentence a user sees for an exception (owner 2026-10-23: no technical error texts in the app).
+ * The sentence a user sees for an exception (owner: no technical error texts in the app).
  *
  * Our own exception types carry plain texts we wrote ourselves – those are shown. Any other exception (system,
  * library, "ENOSPC", "Unable to resolve host…", class names) gets [plain]. The technical details go to

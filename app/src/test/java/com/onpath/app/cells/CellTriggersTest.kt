@@ -57,7 +57,7 @@ class CellTriggersTest {
         assertEquals(Triple(listOf(east), CellReason.NEAR, false), f.requests[1])
     }
 
-    /** A tap asks first (owner 2026-10-21): the preview requests nothing; where the detailed map is, nothing to ask. */
+    /** A tap asks first (owner): the preview requests nothing; where the detailed map is, nothing to ask. */
     @Test fun tapPreviewAsksTheServerNothing() {
         val f = FakeCells()
         val want = CellTriggers(f).preview(nearEdge)
@@ -71,7 +71,7 @@ class CellTriggersTest {
         assertTrue(CellTriggers(f).preview(nearEdge).isEmpty()) // all asked for already
     }
 
-    /** Modal → Cancel drops the cells (owner 2026-10-21): searching there again starts loading again normally. */
+    /** Modal → Cancel drops the cells: searching there again starts loading again normally. */
     @Test fun searchAgainAfterCancelLoadsAgain() {
         val f = FakeCells()
         val t = CellTriggers(f)
@@ -177,7 +177,7 @@ class CellTriggersTest {
         assertTrue(CellTriggers.newPoints(listOf(p1, p2), listOf(p2, p1, p2)).isEmpty())
     }
 
-    /** Owner 2026-10-21: after routing, the installed areas along the route are checked for a newer version (quiet). */
+    /** After routing, the installed areas along the route are checked for a newer version (quiet). */
     @Test fun afterRoutingInstalledCorridorCellsAreCheckedOncePerHour() {
         var t = 1_000_000L
         val f = FakeCells(installed = mutableSetOf(meran))
@@ -194,7 +194,7 @@ class CellTriggersTest {
         assertEquals(emptyList<CellId>(), CellTriggers(FakeCells(installed = mutableSetOf(meran), downloadsAvailable = false)).freshenAlong(line))
     }
 
-    /** Field bug 2026-10-22: the corridor belongs to the current plan – a new route drops the old corridor first. */
+    /** The corridor belongs to the current plan – a new route drops the old corridor first. */
     @Test fun t4NewRouteDropsTheOldCorridor() {
         val f = FakeCells()
         val t = CellTriggers(f)
@@ -219,7 +219,7 @@ class CellTriggersTest {
         assertEquals(before, f.requests.size)
     }
 
-    /** A huge corridor (New York test, owner 2026-10-28) never asks for hundreds of regions: the first stretch only. */
+    /** A huge corridor never asks for hundreds of regions: the first stretch only. */
     @Test fun t4CorridorIsCappedToItsFirstStretch() {
         val f = FakeCells()
         // Meran → Hamburg, ~900 km straight: far more corridor cells than the cap

@@ -22,7 +22,7 @@ class DataFiles(context: Context) {
     /**
      * Folder the map files are read from: the current generation of the downloaded map cells
      * (docs/design/map-cells.md §19, [com.onpath.app.cells.CellStore]) when at least one cell is installed, else the
-     * data folder (region package / adb push, as before cells existed). Never throws.
+     * data folder (region package / adb push). Never throws.
      */
     fun mapDir(): File = try { com.onpath.app.cells.CellStore(dir).mapDir() ?: dir } catch (e: Exception) {
         Problems.error("data", "Downloaded map areas unreadable; using the map package in the data folder", e); dir
@@ -39,14 +39,10 @@ class DataFiles(context: Context) {
             Check("segments/*.rd5", rd5.isNotEmpty(), Txt.s(Res.string.maps_check_routing))
     }
 
-    /** Map package format of the map folder: 2 = overlays as vector tiles ([OVERLAYS]), 1 = GeoJSON overlays. */
-    fun format(): Int = mapDir().let { m -> formatOf { File(m, it).isFile } }
-
-    fun has(name: String) = File(dir, name).isFile
 
     /**
      * The installed map package (package.json from the zip) and the files that do not belong to it: a file whose
-     * size differs from the package's list came from another import (old package, laptop push) – the map then has
+     * size differs from the package's list came from another import (old package, adb push) – the map then has
      * gaps at that package's edge. Null when there is no package.json (older data). Never throws.
      */
     fun packageCheck(): PackageCheck? = try {
@@ -87,7 +83,7 @@ class DataFiles(context: Context) {
         /** Format 2 (docs/design/map-data-size.md): routes, trails, paths, ways, trail names as one vector tile file. */
         const val OVERLAYS = "overlays.pmtiles"
 
-        /** 2 when [OVERLAYS] exists (it wins over leftover format-1 GeoJSON files), else 1. Pure, unit-tested. */
+        /** Map package format: 2 when [OVERLAYS] exists (it wins over leftover format-1 GeoJSON files), else 1. */
         fun formatOf(exists: (String) -> Boolean): Int = if (exists(OVERLAYS)) 2 else 1
 
         /**
@@ -105,7 +101,7 @@ class DataFiles(context: Context) {
          * Of the [missing] files: those that keep the app on the "Offline map data is missing" screen. None when the APK
          * ships the overview map ([overview]) and this build can download map cells ([downloads]): the app then opens on
          * the overview and the map comes where the user is or plans (map-cells.md §9 T1/T3); missing routing data only
-         * means straight lines until it is downloaded (Settings → Map data). Otherwise all of them, as before cells.
+         * means straight lines until it is downloaded (Settings → Map data). Otherwise all of them.
          * Pure, unit-tested.
          */
         fun blocking(missing: List<Check>, overview: Boolean, downloads: Boolean): List<Check> =

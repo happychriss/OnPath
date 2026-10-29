@@ -20,7 +20,7 @@ import com.onpath.app.poi.PoiKinds
 import org.junit.Rule
 import org.junit.Test
 
-/** Settings as a list of topics + one page per topic (owner 2026-10-22), Offline maps → Clean up / Clear all. */
+/** Settings as a list of topics + one page per topic, Offline maps → Clean up / Clear all. */
 class SettingsScreenshotTest {
     @get:Rule
     val paparazzi = Paparazzi(
@@ -68,7 +68,7 @@ class SettingsScreenshotTest {
     }
 
     @Test fun list() = paparazzi.snapshot { Screen(null) }
-    /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner C6). */
+    /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */
     @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
     @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
@@ -110,7 +110,7 @@ class SettingsScreenshotTest {
             clearAllBlocked = "Not during a tour – the map stays as it is until you end it."))
     }
 
-    /** After Clean up: a plain line on the page (owner 2026-10-22: no message box on the map), until the page is left. */
+    /** After Clean up: a plain line on the page (no message box on the map), until the page is left. */
     @Test fun offlineMapsAfterCleanUp() = paparazzi.snapshot {
         Screen(SettingsPage.OFFLINE_MAPS, OfflineMapsUi(true, areas.take(2), wifiOnly = false,
             result = OfflineResult.removed(37, 450L * 1_048_576, afterTour = false)))

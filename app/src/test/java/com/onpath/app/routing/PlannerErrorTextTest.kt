@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
 
-/** Review 2026-10-24 B4: a failed leg is one short ERROR line – no "Leg", no "straight dashed line", no advice. */
+/** A failed leg is one short ERROR line – no "Leg", no "straight dashed line", no advice. */
 class PlannerErrorTextTest {
     private val pts = (0..2).map { GeoPoint(46.6 + it * 0.1, 11.1) }
 

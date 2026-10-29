@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The drawn roundabout (owner 2026-10-28): in from below, anticlockwise to the exit in the turn's direction. */
+/** The drawn roundabout: in from below, anticlockwise to the exit in the turn's direction. */
 class RoundaboutGeometryTest {
     @Test fun straightOnSecondExit() {
         val a = RoundaboutGeometry.arms(2, 0f)

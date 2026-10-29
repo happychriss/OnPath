@@ -3,7 +3,7 @@ package com.onpath.app.routing
 import com.onpath.app.data.Geo
 
 /**
- * A GPX track (ridden, or from elsewhere) as a plannable route with as few route points as possible (owner 2026-10-28:
+ * A GPX track (ridden, or from elsewhere) as a plannable route with as few route points as possible (owner:
  * "not 1000 points – the minimum, so I can plan with it afterwards"). Pure apart from the [RoutingEngine] calls;
  * blocking – call off the main thread.
  *
@@ -48,7 +48,7 @@ object TrackToPlan {
         fun line(i: Int, j: Int): List<GeoPoint>? = legLines.getOrPut(i to j) {
             calls++
             try { engine.route(listOf(t[i], t[j]), activity, sacLimit).points.takeIf { it.size >= 2 } }
-            catch (e: RoutingException) { null }
+            catch (e: RoutingException) { null } // expected: no route for this leg – split half-way or count it failed
         }
         // legs to check, in track order; a split adds its two halves
         val todo = ArrayDeque<Pair<Int, Int>>()
@@ -83,8 +83,8 @@ object TrackToPlan {
 
     /**
      * The track sample in i..j to split at: where track and route [l] are farthest apart (either way), skipping spots
-     * closer than [MIN_GAP_M] to the leg's ends (field test 2026-10-28: the worst spot right at the start was skipped
-     * and the 300 m detour further on was never looked at). Null when they agree.
+     * closer than [MIN_GAP_M] to the leg's ends (else a worst spot right at the start is skipped and a detour further
+     * on is never looked at). Null when they agree.
      */
     private fun worst(t: List<GeoPoint>, along: DoubleArray, i: Int, j: Int, l: List<GeoPoint>): Int? {
         val cand = HashMap<Int, Double>()

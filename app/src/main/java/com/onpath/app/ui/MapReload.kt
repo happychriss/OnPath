@@ -3,15 +3,13 @@ package com.onpath.app.ui
 import java.io.File
 
 /**
- * Map style reloads after new map areas, per map host (field test 0.10.1: new areas never showed until a restart).
+ * Map style reloads after new map areas, per map host.
  *
- * Two activities – each with its own ViewModel and [MapHost] – can live at the same time for a moment (the event log
- * showed "Plan restored at app start" twice within a second, then two style loads). Everything that said "the map" was
- * process-wide before: the reload and controller refs, and the map dir on screen ([com.onpath.app.map.StyleLoader.lastMapDir]).
- * The short-lived host cleared the refs when it went, after the other had set them → every later reload was a silent
- * no-op; and a ViewModel decided "the map is current" from the dir the OTHER host had loaded. Now each host keeps its own
+ * Two activities – each with its own ViewModel and [MapHost] – can live at the same time for a moment. With
+ * process-wide state a short-lived host clears the refs after the other has set them (every later reload a silent
+ * no-op), and a ViewModel judges "the map is current" from the dir the OTHER host loaded. So each host keeps its own
  * state ([MapHostView]); shared refs are cleared only by their owner ([OwnedRef]); a ViewModel asks for a reload by what
- * it asked last ([StyleReloadRule]). Pure, unit-tested (MapReloadTwoHostsTest).
+ * it asked last ([StyleReloadRule]).
  */
 class MapHostView {
     /** Map dir of this host's last style load (asked); null = no style asked yet. */

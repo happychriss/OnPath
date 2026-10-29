@@ -79,11 +79,11 @@ private val ROW_HEIGHT = 56.dp
 private val HANDLE_WIDTH = 48.dp
 
 /**
- * Points section of the full plan sheet (owner 2026-10-21): header with ⇅ Reverse and ↺ Round trip, then one row per
+ * Points section of the full plan sheet: header with ⇅ Reverse and ↺ Round trip, then one row per
  * route point – ≡ (drag it to reorder; holding first works too), marker, name, distance from the previous point, ✕
  * (delete at once, Undo brings it back). Tapping a row shows the point on the map. No vibration in the list (owner).
  * After a ✕ the deleted row stays as a quiet placeholder for a moment and the list ignores taps ([PointsDeleteGuard]):
- * the rows never shift under the finger (field test 2026-10-22: a second tap deleted the next point).
+ * the rows never shift under the finger (a quick second tap would delete the next point).
  */
 @Composable
 fun PointsSection(
@@ -170,8 +170,8 @@ private fun PointRows(
     Column(
         Modifier.fillMaxWidth()
             .onGloballyPositioned { listCoords = it }
-            // One detector for the whole list – it does not move while a row does (owner field test 0.8.9: "moving
-            // the points doesn't work"). A drag that starts on ≡ moves that row at once (holding first is fine too);
+            // One detector for the whole list – it does not move while a row does (a per-row detector loses the drag).
+            // A drag that starts on ≡ moves that row at once (holding first is fine too);
             // it consumes the movement before the list's scroll and the sheet see it, so neither moves meanwhile.
             .pointerInput(count, rowPx, handlePx) {
                 awaitEachGesture {

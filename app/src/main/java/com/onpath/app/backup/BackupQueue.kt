@@ -15,7 +15,7 @@ interface BackupSource {
 /**
  * When a backup file is written (JVM tested): after a tour is finished (state "done", never while it records),
  * after a plan is saved / overwritten, after a rename, when a tour goes to the recycle bin (file → Deleted/) or comes
- * back, and – at app start – for every tour that has no file in the current folder yet (first run of this version,
+ * back, and – at app start – for every tour that has no file in the current folder yet (first run with backups,
  * another folder chosen). All work runs on [run] (one background thread in the app): recording is never blocked.
  * Failures are reported to [listener] with a plain reason, never thrown.
  */

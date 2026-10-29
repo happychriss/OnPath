@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Recorded heights above sea level (owner's ride 2026-10-28 near Düsseldorf: ~45 m too high). */
+/** Recorded heights above sea level (without the geoid correction ~45 m too high near Düsseldorf). */
 class SeaLevelTest {
     private val here = SeaLevel.Offset(51.17, 6.75, 47.0)
 

@@ -43,11 +43,11 @@ import com.onpath.app.routing.RouteSummary
 
 /**
  * Simple elevation profile. Touching / sliding a finger sideways shows a cursor and reports the point so the map can
- * show a marker there; releasing clears it. A vertical drag is left to the sheet around it (owner 2026-10-22: the
- * profile step is pulled up and down over the profile too).
+ * show a marker there; releasing clears it. A vertical drag is left to the sheet around it (the profile step is pulled
+ * up and down over the profile too).
  *
- * Drawn from a cache (owner field report 0.9.3, the sheet stuttered): the line, area and steepness paths are built once
- * per route and size, the canvas has its own layer – moving the sheet or the cursor does not rebuild them.
+ * Drawn from a cache (else the sheet stutters): the line, area and steepness paths are built once per route and size,
+ * the canvas has its own layer – moving the sheet or the cursor does not rebuild them.
  */
 @Composable
 fun ElevationProfile(
@@ -73,7 +73,7 @@ fun ElevationProfile(
     val steep = remember(data, gradient) { if (gradient) RouteSummary.steepness(data.dist, data.ele) else null }
     val cache = remember(data, steep, color) { ProfileCache(data, steep, color) }
     var cursor by remember { mutableStateOf<Int?>(null) }
-    // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag – polish audit A6)
+    // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag)
     val cur by androidx.compose.runtime.rememberUpdatedState(data)
     val pts by androidx.compose.runtime.rememberUpdatedState(points)
     val highlight by androidx.compose.runtime.rememberUpdatedState(onHighlight)
@@ -117,7 +117,7 @@ fun ElevationProfile(
         val bottom = size.height - 16.dp.toPx()
         val top = 6.dp.toPx()
         // While the sheet opens / closes the profile is briefly only a few pixels high or narrow: draw nothing then
-        // (field crash 2026-10-21: label range "0 .. negative" → IllegalArgumentException in coerceIn).
+        // (a label range "0 .. negative" throws in coerceIn).
         if (bottom - top < 12.dp.toPx() || size.width - left < 24.dp.toPx()) return@Canvas
         val g = cache.geometry(size.width, left, top, bottom, 2.dp.toPx(), 2.5.dp.toPx())
 
@@ -153,8 +153,8 @@ private val GRID = Color(0x22000000)
 private val STEEP_ORDER = RouteSummary.Steepness.entries
 
 /**
- * The profile's paths for one route, built once per drawing size (owner field report 0.9.3). Unit tested
- * (ProfileCacheTest): asking again for the same size returns the same geometry.
+ * The profile's paths for one route, built once per drawing size. Unit tested (ProfileCacheTest): asking again for the
+ * same size returns the same geometry.
  */
 internal class ProfileCache(private val data: Profile, private val steep: List<RouteSummary.Steepness>?, private val color: Color) {
     class Geometry(
@@ -179,8 +179,8 @@ internal class ProfileCache(private val data: Profile, private val steep: List<R
         val maxE = data.max + range * 0.08
         val x = { d: Double -> left + (d / data.total * w).toFloat() }
         val y = { e: Double -> (bottom - (e - minE) / (maxE - minE) * (bottom - top)).toFloat() }
-        // about the pixel width: first / lowest / highest / last point per pixel column (perf report 2026-10-22: a
-        // 250 km route drew 10k+ vertices per frame); peaks and valleys stay exact
+        // about the pixel width: first / lowest / highest / last point per pixel column (a 250 km route would draw 10k+
+        // vertices per frame); peaks and valleys stay exact
         val keep = columnIndices(data.dist, data.ele, data.total, w.toInt().coerceAtLeast(1))
         val line = Path()
         for (k in keep.indices) {

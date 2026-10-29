@@ -17,8 +17,8 @@ import com.onpath.app.data.TourDb
 import com.onpath.app.debug.Problems
 
 /**
- * A tour was still recording when the phone restarted or OnPath was updated (owner 2026-10-20: ending a recording
- * must never happen by accident). With "Allow all the time" location the recording simply continues; otherwise
+ * A tour was still recording when the phone restarted or OnPath was updated (owner: ending a recording must never
+ * happen by accident). With "Allow all the time" location the recording simply continues; otherwise
  * Android does not let it start from here, so a notification says so and opens OnPath (which offers Continue).
  * The track so far is in the database either way. Never throws.
  */

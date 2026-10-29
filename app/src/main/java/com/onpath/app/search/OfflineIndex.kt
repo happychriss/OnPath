@@ -29,10 +29,10 @@ data class SearchQuery(
 data class SearchHit(val place: Place, val score: Double, val tier: Int, val distanceM: Double, val nearRoute: Boolean)
 
 /**
- * In-memory offline search index over the region package: POIs (pois.geojson), peaks/passes and
- * place names (base.pmtiles, cached), trail names (trailnames.geojson, t = "n"; in a format-2 package without it:
- * layer "trailnames" of overlays.pmtiles). Missing files just
- * mean fewer results. ~20 000 entries; a query scans them all in well under 100 ms.
+ * In-memory offline search index over one map folder: POIs (pois.geojson), peaks/passes and place names
+ * (base.pmtiles, cached), trail names (trailnames.geojson, t = "n"; without it: layer "trailnames" of
+ * overlays.pmtiles). Missing files just mean fewer results. ~20 000 entries; a query scans them all in well under
+ * 100 ms. Map cells build it per area ([SearchAreas]).
  */
 class OfflineIndex(val entries: List<Entry>, val signature: String = "") {
 
@@ -254,7 +254,7 @@ object SearchRanking {
     const val QUERY_TOWN_BONUS = 30.0
 
     /**
-     * The one order of the mixed result list (owner 2026-10-22: one list, best first – no blocks per source):
+     * The one order of the mixed result list (owner: one list, best first – no blocks per source):
      * how well the text matches (tier), then the score (text, kind, distance to the position / map centre,
      * near the route).
      */
@@ -355,7 +355,7 @@ object SearchRanking {
     /**
      * Offline and online hits as one list in [ORDER]. [keepShown]: the offline rows were already on screen when the
      * online ones arrived – they stay exactly where they are and the online rows go below them, ranked among
-     * themselves (owner rule: rows never move under the finger; a field bug came from a shifted row). The next
+     * themselves (owner: rows never move under the finger). The next
      * keystroke re-ranks everything.
      */
     fun mix(offline: List<SearchHit>, online: List<SearchHit>, keepShown: Boolean = false): List<SearchHit> = when {

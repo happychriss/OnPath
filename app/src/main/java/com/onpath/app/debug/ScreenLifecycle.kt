@@ -3,12 +3,10 @@ package com.onpath.app.debug
 /**
  * Which OnPath screens (MainActivity instances) live, and why each came and went – in the event log.
  *
- * Field test 0.10.1: two activities (each its own AppViewModel + map) lived at once at a cold start right after an
- * install (event log: "Plan restored at app start" twice within 1–2 s, Style load #1 and #2 in one process; the first
- * ViewModel was cleared while routing). The manifest says singleTask and the code never finishes or restarts the
- * activity at start, so the second instance came from the system / the launch intents – this trace names them
- * (intent, flags, task, restored state, finishing vs. config change) so the next occurrence says which.
- * Pure (no Android types) – unit-tested in ScreenLifecycleTest.
+ * Two activities (each its own AppViewModel + map) have lived at once at a cold start right after an install, although
+ * the manifest says singleTask and the code never finishes or restarts the activity at start. This trace names each
+ * instance (intent, flags, task, restored state, finishing vs. config change) so an occurrence shows where it came
+ * from. Pure (no Android types) – unit-tested in ScreenLifecycleTest.
  */
 object ScreenLifecycle {
     private val alive = LinkedHashSet<Int>()

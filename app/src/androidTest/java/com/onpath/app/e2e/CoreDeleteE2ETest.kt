@@ -15,8 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * CORE FEATURE C1, field 2026-10-21 (Pixel 8, 0.8.5): (1) holds 68 dp from a point added a new point instead of
- * opening its menu; (2) "the menu opened, I tapped Delete, nothing happened". The real app, real MapLibre, real
+ * CORE FEATURE C1 under real conditions: (1) a hold near a point opens its menu, it does not add a new point; (2) Delete
+ * in the opened menu always deletes. The real app, real MapLibre, real
  * BRouter data when pushed (/data/local/tmp/E10_N45.rd5 – points snapped to ways like on the phone).
  */
 @RunWith(AndroidJUnit4::class)
@@ -56,7 +56,7 @@ class CoreDeleteE2ETest : E2EBase() {
         waitUntil("third point by a hold") { waypointCount() == 3 }
     }
 
-    /** Catch zone: ≤ 48 dp → the point's menu; beyond → a new point, no question in between (owner 2026-10-22). */
+    /** Catch zone: ≤ 48 dp → the point's menu; beyond → a new point, no question in between (owner). */
     @Test fun catchZoneAt30_45_68dp() {
         startPlanWithTwoPoints()
         settle()
@@ -113,8 +113,7 @@ class CoreDeleteE2ETest : E2EBase() {
 
     /**
      * The plan changes under an open menu (here: route ⋯ → Points… deletes point 1): Delete in the menu deletes the
-     * point it was opened for. Before 0.8.7 the menu kept only an index – point 3's menu then pointed past the end
-     * of the list and Delete did nothing.
+     * point it was opened for – not an index that may point past the end of the list by then.
      */
     @Test fun planChangesUnderAnOpenMenu() {
         threePoints()

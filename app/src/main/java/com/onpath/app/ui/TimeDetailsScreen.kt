@@ -2,7 +2,6 @@ package com.onpath.app.ui
 
 import com.onpath.strings.*
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +42,7 @@ data class TimeDetailsUi(
     val technical: Boolean = false,
 )
 
-/** The plain lines of ⋯ → Time details (owner 2026-10-23): moving time, with breaks, pace level. Pure, unit-tested. */
+/** The plain lines of ⋯ → Time details: moving time, with breaks, pace level. */
 internal fun timeDetailsPlainLines(ui: TimeDetailsUi): List<Pair<String, String>> = listOf(
     Txt.s(Res.string.nav_time_moving) to Format.duration(ui.result.finalS),
     Txt.s(Res.string.nav_time_with_breaks) to Format.duration(ui.result.finalS * (1 + TimeEstimate.BREAK_ALLOWANCE)),
@@ -52,7 +51,7 @@ internal fun timeDetailsPlainLines(ui: TimeDetailsUi): List<Pair<String, String>
 
 /**
  * "Time details" (route sheet ⋯): moving time, with breaks and the pace level in plain words. With [TimeDetailsUi.technical]
- * (Settings → Diagnostics → Developer tools, owner 2026-10-23) the debug view of the estimate – which slope bands the
+ * (Settings → Diagnostics → Developer tools) the debug view of the estimate – which slope bands the
  * route has, how long each takes at Average pace, which factor (the pace setting) is applied, and how it is calculated.
  * Read-only.
  */

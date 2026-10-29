@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** "Turn round" on a way back (owner 2026-10-28, bike): the new route starts against the direction one rides. */
+/** "Turn round" on a way back: the new route starts against the direction one rides. */
 class TurnRoundTest {
     private val m = 0.0000089932 // ≈ 1 m of latitude
     /** Riding north: 60 m in 10 m steps, ending at the origin. */

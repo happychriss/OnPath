@@ -28,7 +28,7 @@ const val GPS_WEAK_M = 30f
 const val NET_FRESH_MS = 12_000L
 
 /**
- * Whether a network fix is shown: before the first GPS fix; when GPS is stale; or (owner 2026-10-28, train station)
+ * Whether a network fix is shown: before the first GPS fix; when GPS is stale; or (owner, e.g. under a station roof)
  * when the last GPS fix is weak and this one is at least twice as accurate – in the last two cases only when it is
  * Wi-Fi accurate. Pure.
  */
@@ -58,8 +58,8 @@ enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringReso
 /**
  * Thin wrapper over the platform LocationManager (GPS + network), no Play Services.
  * GPS fixes win. A network (Wi-Fi / cell) fix is used before the first GPS fix, and again when GPS has been silent
- * for [GPS_STALE_MS] (indoors, a restaurant – owner 2026-10-20: "when I plan it must know where I am") or is weak
- * and the Wi-Fi fix twice as accurate (train station roof, owner 2026-10-28) – but only when it is at least
+ * for [GPS_STALE_MS] (indoors, a restaurant – owner: "when I plan it must know where I am") or is weak
+ * and the Wi-Fi fix twice as accurate (train station roof) – but only when it is at least
  * [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
  * [useNetwork] = false never asks for it (recording service: the track is GPS only).
  */
@@ -158,7 +158,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
                 if (last != null) _location.value = last
             } else {
                 // Back from the lock screen / background: the position we hold is from before. A tour keeps GPS on in
-                // the recording service, so the phone's last GPS fix is seconds old – show it at once (owner 2026-10-28).
+                // the recording service, so the phone's last GPS fix is seconds old – show it at once.
                 // expected: no last GPS fix (GPS off / never used) – the next fix comes from the listener
                 val gps = runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
                 if (gps != null && gps.elapsedRealtimeNanos > _location.value!!.elapsedRealtimeNanos) {

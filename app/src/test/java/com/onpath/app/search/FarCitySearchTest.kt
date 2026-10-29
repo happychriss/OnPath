@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * "New York" searched from South Tyrol (owner 2026-10-28): Photon's biased answer held only nearby shops; the places
+ * "New York" searched from South Tyrol: Photon's biased answer holds only nearby shops; the places
  * request brings the city and it must come first in the list.
  */
 class FarCitySearchTest {

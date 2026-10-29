@@ -18,7 +18,7 @@ import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 /**
- * CORE FEATURE C11 end to end (owner 2026-10-21): record a short tour with a mock GPS → end it → its GPX appears in
+ * CORE FEATURE C11 end to end: record a short tour with a mock GPS → end it → its GPX appears in
  * Documents/OnPath → the app forgets everything like a reinstall (tours, backup index, folder settings) → restore
  * through the real folder picker ("Use this folder" → "Allow", UiAutomator) → the tour is back, same id and points.
  * (A real `pm clear` would end this test process too, so the wipe is done from inside the app.)
@@ -84,7 +84,7 @@ class CoreBackupE2ETest : E2EBase() {
         // 4. restore through the folder picker
         scenario.onActivity { vm(it).restoreOffer = true }
         clickText("Restore")
-        val use = device.wait(Until.findObject(By.text(Pattern.compile("(?i)use this folder|diesen ordner verwenden")) /* a German phone (owner's Pixel, 2026-10-22) */), 15_000)
+        val use = device.wait(Until.findObject(By.text(Pattern.compile("(?i)use this folder|diesen ordner verwenden")) /* or a German phone */), 15_000)
         if (use == null) { shot("picker"); fail("folder picker did not show \"Use this folder\" – ${state()}") }
         use!!.click()
         device.wait(Until.findObject(By.text(Pattern.compile("(?i)allow|zulassen"))), 10_000)?.click()

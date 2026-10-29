@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** One overall % for the map of the user's area (owner 2026-10-21): 0–80 preparing, 80–99 download, 100 done. */
+/** One overall % for the map of the user's area: 0–80 preparing, 80–99 download, 100 done. */
 class MapLoadProgressTest {
     private val mb = 1_048_576L
 

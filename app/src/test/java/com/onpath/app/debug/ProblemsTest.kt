@@ -54,7 +54,7 @@ class ProblemsTest {
         assertTrue(c!!.detail!!.contains("IllegalStateException"))
     }
 
-    /** Field 2026-10-21: 21 different "Hold: …" lines were merged into one entry (first text, × 21) – details lost. */
+    /** Different "Hold: …" lines are never merged into one entry (first text, × 21) – details would be lost. */
     @Test fun traceLinesAreNeverMerged() {
         repeat(21) { Problems.trace("map", "Hold: nearest point 2 at ${10 + it} dp") }
         val ev = Problems.events()
@@ -74,8 +74,8 @@ class ProblemsTest {
     }
 
     /**
-     * Field 2026-10-22: 50 events covered only 14:35–19:18. Owner: keep far more, by size and age. 50 000 events are
-     * cheap for the caller (queued, written off-thread), the files stay ≤ 5 MB, and the export has the newest ones.
+     * Owner: keep far more events, by size and age. 50 000 events are cheap for the caller (queued, written
+     * off-thread), the files stay ≤ 5 MB, and the export has the newest ones.
      */
     @Test fun fiftyThousandEventsAreCheapCappedAndExported() {
         val text = "y".repeat(200)

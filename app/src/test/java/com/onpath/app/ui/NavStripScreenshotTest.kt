@@ -15,7 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Navigate strip on a small phone (360 dp wide, owner 2026-10-28): time and distance to go side by side at the same
+ * Navigate strip on a small phone (360 dp wide): time and distance to go side by side at the same
  * size; with long values the distance wraps under the time – never smaller text, never cut.
  */
 class NavStripScreenshotTest {

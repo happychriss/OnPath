@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/** Threshold logic of the slide switch (pure, unit-tested). Offsets are thumb travel in px. */
+/** Threshold logic of the slide switch. Offsets are thumb travel in px. */
 object SlideThreshold {
     /** The thumb must travel at least this share of the track before release counts. */
     const val COMPLETE = 0.85f

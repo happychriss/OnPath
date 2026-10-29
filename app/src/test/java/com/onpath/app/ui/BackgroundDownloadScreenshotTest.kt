@@ -15,7 +15,7 @@ import com.onpath.app.routing.Activity
 import org.junit.Rule
 import org.junit.Test
 
-/** Background downloads, visible and stoppable (owner 2026-10-22): Plan strip, Navigate chip, details, Settings line. */
+/** Background downloads, visible and stoppable: Plan strip, Navigate chip, details, Settings line. */
 class BackgroundDownloadScreenshotTest {
 
     @get:Rule
@@ -35,7 +35,7 @@ class BackgroundDownloadScreenshotTest {
     private val longName = ui.copy(groups = LoadNames.groups(listOf(
         LoadEntry(LoadWhy.ROUTE, "Berggasthof Gampenalm am Hochplateau über Unsere Liebe Frau im Walde", bytes = 9 * mb))))
 
-    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %" (owner 2026-10-23, replaces the full-width strip). */
+    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %". */
     @Test fun planChip() = planWith(ui)
 
     /** A long name is cut with "…" at about half the width; the % always shows. */

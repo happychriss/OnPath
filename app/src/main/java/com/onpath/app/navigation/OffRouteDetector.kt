@@ -8,9 +8,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * "Are we really off the route?" and "how far along are we?" – a pure state machine (docs/plan-auto-reroute.md §4,
- * docs/plan-time-estimate.md "Field test 2026-10-19"), fed with good GPS fixes by the recording service. Unit-tested
- * with simulated traces and replayed owner tours.
+ * "Are we really off the route?" and "how far along are we?" – a pure state machine (docs/plan-auto-reroute.md §4),
+ * fed with good GPS fixes by the recording service. Unit-tested with simulated traces and replayed owner tours.
  *
  * - **Progress** = the part of the line near the position that continues the progress so far ([BACK_M] behind to
  *   [AHEAD_M] ahead). Where the line uses a path twice (out-and-back, round trip on the same path) the **walking
@@ -317,7 +316,7 @@ class OffRouteDetector(
         const val AHEAD_M = 2_000.0
         /** While off the route (or after a GPS gap) a rejoin further ahead also counts (shortcut). */
         const val AHEAD_OFF_M = 5_000.0
-        /** Walking backwards along the line this far = off route (owner rule 2026-10-19). */
+        /** Walking backwards along the line this far = off route (owner rule). */
         const val BACKWARD_M = 200.0
         /** Off route walking backwards: back on it after walking forwards this far again. */
         const val REJOIN_FORWARD_M = 30.0

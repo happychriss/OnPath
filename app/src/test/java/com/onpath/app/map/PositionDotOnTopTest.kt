@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The "I am here" dot must never end up under a line or a route point (owner 2026-10-22 – it happened twice).
+ * The "I am here" dot must never end up under a line or a route point (owner).
  * MapLibre draws later layers on top; after a style reload its position layers are already there when the app adds
  * its own. So every layer the app adds must go through MapController.addBelowPosition – a plain addLayer anywhere
  * else puts it above the dot. The emulator test CorePlanE2ETest.positionDotStaysAboveRoutePointsAfterAReload checks

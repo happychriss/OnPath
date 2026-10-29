@@ -12,10 +12,9 @@ import java.io.File
  * with BRouter's own expression engine – no routing, no map data. Pins the footway / surface / traffic rules of
  * docs/design/bike-routing.md (decisions 3, 6 and 11).
  *
- * Field case (owner 2026-10-26, Hilden, Trekking bike): the shared foot / cycle path along the Itter
- * (highway=path, bicycle=designated, foot=designated, surface=compacted, sign DE:240) cost 5.15 per metre – more than
- * a primary road – because "compacted" counted as loose ground; the route zig-zagged through side streets even with
- * plan points on the path. Route check: tools/routing/jvm-test/ItterPathTest.kt.
+ * Regression: a shared foot / cycle path (highway=path, bicycle=designated, foot=designated, surface=compacted, sign
+ * DE:240) must not cost more than a primary road because "compacted" counts as loose ground – the route would zig-zag
+ * through side streets even with plan points on the path. Route check: tools/routing/jvm-test/ItterPathTest.kt.
  */
 class BikeProfileCostTest {
     private val dir = File("src/main/assets/brouter")
@@ -79,7 +78,7 @@ class BikeProfileCostTest {
     }
 
     /**
-     * Busy traffic costs extra in both profiles (decision 3, Trekking too since 2026-10-26): BRouter's traffic estimate
+     * Busy traffic costs extra in both profiles (decision 3): BRouter's traffic estimate
      * class 4 +0.2, 5 +0.4, 6–7 +0.8; quiet classes 1–3 free (upstream charges them too, which pushes routes off quiet
      * side roads).
      */

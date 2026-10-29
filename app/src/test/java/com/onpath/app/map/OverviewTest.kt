@@ -43,7 +43,7 @@ class OverviewTest {
         assertFalse(layer(out, "routes-hike").has("minzoom"))
     }
 
-    /** Field test 0.8.7: from z10 the overview goes on under the detailed layers; the cover hides it where cells are. */
+    /** From z10 the overview goes on under the detailed layers; the cover hides it where cells are. */
     @Test fun overviewGoesOnUnderTheDetailedMapAndIsCoveredWhereCellsAre() {
         val cell = doubleArrayOf(10.8984375, 46.5588603, 11.25, 46.8000594)
         val out = Overview.merge(style, setOf("base.pmtiles", "terrain.pmtiles"), listOf(cell))
@@ -86,7 +86,7 @@ class OverviewTest {
         assertEquals("overview-hillshade", r.getString("source"))
         assertFalse(r.has("maxzoom"))
         assertEquals("interpolate", r.getJSONObject("paint").getJSONArray("raster-opacity").getString(0))
-        // hill shading balanced (c), owner 2026-10-22
+        // hill shading: a little more contrast, highlights not pure white (owner)
         assertEquals(0.25, r.getJSONObject("paint").getDouble("raster-contrast"), 1e-9)
         assertEquals(0.9, r.getJSONObject("paint").getDouble("raster-brightness-max"), 1e-9)
         assertEquals(listOf("background", "hillshade~overview", "water~under", "rail~under", "detail-cover"), ids(out).take(5))
@@ -132,7 +132,7 @@ class OverviewTest {
         assertEquals(8.0, layer(out, "rail").getDouble("minzoom"), 0.0)
         assertEquals(7.0, layer(out, "hillshade-nw").getDouble("minzoom"), 0.0)
         assertEquals(7.0, layer(out, "place-city").getDouble("minzoom"), 0.0) // below z7 the overview names the cities
-        // overview labels: as before below z7, from z7 only outside the packages
+        // overview labels: unchanged below z7, from z7 only outside the packages
         assertEquals(7.0, layer(out, "place-city~overview").getDouble("maxzoom"), 0.0)
         val o = layer(out, "place-city~overview~outside")
         assertEquals(7.0, o.getDouble("minzoom"), 0.0); assertEquals(10.0, o.getDouble("maxzoom"), 0.0)

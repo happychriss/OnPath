@@ -9,7 +9,7 @@ import kotlin.math.abs
  * Finds bus / car / train rides and lifts in a recorded track – GPS only, no activity recognition (no Play Services).
  * Runs over the stored points at "End tour" (docs/design/vehicle-detection.md). Pure, JVM tested (RideDetectorTest).
  *
- * Vehicle (owner limits 2026-10-22, adjust after field tests): a stretch whose average speed over every minute is
+ * Vehicle (owner limits): a stretch whose average speed over every minute is
  * above the limit – hike > 12 km/h for ≥ 60 s and ≥ 500 m, bike / MTB / e-bike > 50 km/h for ≥ 60 s and ≥ 1 km.
  * GPS gaps count (distance / time across the gap: a bus without GPS, a tunnel). Stops of a bus (≤ 3 min, ≤ 250 m)
  * join the pieces of one ride. No single outlier counts:
@@ -18,9 +18,9 @@ import kotlin.math.abs
  *   (straight distance ≥ 30 % of the path) – GPS wandering in a gorge does neither;
  * - on foot a minute at > 12 km/h is a run, not a bus: the fastest 30 s must also be above 20 km/h;
  * - on a bike > 50 km/h downhill (≤ −3 %) is a fast descent, not a car – unless above 80 km/h.
- * Lift: > 1 m/s vertical for ≥ 60 s and ≥ 100 m, on a nearly straight line (≥ 90 %), at least 20 % steep. The design
- * said 2 m/s; the owner's Taser gondola (2026-10-22, no fix in the cabin) went 1500 → 907 m in 356 s = 1.67 m/s, and no
- * hiker climbs or descends 1 m/s for minutes. Downhill on a bike (where 1–2 m/s is a normal trail descent) it takes
+ * Lift: > 1 m/s vertical for ≥ 60 s and ≥ 100 m, on a nearly straight line (≥ 90 %), at least 20 % steep. 1 m/s, not
+ * 2: a measured gondola (no fix in the cabin) went 1500 → 907 m in 356 s = 1.67 m/s, and no hiker climbs or descends
+ * 1 m/s for minutes. Downhill on a bike (where 1–2 m/s is a normal trail descent) it takes
  * > 2 m/s, even straighter (≥ 97 %) and steeper (≥ 35 %): a fast straight trail descent is not a lift.
  * Proposed start of a ride: the last point where the user still moved before it – the waiting at the stop (points
  * within 40 m of where the ride began) is cut off with the ride.
@@ -58,7 +58,7 @@ object RideDetector {
         val w = Work.of(flat)
         if (w.n < 3) return emptyList()
         val lifts = lifts(w, activity)
-        // a lift is not also a bus: its pairs are left out before bus pieces are joined (Taser: gondola, 3 min, car)
+        // a lift is not also a bus: its pairs are left out before bus pieces are joined (e.g. gondola, 3 min, car)
         val vehicles = vehicles(w, activity, lifts).filter { v -> lifts.none { l -> v.first < l.second && l.first < v.second } }
         val runs = (lifts.map { Triple(it.first, it.second, RideKind.LIFT) } + vehicles.map { Triple(it.first, it.second, RideKind.VEHICLE) })
             .sortedBy { it.first }

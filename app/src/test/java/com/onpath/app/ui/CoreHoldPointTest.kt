@@ -59,9 +59,8 @@ class CoreHoldPointTest {
     }
 
     /**
-     * Field 2026-10-21 (Pixel 8, 0.8.5): 4 of 21 holds were 68 dp from the point ("felt on the point", about 1 cm) and
-     * added a new point. Catch zone: up to 48 dp -> that point's menu; beyond -> a new point, no question (owner
-     * 2026-10-22: "Punkt setzen ist Punkt setzen, Punkt löschen ist Punkt löschen").
+     * Holds land up to ~1 cm (68 dp) from the point the finger means. Catch zone: up to 48 dp -> that point's menu;
+     * beyond -> a new point, no question (owner: "Punkt setzen ist Punkt setzen, Punkt löschen ist Punkt löschen").
      */
     @Test fun catchZoneAt30_45_68_90dp() {
         val cam = Camera(mPerPx = 1.0) // points >= 160 dp apart: only point 2 is in reach

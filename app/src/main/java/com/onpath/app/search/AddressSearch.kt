@@ -44,7 +44,7 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     private val smallPlaces: List<Town> = towns.values.filter { it.kind in VILLAGE_KINDS || it.kind in HAMLET_KINDS }
 
     /**
-     * The village / fraction an address point lies in (owner 2026-10-22: "Völlan", not only the municipality "Lana"):
+     * The village / fraction an address point lies in ("Völlan", not only the municipality "Lana"; owner):
      * the nearest place within [VILLAGE_M]; hamlets and city quarters count double the distance, so a village
      * wins over a farm group next door. Null when none is near. Pure lookup in memory.
      */
@@ -210,7 +210,7 @@ class AddressIndex(val files: List<AddressFile>, val signature: String = "") : C
 
     fun countryNear(lat: Double, lon: Double): String? = files.firstNotNullOfOrNull { safe { it.countryNear(lat, lon) } }
 
-    /** Normalised names (all languages) of the towns named in the query, and one point to centre an online search on. */
+    /** Towns of every file whose name (any language) is a run of query words ([AddressFile.townsNamed]). */
     fun townsNamed(words: List<String>): List<AddressFile.Town> = files.flatMap { f -> safe { f.townsNamed(words) } ?: emptyList() }
 
     override fun close() { files.forEach { safe { it.close() } } }

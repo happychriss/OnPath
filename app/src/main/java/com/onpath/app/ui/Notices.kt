@@ -31,20 +31,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * Work the user started that takes a moment (review 2026-10-24 C9): it shows as a spinner where it was started (the
+ * Work the user started that takes a moment: it shows as a spinner where it was started (the
  * button / the My routes row), never as a message.
  */
 enum class Busy(private val res: StringResource?, private val english: String = "") {
     IMPORT(Res.string.plan_busy_import),
     EXPORT(Res.string.plan_busy_export),
-    /** Diagnostics stays English (owner 2026-10-26: not translated). */
+    /** Diagnostics stays English (owner). */
     DIAGNOSTICS(null, "Creating the report…"),
     BACKUP(Res.string.plan_busy_backup);
 
     val text: String get() = res?.let { Txt.s(it) } ?: english
 }
 
-/** What a message is (review 2026-10-24 A). Questions (ACTION) and route warnings have their own places. */
+/** What a message is. Questions (ACTION) and route warnings have their own places. */
 enum class NoticeKind {
     /** The result of something the user did, good to know: a grey line, no box. */
     INFO,
@@ -80,9 +80,8 @@ enum class NoticeSurface {
 data class Notice(val text: String, val kind: NoticeKind)
 
 /**
- * Owner 2026-10-27 ("die komischen schwarzen Status-Codes … rausnehmen"): no dark bar any more. A message goes where the
- * user acted; only an error that has no such place left gets the light error card; an INFO without a place is not shown
- * (its result is visible anyway – or nobody needs it). Pure, unit-tested.
+ * No dark message bar (owner): a message goes where the user acted; only an error that has no such place left gets the
+ * light error card; an INFO without a place is not shown (its result is visible anyway – or nobody needs it).
  */
 object NoticeRouting {
     fun surface(kind: NoticeKind, place: NoticePlace, routesOpen: Boolean, settingsOpen: Boolean): NoticeSurface = when {
@@ -94,7 +93,7 @@ object NoticeRouting {
 }
 
 /**
- * The one error card (owner 2026-10-27: no black bar): light red container, red edge, ⚠, what failed + one way out, OK.
+ * The one error card: light red container, red edge, ⚠, what failed + one way out, OK.
  * Only for errors whose place is gone (background, a link or share into the app). Never disappears by itself.
  */
 @Composable
@@ -141,6 +140,6 @@ fun BusyContent(text: String) {
     Text(text)
 }
 
-/** The body of a dialog: Body size (16 sp) – Material uses 14 there (type scale, review 2026-10-24 A). */
+/** The body of a dialog: Body size (16 sp) – Material uses 14 there. */
 @Composable
 fun DialogText(text: String) = Text(text, style = MaterialTheme.typography.bodyLarge)

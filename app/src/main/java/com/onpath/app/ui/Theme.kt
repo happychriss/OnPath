@@ -30,7 +30,7 @@ object OnPathColors {
     /** Own position / "where I face" arrow on the map (map furniture, like the location puck). */
     val Position = Color(0xFF1A73E8)
 
-    // ---- Message kinds (review 2026-10-24 A): one colour = one meaning ----
+    // ---- Message kinds: one colour = one meaning ----
     /** ACTION: the blue strip / card that asks a question with buttons – never a status or a failure. */
     val InfoBlue = Color(0xFF1565C0)
     /** WARNING: amber text / icons on white (route spots, off route, no GPS, a download that failed). */
@@ -42,7 +42,7 @@ object OnPathColors {
     val ErrorContainer = Color(0xFFFDE0DC)
     val OnErrorContainer = Color(0xFF5F1410)
 
-    /** Old names, kept so the meaning reads at the call site. */
+    /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn
     val Bad = Error
 }
@@ -85,7 +85,7 @@ private val scheme = lightColorScheme(
 )
 
 /**
- * One type scale, five steps (review 2026-10-24 A; all sp, so the phone's font size applies):
+ * One type scale, five steps (all sp, so the phone's font size applies):
  * - Caption 12 (`labelSmall`): map furniture only – scale bar, ©, profile axes / legend.
  * - Small 14 (`bodySmall`, `bodyMedium`, `labelMedium`): detail lines, subtitles, settings explanations, chips.
  * - Body 16 (`bodyLarge`, `titleSmall`, `titleMedium`, `labelLarge`): notice titles, dialogs, list titles, buttons.
@@ -124,8 +124,8 @@ val Activity.icon: ImageVector
     }
 
 /**
- * Name on buttons: "Start navigation · Gravel bike". German uses the short MTB / E-MTB there (owner 2026-10-26:
- * "Navigation starten · E-Mountainbike" was cut); the picker keeps the full names ([Activity.label]).
+ * Name on buttons: "Start navigation · Gravel bike". German uses the short MTB / E-MTB there (the long name gets cut);
+ * the picker keeps the full names ([Activity.label]).
  */
 val Activity.navName: String
     get() = Txt.s(when (this) {

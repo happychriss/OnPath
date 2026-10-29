@@ -44,7 +44,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     companion object {
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
-        /** Turn badge / U-turn sign: a soft blue, clearly lighter than the position dot (owner 2026-10-28). */
+        /** Turn badge / U-turn sign: a soft blue, clearly lighter than the position dot (owner). */
         const val TURN_HINT_COLOR = "#7C8FD0"
         const val GPX_COLOR = "#8E24AA"       // purple
         const val REC_COLOR = "#EF6C00"       // orange
@@ -64,21 +64,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_SPOT = "route-spot"
         const val SPOT_COLOR = "#F2A000"
         const val LAYER_WPT = "waypoints-icons"
-        /** Unreachable plan points: grey dashed missing piece from the route's end to the point (owner 2026-10-22). */
+        /** Unreachable plan points: grey dashed missing piece from the route's end to the point. */
         const val SRC_GAPS = "plan-gaps"
         private const val GAP_COLOR = "#8A8A8A"
-        // --- Navigate: orientation + next-turn arrow (navigation agent) ---
+        // --- Navigate: orientation + next-turn arrow ---
         const val SRC_TURN = "nav-turn"
         const val LAYER_TURN = "nav-turn-arrow"
-        /** U-turn sign where a way back starts by turning round (owner 2026-10-28). */
+        /** U-turn sign where a way back starts by turning round. */
         const val SRC_UTURN = "nav-uturn"
         const val SRC_MARK = "search-mark"
         /** MapLibre's own position layers (dot, accuracy circle, bearing) all start with this. */
         const val POSITION_LAYER_PREFIX = "mapbox-location"
-        /**
-         * App layers hidden while the eye button is held: everything route-like, but not the own
-         * position or the recorded track. New route layers (e.g. a grey original route) belong here.
-         */
         // --- Re-routing while navigating (navigation/Navigator) ---
         /** Thin grey original line while a new route is followed (below the followed line). */
         const val SRC_NAV_ORIGINAL = "nav-original"
@@ -88,6 +84,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val SRC_NAV_GUIDE = "nav-guide"
         /** All re-routing layer ids (hidden by the eye button too). */
         val NAV_LAYERS = listOf(SRC_NAV_ORIGINAL, SRC_NAV_PROPOSAL, SRC_NAV_GUIDE)
+        /**
+         * App layers hidden while the eye button is held: everything route-like, but not the own
+         * position or the recorded track. New route layers (e.g. a grey original route) belong here.
+         */
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN, SRC_UTURN,
@@ -192,7 +192,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
-        // No ring for POI-pinned stops any more (owner): the only orange ring is the search mark.
+        // No ring for POI-pinned stops (owner): the only orange ring is the search mark.
         addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
@@ -346,14 +346,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 .accuracyAlpha(0.18f)
                 .enableStaleState(true)
                 .staleStateTimeout(30_000)
-                // HeadingEngine turns smoothly at display rate itself (polish audit B1)
+                // HeadingEngine turns smoothly at display rate itself
                 .compassAnimationEnabled(false)
-                // pinch zoom while following must not end direction-up (owner 2026-10-28, bike): zoom around the
+                // pinch zoom while following must not end direction-up (owner): zoom around the
                 // dot and a higher move threshold for two fingers – only a real pan or a turn ends following
                 .trackingGesturesManagement(true)
-                // the dot a little larger (owner 2026-10-28: tell it apart from the turn badge at a glance)
+                // the dot a little larger (owner: tell it apart from the turn badge at a glance)
                 .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
-                // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner 2026-10-28)
+                // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner)
                 .bearingDrawable(com.onpath.app.R.drawable.onpath_bearing)
                 .build()
             lc.activateLocationComponent(
@@ -366,11 +366,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
             // the app's own "where I face" arrow sits on the dot; keep its screen position with every camera move
             map.addOnCameraMoveListener { if (facing.visible) placeFacing() }
-            // No frame cap on the position dot (owner 2026-10-20: while you look at the app it must run smooth;
+            // No frame cap on the position dot (owner: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
             // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
-            // (owner: "as earlier"; GPS mode drew the big white navigation puck). The direction comes from
+            // (owner; not the big white GPS-mode navigation puck). The direction comes from
             // HeadingEngine (compass standing, GPS bearing while moving).
             lc.renderMode = PUCK_MODE
             lc.cameraMode = CameraMode.NONE
@@ -378,7 +378,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // MapLibre ends tracking only for gestures (pan, fling, two-finger turn) – that is "the user moved the map"
                 override fun onCameraTrackingDismissed() { dismissed("map gesture (pan / fling / turn)") }
                 override fun onCameraTrackingChanged(currentMode: Int) {
-                    // Only noted (field test 2026-10-20): a mode change alone is never taken as a gesture any more.
+                    // Only noted: a mode change alone is never taken as a gesture.
                     if (wantedCameraMode != CameraMode.NONE && currentMode != wantedCameraMode && onTrackingDismissed != null)
                         MapEvents.cameraModeChanged(currentMode, wantedCameraMode)
                 }
@@ -399,7 +399,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         try {
             map.locationComponent.forceLocationUpdate(loc)
             // After a pause (screen locked, app in the background) MapLibre would glide the dot from the old place for
-            // as long as the pause (max 2 s). Fed again at once, the glide time is ~0: the dot is there (owner 2026-10-28).
+            // as long as the pause (max 2 s). Fed again at once, the glide time is ~0: the dot is there (owner).
             if (jump) map.locationComponent.forceLocationUpdate(loc)
         } catch (e: Exception) { Problems.warn("map", "Position dot not updated", e) }
         heading.onLocation(loc)
@@ -454,7 +454,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // a north-up animation from Plan must not run on into the walking-direction camera
                 if (mode == CameraMode.TRACKING_COMPASS) map.cancelTransitions()
                 val top = if (navigating && headingUp) context.resources.displayMetrics.heightPixels * NAV_TOP_PADDING else 0.0
-                // MapLibre ignores paddingWhileTracking while the camera moves into tracking (polish audit A2):
+                // MapLibre ignores paddingWhileTracking while the camera moves into tracking:
                 // set it again when the transition ends, so the dot always sits at the same place
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
                     override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp) }
@@ -478,7 +478,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
-                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner, 0.7.19)
+                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner)
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
@@ -609,8 +609,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * Round white badge with a soft blue arrow pointing up (north); rotated by the layer. Softer and a little smaller
-     * than before (owner 2026-10-28), so the strong blue position dot stands out from it.
+     * Round white badge with a soft blue arrow pointing up (north); rotated by the layer. Soft and small (owner), so
+     * the strong blue position dot stands out from it.
      */
     private fun turnArrow(): Bitmap {
         val px = (26 * density).toInt()
@@ -640,7 +640,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * Hiking level (SAC T1–T5) the map was last set for: ways above it are marked for Hike (approach 1, other branch).
+     * Hiking level (SAC T1–T5) the map was last set for: ways above it are marked for Hike.
      * One value, set with the activity in [setOverlay].
      */
     var sacLimit: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC
@@ -648,29 +648,29 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun setOverlay(activity: Activity, enabled: Boolean, sacLimit: Int = this.sacLimit) {
         this.sacLimit = sacLimit.coerceIn(1, 5)
-        // MTB / MTB e-bike show the cycle route band: mtb.brf ignores route=mtb and rewards cycle routes
-        // (map vs router audit 2026-10-21, docs/map-style-notes.md)
+        // MTB / E-MTB show the cycle route band: mtb.brf ignores route=mtb and rewards cycle routes
+        // (docs/map-style-notes.md)
         val want = if (activity == Activity.HIKE) "routes-hike" else "routes-bike"
         // Blocked-way marking follows the activity: walkers may use "access=no + foot=yes" ways, bikers
         // "access=no + bicycle=yes" ones (see tools/make_style.py access_restrictions).
         val walking = activity == Activity.HIKE
         val mtb = activity == Activity.MTB || activity == Activity.EMTB
-        // touring.brf family: Bike (BIKE_TOURING) and E-bike (owner 2026-10-25; BRouterEngine.profileFile)
+        // touring.brf family: Bike (BIKE_TOURING) and E-bike (BRouterEngine.profileFile)
         val touring = BRouterEngine.profileFile(activity) == "touring.brf"
         val trekking = !walking && !mtb && !touring
-        // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes, owner decisions
-        // 2026-10-22); format 1 has foot / bike only, where "bike" serves every bike activity.
+        // Format 2 style: one forbidden-way layer set per BRouter profile family (router classes); format 1 has
+        // foot / bike only, where "bike" serves every bike activity.
         val perProfile = runCatching { style.getLayer("access-no-dash-touring") != null }.getOrDefault(false)
         val accessOn = mapOf("foot" to walking, "bike" to if (perProfile) trekking else !walking,
             "touring" to (perProfile && touring), "mtb" to (perProfile && mtb))
         val access = accessOn.flatMap { (mode, on) ->
-            // red dash + no-entry sign (no tint band since 2026-10-26: never louder than a street)
+            // red dash + no-entry sign (no tint band: never louder than a street)
             listOf("dash", "sign").flatMap { kind -> listOf("", "-service").map { "access-no-$kind-$mode$it" to on } }
         }
         // Way quality (tools/make_style.py): T-labels (SAC) for every activity but MTB, which gets one "T3 S2"
         // label (mtb:scale too), loose-surface edges for every bike activity. Green ways, forbidden ways and blocking
-        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Bike trekking),
-        // touring.brf (Bike touring, E-bike), mtb.brf (MTB, MTB e-bike).
+        // barrier nodes per BRouter profile family: hiking-mountain (Hike), trekking.brf (Gravelbike),
+        // touring.brf (Bike, E-bike), mtb.brf (MTB, E-MTB).
         for ((id, on) in access + listOf(
                 // format 2 only (map package with overlays.pmtiles): bike map, barrier nodes
                 "bike-lane-left" to !walking, "bike-lane-left-shared" to !walking,
@@ -693,7 +693,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .onFailure { if (live()) Problems.warn("map", "Map layer $lid not switched for the activity", it) }
             }
         }
-        // a look per activity group (tools/make_style.py BIKEVIEW / HIKEVIEW, owner 2026-10-26): "-bikeview" layers only
+        // a look per activity group (tools/make_style.py BIKEVIEW / HIKEVIEW): "-bikeview" layers only
         // for bike activities (quiet tracks), "-hikeview" layers only for hiking; a style without them is unchanged
         val all = runCatching { style.layers }.onFailure { if (live()) Problems.warn("map", "Map layers not listable; activity look not switched", it) }
             .getOrNull().orEmpty()
@@ -724,7 +724,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     /**
      * Hiking route band over trails above the user's T level (the router does not use them): a plain grey band instead
-     * of the green one (owner decision 2026-10-22 (3)). Route pieces carry "sac" and "hx" = forbidden at any level
+     * of the green one (owner). Route pieces carry "sac" and "hx" = forbidden at any level
      * (tools/extract_overlays.py); the same two filters as tools/make_style.py hike_band_filter, which ships them for T3.
      */
     fun setSacLimit(limit: Int) {
@@ -792,8 +792,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     /**
      * Adds every layer of the app (owner: the dot must never be under a line or a route point). On a style reload
-     * MapLibre puts its position layers back before this controller adds its own, so a plain addLayer landed above the
-     * dot (field test 2026-10-22: the dot vanished under the route points). Directly below
+     * MapLibre puts its position layers back before this controller adds its own, so a plain addLayer would land above
+     * the dot. Directly below
      * MapLibre's location layers ("mapbox-location-*", LocationComponentConstants), or on top if there are none.
      */
     private fun addBelowPosition(l: org.maplibre.android.style.layers.Layer) {
@@ -852,8 +852,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      */
     fun waypointAt(screen: PointF, points: List<GeoPoint>? = null,
                    radiusDp: Float = com.onpath.app.ui.MapGestures.MARKER_RADIUS_DP, log: Boolean = true): Int = try {
-        // the plan's own list when given (field report 0.8.3: a hold on a point added a new one – the list kept with
-        // the drawing can lag behind the plan, e.g. an update skipped while the style reloads)
+        // the plan's own list when given: the list kept with the drawing can lag behind the plan (e.g. an update skipped
+        // while the style reloads), and a hold on a point must not add a new one
         val pts = points ?: shownWaypoints
         val xs = FloatArray(pts.size); val ys = FloatArray(pts.size)
         pts.forEachIndexed { i, p -> map.projection.toScreenLocation(LatLng(p.lat, p.lon)).let { xs[i] = it.x; ys[i] = it.y } }
@@ -872,7 +872,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     // expected: the projection is not ready before the first layout
     fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
 
-    /** Search result: fly to [p] at [zoom]. Never throws. */
     private var lastPanMs = 0L
 
     /** Profile scrub: the first move glides (no jump of several km), then the map follows the finger directly. */
@@ -883,6 +882,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         lastPanMs = now
     }.onFailure { Problems.warn("map", "Map did not move to the profile point", it) }
 
+    /** Search result: fly to [p] at [zoom]. Never throws. */
     fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
     }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }

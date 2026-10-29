@@ -4,8 +4,8 @@ import com.onpath.strings.*
 import com.onpath.app.data.Geo
 
 /**
- * Temporary/fallback engine: connects waypoints with straight lines.
- * Used when BRouterEngine is not on the classpath (see [EngineProvider]).
+ * Fallback engine: connects waypoints with straight lines.
+ * Used when BRouterEngine cannot be created (see [EngineProvider]).
  */
 class StraightLineEngine : RoutingEngine {
     override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Field test 2026-10-22: 390 + 55 camera notes filled Diagnostics; they are trace events, not problems. */
+/** Camera notes come by the hundred: they are trace events, not problems in Diagnostics. */
 class MapEventsTest {
     @Test fun cameraNotesAreTraceEventsNotProblems() {
         Problems.clear()

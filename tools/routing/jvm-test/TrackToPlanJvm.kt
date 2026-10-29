@@ -1,6 +1,6 @@
 // A GPX track as a plan with few route points (routing/TrackToPlan) on real data: points, how well the plan follows
 // the track, routing calls, time. Run: TRACK_GPX=<ride.gpx> KTTEST=tools/routing/jvm-test/TrackToPlanJvm.kt run.sh <segmentsDir>
-// (the GPX stays outside the repo – personal data). Owner ride 2026-10-28: 2565 points → 7 route points, 99 %, 1.3 s.
+// (the GPX stays outside the repo – personal data). Measured on a ride: 2565 points → 7 route points, 99 %, 1.3 s.
 import com.onpath.app.routing.*
 import java.io.File
 

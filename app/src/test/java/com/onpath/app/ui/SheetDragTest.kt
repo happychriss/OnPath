@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): where the dragged plan sheet settles. */
+/** Where the dragged plan sheet settles (three steps, no jumping). */
 class SheetDragTest {
     // small 200, profile 500, points 900
     private val steps = listOf(200f, 500f, 900f)

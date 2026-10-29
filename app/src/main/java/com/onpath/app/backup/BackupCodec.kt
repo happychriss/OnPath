@@ -17,9 +17,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Everything needed to put a tour or saved plan back into the database exactly as it was (owner 2026-10-21, tour &
- * plan backup). Written into the backup GPX as `<metadata><extensions><onpath:backup>` – other apps ignore it and
- * still read the track. [uuid] identifies the entry across reinstalls and phones (dedupe on restore).
+ * Everything needed to put a tour or saved plan back into the database exactly as it was. Written into the backup
+ * GPX as `<metadata><extensions><onpath:backup>` – other apps ignore it and still read the track. [uuid] identifies
+ * the entry across reinstalls and phones (dedupe on restore).
  */
 data class BackupMeta(
     val uuid: String,

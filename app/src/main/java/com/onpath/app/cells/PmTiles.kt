@@ -236,7 +236,7 @@ object PmTiles {
     fun write(tiles: Map<Triple<Int, Int, Int>, ByteArray>, out: File, tileType: Int = TYPE_MVT,
               tileCompression: Int = COMPRESSION_GZIP, metadataJson: String = "{}") {
         val tmp = File(out.path + ".src")
-        val data = java.io.ByteArrayOutputStream()
+        val data = ByteArrayOutputStream()
         val offsets = java.util.IdentityHashMap<ByteArray, Long>()
         val entries = tiles.entries.map { (k, v) -> zxyToTileId(k.first, k.second, k.third) to v }.sortedBy { it.first }.map { (id, v) ->
             val off = offsets.getOrPut(v) { data.size().toLong().also { data.write(v) } }

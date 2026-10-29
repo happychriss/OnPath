@@ -78,7 +78,7 @@ class OverlayTrailNamesTest {
     }
 
     @Test fun readsRealOverlaysWhenAvailable() {
-        // Optional: a format-2 package folder (not in git), e.g. ONPATH_F2_DATA=/home/development/Projects/onpath-build/out-f2
+        // Optional: a format-2 package folder (not in git), e.g. ONPATH_F2_DATA=…/onpath-build/out-f2
         val dir = System.getenv("ONPATH_F2_DATA")?.let { java.io.File(it) } ?: return
         val f = java.io.File(dir, "overlays.pmtiles")
         if (!f.isFile) return

@@ -83,7 +83,7 @@ class HttpRd5Remote(private val baseUrl: String = SegmentDownloader.BASE_URL) : 
 }
 
 /**
- * BRouter routing data on the phone by 1° part (owner decision "D", docs/design/map-data-size.md §6): fetches only the
+ * BRouter routing data on the phone by 1° part (owner, docs/design/map-data-size.md §6): fetches only the
  * needed 1° × 1° parts of a 5° rd5 from brouter.de (HTTP range, ~5–19 MB each instead of ~200 MB) and keeps one local
  * rd5 per tile holding the parts we have (others empty). Next to it `<tile>.parts.json`: parts fetched, remote
  * ETag / Last-Modified / length, remote index + tail (sizes of missing parts known offline), fetch time.
@@ -124,7 +124,7 @@ class Rd5PartStore(
     /**
      * Tiles being rewritten → their state before (array of one, null = no file). Between renaming the new rd5 into
      * place and writing its parts list, readers get this consistent old state instead of a "list does not match"
-     * (field 2026-10-21/22: 12 false warnings, one per added part) or a new partial file without list (= "complete").
+     * (a false warning per added part) or a new partial file without list (= "complete").
      */
     private val rewriting = java.util.concurrent.ConcurrentHashMap<String, Array<State?>>()
 
@@ -136,9 +136,9 @@ class Rd5PartStore(
     private class Cached(val key: List<Long>, val state: State?, @Volatile var index: Rd5Parts.Index? = null)
 
     /**
-     * Tile → its last read state. [has] is asked per part after every route (perf report 2026-10-22: each call read and
-     * parsed the parts list); four file stats instead. Our own writes drop the entry; a file changed from outside
-     * (adb push) has another length / time.
+     * Tile → its last read state. [has] is asked per part after every route, so it costs four file stats instead of
+     * reading and parsing the parts list. Our own writes drop the entry; a file changed from outside (adb push) has
+     * another length / time.
      */
     private val stateCache = java.util.concurrent.ConcurrentHashMap<String, Cached>()
 
@@ -356,7 +356,7 @@ class Rd5PartStore(
             writeSidecar(p.tile, p.record, r, fetchedAt, dest.length())
         } finally { stateCache.remove(p.tile); rewriting.remove(p.tile); changes.incrementAndGet() }
         for (i in p.fetch) staged(p.tile, r, i).delete()
-        File(dir, ".${p.tile}.part").delete() // a half whole-file download from before parts (up to ~200 MB)
+        File(dir, ".${p.tile}.part").delete() // a half whole-file download ([SegmentDownloader], up to ~200 MB)
     }
 
     /**

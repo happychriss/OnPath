@@ -8,7 +8,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * CORE FEATURE C11 (owner 2026-10-21): map updates and "Clean up" / "Clear all" never touch tours and plans. The tour database
+ * CORE FEATURE C11: map updates and "Clean up" / "Clear all" never touch tours and plans. The tour database
  * lives in the app's private `databases/` folder, the backup in Documents/OnPath – the map store only ever works
  * inside its data folder. A simulated phone layout: install, update and remove every map cell, then everything
  * outside the map files is unchanged.

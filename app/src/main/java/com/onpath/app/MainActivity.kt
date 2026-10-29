@@ -27,9 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -46,7 +44,6 @@ import com.onpath.app.ui.RouteDialogs
 import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.ui.UnfinishedDialog
 import com.onpath.app.debug.ScreenLifecycle
-import kotlinx.coroutines.delay
 import com.onpath.strings.*
 
 class MainActivity : ComponentActivity() {
@@ -102,7 +99,7 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // the app is light: dark status/nav bar icons also when the phone is in dark mode (polish audit A7)
+        // the app is light: dark status/nav bar icons also when the phone is in dark mode
         enableEdgeToEdge(
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
@@ -116,8 +113,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
-            // Navigate over the lock screen (owner 2026-10-28): while a tour runs in Navigate, a short press of the power
-            // button shows the navigation without unlocking; Plan (routes, settings) asks to unlock first.
+            // Navigate over the lock screen (owner): while a tour runs in Navigate, a short press of the power button
+            // shows the navigation without unlocking; Plan (routes, settings) asks to unlock first.
             val recNow by vm.recState.collectAsState()
             val overLock = com.onpath.app.ui.LockScreenNav.shows(vm.mode == com.onpath.app.ui.AppMode.NAVIGATE, recNow != null)
             LaunchedEffect(overLock) { showOverLockScreen(overLock) }
@@ -131,7 +128,7 @@ class MainActivity : ComponentActivity() {
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
-                // cells world: with the overview in the APK and map downloads, a fresh install opens on the map (DataFiles.blocking)
+                // with the overview in the APK and map downloads, a fresh install opens on the map (DataFiles.blocking)
                 val needData = vm.blockingMissing.isNotEmpty() && !vm.dataScreenDismissed
 
                 Box(Modifier.fillMaxSize()) {
@@ -298,11 +295,11 @@ class MainActivity : ComponentActivity() {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
-                    // The one error card (owner 2026-10-27: no dark bar; results go where the user acted – vm.say).
+                    // The one error card (no dark bar; results go where the user acted – vm.say).
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
                     vm.errorCard?.let { msg ->
                         com.onpath.app.ui.ErrorCard(msg, onOk = { vm.errorCard = null },
-                            // below the blue strip while it shows – never over its buttons (UX review 2026-10-23, problem 11)
+                            // below the blue strip while it shows – never over its buttons
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
                                 top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
                                     vm.backgroundStripHeightDp).dp))
@@ -311,7 +308,7 @@ class MainActivity : ComponentActivity() {
 
                 RouteDialogs(vm)
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
-                // "Allow all the time" is never asked (owner C2 2026-10-24) – only the quiet hint in Settings → Navigation
+                // "Allow all the time" is never asked (owner) – only the quiet hint in Settings → Navigation
                 if (vm.askUpdateDuringTour) {
                     AlertDialog(
                         onDismissRequest = { vm.askUpdateDuringTour = false },
@@ -353,7 +350,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    /** Number of this screen in the process (event log: field 0.10.1 had two at once at start – [ScreenLifecycle]). */
+    /** Number of this screen in the process (event log; two at once can happen at start – [ScreenLifecycle]). */
     private var screenNo = 0
 
     private fun traceCreated(restored: Boolean) {
@@ -429,7 +426,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * An incoming link / share / GPX, handled once ([IncomingIntent]): after a reinstall or restart Android starts the
-     * screen with the task's first intent again – that one is not handled a second time (field bug 2026-10-27).
+     * screen with the task's first intent again – that one is not handled a second time.
      */
     private fun incoming(intent: Intent?, delivery: IncomingIntent.Delivery) {
         intent ?: return
@@ -438,7 +435,7 @@ class MainActivity : ComponentActivity() {
             IncomingIntent.fingerprint(intent.action, intent.dataString, intent.type, intent.getStringExtra(Intent.EXTRA_TEXT),
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.toString())
         } catch (e: Exception) {
-            // a malformed intent from another app (bad extras): handled as before, the handlers check it themselves
+            // a malformed intent from another app (bad extras): handled without the once-check, the handlers check it
             com.onpath.app.debug.Problems.warn("app", "Incoming intent could not be fingerprinted; handled without the once-check", e)
             if (delivery != IncomingIntent.Delivery.RESTORED) handleIntent(intent)
             return
@@ -619,6 +616,6 @@ class MainActivity : ComponentActivity() {
     private fun copy(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("adb", text))
-        // Android 13+ confirms a copy itself; below that the copied path is simply there – no message (owner 2026-10-27)
+        // Android 13+ confirms a copy itself; below that the copied path is simply there – no message (owner)
     }
 }

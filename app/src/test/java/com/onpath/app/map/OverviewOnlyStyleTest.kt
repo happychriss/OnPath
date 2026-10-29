@@ -8,8 +8,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Fresh install without any map file (phone test 2026-10-21): the style must not point MapLibre at a missing file
- * ("Failed to load source terrain … path not found" was announced as a problem) – only the overview from the APK draws.
+ * Fresh install without any map file: the style must not point MapLibre at a missing file ("Failed to load source
+ * terrain … path not found" would be announced as a problem) – only the overview from the APK draws.
  */
 class OverviewOnlyStyleTest {
     private val overview = setOf("base.pmtiles", "terrain.pmtiles")
@@ -20,7 +20,7 @@ class OverviewOnlyStyleTest {
         val root = JSONObject(out)
         val sources = root.getJSONObject("sources")
         val ids = sources.keys().asSequence().toSet()
-        // no source reads a local file any more
+        // no source reads a local file
         ids.forEach { id -> assertEquals("source $id", null, OptionalSources.localFile(sources.getJSONObject(id))) }
         // every layer's source exists
         val layers = root.getJSONArray("layers")

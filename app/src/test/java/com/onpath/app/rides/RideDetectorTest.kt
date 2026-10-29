@@ -6,8 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * CORE FEATURE C4 (never lose a track) – bus / car / lift detection (docs/design/vehicle-detection.md, owner
- * 2026-10-22): real-like traces run through the recording's own filter, then the detector.
+ * CORE FEATURE C4 (never lose a track) – bus / car / lift detection (docs/design/vehicle-detection.md):
+ * real-like traces run through the recording's own filter, then the detector.
  */
 class RideDetectorTest {
 

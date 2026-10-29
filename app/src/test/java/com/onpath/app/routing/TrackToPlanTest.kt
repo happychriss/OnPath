@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** A track as a plan with few route points (owner 2026-10-28). */
+/** A track as a plan with few route points. */
 class TrackToPlanTest {
     private val m = 0.0000089932
     private fun p(x: Double, y: Double) = GeoPoint(46.0 + y * m, 11.0 + x * m / 0.6947)

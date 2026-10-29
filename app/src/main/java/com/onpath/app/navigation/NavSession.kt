@@ -161,8 +161,7 @@ class NavSessionStore(private val file: File) {
         private fun turns(l: List<GeoPoint>): JSONArray? {
             if (l.none { it.turn != null }) return null
             val a = JSONArray()
-            // "RNDB:2" = roundabout, 2nd exit (older sessions: the code alone)
-            // "RNDB:2:-85" = roundabout, 2nd exit, angle (older sessions: the code alone)
+            // "RNDB:2:-85" = roundabout, 2nd exit, angle (older sessions: "RNDB:2" or the code alone)
             l.forEachIndexed { i, p -> p.turn?.let { a.put(i); a.put(if (p.exit > 0) "${it.code}:${p.exit}:${p.turnAngle.toInt()}" else it.code) } }
             return a
         }

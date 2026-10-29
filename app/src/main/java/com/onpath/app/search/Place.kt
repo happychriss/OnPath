@@ -35,7 +35,7 @@ data class Place(
     val town: String? = null,
     /**
      * Offline addresses: the village / fraction shown after the street ("Hauptstraße 5 · Völlan"); [town] is then
-     * the municipality ("Lana"), shown small on line 2 (owner 2026-10-22). Null for everything else.
+     * the municipality ("Lana"), shown small on line 2. Null for everything else.
      */
     val village: String? = null,
     /** A small note that stays on the place card, e.g. "Position from the address" for a shared place. */
@@ -45,7 +45,7 @@ data class Place(
 
     val kindInfo: PoiKind get() = SearchKinds.of(kind, sub)
 
-    /** Name, or the kind label (app language) when unnamed; [german] is not used any more. */
+    /** Name, or the kind label (app language) when unnamed; [german] is ignored. */
     @Suppress("UNUSED_PARAMETER")
     fun title(german: Boolean = Poi.isGerman()): String = name ?: kindInfo.label
 

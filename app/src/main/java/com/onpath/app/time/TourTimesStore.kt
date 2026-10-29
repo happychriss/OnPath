@@ -22,7 +22,7 @@ class TourTimesStore(private val file: File) {
         try {
             val o = read()
             o.put(tourId.toString(), t.toJson())
-            // keep the file small: the newest 500 tours
+            // keep the file small: the newest [MAX] tours
             val keys = o.keys().asSequence().mapNotNull { it.toLongOrNull() }.sorted().toList()
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
             val tmp = File(file.path + ".tmp")

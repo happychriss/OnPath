@@ -14,7 +14,7 @@ class ActivityLabelsTest {
         assertEquals("Continue navigation · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
     }
 
-    /** UX review 2026-10-23, problem 14: the tour's Continue names the activity, like the primary button did. */
+    /** The tour's Continue names the activity, like the primary button. */
     @Test fun tourContinueNamesTheActivity() {
         assertEquals("Continue · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
         assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
@@ -35,7 +35,7 @@ class ActivityLabelsTest {
         assertEquals("No route found for it", activityRowStatus(ActivityRowState.Failed("No route found for it")))
     }
 
-    /** Owner 2026-10-26: clearer bike names, each with one short line in the picker; the enum names stay (stored). */
+    /** Clear bike names, each with one short line in the picker (owner); the enum names stay (stored). */
     @Test fun activityNamesAndPickerLines() {
         assertEquals(listOf("Bike", "Gravelbike", "E-bike", "MTB", "E-MTB", "Hike"), Activity.entries.map { it.label })
         assertEquals(listOf("Paved cycleways, quiet roads", "Gravel tracks welcome", "Bike with motor, 25 km/h",

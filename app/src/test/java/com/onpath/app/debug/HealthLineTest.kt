@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The 10-minute health line (perf report 2026-10-22): readable in one glance, unknown values never break it. */
+/** The 10-minute health line: readable in one glance, unknown values never break it. */
 class HealthLineTest {
     @Test fun fullLine() {
         val l = Health.line(Health.Sample(

@@ -5,7 +5,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Keeps the app's logic free of Android (owner 2026-10-26: an iPhone version may come later, with one shared Kotlin
+ * Keeps the app's logic free of Android (owner: an iPhone version may come later, with one shared Kotlin
  * core – docs/design/multiplatform.md). Planner, navigation, time, rides and GPX must not use Android, MapLibre,
  * BRouter or org.json, so they can later move into a shared module unchanged. The files below already do and are
  * the known exceptions (each needs an interface or a JSON helper when the split happens); the list may only shrink.

@@ -1,6 +1,6 @@
 package com.onpath.app.map
 
-/** Position dot rules (owner 2026-10-28, bike). Pure, unit-tested. */
+/** Position dot rules (owner). Pure, unit-tested. */
 object PositionDot {
     /** No position for longer than this (screen locked, app in the background): the next one jumps, no glide. */
     const val JUMP_AFTER_MS = 3_000L

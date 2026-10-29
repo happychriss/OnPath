@@ -32,7 +32,7 @@ class CorePlanLinkTest {
     }
 
     /**
-     * Owner 2026-10-27: a second link while the plan is still the unchanged plan of the first link replaces it without a
+     * A second link while the plan is still the unchanged plan of the first link replaces it without a
      * question (the plan is in the web planner / the first link anyway); once it was changed on the phone, it asks.
      */
     @Test fun secondLinkReplacesAnUnchangedLinkPlanWithoutAsking() {

@@ -7,7 +7,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * CORE FEATURE C15 (A-005, web planner phase 1): a plan link (`https://plan.onpath.earth/#p=<code>`) from the phone's
+ * CORE FEATURE C15: a plan link (`https://plan.onpath.earth/#p=<code>`) from the phone's
  * camera (QR code), a tapped link, shared text or the search box opens as the plan; a broken link is said, never
  * loaded; Share plan writes the link that opens again. The intent arrives here as its plain strings
  * (MainActivity.planLinkOf → [PlanLinks.fromIntent]).

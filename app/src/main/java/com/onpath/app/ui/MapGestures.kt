@@ -6,7 +6,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Map gesture rules of Plan mode (owner spec v3; pure, no Android – unit tested in MapGesturesTest).
+ * Map gesture rules of Plan mode (owner spec).
  * **Hold only** – a quick tap never changes anything, nothing is ever dragged.
  *
  * | hold ≥ 0.3 s on…                         | vibration | result |
@@ -16,20 +16,19 @@ import kotlin.math.min
  * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
  * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
  *
- * The vibration comes at the moment the hold is recognised (ring full), never after the edit (owner 2026-10-21,
- * PlanHaptics) – menu buttons, set / delete and the Points list do not vibrate.
+ * The vibration comes at the moment the hold is recognised (ring full), never after the edit ([PlanHaptics]) – menu
+ * buttons, set / delete and the Points list do not vibrate.
  *
  * The marker wins (within [MARKER_RADIUS_DP], nearest marker first), then a POI, then the line / map – no question in
- * between (owner 2026-10-22: "Punkt setzen ist Punkt setzen, Punkt löschen ist Punkt löschen"; a wrong guess is undone
- * by holding again).
+ * between (owner: setting a point is setting a point, deleting is deleting; a wrong guess is undone by holding again).
  * With a menu open a tap anywhere closes it; a hold on another marker / POI opens that one's menu, a hold on
  * the empty map only closes the menu (no point is added while dismissing). A long press counts as a hold.
  * Navigate (or a shown track): nothing is added or moved, a POI tap opens read-only details.
  */
 object MapGestures {
     /**
-     * Screen radius around a marker that counts as "on the marker", at any zoom. Field 2026-10-21 (Pixel 8): with
-     * 26 dp, 4 of 21 holds the owner felt "on the point" were 68 dp away and added a new point – a finger is ~1 cm.
+     * Screen radius around a marker that counts as "on the marker", at any zoom – generous, a finger is ~1 cm and holds
+     * meant "on the point" land well beyond the drawn marker.
      */
     const val MARKER_RADIUS_DP = 48f
 
@@ -94,7 +93,7 @@ object MapGestures {
 
     /**
      * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
-     * points before) and "End here" (drops the points after). Round trip: "Start & finish here" (rotates the loop) on
+     * points before). Round trip: "Start & finish here" (rotates the loop) on
      * every point except the start/finish. "Open in Google Maps" (named place / POI only), "Delete" (always).
      * Start and destination of a normal route get neither (⋯ → Reverse swaps them).
      */
@@ -107,16 +106,11 @@ object MapGestures {
     }
 
     /**
-     * Index of the marker nearest to the tap ([x],[y]) within [radiusPx], or -1. Works in screen pixels, so
-     * the touch target stays the same size at every zoom; when markers overlap (zoomed out) the nearest wins,
-     * on a tie the later one (drawn on top).
-     */
-    /**
-     * The route point a press is aimed at (core feature: hold a point → its menu → Delete; broke twice in field tests).
-     * [points] is the PLAN's own list (never a copy kept with the drawing – it can lag behind, field report 0.8.3),
-     * [toScreen] its current screen position (null = projection not ready), [finger] where the press ended.
+     * The route point a press is aimed at (core feature: hold a point → its menu → Delete).
+     * [points] is the PLAN's own list (never a copy kept with the drawing – it can lag behind),
+     * [toScreen] its current screen position (null = projection not ready), finger = where the press ended.
      * A hold falls back to [downMarker], the point under the finger at finger-down: the map may move or turn while
-     * the finger rests (following the position, compass – field report 0.7.19). Returns the index or -1.
+     * the finger rests (following the position, compass). Returns the index or -1.
      */
     fun <P> markerUnderFinger(points: List<P>, toScreen: (P) -> Pair<Float, Float>?, fingerX: Float, fingerY: Float,
                               press: Press, downMarker: Int, radiusPx: Float): Int {
@@ -127,6 +121,11 @@ object MapGestures {
         return if (press == Press.HOLD && downMarker in points.indices) downMarker else -1
     }
 
+    /**
+     * Index of the marker nearest to the tap ([x],[y]) within [radiusPx], or -1. Works in screen pixels, so
+     * the touch target stays the same size at every zoom; when markers overlap (zoomed out) the nearest wins,
+     * on a tie the later one (drawn on top).
+     */
     fun nearestMarker(markersX: FloatArray, markersY: FloatArray, x: Float, y: Float, radiusPx: Float): Int {
         var best = -1
         var bestD = radiusPx * radiusPx

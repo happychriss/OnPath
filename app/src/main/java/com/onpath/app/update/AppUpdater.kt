@@ -88,7 +88,7 @@ object AppUpdater {
 
     /**
      * Downloads the release APK into the app cache; returns the file. [onProgress] gets 0..100.
-     * A broken connection (field 2026-10-21: "Software caused connection abort" 4× on mobile data) resumes where it
+     * A broken connection (e.g. "Software caused connection abort" on mobile data) resumes where it
      * stopped (HTTP Range) – up to [ATTEMPTS] tries with a short pause, and the part file is kept for the next tap.
      */
     fun download(context: Context, release: Release, onProgress: (Int) -> Unit = {}): File =
@@ -107,7 +107,7 @@ object AppUpdater {
                 return downloadOnce(release, tmp, dest, onProgress)
             } catch (e: java.io.IOException) {
                 lastError = e
-                com.onpath.app.debug.Problems.info("update", "Update download interrupted (try $attempt of $ATTEMPTS, " +
+                Problems.info("update", "Update download interrupted (try $attempt of $ATTEMPTS, " +
                     "${tmp.length() / 1_048_576} MB so far); resuming", e)
                 if (attempt < ATTEMPTS) Thread.sleep(pauseMs * attempt)
             }

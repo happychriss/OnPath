@@ -56,7 +56,7 @@ data class OfflineMapsUi(
     val result: String? = null,
 )
 
-/** The result line of Clean up / Clear all (owner 2026-10-22: on the page, not a message box on the map). Unit-tested. */
+/** The result line of Clean up / Clear all: on the page, not a message box on the map. */
 object OfflineResult {
     fun removed(areas: Int, bytes: Long, afterTour: Boolean): String = when {
         areas <= 0 -> Txt.s(Res.string.maps_result_none)
@@ -66,7 +66,7 @@ object OfflineResult {
     }
 }
 
-/** Offline maps → "Clean up" (owner 2026-10-22): the areas that would go, their size and what is kept. */
+/** Offline maps → "Clean up": the areas that would go, their size and what is kept. */
 data class CleanupPreview(
     val remove: List<com.onpath.app.cells.CellId>,
     val bytes: Long,
@@ -120,7 +120,7 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
     val body = MaterialTheme.typography.bodyLarge
     Section(str(Res.string.maps_offline_title)) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // no intro (review 2026-10-24 B25): the page shows what is there
+            // no intro: the page shows what is there
             if (!ui.available) Text(str(Res.string.maps_not_available), style = small, color = variant)
             ui.result?.let { Text(it, style = body, fontWeight = FontWeight.Medium) }
             if (ui.areas.isEmpty()) Text(str(Res.string.maps_no_areas), style = body)

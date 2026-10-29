@@ -8,10 +8,10 @@ import org.junit.Test
 import java.time.Instant
 
 /**
- * The owner's field tour of 2026-10-22, "Verdins → Schenna" (backup file as written by 0.9.x, all 335 stored points,
+ * The owner's recorded tour "Verdins → Schenna" (a backup file with all 335 stored points,
  * tracks/owner-2026-10-22-taser/): standing at the Taser top station 15:49–15:57 CEST, the gondola down 15:57:53–16:03:49
- * (no fix in the cabin: one 356 s / 1645 m / 1500 → 907 m jump), then a car / bus 16:06–16:10 (9–11 m/s, ~2.1 km)
- * that 0.9.2 counted as hike distance. Both must become rides; the waiting at the station is cut off with the lift.
+ * (no fix in the cabin: one 356 s / 1645 m / 1500 → 907 m jump), then a car / bus 16:06–16:10 (9–11 m/s, ~2.1 km).
+ * Both must become rides; the waiting at the station is cut off with the lift.
  */
 class OwnerTaserTourTest {
     private val text = javaClass.classLoader!!.getResource("tracks/owner-2026-10-22-taser/verdins-schenna.gpx")!!.readText()

@@ -7,7 +7,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Owner 2026-10-22: no "Default activity" in Settings; fresh install = Hike T2, then always the last chosen activity
+ * Owner: no "Default activity" in Settings; fresh install = Hike T2, then always the last chosen activity
  * and T level (picker), across sessions. Older installs keep what they had stored.
  */
 class LastActivityTest {
@@ -41,10 +41,9 @@ class LastActivityTest {
     }
 
     /**
-     * Field bug 2026-10-22 (owner's phone, 0.9.5): the old app wrote the key "activity" on every picker choice but
-     * started each session with the Settings default (defaultActivity). The owner hiked (default Hike, all tours Hike);
-     * a stale "activity" = BIKE_TREKKING from an earlier try then won after the update → the app came up with Bike
-     * trekking. The activity the old app started with must win; the new app remembers under its own keys.
+     * The old app wrote the key "activity" on every picker choice but started each session with the Settings default
+     * (defaultActivity), so a stale "activity" must not win over it: the activity the old app started with wins; the
+     * new app remembers under its own keys.
      */
     @Test fun upgradeKeepsTheActivityTheOldAppStartedWith() {
         val phone = MapPrefs(mutableMapOf("activity" to "BIKE_TREKKING", "defaultActivity" to "HIKE", "sac" to 4, "defaultSac" to 2))

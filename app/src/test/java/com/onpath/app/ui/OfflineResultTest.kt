@@ -6,9 +6,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Owner 2026-10-22 (screenshot): after Offline maps → Clean up a dark "37 map areas removed. OK" box sat on the map until
- * OK. The user confirmed the removal himself: the result is a plain line on the Offline maps page until it is left;
- * only a failure keeps a persistent message.
+ * After Offline maps → Clean up no "37 map areas removed. OK" box on the map: the user confirmed the removal himself,
+ * so the result is a plain line on the Offline maps page until it is left; only a failure keeps a persistent message.
  */
 class OfflineResultTest {
     private val mb = 1_048_576L

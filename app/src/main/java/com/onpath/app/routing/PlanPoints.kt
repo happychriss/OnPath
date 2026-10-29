@@ -21,7 +21,7 @@ data class PlanPointRow(
 )
 
 /**
- * The Points section of the plan sheet (owner 2026-10-21, core feature C9): rows, reorder (hold ≡ and drag), delete.
+ * The Points section of the plan sheet (core feature C9): rows, reorder (hold ≡ and drag), delete.
  * Pure, unit tested (PlanPointsTest). A round trip is shown and edited as its loop (the closing point is not a row):
  * after every edit the loop is closed again at its (new) start.
  */
@@ -48,7 +48,7 @@ object PlanPoints {
             }
             PlanPointRow(
                 planIndex = i, role = role,
-                // unnamed: the same words as the map labels (owner 2026-10-23: Start / Stop 2 / Destination)
+                // unnamed: the same words as the map labels (Start / Stop 2 / Destination)
                 name = name(i)?.trim()?.takeIf { it.isNotEmpty() } ?: when (role) {
                     PointRole.START -> Txt.s(Res.string.plan_point_start)
                     PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
@@ -70,8 +70,8 @@ object PlanPoints {
 
     /**
      * [legs], remembered for the last plan + line (the line by identity: a new route is a new list). The sheet asks on
-     * every recomposition and the matching walks the whole line per point – owner field report 0.9.3 (the sheet
-     * stuttered with the points list). Thread-safe; computed off the main thread first (MapScreen), then a lookup.
+     * every recomposition and the matching walks the whole line per point (without the memo the sheet stutters).
+     * Thread-safe; computed off the main thread first (MapScreen), then a lookup.
      */
     fun legsCached(plan: List<GeoPoint>, line: List<GeoPoint>?): List<Double?>? {
         if (trivial(plan, line)) return legs(plan, line)

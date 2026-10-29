@@ -1,7 +1,6 @@
 package com.onpath.app.time
 
 import com.onpath.app.data.AppSettings
-import com.onpath.app.data.Geo
 import com.onpath.app.data.MapPrefs
 import com.onpath.app.data.Prefs
 import com.onpath.app.routing.Activity
@@ -10,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** Settings pace: five levels about 15 % apart around DIN 33466 (owner 2026-10-22), migration of the old three. */
+/** Settings pace: five levels about 15 % apart around DIN 33466 (owner), migration of the old three. */
 class PaceLevelsTest {
     private val dir = File(System.getProperty("java.io.tmpdir"))
 
@@ -103,7 +102,7 @@ class PaceLevelsTest {
         }
     }
 
-    /** Owner 2026-10-22: the motor stops at 25 km/h – e-bikes are no faster on the flat at any level, but climb faster. */
+    /** Owner: the motor stops at 25 km/h – e-bikes are no faster on the flat at any level, but climb faster. */
     @Test fun eBikesStayAtAbout25KmhOnTheFlat() {
         for (a in listOf(Activity.EBIKE, Activity.EMTB)) {
             val flat = PaceModel.bikeSpeedMs(0.0, a) * 3.6

@@ -9,8 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Field test 2026-10-22 14:52: "point 2 deleted" twice 1 s apart – after the first ✕ the rows moved up under the
- * finger and the second tap deleted the next point. Owner: a ✕ must not make the rows shift under the finger.
+ * Two ✕ taps 1 s apart: after the first the rows must not move up under the finger, so the second tap cannot delete
+ * the next point (owner).
  */
 class PointsDeleteGuardTest {
     private fun row(i: Int, role: PointRole = PointRole.STOP) = PlanPointRow(i, role, "P${i + 1}", 100.0, false)

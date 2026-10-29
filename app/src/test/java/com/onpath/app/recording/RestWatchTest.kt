@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Owner decision 10 (2026-10-22, battery): slower GPS while standing still during a tour, back to the normal rate at the
+ * Owner (battery): slower GPS while standing still during a tour, back to the normal rate at the
  * first sign of movement. The state machine is pure; RecordingService only applies [RestWatch.intervalMs].
  */
 class RestWatchTest {

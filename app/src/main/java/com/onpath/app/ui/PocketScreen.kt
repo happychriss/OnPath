@@ -25,7 +25,7 @@ import com.onpath.app.debug.Problems
 const val POCKET_SLEEP_MS = 60_000L
 
 /**
- * "Keep screen on while navigating", pocket-aware (owner 2026-10-20, docs/design/battery-audit.md):
+ * "Keep screen on while navigating", pocket-aware (docs/design/battery-audit.md):
  * the screen stays on while you look at it; the proximity sensor turns it off when covered (like during a call)
  * and on again when you take the phone out. Covered for [POCKET_SLEEP_MS]: keep-on is dropped and the phone sleeps
  * as usual (the map stops, GPS recording goes on in the service). Only while the screen is started; without a

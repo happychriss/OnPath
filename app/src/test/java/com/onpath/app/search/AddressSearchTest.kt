@@ -97,7 +97,7 @@ class AddressSearchTest {
     }
 
     @Test fun joinedStreetWordAndTypo() {
-        // owner, 2026-10-20: "garibalistrasse 13, Merano" found nothing (typo + joined word)
+        // typo + joined word must still find the street
         assertEquals(listOf("garibali", "strasse", "merano"), AddressQuery.parse("garibalistrasse 13, Merano").words)
         assertEquals("Laurinstraße 5 · Gratsch", find("Laurnstrasse 5, Meran").first().place.name)
         assertEquals("Laurinstraße 5 · Gratsch", find("Laurinstrase 5 Meran").first().place.name)
@@ -106,7 +106,7 @@ class AddressSearchTest {
     }
 
     @Test fun villageInNameMunicipalityOnLineTwo() {
-        // owner 2026-10-22: the village / fraction after the street, the municipality small on line 2
+        // the village / fraction after the street, the municipality small on line 2
         val p = find("Laurinstraße 5, Meran").first().place
         assertEquals("Gratsch", p.village)
         assertEquals("Meran", p.town)
@@ -122,7 +122,7 @@ class AddressSearchTest {
     }
 
     @Test fun villageBeatsNearbyHamletAndOldFilesWork() {
-        // A file like the extractor writes (also before 2026-10-22: every place is stored with kind and point).
+        // A file like the extractor writes (every place is stored with kind and point).
         val towns = listOf(
             arrayOf<Any?>(1L, "m", "Lana", null, "IT", 4660000L, 1115000L),
             arrayOf<Any?>(2L, "village", "Völlan", "Foiana", "IT", 4661000L, 1112000L),

@@ -23,7 +23,7 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
     /** "Keep left" in the app's language (lock screen). */
     val text: String get() = Txt.s(res)
 
-    /** With the roundabout exit: "Roundabout · exit 2" (owner 2026-10-28); else [text]. */
+    /** With the roundabout exit: "Roundabout · exit 2" (owner); else [text]. */
     fun text(exit: Int): String =
         if (this == ROUNDABOUT && exit > 0) Txt.s(Res.string.nav_roundabout_exit, exit) else text
 

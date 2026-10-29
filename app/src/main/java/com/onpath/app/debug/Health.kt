@@ -9,7 +9,7 @@ import android.view.Window
 import java.util.Locale
 
 /**
- * "Does the phone slow down over time?" in the event log (perf report 2026-10-22, owner: the log may be big):
+ * "Does the phone slow down over time?" in the event log (owner: the log may be big):
  *
  * - every [INTERVAL_MS] while the process runs one line: memory (PSS, native / Java / graphics), native heap, CPU used
  *   since the last line, janky frames while the app was on screen, map store generation, waiting downloads;

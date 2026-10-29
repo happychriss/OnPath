@@ -6,15 +6,11 @@ import org.junit.Test
 import java.io.File
 
 /**
- * 0.9.1 crashed at start (CI E2E 2026-10-22): `init { recalc() }` routes the saved plan at once, and recalc() set a
- * Compose state declared further down – Kotlin had not created it yet (NullPointerException in the ViewModel's
- * constructor). Every property recalc() assigns before its background job must be declared above that init block.
- *
- * 0.9.0 field crash (owner phone 2026-10-22, 20:05): `init { refreshTours() }` launched a job on Dispatchers.IO that read
- * the `by lazy` property `planTimes` declared ~950 lines further down – the IO thread got there before the constructor
- * did ("Attempt to invoke interface method 'kotlin.Lazy.getValue()' on a null object reference"). A `by lazy` property
- * reachable from an init block (directly, through the class's own functions, or from a coroutine it launches) must be
- * declared above that init block.
+ * Declaration order in AppViewModel (a property declared below an init block is still null while it runs):
+ * - `init { recalc() }` routes the saved plan at once, so every property recalc() assigns before its background job
+ *   must be declared above that init block (else a NullPointerException in the constructor);
+ * - a `by lazy` property reachable from an init block (directly, through the class's own functions, or from a coroutine
+ *   it launches, which may run before the constructor got there) must be declared above that init block.
  */
 class ViewModelInitOrderTest {
     private val lines = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readLines()

@@ -43,7 +43,7 @@ class ReferenceRoutesTest {
         for (id in IDS) {
             val r = load(id)
             val t = RouteTimes.of(r.points, r.activity)
-            // DIN 33466 on the whole route: the old hiking "to go" (and, until 2026-10-26, the imported-track time)
+            // DIN 33466 on the whole route (the old hiking "to go"), for comparison
             val din = Din33466.seconds(r.distanceM, r.ascentM, r.descentM)
             println("%-40s %5.1f   %8s          %8s        %8s".format(r.name, r.distanceM / 1000, hm(r.brouterS), hm(din), hm(t.total())))
             expected[id]?.let { e ->
@@ -73,7 +73,7 @@ class ReferenceRoutesTest {
         val up = RouteTimes.of(load("H8").points, Activity.HIKE).total()
         val down = RouteTimes.of(load("H8r").points, Activity.HIKE).total()
         assertTrue(up > down * 1.4)
-        // the mountain routes now take longer than BRouter's Tobler said (Q1), but less than DIN on the whole route
+        // the mountain routes take longer than BRouter's Tobler times, but less than DIN on the whole route
         for (id in listOf("H3", "H5", "H8", "H9")) {
             val r = load(id)
             val t = RouteTimes.of(r.points, r.activity).total()

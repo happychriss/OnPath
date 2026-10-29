@@ -7,8 +7,7 @@ import java.io.File
 
 /**
  * Every font a style uses must have every glyph range the styles need. A missing range (e.g. "▲" in front of peak
- * names for "Noto Sans Medium") makes MapLibre drop whole base-map tiles: paths, streams and lifts vanished in the
- * high-contrast theme (field test 2026-10-19).
+ * names for "Noto Sans Medium") makes MapLibre drop whole base-map tiles: paths, streams and lifts vanish.
  */
 class FontGlyphsTest {
     private val fonts = File("src/main/assets/fonts")

@@ -8,17 +8,16 @@ import com.onpath.app.ui.PlanSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * CORE FEATURE C9 (owner 2026-10-21): the full plan sheet is the point editor – opened only by the sheet's handle /
- * a swipe up; delete with ✕, reorder by holding ≡ and dragging, tap a row → the map shows the point, Undo on the map
- * brings the old plan back. Owner 2026-10-22: small → profile → points (the points are the sheet's last step, below the
- * profile); way types are in the route details only.
+ * CORE FEATURE C9: the full plan sheet is the point editor – opened only by the sheet's handle / a swipe up; delete
+ * with ✕, reorder by holding ≡ and dragging, tap a row → the map shows the point, Undo on the map brings the old plan
+ * back. Steps small → profile → points (the points are the sheet's last step, below the profile); way types are in the
+ * route details only.
  */
 @RunWith(AndroidJUnit4::class)
 class CorePointsListE2ETest : E2EBase() {
@@ -49,15 +48,14 @@ class CorePointsListE2ETest : E2EBase() {
             desc("Resize panel").click(); Thread.sleep(500)
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
-        // the rows' ✕ (content descriptions) – UiAutomator found the "Points" header text only now and then on CI,
-        // although it was on screen (screenshots 2026-10-22); its cache kept the tree without the list (2026-10-25):
-        // look afresh each time
+        // the rows' ✕ (content descriptions), looked for afresh each time: UiAutomator's cache can keep the tree
+        // without the list although it is on screen
         if (findFresh(By.descStartsWith("Delete point"), 10_000) == null) {
             shot("no-points-section")
             var rec = false; scenario.onActivity { rec = vm(it).recState.value != null }
             throw AssertionError("Points section shown – tour running $rec – UiAutomator sees: ${seenDescriptions()} – ${state()}")
         }
-        // owner 2026-10-22: profile first, then the points (one scrolling area)
+        // profile first, then the points (one scrolling area)
         val profile = desc("Elevation profile").visibleBounds
         val firstRow = desc("Move point 1 (hold and drag)").visibleBounds
         assertTrue("profile above the points: $profile vs $firstRow", profile.bottom <= firstRow.top + 2)
@@ -65,8 +63,7 @@ class CorePointsListE2ETest : E2EBase() {
 
     /**
      * Like waitUntil (same 10 s), but a timeout says where the sheet is and what it did: the events list carries the
-     * release line of the last swipe ("Sheet let go at … px (steps …) → step N", StepSheet) – CI 2026-10-26 failed
-     * with only "timeout: half sheet after a swipe down".
+     * release line of the last swipe ("Sheet let go at … px (steps …) → step N", StepSheet).
      */
     private fun waitForSize(what: String, want: PlanSize) {
         val end = System.currentTimeMillis() + 10_000
@@ -96,8 +93,8 @@ class CorePointsListE2ETest : E2EBase() {
 
     /**
      * A slow, realistic finger: rests on ≡ of point 3 with a little wobble (like a real thumb), then moves up in small
-     * steps to above point 1 and lets go. Field test 0.8.9: "moving the points doesn't work" – the wobble let the sheet
-     * / list steal the gesture. The sheet must not move meanwhile.
+     * steps to above point 1 and lets go. The wobble must not let the sheet / list steal the gesture; the sheet must
+     * not move meanwhile.
      */
     @Test fun reorderByHoldingAndDraggingTheHandle() {
         threePointsAndFullSheet()
@@ -122,14 +119,13 @@ class CorePointsListE2ETest : E2EBase() {
     }
 
     /**
-     * Field test 0.8.9 ("the swipe is jumping"), owner 2026-10-22 (three steps): the sheet follows a slow drag of its
-     * handle and settles at the nearest step – small → profile (first swipe) → points (second swipe) → profile.
+     * The sheet follows a slow drag of its handle and settles at the nearest step (no jumping) – small → profile (first
+     * swipe) → points (second swipe) → profile.
      *
      * Swipe lengths: on the CI emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel
-     * (StepSheet's "Sheet let go at …" lines, 3 runs 2026-10-26; steps 536 / 938 / 1602 px high). So every swipe that
-     * must stop at a middle step lands well inside it for any ratio from about 0.45 to 1.2, and swipes to an end step
-     * go far (the sheet only rubber-bands there). The old last swipe (20 % of the screen) needed a ratio ≥ 0.72 – it
-     * failed once at "half sheet after a swipe down".
+     * (StepSheet's "Sheet let go at …" lines; steps 536 / 938 / 1602 px high). So every swipe that must stop at a middle
+     * step lands well inside it for any ratio from about 0.45 to 1.2, and swipes to an end step go far (the sheet only
+     * rubber-bands there).
      */
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
@@ -169,7 +165,7 @@ class CorePointsListE2ETest : E2EBase() {
         val fullY = handle().y
         dragHandle(((profileY - fullY) * 1.1f).toInt())
         waitForSize("half sheet after a swipe down", PlanSize.COMPACT)
-        // the list leaves with the sheet's animation: wait until it is gone (a single look found a stale node, CI 2026-10-22)
+        // the list leaves with the sheet's animation: wait until it is gone (a single look can find a stale node)
         if (!goneFresh(By.descStartsWith("Delete point"), 8_000)) {
             shot("points-still-there")
             throw AssertionError("no points list in the half sheet – size ${size()} – ${state()}")

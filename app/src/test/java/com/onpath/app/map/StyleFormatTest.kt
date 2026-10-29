@@ -47,7 +47,7 @@ class StyleFormatTest {
             "greenway-foot", "greenway-bike", "greenway-touring", "greenway-mtb", "poi-station", "poi-tier1",
             "poi-station-name", "poi-tier1-name")
         for (s in listOf(f1, f2)) { val have = ids(s).toSet(); used.forEach { assertTrue(it, it in have) } }
-        // no MTB route band: mtb.brf ignores route=mtb, MTB shows the cycle band (map vs router audit #7)
+        // no MTB route band: mtb.brf ignores route=mtb, MTB shows the cycle band
         for (s in listOf(f1, f2)) assertTrue(ids(s).none { it.startsWith("routes-mtb") })
         // every format-1 layer has a format-2 twin, except the base-map fallbacks and the base map's low-zoom path
         // lines (format 2 draws those from the overlay, with the town flag)
@@ -59,7 +59,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Router classes (owner decisions 2026-10-22 (3) / (4), docs/map-style-notes.md "Router classes"): format 2 colours
+     * Router classes (owner, docs/map-style-notes.md "Router classes"): format 2 colours
      * green / forbidden per BRouter profile family from the class keys and keeps the tag rules for cells without them;
      * one forbidden-way layer set and one barrier layer per family (MapController.setOverlay); the hiking band above
      * the T level is its own layer (MapController.setSacLimit).
@@ -75,7 +75,7 @@ class StyleFormatTest {
                 assertTrue("$id reads $key", f!!.startsWith("[\"case\",[\"has\",\"$key\"]"))
             }
             assertTrue("barrier-blocked-$mode", byId["barrier-blocked-$mode"]?.optString("source-layer") == "barriers")
-            // excluded only for difficulty (class 3): a grey line, never the red forbidden look (owner 2026-10-22)
+            // excluded only for difficulty (class 3): a grey line, never the red forbidden look (owner)
             assertTrue("too-hard-$mode", byId["too-hard-$mode"]?.optJSONArray("filter")?.toString()?.contains("3") == true)
             assertTrue("forbidden is class 2 only", byId.getValue("access-no-dash-$mode").optJSONArray("filter")!!
                 .toString().contains("[\"==\",[\"get\",\"$key\"],2]"))
@@ -90,7 +90,7 @@ class StyleFormatTest {
         }
     }
 
-    /** Field test 2026-10-22: an inn vanished at some zooms – a route number ("40") above it won the collision. */
+    /** An inn must not vanish at some zooms because a route number ("40") above it wins the collision. */
     @Test fun poisArePlacedBeforeTrailNumbers() {
         for (s in listOf(f1, f2)) {
             val ids = ids(s)
@@ -102,8 +102,8 @@ class StyleFormatTest {
     }
 
     /**
-     * Field report 0.10.1 (Bad Waldsee): restaurants swapped while zooming – all POIs of one kind had the same sort key,
-     * so each tile's feature order decided. The key now ends in the POI's fixed priority "pr" (extract_pois.priority,
+     * Restaurants must not swap while zooming: with the same sort key for all POIs of one kind each tile's feature order
+     * would decide. The key ends in the POI's fixed priority "pr" (extract_pois.priority,
      * < 50000), below the named/unnamed band, and old data without "pr" still works (coalesce).
      */
     @Test fun poiSortKeyUsesFixedPriority() {
@@ -122,7 +122,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Owner 2026-10-23: names can never push out icons. Each POI layer is split into an icon layer "poi-<x>" (icon, no
+     * Names can never push out icons (owner). Each POI layer is split into an icon layer "poi-<x>" (icon, no
      * text) and a name layer "poi-<x>-name" (text, no icon) with the same filter, sort key and zooms. MapLibre Native
      * places symbols from the TOP layer down, so every icon layer lies above every name layer – all icons are placed
      * before any name; a name without room simply does not show. Icons still collide (no pile-ups), names collide
@@ -182,8 +182,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Phone log 2026-10-22 (0.10.0): "[ParseStyle]: [4]: Expected array<color> but found string instead." MapLibre Native
-     * 13.x types hillshade-shadow-color / -highlight-color as array<color> and cannot interpolate or step it – an
+     * MapLibre Native 13.x ("[ParseStyle]: [4]: Expected array<color> but found string instead.") types hillshade-shadow-color / -highlight-color as array<color> and cannot interpolate or step it – an
      * expression there is dropped and the layer draws opaque black / white. Only plain colour strings (or arrays of
      * them) are allowed; zoom-dependent shading uses zoom-band layers (make_style.py hillshade()). The bands of one
      * light must tile the zoom range without gaps or overlaps.
@@ -212,9 +211,9 @@ class StyleFormatTest {
     }
 
     /**
-     * Quiet towns (owner 2026-10-26, docs/design/map-colour-analysis.md "Quiet towns"): format 2 reads the overlay town
+     * Quiet towns (owner, docs/design/map-colour-analysis.md "Quiet towns"): format 2 reads the overlay town
      * flag "u" – no town paths zoomed out, grey town footways, white town streets, link pieces for the path gap, pale
-     * pedestrian streets (not squares), no hiking green on town footways. Older cells without "u" look as before.
+     * pedestrian streets (not squares), no hiking green on town footways. Cells without "u" keep the untagged look.
      */
     @Test fun format2QuietTowns() {
         val byId = byId(f2)
@@ -231,12 +230,12 @@ class StyleFormatTest {
         assertTrue("white town streets", byId.getValue("road-minor-lane").getJSONObject("paint").get("line-color").toString()
             .contains("\"u\""))
         for (s in listOf(f1, f2)) assertTrue("no tint band", ids(s).none { "access-no-tint" in it })
-        // the soft bike glow of 0.11.2 is gone (owner 2026-10-26: green line = good way, band = signed route)
+        // no soft bike glow (owner: green line = good way, band = signed route)
         for (s in listOf(f1, f2)) assertTrue("no glow", ids(s).none { it.endsWith("-glow") })
     }
 
     /**
-     * Bike activities, the same two layers as hiking (owner 2026-10-26): green line = a way good for the bike, band = a
+     * Bike activities, the same two layers as hiking (owner): green line = a way good for the bike, band = a
      * signed route. Local / regional cycle routes: a mint band above the road casings and below every lane (a mint border
      * beside the street, never over it – also on a wide main road), light zoomed out; long distance (net >= 3): exactly the
      * hiking major-route look (green band + pink dashes).
@@ -248,7 +247,7 @@ class StyleFormatTest {
             val band = order.indexOf("routes-bike")
             assertTrue("routes-bike above the road casings", band > order.indexOf("road-motorway-casing"))
             assertTrue("routes-bike below the lanes", band < order.indexOf("track-own-lane-hikeview"))
-            // main roads keep a thin edge on top of the band (owner 2026-10-26, Benrather Straße)
+            // main roads keep a thin edge on top of the band (owner)
             for (gid in listOf("tertiary", "secondary", "primary", "motorway")) {
                 val e = order.indexOf("road-$gid-edge")
                 assertTrue("road-$gid-edge above the band, below the lanes", e > band && e < order.indexOf("track-own-lane-hikeview"))
@@ -275,7 +274,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Bike view of tracks and paths (owner 2026-10-26, "the brown ways look very dominant"): for bike activities a track is
+     * Bike view of tracks and paths (owner: the brown ways must not dominate): for bike activities a track is
      * a light lane with thin edges ("-bikeview" layers), hiking keeps the dotted brown edges ("-hikeview"); a closed way is a
      * quieter dash for bikes. MapController.setOverlay switches the suffixes; the style ships the hiking look.
      */
@@ -298,7 +297,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Overview (owner 2026-10-26, every activity): zoomed out (≤ z13.5) a signed route is a thin solid line and paths are
+     * Overview (owner, every activity): zoomed out (≤ z13.5) a signed route is a thin solid line and paths are
      * hidden (bikes) or faint (hiking); from z14.5 the close-up look (route band, paths). Bikes get "-bikeview" twins of the
      * shared path layers (MapController shows the twin instead of the base layer) and a thin "routes-bike-low" line.
      */
@@ -321,12 +320,7 @@ class StyleFormatTest {
         assertTrue(op("track-bike-lane-bikeview", 13.0).second == 0.0)
     }
 
-    /**
-     * Owner 2026-10-26: arrow colours (dark = one-way for all, green ⇄ = bikes both ways, green → = one-way only for
-     * bikes), quieter forbidden markings (signs from z16, see-through), street space (schema 7 "areas" / "fw") between
-     * the buildings and the road casings, underpasses (tn "t") as a clear path above the railway.
-     */
-    /** Region view (owner 2026-10-26): long-distance routes always, regional from z11, every route from z12.5 – bike and hike. */
+    /** Region view (owner): long-distance routes always, regional from z11, every route from z12.5 – bike and hike. */
     @Test fun routeTiersByZoom() {
         val byId = byId(f2)
         for (id in listOf("routes-hike", "routes-bike", "routes-bike-low")) assertTrue(id, byId.getValue(id).getDouble("minzoom") >= 12.5)
@@ -356,7 +350,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Greener region view (owner 2026-10-26: "the landscape doesn't look green at all zoomed out"): a light green veil
+     * Greener region view (owner: the landscape must look green zoomed out): a light green veil
      * ("land-tint", a background layer) over the open land, farmland and the packages' relief, below meadows / forest /
      * towns, gone at z13 – the close-up look is unchanged.
      */
@@ -386,7 +380,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Owner 2026-10-26: pink zoomed out = exactly the routes with the pink-green band close in – long distance (net >= 3)
+     * Pink zoomed out (owner) = exactly the routes with the pink-green band close in – long distance (net >= 3)
      * for bikes AND hiking. Zoomed out a wider pink-violet line on a thin white halo; the halo ids end in -hikeview /
      * -bikeview (MapController shows them with the activity group). Regional routes (net 2): the green overview line up
      * to the local tier, the normal band close in.
@@ -424,6 +418,11 @@ class StyleFormatTest {
         }
     }
 
+    /**
+     * Arrow colours (owner; dark = one-way for all, green ⇄ = bikes both ways, green → = one-way only for bikes), quieter
+     * forbidden markings (signs from z16, see-through), street space (schema 7 "areas" / "fw") between the buildings
+     * and the road casings, underpasses (tn "t") as a clear path above the railway.
+     */
     @Test fun arrowsForbiddenStreetSpaceUnderpass() {
         val byId = byId(f2)
         val order = ids(f2)
@@ -442,8 +441,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Town street endings + contrast (owner 2026-10-26, Hilden old town on 0.11.2: "the green line and black lines go into
-     * the other street", "the roads are very low contrast"): in towns the path-like layers and the bike green lines have a
+     * Town street endings + contrast (owner: lines must not run into the other street, roads need contrast): in towns the path-like layers and the bike green lines have a
      * "-town" copy below every lane, above the casings and the bike route band (paths end at the street edge), switched
      * with their layer by MapController.setOverlay; country paths keep their place above the lanes; passages are dashed;
      * pedestrian streets have an edge below the lanes.
@@ -479,7 +477,7 @@ class StyleFormatTest {
     }
 
     /**
-     * Owner 2026-10-26 (industrial area, field test): a forbidden marking is never wider than a normal street at the same
+     * A forbidden marking (owner) is never wider than a normal street at the same
      * zoom – a private service road's dash stays inside the service street's lane, a forbidden path's dash inside a
      * minor street's lane. Private driveways / parking aisles are not drawn below z17.
      */

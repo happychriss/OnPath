@@ -4,7 +4,7 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 
 /**
- * Moves free plan points onto the way the router actually used (owner request: "if a point is not
+ * Moves free plan points onto the way the router actually used (owner rule: "if a point is not
  * routable, take the closest way as the point" – OnPath does no off-road guidance). The router snaps
  * each point to the nearest usable way anyway; this keeps marker, stored plan and route line in step.
  *

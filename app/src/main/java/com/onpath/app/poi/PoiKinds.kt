@@ -22,7 +22,7 @@ data class PoiKind(val key: String, val group: PoiGroup, val glyph: String, priv
     /** Name in the app's language. */
     val label: String get() = res?.let { Txt.s(it) } ?: raw
 
-    /** Older form: the app's language decides ([Poi.isGerman] follows it), [german] is not used any more. */
+    /** Same as [label]; [german] is ignored (the app's language decides, [Poi.isGerman] follows it). */
     @Suppress("UNUSED_PARAMETER")
     fun label(german: Boolean): String = label
 }
@@ -66,7 +66,7 @@ object PoiKinds {
     /**
      * Kinds hidden until the user turns them on: keep the map calm like Komoot, which shows only
      * highlights by default. On by default: huts, shelters, camping, water, waterfalls, all sights (viewpoints,
-     * castles, ruins, churches, chapels, caves, museums – owner 2026-10-23), all food (restaurants, cafés, bars,
+     * castles, ruins, churches, chapels, caves, museums – owner), all food (restaurants, cafés, bars,
      * snack bars), bus stops (where a hike starts or ends – owner), train and lift stations. Parking stays off (owner).
      */
     val defaultHidden: Set<String> = setOf(
@@ -76,7 +76,7 @@ object PoiKinds {
     /** Bumped whenever [defaultHidden] changes; stored next to the user's hidden kinds ([upgradeHidden]). */
     const val DEFAULTS_VERSION = 2
 
-    /** Earlier [defaultHidden] sets (0.1–0.6.1, 0.6.2–0.10.1): a stored set equal to one was never changed by the user. */
+    /** Earlier [defaultHidden] sets (oldest first): a stored set equal to one was never changed by the user. */
     private val oldDefaults: List<Set<String>> = listOf(
         setOf("bar", "fast_food", "shop", "bus", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
             "church", "chapel"),

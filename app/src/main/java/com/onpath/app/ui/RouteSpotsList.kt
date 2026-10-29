@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * The spots of the amber line (owner 2026-10-22): kind, length, where along the route. A tap shows that spot on the
+ * The spots of the amber line: kind, length, where along the route. A tap shows that spot on the
  * map (the list closes). No OK button – swipe down or tap beside it to close.
  */
 @Composable

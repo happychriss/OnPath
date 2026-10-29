@@ -57,7 +57,7 @@ class TimeScreenshotTest {
     }
 
     /**
-     * Navigate card states (field test 2026-10-19): the target named, "— not on route" instead of a stale time,
+     * Navigate card states: the target named, "— not on route" instead of a stale time,
      * "estimate paused" greyed with the reason.
      */
     @Test fun navigateEstimateStates() = paparazzi.snapshot {
@@ -90,7 +90,7 @@ class TimeScreenshotTest {
         }
     }
 
-    /** Settings → Your pace: five levels for hiking and cycling, each with what it means (owner 2026-10-22). */
+    /** Settings → Your pace: five levels for hiking and cycling, each with what it means. */
     @Test fun settingsPace() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize().padding(12.dp)) {

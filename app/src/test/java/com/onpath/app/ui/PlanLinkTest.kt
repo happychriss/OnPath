@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Field test 0.10.1 (owner 2026-10-23): a new plan in Hilden still showed "Gasthof Taser Alm → Gasthof Greitererhof
+ * Field test 0.10.1: a new plan in Hilden still showed "Gasthof Taser Alm → Gasthof Greitererhof
  * · changed, not saved". A plan that no longer shares a point with the loaded / saved route is a new, unsaved plan;
  * real edits keep the link; Undo brings it back. Steps as AppViewModel takes them (PlanHistory, RouteRules).
  */

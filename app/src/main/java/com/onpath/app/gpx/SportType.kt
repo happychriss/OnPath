@@ -5,7 +5,7 @@ import com.onpath.app.routing.Activity
 import com.onpath.strings.*
 
 /**
- * The sport in a GPX `<trk><type>` / `<rte><type>` (owner 2026-10-25, "Yes, preselect"): Komoot writes its sport there
+ * The sport in a GPX `<trk><type>` / `<rte><type>` (owner: preselect): Komoot writes its sport there
  * (`touring_bicycle`, `mtb`, `hike`, …; its API docs spell some without the underscore, `touringbicycle`). On import the
  * activity (and the T level for Hike) is preselected from it – the user can still change it; an unknown or missing type
  * keeps the last used activity. On export OnPath writes the Komoot string for the activity, so a round trip keeps it.
@@ -14,11 +14,10 @@ import com.onpath.strings.*
  * Bike, Gravel (`mtb_easy`) → Gravel bike, Enduro (`mtb_advanced`) → MTB, running (`jogging`) → Hike, Bergtour
  * (`mountaineering`) → Hike T3.
  *
- * No surprises (captain 2026-10-26): a hiking type covers a band of T levels (`hike` / `jogging` T1–T2,
+ * No surprises (owner): a hiking type covers a band of T levels (`hike` / `jogging` T1–T2,
  * `mountaineering` T3–T5) – the user's own T level is kept when it is inside the band, else the band's default (T2 / T3).
  * When the import changes the activity or T level, the track panel says so in one grey line ([importChoice]).
- * Opening a recorded or imported tour from My routes later does the same with its stored activity ([openChoice],
- * owner 2026-10-26).
+ * Opening a recorded or imported tour from My routes later does the same with its stored activity ([openChoice]).
  */
 object SportType {
 
@@ -77,7 +76,7 @@ object SportType {
         choice(forImport(type, current, currentSac), current, currentSac, touring, Res.string.routes_activity_from_file)
 
     /**
-     * Opening a tour from My routes (owner 2026-10-26): the tour's stored [activityName] (`Tour.activity`, the enum name;
+     * Opening a tour from My routes (owner): the tour's stored [activityName] (`Tour.activity`, the enum name;
      * for an import the one its `<type>` gave) and [tourSac] are chosen like on import – the user's own T level stays
      * when it is inside the band of the tour's level (T1–T2 / T3–T5), nothing during a tour, a change is said in one
      * grey line ("Activity set to Bike from the tour"). Without a known activity nothing changes.

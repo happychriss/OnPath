@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.foundation.clickable
 import android.location.Location
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Navigation
@@ -64,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
@@ -124,7 +120,7 @@ data class NavUi(
     val fixAgeS: Long? = null,
 )
 
-/** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown) – owner 2026-10-28. */
+/** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
                     /** BRouter's angle of the roundabout turn (> 0 right): where the drawn sign's exit goes. */
                     val roundaboutAngle: Float? = null) {
@@ -183,9 +179,9 @@ fun NavigateOverlay(
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // cards glide in and out instead of popping and pushing the status card (polish audit A3)
+            // cards glide in and out instead of popping and pushing the status card
             Appearing(ui.turn) { TurnCard(it) }
-            // ONE amber card while off route (owner C1 2026-10-24): "Off route", distance + direction, the state
+            // ONE amber card while off route (owner): "Off route", distance + direction, the state
             Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
@@ -261,9 +257,9 @@ internal fun NorthNeedle(modifier: Modifier) {
 }
 
 /**
- * Status card, readable at a glance (review 2026-10-24 B1): activity icon (48 dp button → check-and-switch sheet, the
+ * Status card, readable at a glance: activity icon (48 dp button → check-and-switch sheet, the
  * orange recording dot on it), "2 h 50 min · 7.4 km" (to go, 22 sp), "↑ 512 m ↓ 310 m" (16 sp), "Arrive 16:40" on the
- * right (clock 30 sp bold). The recording line only when it matters (owner C3): "Paused", or the amber "No GPS ·
+ * right (clock 30 sp bold). The recording line only when it matters (owner): "Paused", or the amber "No GPS ·
  * position 4 min old"; moving time / breaks are in the opened card. Buttons: the icon, "Resume" while paused, the
  * chevron (48 dp); the rest of the card is not clickable.
  */
@@ -291,7 +287,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(a.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(28.dp))
-                        // recording: the orange dot on the icon instead of a line (owner C3)
+                        // recording: the orange dot on the icon instead of a line (owner)
                         if (ui.recordedM != null) RecDot(ui.paused, Modifier.align(Alignment.TopEnd).padding(5.dp).size(9.dp))
                     }
                 }
@@ -301,7 +297,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
-                        // amber off-route card shows, it says it (one place, one distance – review B2).
+                        // amber off-route card shows, it says it (one place, one distance).
                         if (!offCard) {
                             Text(str(Res.string.nav_not_on_route), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             val off = g.offM
@@ -310,7 +306,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         }
                     } else {
                         val paused = g.state == com.onpath.app.time.EstimateState.PAUSED
-                        // time and distance to go side by side, both big (owner 2026-10-28, bike): "2:50 h  7.4 km";
+                        // time and distance to go side by side, both big (owner): "2:50 h  7.4 km";
                         // the short time form makes room beside the arrival clock. Where even that does not fit
                         // (small phone, long values) the distance wraps under the time – same size, never smaller.
                         val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -329,7 +325,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }
                 }
                 if (ui.recordedM != null && ui.waitingGps) {
-                    // no fix: the arrow and the to-go are stale – a warning, not grey small text (review B3)
+                    // no fix: the arrow and the to-go are stale – a warning, not grey small text
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
@@ -380,7 +376,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
                 onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
-            // moving time / breaks live here (owner C3), then the pace in plain words (owner C4)
+            // moving time / breaks live here, then the pace in plain words (owner)
             if (ui.toGo != null) movingLine?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp))
@@ -438,10 +434,10 @@ private fun PositionLine(text: String, copy: String?) {
 }
 
 /**
- * The recording line of the status card, only when it matters (owner C3 2026-10-24): a free recording (it is the card's
+ * The recording line of the status card, only when it matters (owner): a free recording (it is the card's
  * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; paused: "Paused · moving 1:12"; off route (the card has
  * nothing else then): "Recording · 2.1 km". Normal navigation → null (the orange dot on the activity icon says it).
- * No GPS is the amber [noGpsLine] instead. Without moving time: the elapsed clock as before.
+ * No GPS is the amber [noGpsLine] instead. Without moving time: the elapsed clock.
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
     val free = ui.toGo == null
@@ -476,7 +472,7 @@ internal fun timePausedText(g: ToGo, waitingGps: Boolean): String =
     else Txt.s(Res.string.nav_time_paused) + " · ${g.pausedBecause}"
 
 /**
- * The ONE off-route card (owner C1 2026-10-24, WARNING look): amber container, big arrow to the route, "Off route"
+ * The ONE off-route card (owner, WARNING look): amber container, big arrow to the route, "Off route"
  * (22 sp bold), "120 m north-east (direct)" (16 sp) and the state in small text ("Looking for a way back…", "No way
  * back found", "Following the original route", "No map here to find a way back").
  */
@@ -579,7 +575,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val next = remember(turns, remaining, rec?.offRouteAlert) {
         nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
-    // a roundabout from the router's instructions wins over the drawn arrow when it comes first (owner 2026-10-28)
+    // a roundabout from the router's instructions wins over the drawn arrow when it comes first
     val cues = remember { com.onpath.app.navigation.JunctionCues() }
     val roundabout = remember(line, remaining, nav?.version, rec?.offRouteAlert) {
         if (line == null || remaining == null || rec?.offRouteAlert == true) null
@@ -589,8 +585,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         if (line == null || remaining == null) null
         else cues.roundabout(line, nav?.version ?: 0, (total - remaining.distanceM).coerceAtLeast(0.0))?.angle
     }
-    // the map badge shows the drawn arrow – not while the card says "Roundabout" (field 2026-10-28: the badge said
-    // left / right at a roundabout)
+    // the map badge shows the drawn arrow – not while the card says "Roundabout" (it would say left / right there)
     val shownTurn = next?.first?.takeIf { turnHint(next.first.kind to next.second, roundabout)?.roundabout == null }
     LaunchedEffect(shownTurn) { vm.navTurn = shownTurn }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
@@ -651,7 +646,7 @@ internal fun toGoSeconds(times: com.onpath.app.time.RouteTimes?, remainingM: Dou
     if (times == null) 0.0 else com.onpath.app.time.TimeEstimate.round(times.remainingFrom(times.lengthM - remainingM, f))
 
 /**
- * The pace in plain words (owner C4 2026-10-24): "Faster than planned uphill", "Slower than planned downhill",
+ * The pace in plain words (owner): "Faster than planned uphill", "Slower than planned downhill",
  * "Faster than planned uphill · slower on the flat", "Faster than planned" (all three) – only when clearly different
  * (time factor ≤ 0.85 or ≥ 1.15); null otherwise.
  */
@@ -675,7 +670,6 @@ internal const val PACE_CLEAR = 0.15
 /** Off the line by more than this: no turn hint (the off-route chip / warning takes over). */
 internal const val TURN_HIDE_OFF_M = 40.0
 
-/** The next turn ahead and its distance, or null (no line, no fix, off route, or > 500 m away). */
 /** The hint shown: the next roundabout when it comes before the next drawn turn (+ [ROUNDABOUT_SLACK_M]), else the turn. */
 internal fun turnHint(turn: Pair<TurnKind, Double>?, roundabout: Pair<Int, Double>?): TurnHint? = when {
     roundabout != null && (turn == null || roundabout.second <= turn.second + ROUNDABOUT_SLACK_M) ->
@@ -687,6 +681,7 @@ internal fun turnHint(turn: Pair<TurnKind, Double>?, roundabout: Pair<Int, Doubl
 /** A roundabout this little after the drawn turn is the same place (its entry bend). */
 internal const val ROUNDABOUT_SLACK_M = 40.0
 
+/** The next turn ahead and its distance, or null (no line, no fix, off route, or > 500 m away). */
 internal fun nextTurnHint(
     turns: List<com.onpath.app.routing.Turn>, totalM: Double, remainingM: Double?, offM: Double?, offRouteAlert: Boolean,
 ): Pair<com.onpath.app.routing.Turn, Double>? {

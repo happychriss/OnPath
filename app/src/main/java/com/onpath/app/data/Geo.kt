@@ -35,9 +35,7 @@ object Geo {
         return out
     }
 
-    /**
-     * Ascent/descent with a hysteresis threshold so GPS/DEM noise does not inflate totals.
-     */
+    /** Ascent/descent with a hysteresis threshold so GPS/DEM noise does not inflate totals. */
     fun climb(eles: List<Double?>, threshold: Double = 4.0): Pair<Double, Double> {
         var up = 0.0
         var down = 0.0
@@ -84,8 +82,8 @@ object Geo {
 }
 
 /**
- * Numbers and units as the user reads them. Since EN + DE (owner 2026-10-26) decimals follow the text language:
- * "12.5 km" in English, "12,5 km" in German. Units stay the same in both (km, m, h, min – as on Alpine signposts:
+ * Numbers and units as the user reads them. Decimals follow the text language: "12.5 km" in English, "12,5 km" in
+ * German. Units stay the same in both (km, m, h, min – as on Alpine signposts:
  * "1 h 05 min"). Machine formats (GPX, file names, logs) never use these.
  */
 object Format {
@@ -109,7 +107,7 @@ object Format {
         return if (h > 0) "${h} h ${m.toString().padStart(2, '0')} min" else "$m min"
     }
 
-    /** Short time to go for the Navigate strip (owner 2026-10-28): "2:50 h", under an hour "25 min". */
+    /** Short time to go for the Navigate strip (owner): "2:50 h", under an hour "25 min". */
     fun durationShort(s: Double): String {
         val total = (s / 60).toLong()
         val h = total / 60

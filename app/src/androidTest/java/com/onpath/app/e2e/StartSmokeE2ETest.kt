@@ -14,9 +14,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The short gate before every release (owner 2026-10-22): the app opens. 0.9.1 crashed at start when a planned route
- * was saved – the ViewModel routed it in its constructor and touched a state that did not exist yet. Kept small, so the
- * release waits only a few minutes; the full E2E suite runs beside it.
+ * The short gate before every release (owner): the app opens – also with a saved planned route, which the ViewModel
+ * routes while it is still being built. Kept small, so the release waits only a few minutes; the full E2E suite runs
+ * beside it.
  */
 @RunWith(AndroidJUnit4::class)
 class StartSmokeE2ETest : E2EBase() {
@@ -35,8 +35,8 @@ class StartSmokeE2ETest : E2EBase() {
     }
 
     /**
-     * Field bug 0.9.3 (owner phone 2026-10-22): start with a saved ≈ 8-day plan → "This route is very long" → Cancel →
-     * "Calculating the route…" forever, Start disabled. Now the points stay, not routed, with "Plan anyway".
+     * Start with a saved ≈ 8-day plan → "This route is very long" → Cancel: never "Calculating the route…" forever with
+     * Start disabled – the points stay, not routed, with "Plan anyway".
      */
     @Test fun veryLongSavedPlanCancelIsNotStuckCalculating() {
         launch {

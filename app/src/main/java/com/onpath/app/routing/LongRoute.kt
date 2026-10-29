@@ -5,9 +5,8 @@ import com.onpath.app.data.Geo
 import kotlin.math.roundToInt
 
 /**
- * A plan far too long for one day (owner 2026-10-22: a point set in Germany by mistake → "29 days", maps for the whole
- * way started to load). Before such a plan is routed, the app asks once. Multi-day planning may come later; until then
- * 24 h is the line. The estimate needs no router: straight lines between the points × [DETOUR], flat, timed by the
+ * A plan far too long for one day (e.g. a point set in another country by mistake would start loading maps for the
+ * whole way). Before such a plan is routed, the app asks once; 24 h is the line (owner). The estimate needs no router: straight lines between the points × [DETOUR], flat, timed by the
  * one time model ([com.onpath.app.time.PaceModel], Average pace).
  */
 object LongRoute {

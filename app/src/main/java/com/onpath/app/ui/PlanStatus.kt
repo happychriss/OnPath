@@ -11,9 +11,8 @@ enum class NotRouted {
 }
 
 /**
- * Plan sheet status without a route, and what Cancel does (field bug 2026-10-22, 0.9.3: app start with a saved 8-day
- * plan → Cancel in the long-route question → "Calculating the route…" forever, Start disabled, no way out).
- * Invariant: "Calculating the route…" only while a routing request runs.
+ * Plan sheet status without a route, and what Cancel does. Invariant: "Calculating the route…" only while a routing
+ * request runs – never left standing after a Cancel (Start disabled, no way out).
  */
 object PlanStatus {
     val CALCULATING: String get() = Txt.s(Res.string.plan_calculating)
@@ -22,7 +21,7 @@ object PlanStatus {
     enum class OnCancel { UNDO, REDO, RESTORE_ACTIVITY, KEEP_POINTS }
 
     /**
-     * What started a routing run (UX review 2026-10-23, problem 1): Cancel takes back only *that* change – never the
+     * What started a routing run: Cancel takes back only *that* change – never the
      * last point edit after an activity change.
      */
     sealed interface Cause {

@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The three junction vibration choices (owner 2026-10-28) and the migration of the old on/off switch. */
+/** The three junction vibration choices (owner) and the migration of the old on/off switch. */
 class JunctionVibrationTest {
     @Test fun offNeverPlays() { assertFalse(JunctionVibration.OFF.plays(true)); assertFalse(JunctionVibration.OFF.plays(false)) }
     @Test fun alwaysPlaysOnScreenAndLocked() { assertTrue(JunctionVibration.ALWAYS.plays(false)); assertTrue(JunctionVibration.ALWAYS.plays(true)) }

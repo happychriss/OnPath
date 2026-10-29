@@ -18,9 +18,8 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * CORE FEATURE "no stale or unexpected downloads" (field bug 2026-10-22: 16 corridor regions of a long route planned
- * once stayed in cells/requests.json and downloaded again after every app start on Wi-Fi – 392 MB, 40 generations).
- * Corridor requests belong to the current plan; the queue is revalidated at start and right before each download;
+ * CORE FEATURE "no stale or unexpected downloads": the corridor regions of a long route planned once must not stay in
+ * cells/requests.json and download again after every app start. Corridor requests belong to the current plan; the queue is revalidated at start and right before each download;
  * finished cells are joined in one generation.
  */
 class NoStaleDownloadsTest {
@@ -110,7 +109,7 @@ class NoStaleDownloadsTest {
     }
 
     /**
-     * App start (the field bug): corridor requests from an old plan wait for the restored plan's route – not sent, not
+     * App start: corridor requests from an old plan wait for the restored plan's route – not sent, not
      * downloaded; dropped when the plan has no route. Point requests older than a day go; fresh ones and refreshes of
      * installed areas stay.
      */
@@ -139,7 +138,7 @@ class NoStaleDownloadsTest {
         assertTrue(queued(mc).isEmpty())
     }
 
-    /** Owner 2026-10-22 field bug as it happened: long route, Cancel, restart → nothing loads, the queue is empty. */
+    /** Long route, Cancel, restart → nothing loads, the queue is empty. */
     @Test fun longRouteCancelledThenRestartLoadsNothing() {
         listOf(a, b, c).forEach { server.publish(it, "v1") }; server.buildPolls = 1_000_000
         val data = tmp.newFolder("data")
@@ -186,7 +185,7 @@ class NoStaleDownloadsTest {
         assertFalse(fetched(a))
     }
 
-    /** Generation churn: several cells finishing together are joined in ONE store generation. */
+    /** Few generations: several cells finishing together are joined in ONE store generation. */
     @Test fun cellsFinishingTogetherMakeOneGeneration() {
         listOf(a, b, c).forEach { server.publish(it, "v1") }; server.buildPolls = 1
         val mc = cells()

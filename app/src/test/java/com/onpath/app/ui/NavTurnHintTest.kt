@@ -38,7 +38,7 @@ class NavTurnHintTest {
         assertEquals("500 m", turnDistance(480.0))
     }
 
-    // roundabout from the router before the drawn turn: the roundabout sign wins (owner 2026-10-28)
+    // roundabout from the router before the drawn turn: the roundabout sign wins
     @Test fun roundaboutBeforeTheTurnWins() {
         val h = turnHint(com.onpath.app.routing.TurnKind.RIGHT to 200.0, 2 to 180.0)!!
         assertEquals(2, h.roundabout); assertEquals(180.0, h.distanceM, 0.1)

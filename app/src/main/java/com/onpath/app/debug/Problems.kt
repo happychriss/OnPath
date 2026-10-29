@@ -10,8 +10,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * The one place where every problem of the app goes – nothing may fail silently (owner, 2026-10-19: a missing glyph
- * made MapLibre drop whole map tiles for days without anybody noticing).
+ * The one place where every problem of the app goes – nothing may fail silently (owner): e.g. a missing glyph range
+ * makes MapLibre drop whole map tiles, unnoticed for days.
  *
  * - `Problems.report("map", "Glyph range missing", e)` from any thread, also in a catch block that recovers.
  * - Same area + message (numbers ignored) = one entry with a counter, first and last time: a problem that repeats
@@ -38,13 +38,13 @@ object Problems {
 
     /**
      * One gesture / menu event (hold, press, point menu opened / action / closed): kept with its own text and time,
-     * never merged (field 2026-10-21: 21 different "Hold:" lines were stored as one entry with × 21).
+     * never merged (different "Hold:" lines must not become one entry with a counter).
      */
     data class Event(val time: Long, val area: String, val message: String)
 
     /**
      * How many [trace] events are kept in memory (the most recent). The full trace (≤ 5 MB / 14 days) is on disk in
-     * [EventLog] and goes into the diagnostics export (field 2026-10-22: 50 events lasted only ~5 h).
+     * [EventLog] and goes into the diagnostics export.
      */
     const val MAX_EVENTS = 200
 
@@ -85,7 +85,7 @@ object Problems {
                     }
                     val ev = JSONObject(f.readText()).optJSONArray("events") ?: JSONArray()
                     events.clear()
-                    for (i in ev.length() - 1 downTo 0) { // stored newest first (before 0.9.3; kept for the export)
+                    for (i in ev.length() - 1 downTo 0) { // stored newest first (the export's order)
                         val o = ev.getJSONObject(i)
                         events.addLast(Event(o.optLong("time"), o.optString("area"), o.optString("message")))
                     }
@@ -217,7 +217,7 @@ object Problems {
             val tmp = File(f.path + ".tmp")
             tmp.writeText(text)
             if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
-        } catch (_: Throwable) { }
+        } catch (_: Throwable) { } // expected: never reported into Problems itself (would loop); the next write retries
     }
 
     private fun log(level: Level, msg: String, t: Throwable?) {

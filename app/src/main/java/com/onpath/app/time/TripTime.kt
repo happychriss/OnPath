@@ -22,9 +22,9 @@ data class TripTime(
     val lineNote: LineNote? = null,
 )
 
-/** "New route · was 13:15" (backlog: arrival forecast after plan edits). */
+/** The followed line changed and moved the arrival from [wasMs] to [nowMs]. */
 data class LineNote(val wasMs: Long, val nowMs: Long) {
-    /** "New route · was 13:15" – the new arrival is already big beside it (review 2026-10-24 B15). */
+    /** "New route · was 13:15" – the new arrival is already big beside it. */
     fun text(): String = Txt.s(Res.string.nav_line_note, TimeEstimate.clock(wasMs))
 }
 

@@ -4,7 +4,7 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import kotlin.math.max
 
-/** A planned stop on the original line ([alongM] = metres from its start). POI-pinned stops are skipped too (owner Q3). */
+/** A planned stop on the original line ([alongM] = metres from its start). POI-pinned stops are skipped too (owner). */
 data class NavStop(val point: GeoPoint, val alongM: Double, val name: String? = null, val pinned: Boolean = false)
 
 /** Where a way back may rejoin the original line. [stopIndex] = a planned stop, null = a point on the line. */

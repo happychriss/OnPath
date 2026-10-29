@@ -3,7 +3,7 @@ package com.onpath.app.navigation
 import com.onpath.app.routing.GeoPoint
 
 /**
- * "Position on the route" (owner 2026-10-28, like Komoot; default on): while navigating and close to the followed line,
+ * "Position on the route" (like Komoot; default on): while navigating and close to the followed line,
  * the dot is drawn on the line instead of at the GPS fix – no wobble beside the road. Off the route (or not matched,
  * or a reroute question open) the real fix, so leaving the route is seen at once. Only the dot: the recorded track and
  * every check stay on the GPS fixes. Pure, unit-tested.

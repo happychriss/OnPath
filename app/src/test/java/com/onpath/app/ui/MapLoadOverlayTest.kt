@@ -3,8 +3,6 @@ package com.onpath.app.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
@@ -14,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** The one modal while the user waits for the map of their area (owner 2026-10-21): plain words, %, time left, Cancel. */
+/** The one modal while the user waits for the map of their area: plain words, %, time left, Cancel. */
 class MapLoadOverlayTest {
     @get:Rule val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)
 
@@ -33,7 +31,7 @@ class MapLoadOverlayTest {
     @Test fun loading() = shot(preparing, loading)
     @Test fun offlineAndFailed() = shot(offline, failed)
 
-    /** "Maps only on Wi-Fi": the modal offers "Load now over mobile data" once (owner Q6 2026-10-23); setting unchanged. */
+    /** "Maps only on Wi-Fi": the modal offers "Load now over mobile data" once; setting unchanged. */
     @Test fun waitingForWifi() {
         val wifi = MapLoadUi(MapLoadUi.Kind.WIFI, 0, null, regions = 2, bytes = 17L * 1_048_576)
         assertTrue(wifi.paused)
@@ -41,7 +39,7 @@ class MapLoadOverlayTest {
         shot(wifi)
     }
 
-    /** Fresh install (field test 2026-10-21): map + routing data in one modal; only routing data missing. */
+    /** Fresh install: map + routing data in one modal; only routing data missing. */
     @Test fun withRoutingData() {
         val mb = 1_048_576L
         val status = com.onpath.app.data.RoutingDataLoader.Status(listOf("E10_N45.rd5:E11_N46"),

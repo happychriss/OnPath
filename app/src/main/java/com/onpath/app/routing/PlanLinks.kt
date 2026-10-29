@@ -1,7 +1,7 @@
 package com.onpath.app.routing
 
 /**
- * Plan links (web planner phase 1, docs/design/web-planner.md §8, order A-005): `https://plan.onpath.earth/#p=<code>`
+ * Plan links (docs/design/web-planner.md §8): `https://plan.onpath.earth/#p=<code>`
  * (code: [PlanCode]). The web planner writes them as a link and a QR code; the phone's camera opens the link in OnPath
  * (intent filter + App Links), a link shared or pasted into the search box opens too, and "Share plan" in the plan
  * sheet writes the same link. Pure Kotlin (SharedCoreRuleTest): the intent's strings come in as plain text.

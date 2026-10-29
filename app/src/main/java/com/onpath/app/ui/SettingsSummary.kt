@@ -12,8 +12,8 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * The topics of Settings (owner 2026-10-22: a list of topics, each opens its own page), in list order: "Your settings"
- * first, then the smaller "App" group (owner C7 2026-10-24).
+ * The topics of Settings (owner: a list of topics, each opens its own page), in list order: "Your settings" first,
+ * then the smaller "App" group.
  */
 enum class SettingsPage(private val titleRes: StringResource, val app: Boolean = false) {
     PACE(Res.string.settings_page_pace),
@@ -32,8 +32,8 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
 }
 
 /**
- * Developer tools in Settings → Diagnostics (owner C5 2026-10-24, one release APK): hidden until the version line in
- * About is tapped [TAPS] times (the Android convention); the unlock is remembered. Debug builds show them always. Pure.
+ * Developer tools in Settings → Diagnostics (owner: one release APK): hidden until the version line in About is tapped
+ * [TAPS] times (the Android convention); the unlock is remembered. Debug builds show them always.
  */
 object DevToolsUnlock {
     const val TAPS = 7
@@ -49,8 +49,7 @@ data class Summary(val text: String, val attention: Attention = Attention.NONE) 
 }
 
 /**
- * The one-line summaries of the Settings list (owner 2026-10-22: Android settings style, the current values at a
- * glance). Pure, unit-tested (`SettingsSummaryTest`).
+ * The one-line summaries of the Settings list (Android settings style: the current values at a glance).
  */
 object SettingsSummary {
     fun pace(s: AppSettings, activity: Activity): Summary =
@@ -102,7 +101,7 @@ object SettingsSummary {
     }
 
     /**
-     * Owner C6 2026-10-24: grey and neutral ("For bug reports"); red only while a serious problem newer than the last
+     * Grey and neutral ("For bug reports", owner); red only while a serious problem newer than the last
      * visit to Diagnostics ([seenMs]) has not been looked at.
      */
     fun diagnostics(problems: List<com.onpath.app.debug.Problems.Entry>, seenMs: Long = 0L): Summary {

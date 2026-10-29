@@ -73,7 +73,7 @@ class CellStoreTest {
         assertFalse(File(data, "addresses/${a.id}.sqlite").exists())
         assertTrue(File(data, "addresses/${b.id}.sqlite").isFile)
 
-        // delete the last cell: no store any more → the data folder is used as before
+        // delete the last cell: no store any more → the data folder is used
         store.remove(setOf(b))
         assertNull(store.mapDir())
         assertTrue(store.installed().isEmpty())
@@ -113,9 +113,8 @@ class CellStoreTest {
     }
 
     /**
-     * Field test 2026-10-22: while a routing install wrote g000013.tmp, a reader listed it as a generation and raised
-     * the false ERROR "Map store generation g000013.tmp unreadable". Half-written (.tmp) and set-aside (.bad) folders
-     * are not generations – but still count for numbering.
+     * Half-written (.tmp) and set-aside (.bad) folders are not generations (a reader must not raise a false "unreadable"
+     * ERROR while another install writes one) – but they still count for numbering.
      */
     @Test fun halfWrittenGenerationIsNotReadAndRaisesNoError() {
         com.onpath.app.debug.Problems.clear()

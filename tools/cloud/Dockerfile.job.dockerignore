@@ -6,7 +6,6 @@ routing
 !routing/wayclass/WayClass.java
 !routing/wayclass/build.sh
 style_analysis
-themes-proposals
 **/__pycache__
 **/*.pyc
 **/node_modules

@@ -1,14 +1,13 @@
 package com.onpath.app.ui
 
 /**
- * Plan haptics in one place (owner 2026-10-21, after 0.8.9): vibrate **at the moment of the press, never after the
- * action** – and only on the map:
+ * Plan haptics in one place (owner): vibrate **at the moment of the press, never after the action** – and only on
+ * the map:
  * - hold recognised on the empty map / route line / a POI → 1× at the hold,
  * - hold recognised on a route point (its menu with Delete opens) → 2× at the hold,
  * - nothing after an edit completes (menu buttons, set / delete), nothing in the Points list (✕, drag), no undo buzz.
  * Decided by [MapGestures.buzz] at finger-down, played by [Haptics] when the hold ring is full. Follows only OnPath's
- * setting "Vibrate when planning" ([shouldPlay]), never the system "Touch feedback" flag. Pure, unit tested
- * (PlanHapticsTest).
+ * setting "Vibrate when planning" ([shouldPlay]), never the system "Touch feedback" flag.
  */
 object PlanHaptics {
     /** Vibrator waveform (off/on ms): one pulse; two pulses clearly separated. */
@@ -32,10 +31,10 @@ object PlanHaptics {
 
     /**
      * The pulses are never sent as touch feedback: [Haptics] always gives them an explicit media usage.
-     * Why (owner's phone, 0.8.9, `dumpsys vibrator_manager`): a vibration without attributes has usage UNKNOWN, and
-     * Android re-labels a short effect of at most 3 segments as TOUCH ("haptic feedback candidate"). The 1× pulse
-     * (2 segments) became TOUCH and was dropped (`ignored_for_settings` – "Touch feedback" is off on that phone); the
-     * 2× pulse (4 segments) stayed UNKNOWN and played. So "set" never vibrated while "delete" did.
+     * Why: a vibration without attributes has usage UNKNOWN, and Android re-labels a short effect of at most 3 segments
+     * as TOUCH ("haptic feedback candidate"), which is dropped while the system "Touch feedback" is off
+     * (`ignored_for_settings` in `dumpsys vibrator_manager`) – the 1× pulse (2 segments) would be silent, the 2× pulse
+     * (4 segments) not.
      */
     const val MAX_UNLABELLED_TOUCH_SEGMENTS = 3
 }

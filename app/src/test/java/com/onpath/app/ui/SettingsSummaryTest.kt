@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.TimeZone
 
-/** One-line summaries of the Settings topics (owner 2026-10-22). */
+/** One-line summaries of the Settings topics. */
 class SettingsSummaryTest {
     private val utc = TimeZone.getTimeZone("UTC")
     private val now = 1_761_150_000_000L // 2025-10-22 16:20 UTC
@@ -72,7 +72,7 @@ class SettingsSummaryTest {
         assertEquals(Summary("0.10.0"), SettingsSummary.updates(AppViewModel.UpdateState.Idle, "0.10.0"))
     }
 
-    /** Owner C6 2026-10-24: grey "For bug reports"; red only while a serious problem is newer than the last visit. */
+    /** Grey "For bug reports" (owner); red only while a serious problem is newer than the last visit. */
     @Test fun diagnostics() {
         fun e(l: Problems.Level, last: Long = 100) = Problems.Entry(l, "a", "m${l.name}", null, 0, last, 1)
         assertEquals(Summary("For bug reports"), SettingsSummary.diagnostics(emptyList()))
@@ -84,7 +84,7 @@ class SettingsSummaryTest {
             SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 200))
     }
 
-    /** Owner C5 2026-10-24: Developer tools after 7 taps on the version (remembered), debug builds always. */
+    /** Developer tools after 7 taps on the version (remembered), debug builds always. */
     @Test fun developerTools() {
         assertFalse(DevToolsUnlock.unlocked(6))
         assertTrue(DevToolsUnlock.unlocked(7))
@@ -93,7 +93,7 @@ class SettingsSummaryTest {
         assertTrue(DevToolsUnlock.shown(debugBuild = true, unlocked = false))
     }
 
-    /** Owner C7 2026-10-24: "Your settings" first, then the smaller "App" group. */
+    /** "Your settings" first, then the smaller "App" group. */
     @Test fun twoGroups() {
         assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
             SettingsPage.BACKUP), SettingsPage.entries.filter { !it.app })

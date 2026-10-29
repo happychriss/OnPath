@@ -80,7 +80,6 @@ fun MapScreen(
                 Unit
             }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            vm.tracker.location.value == null -> vm.followMe = true
             else -> vm.followMe = true
         }
     }
@@ -88,7 +87,7 @@ fun MapScreen(
     // (only with something route-like on the map), locate (always, with the GPS dot).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
     val footer = @Composable { mode: AppMode ->
-        // the points step leaves little map: only Undo + locate (owner 2026-10-22, the compass went over ☰)
+        // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
         MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }) {
             MapControls(
@@ -99,7 +98,7 @@ fun MapScreen(
                 onPeek = { vm.routePeek = it },
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                // Undo and Redo side by side as map buttons (owner Q8 2026-10-23); Redo only when there is something to redo
+                // Undo and Redo side by side as map buttons; Redo only when there is something to redo
                 onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
                 large = mode == AppMode.NAVIGATE,
                 onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
@@ -124,9 +123,8 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
-        // A newer version of an area the user has (checked after each route, owner 2026-10-21) is told by the blue
-        // background-download strip only ("Loading newer map", details: being prepared / about N min) – owner 2026-10-22:
-        // one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
+        // A newer version of an area the user has (checked after each route) is told by the background-download strip
+        // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         MapSync(vm, controller, rec, location, panelHeightPx)
         KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
         // Quiet update check (once a day, only when online; F-OFF-06).
@@ -136,7 +134,7 @@ fun MapScreen(
         ModeSwitch(vm.mode,
             plan = {
                 PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation,
-                    // during a tour the same check-and-switch sheet as Navigate (owner Q1 2026-10-23): Take new route / Keep
+                    // during a tour the same check-and-switch sheet as Navigate: Take new route / Keep
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
             },
@@ -145,7 +143,7 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
-        // (measured height: the blue strip with a question is taller than the progress chip – field 0.10.2 overlap)
+        // (measured height: the blue strip with a question is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
             (MessagePlacement.STRIP_TOP_DP + vm.backgroundStripHeightDp + 8).coerceAtLeast(124).dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
@@ -171,12 +169,12 @@ fun MapScreen(
             val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 vm.overviewOnly(k[0], k[1], k[2], k[3])
             }
-            // a route computed while the view has no detailed map is waited for (modal, owner 2026-10-21)
+            // a route computed while the view has no detailed map is waited for (modal)
             vm.viewWithoutDetail = without
             value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
-        // not while the strip asks "Detailed map for here?" – it says the same (field 0.10.2: both at once)
+        // not while the strip asks "Detailed map for here?" – it says the same
         if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null) {
             OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
         }
@@ -205,11 +203,11 @@ fun MapScreen(
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
         null -> {}
     }
-    // arrival Save goes the End tour way: a bus / car / lift found → the ride summary (UX review 2026-10-23, problem 2)
+    // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })
     if (vm.navSettingsOpen) {
-        // Navigate → ⚙: the Navigation settings page on the way (owner 2026-10-28); everything else stays in Plan → Settings
+        // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
         val ctx = androidx.compose.ui.platform.LocalContext.current
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
             androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(bottom = 24.dp)) {
@@ -248,17 +246,16 @@ private fun PlanMode(
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
                 onOpened = vm::refreshTours,
-                // owner 2026-10-20: no "Check for updates" in the ☰ menu – Settings has the Updates section
+                // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
         )
-        // background downloads (corridor, refresh, routing data): small blue chip under ☰ (owner 2026-10-23), after 10 s,
-        // until all is done; tap → details with "Cancel all" (owner 2026-10-22)
-        // (own composable: its per-second progress recomposes only the chip, not PlanMode with the sheet)
+        // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
+        // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
         PlanBackgroundStrip(vm, onRequestLocation)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
-        // read by MapScreen would recompose the whole screen per frame – owner field report 0.9.3, the sheet stuttered).
+        // read by MapScreen would recompose the whole screen per frame and the sheet stutters).
         val sheetHeight = remember { mutableIntStateOf(0) }
         val panelHeight by rememberUpdatedState(onPanelHeight)
         LaunchedEffect(Unit) {
@@ -297,11 +294,10 @@ private fun PlanMode(
 /** Plan: the map notice strip or the background-download chip under ☰, + the details dialog. */
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit) {
-    // Cell states tick with every downloaded chunk: read only through derived values, so the strip
-    // recomposes when the card / modal really changes, not per tick (phone trace 0.10.0: sheet moves janky while
-    // map areas downloaded – CellStateReads.kt).
+    // Cell states tick with every downloaded chunk: read only through derived values, so the strip recomposes when the
+    // card / modal really changes, not per tick (else the sheet moves janky while areas download – CellStateReads.kt).
     val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
-    // no flash (owner rule, field test 0.8.7): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
+    // no flash (owner rule): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
     // whatever shows stays readable; a tap answers at once
     val cellGate = remember { NoFlash<CellCardUi>(stepKey = CellCards::stepKey, urgent = CellCards::waitsForUser) }
     val cellCard = rememberNoFlash(cellCardTarget, cellGate)
@@ -309,14 +305,14 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
         onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
         onAllowLocation = acted(onRequestLocation))
-    // owner 2026-10-23: ONE blue strip at the top – a map answer / problem (mobile data, failed, offline …) takes its place,
-    // otherwise the background progress; no second map card in the plan sheet
+    // ONE blue strip at the top (owner): a map answer / problem (mobile data, failed, offline …), otherwise the
+    // background progress; no second map card in the plan sheet
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
     val density = LocalDensity.current
     fun Modifier.measured() = onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
     val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
-    // owner 2026-10-23: plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
+    // plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
     val chipOn = bg != null && !vm.searchOpen && notice == null
     LaunchedEffect(chipOn, notice != null, vm.hereAsk != null) {
         vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null) && !vm.searchOpen)
@@ -325,7 +321,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     if (notice != null && !vm.searchOpen) {
         MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (here != null && !vm.searchOpen) {
-        // owner 2026-10-23: opening the app asks for the map of here, it never loads by itself (e.g. in a car)
+        // opening the app asks for the map of here, it never loads by itself, e.g. in a car (owner)
         HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
             mustBuild = here.mustBuild, modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (chipOn) {
@@ -353,7 +349,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         return
     }
     // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
-    // time left and Cancel (owner 2026-10-21); ticks every second so the bar moves smoothly
+    // time left and Cancel; ticks every second so the bar moves smoothly
     val loadUi by produceState<MapLoadUi?>(null, vm.cellJob, vm.mode) {
         vm.cells.states.collectLatest { states ->
             while (true) { value = vm.mapLoadUi(states, android.os.SystemClock.uptimeMillis()); delay(1000) }
@@ -361,7 +357,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     // Rows of the Points section, composed with the sheet in every step (StepSheet: it is only revealed). The distances
     // along the route walk the whole line: done once per route off the main thread (PlanPoints.legsCached); until then
-    // the previous rows stay (owner field report 0.9.3).
+    // the previous rows stay.
     val pts = vm.waypoints.toList()
     val line = vm.route?.takeIf { !vm.routing }?.points
     var legsReady by remember(pts, line) { mutableStateOf(com.onpath.app.routing.PlanPoints.legsReady(pts, line)) }
@@ -400,13 +396,13 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         ),
     )
     if (vm.spotsOpen) {
-        // the spots of the amber line (owner 2026-10-22): tap one → the map shows it
+        // the spots of the amber line: tap one → the map shows it
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = vm::closeSpots) {
             RouteSpotsList(vm.routeSpots, vm.sac, onShow = vm::showSpot)
         }
     }
     // names for the Points section (offline place index, off the main thread) whenever the points change – ready before
-    // the sheet is pulled up (owner field report 0.9.3: names arriving mid-pull rebuilt the list)
+    // the sheet is pulled up (names arriving mid-pull would rebuild the list)
     LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
 }
 
@@ -435,7 +431,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
-                // unreachable points: grey dashed missing piece + grey hollow marker (owner 2026-10-22)
+                // unreachable points: grey dashed missing piece + grey hollow marker
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)
                 c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet())
@@ -458,14 +454,14 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     val nav = rec?.nav
     LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
-    // the line, not off route; otherwise null = compass / GPS bearing as before.
+    // the line, not off route; otherwise null = compass / GPS bearing.
     val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
     val routeAhead = if (vm.mode == AppMode.NAVIGATE && nav != null && nav.prompt == null &&
         (nav.offM ?: Double.MAX_VALUE) <= ROUTE_UP_MAX_OFF_M) nav.shownAlongM?.let { navLine?.aheadBearing(it) } else null
-    // re-sent on every fix: standing still on the route must keep the route direction (field test 2026-10-20: after
-    // 15 s without progress the compass took over and, with the phone tilted / in the pocket, turned the map 180°)
+    // re-sent on every fix: standing still on the route keeps the route direction (else after 15 s without progress the
+    // compass takes over and, with the phone tilted / in the pocket, can turn the map 180°)
     LaunchedEffect(c, routeAhead, nav?.shownAlongM, location) { c.setRouteHeading(routeAhead) }
-    // turn round: the U-turn sign where the way back starts (owner 2026-10-28)
+    // turn round: the U-turn sign where the way back starts
     LaunchedEffect(c, nav?.uTurnAt) { c.setUTurn(nav?.uTurnAt) }
     LaunchedEffect(c, (nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.id) {
         c.setNavProposal((nav?.prompt as? com.onpath.app.navigation.NavPrompt.Question)?.line)
@@ -489,7 +485,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     val snapLine = remember(rec?.nav?.line) { rec?.nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
     LaunchedEffect(c, location) {
         location?.let { loc ->
-            // "Position on the route" (owner 2026-10-28): the dot on the followed line while close to it – the drawn
+            // "Position on the route": the dot on the followed line while close to it – the drawn
             // dot only; everything else uses the real fix
             val n = rec?.nav
             val on = com.onpath.app.navigation.SnapToRoute.position(vm.settings.positionOnRoute && vm.mode == AppMode.NAVIGATE,
@@ -561,7 +557,7 @@ private const val ROUTE_UP_MAX_OFF_M = 30.0
 /**
  * Which parts of the plan the map draws: (planned line, numbered point markers). Both only while the plan can be
  * edited (Plan mode, no track shown); the line not while the plan is followed (the followed line is drawn instead).
- * Navigate shows only the route line, no numbered points (owner 2026-10-22, reverting 0.9.1's markers in Navigate).
+ * Navigate shows only the route line, no numbered points (owner).
  */
 internal fun planLayers(canEditMap: Boolean, planFollowed: Boolean): Pair<Boolean, Boolean> =
     (canEditMap && !planFollowed) to canEditMap
