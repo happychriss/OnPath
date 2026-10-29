@@ -1,6 +1,5 @@
 # context = tools/ – only the pipeline goes into the job image
 cloud/worker
-hetzner
 icons
 routing
 !routing/wayclass/WayClass.java

@@ -2,7 +2,7 @@
 
 How a region becomes the offline map package on the phone: from a region definition (name, bbox, OSM
 extract URL) to `onpath-data-<region>.zip`. Everything runs offline on one Linux machine (laptop, cloud
-container or a Hetzner server); only the inputs are downloaded.
+container or server); only the inputs are downloaded.
 
 **One command:** `tools/build_region.sh` runs every step below in order, skips steps whose output is
 up to date, and writes the zip, a `manifest.json` and `SHA256SUMS`. The per-step commands are listed so
@@ -91,8 +91,8 @@ full list in Settings. Google content is never fetched, stored or drawn (link-ou
 
 **Blocked hosts:** from the cloud build machines `download.geofabrik.de` and `overpass-api.de` are not
 reachable – use `download.openstreetmap.fr`. Reachable: download.openstreetmap.fr, brouter.de, AWS S3,
-osmdata.openstreetmap.de, naciscdn.org, github.com / raw.githubusercontent.com. On a Hetzner server
-Geofabrik works too (`https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf` etc.).
+osmdata.openstreetmap.de, naciscdn.org, github.com / raw.githubusercontent.com. Elsewhere Geofabrik works too
+(`https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf` etc.).
 
 ## 4. The steps (what `build_region.sh` runs)
 
@@ -321,16 +321,14 @@ two because GitHub refuses files over 100 MB: `onpath-data-south-tyrol-part1-ter
 4. New POI kinds or icons: also `tools/make_sprite.py` (`--sprite` in the script) – the sprite is an APK
    asset, so this needs an app build; add the kind to `poi/PoiKinds.kt` too.
 
-## 9. Server (Hetzner) runbook
+## 9. Region builds on a server
 
-**Use `tools/hetzner/` first** (README there): one command on the laptop creates a separate Hetzner server that
-builds regions **on demand** (100–200 km square around a searched place or your position, from Geofabrik
-extracts), serves the zips over HTTPS and refreshes the regions in use. The manual setup below is the fallback /
-background for whole-country builds.
+The map cells the app downloads are built by the cloud job (`docs/design/map-hosting.md`); this section is for
+whole-region zips (`build_region.sh`) on a Linux server.
 
-**Machine:** for regional packages a CX32/CPX31-class cloud server (4 vCPU, 8–16 GB RAM, 80+ GB disk)
-is plenty (test region ≈ 20 min). For whole countries (Italy, Austria, Germany): CCX33 / AX-line
-(8+ cores, 32–64 GB RAM, NVMe 250 GB+), `JAVA_XMX=24g`; the Python overlay/POI passes keep node
+**Machine:** for regional packages a cloud server with 4 vCPU, 8–16 GB RAM and 80+ GB disk
+is plenty (test region ≈ 20 min). For whole countries (Italy, Austria, Germany): 8+ cores, 32–64 GB RAM,
+NVMe 250 GB+, `JAVA_XMX=24g`; the Python overlay/POI passes keep node
 locations in memory, so RAM matters more than cores.
 
 **Setup (Ubuntu 24.04):**
@@ -359,7 +357,7 @@ For more regions keep a small list file (`name bbox url` per line) and loop over
 re-downloaded only when older than `OSM_MAX_AGE_DAYS` (6) and changed on the server; rd5 tiles after
 `SEGMENTS_MAX_AGE_DAYS` (30); Planetiler's 1.4 GB side data is kept in `work/planetiler-sources`.
 
-**Static hosting layout** (nginx/Caddy on `/srv/onpath`, or rsync to a Hetzner Storage Box / bucket):
+**Static hosting layout** (nginx/Caddy on `/srv/onpath`, or rsync to a bucket):
 ```
 /srv/onpath/<region>/onpath-data-<region>.zip     ← what users download
 /srv/onpath/<region>/manifest.json                ← what an app/updater reads first (date, sizes, sha256)

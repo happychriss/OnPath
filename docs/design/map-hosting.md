@@ -2,7 +2,7 @@
 
 Status: **owner decision.** Test environment deployed and used by the app (`maps-test…`, auto
 deploy on push to `main`); **production not deployed yet** (owner: later).
-Replaces the Hetzner plan in `docs/design/map-cells.md` §5 (`tools/hetzner/` is superseded).
+Hosts the doorman and builder of `docs/design/map-cells.md` §5.
 The cell format, the build steps, the `/v1` API and the app side stay exactly as in map-cells.md.
 zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
 
@@ -302,8 +302,7 @@ Every cell is built, wherever it is:
   Adige pin was removed (owner), South Tyrol uses the automatic choice like everywhere else (Meran →
   nord-est + austria, the buffer crosses the main ridge; Bozen → nord-est). Cells already built from the Trentino
   extract stay as they are until their normal refresh (osm_date older than `REFRESH_DAYS` 35, asked for again) – no
-  schema bump, the content is the same kind. `osm/trentino_alto_adige.osm.pbf` in the source bucket is unused and
-  can be deleted by hand. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
+  schema bump, the content is the same kind. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
   region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
   dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
   states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–4 leaves touching B,
@@ -402,10 +401,6 @@ Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback
   version (`current.json`) and the previous one, older versions go once their newest object is older than 7 days
   (an app that read the old manifest just before can finish its download). At most 1000 objects per run, the rest the
   next day. Logged as `{"ev":"cleanup", f1Objects, f1Rows, oldVersions, oldObjects}`.
-- **Unused Trentino extract** in the source bucket (since the Geofabrik choice) – the Worker cannot reach
-  GCS; delete once by hand (Cloud Shell, owner):
-  `gsutil rm gs://onpath-maps-onpath-sources/osm/trentino_alto_adige.osm.pbf` (bucket = `<project>-onpath-sources`, see
-  gcp-setup.sh; `gsutil ls gs://onpath-maps-onpath-sources/osm/` first).
 - **Manifest `sources`**: `[{id, date, url}]` of the OSM extracts the cell was cut from (job → `SRC_META` →
   build_cell.sh → `cells.py manifest --sources`); debugging aid, the app ignores it.
 

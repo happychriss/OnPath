@@ -85,8 +85,6 @@ the git log.
 - **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt`, expects "unreachable", BRouter finds
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
-- **Owner, by hand:** delete the unused Trentino extract from the GCS source bucket (`gsutil rm` command in
-  `docs/design/map-hosting.md` §7g).
 
 ## Waiting for the owner
 - **Map server access before the public launch** – today one shared app key + IP rate limit + build caps. Proposal in
@@ -97,9 +95,6 @@ the git log.
 - **Footways without a bicycle tag (Hilden Itter path)** – Bike / Gravel profiles avoid them (push penalty). Option:
   allow paved footways with an amber "footway – may need to push" note?
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
-- **Delete `tools/hetzner/`?** – the Hetzner region server is superseded by the map cells on Cloud Run + R2; kept
-  only because it creates servers on the owner's account. Remove it (and its mentions in CLAUDE.md, map-pipeline.md,
-  map-hosting.md, map-cells.md) once the owner agrees.
 
 ## Later
 - **iPhone version** – direction and order in `docs/design/multiplatform.md`; core logic free of Android
