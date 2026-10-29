@@ -7,7 +7,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] A-009 app colours (ui/Theme.kt) – since 2026-10-29
 
 ## Next
 - **Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
@@ -53,10 +52,6 @@ the git log.
   `receiveSharedPlace`), ask "Route here?" (from the position / the plan's end) instead of only showing the place card.
 - **Plan links: publish `/.well-known/assetlinks.json` on plan.onpath.earth (Drive order A-005)** – test key SHA-256 in
   the A-005 report; until then Android opens the links in the browser unless "Open by default" allows OnPath.
-- **App colours closer to the website (owner, Drive order A-009)** – `ui/Theme.kt` only: primary `#1F6E43` → `#245F46`;
-  primaryContainer `#DDEFE3` → a warmer olive light (≈ `#E6EDDC`); background `#F7F8F5` → `#FAFAF6`; text towards
-  `#243C31` only if contrast stays ≥ 7:1. Not the map / route / warning / error colours, not the icon. Paparazzi
-  before / after. Palette: repo `happychriss/onpath.earth` `docs/COLORS.md`.
 - **Two MainActivity instances at start (seen only on the first start after an install)** – one process, two
   activities, each its own ViewModel; shared state is already per host (`ui/MapReload.kt`) and the event log names
   every "Screen #n created / destroyed". Next: read those lines after the next install; if it is a plain launcher
