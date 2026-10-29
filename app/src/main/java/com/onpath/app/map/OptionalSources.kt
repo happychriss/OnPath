@@ -24,6 +24,12 @@ object OptionalSources {
     /** Layer metadata key: the layer stands in for the named source and is drawn only when that source is missing. */
     const val FALLBACK_KEY = "onpath:fallback-for"
 
+    /**
+     * Style metadata key: source id → a stand-in source used when the source's own file is missing and the stand-in's
+     * exists (format 2: `pois` vector tiles → `pois.geojson`, for a data folder or store without POI tiles).
+     */
+    const val FALLBACK_SOURCES_KEY = "onpath:fallback-sources"
+
     /** The local file a source points to ("file://…" or "pmtiles://file://…"), or null if remote/inline. */
     fun localFile(source: JSONObject): String? {
         val url = source.optString("data", "").ifEmpty { source.optString("url", "") }
@@ -49,9 +55,24 @@ object OptionalSources {
             if (!exists(file)) missing += id
         }
         val layers = root.optJSONArray("layers") ?: JSONArray()
+        // a missing source with a stand-in source whose file exists (POI tiles → the GeoJSON): swapped in, its layers
+        // lose "source-layer" (a GeoJSON source has one unnamed layer)
+        val swapped = mutableSetOf<String>()
+        val standIns = root.optJSONObject("metadata")?.optJSONObject(FALLBACK_SOURCES_KEY)
+        for (id in missing.toList()) {
+            val alt = standIns?.optJSONObject(id) ?: continue
+            val file = localFile(alt)
+            if (file != null && !exists(file)) continue
+            sources.put(id, JSONObject(alt.toString()))
+            missing -= id; swapped += id
+        }
+        if (swapped.isNotEmpty()) {
+            for (i in 0 until layers.length()) layers.optJSONObject(i)?.takeIf { it.optString("source") in swapped }?.remove("source-layer")
+            log("Map data stand-in sources used: $swapped")
+        }
         fun fallbackFor(l: JSONObject) = l.optJSONObject("metadata")?.optString(FALLBACK_KEY)?.takeIf { it.isNotEmpty() }
         val hasFallbacks = (0 until layers.length()).any { i -> layers.optJSONObject(i)?.let { fallbackFor(it) } != null }
-        if (missing.isEmpty() && !hasFallbacks) styleJson else {
+        if (missing.isEmpty() && !hasFallbacks && swapped.isEmpty()) styleJson else {
             missing.forEach { sources.remove(it) }
             val kept = JSONArray()
             for (i in 0 until layers.length()) {

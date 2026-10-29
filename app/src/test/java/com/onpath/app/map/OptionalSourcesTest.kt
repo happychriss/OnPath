@@ -51,4 +51,32 @@ class OptionalSourcesTest {
     }
 
     @Test fun brokenJsonIsReturnedAsIs() = assertEquals("{nope", OptionalSources.strip("{nope") { false })
+
+    /** Format 2: POIs as tiles, the GeoJSON as stand-in (data folder / store without POI tiles). */
+    private val poiTiles = """
+        {"version":8,"metadata":{"onpath:fallback-sources":{"pois":{"type":"geojson","data":"file:///d/pois.geojson","maxzoom":14}}},
+         "sources":{
+          "base":{"type":"vector","url":"pmtiles://file:///d/base.pmtiles"},
+          "pois":{"type":"vector","url":"pmtiles://file:///d/pois.pmtiles"}},
+         "layers":[{"id":"roads","type":"line","source":"base","source-layer":"transportation"},
+          {"id":"poi-tier1","type":"symbol","source":"pois","source-layer":"pois"}]}
+    """.trimIndent()
+
+    @Test fun poiTilesUsedWhenPresent() = assertEquals(poiTiles, OptionalSources.strip(poiTiles) { true })
+
+    @Test fun poiGeoJsonStandsInForMissingTiles() {
+        val out = JSONObject(OptionalSources.strip(poiTiles) { it != "/d/pois.pmtiles" })
+        val src = out.getJSONObject("sources").getJSONObject("pois")
+        assertEquals("geojson", src.getString("type")); assertEquals("file:///d/pois.geojson", src.getString("data"))
+        assertEquals(listOf("roads", "poi-tier1"), ids(out.toString()))
+        val layers = out.getJSONArray("layers")
+        assertFalse(layers.getJSONObject(1).has("source-layer"))
+        assertEquals("transportation", layers.getJSONObject(0).getString("source-layer"))
+    }
+
+    @Test fun noPoisAtAllStripsThePoiLayers() {
+        val out = OptionalSources.strip(poiTiles) { it == "/d/base.pmtiles" }
+        assertEquals(listOf("roads"), ids(out))
+        assertFalse(JSONObject(out).getJSONObject("sources").has("pois"))
+    }
 }
