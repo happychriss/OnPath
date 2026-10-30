@@ -75,8 +75,12 @@
     <string name="setup_nav_test_vibration">Vibration testen</string>
     <string name="settings_page_phone">Handy einrichten</string>
     <string name="settings_sum_phone_ok">Alles eingerichtet</string>
-    <plurals name="settings_sum_phone_missing">
-        <item quantity="one">%1$d Punkt zu prüfen</item>
-        <item quantity="other">%1$d Punkte zu prüfen</item>
+    <plurals name="settings_sum_phone_needed">
+        <item quantity="one">%1$d Punkt für Touren nötig</item>
+        <item quantity="other">%1$d Punkte für Touren nötig</item>
+    </plurals>
+    <plurals name="settings_sum_phone_recommended">
+        <item quantity="one">%1$d empfohlen</item>
+        <item quantity="other">%1$d empfohlen</item>
     </plurals>
 </resources>

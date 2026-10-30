@@ -75,8 +75,12 @@
     <string name="setup_nav_test_vibration">Test vibration</string>
     <string name="settings_page_phone">Phone setup</string>
     <string name="settings_sum_phone_ok">Everything set up</string>
-    <plurals name="settings_sum_phone_missing">
-        <item quantity="one">%1$d thing to check</item>
-        <item quantity="other">%1$d things to check</item>
+    <plurals name="settings_sum_phone_needed">
+        <item quantity="one">%1$d item needed for tours</item>
+        <item quantity="other">%1$d items needed for tours</item>
+    </plurals>
+    <plurals name="settings_sum_phone_recommended">
+        <item quantity="one">%1$d recommended</item>
+        <item quantity="other">%1$d recommended</item>
     </plurals>
 </resources>

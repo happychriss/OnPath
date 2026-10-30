@@ -131,6 +131,10 @@ A full-screen sheet with one step per screen:
 3. **Settings → Phone setup** (new first item of the "App" group, beside Privacy): the list from `PhoneCheck.all`
    with ✓ / ⚠ / ✗, each row: title, one line why, state, and **Fix** (opens the same step). Below: "What OnPath does
    with it" – links to Privacy for data, and per item what happens without it.
+   In the Settings list (owner 2026-10-30, `SettingsSummary.phone` / `groups`): something a tour needs is missing →
+   the row moves to the **top** of the list (no heading), red ✗, "1 item needed for tours", and the ☰ menu gets a red
+   "⚠ Phone setup" as its first item (opens this page); only recommended items missing → its normal place, amber
+   "2 recommended"; all fine → "Everything set up". The phone state is re-read on every return to the app.
 4. **Locate ◎ / GPS states** stay as today, but the tap opens the guide's L-steps instead of the bare system dialog.
 5. **Season start**: `takenAway(...)` non-empty at app start → one calm card at the next tour start (principle 6), not
    a modal at app open.

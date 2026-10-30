@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhoneAndroid
@@ -189,15 +191,15 @@ fun SettingsScreen(
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    // two groups (owner): what the user sets, then the smaller "App" group
-                    listOf(false, true).forEach { app ->
-                        val group = topics.filter { it.app == app }
-                        if (group.isEmpty()) return@forEach
-                        item {
+                    // two groups (owner): what the user sets, then the smaller "App" group; Phone setup on top (no
+                    // heading) while a tour needs something from the phone (owner 2026-10-30)
+                    SettingsSummary.groups(topics, phoneChecks).forEachIndexed { gi, (kind, group) ->
+                        val app = kind == TopicGroup.APP
+                        if (kind != TopicGroup.URGENT) item {
                             Text(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours), style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp, top = if (app) 20.dp else 4.dp, bottom = 6.dp))
-                        }
+                                modifier = Modifier.padding(start = 16.dp, top = if (gi > 0) 20.dp else 4.dp, bottom = 6.dp))
+                        } else item { Spacer(Modifier.height(4.dp)) }
                         item {
                             Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
                                 Column {
@@ -285,7 +287,10 @@ private val SettingsPage.icon: ImageVector
 private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = if (small) 56.dp else 64.dp).clickable(role = Role.Button, onClick = onClick)
         .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(t.icon, null, tint = if (small) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Green,
+        // a topic that blocks tours (Phone setup): the red ✗-mark of the phone checks instead of its icon
+        val blocking = s.attention == Summary.Attention.PROBLEM && t == SettingsPage.PHONE
+        Icon(if (blocking) Icons.Outlined.ErrorOutline else t.icon, null,
+            tint = when { blocking -> OnPathColors.Error; small -> MaterialTheme.colorScheme.onSurfaceVariant; else -> OnPathColors.Green },
             modifier = Modifier.size(if (small) 22.dp else 24.dp))
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
@@ -295,6 +300,7 @@ private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClic
                 color = when (s.attention) {
                     Summary.Attention.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
                     Summary.Attention.ACCENT -> OnPathColors.Route
+                    Summary.Attention.WARNING -> OnPathColors.Warn
                     Summary.Attention.PROBLEM -> OnPathColors.Bad
                 })
         }

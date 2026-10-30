@@ -46,7 +46,8 @@ class SettingsScreenshotTest {
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
-        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 600_000)) = OnPathTheme {
+        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 600_000),
+        phone: com.onpath.app.setup.PhoneState? = null) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -66,6 +67,7 @@ class SettingsScreenshotTest {
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
             demo = demo,
             sync = sync,
+            phoneChecks = phone?.let { com.onpath.app.setup.PhoneCheck.all(it) },
             now = now,
         )
     }
@@ -73,6 +75,15 @@ class SettingsScreenshotTest {
     @Test fun list() = paparazzi.snapshot { Screen(null) }
     /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */
     @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
+    // Phone setup in the list (owner 2026-10-30)
+    private val phoneOk = com.onpath.app.setup.PhoneState(sdk = 35, manufacturer = "Google", location = com.onpath.app.setup.LocationGrant.PRECISE,
+        vibrationFelt = com.onpath.app.setup.Felt.YES)
+    /** A tour needs something (location off): Phone setup on top, red mark, "1 item needed for tours". */
+    @Test fun listPhoneNeeded() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false, notificationsOn = false)) }
+    /** Only recommended items missing: Phone setup at its place in "App", amber "2 recommended". */
+    @Test fun listPhoneRecommended() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(notificationsOn = false, backgroundRestricted = true)) }
+    /** All set up: at its place, grey "Everything set up". */
+    @Test fun listPhoneOk() = paparazzi.snapshot { Screen(null, phone = phoneOk) }
     @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
     @Test fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }

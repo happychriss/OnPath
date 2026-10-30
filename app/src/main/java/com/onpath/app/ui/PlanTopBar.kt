@@ -18,11 +18,13 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -56,11 +59,17 @@ class PlanMenu(
     val onUpdates: (() -> Unit)? = null,
     /** "Pair with browser" (plan sync with the web planner); null hides it. */
     val onPairBrowser: (() -> Unit)? = null,
+    /**
+     * "Phone setup" as the first item, red with ⚠ (owner 2026-10-30): only while a tour needs something from the phone
+     * (SettingsSummary.phoneNeeded); null hides it.
+     */
+    val onPhoneSetup: (() -> Unit)? = null,
 )
 
 /**
  * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it (My routes, Start
- * recording, Settings, Updates). The activity and all route actions live in the route sheet (PlanPanel).
+ * recording, Settings, Updates; Phone setup first while a tour needs it). The activity and all route actions live in
+ * the route sheet (PlanPanel).
  */
 @Composable
 fun PlanTopBar(
@@ -112,6 +121,10 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
+    menu.onPhoneSetup?.let { p ->
+        MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
+        HorizontalDivider()
+    }
     MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }
     MenuItem(Icons.Filled.FiberManualRecord, str(Res.string.plan_menu_start_recording), enabled = st.startRecording) { close(); menu.onStartRecording() }
     HorizontalDivider()
@@ -121,10 +134,11 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 }
 
 @Composable
-internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true, tint: Color? = null, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(label) }, enabled = enabled, onClick = onClick,
         leadingIcon = { Icon(icon, contentDescription = null) },
+        colors = if (tint == null) MenuDefaults.itemColors() else MenuDefaults.itemColors(textColor = tint, leadingIconColor = tint),
         modifier = Modifier.heightIn(min = 48.dp),
     )
 }

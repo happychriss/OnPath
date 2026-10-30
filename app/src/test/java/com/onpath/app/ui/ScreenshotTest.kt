@@ -286,16 +286,25 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun TopMenu(state: RouteMenuState, bottom: @Composable () -> Unit) {
+    private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             Frame { bottom() }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(state, onUpdates = {}, onPairBrowser = {})) {} } }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
+                PlanMenuItems(PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null)) {}
+            } }
         }
     }
 
     /** ☰ with a route planned: My routes on, Start recording greyed. */
     @Test fun planMenuOpen() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false)) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ☰ while a tour needs something from the phone (location off …): red "Phone setup" first (owner 2026-10-30). */
+    @Test fun planMenuPhoneSetup() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), phoneSetup = true) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }

@@ -438,9 +438,15 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "settings_sum_phone_missing": {
+  "settings_sum_phone_needed": {
     "area": "Phone setup",
-    "context": "Settings list: Phone setup summary, %1$d = number of missing items",
+    "context": "Settings list: Phone setup summary in red (row moved to the top), %1$d = number of items a tour needs",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_sum_phone_recommended": {
+    "area": "Phone setup",
+    "context": "Settings list: Phone setup summary in amber, %1$d = number of recommended items missing",
     "priority": 1,
     "confidence": "sicher"
   },
