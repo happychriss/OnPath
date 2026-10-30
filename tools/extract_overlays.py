@@ -164,10 +164,11 @@ LINK_MAX_M = 30.0
 LINK_MAX_DETOUR = 1.6    # chain length / straight distance start -> end
 LINK_MIN_PATH_M = 20.0   # no link from a path piece shorter than this (spurs at traffic islands / corners)
 # Sidewalk fragments (owner, Hilden Hagelkreuz): a short unnamed footway / path in built-up land (u = 1) that
-# touches no other drawn way at either end is a stub of the sidewalk network (across a traffic island, a corner cut, a
-# bit to a door) that just lacks the footway=sidewalk tag – drawn, it is a stray grey arc beside the street, and its
-# links make it longer. Such pieces become k="x" (like a sidewalk: not drawn as a path) and get no links. Footways tagged
-# footway=traffic_island are hidden like sidewalks and crossings everywhere (HIDDEN_FOOTWAY).
+# touches no other drawn way at either end, and on which no drawn path ends (not even in its middle – a T junction), is
+# a stub of the sidewalk network (across a traffic island, a corner cut, a bit to a door) that just lacks the
+# footway=sidewalk tag – drawn, it is a stray grey arc beside the street, and its links make it longer. Such pieces
+# become k="x" (like a sidewalk: not drawn as a path) and get no links. Footways tagged footway=traffic_island are
+# hidden like sidewalks and crossings everywhere (HIDDEN_FOOTWAY).
 FRAGMENT_MAX_M = 25.0
 HIDDEN_FOOTWAY = ("sidewalk", "crossing", "traffic_island")
 # Street areas (owner, Hilden Hagelkreuz: the reference map shows pedestrian areas and traffic islands as light
@@ -575,15 +576,20 @@ TOWNS = None  # TownIndex, format 2 only (main)
 
 
 def sidewalk_fragments(drawn, ends, candidates):
-    """FRAGMENT_MAX_M: candidate ways (id -> node ids) whose two ends touch no other drawn way become k="x" (their tile
-    props are changed in place; their nodes no longer count as drawn). Returns the path ends without theirs, for
-    link_pieces, and the number of ways changed."""
-    props, end_nodes = {}, {}
+    """FRAGMENT_MAX_M: candidate ways (id -> node ids) whose two ends touch no other drawn way, and where no other drawn
+    path ends on them (a T junction in the middle: hidden, it left that path hanging loose without a link – Hilden,
+    Hegelstraße), become k="x" (their tile props are changed in place; their nodes no longer count as drawn). Returns
+    the path ends without theirs, for link_pieces, and the number of ways changed."""
+    props, end_nodes, end_ways = {}, {}, {}
+    on_candidates = {n for ns in candidates.values() for n in ns}
     for node, way, p, _ in ends:
+        if node in on_candidates:
+            end_ways.setdefault(node, set()).add(way)  # path ends on a candidate (its own ends included)
         if way in candidates:
             props[way] = p
             end_nodes.setdefault(way, []).append(node)
-    hidden = {w for w, ns in end_nodes.items() if all(drawn.get(n, 0) == 1 for n in ns)}
+    hidden = {w for w, ns in end_nodes.items() if all(drawn.get(n, 0) == 1 for n in ns)
+              and not any(end_ways.get(n, {w}) - {w} for n in candidates[w])}
     for w in hidden:
         p = props[w]
         p["k"] = "x"

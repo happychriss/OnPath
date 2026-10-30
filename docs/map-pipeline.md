@@ -234,7 +234,9 @@ a name, that touches no other drawn way at either end (a stub of the sidewalk ne
 corner, untagged as sidewalk) is written as `k` "x" like a sidewalk and gets no link pieces; footway=traffic_island
 ways are hidden like sidewalks / crossings. Hilden cut (cell + 5 km): 765 fragments + 154 traffic-island footways not
 drawn (drawn town footways 36 888 → 36 090), link pieces 620 → 604; street areas 3 897 (`areas.ndjson` 1.3 MB
-next to 57 MB of paths). Meran cut: 16 fragments, 105 areas.
+next to 57 MB of paths). Meran cut: 16 fragments, 105 areas. Not hidden (since 2026-10-30, T junction fix): a short piece on
+which another drawn path ends, also in its middle – hidden, it left that path hanging as a stub without a link
+(Hilden, Hegelstraße).
 
 **Sizes** (test region 10.70–11.60 E / 46.30–46.85 N, OSM of 17 Oct 2026; cell = z10 10/543/361 Meran, own z ≥ 10 tiles):
 
