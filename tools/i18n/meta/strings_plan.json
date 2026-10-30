@@ -928,11 +928,27 @@
   },
   "plan_slide_to_plan": {
     "area": "Navigate",
-    "context": "The slider at the bottom of Navigate: the only way back to Plan",
+    "context": "The slider at the bottom of Navigate (main line): the only way back to Plan",
     "priority": 1,
     "confidence": "sicher",
-    "max": 24,
-    "decided": "Owner 2026-10-30: \"Plan\" / \"Planen\" (was \"Edit route\" / \"Route ändern\" from 2026-10-26) – behind the slider you do much more than change the route (pause, end tour, search, add stops, look at the map); pairs with the \"Weiter · Wandern\" button"
+    "max": 16,
+    "decided": "Owner 2026-10-31: \"Tour menu\" / \"Tour-Menü\" with a small second line (plan_slide_to_plan_sub); was \"Plan\" / \"Planen\" (2026-10-30), \"Edit route\" / \"Route ändern\" (2026-10-26)"
+  },
+  "plan_slide_to_plan_sub": {
+    "area": "Navigate",
+    "context": "Small second line under the Navigate slider's \"Tour menu\": what is behind it. Dropped when it does not fit (large font)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 32,
+    "decided": "Owner 2026-10-31: \"Change route · Pause · End\" / \"Route ändern · Pause · Beenden\""
+  },
+  "plan_slide_change_route": {
+    "area": "Navigate",
+    "context": "The Navigate slider's only line while no recording runs (Pause / End make no sense then)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16,
+    "decided": "Owner 2026-10-31: \"Change route\" / \"Route ändern\""
   },
   "plan_slide_desc": {
     "area": "Navigate",

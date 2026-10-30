@@ -388,6 +388,9 @@ class ScreenshotTest {
     /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
     @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
 
+    /** Navigate without a recording (e.g. an unfinished tour being asked about): the slider says only "Change route". */
+    @Test fun navigateNotRecording() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null)) }
+
     /** Slider dragged half way (springs back on release). */
     @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi, slide = 0.5f) }
 

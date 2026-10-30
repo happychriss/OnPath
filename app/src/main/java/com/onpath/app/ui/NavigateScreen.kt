@@ -216,7 +216,7 @@ fun NavigateOverlay(
             }
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                startFraction = slideStartFraction)
+                recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
