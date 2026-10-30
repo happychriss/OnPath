@@ -4,7 +4,8 @@
 #
 # Work folder (not in the repo – OSM extracts, Planetiler sources, caches, outputs): $ONPATH_CELLS_WORK,
 # default ~/onpath-cells-work. The owner works on this PC: images are built with make -j4, cells run with 4 CPUs at a
-# small CPU share / IO weight (like nice) and 8 GiB, like the cloud job.
+# small CPU share / IO weight (like nice) and 8 GiB, like the cloud job. CELL_CPUS=2 runs them on 2 CPUs (while the owner
+# or another build needs the PC).
 
 CELL_WORK=${ONPATH_CELLS_WORK:-$HOME/onpath-cells-work}
 
@@ -44,7 +45,7 @@ cell_build_images() {
 cell_run_job() {
   local tag=$1 label=$2 envfile=$3 out=$4; shift 4
   mkdir -p "$CELL_WORK/src" "$CELL_WORK/work-$label" "$CELL_WORK/store-$label" "$CELL_WORK/logs"
-  local args=(--rm --name "onpath-cell-$label-$$" --cpus 4 --memory 8g --cpu-shares 64 --blkio-weight 10
+  local args=(--rm --name "onpath-cell-$label-$$" --cpus "${CELL_CPUS:-4}" --memory 8g --cpu-shares 64 --blkio-weight 10
     --user "$(id -u):$(id -g)" --network host
     -e CELLS="$*" -e FORMAT=2 -e SRC_DIR=/src -e WORK=/work -e DATA_ROOT=/store -e OMP_NUM_THREADS=1 -e JAVA_XMX=2g
     -e HOME=/tmp -e CLOUD_RUN_EXECUTION="donald-$label-$(date +%Y%m%d%H%M%S)"

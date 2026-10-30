@@ -477,7 +477,7 @@ waiting for it; cost ≈ $0.01 per cell. The first deploy of this code also pre-
 
 **Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
 working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4
---cpu-shares 64 --blkio-weight 10`, 8 GiB; work folder `~/onpath-cells-work`, not the repo), renames the version to
+--cpu-shares 64 --blkio-weight 10`, 8 GiB, `CELL_CPUS=2` for 2 CPUs; work folder `~/onpath-cells-work`, not the repo), renames the version to
 `<osm_date>-dev<MMDDHHMM>-s<schema>`, force-stops OnPath (refused while a tour records), pushes it as a complete
 download (`cells/download/<cell>/<version>/`, via `<version>.part` + one rename) and starts OnPath: `MapCells.recover()`
 joins it at start like a download finished before a crash. ~3–4 min per cell, the push + join ~12 s.
