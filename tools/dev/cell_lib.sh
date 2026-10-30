@@ -62,3 +62,19 @@ cell_run_job() {
   grep -q "done: $# */ *$# cells ready" "$CELL_WORK/logs/run-$label.log" \
     || { grep -E "failed|ERROR" "$CELL_WORK/logs/run-$label.log" | tail -10 >&2; cell_die "not every cell of $* was built"; }
 }
+
+# cell_check_test_env ENV_FILE: the R2 credentials file must be for the TEST bucket only (map-hosting.md §7h) – values are
+# only compared, never printed; the file goes to containers as docker --env-file only
+cell_check_test_env() {
+  local ENVF=$1
+  [ -f "$ENVF" ] || cell_die "$ENVF missing (R2 token for the TEST bucket, see map-hosting.md §7h)"
+  [ "$(stat -c %a "$ENVF")" = 600 ] || cell_die "$ENVF must be mode 0600"
+  envval() { sed -n "s/^$1=//p" "$ENVF" | tail -1; }   # used only for comparisons below, never printed
+  [ "$(envval R2_BUCKET)" = onpath-maps-test ] || cell_die "$ENVF is not for the bucket onpath-maps-test – refused (test only)"
+  [ -z "$(envval R2_ENDPOINT)" ] || cell_die "$ENVF sets R2_ENDPOINT – refused (the endpoint comes from the account id)"
+  [ -z "$(envval R2_LOCAL_DIR)" ] || cell_die "$ENVF sets R2_LOCAL_DIR – refused"
+  for k in R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+    [ -n "$(envval $k)" ] || cell_die "$ENVF has no $k"
+  done
+  grep -qE '^[A-Z0-9_]+=["'"'"']' "$ENVF" && cell_die "$ENVF: no quotes around values (docker --env-file keeps them)"
+}
