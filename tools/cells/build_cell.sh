@@ -28,6 +28,8 @@
 #                            manifest (same OSM date, else the build fails): the new manifest lists its other layers'
 #                            files, and the version folder holds ONLY the rebuilt files – the job copies the rest
 #                            from the published version in the store. Empty = the whole cell (default).
+#   REBUILD=1                version number on the same OSM date + schema (set by job_build.py when that version is
+#                            already published): N > 1 → version "<osm_date>.N-s<schema>" (cells.py version_name)
 #
 # Memory of the cut: osmium's smart strategy keeps bit sets over the whole id range – with today's OSM node ids
 # (~13e9) that is ~4.0 GB for ANY raw source (measured: trentino 136 MB 8 s, alps 2.3 GB 62 s, both
@@ -142,8 +144,9 @@ GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 DEST="$DATA_ROOT/cells/f$FORMAT/$Z/$X/$Y"
 # version folder = OSM date + content schema ("2026-10-20-s2", cells.py CELL_SCHEMA): a rebuild for a newer style is
-# a new version, not an overwrite of an immutable folder the app and caches already have
-VERSION=$($PY version-name "$OSM_DATE")
+# a new version, not an overwrite of an immutable folder the app and caches already have; REBUILD=N (job_build.py,
+# that name is already published – a pipeline fix on the same OSM date) → "2026-10-20.N-s2"
+VERSION=$($PY version-name "$OSM_DATE" --rebuild "${REBUILD:-1}")
 VER="$DEST/$VERSION"
 
 rm -rf "$TMP"; mkdir -p "$TMP/logs" "$TMP/raw" "$TMP/out" "$TMP/planetiler"

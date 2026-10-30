@@ -61,8 +61,9 @@ function isStale(osmDate, cfg, now) {
 // does not know it; before a build is queued or started, the doorman therefore looks at the cell's current.json and
 // takes a current version as it is ("adopt": no build, the app gets it at once).
 
-/** {version, osm_date, size} of the version current.json points at (its manifest must exist), or null. */
-async function published(env, format, id) {
+/** {version, osm_date, size} of the version current.json points at (its manifest must exist), or null; null as well
+ *  when it is `known` (the D1 row's – one read, no manifest). */
+async function published(env, format, id, known) {
   const c = parseCellId(id);
   if (!c) return null;
   const base = `cells/f${format}/${c.z}/${c.x}/${c.y}`;
@@ -70,7 +71,7 @@ async function published(env, format, id) {
     const cur = await env.BUCKET.get(`${base}/current.json`);
     if (!cur) return null;
     const version = JSON.parse(await cur.text())?.version;
-    if (typeof version !== "string" || !version) return null;
+    if (typeof version !== "string" || !version || version === known) return null;
     const m = await env.BUCKET.get(`${base}/${version}/manifest.json`);
     if (!m) return null;
     const man = JSON.parse(await m.text());
@@ -83,8 +84,8 @@ async function published(env, format, id) {
 
 /** The published version when it is current (schema ≥ cellSchema, not OSM-stale) and not the one D1 knows. */
 export async function adoptable(env, cfg, format, id, row, now) {
-  const p = await published(env, format, id);
-  if (!p || p.version === row?.version) return null;
+  const p = await published(env, format, id, row?.version);
+  if (!p) return null;
   if (schemaOf(p.version) < wantSchema(cfg, id) || isStale(p.osm_date, cfg, now)) return null;
   return p;
 }
@@ -172,14 +173,15 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
   const prio = PRIORITY[reason];
   const writes = [];
   const want = []; // cells that need a build – unless a current version is already published (adopt)
+  const touchStmt = (id, p) => db.prepare(`UPDATE cells SET last_request = ?3, requests = requests + 1,
+      priority = MIN(priority, ?4) WHERE id = ?1 AND format = ?2`).bind(id, format, now, p);
   for (const c of cells) {
     const r = rows.get(c.id);
     const queue = (p) => {
       want.push({ c, r, p });
       return null;
     };
-    const touch = (p) => db.prepare(`UPDATE cells SET last_request = ?3, requests = requests + 1, priority = MIN(priority, ?4)
-        WHERE id = ?1 AND format = ?2`).bind(c.id, format, now, p);
+    const touch = (p) => touchStmt(c.id, p);
     if (!r) writes.push(queue(prio));
     else if (r.job === "queued" || r.job === "building") writes.push(touch(prio)); // join the job
     else if (r.job === "failed") {
@@ -192,8 +194,12 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
       const servable = schemaOf(r.version) >= serveSchema(cfg, c.id);
       writes.push(queue(servable ? Math.max(prio, PRIORITY.refresh) : prio));
     } else if (r.version && isStale(r.osm_date, cfg, now)) writes.push(queue(PRIORITY.refresh)); // old: refresh, low
-    else if (r.version) writes.push(touch(PRIORITY.refresh));
-    else writes.push(queue(prio));
+    else if (r.version) {
+      // ready and current: only a newer publication outside a job (a rebuild on the same OSM date, "<date>.2-s7")
+      // replaces it – adopted below, else the row is just touched
+      want.push({ c, r, p: PRIORITY.refresh, ready: true });
+      writes.push(null);
+    } else writes.push(queue(prio));
   }
   // fast lane (map-hosting.md §7h): a current version published into R2 outside a Cloud Run job is taken as it is
   const found = await Promise.all(want.map((w) => adoptable(env, cfg, format, w.c.id, w.r, now)));
@@ -203,6 +209,10 @@ export async function requestCells(env, cfg, body, now = Date.now()) {
     if (found[i]) {
       adopted.push(w.c.id);
       writes.push(adoptStmt(db, w.c.id, format, found[i], now));
+      return;
+    }
+    if (w.ready) {
+      writes.push(touchStmt(w.c.id, w.p));
       return;
     }
     added++;

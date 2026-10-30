@@ -547,7 +547,7 @@ cid = f"{z}-{x}-{y}"
 layers = os.environ.get("LAYERS", "").split()
 base = json.load(open(os.environ["BASE_MANIFEST"])) if layers else None
 osm = os.environ.get("FAKE_OSM_DATE", "2026-10-19")
-ver = cells.version_name(osm, cells.CELL_SCHEMA)
+ver = cells.version_name(osm, cells.CELL_SCHEMA, int(os.environ.get("REBUILD") or 1))
 dest = os.path.join(os.environ["DATA_ROOT"], "cells", "f2", str(z), str(x), str(y))
 vdir = os.path.join(dest, ver)
 os.makedirs(os.path.join(vdir, "addresses"), exist_ok=True)
@@ -646,6 +646,24 @@ class PartialRebuild(unittest.TestCase):
         self.assertEqual({k: v["version"][-2:] for k, v in m9["layers"].items()},
                          {"base": "s7", "overlays": "s8", "pois": "s9", "addresses": "s7", "terrain": "s7",
                           "contours": "s7"})
+
+    def test_rebuild_on_the_same_osm_date_gets_a_new_version_name(self):
+        """A pipeline fix rebuilt on the same OSM date: phones compare names only, so the repaired cell needs a new
+        one (the published folder is immutable and cached). Still "-s<schema>" at the end."""
+        self.build(self.S7, "exec-1")
+        s = self.build(self.S7, "exec-2")
+        self.assertEqual((s["state"], s["version"]), ("ready", "2026-10-19.2-s7"))
+        self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19.2-s7"})
+        self.assertEqual(job_build.cell_tools.schema_of(s["version"]), 7)
+        m = self.manifest("2026-10-19.2-s7")
+        self.assertEqual((m["version"], m["osm_date"]), ("2026-10-19.2-s7", "2026-10-19"))
+        self.assertTrue(all(f["url"].startswith("cells/f2/10/543/361/2026-10-19.2-s7/") for f in m["files"]))
+        self.assertEqual(self.manifest("2026-10-19-s7")["version"], "2026-10-19-s7")  # the old folder untouched
+        self.assertEqual(self.build(self.S7, "exec-3")["version"], "2026-10-19.3-s7")
+        # a schema bump or a new OSM date is a new name anyway: no number
+        self.assertEqual(self.build(dict(self.S7, overlays=8), "exec-4")["version"], "2026-10-19-s8")
+        self.assertEqual(self.build(self.S7, "exec-5", osm="2026-10-26")["version"], "2026-10-26-s7")
+        self.assertEqual(self.calls, ["", "", "", "overlays", ""])
 
     def test_new_extract_date_builds_the_whole_cell(self):
         self.build(self.S7, "exec-1")

@@ -255,7 +255,11 @@ Why: cells built before the overlays layer `streets` existed showed no small str
 only from it), and a version named by the OSM date alone would give a rebuild on the same OSM date the same
 (immutable, cached) name. So:
 - **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 7 – see below); the manifest has
-  `version` and `schema`.
+  `version` and `schema`. A build whose name is already published (a pipeline fix rebuilt on the same OSM date) gets a
+  rebuild number: `<osm_date>.N-s<schema>`, first free N ≥ 2 (`job_build.py rebuild_number` → `build_cell.sh REBUILD`;
+  2026-10-30, the Bremen / Berlin repair) – app and doorman compare names only, so the repaired cell reaches phones
+  that hold the old one. Still `-s<schema>` at the end (every `schemaOf` unchanged); sorts after the plain name and
+  before the next OSM date (cleanup's "previous").
 - **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
   rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
   A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
@@ -500,6 +504,8 @@ status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` =
   queues a build (request) and before it starts one (every pump, first 40 queued cells, also with builds off), it
   reads the cell's `current.json` + manifest; a version that is current – schema ≥ `CELL_SCHEMA`, OSM date younger than
   `REFRESH_DAYS`, other than the D1 row's – is taken as it is: row ready (`version`, `osm_date`, `size`), no build.
+  A request for a cell that is ready and current also reads its `current.json` (one read, the manifest only when it
+  names another version): a rebuild published on the same OSM date (`<osm_date>.2-s7`, §7c) replaces the row's version.
   Never while a Cloud Run job builds the cell (that job finishes and publishes its own). Logged as `{"ev":"adopted"}`.
 - **Credentials:** one R2 API token, **Object Read & Write on bucket `onpath-maps-test` only** (owner, Cloudflare
   dashboard → R2 → Manage API tokens), in `~/.config/onpath/r2-test.env` on donald (0600, outside the repo; keys

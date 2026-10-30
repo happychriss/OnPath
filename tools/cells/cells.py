@@ -360,10 +360,13 @@ def osm_date(paths):
     return min(dates)
 
 
-def version_name(osm_date, schema=CELL_SCHEMA):
+def version_name(osm_date, schema=CELL_SCHEMA, rebuild=1):
     """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone); a region
-    package: version_name(date, PACKAGE_SCHEMA)."""
-    return f"{osm_date}-s{schema}"
+    package: version_name(date, PACKAGE_SCHEMA). rebuild > 1: a rebuild of a version already published with the same
+    OSM date and schema (a pipeline fix, job_build.py rebuild_number) – "2026-10-20.2-s7": a published folder is
+    immutable and cached, and app and doorman compare only names. The name still ends in "-s<schema>" (schema_of, the
+    doorman's and the app's schemaOf) and sorts after "2026-10-20-s7" and before the next OSM date (cleanup.js)."""
+    return f"{osm_date}{f'.{rebuild}' if rebuild > 1 else ''}-s{schema}"
 
 
 def is_package(z):
@@ -457,6 +460,9 @@ def selftest():
     assert not owns_tile(7, 66, 42, 10, 531, 342, 7, 9) and not owns_tile(7, 66, 42, 6, 33, 21, 7, 9)
     assert (531 >> 3, 342 >> 3) == (66, 42)  # the Hilden cell lies under it
     assert version_name("2026-10-26", PACKAGE_SCHEMA) == f"2026-10-26-s{PACKAGE_SCHEMA}"
+    assert version_name("2026-10-26", 7, 2) == "2026-10-26.2-s7" and schema_of("2026-10-26.2-s7") == 7
+    assert sorted(["2026-10-27-s7", "2026-10-26.2-s7", "2026-10-26-s7"]) == \
+        ["2026-10-26-s7", "2026-10-26.2-s7", "2026-10-27-s7"]
     # per-layer schema: the cell schema is the newest layer's (version name, doorman and app compare only that)
     assert CELL_SCHEMA == max(LAYER_SCHEMA.values()) and PARTIAL_FROM_SCHEMA <= CELL_SCHEMA
     assert [layer_of(n) for n in ("base.pmtiles", "pois.geojson", "addresses/10-1-2.sqlite", "build.json")] == \
@@ -472,8 +478,9 @@ def main(argv):
     if cmd == "selftest":
         selftest()
         return 0
-    if cmd == "version-name":   # cells.py version-name OSM_DATE [--package] → "2026-10-20-s2"
-        print(version_name(rest[0], PACKAGE_SCHEMA if "--package" in rest[1:] else CELL_SCHEMA))
+    if cmd == "version-name":   # cells.py version-name OSM_DATE [--package] [--rebuild N] → "2026-10-20-s2"
+        n = int(rest[rest.index("--rebuild") + 1] or 1) if "--rebuild" in rest[1:] else 1
+        print(version_name(rest[0], PACKAGE_SCHEMA if "--package" in rest[1:] else CELL_SCHEMA, n))
         return 0
     if cmd == "remap-ids":
         print(f"    {os.path.basename(rest[1])}: {remap_ids(rest[0], rest[1])} ids mapped back to OSM ids")

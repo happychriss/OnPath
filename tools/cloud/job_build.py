@@ -23,6 +23,10 @@ only some of its layers are of an older schema (cells.py LAYER_SCHEMA / rebuild_
 (R2 CopyObject, checked by size + ETag; fallback: download, check sha256, upload). The new version is complete and has
 the usual name and manifest – app and doorman see no difference. A failed partial build is retried whole at once.
 
+Rebuild number: a build whose version name (OSM date + schema) is already published – a pipeline fix rebuilt on the
+same OSM date – is named "<osm_date>.N-s<schema>" (first free N ≥ 2; build_cell.sh REBUILD), so phones holding the old
+copy see a new version. Still "-s<schema>" at the end: the doorman's and the app's schemaOf are unchanged.
+
 Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execution from the doorman's overrides):
   CELLS="10-543-361 10-544-361"   cell ids (also 10/543/361), space or comma separated
   FORMAT=2                        cell format (build_cell.sh writes cells/f<FORMAT>/…)
@@ -423,6 +427,25 @@ class Builder:
         log(f"cell {cid}: partial rebuild of {' '.join(layers)} – the other layers are copied from {version}")
         return {"layers": layers, "from": version, "manifest": path}
 
+    def rebuild_number(self, z, x, y, pbfs, cid):
+        """1, or N > 1 when the version this build would be named (OSM date + schema) is already published: a published
+        folder is immutable and cached, and app and doorman only compare names – a repaired cell under the old name
+        would never reach a phone that has the broken one. N = the first free "<osm_date>.N-s<schema>" (cells.py
+        version_name). Any doubt → 1 (the old name)."""
+        try:
+            date = self.osm_date(pbfs)
+            schema = cell_tools.PACKAGE_SCHEMA if z == PACKAGE_Z else cell_tools.CELL_SCHEMA
+            for n in range(1, 100):
+                v = cell_tools.version_name(date, schema, n)
+                if not self.store.head(f"{self.cell_prefix(z, x, y)}/{v}/manifest.json"):
+                    if n > 1:
+                        log(f"cell {cid}: {cell_tools.version_name(date, schema)} is already published – this build "
+                            f"is {v}")
+                    return n
+        except Exception as e:  # noqa: BLE001 – the plain name is what every build used before
+            log(f"cell {cid}: rebuild number unknown ({type(e).__name__}: {e}) – the plain version name")
+        return 1
+
     def reuse(self, src_key, dst_key, entry):
         """Puts a published file of the old version into the new one: server-side copy, checked by size + ETag
         (= same bytes as the source, whose sha256 the old manifest has); else download it, check size + sha256 against
@@ -448,8 +471,8 @@ class Builder:
         return "upload"
 
     # ------------------------------------------------------------------ one cell
-    def run_build(self, z, x, y, src_pbfs, cid, src_meta=None, plan=None):
-        env = dict(self.env, SRC_PBF=" ".join(src_pbfs), DATA_ROOT=self.data_root, WORK=self.work,
+    def run_build(self, z, x, y, src_pbfs, cid, src_meta=None, plan=None, rebuild=1):
+        env = dict(self.env, SRC_PBF=" ".join(src_pbfs), DATA_ROOT=self.data_root, WORK=self.work, REBUILD=str(rebuild),
                    SRC_META=json.dumps([{"id": m.get("id"), "url": m.get("url")} for m in (src_meta or [])]),
                    FORMAT=str(self.fmt), PLANETILER_SOURCES=os.path.join(self.work, "planetiler-sources"),
                    KEEP_WORK="0", BUFFER_KM=str(self.buffer_km).rstrip("0").rstrip("."),
@@ -535,11 +558,12 @@ class Builder:
             return False
         t_build = time.time()
         plan = self.plan(z, x, y, pbfs, cid)
-        rc, tail = self.run_build(z, x, y, pbfs, cid, sources, plan)
+        n = self.rebuild_number(z, x, y, pbfs, cid)
+        rc, tail = self.run_build(z, x, y, pbfs, cid, sources, plan, n)
         if rc != 0 and plan:
             log(f"cell {cid}: partial rebuild failed – building it whole")
             plan = None
-            rc, tail = self.run_build(z, x, y, pbfs, cid, sources)
+            rc, tail = self.run_build(z, x, y, pbfs, cid, sources, rebuild=n)
         if rc != 0:
             step = next((m.group(1) for line in reversed(tail) for m in [re.search(r"step (\S+) failed", line)] if m),
                         None)
