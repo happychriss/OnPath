@@ -87,6 +87,9 @@ the git log.
       goes down the steps to stop 3 and back). Web to do: `WebPlanRules.gaps` passes the skipped stops,
       `PlanGaps.of(wps, p.snapped, p.skipped)` – then a stop still skipped shows its grey gap and the red line "Route
       misses point 3 by 50 m" (new string `plan_gap_skipped`, generated); the markers already stay where they were set.
+      Island points (Köln Dom, `IslandTest.kt`): `snappedWay` is now read in `OnPathHints` too, but BRouter's
+      `RoutingEngine.islandNodePairs` is *private* – `islandRetries` / `skipOnSnap` stay reflection, so the browser
+      still gets no second snap for an island point (needs a BRouter patch or a subclass hook; low prio).
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As
       start / As destination left out when the main button does the same; the POI hold menu says the label too.

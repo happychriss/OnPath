@@ -69,6 +69,25 @@ public final class OnPathHints {
         return out;
     }
 
+    /**
+     * The way (BRouter ids of its two end nodes) that a run of [engine] snapped the point [name] to – also after a
+     * failed run (island) – or null. RoutingEngine.matchedWaypoints is protected: read here, no reflection.
+     */
+    public static long[] snappedWay(RoutingEngine engine, String name) {
+        try {
+            java.util.List<MatchedWaypoint> list = engine == null ? null : engine.matchedWaypoints;
+            if (list == null || name == null) return null;
+            for (MatchedWaypoint m : list) {
+                if (m != null && name.equals(m.name) && m.node1 != null && m.node2 != null) {
+                    return new long[] { m.node1.getIdFromPos(), m.node2.getIdFromPos() };
+                }
+            }
+        } catch (RuntimeException e) {
+            // expected: unknown means no second snap for an isolated way (the caller logs it)
+        }
+        return null;
+    }
+
     private static double[] row(VoiceHint h) {
         double[] base = { h.indexInTrack, h.cmd, h.angle, h.roundaboutExit };
         try {

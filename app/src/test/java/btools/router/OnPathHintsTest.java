@@ -38,6 +38,24 @@ public class OnPathHintsTest {
         assertArrayEquals(new double[] { 51.484688, 7.412369 }, m[3], 1e-9);
     }
 
+    /** The way an island point was snapped to (Köln Dom, IslandTest) – read without reflection too. */
+    @Test public void snappedWayByName() {
+        RoutingContext rc = new RoutingContext();
+        // the constructor parses the profile (next to lookups.dat); the engine is never run here
+        rc.localFunction = new java.io.File("src/main/assets/brouter/touring.brf").getAbsolutePath();
+        RoutingEngine engine = new RoutingEngine(null, null, null, new ArrayList<>(), rc);
+        engine.matchedWaypoints = new ArrayList<>();
+        MatchedWaypoint m = wp("via1", 50.9413, 6.9583);
+        m.node1 = new OsmNode(1000, 2000);
+        m.node2 = new OsmNode(3000, 4000);
+        engine.matchedWaypoints.add(wp("from", 50.936, 6.9475));
+        engine.matchedWaypoints.add(m);
+        assertArrayEquals(new long[] { m.node1.getIdFromPos(), m.node2.getIdFromPos() }, OnPathHints.snappedWay(engine, "via1"));
+        assertNull("no way nodes", OnPathHints.snappedWay(engine, "from"));
+        assertNull(OnPathHints.snappedWay(engine, "to"));
+        assertNull(OnPathHints.snappedWay(null, "via1"));
+    }
+
     @Test public void noTrackOrNoListIsUnknown() {
         assertEquals(2, OnPathHints.matched(null, new String[] { "from", "to" }).length);
         assertNull(OnPathHints.matched(null, new String[] { "from", "to" })[0]);

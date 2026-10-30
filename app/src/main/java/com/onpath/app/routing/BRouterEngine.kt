@@ -2,7 +2,6 @@ package com.onpath.app.routing
 
 import com.onpath.strings.*
 import android.content.Context
-import btools.mapaccess.MatchedWaypoint
 import btools.mapaccess.OsmNodePairSet
 import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
@@ -177,17 +176,16 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     /**
      * The way (its two end nodes as BRouter ids) that BRouter snapped the point [name] to in a failed run, or null.
-     * BRouter keeps the snapped ways in the protected `RoutingEngine.matchedWaypoints`, hence reflection.
+     * Read in BRouter's own package ([btools.router.OnPathHints.snappedWay]; `RoutingEngine.matchedWaypoints` is
+     * protected) – no reflection.
      */
-    private fun snappedWay(engine: BRouter, name: String): LongArray? = try {
-        val f = BRouter::class.java.getDeclaredField("matchedWaypoints").apply { isAccessible = true }
-        (f.get(engine) as? List<*>).orEmpty().filterIsInstance<MatchedWaypoint>()
-            .firstOrNull { it.name == name && it.node1 != null && it.node2 != null }
-            ?.let { longArrayOf(it.node1.idFromPos, it.node2.idFromPos) }
-    } catch (e: Throwable) {
-        Problems.warn("routing", "BRouter snapped ways not readable (reflection); no second snap for an isolated way", e)
-        null
-    }
+    private fun snappedWay(engine: BRouter, name: String): LongArray? =
+        btools.router.OnPathHints.snappedWay(engine, name).also {
+            if (it == null) Problems.warn("routing", "BRouter snapped way of $name unknown; no second snap for an isolated way")
+        }
+
+    // islandRetries / skipOnSnap stay reflection: `RoutingEngine.islandNodePairs` is private (not protected), so no
+    // accessor in BRouter's package reaches it – the web planner (TeaVM) gets no second snap for an island point.
 
     /** How often BRouter itself retried after an island (its `islandNodePairs` freeze count); -1 = unknown. */
     private fun islandRetries(engine: BRouter): Int = try {
