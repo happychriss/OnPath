@@ -181,6 +181,8 @@ class MainActivity : ComponentActivity() {
                                 note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
+                                initialTab = vm.routesTab,
+                                onTab = { vm.routesTab = it },
                             )
                         }
                         vm.editRides?.let { (t, s) ->

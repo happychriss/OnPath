@@ -47,6 +47,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -262,8 +264,9 @@ internal object SacScale {
 // ------------------------------------------------------------------ manage routes
 
 /**
- * My routes (☰ → My routes): one list of planned routes, recorded tours and imported GPX files (newest first): type
- * icon, name, date, distance. Import GPX at the top, per item ⋮ Rename / Export GPX / Delete (asks first), tap = open.
+ * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
+ * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
+ * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. ⋮ Export all takes both tabs.
  * While [navigating], items that would replace the plan cannot be opened (they wait for the end of the tour).
  */
 @Composable
@@ -290,32 +293,50 @@ fun RoutesScreen(
     busy: Busy? = null,
     /** The result of something done here (restored, export / import failed …): a line under the title. */
     note: Notice? = null,
+    /** The tab shown first (the app keeps the last one chosen while it runs). */
+    initialTab: RoutesTab = RoutesTab.PLANNED,
+    onTab: (RoutesTab) -> Unit = {},
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
+    var tab by remember { mutableStateOf(initialTab) }
+    val shown = remember(tours, tab) { RoutesTab.filter(tours, tab) }
     var rename by remember { mutableStateOf(initialRename) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
                 Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    if (busy == Busy.IMPORT) BusyContent(str(Res.string.routes_importing))
-                    else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_import_gpx)) }
+                // Import GPX lives in Planned (an import lands there); a running import keeps its spinner on either tab
+                if (tab == RoutesTab.PLANNED || busy == Busy.IMPORT) {
+                    TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        if (busy == Busy.IMPORT) BusyContent(str(Res.string.routes_importing))
+                        else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_import_gpx)) }
+                    }
                 }
                 RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
+            }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                RoutesTab.entries.forEachIndexed { i, t ->
+                    SegmentedButton(
+                        selected = tab == t,
+                        onClick = { tab = t; onTab(t) },
+                        shape = SegmentedButtonDefaults.itemShape(i, RoutesTab.entries.size),
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(str(if (t == RoutesTab.PLANNED) Res.string.routes_tab_planned else Res.string.routes_tab_done)) }
+                }
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
-            if (tours.isEmpty()) {
+            if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(str(Res.string.routes_empty),
+                    Text(str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(tours, key = { it.id }) { t ->
+                    items(shown, key = { it.id }) { t ->
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
                         TourCard(t, onOpen = if (openable) ({ onOpen(t) }) else null,
                             onRename = { rename = t }, onExport = { onExport(t) },

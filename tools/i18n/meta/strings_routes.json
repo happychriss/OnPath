@@ -183,9 +183,29 @@
     "confidence": "sicher",
     "max": 16
   },
-  "routes_empty": {
+  "routes_tab_planned": {
     "area": "My routes",
-    "context": "Shown when the list is empty (two lines)",
+    "context": "Tab: saved planned routes and imported GPX files (what syncs to the browser)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "routes_tab_done": {
+    "area": "My routes",
+    "context": "Tab: recorded tours (what was actually walked / ridden)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "routes_empty_planned": {
+    "area": "My routes",
+    "context": "Shown when the Planned tab is empty (two lines)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_empty_done": {
+    "area": "My routes",
+    "context": "Shown when the Done tab is empty",
     "priority": 2,
     "confidence": "sicher"
   },

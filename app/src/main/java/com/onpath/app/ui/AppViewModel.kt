@@ -163,6 +163,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routesOpen: Boolean
         get() = routesShown
         set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
+    /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
+    var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set

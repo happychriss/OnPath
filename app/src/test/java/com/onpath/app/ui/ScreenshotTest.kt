@@ -776,11 +776,27 @@ class ScreenshotTest {
         Tour(1, TourKind.PLANNED, "Route Meran – Hirzer", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 300.0, 6.1 * 3600, "done", viaPts),
         Tour(2, TourKind.RECORDED, "Tour 12 Oct 2026, 09:14", 1_760_200_000_000, "MTB", 3, 32_800.0, 940.0, 940.0, 3.2 * 3600, "done", emptyList()),
         Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
+        Tour(4, TourKind.RECORDED, "Demo · Algund", 1_760_500_000_000, "HIKE", 2, 5_300.0, 120.0, 120.0, 1.4 * 3600, "done", emptyList()),
     )
 
-    /** My routes: one list of planned / recorded / imported, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
+    /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     @Test fun tours() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
+    }
+
+    /** My routes, tab Done: recorded tours (a demo tour too); no Import GPX here. */
+    @Test fun toursDone() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
+    }
+
+    /** Planned tab with nothing planned yet (recorded tours exist). */
+    @Test fun toursEmptyPlanned() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList.filter { it.kind == TourKind.RECORDED }, {}, {}, {}, {}, {}) }
+    }
+
+    /** Done tab with nothing recorded yet. */
+    @Test fun toursEmptyDone() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList.filter { it.kind != TourKind.RECORDED }, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
     /** Delete asks first and stays until answered. */
