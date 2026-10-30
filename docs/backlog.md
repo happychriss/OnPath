@@ -97,6 +97,10 @@ the git log.
       Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened; seeing
       the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept in local
       storage (owner 2026-10-30).
+    - Save at hand (owner 2026-10-30) · (this commit, `RouteRules.saveAtHand`) · app: green tonal "Speichern" beside ⋯
+      in the plan sheet's first line (icon only at a large font) and "Route speichern" on top of ☰ – only while the plan
+      is new / changed, hidden once saved. Web already has Speichern in its header (A-017, bold when unsaved); differs
+      only in that it stays visible when saved – fine as is unless the owner wants it alike.
   - *Open order A-016 (replaces A-005):* `/.well-known/assetlinks.json` built on web-spike (ad990c9, v0.13.1 key);
     plan.onpath.earth answers 404 today → deploy the host, let Cloudflare Access pass `/.well-known/*` without login,
     check `adb shell pm get-app-links com.onpath.app`. Until then Android opens `#p=` / `#pair=` links in the browser.

@@ -41,6 +41,15 @@ object RouteRules {
     fun saveMode(savedId: Long, savedName: String?, plannedIds: Collection<Long>): SaveMode =
         if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE_OR_NEW else SaveMode.NAME_DIALOG
 
+    /**
+     * "Save" at hand (owner 2026-10-30: he looked for it in ☰, it was only in the sheet's ⋯): while the plan has unsaved
+     * changes – new or changed since the last save / load ([unsaved] = [isUnsaved]) – the sheet's first line shows a
+     * green "Save" button beside ⋯ and ☰ gets "Save route" on top. Saved: neither (the sheet says "Saved as …", the line
+     * stays calm). Tapping either = sheet ⋯ → Save route; it can be used once a route line exists ([RouteMenuState.save]),
+     * also during a tour like ⋯ → Save route.
+     */
+    fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
+
     /** A new name from the rename / save dialog: trimmed; blank keeps [old]. */
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 

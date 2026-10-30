@@ -258,6 +258,8 @@ private fun PlanMode(
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
                 onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
+                // owner 2026-10-30: "Save route" on top while the plan has unsaved changes (same as the sheet's Save)
+                onSaveRoute = if (RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved)) vm::requestSave else null,
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
