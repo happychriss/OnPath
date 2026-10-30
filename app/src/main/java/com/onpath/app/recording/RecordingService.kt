@@ -207,7 +207,7 @@ class RecordingService : Service() {
                 return START_STICKY
             }
             ACTION_TAKE_VIA -> {
-                // "Skip stop N?" – No: the new route via that stop
+                // "Off route – re-plan?" – Yes: the new route via the stop in question
                 navigator?.let { handle(it.takeVia(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
@@ -730,9 +730,10 @@ class RecordingService : Service() {
             // an activity switch was asked for on the screen: no sound (the user is looking), the question stays
             if (pr is NavPrompt.Question && pr.switch != null) b.setSilent(true)
             if (pr is NavPrompt.Question && pr.via != null) {
-                // "Skip stop N?": Yes (without it) · No (via it) · Keep original
-                b.addAction(0, NavText.SKIP_YES, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
-                b.addAction(0, NavText.SKIP_NO, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
+                // "Off route – re-plan?": Yes (via the stop) · Yes, skip it (without it) · Keep original. Three actions
+                // share one row and Android cuts long labels: the short skip label, the text names the stop.
+                b.addAction(0, NavText.YES, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.SKIP_SHORT, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
             } else if (pr is NavPrompt.Question) {
                 b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })

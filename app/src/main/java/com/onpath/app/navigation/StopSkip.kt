@@ -15,7 +15,7 @@ import com.onpath.app.data.Geo
  * | Case | Decision |
  * | --- | --- |
  * | via ≤ [VIA_RATIO] × straight or × plan, or less than [MIN_DETOUR_S] more than either | **via** N, nothing said |
- * | N chosen on purpose ([deliberate]) and more than that | **ask** "Skip stop N?" |
+ * | N chosen on purpose ([deliberate]) and more than that | **ask** "Off route – re-plan?" (Yes = via N / Yes, skip stop N) |
  * | via ≥ [SKIP_RATIO] × straight and × plan | **skip** N (the question card says so) |
  * | in between | **ask** |
  *

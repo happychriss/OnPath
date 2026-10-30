@@ -11,17 +11,32 @@ import kotlin.math.roundToInt
 object NavText {
     val TAKE: String get() = Txt.s(Res.string.nav_take_new_route)
     val KEEP: String get() = Txt.s(Res.string.nav_keep_original)
-    /** "Skip stop N?" (StopSkip): Yes = the route without it, No = the route via it. */
-    val SKIP_YES: String get() = Txt.s(Res.string.nav_skip_yes)
-    val SKIP_NO: String get() = Txt.s(Res.string.nav_skip_no)
+    /**
+     * "Off route – re-plan?" with a stop in question (StopSkip, owner 2026-10-30): "Yes" = the new route via the stop
+     * ([NavPrompt.Question.via]), "Yes, skip stop 3" ([skipButton]) = the new route without it, Keep original.
+     */
+    val YES: String get() = Txt.s(Res.string.nav_yes)
+    /**
+     * The skip answer as a notification action: three actions share one row and Android cuts long labels ("Ja, Stopp 3
+     * ausl…"), so the short "Yes, skip it" – the text above says which stop.
+     */
+    val SKIP_SHORT: String get() = Txt.s(Res.string.nav_notif_skip)
 
-    /** "Café Moser" / "Stop 3" – the stop a new route leaves out (numbered like the plan's points). */
-    fun stopLabel(q: NavPrompt.Question): String? = q.skipStop?.let { q.skipName ?: Txt.s(Res.string.plan_point_stop, it + 1) }
+    /**
+     * "Café Moser" / "stop 3" – the stop a new route leaves out (numbered like the plan's points). The name only when it
+     * has at most [maxName] characters: it goes into a button ([skipButton]), and the line says the same label.
+     */
+    fun stopLabel(q: NavPrompt.Question, maxName: Int = NAME_MAX): String? =
+        q.skipStop?.let { i -> q.skipName?.takeIf { it.length <= maxName } ?: Txt.s(Res.string.nav_stop_n, i + 1) }
+
+    /** "Yes, skip stop 3" / "Ja, Gasthof Hochmuth auslassen" – the card's second answer. */
+    fun skipButton(q: NavPrompt.Question, maxName: Int = NAME_MAX): String =
+        Txt.s(Res.string.nav_yes_skip_stop, stopLabel(q, maxName) ?: "")
 
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
-            ?: stopLabel(p)?.takeIf { p.via != null }?.let { Txt.s(Res.string.nav_title_skip_stop, it) }
+            ?: p.via?.let { Txt.s(Res.string.nav_title_replan) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_title_turn_round else Res.string.nav_title_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
@@ -38,7 +53,7 @@ object NavText {
     fun state(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_state_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
-            ?: stopLabel(p)?.takeIf { p.via != null }?.let { Txt.s(Res.string.nav_state_skip_stop, it) }
+            ?: p.via?.let { Txt.s(Res.string.nav_state_replan) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_state_turn_round else Res.string.nav_state_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_state_no_data)
@@ -54,7 +69,8 @@ object NavText {
     /** "Hike T3" / "MTB" ([com.onpath.app.data.LastActivity.name]). */
     fun activityName(a: Activity, sac: Int): String = com.onpath.app.data.LastActivity.name(a, sac)
 
-    fun question(q: NavPrompt.Question): String = buildString {
+    /** The question's line; [maxName] as for [stopLabel] (the card passes a smaller one at a large font). */
+    fun question(q: NavPrompt.Question, maxName: Int = NAME_MAX): String = buildString {
         q.switch?.let { sw ->
             // "Rest of the route 9.3 km (+1.2 km) · 3 h 10 min"
             append(Txt.s(Res.string.nav_rest_of_route, Format.distance(round10(q.legM))))
@@ -66,16 +82,16 @@ object NavText {
         }
         val via = q.via
         if (via != null) {
-            // "Skip stop 3?": what leaving it out saves, then the new route without it
-            val saved = round10(via.extraM - q.extraM)
-            append(if (saved >= 10) Txt.s(Res.string.nav_skip_saves, Format.distance(saved)) else Txt.s(Res.string.nav_about_as_long))
+            // "Re-plan?": what going via the stop costs on top of leaving it out, then the new route without it
+            // (both lines move with the rider by the same amount, so the difference needs no movedM)
+            append(Txt.s(Res.string.nav_via_stop, stopLabel(q, maxName) ?: "", extra(via.extraM - q.extraM).replaceFirstChar { it.lowercase() }))
         } else append(extra(q.extraM + q.movedM))
         // + movedM: the rider kept moving since the line was computed (Navigator.live)
         if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, Format.distance(round10((q.legM + q.movedM).coerceAtLeast(0.0)))))   // fresh route (Rerouter.fresh)
         else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, Format.distance(round10((q.rejoinInM + q.movedM).coerceAtLeast(0.0)))))
         if (q.startOffM > FAR_START_M) append(" · ").append(Txt.s(Res.string.nav_nearest_way, Format.distance(round10(q.startOffM))))
         // left out without asking (an ordinary route point far aside): said, so the plan's marker is not a surprise
-        if (via == null) stopLabel(q)?.let { append(" · ").append(Txt.s(Res.string.nav_without_stop, it)) }
+        if (via == null) stopLabel(q, Int.MAX_VALUE)?.let { append(" · ").append(Txt.s(Res.string.nav_without_stop, it)) }
     }
 
     fun extra(m: Double): String {
@@ -115,6 +131,11 @@ object NavText {
     }
 
     private fun round10(m: Double) = (m / 10).roundToInt() * 10.0
+
+    /** A stop's name longer than this is said as "stop 3" (the skip button wraps to at most two lines). */
+    const val NAME_MAX = 16
+    /** The same at a large phone font (the buttons are stacked, ~17 characters a line at 2×). */
+    const val NAME_MAX_LARGE = 10
 
     /** A new route that starts this far away is announced with the distance to the nearest way. */
     const val FAR_START_M = 150.0

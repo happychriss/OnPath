@@ -480,6 +480,57 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_title_replan": {
+    "area": "Off route",
+    "context": "Off-route question card / notification title when the new route could go via the next route point or leave it out (owner 2026-10-30: the main question is re-plan, skipping is one of the answers)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_state_replan": {
+    "area": "Off route",
+    "context": "Small state line of the amber off-route card for the same question",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_via_stop": {
+    "area": "Off route",
+    "context": "Start of the question line: %1$s = 'stop 3' or the stop's name, %2$s = what going via it costs on top of leaving it out ('+1.4 km', 'about as long'); followed by ' · rejoins in 600 m'",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_yes": {
+    "area": "Off route",
+    "context": "Button (card and notification action): re-plan via the stop in question",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 8
+  },
+  "nav_yes_skip_stop": {
+    "area": "Off route",
+    "context": "Button on the card: re-plan without the stop; %1$s = 'stop 3' / 'Stopp 3' or a short name (≤ 16 characters). Wraps to two lines",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 32
+  },
+  "nav_notif_skip": {
+    "area": "Off route",
+    "context": "Notification action (three share one row, Android cuts long labels): re-plan without the stop; the notification text names it",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_stop_n": {
+    "area": "Off route",
+    "context": "A route point in a sentence: 'Via stop 3', 'Yes, skip stop 3', 'without stop 3' (lowercase in English, German noun 'Stopp')",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_without_stop": {
+    "area": "Off route",
+    "context": "End of the question line when the new route leaves a stop out without asking: %1$s = the stop's name or 'stop 3'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_notif_to_go": {
     "area": "Notification",
     "context": "Lock screen while following a route: %1$s = distance or time left ('8.2 km to go', '1 h 25 min to go')",

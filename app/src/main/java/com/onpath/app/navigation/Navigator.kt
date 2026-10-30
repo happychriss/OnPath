@@ -33,8 +33,8 @@ sealed interface NavPrompt {
         /** Name of [skipStop] when it has one (else "Stop N"). */
         val skipName: String? = null,
         /**
-         * Non-null: "Skip stop N?" – Yes takes this line (without [skipStop]), No takes [via] (the way via it);
-         * Keep original stays possible.
+         * Non-null: "Off route – re-plan?" with [skipStop] in question – "Yes" takes [via] (the way via it), "Yes, skip
+         * stop N" takes this line (without it); Keep original stays possible.
          */
         val via: Question? = null,
         /**
@@ -122,6 +122,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var runningJob = -1
     private var vibrateOnResult = false
     private var refreshing = false
+    /** Refreshes of the open question in this off-route episode (owner 2026-10-30: only the first one vibrates). */
+    private var refreshes = 0
     private var questionId = 0
     private var askAt: GeoPoint? = null
     private var askAtMs = 0L
@@ -261,13 +263,13 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             original = NavLine(session.original)
             leftAtM = 0.0
             detector.setLine(original, 0.0, assumeOnRoute = true)
-            prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
+            prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
         return takeLine(q)
     }
 
-    /** "No" to "Skip stop N?" for question [id]: the new route via that stop. */
+    /** "Yes" to "Off route – re-plan?" with a stop in question [id]: the new route via that stop. */
     fun takeVia(id: Int): Step {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
@@ -281,7 +283,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
             visited = visited, version = session.version + 1)
         detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
-        prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
+        prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
         return Step(cancelJob = true, lineChanged = true)
     }
 
@@ -296,7 +298,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             return Step()
         }
         prompt = NavPrompt.Kept
-        keeps++
+        keeps++; refreshes = 0
         lastFix?.let { markAsked(it); toRoute = hint(it.point) }
         return Step(cancelJob = true)
     }
@@ -310,7 +312,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {
         prompt = NavPrompt.Searching
-        failures = 0
+        failures = 0; refreshes = 0
         toRoute = hint(f.point)
         markAsked(f)
         // the vibration comes with the question: at once (the way back is usually found in < 1 s)
@@ -325,7 +327,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val since = f.timeMs - askAtMs
         return when (val pr = prompt) {
             is NavPrompt.Question ->
-                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) { markAsked(f); Step(job = newJob(f, true, vibrateOnResult = true)) } else Step()
+                // the first refresh of an episode is a second reminder (vibrates); later ones update the card silently
+                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) {
+                    markAsked(f); Step(job = newJob(f, true, vibrateOnResult = refreshes++ == 0))
+                } else Step()
             is NavPrompt.NoWay ->
                 if (failures < MAX_FAILURES && pr.reason != Rerouter.Reason.UNAVAILABLE && (moved >= RETRY_MOVE_M || since >= RETRY_MS)) {
                     markAsked(f); Step(job = newJob(f, false, vibrateOnResult = true))
@@ -381,7 +386,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     private fun clearPrompt(): Step {
         val had = prompt != null || runningJob >= 0
-        prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false
+        prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false; refreshes = 0
         return Step(cancelJob = had)
     }
 
@@ -432,7 +437,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         const val RECENT_FIXES = 30
         /** The U-turn sign stays until this far along the new line. */
         const val TURN_ROUND_DONE_M = 40.0
-        /** A question is recomputed (no vibration) after moving this far from where it was computed … */
+        /**
+         * A question is recomputed after moving this far from where it was computed (a new question id; only the first
+         * refresh of an off-route episode vibrates – a second reminder – later ones are silent) …
+         */
         const val REFRESH_MOVE_M = 150.0
         /** … but not more often than this. */
         const val REFRESH_MIN_MS = 30_000L

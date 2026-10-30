@@ -430,9 +430,18 @@ class ScreenshotTest {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(turnRound = true), hint)))
     }
 
-    /** The next route point now lies behind (StopSkip, borderline): "Skip Stop 3?" – Yes / No + Keep original. */
+    /**
+     * The next route point now lies behind (StopSkip, borderline): "Off route – re-plan?" · "Via stop 3: +1.4 km" –
+     * Yes / Yes, skip stop 3 + Keep original (owner 2026-10-30).
+     */
     @Test fun navigateRerouteSkipStop() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
+    }
+
+    /** The same for a named stop: "Yes, skip Gasthof Hochmuth" wraps to two lines (at a large font: "stop 3"). */
+    @Test fun navigateRerouteSkipStopNamed() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, skipName = "Gasthof Hochmuth",
+            via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
     }
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */

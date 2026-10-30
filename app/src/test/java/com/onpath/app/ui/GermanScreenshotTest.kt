@@ -45,6 +45,7 @@ class GermanScreenshotTest {
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
     @Test fun navigateRerouteSkipStop() = shots.navigateRerouteSkipStop()
+    @Test fun navigateRerouteSkipStopNamed() = shots.navigateRerouteSkipStopNamed()
     @Test fun navigateApproximatePosition() = shots.navigateApproximatePosition()
     @Test fun navigateNotificationsOff() = shots.navigateNotificationsOff()
     @Test fun navigateNotificationsOffApproximate() = shots.navigateNotificationsOffApproximate()

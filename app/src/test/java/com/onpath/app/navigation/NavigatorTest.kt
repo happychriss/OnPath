@@ -92,7 +92,7 @@ class NavigatorTest {
         assertFalse(r.nav.take(q.id).lineChanged)
     }
 
-    /** "Skip stop 3?" (StopSkip): Yes takes the line without it and it stays out; No takes the line via it. */
+    /** "Off route – re-plan?" (StopSkip): "Yes, skip Café" takes the line without it and it stays out; "Yes" takes the line via it. */
     @Test fun skipQuestionYesLeavesTheStopOutNoGoesViaIt() {
         fun start() = Run(Navigator(NavSession.start(NavKind.PLAN, "Test", Activity.BIKE_TOURING, 3, route,
             listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 500.0), pt(1000.0, 1000.0)), names = listOf(null, null, "Café", null))))
@@ -106,8 +106,8 @@ class NavigatorTest {
             assertEquals(2, q.skipStop)
             assertEquals("Café", q.skipName)
             assertNotNull(q.via)
-            assertEquals("Off route – skip Café?", NavText.title(q))
-            assertTrue(NavText.question(q), NavText.question(q).startsWith("Skipping saves 780 m"))
+            assertEquals("Off route – re-plan?", NavText.title(q))
+            assertTrue(NavText.question(q), NavText.question(q).startsWith("Via Café: +780 m · rejoins in "))
             val st = if (yes) r.nav.take(q.id) else r.nav.takeVia(q.id)
             assertTrue(st.lineChanged)
             assertTrue(r.nav.session.rerouted)
@@ -184,6 +184,43 @@ class NavigatorTest {
         assertEquals(q1.movedM, q3.movedM, 20.0)
         r.nav.take(q3.id)
         assertEquals(q1.line, r.nav.session.active)
+    }
+
+    /**
+     * Owner 2026-10-30: the open question is recomputed every 150 m; the first refresh vibrates once more (a second
+     * reminder), later ones of the same off-route episode update the card silently. Back on the route → a new episode
+     * vibrates again.
+     */
+    @Test fun onlyTheFirstRefreshOfAnEpisodeVibrates() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        assertEquals(1, r.steps.count { it.vibrate })
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        var x = 1150.0
+        var t = 1_000_000L
+        /** Walks on 160 m (one refresh) and delivers its result: did it vibrate? */
+        fun refresh(): Boolean {
+            r.steps.clear()
+            r.feed(walk(x to 0.0, x + 160.0 to 0.0, t0Ms = t)); x += 160.0; t += 200_000L
+            val job = r.jobs.single()
+            val s = r.nav.onResult(job.id, found(x to 0.0))
+            assertTrue(r.nav.prompt is NavPrompt.Question)
+            return s.vibrate || r.steps.any { it.vibrate }
+        }
+        assertTrue("1st refresh: second reminder", refresh())
+        assertFalse("2nd refresh: silent", refresh())
+        assertFalse("3rd refresh: silent", refresh())
+        // back on the route by yourself: the episode ends; leaving again vibrates, and its first refresh too
+        r.steps.clear()
+        r.feed(walk(x to 0.0, 1000.0 to 0.0, 1000.0 to 300.0, t0Ms = t)); t += 2_000_000L
+        assertNull(r.nav.prompt)
+        r.feed(walk(1000.0 to 300.0, 1150.0 to 300.0, t0Ms = t)); t += 200_000L
+        assertEquals("new episode vibrates", 1, r.steps.count { it.vibrate })
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 300.0))
+        x = 1150.0
+        r.steps.clear()
+        r.feed(walk(x to 300.0, x + 160.0 to 300.0, t0Ms = t)); x += 160.0; t += 200_000L
+        assertTrue("1st refresh of the new episode vibrates", r.nav.onResult(r.jobs.single().id, found(x to 300.0)).vibrate)
     }
 
     @Test fun keepOriginalShowsTheArrowAndAsksAgainOnlyMuchLater() {

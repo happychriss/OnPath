@@ -64,7 +64,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         override val tookMs: Long,
         /** This route leaves out this stop (not yet reached) on purpose – [StopSkip]; null = none. */
         val skipStop: Int? = null,
-        /** Non-null: "Skip stop N?" is asked – this route skips [skipStop], [ask] is the way via it. */
+        /** Non-null: "Off route – re-plan?" is asked with [skipStop] in question – this route skips it, [ask] is the way via it. */
         val ask: Found? = null,
     ) : Outcome
 

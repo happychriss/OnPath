@@ -7,7 +7,7 @@ Status: **implemented (P0–P4).** The design below (§1–§9) was written befo
 | --- | --- | --- |
 | Detection (P0) | `navigation/OffRouteDetector`, `navigation/NavLine` | §4 as written: window −300 m / +2 km (+5 km while off), setting + min(accuracy, 20 m), 15 s **and** 25 m (+margin) moved, back on after 3 fixes within half the distance, GPS loss freezes timers (a confirmed state stays). |
 | Way back (P1) | `navigation/RerouteTargets`, `navigation/Rerouter`, `RoutingContract.RouteLimits/RouteCancel`, `BRouterEngine` | Option C. Base = progress when leaving, or further when abeam of a later part (shortcut). Candidates: next stop ≤ 5 km, +0.5/1.5/3 km, not beyond the next stop – unless it is an ordinary route point (§5.4: then also 500 m past it and the stop after). Score = way back + rest of the original (both `Geo.estimateSeconds`, ties → nearer). **Extra rule:** a way back shorter than 80 % of the route part it replaces (+100 m) is a skip, not a rejoin (round-trip end next to you, way back of an out-and-back) and is not chosen. 8 s per request, 12 s total, cancel via BRouter `terminate()`. The straight-line engine is never used for a way back. |
-| Flow (P2) | `navigation/Navigator` (pure), `navigation/NavSession` (`nav-session.json`), `recording/RecordingService` | Off route confirmed → one vibration + notification (sound) → "finding a way back…" → question. Question refreshed silently after 150 m (≥ 30 s). No way / no data → arrow banner, retry after 200 m or 2 min, max 3. "Keep original" → arrow banner, asked again only after 200 m **and** 2/4/8 min (with vibration). After "Take new route": back on the original (30 m into the untouched rest, or 3 fixes on the original near where you left it) → original used again, grey line gone, no vibration. Plan mode: no new questions; a pending one stays. Off-route warning off in Settings = never ask. |
+| Flow (P2) | `navigation/Navigator` (pure), `navigation/NavSession` (`nav-session.json`), `recording/RecordingService` | Off route confirmed → one vibration + notification (sound) → "finding a way back…" → question. Question refreshed after 150 m (≥ 30 s): the first refresh of an off-route episode vibrates once more (a reminder), later ones are silent (owner 2026-10-30); a new episode (back on the route, or answered) starts again. No way / no data → arrow banner, retry after 200 m or 2 min, max 3. "Keep original" → arrow banner, asked again only after 200 m **and** 2/4/8 min (with vibration). After "Take new route": back on the original (30 m into the untouched rest, or 3 fixes on the original near where you left it) → original used again, grey line gone, no vibration. Plan mode: no new questions; a pending one stays. Off-route warning off in Settings = never ask. |
 | Notification | `RecordingService.updateAlert` | One ongoing notification on channel `offroute-question` (high, sound, no channel vibration – the service vibrates once), lock-screen visible, actions **Take new route / Keep original**; stays until answered or back on route. The former `offroute` channel is deleted on start. |
 | UI (P3) | `ui/NavigateScreen` (`OffRouteUi`, `RerouteQuestionCard`), `ui/MapScreen.MapSync`, `map/MapController.NAV_LAYERS` | Question card low (thumb reach) above the grouped map controls; banners on top. Map layers `nav-original` (grey, below the followed line), `nav-proposal` (dashed preview while asking), `nav-guide` (dashed line to the route in arrow mode) – all in `ROUTE_OVERLAY_LAYERS` (eye button). |
 | Continue navigation (P4) | `AppViewModel.continueNavigation` | Does not edit the plan's waypoints. Edited plan → new session; else the session (and a new route taken) stays. The service checks the next fix at once (`ACTION_CHECK_NOW`) and asks when away from the line (no vibration – the user is looking). |
@@ -29,7 +29,7 @@ progress (the to-go strip still uses `FollowProgress`).
 | Q5 | **No separate change** – "Continue navigation" uses the same ask flow when you are off route. |
 | Q6 | Not now (no answer = recommendation). |
 | Q7 | **Keep the 80 % rule** (owner): a way back shorter than 80 % of the route part it replaces is not offered (would cut a round trip short). The proposal is shown as a dashed preview and always needs confirmation. |
-| Q8 | **The next route point (owner 2026-10-30, §5.4):** when it now lies far behind / aside, the new route leaves it out; ask "Skip stop N?" only when it matters (borderline, or a POI-pinned / named stop); clear cases decide without a question (the card still says "without Stop N"). |
+| Q8 | **The next route point (owner 2026-10-30, §5.4):** when it now lies far behind / aside, the new route leaves it out; ask only when it matters (borderline, or a POI-pinned / named stop); clear cases decide without a question (the card still says "without stop N"). Wording (owner 2026-10-30, second round): "Off route – re-plan?" · "Via stop 3: +1.4 km · rejoins in 600 m" · **Yes** (via the stop) · **Yes, skip stop 3** (without it) · Keep original. |
 
 UX rule from the owner for the whole app: **no messages that disappear by themselves**; banners/questions stay until
 answered or until the situation is gone.
@@ -200,14 +200,18 @@ dragged over a nicer path) is no reason to leave the point out – the rider is 
 | --- | --- |
 | via < ref + **90 s** (≈ 450 m by bike, ≈ 110 m on foot) or via ≤ **1.2 ×** ref | **via** N, nothing said |
 | N deliberate (POI pinned, named, turning point – the plan goes there and back the same way) and more than that | **ask** |
-| via ≥ **1.5 ×** ref | **leave N out**; the question card says "… · without Stop 3" |
-| in between | **ask** "Off route – skip Stop 3?" · **Yes, skip** / **No, go there** (+ Keep original) |
+| via ≥ **1.5 ×** ref | **leave N out**; the question card says "… · without stop 3" |
+| in between | **ask** "Off route – re-plan?" · "Via stop 3: +1.4 km · rejoins in 600 m" · **Yes** (via N) / **Yes, skip stop 3** (+ Keep original) |
 
 Never left out: the destination; a stop whose skip leaves less than **half** of the plan up to N+1 (the end of a round
 trip next to you – via, not even asked; like Q7). A stop left out (silently or Yes) is added to the session's
 `visited`, so a later re-route never sends back to it. Only the next stop is judged; one further on is judged at the
 next re-route. The question uses the off-route card (route-blue edge, two buttons + a text button "Keep original") and
-the HIGH `offroute-question` notification with three actions (Yes / No / Keep original); EN + DE.
+the HIGH `offroute-question` notification with three actions (Yes / Yes, skip it / Keep original); EN + DE.
+Wording (owner 2026-10-30, second round): the main question is "re-plan?", skipping is one of the answers. The stop's
+name instead of "stop 3" when it has ≤ 16 characters (≤ 10 at a large phone font, where the two buttons are stacked);
+the card's skip button wraps to two lines. Notification actions share one row and Android cuts long labels ("Ja, Stopp 3
+ausl…"), so the notification says the short "Yes, skip it" / "Ja, auslassen" – its text names the stop.
 
 **Real case** (`tools/routing/jvm-test/StopSkipJvmTest.kt`, BRouter, Hilden by bike). The owner's ride of 2026-10-28
 (left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m off) is not in the repo as a trace, so the excursions are rebuilt

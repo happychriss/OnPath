@@ -170,7 +170,7 @@ fun NavigateOverlay(
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
-    /** "Skip stop N?" – No: the new route via that stop. */
+    /** "Off route – re-plan?" – Yes: the new route via the stop in question (StopSkip). */
     onTakeVia: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
@@ -542,11 +542,14 @@ private fun OffRouteCard(o: OffRouteUi) {
 
 /**
  * The off-route question (owner: ask every time, never re-route silently): stays until one of the two big buttons is
- * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves.
+ * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves. With a stop in
+ * question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
  */
 @Composable
 internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
                                  onVia: () -> Unit = {}) {
+    val large = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp,
         border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
@@ -557,21 +560,35 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(NavText.question(q), style = MaterialTheme.typography.bodyMedium,
+                    Text(NavText.question(q, maxName), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(Modifier.size(12.dp))
             if (q.via != null) {
-                // "Skip stop N?" (StopSkip: borderline, or a stop chosen on purpose): Yes = without it, No = via it
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onVia, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
-                        Text(NavText.SKIP_NO, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                    }
-                    Button(onClick = onTake, modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                // "Off route – re-plan?" (StopSkip: borderline, or a stop chosen on purpose): Yes = via the stop,
+                // "Yes, skip stop 3" = without it. The skip label wraps to two lines; at a large font (like the setup
+                // guide, > 1.3) the two buttons are stacked full width and only a short name is used
+                val yes: @Composable (Modifier) -> Unit = { m ->
+                    Button(onClick = onVia, modifier = m.heightIn(min = 56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
-                        Text(NavText.SKIP_YES, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(NavText.YES, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                     }
+                }
+                val skip: @Composable (Modifier) -> Unit = { m ->
+                    OutlinedButton(onClick = onTake, modifier = m.heightIn(min = 56.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                        Text(NavText.skipButton(q, maxName), style = MaterialTheme.typography.titleSmall, maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+                if (large) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    yes(Modifier.fillMaxWidth())
+                    skip(Modifier.fillMaxWidth())
+                } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    yes(Modifier.weight(1f))
+                    skip(Modifier.weight(2f))
                 }
                 TextButton(onClick = onKeep, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) {
                     Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)

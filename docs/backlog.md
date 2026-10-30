@@ -14,9 +14,6 @@ the git log.
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
   all the time on the Pixel? (1c5b8ad); new off-route question "Abseits der Route – neu planen?" with "Ja" / "Ja, Stopp N
   auslassen" (16, 81dbff7); map symbols: rock from z14, orchards / vineyards stronger.
-- **Off-route question refresh vibrates** – the existing 150 m refresh (`REFRESH_MOVE_M`) calls
-  `newJob(…, vibrateOnResult = true)`, so a refreshed question vibrates and gets a new id although the comment says
-  "(no vibration)" – owner to decide: vibrate on refresh or not (found 2026-10-30).
 - **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
   for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
   doorman adopts them. Production stays cloud-only.
