@@ -286,6 +286,7 @@ const syncReady = ready.then(async (ok) => {
   if (pairLink) joinDialog(sync, pairLink);
   syncBadge();
   sync.onChange(syncBadge);
+  $('syncBadge').dataset.ready = '1'; // the sync runs (tests wait for this)
   return true;
 });
 addEventListener('hashchange', () => openFromLink());

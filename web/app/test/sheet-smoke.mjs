@@ -268,7 +268,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   let l = await labels();
   check(l.map((x) => x.id).join() === 'menuPlans,syncBadge,menuImportGpx,menuAbout' && l.every((x) => x.icon && x.label), `header at 1440 px: 4 entries, every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
   check((await page.textContent('#syncBadge')).trim() === 'Pair phone' && await page.isHidden('#syncBadge .syncdot'), 'header: not paired, the phone entry says "Pair phone" (no dot)');
-  await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 }); // sync ready, the entry follows it
+  await page.waitForSelector('#syncBadge[data-ready]', { state: 'attached', timeout: 60_000 }); // sync ready, the entry follows it
   // the paired status, for the look only: the page's own first sync (sync.init → syncSoon → refresh) may still set
   // "not paired" from its store, so stop its timer and set the status until the entry shows it
   await page.evaluate(() => clearInterval(window.__sync.timer));
