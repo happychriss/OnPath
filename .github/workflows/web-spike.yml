@@ -127,6 +127,10 @@ jobs:
         working-directory: web/app
         run: node test/overview-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
+        working-directory: web/app
+        run: node test/areas-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
         working-directory: web/app
         run: node test/import-smoke.mjs $GITHUB_WORKSPACE/segments

@@ -53,7 +53,12 @@ export class Position {
       this.waiters.splice(0).forEach((w) => w(this.fix));
       this.onChange();
     }, (err) => {
-      if (err.code === err.PERMISSION_DENIED) this.status = 'NO_PERMISSION';
+      if (err.code === err.PERMISSION_DENIED) {
+        this.status = 'NO_PERMISSION';
+        // the next click on Locate asks again (after the user allowed it in the browser)
+        if (this.watch != null) navigator.geolocation.clearWatch(this.watch);
+        this.watch = null;
+      }
       else if (err.code === err.POSITION_UNAVAILABLE) this.status = 'OFF';
       if (this.status === 'NO_PERMISSION' || this.status === 'OFF') {
         this.following = false;

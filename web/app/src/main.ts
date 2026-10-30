@@ -30,6 +30,8 @@ import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
+import { MapNotices } from './mapnotice';
+import { MapAreas, fmt, type MapTexts } from './areas';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -110,6 +112,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </div>
   </div>
   <div id="placecard" class="placecard" hidden></div>
+  <div id="mapnotes" class="mapnotes" hidden></div>
   <div id="footer"><button id="credits" class="credit" aria-label="Show map credits">© OpenStreetMap</button></div>
   <section id="sheet" aria-label="Plan">
     <button id="handle" aria-label="Show or hide the points"><span></span></button>
@@ -217,7 +220,7 @@ const engine = new EngineClient();
 const planGaps = new PlanGapsLayer(map, engine); // points the route does not reach (plangaps.ts)
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 (window as unknown as { __state: typeof state }).__state = state; // for the browser tests (pace: the plan the sheet shows)
-status('Loading the routing engine…');
+status('Loading the routing engine…', 'busy');
 const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) => {
   status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`, r.ok ? 'info' : 'error');
   return r.ok;
@@ -241,6 +244,27 @@ ready.then(async (ok) => {
   if (pairLink) joinDialog(sync, pairLink);
 });
 addEventListener('hashchange', () => openFromLink());
+
+// ---- waits on the map: position, map loading, map areas on demand (mapnotice.ts, areas.ts – web-planner.md §17) ----
+const notices = new MapNotices($('mapnotes'));
+/** The app's texts for the strip and the waits (WebMaps.kt); empty until the engine is there. */
+const mapTexts: Promise<MapTexts> = ready.then(async (ok) => (ok ? JSON.parse(await engine.call('mapTexts')) as MapTexts : {}))
+  .catch((e) => { console.warn('map texts not loaded', e); return {}; });
+let texts: MapTexts = {};
+mapTexts.then((t) => { texts = t; });
+const txt = (k: string, fallback: string, ...args: (string | number)[]) => { const v = texts[k]; return typeof v === 'string' ? fmt(v, ...args) : fallback; };
+const areas = useCells ? new MapAreas(map, cells, params.get('mapsApi') ?? base + 'maps/v1/', mapTexts, notices) : null;
+(window as unknown as { __areas: MapAreas | null }).__areas = areas; // for the browser tests
+// the map's tiles still loading 400 ms after it stopped: "Loading the map for your area" with a spinner, until idle
+let loadingTimer = 0;
+map.on('moveend', () => {
+  clearTimeout(loadingTimer);
+  loadingTimer = window.setTimeout(() => {
+    if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: txt('maps_load_loading', 'Loading the map for your area') });
+  }, 400);
+});
+map.on('movestart', () => clearTimeout(loadingTimer));
+map.on('idle', () => { clearTimeout(loadingTimer); if (notices.get('loading')) notices.set('loading', null); });
 // The routing data around the map view is fetched while the user looks at the map, so the first plan starts at once
 // (docs/design/web-planner.md §11.2). Only from zoom 9: one 1° part is 2–10 MB.
 let prefetchTimer = 0;
@@ -423,7 +447,32 @@ async function addPoint(at: maplibregl.LngLat) {
   await commit(pts, meta);
 }
 
-const position = new Position(map, () => renderFabs());
+const position = new Position(map, () => { renderFabs(); locateNotice(); });
+/** Locate was clicked and its answer is not shown yet: the strip says why the map waits. */
+let locating = false;
+let locateTimer = 0;
+const LOCATE_DENIED = 'Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again.';
+const LOCATE_OFF = 'Your position is not available – location is off or this device cannot find it.';
+function locateNotice() {
+  if (!locating) return;
+  clearTimeout(locateTimer);
+  const close = { label: 'Hide', onClose: () => { locating = false; } };
+  if (position.fix && (position.status === 'GOOD' || position.status === 'WEAK')) {
+    locating = false;
+    notices.set('locate', null);
+    areas?.wantPoint(position.fix[0], position.fix[1], 'here'); // T3: the detailed map where you are
+  } else if (position.status === 'NO_PERMISSION') {
+    locating = false;
+    notices.set('locate', { kind: 'error', title: LOCATE_DENIED, close });
+  } else if (position.status === 'OFF') {
+    locating = false;
+    notices.set('locate', { kind: 'error', title: LOCATE_OFF, close });
+  } else {
+    notices.set('locate', { kind: 'busy', title: 'Finding your position…', close });
+    // still nothing after 20 s: say so (the browser keeps trying; a fix still moves the map there)
+    locateTimer = window.setTimeout(() => { if (locating && !position.fix) notices.set('locate', { kind: 'busy', title: 'Still finding your position – the browser has not found it yet…', close }); }, 20_000);
+  }
+}
 
 /** "Go here": the item and its reason when it cannot be used (the app's MapGestures.fromMeBlocked). */
 async function goHereItem(onGo: () => void): Promise<MenuItem> {
@@ -434,7 +483,7 @@ async function goHereItem(onGo: () => void): Promise<MenuItem> {
 
 /** From my position to [to] (first point = me, unpinned). */
 async function fromMe(to: LatLon, toMeta: Meta) {
-  status('Finding your position…');
+  status('Finding your position…', 'busy');
   const me = await position.once();
   if (!me) { status('Your position is not available. Set the start on the map.', 'error'); return; }
   status('');
@@ -552,8 +601,16 @@ async function changed() {
   const id = ++state.latest;
   state.planning = true;
   render();
-  status('Planning…');
-  const r = await engine.plan(state.points, state.activity, state.sac, sharedPlan().pinned);
+  newPointsAsked();
+  // waits said where the user acted (the sheet): the routing data download (the app's "Loading the map for your area ·
+  // about 9 MB", map-cells.md §19.8), then "Calculating the route…"
+  const calculating = () => txt('plan_calculating', 'Calculating the route…');
+  status(calculating(), 'busy');
+  const r = await engine.plan(state.points, state.activity, state.sac, sharedPlan().pinned, (pr) => {
+    if (id !== state.latest) return;
+    if (pr.phase === 'download') status(`${txt('maps_load_loading', 'Loading the map for your area')} · ${txt('maps_about_mb', `about ${Math.max(1, Math.round(pr.bytes / 1e6))} MB`, Math.max(1, Math.round(pr.bytes / 1e6)))}`, 'busy');
+    else status(calculating(), 'busy');
+  });
   if (id !== state.latest) return; // a newer request supersedes this one
   state.planning = false;
   if (!r.ok || !r.plan) { status(`Planning failed: ${r.error}`, 'error'); render(); return; }
@@ -564,6 +621,15 @@ async function changed() {
   const s = r.stats!;
   status(`Planned in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
   render();
+  areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
+}
+
+/** T1: the map area of each point newly set (more than 3 new at once = a loaded plan → only T4, like the app). */
+const askedPoints = new Set<string>();
+function newPointsAsked() {
+  const fresh = state.points.filter((p) => !askedPoints.has(key(p)));
+  fresh.forEach((p) => askedPoints.add(key(p)));
+  if (fresh.length <= 3) for (const p of fresh) areas?.wantPoint(p[0], p[1], 'planned');
 }
 
 /** What started this run (the app's PlanStatus.Cause): Cancel of the long-route question takes back only that. */
@@ -698,7 +764,7 @@ map.on('rotate', () => renderFabs());
 $('compass').onclick = () => map.easeTo({ bearing: 0, pitch: 0 });
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
-$('locate').onclick = () => position.locate();
+$('locate').onclick = () => { locating = true; position.locate(); locateNotice(); };
 /** Eye: hold to hide the route and the markers, release shows them again (the app's EyeControl). */
 function peek(on: boolean) {
   if (hidden === on) return;
@@ -732,6 +798,7 @@ setupSearch({
   add: (h, role) => addPlace(h, role),
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
   cardShown: (open) => document.body.classList.toggle('card-open', open),
+  placeShown: (lat, lon) => areas?.wantPoint(lat, lon, 'searched'), // T2
 }, $('searchbox'), $('placecard'));
 
 /**
@@ -895,7 +962,13 @@ function credits() {
 new ResizeObserver(() => document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px')).observe($('sheet'));
 changed();
 
-function status(t: string, kind: 'info' | 'error' = 'info') { const s = $('status'); s.textContent = t; s.classList.toggle('error', kind === 'error'); }
+/** The sheet's status line; 'busy' = a wait the user started (spinner, CLAUDE.md "Messages"). */
+function status(t: string, kind: 'info' | 'error' | 'busy' = 'info') {
+  const s = $('status');
+  s.textContent = t;
+  s.classList.toggle('error', kind === 'error');
+  s.classList.toggle('busy', kind === 'busy' && t !== '');
+}
 function empty(): FeatureCollection { return { type: 'FeatureCollection', features: [] }; }
 function escapeHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }
 function localStorageGet(k: string): string | null { try { return localStorage.getItem('onpath.' + k); } catch { return null; } } // expected: storage blocked

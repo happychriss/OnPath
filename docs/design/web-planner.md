@@ -243,9 +243,24 @@ in the browser.
    Workers Routes · Edit and DNS · Edit. In GitHub: secret `CLOUDFLARE_PLANNER_TOKEN`, variable
    `PLANNER_HOST_TEST` = `plan.onpath.earth` (`CLOUDFLARE_ACCOUNT_ID` exists).
 4. Actions → Web spike → Run workflow (branch web-spike) → tick *deploy*.
+5. **Map areas on demand (§17), once:** GitHub → Settings → Secrets and variables → Actions → *New repository secret*
+   `ONPATH_MAP_KEY_TEST` = the newest entry of the environment "test" secret `ONPATH_APP_KEYS` (the part after the last
+   comma; the same key the test APKs carry – `onpath.mapKey.test` in `~/.gradle/gradle.properties`). The web deploy has
+   no environment, so it cannot read the environment secret itself. The next green push puts it on the host
+   (`wrangler secret put MAP_KEY`, never printed). Until then the page says "The detailed map for this area is not
+   available on the web yet – the overview map is shown." and asks nothing. Rotation: update this secret together with
+   `ONPATH_APP_KEYS` (the proxy answers "not available" while the doorman refuses an old key – logged in the Worker).
+6. **Live check after each deploy (optional, proposal):** Zero Trust → Access → Service credentials → *Create service
+   token* (name `github-planner-smoke`, duration 1 year; copy Client ID + Secret – shown once). Access → Applications →
+   the `plan.onpath.earth` app → Policies → *Add a policy*: action **Service Auth**, include *Service Token* =
+   `github-planner-smoke`. GitHub: repository secrets `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. From then on
+   the step "Live smoke test of the deployed planner" (`web/host/live-smoke.mjs`) reads the page, the engine, the
+   overview, the style, a Meran cell, rd5 bytes by Range and the map-area proxy's status on the live site after every
+   deploy (read-only; red when one fails). Without the secrets the step only notes that it was skipped. The token only
+   opens this Access app; delete it in Zero Trust to revoke.
 
 Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
-there first; requesting new cells from the web (needs the doorman without app key – map-access.md).
+there first. Requesting new cells from the web: §17 (the host holds the key, the browser does not).
 
 ## 10. Plan edits and search with the app's code (cloud, 2026-10-26)
 
@@ -468,7 +483,7 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 | Texts | `strings/…/values/*.xml`, `Txt` | same (English) | generated (`generateStrings`), `Txt` stand-in |
 | Mirrored UI rules (Android / Compose files) | `Screens.SacScale`, `MapOverlays.stopLabel` + menus, `PlanStatus.noRouteLine` texts, `RouteRules.saveMode`, `MapFooter.gpsColor`, `MapController` arrows + layer order, `MAP_CREDITS`, `ElevationProfile` colours, `TourBar.longRouteText`, `Panels.TrackPanel`, `PointsSection`, `PlanPoints.dropIndex/shift` (per pointer move) | mirrored | listed with the app file's hash in `web/parity.json` |
 | Engine stand-ins for Android files | `debug/Problems`, `debug/UserText`, `data/DataFiles`, `recording/GpsStatus`, `Txt` / `XmlStrings` | mirrored | `web/engine/src/main/kotlin/com/onpath/app/…` |
-| Not on the web (on purpose) | navigation, recording, re-routing, activity check, rides, cells download / loading prompts, backups, Google share (`SharedPlace`), plan links into the app (`PlanLinks`), haptics, Points delete guard, Notices | – | phone only; `watch` in `web/parity.json` lists the plan-related ones |
+| Not on the web (on purpose) | navigation, recording, re-routing, activity check, rides, cells download + joining (the web reads cells in place; build requests and the strip: §17), backups, Google share (`SharedPlace`), plan links into the app (`PlanLinks`), haptics, Points delete guard, Notices | – | phone only; `watch` in `web/parity.json` lists the plan-related ones |
 | Region view z7–9 (region packages) | `map/Overview.merge(packages)`, `cells/CellStore` (a package owns z7–9) | same (§13 #15) | merge shared at build time (`OverviewStyle.kt`, placeholder box); package lookup + `within` boxes mirrored (`cells.ts`, `overview.ts`) |
 | Not on the web yet | Route details screen, hollow grey unreachable point | – | open items (§14.3) |
 
@@ -526,3 +541,79 @@ the app's own `map/Overview.merge` (run on the JVM at build time: `./gradlew -p 
 the cover (`detail-cover`) on the cells it found – the app covers its installed cells. Without the files (a local build
 without `ONPATH_OVERVIEW_DIR`) the plain style is used as before. Region packages (z7–9): §13 #15 (since 2026-10-30). Test: `overview-smoke.mjs` (zoom 5 and 8 draw the overview; with
 map data also zoom 12.5 with the cover).
+
+## 17. Map areas on demand, never a blank map, every wait said (cloud, 2026-10-30)
+
+Owner report (live test): Locate jumped to the owner's home (no cells there) and showed an **empty beige map** with
+the blue dot and no word why. "When there are waits, the user must know why … it must work much like on the phone."
+
+**Never a blank map.** The overview (§16) already continues above zoom 10 under the detailed layers (the app's
+`~under` copies), but it is Natural Earth – at zoom 15 in a flat town that is beige. Changed:
+- the cover (`detail-cover`) follows the cells that **draw** (a first base tile came back), not the cells whose
+  `current.json` exists – so a cell that is still loading, or a cell without readable files, never hides the overview
+  (`cells.ts` `found`; the app covers its installed cells, which always draw);
+- a region package's relief (z7–9, §13 #15) goes on magnified above zoom 9 where no cell draws (`region-relief`
+  without maxzoom, under the cover) – the app stops it at 10 because its cells are installed there. Its vector data is
+  not overzoomed (would need copies of the detailed layers from a second source – open decision below);
+- a cell file that cannot be read (404, broken; contours are optional) is left out and warned once, like a package's.
+
+**Every wait said** (CLAUDE.md "Messages": a spinner where the user started it, INFO grey, ERROR red with a way out):
+
+| Wait | Where | Text |
+| --- | --- | --- |
+| Engine start | sheet status line, spinner | Loading the routing engine… |
+| Locate | map strip, spinner | Finding your position… (after 20 s: Still finding your position – …); denied: red "Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again." (the next click asks again); off: red "Your position is not available – …" |
+| Map tiles still loading 400 ms after the map stopped | map strip, spinner, until idle | Loading the map for your area (`maps_load_loading`) |
+| Routing data for a plan | sheet status line, spinner | Loading the map for your area · about 10 MB (`maps_about_mb`; the worker sends the bytes still missing before it downloads – the app's map-cells.md §19.8 wording, no "routing data") |
+| Routing | sheet subline + status line, spinner | Calculating the route… (`plan_calculating`) |
+| "Go here" waiting for the position | status line, spinner | Finding your position… |
+| Spot without detailed map, zoom ≥ 10 | map strip, grey | Overview only – the detailed map for this area is asked for when the map rests here. |
+| Map area being built | map strip, spinner | the app's strip: "Preparing map for this area – about 5 min", rows "Your position · waiting – about 5 min" / "being prepared – 40 %, about 2 min", "2 more areas · waiting", × = hide (keeps loading) |
+| Map server down / offline | map strip, grey | "Map server not reachable – trying again." / "No detailed map – loads when online" |
+| Build failed | map strip, red | the doorman's reason, or "Map for this area failed" |
+| No key on the host | map strip, grey | The detailed map for this area is not available on the web yet – the overview map is shown. |
+
+Audited: search ("Searching online…" in the list), GPX import ("Importing …"), saving / sync (fast, local), long-route
+question (a dialog), name proposal (local). App texts come from the engine (`mapTexts`, `WebMaps.kt`: the generated
+`Res.string` / `Res.plurals` of strings_maps / strings_plan), filled with XmlStrings' `%1$d` rule in `areas.ts`; texts
+without an app counterpart (locate on the web, not available on the web) are the page's own (English, like the rest).
+
+**Map areas on demand** (`areas.ts`, mirrors `CellCards.build` / `name` and `CellTriggers` – `web/parity.json`):
+- Triggers: a point set (T1; more than 3 new at once = a loaded plan → T4 only), the position after Locate (T3,
+  "Your position"), a search result shown (T2), the computed route (T4: the cells the line crosses, at most 12, reason
+  `corridor`), and the web's own: the map **resting** at zoom ≥ 10 for 4 s on a spot whose centre has no cell (the
+  centre cell). Scrolling alone never asks. A cell that exists (its `current.json`) is never asked for; each cell at
+  most once per page (dedupe). Several triggers join one strip (the app's job); it closes by itself when every area is
+  there.
+- Flow: `POST /maps/v1/cells/request {"cells":[…],"reason":"point","formats":[2]}` → states → `GET
+  /maps/v1/cells/status?ids=…` every `poll_s` (5–60 s, the doorman's answer) while the page is visible (hidden → no
+  polling; visible again → at once) → `ready`: the page forgets the cell's "not there", reads its `current.json` and
+  gives the cell sources new tile URLs (`?g=<generation>`), so maplibre loads the new tiles; the files are read in
+  place from R2 (`/data/`), nothing is downloaded or joined. 429 / 5xx / offline → "trying again" with backoff 30, 60,
+  120, 300 s (or Retry-After). 503 / 404 from the proxy (no key, or a static host without it) → "not available on the
+  web yet", nothing more is asked.
+- **Host proxy** (`web/host/src/maps.js`): only `POST /maps/v1/cells/request` and `GET /maps/v1/cells/status`; bodies
+  rebuilt (zoom-10 ids only, at most 12, the doorman's reasons, format 2); `X-OnPath-Key` added from the Worker secret
+  `MAP_KEY`, never answered back; upstream = the doorman Worker through the service binding `DOORMAN`
+  (`onpath-doorman-test`, same account – the doorman also sees the browser's IP for its own per-IP limit), else
+  `https://$MAPS_HOST/v1/…`. Limits: `MAPS_RATE` 20 per minute per IP, `MAPS_RATE_ALL` 120 per minute for all browsers
+  (Workers rate-limit bindings), on top of the doorman's 30 per minute and its build caps. A key the doorman refuses →
+  "not available" (+ Worker log). The site stays behind Access (only `/sync/*` bypasses it).
+- Owner step: §9 step 5 (repository secret `ONPATH_MAP_KEY_TEST`).
+
+Tests: `web/host/test/maps.test.js` (key added and not answered back, bodies rebuilt, only two calls, limits, no key,
+refused key, upstream down); `web/app/test/areas-smoke.mjs` (the owner's report reproduced – Locate to a spot without
+cells: overview at the Bodensee at z11, a fake package's relief at z15, no cover; "Overview only", "not available";
+the request flow against a fake doorman behind the real proxy: one request, the app's strip texts, polling, ready →
+the cell's new version read, strip closed, no second request; location denied; engine / routing data / routing waits);
+`web/host/live-smoke.mjs` (live, optional, §9 step 6).
+
+Open decisions:
+1. View trigger: the map resting 4 s at zoom ≥ 10 builds the centre cell (the owner asked for it; the app asks only for
+   points, position, search, route). Costs a build per new area looked at – keep, lengthen, or ask first like the
+   app's T2b ("Load the map for this area?")?
+2. Region packages are shown, never requested from the web (the app's `ensurePackages`); and their vector data is not
+   magnified above zoom 9 (copies of the detailed layers from a package source, below the cover, would show roads and
+   towns there – more layers to draw).
+3. Every browser shares the planner's test key; when the doorman counts per app id (map-access.md) the web needs its own.
+

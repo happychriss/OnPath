@@ -47,7 +47,11 @@ export interface RouteResult {
 
 export interface RouteStats { engineLoadMs: number; fetchMs: number; storeMs?: number; routeMs: number; bytesFetched: number }
 
-export interface EngineReply { id: number; ok: boolean; result?: RouteResult; plan?: PlanResult; index?: number; code?: string; text?: string; shared?: SharedPlan | null; stats?: RouteStats; problems?: string[]; error?: string }
+export interface EngineReply { id: number; ok: boolean; result?: RouteResult; plan?: PlanResult; index?: number; code?: string; text?: string; shared?: SharedPlan | null; stats?: RouteStats; problems?: string[]; error?: string;
+  /** Sent before the answer while a request waits (worker → page): routing data to download, then routing. */
+  progress?: Progress }
+/** What a plan waits for: the routing data under it ([bytes] still to download), then the router. */
+export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' };
 
 /** One row of the Points list (the app's PlanPoints.rows). */
 export interface PointRow { i: number; role: 'START' | 'STOP' | 'GOAL'; name: string; legM: number | null; approx: boolean; loop: boolean }

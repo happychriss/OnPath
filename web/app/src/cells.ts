@@ -28,8 +28,15 @@ export class Cells {
   private cells = new Map<string, Promise<Cell | null>>();
   private poisLoaded = new Set<string>();
   private pois: Feature[] = [];
-  /** Cells that exist (for the "no map here" hint). */
+  /**
+   * Cells whose detailed map draws (a first tile came back) – the overview's cover follows these, so the overview stays
+   * visible where a cell is missing or still loading (never a blank map; the app covers its installed cells).
+   */
   readonly found = new Set<string>();
+  /** Cells looked up and not built (current.json missing) – map areas on demand (areas.ts) asks for these. */
+  readonly absent = new Set<string>();
+  /** Bumped when a cell becomes ready (areas.ts): the tile URLs change, so maplibre asks again (reload). */
+  generation = 0;
   /** Region packages that exist, "x/y" of their z7 tile (overview.ts followPackages). */
   readonly packages = new Set<string>();
   /** Package files found unreadable (warned once). */
@@ -45,10 +52,14 @@ export class Cells {
     if (!p) {
       p = (async () => {
         const base = `${this.root}cells/f2/${z}/${x}/${y}/`;
-        const r = await fetch(base + 'current.json').catch(() => null);
-        if (!r || !r.ok) return null; // nothing built here (yet)
+        const r = await fetch(base + 'current.json', { cache: 'no-cache' }).catch(() => null);
+        if (!r || !r.ok) {
+          if (z === CELL_Z && r?.status === 404) this.absent.add(`${x}/${y}`);
+          if (!r || r.status !== 404) this.cells.delete(key); // a network error: asked again next time
+          return null; // nothing built here (yet)
+        }
         const { version } = (await r.json()) as { version: string };
-        (z === CELL_Z ? this.found : this.packages).add(`${x}/${y}`);
+        if (z === CELL_Z) this.absent.delete(`${x}/${y}`); else this.packages.add(`${x}/${y}`);
         return { z, x, y, dir: `${base}${version}/`, archives: {} };
       })();
       this.cells.set(key, p);
@@ -60,6 +71,24 @@ export class Cells {
     const url = `${c.dir}${layer}.pmtiles`;
     // the preview host has no HTTP range: there the whole file is fetched once (base64) and read from memory
     return (c.archives[layer] ??= new PMTiles(PACKED ? new MemorySource(url) : url));
+  }
+
+  /** True when the cell at zoom-10 tile [x],[y] is built (current.json there). */
+  async exists(x: number, y: number): Promise<boolean> { return (await this.cell(x, y)) != null; }
+
+  /**
+   * The cells at [ids] were just built (areas.ts): forget the "not there" answer and reload the cell sources (new tile
+   * URLs) – the detailed map appears without a page reload.
+   */
+  async refresh(map: maplibregl.Map, ids: [number, number][]) {
+    for (const [x, y] of ids) { this.cells.delete(`${x}/${y}`); this.poisLoaded.delete(`${x}/${y}`); }
+    await Promise.all(ids.map(([x, y]) => this.cell(x, y)));
+    this.generation++;
+    for (const layer of LAYERS) {
+      const src = map.getSource(layer) as unknown as { setTiles?: (t: string[]) => void } | undefined;
+      src?.setTiles?.([`cell://${layer}/{z}/{x}/{y}?g=${this.generation}`]);
+    }
+    await this.loadPois(map);
   }
 
   /** maplibre protocol "cell://<layer>/{z}/{x}/{y}". */
@@ -91,8 +120,17 @@ export class Cells {
     if (layer === 'hillshade') return empty(); // the packages' relief ends at z9 (region-relief maxzoom 10)
     const c = await this.cell(x >> (z - CELL_Z), y >> (z - CELL_Z));
     if (!c) return empty();
-    const t = await this.archive(c, layer).getZxy(z, x, y, abort.signal);
-    return t ? { data: new Uint8Array(t.data) } : empty();
+    try {
+      const t = await this.archive(c, layer).getZxy(z, x, y, abort.signal);
+      if (t && layer === 'base') this.found.add(`${c.x}/${c.y}`); // it draws: the overview may hide there now
+      return t ? { data: new Uint8Array(t.data) } : empty();
+    } catch (e) {
+      if (abort.signal.aborted) throw e;
+      // a cell without this file (contours are optional) or a broken one: left out, the overview stays there – said once
+      const k = `${c.dir}${layer}`;
+      if (!this.missing.has(k)) { this.missing.add(k); console.warn(`map cell ${c.x}/${c.y}: ${layer}.pmtiles not readable – left out`, e); }
+      return empty();
+    }
   };
 
   /** The app's format-2 style with its file sources pointed at the cells; the POI source starts empty. */
@@ -111,6 +149,10 @@ export class Cells {
     if (shade && packagesStyle(s)) {
       delete shade.url;
       Object.assign(shade, { tiles: ['cell://hillshade/{z}/{x}/{y}'], minzoom: PACKAGE_Z, maxzoom: CELL_Z - 1, tileSize: 256 });
+      // never a blank map (web-planner.md §17): a package's relief goes on, magnified, above zoom 9 where no cell is –
+      // it lies under the cover, which hides it where a cell draws (the app stops it at 10: there its cells are installed)
+      const relief = s.layers.find((l) => l.id === 'region-relief');
+      if (relief) delete relief.maxzoom;
     }
     // any other file source has no cell here: left out with its layers, like the app's OptionalSources.strip does
     // for a missing file

@@ -512,6 +512,8 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)
+// the app's texts for map areas on demand and waits (WebMaps.kt, web-planner.md §17)
+@JSExport fun mapTexts(): String = WebMaps.texts()
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----
 @JSExport fun syncPairNew(random: String): String = WebSync.pairNew(random)
 @JSExport fun syncPairParse(text: String): String = WebSync.pairParse(text)

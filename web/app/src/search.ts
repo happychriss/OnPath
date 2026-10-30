@@ -21,6 +21,8 @@ export interface SearchHost {
   google(hit: Hit): void;
   /** The place card opened or closed (the page makes room: on a phone it stands in for the plan sheet). */
   cardShown?(open: boolean): void;
+  /** A result is shown on the map (the app's trigger T2: its map area is asked for – areas.ts). */
+  placeShown?(lat: number, lon: number): void;
 }
 
 const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
@@ -99,6 +101,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     ring.className = 'searchring';
     marker = new maplibregl.Marker({ element: ring }).setLngLat([h.lon, h.lat]).addTo(host.map);
     host.map.flyTo({ center: [h.lon, h.lat], zoom: Math.max(host.map.getZoom(), 14) });
+    host.placeShown?.(h.lat, h.lon);
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     const n = host.points().length;
     const atStart = pv.existing === 0, atEnd = pv.existing != null && pv.existing === n - 1;

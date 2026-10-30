@@ -255,6 +255,23 @@
         "web/app/src/cells.ts"
       ],
       "blob": "c349053617f537251de2e0a53b6722b3e0c07c31"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/CellCard.kt",
+      "what": "CellCards.build / name / rowState – the map-area strip (title, rows, more, failed, offline)",
+      "web": [
+        "web/app/src/areas.ts"
+      ],
+      "blob": "bbf0a5169c703ebe2030d162182b245d20105f36"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/cells/CellTriggers.kt",
+      "what": "T1 point set (more than 3 new = loaded plan → T4 only), T3 position, T4 route corridor – web triggers",
+      "web": [
+        "web/app/src/areas.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "c6e3a6a2e87a5c9de32a321b4e267e535693faa2"
     }
   ],
   "watch": [
@@ -327,6 +344,16 @@
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
       "blob": "feac009131fe85ca0f79f1b75757759f98ce2d68"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
+      "why": "the loading modal's texts and when it closes (web: the map strip, areas.ts)",
+      "blob": "6c8572b35e25eed1433e35aedbc94cc7ed0c026f"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/cells/CellApi.kt",
+      "why": "doorman request / status shapes the web proxy and areas.ts use (web/host/src/maps.js)",
+      "blob": "e297e30afd779c95d2d4cc08c559b8b5e12fa7b5"
     }
   ],
   "shared": {

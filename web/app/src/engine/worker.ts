@@ -43,6 +43,7 @@ interface WasmEngine {
   paceSet(hike: string, bike: string): string;
   paceChoices(activity: string): string;
   planTime(points: string, activity: string, sac: number): string;
+  mapTexts(): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
@@ -53,6 +54,8 @@ const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture'
   'paceSet', 'paceChoices', 'planTime',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel', 'planGaps',
+  // the app's texts for map areas on demand and waits (WebMaps.kt)
+  'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked']);
@@ -146,8 +149,18 @@ function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
  * Fetches the parts [points] need that the engine does not have yet (each part once, also when a prefetch and a plan
  * ask at the same time). Returns bytes downloaded by this call.
  */
-async function ensureParts(e: WasmEngine, points: string): Promise<number> {
+async function ensureParts(e: WasmEngine, points: string, onNeed?: (bytes: number) => void): Promise<number> {
   const need: [string, number][] = JSON.parse(e.partsNeeded(points));
+  if (onNeed) {
+    // what is still to download (the layouts are small and fetched first), so the page can say "about 9 MB"
+    const ends = await Promise.all(need.map(([tile]) => layout(e, tile)));
+    const bytes = need.reduce((sum, [tile, i], k) => {
+      const en = ends[k];
+      if (!en || partLoads.has(tile + '#' + i)) return sum;
+      return sum + Math.max(0, en[i] - (i === 0 ? 200 : en[i - 1]));
+    }, 0);
+    if (bytes > 0) onNeed(bytes);
+  }
   const sizes = await Promise.all(need.map(([tile, i]) => {
     const k = tile + '#' + i;
     let p = partLoads.get(k);
@@ -252,7 +265,8 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const t0 = performance.now();
-    const fetched = await ensureParts(e, req.points);
+    const fetched = await ensureParts(e, req.points, (bytes) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes } }));
+    if (req.type === 'plan') reply({ id: req.id, ok: true, progress: { phase: 'route' } });
     if (req.type === 'planFromTrack') {
       // a shown track → plan (the app's TrackToPlan): the routing data along the whole track first, like the app
       e.writeParts();

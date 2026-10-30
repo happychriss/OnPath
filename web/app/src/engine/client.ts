@@ -1,5 +1,5 @@
 // Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
-import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, SharedPlan } from './types';
+import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, Progress, SharedPlan } from './types';
 
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
@@ -7,11 +7,14 @@ export class EngineClient {
   private worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
   private next = 1;
   private waiting = new Map<number, (r: EngineReply) => void>();
+  private progress = new Map<number, (p: Progress) => void>();
 
   constructor() {
     this.worker.onmessage = (ev: MessageEvent<EngineReply>) => {
+      if (ev.data.progress) { this.progress.get(ev.data.id)?.(ev.data.progress); return; } // not the answer yet
       this.waiting.get(ev.data.id)?.(ev.data);
       this.waiting.delete(ev.data.id);
+      this.progress.delete(ev.data.id);
     };
     // robust first: a crashed worker (failed engine load, a trap the worker could not catch) must never leave the
     // page waiting forever – every open request gets a plain failure the caller already shows
@@ -27,8 +30,9 @@ export class EngineClient {
   /** No answer at all after this long (routing has its own, shorter time limit in the engine) = the worker hangs. */
   private static readonly NO_ANSWER_MS = 180_000;
 
-  private ask(req: NoId<EngineRequest>): Promise<EngineReply> {
+  private ask(req: NoId<EngineRequest>, onProgress?: (p: Progress) => void): Promise<EngineReply> {
     const id = this.next++;
+    if (onProgress) this.progress.set(id, onProgress);
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (!this.waiting.delete(id)) return;
@@ -48,8 +52,8 @@ export class EngineClient {
   }
 
   /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner. */
-  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = []) {
-    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(',') });
+  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void) {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(',') }, onProgress);
   }
 
   /** The plan code (QR code, link) – the app's PlanCode. */

@@ -10,10 +10,14 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
 /**
  * [dataDir] = a map store root (cells/f2/10/<x>/<y>/…, like the R2 bucket), served at /data/.
  * [sync] = (Request) => Promise<Response> for /sync/ (the host's mailbox on a fake D1, see sync-smoke.mjs).
+ * [maps] = the same for /maps/ (map areas on demand: the host's proxy with a fake doorman, see areas-smoke.mjs).
+ * [log] = an array that gets every request path (what the page fetched).
  */
-export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null }) {
+export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, log = null }) {
   const server = http.createServer((req, res) => {
+    log?.push(req.url);
     if (sync && req.url.startsWith('/sync/')) { forward(sync, req, res); return; }
+    if (maps && req.url.startsWith('/maps/')) { forward(maps, req, res); return; }
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file;
     if (url.startsWith('/segments/')) file = path.join(segments, path.basename(url));
@@ -39,7 +43,7 @@ export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}/` })));
 }
 
-/** A node request → a fetch Request → [handler] → back to node (only for the small sync mailbox). */
+/** A node request → a fetch Request → [handler] → back to node (only for the small sync mailbox and the maps proxy). */
 async function forward(handler, req, res) {
   const chunks = [];
   for await (const c of req) chunks.push(c);
