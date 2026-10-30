@@ -212,6 +212,20 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     'empty plan: Share icon shown but greyed (owner 2026-10-30), no big button');
   check(await page.getAttribute('#share', 'title') === 'Set a start and destination first' && await page.getAttribute('#share', 'aria-label') === 'Set a start and destination first',
     'empty plan: Share says "Set a start and destination first"');
+  // header (owner 2026-10-30): "OnPath Planner" as one name; every icon with its text; Save greyed on an empty route
+  const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
+    return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
+  check(brand.text === 'OnPath Planner' && brand.same && brand.upper === 'none', `header: "OnPath Planner" in one size (${JSON.stringify(brand)})`);
+  check(await page.isVisible('#header #menuSavePlan') && await page.isDisabled('#menuSavePlan'), 'header: Save route beside My routes, greyed on an empty route');
+  const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
+  await page.evaluate(() => { document.getElementById('syncBadge').hidden = false; }); // the paired status, shown for the look
+  let l = await labels();
+  check(l.length >= 4 && l.every((x) => x.icon && x.label), `header at 1440 px: every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
+  check((await page.textContent('#syncBadge')).trim() === 'Paired', 'header: the paired status says "Paired"');
+  await page.setViewportSize({ width: 1000, height: 800 });
+  l = await labels();
+  check(l.every((x) => x.icon && !x.label && x.title), 'header at 1000 px: icons only, each with its title');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForFunction(() => document.querySelector('#summary .title')?.getBoundingClientRect().height > 0, null, { timeout: 30_000 }).catch(() => {});
   const title = await page.evaluate(() => { const e = document.querySelector('#summary .title');
     return e ? { h: e.getBoundingClientRect().height, text: e.textContent } : { h: 0, text: document.querySelector('.sheethead').outerHTML.slice(0, 300) }; });

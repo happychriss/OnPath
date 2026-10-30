@@ -31,17 +31,19 @@ html, body { margin: 0; height: 100%; font: 14px/1.4 Manrope, system-ui, -apple-
 }
 .brand { display: inline-flex; gap: 9px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -.05em; color: inherit; text-decoration: none; }
 .brand .logo { border-radius: 7px; flex: none; }
-.product { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--green-fg);
-  border-left: 1px solid var(--site-line); padding-left: 14px; }
+/* "OnPath Planner" as one product name (owner 2026-10-30): same font and size, "Planner" in the green, a little lighter */
+.wordmark { white-space: nowrap; }
+.product { font-weight: 600; color: var(--green-fg); }
 .nav { display: flex; gap: 2px; margin-left: 8px; }
 .nav button { border: none; background: none; display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px;
   font-size: 15px; color: var(--site-fg); }
 .nav button .ic { color: var(--green-fg); }
 .nav button:hover { background: var(--site-soft); }
+.nav button:disabled { opacity: .45; cursor: default; background: none; }
 #header .hint { margin-left: auto; font-size: 13px; white-space: nowrap; }
 #menuBtn { display: none; color: var(--site-fg); }
 @media (max-width: 1020px) { #header .hint { display: none; } }
-@media (max-width: 860px) and (min-width: 701px) { .nav button span { display: none; } .product { display: none; } }
+@media (max-width: 860px) and (min-width: 701px) { .nav button span { display: none; } }
 .muted { color: var(--muted); } .small { font-size: 12px; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
@@ -139,8 +141,11 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 /* head: chip · Share · ⋯ · chevron in one line, then time + distance (never wrapped), then ↑/↓ + badge */
 .sheethead { position: relative; display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 2px 2px; align-items: center; }
 #activityChip { grid-row: 1; grid-column: 1; }
-#share, #sheetMenuBtn, #sheetStep { grid-row: 1; width: 40px; height: 40px; }
-#share { grid-column: 3; } #share:disabled { opacity: .38; cursor: default; } /* always there, greyed until two points (owner 2026-10-30) */
+#share, #sheetMenuBtn, #sheetStep { grid-row: 1; height: 40px; } #sheetMenuBtn, #sheetStep { width: 40px; }
+/* Share = icon + text next to ⋯ (owner 2026-10-30), always there */
+.sharebtn { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; border-radius: 20px; padding: 0 10px; color: var(--green-fg); font: inherit; font-weight: 600; }
+.sharebtn:hover:not(:disabled) { background: var(--surface2); }
+#share { grid-column: 3; } #share:disabled { opacity: .45; cursor: default; color: var(--muted); } /* always there, greyed until two points (owner 2026-10-30) */
 #sheetMenuBtn { grid-column: 4; } #sheetStep { grid-column: 5; }
 .headline { grid-row: 2; grid-column: 1 / -1; margin-top: 6px; }
 #summary { display: contents; }
@@ -346,8 +351,8 @@ dialog.plans .syncsec .row { margin-top: 8px; }
 dialog.plans .syncsec .danger { color: var(--error); }
 dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 /* paired with the phone: a small phone + green dot beside My routes (header); a click opens My routes at the sync part */
-.nav button.syncbadge { position: relative; padding: 8px 10px; }
+.nav button.syncbadge { position: relative; }
 .nav button.syncbadge[hidden] { display: none; }
-.syncbadge .lbl { display: none; }
-.syncbadge .syncdot { position: absolute; top: 7px; left: 21px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
-@media (max-width: 700px) { .nav.open .syncbadge .lbl { display: inline; } .nav.open .syncbadge .syncdot { top: 10px; left: 29px; } }
+/* the icon + "Paired" (owner 2026-10-30: every header icon has its text; narrow widths keep the icon, its title says it all) */
+.syncbadge .syncdot { position: absolute; top: 7px; left: 23px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
+@media (max-width: 700px) { .nav.open .syncbadge .syncdot { top: 10px; left: 29px; } }

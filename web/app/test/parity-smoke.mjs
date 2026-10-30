@@ -184,18 +184,52 @@ await page.click('#mcClose');
 check(await page.evaluate(() => JSON.parse(localStorage.getItem('onpath.mapContent')).hidden.includes('parking')), 'choice remembered in this browser');
 
 // 6d. Save: name proposal, saving closes the dialog, "Saved as …"; saving again asks Save / Save as new (no duplicate)
-await page.click('#sheetMenuBtn'); await page.click('#menuSavePlan');
+// Save is in the header (owner 2026-10-30: the sheet plans, the header manages) – no longer in the sheet's ⋯
+check(!(await page.$('#sheetMenu #menuSavePlan')) && await page.isVisible('#header #menuSavePlan') && await page.isEnabled('#menuSavePlan')
+  && (await page.textContent('#menuSavePlan')).trim() === 'Save route', 'header: "Save route" beside My routes, active with a route; not in ⋯');
+await page.click('#menuSavePlan');
 await page.waitForSelector('dialog.savename[open] #saveTitle');
 await page.fill('#saveTitle', 'Test loop');
 await page.click('#savePlan');
 await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
 check(await page.locator('dialog[open]').count() === 0 && (await page.textContent('#savedLine')).includes('Saved as Test loop'), 'Save closes the dialog; the sheet says "Saved as Test loop"');
-await page.click('#sheetMenuBtn'); await page.click('#menuSavePlan');
+await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'saved', null, { timeout: 10_000 }).catch(() => {});
+check((await page.textContent('#menuSavePlan')).trim() === 'Saved' && (await page.getAttribute('#menuSavePlan', 'title')).includes('Test loop'), 'header: saved and unchanged → ✓ "Saved" (tooltip names it)');
+await page.click('#menuSavePlan');
 await page.waitForSelector('dialog.savechoice[open] #saveOver');
 await page.click('#saveOver');
 await page.waitForTimeout(500);
 const saved = await page.evaluate(async () => (await window.__sync.list()).map((p) => p.title));
 check(saved.length === 1 && saved[0] === 'Test loop', 'saving again replaces the plan (Save), no duplicate');
+if (await page.isEnabled('#undo')) { // a change → "Save route" again; back to the saved plan → "Saved"
+  await page.click('#undo');
+  await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'save', null, { timeout: 10_000 }).catch(() => {});
+  check((await page.textContent('#menuSavePlan')).trim() === 'Save route', 'header: changed since saving → "Save route"');
+  await page.click('#redo');
+  await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'saved', null, { timeout: 10_000 }).catch(() => {});
+  check((await page.textContent('#menuSavePlan')).trim() === 'Saved', 'header: redo back to the saved plan → "Saved"');
+}
+
+// 6e. the pointing hand over what a click opens: a POI and the route line; the plain map keeps maplibre's cursor
+{
+  const cursor = async (x, y) => { await page.mouse.move(x, y); await page.waitForTimeout(150); return page.evaluate(() => window.__map.getCanvas().style.cursor); };
+  const mapBox = await page.locator('#map').boundingBox();
+  const spot = { x: mapBox.x + mapBox.width - 220, y: mapBox.y + 260 };
+  const plain = await cursor(spot.x, spot.y);
+  await page.evaluate(([x, y]) => {
+    const m = window.__map; // a station: drawn from zoom 10, so the camera stays (later steps click by position)
+    const r = m.getContainer().getBoundingClientRect(), ll = m.unproject([x - r.left, y - r.top]);
+    m.getSource('pois').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [ll.lng, ll.lat] }, properties: { kind: 'train', name: 'Teststation' } }] });
+  }, [spot.x, spot.y]);
+  await page.waitForFunction(() => window.__map.queryRenderedFeatures({ layers: ['poi-station'] }).length > 0, null, { timeout: 10_000 }).catch(() => {});
+  const onPoi = await cursor(spot.x + 1, spot.y);
+  check(plain === '' && onPoi === 'pointer', `cursor: pointer over a POI (${JSON.stringify(onPoi)}), none of ours on the plain map (${JSON.stringify(plain)})`);
+  const line = await page.evaluate(() => { const m = window.__map, f = m.queryRenderedFeatures({ layers: ['planned-route'] })[0];
+    if (!f) return null; const c = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0];
+    const p = m.project(c[Math.floor(c.length / 2)]), r = m.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; });
+  check(line && await cursor(line[0], line[1]) === 'pointer', 'cursor: pointer over the route line');
+  await page.evaluate(() => window.__map.getSource('pois').setData({ type: 'FeatureCollection', features: [] }));
+}
 
 // 7. Go here from my position (browser location)
 await page.click('#sheetMenuBtn'); await page.click('#clear'); await waitPins(0);

@@ -109,6 +109,9 @@
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_plans_sync_title">Mit dem Handy verbinden</string>
     <string name="web_sync_badge">Mit dem Handy verbunden</string>
+    <string name="web_sync_paired">Verbunden</string>
+    <string name="web_saved_short">Gespeichert</string>
+    <string name="web_saved_title">Gespeichert als „%1$s“ – klicken, um erneut oder als neue Route zu speichern</string>
     <string name="web_sync_badge_last">zuletzt abgeglichen %1$s</string>
     <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
     <string name="web_plans_open">Diese Route öffnen</string>

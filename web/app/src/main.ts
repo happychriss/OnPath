@@ -92,6 +92,8 @@ const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
   // owner 2026-10-30: no "Send to phone" / "Pair with phone" here – sharing is the sheet's Share icon, pairing a section
   // of My routes ("Pair with phone"); while paired a small phone with a green dot sits beside My routes
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
+  // owner 2026-10-30: "the floating sheet is planning, the header is managing" – Save lives here, not in the sheet's ⋯
+  { id: 'menuSavePlan', icon: 'save', label: t('plan_save_route') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
 ];
@@ -103,12 +105,11 @@ const navItem = (id: string) => NAV.find((n) => n.id === id)!;
 document.title = t('web_page_title');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
-    <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span>OnPath</span></a>
-    <span class="product">${escapeHtml(t('web_product'))}</span>
+    <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
       ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
-        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" hidden>${icon('phone', 20)}<i class="syncdot" aria-hidden="true"></i><span class="lbl">${escapeHtml(t('web_sync_badge'))}</span></button>` : '')).join('')}
+        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" title="${escapeHtml(t('web_sync_badge'))}" hidden>${icon('phone', 20)}<i class="syncdot" aria-hidden="true"></i><span class="lbl">${escapeHtml(t('web_sync_paired'))}</span></button>` : '')).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
@@ -140,11 +141,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
-      <button id="share" class="iconbtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share')}</button>
+      <button id="share" class="sharebtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share', 18)}<span>${escapeHtml(t('web_share'))}</span></button>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
-        <button id="menuSavePlan" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
         <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
         <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_clear_route'))}</button>
       </div>
@@ -167,6 +167,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
+saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
 const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), document.querySelector<HTMLElement>('.sheethead')!, () => {});
 
@@ -454,6 +455,23 @@ function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
 
 map.on('click', (e) => press(e.lngLat, -1, e.point));
 map.on('contextmenu', (e) => { e.preventDefault(); press(e.lngLat, -1, e.point); }); // right-click / long press: the same
+
+// The pointing hand over what a click opens (owner 2026-10-30): a POI (its menu) and the route line (a point goes into
+// that leg). Markers are DOM elements with their own cursor. One lookup per frame at most.
+let hoverAt: maplibregl.Point | null = null;
+map.on('mousemove', (e) => {
+  const queued = hoverAt != null;
+  hoverAt = e.point;
+  if (queued) return;
+  requestAnimationFrame(() => {
+    const pt = hoverAt!; hoverAt = null;
+    const layers = map.isMoving() ? [] : map.getStyle().layers
+      .filter((l) => l.id.startsWith('poi-') || l.id === 'planned-route' || l.id === 'planned-route-casing').map((l) => l.id);
+    const hit = layers.length > 0 && map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers }).length > 0;
+    map.getCanvas().style.cursor = hit ? 'pointer' : '';
+  });
+});
+map.on('mouseout', () => { map.getCanvas().style.cursor = ''; });
 
 async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Point) {
   const results = document.getElementById('results');
@@ -783,10 +801,24 @@ function savedUntitled(code: string): Promise<string | null> {
 async function renderSaved() {
   const line = $('savedLine');
   line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
-  if (line.hidden) return;
+  if (line.hidden) { saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return; }
   // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
   const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
   line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(state.savedTitle!)}</b>`)}</span>`;
+  saveEntry(changed ? 'save' : 'saved');
+}
+
+/** The header's Save entry: greyed on an empty route, ✓ "Saved" while the shown plan is saved and unchanged (a click
+ *  still asks Save again / Save as new – the app's saveMode), else "Save route". */
+function saveEntry(s: 'empty' | 'save' | 'saved') {
+  const b = $<HTMLButtonElement>('menuSavePlan');
+  const label = s === 'saved' ? t('web_saved_short') : t('plan_save_route');
+  const tip = s === 'saved' ? t('web_saved_title', state.savedTitle ?? '') : s === 'empty' ? t('web_share_needs_two') : label;
+  b.disabled = s === 'empty';
+  b.dataset.state = s;
+  b.title = tip;
+  b.setAttribute('aria-label', tip);
+  b.innerHTML = `${icon(s === 'saved' ? 'check' : 'save', 20)}<span>${escapeHtml(label)}</span>`;
 }
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
@@ -982,7 +1014,7 @@ function syncBadge() {
   b.setAttribute('aria-label', b.title);
 }
 $('syncBadge').onclick = () => { closeMenus(); plansDialog(true); };
-$('menuSavePlan').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
+navItem('menuSavePlan').act = () => requestSave(sync, plansHost); // header (owner 2026-10-30: the header manages, the sheet plans)
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));

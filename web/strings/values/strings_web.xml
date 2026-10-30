@@ -122,6 +122,9 @@
     <string name="web_plans_sync_now">Sync now</string>
     <string name="web_plans_sync_title">Pair with phone</string>
     <string name="web_sync_badge">Paired with your phone</string>
+    <string name="web_sync_paired">Paired</string>
+    <string name="web_saved_short">Saved</string>
+    <string name="web_saved_title">Saved as “%1$s” – click to save again or as a new route</string>
     <string name="web_sync_badge_last">last synced %1$s</string>
     <string name="web_plans_none">No saved routes yet.</string>
     <string name="web_plans_open">Open this route</string>
