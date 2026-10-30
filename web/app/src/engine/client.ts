@@ -13,12 +13,29 @@ export class EngineClient {
       this.waiting.get(ev.data.id)?.(ev.data);
       this.waiting.delete(ev.data.id);
     };
+    // robust first: a crashed worker (failed engine load, a trap the worker could not catch) must never leave the
+    // page waiting forever – every open request gets a plain failure the caller already shows
+    const failAll = (why: string) => {
+      console.error('[engine] ' + why); // reported like the app's Problems log (console in the browser)
+      for (const [id, resolve] of this.waiting) resolve({ id, ok: false, error: 'The planner stopped unexpectedly – please reload the page.' });
+      this.waiting.clear();
+    };
+    this.worker.onerror = (e) => failAll('worker error: ' + (e.message || 'unknown'));
+    this.worker.onmessageerror = () => failAll('worker message could not be read');
   }
+
+  /** No answer at all after this long (routing has its own, shorter time limit in the engine) = the worker hangs. */
+  private static readonly NO_ANSWER_MS = 180_000;
 
   private ask(req: NoId<EngineRequest>): Promise<EngineReply> {
     const id = this.next++;
     return new Promise((resolve) => {
-      this.waiting.set(id, resolve);
+      const timer = setTimeout(() => {
+        if (!this.waiting.delete(id)) return;
+        console.error(`[engine] no answer to "${req.type}" in ${EngineClient.NO_ANSWER_MS / 1000} s`);
+        resolve({ id, ok: false, error: 'The planner did not answer – please reload the page.' });
+      }, EngineClient.NO_ANSWER_MS);
+      this.waiting.set(id, (r) => { clearTimeout(timer); resolve(r); });
       this.worker.postMessage({ ...req, id } as EngineRequest);
     });
   }
