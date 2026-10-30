@@ -17,8 +17,12 @@ import java.time.format.DateTimeFormatter
  * KEPT – that is where the user got on and off.
  */
 object RideView {
-    /** Ascent hysteresis of the recording (RecordingService): 5 m. */
-    const val CLIMB_THRESHOLD_M = 5.0
+    /**
+     * Hysteresis for the stored points' GPS altitude (recording/AscentCounter.GPS_THRESHOLD_M). The recorded total counts
+     * terrain heights where there are any (AscentCounter); a ride taken out is measured on the GPS altitude of its points
+     * – for a lift or a bus both give about the same climb.
+     */
+    const val CLIMB_THRESHOLD_M = com.onpath.app.recording.AscentCounter.GPS_THRESHOLD_M
     /** Less than this after the last ride (m): the ride is "at the end" – "Save only until" is preselected. */
     const val AT_END_M = 300.0
     /** A part split off must be a tour: at least this far or [SPLIT_MIN_S] long (not the minute between lift and bus). */

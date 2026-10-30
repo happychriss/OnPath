@@ -117,7 +117,9 @@ class RecordingService : Service() {
     private var distance = 0.0
     private var ascent = 0.0
     private var descent = 0.0
-    private var eleRef: Double? = null
+    /** Ascent / descent from the terrain under the points, GPS altitude where there is none ([AscentCounter]). */
+    private val climb = AscentCounter()
+    private var terrain: com.onpath.app.data.TerrainHeights? = null
     private var elapsedS = 0L
     private var last: TrackPoint? = null
     private var lastGoodFixElapsed = 0L
@@ -252,7 +254,7 @@ class RecordingService : Service() {
                 val segs = db.loadSegments(tourId)
                 segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
                 trackSeg = lastSeg
-                eleRef = segs.lastOrNull()?.lastOrNull()?.ele
+                climb.restart()
                 last = null
                 recActivity = activityOf(existing.activity)
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
@@ -269,6 +271,7 @@ class RecordingService : Service() {
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
                 firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
+                climb.restart()
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 saveTrip()
             }
@@ -281,6 +284,11 @@ class RecordingService : Service() {
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
+        // terrain for the ascent: opened on its own thread now, so the first points already have ground heights
+        try {
+            val t = terrain ?: com.onpath.app.data.TerrainHeights({ DataFiles(this).mapDir() }).also { terrain = it }
+            t.prepare()
+        } catch (e: Exception) { Problems.warn("elevation", "Terrain for the ascent not prepared; ascent from GPS altitude", e) }
         // T5 in the background (owner): map areas ahead load also with the screen off; joined after the tour
         try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = true; holdUpdates = true } } catch (e: Exception) {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
@@ -383,7 +391,7 @@ class RecordingService : Service() {
         if (demoFix != lastFixDemo) {
             // the simulated place is far from the real one: without a new piece every later fix would be a "GPS jump"
             lastFixDemo = demoFix
-            if (last != null) { last = null; seg++; eleRef = null }
+            if (last != null) { last = null; seg++; climb.restart() }
             Problems.trace("gps", "Demo location ${if (demoFix) "started" else "ended"} during the tour: new track piece")
         }
         // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
@@ -424,12 +432,12 @@ class RecordingService : Service() {
         if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
         distance += moved
         if (wasLost && prev != null && !bridged) seg++                // long GPS gap: new segment
-        p.ele?.let { e ->
-            val r = eleRef
-            if (r == null) eleRef = e
-            else if (e - r >= 5) { ascent += e - r; eleRef = e }
-            else if (r - e >= 5) { descent += r - e; eleRef = e }
-        }
+        // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track
+        try {
+            val ground = terrain?.heightAt(p.lat, p.lon)
+            val (up, down) = climb.add(ground, p.ele, moved)
+            ascent += up; descent += down
+        } catch (e: Exception) { Problems.warn("recording", "Ascent not updated on a GPS fix; the track is still recorded", e) }
         // The point goes to SQLite first (R-07). seq advances only when it is really stored.
         if (safeDb("point") { db.appendPoint(tourId, seq, seg, p, loc.accuracy) }) {
             seq++
@@ -779,6 +787,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map areas loaded during the tour not released; they join at the next app start", e)
         }
         if (tourId >= 0) {
+            climb.flush().let { (up, down) -> ascent += up; descent += down }
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
             // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
             // rides are only marked. The points stay as recorded; never throws (failures reported, tour as recorded).
@@ -817,6 +826,8 @@ class RecordingService : Service() {
         cancelReroute()
         scope.cancel()
         routeExec.shutdown()
+        try { terrain?.close() } catch (e: Exception) { Problems.warn("elevation", "Terrain file not closed", e) }
+        terrain = null
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         if (tourId >= 0) {
