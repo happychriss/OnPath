@@ -500,5 +500,269 @@ class GcsLocks(unittest.TestCase):
                               src_objects.FileObjects)
 
 
+# ------------------------------------------------------------------------------------- partial rebuild (map-hosting §7h)
+LAYER_FILES = {"base": "base.pmtiles", "overlays": "overlays.pmtiles", "pois": "pois.geojson",
+               "addresses": "addresses/{cid}.sqlite", "terrain": "terrain.pmtiles", "contours": "contours.pmtiles"}
+
+# fake build_cell.sh for partial rebuilds: writes one small file per built layer (content = layer + schema) and the
+# manifest through the real cells.write_manifest – with the layer schemas of the test (FAKE_LAYER_SCHEMA)
+FAKE_PARTIAL_BUILD = r"""#!/usr/bin/env bash
+set -e
+echo "[00:00:00] ==> cut"; echo "[00:00:01] ==> overlays"
+[ -n "$FAKE_FAIL_PARTIAL" ] && [ -n "$LAYERS" ] && { echo "ERROR: step overlays failed (log: x)"; exit 1; }
+exec python3 - "$@" <<'PY'
+import json, os, sys
+sys.path.insert(0, os.environ["CELLS_DIR"])
+import cells
+cells.LAYER_SCHEMA.update(json.loads(os.environ["FAKE_LAYER_SCHEMA"]))
+cells.CELL_SCHEMA = max(cells.LAYER_SCHEMA.values())
+z, x, y = map(int, sys.argv[1:4])
+cid = f"{z}-{x}-{y}"
+layers = os.environ.get("LAYERS", "").split()
+base = json.load(open(os.environ["BASE_MANIFEST"])) if layers else None
+osm = os.environ.get("FAKE_OSM_DATE", "2026-10-19")
+ver = cells.version_name(osm, cells.CELL_SCHEMA)
+dest = os.path.join(os.environ["DATA_ROOT"], "cells", "f2", str(z), str(x), str(y))
+vdir = os.path.join(dest, ver)
+os.makedirs(os.path.join(vdir, "addresses"), exist_ok=True)
+files = json.loads(os.environ["LAYER_FILES"])
+for name, f in files.items():
+    if not layers or name in layers:
+        with open(os.path.join(vdir, f.format(cid=cid)), "w") as fh:
+            fh.write(f"{name} s{cells.LAYER_SCHEMA[name]} built")
+cells.write_manifest(z, x, y, vdir, osm, "test", f"cells/f2/{z}/{x}/{y}/{ver}", 2, ver, None, None,
+                     layers or None, base)
+json.dump({"version": ver}, open(os.path.join(dest, "current.json"), "w"))
+print("[00:00:02] ==> manifest", flush=True)
+PY
+"""
+
+
+class PartialRebuild(unittest.TestCase):
+    """Per-layer schema: only the stale layers are built, the rest is copied from the published version."""
+    S7 = {k: 7 for k in LAYER_FILES}
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = self.tmp.name
+        self.fake = os.path.join(t, "build_cell.sh")
+        with open(self.fake, "w") as f:
+            f.write(FAKE_PARTIAL_BUILD)
+        with open(os.path.join(t, "sources.json"), "w") as f:
+            json.dump({"max_age_days": 30, "sources": [
+                {"id": "test", "url": "https://example.invalid/test.osm.pbf", "cover": [[-180, -86, 180, 86]]}]}, f)
+        os.makedirs(os.path.join(t, "src", "osm"))
+        with open(os.path.join(t, "src", "osm", "test.osm.pbf"), "wb") as f:
+            f.write(b"\0" * 1_100_000)
+        self.env = {"PATH": os.environ["PATH"], "SRC_DIR": os.path.join(t, "src"), "WORK": os.path.join(t, "work"),
+                    "DATA_ROOT": os.path.join(t, "store"), "R2_LOCAL_DIR": os.path.join(t, "r2"),
+                    "SOURCES_JSON": os.path.join(t, "sources.json"), "BUILD_CELL": self.fake,
+                    "CLOUD_RUN_EXECUTION": "exec-1", "FORMAT": "2", "CELLS_DIR": os.path.join(HERE, "..", "cells"),
+                    "LAYER_FILES": json.dumps(LAYER_FILES), "FAKE_LAYER_SCHEMA": json.dumps(self.S7)}
+        self.r2 = os.path.join(t, "r2")
+        self.calls = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def build(self, schema, execution, osm="2026-10-19", store=None, **env):
+        """One job run with these layer schemas (as if cells.py had them)."""
+        e = dict(self.env, FAKE_LAYER_SCHEMA=json.dumps(schema), CLOUD_RUN_EXECUTION=execution, FAKE_OSM_DATE=osm,
+                 **env)
+
+        def popen(*a, **kw):
+            self.calls.append(kw["env"].get("LAYERS", ""))
+            return subprocess.Popen(*a, **kw)
+        from unittest import mock
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, schema), \
+                mock.patch.object(job_build.cell_tools, "CELL_SCHEMA", max(schema.values())):
+            b = job_build.Builder(e, run=popen, osm_date=lambda paths: osm, download=None, store=store)
+            b.main([(10, 543, 361)])
+        with open(os.path.join(self.r2, "status", "f2", "10-543-361.json")) as f:
+            return json.load(f)
+
+    def cell(self, *p):
+        return os.path.join(self.r2, "cells", "f2", "10", "543", "361", *p)
+
+    def manifest(self, version):
+        with open(self.cell(version, "manifest.json")) as f:
+            return json.load(f)
+
+    def test_overlays_only_bump_builds_overlays_and_copies_the_rest(self):
+        self.build(self.S7, "exec-1")
+        m7 = self.manifest("2026-10-19-s7")
+        self.assertEqual(m7["layers"]["overlays"], {"schema": 7, "version": "2026-10-19-s7"})
+        s = self.build(dict(self.S7, overlays=8), "exec-2")
+        self.assertEqual(self.calls, ["", "overlays"])
+        self.assertEqual((s["state"], s["version"], s["layers"], s["reused_from"]),
+                         ("ready", "2026-10-19-s8", ["overlays"], "2026-10-19-s7"))
+        self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19-s8"})
+        m8 = self.manifest("2026-10-19-s8")
+        self.assertEqual((m8["schema"], m8["reused_from"]), (8, "2026-10-19-s7"))
+        self.assertEqual(m8["layers"]["overlays"], {"schema": 8, "version": "2026-10-19-s8"})
+        self.assertEqual(m8["layers"]["base"], {"schema": 7, "version": "2026-10-19-s7"})
+        old = {f["name"]: f for f in m7["files"]}
+        self.assertEqual(sorted(old), sorted(f["name"] for f in m8["files"]))  # same file set, all in the new folder
+        for f in m8["files"]:
+            p = self.cell("2026-10-19-s8", f["name"])
+            self.assertEqual(f["url"], f"cells/f2/10/543/361/2026-10-19-s8/{f['name']}")
+            self.assertEqual((os.path.getsize(p), r2.file_sha256(p)), (f["size"], f["sha256"]))  # app check holds
+            if f["name"] == "overlays.pmtiles":
+                self.assertNotEqual(f["sha256"], old[f["name"]]["sha256"])
+                self.assertEqual(open(p).read(), "overlays s8 built")
+            else:
+                self.assertEqual(f["sha256"], old[f["name"]]["sha256"])
+        self.assertEqual(m8["total_size"], sum(f["size"] for f in m8["files"]))
+        # a third bump (pois) keeps the overlays of s8 and the base of s7, recorded per layer
+        self.build(dict(self.S7, overlays=8, pois=9), "exec-3")
+        m9 = self.manifest("2026-10-19-s9")
+        self.assertEqual(self.calls[-1], "pois")
+        self.assertEqual({k: v["version"][-2:] for k, v in m9["layers"].items()},
+                         {"base": "s7", "overlays": "s8", "pois": "s9", "addresses": "s7", "terrain": "s7",
+                          "contours": "s7"})
+
+    def test_new_extract_date_builds_the_whole_cell(self):
+        self.build(self.S7, "exec-1")
+        s = self.build(dict(self.S7, overlays=8), "exec-2", osm="2026-10-26")
+        self.assertEqual(self.calls, ["", ""])
+        self.assertNotIn("layers", s)
+        self.assertEqual(self.manifest("2026-10-26-s8")["layers"]["base"]["version"], "2026-10-26-s8")
+
+    def test_partial_off_and_failed_partial_build_whole(self):
+        self.build(self.S7, "exec-1")
+        self.build(dict(self.S7, overlays=8), "exec-2", PARTIAL="0")
+        self.assertEqual(self.calls, ["", ""])
+        s = self.build(dict(self.S7, overlays=8, terrain=9), "exec-3", FAKE_FAIL_PARTIAL="1")
+        self.assertEqual(self.calls[2:], ["terrain", ""])  # partial failed → whole, same execution
+        self.assertEqual((s["state"], s["version"]), ("ready", "2026-10-19-s9"))
+        self.assertNotIn("reused_from", self.manifest("2026-10-19-s9"))
+
+    def test_copy_failure_falls_back_to_download_with_sha256_check(self):
+        self.build(self.S7, "exec-1")
+
+        class NoCopy(r2.LocalStore):
+            def copy(self, src, dst):
+                raise OSError("CopyObject not allowed")
+        s = self.build(dict(self.S7, overlays=8), "exec-2", store=NoCopy(self.r2))
+        self.assertEqual(s["state"], "ready")
+        for f in self.manifest("2026-10-19-s8")["files"]:
+            self.assertEqual(r2.file_sha256(self.cell("2026-10-19-s8", f["name"])), f["sha256"])
+        # a published file that no longer matches its manifest is never reused
+        with open(self.cell("2026-10-19-s8", "terrain.pmtiles"), "w") as f:
+            f.write("damaged")
+        s = self.build(dict(self.S7, overlays=9), "exec-3", store=NoCopy(self.r2))
+        self.assertEqual((s["state"], s["reason"]), ("failed", "Upload failed"))
+        self.assertIn("sha256", s["detail"])
+        self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19-s8"})
+
+    # ---- the decision and the merge on their own (cells.py)
+    def published(self, version="2026-10-19-s7", **kw):
+        m = {"cell": "10-543-361", "format": 2, "osm_date": "2026-10-19", "version": version,
+             "files": [{"name": f.format(cid="10-543-361"), "size": 3, "sha256": "a" * 64, "url": "u"}
+                       for f in LAYER_FILES.values()]}
+        m.update(kw)
+        return m
+
+    def test_rebuild_plan(self):
+        from unittest import mock
+        plan = job_build.cell_tools.rebuild_plan
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8, pois=8):
+            self.assertEqual(plan(self.published(), "2026-10-19", 10, 543, 361), ["overlays", "pois"])
+            # recorded per-layer schemas win over the version's
+            rec = {"overlays": {"schema": 8, "version": "x"}, "pois": {"schema": 7, "version": "y"}}
+            self.assertEqual(plan(self.published("2026-10-19-s8", layers=rec), "2026-10-19", 10, 543, 361), ["pois"])
+            for why, args in {
+                "other OSM date": (self.published(), "2026-10-26", 10, 543, 361),
+                "other cell": (self.published(), "2026-10-19", 10, 543, 362),
+                "region package": (self.published(cell="7-67-45"), "2026-10-19", 7, 67, 45),
+                "format 1": (self.published(format=1), "2026-10-19", 10, 543, 361),
+                "older than partial rebuilds": (self.published("2026-10-19-s6"), "2026-10-19", 10, 543, 361),
+                "unknown file": (self.published(files=self.published()["files"] + [
+                    {"name": "x.bin", "size": 1, "sha256": "a" * 64, "url": "u"}]), "2026-10-19", 10, 543, 361),
+                "required layer missing": (self.published(files=[
+                    f for f in self.published()["files"] if f["name"] != "terrain.pmtiles"]), "2026-10-19", 10, 543,
+                    361),
+                "no sha256": (self.published(files=[dict(f, sha256="") for f in self.published()["files"]]),
+                              "2026-10-19", 10, 543, 361),
+                "nothing published": (None, "2026-10-19", 10, 543, 361),
+            }.items():
+                self.assertIsNone(plan(*args), why)
+        # nothing stale (a plain rebuild) and everything stale: whole cell, as before
+        self.assertIsNone(plan(self.published(), "2026-10-19", 10, 543, 361))
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, {k: 8 for k in LAYER_FILES}):
+            self.assertIsNone(plan(self.published(), "2026-10-19", 10, 543, 361))
+        # optional layers may be missing: contours of a cell at sea level are not built again for it
+        no_contours = self.published(files=[f for f in self.published()["files"] if f["name"] != "contours.pmtiles"])
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8):
+            self.assertEqual(plan(no_contours, "2026-10-19", 10, 543, 361), ["overlays"])
+
+    def test_merge_refuses_mixing_cells_or_dates(self):
+        c = job_build.cell_tools
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "overlays.pmtiles"), "w") as f:
+                f.write("new")
+            with self.assertRaises(ValueError):
+                c.write_manifest(10, 543, 361, d, "2026-10-26", "t", "p", 2, "2026-10-26-s8", layers=["overlays"],
+                                 base=self.published())
+            with self.assertRaises(ValueError):  # a built file of a layer that was not to be rebuilt
+                c.write_manifest(10, 543, 361, d, "2026-10-19", "t", "p", 2, "v", layers=["pois"],
+                                 base=self.published())
+            base = self.published(wayclass={"touring.brf": "h"})
+            m = c.write_manifest(10, 543, 361, d, "2026-10-19", "t", "cells/f2/10/543/361/v8", 2, "v8",
+                                 layers=["overlays"], base=base)
+            self.assertNotIn("wayclass", m)  # rebuilt overlays: the build's own hash (none given here)
+            self.assertEqual(len(m["files"]), 6)
+            self.assertTrue(all(f["url"].startswith("cells/f2/10/543/361/v8/") for f in m["files"]))
+            os.remove(os.path.join(d, "overlays.pmtiles"))
+            with open(os.path.join(d, "pois.geojson"), "w") as f:
+                f.write("{}")
+            m = c.write_manifest(10, 543, 361, d, "2026-10-19", "t", "p", 2, "v8", layers=["pois"], base=base)
+            self.assertEqual(m["wayclass"], {"touring.brf": "h"})  # kept overlays keep their router-class hash
+
+    def test_layer_schema_is_in_step_with_the_cell_schema_and_the_doorman(self):
+        c = job_build.cell_tools
+        self.assertEqual(c.CELL_SCHEMA, max(c.LAYER_SCHEMA.values()))
+        self.assertEqual(set(c.LAYER_SCHEMA), set(job_build.LAYER_STEPS))
+        with open(os.path.join(HERE, "worker", "wrangler.toml")) as f:
+            self.assertIn(f'CELL_SCHEMA = "{c.CELL_SCHEMA}"', f.read())
+        self.assertEqual(c.schema_of("2026-10-19-s8"), 8)
+        self.assertEqual(c.schema_of("2026-10-19"), 1)
+        self.assertEqual(c.schema_of("2026-10-19-dev10301200-s8"), 8)
+
+    def test_partial_progress_moves_evenly(self):
+        p = job_build.partial_progress(["overlays"])
+        self.assertEqual((p["cut"], p["upload"]), (0.0, 0.98))
+        self.assertTrue(0 < p["overlays"] < p["overlays-tiles"] < p["manifest"])
+        self.assertGreater(p["manifest"], 0.9)
+        t = job_build.partial_progress(["terrain"])  # no OSM layer: no cut
+        self.assertEqual((t["terrain"], t["upload"]), (0.0, 0.98))
+        seq = [p[s] for s in ("cut", "merge", "renumber", "overlays", "overlays-tiles", "overlays-own", "manifest")]
+        self.assertEqual(seq, sorted(seq))
+
+    def test_r2_copy_request_is_signed_with_the_copy_source(self):
+        h = r2.sign("PUT", "https://a.eu.r2.cloudflarestorage.com/bkt/cells/f2/x/v8/base.pmtiles",
+                    {"x-amz-copy-source": "/bkt/cells/f2/x/v7/base.pmtiles", "content-length": "0"},
+                    r2.EMPTY_SHA256, "k", "s")
+        self.assertIn("SignedHeaders=content-length;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date",
+                      h["authorization"])
+        sent = []
+
+        class Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        s = r2.R2Store("https://a.eu.r2.cloudflarestorage.com", "bkt", "k", "s")
+        s._send = lambda method, key, body=None, sha=None, headers=None: (
+            sent.append((method, key, headers)) or Resp(b"<CopyObjectResult><ETag>\"e\"</ETag></CopyObjectResult>"))
+        s.copy("cells/f2/x/v7/a b.pmtiles", "cells/f2/x/v8/a b.pmtiles")
+        self.assertEqual(sent, [("PUT", "cells/f2/x/v8/a b.pmtiles",
+                                 {"x-amz-copy-source": "/bkt/cells/f2/x/v7/a%20b.pmtiles", "content-length": "0"})])
+        s._send = lambda *a, **kw: Resp(b"<Error><Code>InternalError</Code></Error>")
+        with self.assertRaises(OSError):
+            s.copy("a", "b")
+
+
 if __name__ == "__main__":
     unittest.main()
