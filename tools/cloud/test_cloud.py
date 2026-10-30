@@ -152,6 +152,32 @@ class SourceSelection(unittest.TestCase):
                                               "austria"])                                     # Bregenz
         self.assertGreaterEqual(osm_sources.MAX_EXTRACTS, 5)
 
+    def test_city_state_cells_take_the_surrounding_state(self):
+        # Germany pre-build 2026-10-30: niedersachsen holds bremen, brandenburg holds berlin – both were dropped as
+        # "containers", so these cells were cut from the city extract alone (nearly empty, failed in the overlays)
+        self.assertEqual(self.ids(535, 330), ["niedersachsen"])   # Wilhelmshaven / Jadebusen (was: bremen)
+        self.assertEqual(self.ids(536, 330), ["niedersachsen"])   # Bremerhaven (was: bremen – Niedersachsen missing)
+        self.assertEqual(self.ids(549, 334), ["brandenburg"])     # Oranienburg (was: berlin)
+        self.assertEqual(self.ids(550, 335), ["brandenburg"])     # Berlin centre + 5 km reaches Brandenburg
+
+    def test_collection_and_enclosed_leaf(self):
+        def reg(rid, w, s, e, n):
+            r = osm_sources.Region({"properties": {"id": rid, "urls": {"pbf": rid}},
+                                    "geometry": {"type": "Polygon", "coordinates": [
+                                        [[w, s], [e, s], [e, n], [w, n], [w, s]]]}})
+            r.country = True  # (load_index sets it from the ISO codes)
+            return r
+        land, city, other = reg("land", 0, 0, 10, 10), reg("city", 4, 4, 5, 5), reg("other", 10, 0, 20, 10)
+        regions = [land, city, other]
+        sel = lambda box: [r.id for r in osm_sources.select(regions, box)]  # noqa: E731
+        self.assertEqual(sel((4.2, 4.2, 4.8, 4.8)), ["city"])            # inside the city: the small extract
+        self.assertEqual(sel((4.5, 4.5, 6, 6)), ["land"])                # city + land around it: land has both
+        self.assertEqual(sel((4.5, 4.5, 11, 6)), ["land", "other"])      # city inside land: not cut twice
+        # a leaf holding COLLECTION_MIN others is a collection ("us"): the small leaves are cut instead
+        parts = [reg(f"p{i}", 2 * i + 1, 1, 2 * i + 3, 3) for i in range(osm_sources.COLLECTION_MIN)]
+        big = reg("big", 0, 0, 2 * len(parts) + 2, 10)
+        self.assertEqual([r.id for r in osm_sources.select([big] + parts, (2, 1.5, 4, 2.5))], ["p0", "p1"])
+
     def test_too_many_leaves_falls_back_to_a_containing_leaf(self):
         box = buffered_bbox(cell_bbox(10, 541, 361), 5)
         self.assertEqual([r.id for r in osm_sources.select(self.regions, box, max_extracts=2)], ["alps"])

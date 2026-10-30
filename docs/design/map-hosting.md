@@ -304,12 +304,15 @@ Every cell is built, wherever it is:
   extract stay as they are until their normal refresh (osm_date older than `REFRESH_DAYS` 35, asked for again) – no
   schema bump, the content is the same kind. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
   region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
-  dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
-  states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–8 leaves touching B
-  (`MAX_EXTRACTS`), smallest first (border cell; Innsbruck reaches the Brenner → nord-est + austria, Scuol → 4,
-  Bodensee 10/538/357 → 5). (3) More than 8, or none of them: the smallest leaf of any kind containing B (alps,
+  dach, britain-and-ireland). A leaf that holds most of 3 or more other leaves is a *collection* and is dropped
+  ("us": 50 states, their parent is north-america); one that holds one or two (niedersachsen ⊃ bremen, brandenburg ⊃
+  berlin, stredocesky ⊃ praha, south-africa ⊃ lesotho) stays a leaf – until 2026-10-30 it was dropped too, and the
+  Bremerhaven / Berlin cells were cut from the city extract alone (nearly empty, 5 failed in the overlays, the rest
+  published with the state missing). One leaf contains B → that one (the smallest). Else the 1–8 leaves touching B
+  (`MAX_EXTRACTS`), smallest first, without a leaf lying wholly inside another of them (border cell; Innsbruck
+  reaches the Brenner → nord-est + austria, Scuol → 4, Bodensee 10/538/357 → 5). (3) More than 8, or none of them: the smallest leaf of any kind containing B (alps,
   great-britain …); nothing containing B either → all the leaves (never a subset – a dropped leaf is a hole in the
-  map). (4) Nothing → open sea, a permanent failure. Tests on a 25-region subset of the real index (`testdata/`).
+  map). (4) Nothing → open sea, a permanent failure. Tests on a 29-region subset of the real index (`testdata/`).
   Why 8 (2026-10-30, was 4): the leaves are cut one after the other and only the small cuts are merged, so one more
   leaf is one more cut (time: ~10 s Regierungsbezirk, ~50 s austria), not memory; the old fallback for 5 leaves was
   dach (over `max_extract_mb` → the Bodensee cells could not be built) or alps (2.3 GB), and two cells with 5 leaves

@@ -5,8 +5,9 @@
 #   tools/build_overlays.sh IN_DIR OUT.pmtiles [--clip minlon,minlat,maxlon,maxlat] [--extra LAYER_FILE.pmtiles ...]
 #
 #   IN_DIR   folder with paths/streets/trails/ways/routes/trailnames .ndjson (extract_overlays.py ... --tiles IN_DIR;
-#            streets.ndjson may be empty or missing, e.g. a cell without streets; barriers.ndjson + wayclass.json
-#            only with extract_overlays.py --wayclass)
+#            barriers.ndjson + wayclass.json only with extract_overlays.py --wayclass). Any of them may be empty or
+#            missing (a coast / sea cell without trails or routes): that layer is left out; with no feature at all
+#            OUT is a valid archive without tiles (tools/cells/cells.py empty-overlays) – never a failed cell.
 #   --clip   cut every feature at this bbox (tippecanoe --clip-bounding-box); a cell build passes its buffered bbox
 #            and keeps only its own tiles afterwards (tools/cells/cells.py tiles)
 #   --extra  more vector tile files joined in as they are (e.g. contours.pmtiles with layer "contour" later)
@@ -45,28 +46,32 @@ TMP=$(mktemp -d "${OUT%.pmtiles}.parts.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 COMMON=(-r1 --no-feature-limit --no-tile-size-limit --simplify-only-low-zooms --buffer=8 --force --quiet
         -P --no-progress-indicator "${CLIP[@]}")
-layer() {  # NAME MINZOOM MAXZOOM
+PARTS=()
+layer() {  # NAME MINZOOM MAXZOOM – an empty / missing input: no layer (tippecanoe refuses empty input)
   local f="$IN/$1.ndjson"
-  [ -s "$f" ] || { echo "$f missing or empty" >&2; exit 1; }
+  [ -s "$f" ] || { echo "$1: no features – layer left out"; return 0; }
   "$TIPPECANOE" "${COMMON[@]}" -l "$1" -Z "$2" -z "$3" -o "$TMP/$1.pmtiles" "$f"
+  PARTS+=("$TMP/$1.pmtiles")
 }
 layer paths 11 14
-STREETS=()
-if [ -s "$IN/streets.ndjson" ]; then layer streets 13 14; STREETS=("$TMP"/streets.pmtiles); fi
+layer streets 13 14
 layer trails 13 14
 layer ways 13 14
 layer trailnames 13 14
 layer routes 9 14
-BARRIERS=()
-if [ -s "$IN/barriers.ndjson" ]; then layer barriers 14 14; BARRIERS=("$TMP"/barriers.pmtiles); fi
-AREAS=()
-if [ -s "$IN/areas.ndjson" ]; then layer areas 14 14; AREAS=("$TMP"/areas.pmtiles); fi
+layer barriers 14 14
+layer areas 14 14
 DESC=()
 if [ -s "$IN/wayclass.json" ]; then
   DESC=(-N "onpath-wayclass:$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["profiles"])' "$IN/wayclass.json")")
 fi
 rm -f "$OUT.tmp.pmtiles"
-"$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" "${DESC[@]}" \
-  -o "$OUT.tmp.pmtiles" "$TMP"/paths.pmtiles "${STREETS[@]}" "$TMP"/trails.pmtiles "$TMP"/ways.pmtiles "$TMP"/trailnames.pmtiles \
-  "$TMP"/routes.pmtiles "${BARRIERS[@]}" "${AREAS[@]}" "${EXTRA[@]}"
+if [ ${#PARTS[@]} -eq 0 ] && [ ${#EXTRA[@]} -eq 0 ]; then
+  echo "no overlay features at all – writing an archive without tiles"
+  python3 "$(dirname "$0")/cells/cells.py" empty-overlays "$OUT.tmp.pmtiles" "OnPath overlays" \
+    "© OpenStreetMap contributors" "${DESC[1]:-}"
+else
+  "$TILE_JOIN" --force --quiet --no-tile-size-limit -n "OnPath overlays" -A "© OpenStreetMap contributors" "${DESC[@]}" \
+    -o "$OUT.tmp.pmtiles" "${PARTS[@]}" "${EXTRA[@]}"
+fi
 mv -f "$OUT.tmp.pmtiles" "$OUT"

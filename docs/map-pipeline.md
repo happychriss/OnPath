@@ -188,6 +188,9 @@ tools/trim_base.sh base-raw.pmtiles base.pmtiles      # tile-join -j: no class p
 `build_overlays.sh` runs tippecanoe once per layer (`-r1 --no-feature-limit --no-tile-size-limit
 --simplify-only-low-zooms --buffer=8`, extent 4096 = 0.4 m grid at z14) and joins them with `tile-join`. A cell build
 passes its buffered bbox as `--clip` and keeps only its own z ≥ 10 tiles (`tools/cells/cells.py tiles`).
+Empty is fine (coast / sea cells): a layer without features is left out, no feature at all gives an archive without
+tiles (`cells.py empty-overlays`), and a cell that owns none of the tiles (all data in its buffer) gets a valid empty
+file from `cells.py tiles` – never a failed cell (`test_extract_overlays.EmptyOverlays`).
 Contours stay in `contours.pmtiles` for now (terrain work); `--extra contours.pmtiles` joins them as layer `contour`
 once the style reads them from `overlays`.
 

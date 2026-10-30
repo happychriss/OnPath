@@ -9,11 +9,15 @@ Rule for the bbox B = cell + buffer (5 km):
      a parent has an ISO 3166 code). They do not overlap much, and they are the smallest downloads (italy/nord-est,
      austria, switzerland, germany/bayern/oberbayern, france/rhone-alpes …). Special overlapping extracts (alps,
      dach, britain-and-ireland …) are not leaves of a country and are left out.
-     A leaf that holds most of another candidate leaf is a container, not a leaf ("us" next to us/new-york:
-     the states' parent in the index is north-america) and is dropped.
+     A leaf that holds most of SEVERAL (>= COLLECTION_MIN) other leaves of the index is a collection, not a leaf
+     ("us" next to us/new-york: the states' parent in the index is north-america) and is dropped. A leaf that holds
+     only one or two (niedersachsen holds bremen, brandenburg berlin, stredocesky praha, south-africa lesotho) is a
+     real leaf: dropping it (until 2026-10-30) cut Bremerhaven / Berlin border cells from the city extract alone –
+     nearly empty cells, overlays without trails, failed builds (Germany pre-build: 10-535-330, 10-549-334 …).
      a) one leaf contains B → that leaf (the smallest, if several overlap there).
      b) else the leaves that intersect B (a border cell: austria + italy/nord-est) – at most MAX_EXTRACTS; the
-        builder cuts each one and merges the small cuts (memory stays that of one cut, see build_cell.sh).
+        builder cuts each one and merges the small cuts (memory stays that of one cut, see build_cell.sh). A leaf
+        lying wholly inside another chosen one (berlin in brandenburg) is left out: the larger one has its data.
   3. otherwise the smallest leaf of any kind that contains B (great-britain, canary-islands, alps …);
      else nothing: open sea → the cell is answered "no map data" for good.
 
@@ -29,6 +33,7 @@ import math
 
 INDEX_URL = "https://download.geofabrik.de/index-v1.json"
 MAX_EXTRACTS = 8  # z10 cells; region packages pass their own (job_build.PACKAGE_MAX_EXTRACTS)
+COLLECTION_MIN = 3  # a leaf holding this many other leaves is a collection ("us": 50 states; the rest hold <= 2)
 
 
 # ------------------------------------------------------------------------------------------------ geometry
@@ -118,6 +123,7 @@ class Region:
         self.area = sum(_ring_area(poly[0]) - sum(_ring_area(h) for h in poly[1:]) for poly in self.polys)
         self.leaf = True
         self.country = False
+        self._collection = None  # _is_collection, computed when first needed
 
     def contains_box(self, box):
         """The whole box inside one polygon of the region (corners inside, no border line crossing it)."""
@@ -174,13 +180,35 @@ def _is_container(r, q):
     return hit >= 0.8 * len(pts)
 
 
+def _within(q, r):
+    """q's whole outline inside r (berlin in brandenburg): r's extract has all of q's data."""
+    if r is q or r.area <= q.area or not _overlaps(r.bbox, q.bbox):
+        return False
+    return all(any(_poly_contains(poly, p[0], p[1]) for poly in r.polys) for qp in q.polys for p in qp[0])
+
+
+def _is_collection(r, regions):
+    """r holds most of COLLECTION_MIN or more other country leaves of the index ("us") – cached on r."""
+    if r._collection is None:
+        n = 0
+        for q in regions:
+            if q is not r and q.leaf and q.country and _is_container(r, q):
+                n += 1
+                if n >= COLLECTION_MIN:
+                    break
+        r._collection = n >= COLLECTION_MIN
+    return r._collection
+
+
 def select(regions, box, max_extracts=MAX_EXTRACTS):
     """Regions to cut bbox [w, s, e, n] from (smallest first), [] for open sea. See the module doc."""
     leaves = [r for r in regions if r.leaf and r.country and r.intersects_box(box)]
-    leaves = [r for r in leaves if not any(_is_container(r, q) for q in leaves if q is not r)]
+    leaves = [r for r in leaves
+              if not (any(_is_container(r, q) for q in leaves if q is not r) and _is_collection(r, regions))]
     containing = sorted((r for r in leaves if r.contains_box(box)), key=lambda r: r.area)
     if containing:
         return [containing[0]]
+    leaves = [q for q in leaves if not any(_within(q, r) for r in leaves)]
     if leaves and len(leaves) <= max_extracts:
         return sorted(leaves, key=lambda r: r.area)
     # only leaves: a continent's outline also holds open sea (australia-oceania around the mid Pacific)
