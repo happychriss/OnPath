@@ -279,6 +279,7 @@ ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchVi
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
+syncBadge(); // the header entry with its full tooltip at once – sync.init waits for the engine (CI race in sync-smoke)
 const syncReady = ready.then(async (ok) => {
   if (!ok) return false;
   await sync.init();
