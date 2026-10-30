@@ -280,6 +280,12 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "plan_gap_skipped": {
+    "area": "Plan sheet",
+    "context": "Red line: the route leaves out a stop that lies on a way (the router cut the there-and-back to it); the stop stays where it was set. %1$s = distance from the line (\"50 m\"), %2$s = point name in quotes or \"point 3\"",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
   "plan_gap_point": {
     "area": "Plan sheet",
     "context": "Unnamed point inside the red gap line (\"Last 180 m to point 3\"). %1$d = point number",

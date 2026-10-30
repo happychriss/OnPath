@@ -64,6 +64,7 @@
     <string name="plan_calculate">Berechnen</string>
     <string name="plan_gap_first">Erste %1$s ab %2$s: kein Weg für %3$s</string>
     <string name="plan_gap_last">Letzte %1$s bis %2$s: kein Weg für %3$s</string>
+    <string name="plan_gap_skipped">Route verfehlt %2$s um %1$s</string>
     <string name="plan_gap_point">Punkt %1$d</string>
     <string name="plan_quoted">„%1$s“</string>
     <string name="plan_more">%1$s (+%2$d weitere)</string>

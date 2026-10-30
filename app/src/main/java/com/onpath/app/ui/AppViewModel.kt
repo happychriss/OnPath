@@ -1149,7 +1149,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
      */
     val planGaps: List<PlanGap>
-        get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped) } ?: emptyList()
+        get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped, it.skipped) } ?: emptyList()
 
     // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
     /**
@@ -2614,14 +2614,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Moves free points onto the way the router used (owner: no off-road guidance), so marker, stored
-     * plan and route line agree. POI-pinned and named stops keep their coordinates. Amends the current
+     * plan and route line agree. POI-pinned and named stops keep their coordinates, and so does a stop the route
+     * skips although it lies on a way ([PlannedRoute.skipped]: never moved silently – its gap is shown). Amends the current
      * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
      * belongs to the snapped points. Only for the newest result of exactly these points.
      */
     private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
         if (waypoints.toList() != routed) return
-        // a point the route does not reach keeps its place: the gap is shown (planGaps), not hidden by moving the point
-        val far = PlanGaps.farIndices(routed, r.snapped)
+        // a point the route does not reach – or skips although it lies on a way – keeps its place: the gap is shown
+        // (planGaps), not hidden by moving the point (field bug 2026-10-30: a stop moved 47 m onto the line, no word)
+        val far = PlanGaps.farIndices(routed, r.snapped, r.skipped)
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
         val keep = pins + far + routed.indices.filter { stopName(routed[it]) != null }
         val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return

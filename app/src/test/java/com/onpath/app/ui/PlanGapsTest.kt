@@ -73,4 +73,36 @@ class PlanGapsTest {
         assertTrue(Geo.distance(at, b) < 100 && Geo.distance(at, bFar) < 100)
         assertEquals(17.0, zoom, 0.0)
     }
+
+    /**
+     * Field bug 2026-10-30: the route skipped stop 2 (matched on its path, line 47 m away) and the phone moved the stop
+     * 47 m onto the line without a word. A skipped stop keeps its place and shows its gap – also under [PlanGaps.FAR_M].
+     */
+    @Test fun skippedStopKeepsItsPlaceAndShowsItsGap() {
+        val stop = GeoPoint(46.68958, 11.1600)        // ~47 m south of b
+        val pts = listOf(a, stop, GeoPoint(46.6900, 11.1700))
+        val snapped = listOf(a, b, pts[2])           // the route passes b, 47 m from the stop
+        assertTrue("not skipped: normal snapping, no gap", PlanGaps.of(pts, snapped).isEmpty())
+        val gaps = PlanGaps.of(pts, snapped, skipped = setOf(1))
+        assertEquals(1, gaps.size)
+        assertEquals(1, gaps[0].index)
+        assertTrue(gaps[0].skipped)
+        assertEquals(b, gaps[0].routeEnd)
+        assertEquals(47.0, gaps[0].distanceM, 1.0)
+        assertEquals("Route misses point 2 by 50 m", PlanGaps.text(gaps, Activity.BIKE_TOURING) { null })
+        assertEquals("Route misses “Steps” by 50 m", PlanGaps.text(gaps, Activity.BIKE_TOURING) { "Steps" })
+        // AppViewModel.snapToRoute keeps every gap in place: the stop is not moved
+        val far = PlanGaps.farIndices(pts, snapped, setOf(1))
+        assertEquals(setOf(1), far)
+        assertNull(WaypointSnap.apply(pts, snapped, keep = far))
+    }
+
+    /** A skipped stop the line passes within a few metres is snapping noise: no gap, it snaps as before. */
+    @Test fun skippedStopCloserThanTheFloorIsNoGap() {
+        val stop = GeoPoint(46.69006, 11.1600)        // ~7 m north of b
+        val pts = listOf(a, stop, GeoPoint(46.6900, 11.1700))
+        val snapped = listOf(a, b, pts[2])
+        assertTrue(PlanGaps.of(pts, snapped, setOf(1)).isEmpty())
+        assertEquals(b, WaypointSnap.apply(pts, snapped, keep = PlanGaps.farIndices(pts, snapped, setOf(1)))!![1])
+    }
 }
