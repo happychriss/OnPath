@@ -34,6 +34,12 @@ for (const d of fs.readdirSync(root).filter((x) => x.startsWith('values-'))) {
   for (const k of Object.keys(other)) if (!(k in en)) fail(`${d}: '${k}' has no English text`);
 }
 for (const [k, v] of Object.entries(en)) if (!k.startsWith('web_')) fail(`'${k}': web keys start with web_`); else if (/\\'/.test(v)) fail(`'${k}': write ' plainly`);
+// the app's words (owner 2026-10-30, app leads): a saved / shown thing is a route ("My routes" / "Meine Routen"), the
+// phone is paired / verbunden and unpaired / getrennt – not "plans" / "Pläne" / "koppeln" (the verb "plan" is fine)
+const notAppWords = { values: /\b(my|saved|synced|your|the) plans?\b(?! link)|\bplans (stay|sync|stop)/i, 'values-de': /Plän|[Kk]oppel|[Kk]opplung/ };
+for (const [d, re] of Object.entries(notAppWords)) {
+  for (const [k, v] of Object.entries(read(path.join(root, d)))) if (re.test(v)) fail(`${d}: '${k}' uses a word the app does not ("${v.match(re)[0]}") – use the app's (docs/design/web-planner.md §18)`);
+}
 
 // ---- 2. no texts in the TypeScript ----
 const src = path.join(repo, 'web/app/src');

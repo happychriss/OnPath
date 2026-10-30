@@ -128,7 +128,7 @@ export class ActivityPicker {
       if (r.key !== 'HIKE') return row;
       const [name, text] = SAC[this.sac - 1];
       return row + `<div id="sacRow" class="sacrow">
-          <div class="seg" role="group" aria-label="${esc(t('web_sac_group'))}">${[1, 2, 3, 4, 5].map((n) => {
+          <div class="seg" role="group" aria-label="${esc(t('routes_sac_title'))}">${[1, 2, 3, 4, 5].map((n) => {
             const [name, text] = SAC[n - 1];
             const sel = this.act === 'HIKE' && n === this.sac;
             return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}">T${n}</button>`;

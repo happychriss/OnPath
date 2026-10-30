@@ -33,7 +33,7 @@ export function shareDialog(link: string, title: string | null, hint?: (box: HTM
     catch { input.select(); say(t('web_copy_by_hand')); } // expected: clipboard blocked (frame, http)
   };
   d.querySelector<HTMLButtonElement>('#sysShare')?.addEventListener('click', () => {
-    navigator.share({ title: title ?? t('web_share_title'), url: link })
+    navigator.share({ title: title ?? t('msg_name_share'), url: link })
       .catch(() => { /* expected: the user closed the share sheet */ });
   });
   d.querySelector<HTMLButtonElement>('#closeShare')!.onclick = () => d.close();

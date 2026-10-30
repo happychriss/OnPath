@@ -48,8 +48,8 @@ check((await page.textContent('#points li:first-child .txt > span:first-child'))
 
 // 4. a broken link is a plain message, no crash
 await page.goto(url + 'index.html#p=AQ');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('readable plan'), null, { timeout: 60_000 }).catch(() => {});
-check((await page.textContent('#status')).includes('does not contain a readable plan'), 'broken link → plain message');
+await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('plan link'), null, { timeout: 60_000 }).catch(() => {});
+check((await page.textContent('#status')).includes("This plan link can't be read"), 'broken link → plain message');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

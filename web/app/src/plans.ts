@@ -46,8 +46,8 @@ export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'
 
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   const d = dialog('plans', `
-    <h2>${esc(t('web_nav_my_plans'))}</h2>
-    <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('web_plans_save_current'))}</button>
+    <h2>${esc(t('routes_title'))}</h2>
+    <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('plan_save_current_route'))}</button>
     <ul id="planList" class="planlist" aria-label="${esc(t('web_plans_saved'))}"></ul>
     <div id="plansStatus" class="status muted"></div>
     <div class="row end"><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="closePlans">${esc(t('common_close'))}</button></div>`);
@@ -64,7 +64,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     for (const p of plans) {
       const li = document.createElement('li');
       li.dataset.id = p.id;
-      li.innerHTML = `<button class="open txt" title="${esc(t('web_plans_open'))}"><span class="name">${esc(p.title ?? t('web_plan_default'))}</span>
+      li.innerHTML = `<button class="open txt" title="${esc(t('web_plans_open'))}"><span class="name">${esc(p.title ?? t('plan_route_default_name'))}</span>
         <span class="muted small">${when(p.updatedAt)}${p.mine ? '' : ' · ' + esc(t('web_plans_from_other'))}${p.id === host.openId() ? ' · ' + esc(t('web_plans_shown_now')) : ''}</span></button>
         <button class="rename iconbtn" aria-label="${esc(t('common_rename'))}">✎</button><button class="del iconbtn" aria-label="${esc(t('common_delete'))}">✕</button>`;
       li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); host.open(p); };
@@ -104,7 +104,7 @@ export async function requestSave(sync: PlanSync, host: PlanHost) {
   const id = host.openId();
   const existing = id ? (await sync.list()).find((p) => p.id === id) : undefined;
   if (!existing) { nameDialog(sync, host, cur); return; }
-  const d = dialog('savechoice', `<h2>${esc(t('web_save_q', existing.title ?? t('web_plan_default')))}</h2>
+  const d = dialog('savechoice', `<h2>${esc(t('web_save_q', existing.title ?? t('plan_route_default_name')))}</h2>
     <p class="muted">${esc(t('web_save_choice_text'))}</p>
     <div class="row end"><button id="saveAsNew">${esc(t('plan_save_as_new'))}</button><button id="saveOver" class="primary">${esc(t('common_save'))}</button></div>`);
   d.querySelector<HTMLButtonElement>('#saveAsNew')!.onclick = () => { d.close(); nameDialog(sync, host, cur); };
@@ -119,8 +119,8 @@ export async function requestSave(sync: PlanSync, host: PlanHost) {
 /** The name dialog: opens at once, takes the app's proposal over while nothing was typed (AppViewModel.suggestedName). */
 function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: string | null }) {
   const fallback = t('web_plan_dated', when(Date.now()));
-  const d = dialog('savename', `<h2>${esc(t('web_save_plan'))}</h2>
-    <label class="muted small" for="saveTitle">${esc(t('web_save_name'))}</label>
+  const d = dialog('savename', `<h2>${esc(t('plan_save_route'))}</h2>
+    <label class="muted small" for="saveTitle">${esc(t('routes_name_label'))}</label>
     <input id="saveTitle" maxlength="100" placeholder="${esc(fallback)}" value="${esc(cur.title ?? '')}">
     <div class="row end"><button id="saveCancel">${esc(t('common_cancel'))}</button><button id="savePlan" class="primary">${esc(t('common_save'))}</button></div>`);
   const input = d.querySelector<HTMLInputElement>('#saveTitle')!;
@@ -146,7 +146,7 @@ function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: 
 function confirmDelete(parent: HTMLDialogElement, p: SavedPlan, del: () => void) {
   const box = document.createElement('div');
   box.className = 'confirm';
-  box.innerHTML = `<p>${esc(t('web_delete_q', p.title ?? t('web_plan_default')))}</p>
+  box.innerHTML = `<p>${esc(t('web_delete_q', p.title ?? t('plan_route_default_name')))}</p>
     <div class="row end"><button class="keep">${esc(t('web_keep'))}</button><button class="danger primary">${esc(t('common_delete'))}</button></div>`;
   parent.append(box);
   box.querySelector<HTMLButtonElement>('.keep')!.onclick = () => box.remove();

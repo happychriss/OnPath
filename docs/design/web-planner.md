@@ -640,6 +640,12 @@ Cloudflare Access stays on until the owner switches it off (steps below).
   Compose resource format, keys `web_…`; a new language = one folder there and in `strings/`). Placeholders `%1$s` /
   `%1$d` as in the app. The build fails on a key that exists nowhere. Why at build time and not through the engine:
   the header and sheet render before the Wasm engine has loaded (and still render if it cannot load).
+- **The web uses the app's words; the app leads** (owner 2026-10-30). Where the app has a text for the same thing the
+  page uses the app's key (`routes_title` "My routes" / "Meine Routen", `plan_save_route`, `plan_route_default_name`,
+  `msg_name_share` …); its own `web_…` texts use the app's terms: a saved or shown thing is a **route** / **Route**
+  (never "plan" / "Pläne" as a noun – only the app's "plan link" / "Plan-Link" and the verb), the phone is **paired** /
+  **verbunden** and **unpaired** / **getrennt** (the app's `sync_*`, not "koppeln"). `texts-check.mjs` fails on the old
+  words. A new app word changes the web text, not the other way round.
 - **Language:** `?lang=de` (not remembered) → the header's switch (DE | EN, remembered as `onpath.lang`; the page
   reloads, the plan stays in the address) → the browser's language (`de*` → German) → English. `<html lang>` follows.
 - **Checks:** `test/texts-check.mjs` (every web key in every language with the same placeholders; no user text left in

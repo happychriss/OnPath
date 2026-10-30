@@ -84,7 +84,7 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
  * what it does); `act` is set further down, once the page's parts exist.
  */
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
-  { id: 'menuPlans', icon: 'folder', label: t('web_nav_my_plans') },
+  { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
   { id: 'menuPair', icon: 'sync', label: t('web_nav_pair') },
   { id: 'menuShare', icon: 'phone', label: t('web_nav_send') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
@@ -136,7 +136,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
-        <button id="menuSavePlan" role="menuitem">${icon('save')}${escapeHtml(t('web_save_to_plans'))}</button>
+        <button id="menuSavePlan" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
         <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
         <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_clear_route'))}</button>
       </div>
@@ -565,7 +565,7 @@ async function openFromLink() {
   linkChecked = true;
   if (!/[#&?]p=/.test(location.href)) return;
   const shared = await engine.parse(location.href);
-  if (!shared) { status(t('web_link_unreadable'), 'error'); return; }
+  if (!shared) { status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
   forgetSaved();
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
@@ -724,12 +724,22 @@ function render() {
   renderFabs();
 }
 
+const untitled = (p: SharedPlan) => engine.encode({ ...p, title: null });
+let savedUntitledMemo: { code: string; key: Promise<string | null> } | null = null;
+function savedUntitled(code: string): Promise<string | null> {
+  if (savedUntitledMemo?.code !== code) {
+    savedUntitledMemo = { code, key: engine.parse('p=' + code).then((p) => (p ? untitled(p) : null)) };
+  }
+  return savedUntitledMemo.key;
+}
+
 /** "Saved as …" under the summary while the plan is a saved one (the app's sheet line after Save). */
 async function renderSaved() {
   const line = $('savedLine');
   line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
   if (line.hidden) return;
-  const changed = state.savedCode != null && (await ready) && (await engine.encode(sharedPlan())) !== state.savedCode;
+  // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
+  const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
   line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(state.savedTitle!)}</b>`)}</span>`;
 }
 
@@ -892,7 +902,7 @@ const plansHost = {
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title;
     rememberInAddress();
     render();
-    status(t('plan_saved_as', p.title ?? t('web_plan_default')));
+    status(t('plan_saved_as', p.title ?? t('plan_route_default_name')));
   },
   suggestName,
 };
