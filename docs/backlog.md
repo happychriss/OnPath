@@ -9,6 +9,12 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **Small UI findings from the A-013 shots (2026-10-30)** – (1) arrival time: the app rounds to 5 min
+  (`TimeEstimate.clock`, "10:20"), the lock-screen notification shows the exact minute ("10:22",
+  `RecordingService.navNotification`) – same rule for both?; (2) End-tour dialog shows a bus icon when only a lift was
+  detected; (3) activity chip in Plan: German shows only "T2", English "Hike · T2".
+- **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver); rest view +
+  smarter cues on the bike; lock-screen notification on the Pixel; the older phone checks below.
 - **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
   for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
   doorman adopts them. Production stays cloud-only.
