@@ -36,7 +36,7 @@ name = "SYNC_RATE"
 namespace_id = "7301"
 simple = { limit = 120, period = 60 }
 
-# daily: delete mailboxes idle for 12 months
+# daily: delete mailboxes idle for 12 months and old map-area counters
 [env.test.triggers]
 crons = ["17 3 * * *"]
 
@@ -57,3 +57,27 @@ simple = { limit = 20, period = 60 }
 name = "MAPS_RATE_ALL"
 namespace_id = "7303"
 simple = { limit = 120, period = 60 }
+
+# Before the login goes (A-011, docs/design/web-planner.md §18): per-IP limits for the map files (/data/: a map view is
+# ~100 tile ranges, so 600 per minute is several views per second) and the routing data (/segments/: a plan needs a few
+# 2–10 MB parts) – generous for planning, against mass downloads.
+[[env.test.ratelimits]]
+name = "DATA_RATE"
+namespace_id = "7304"
+simple = { limit = 600, period = 60 }
+
+[[env.test.ratelimits]]
+name = "SEGMENTS_RATE"
+namespace_id = "7305"
+simple = { limit = 30, period = 60 }
+
+[env.test.vars]
+# Search engines: "off" = X-Robots-Tag noindex on every answer + the page's meta robots (until launch);
+# "on" at launch (the one switch: the header goes and the host removes the meta tag).
+INDEXING = "off"
+# New map areas (src/maps.js quotas, counted in the sync D1 database): per browser per day / month, per IP per day,
+# for everyone per day.
+MAPS_QUOTA_BROWSER_DAY = "15"
+MAPS_QUOTA_BROWSER_MONTH = "60"
+MAPS_QUOTA_IP_DAY = "40"
+MAPS_QUOTA_GLOBAL_DAY = "200"

@@ -72,3 +72,27 @@ test("only rd5 file names go upstream", async () => {
 test("everything else is the page", async () => {
   assert.equal(await (await handle(new Request(H + "/index.html"), env)).text(), "page /index.html");
 });
+
+const limiter = (max) => { const n = new Map(); return { async limit({ key }) { n.set(key, (n.get(key) ?? 0) + 1); return { success: n.get(key) <= max }; } }; };
+
+test("per-IP limits for /data/ and /segments/ (A-011): over the limit → 429 with Retry-After, other IPs go on", async () => {
+  const e = { ...env, DATA_RATE: limiter(2), SEGMENTS_RATE: limiter(1) };
+  const get = (p, ip) => handle(new Request(H + p, { headers: { "cf-connecting-ip": ip } }), e, async () => new Response("rd5"));
+  const file = "/data/cells/f2/10/543/361/current.json";
+  assert.equal((await get(file, "1.1.1.1")).status, 200);
+  assert.equal((await get(file, "1.1.1.1")).status, 200);
+  const r = await get(file, "1.1.1.1");
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get("retry-after"), "60");
+  assert.equal((await get(file, "2.2.2.2")).status, 200);
+  assert.equal((await get("/segments/E10_N45.rd5", "1.1.1.1")).status, 200, "segments count on their own");
+  assert.equal((await get("/segments/E10_N45.rd5", "1.1.1.1")).status, 429);
+  assert.equal((await get("/index.html", "1.1.1.1")).status, 200, "the page itself is not limited");
+});
+
+test("search engines kept out until launch: X-Robots-Tag on every answer; INDEXING = on drops it", async () => {
+  for (const p of ["/", "/data/cells/f2/10/543/361/current.json", "/sync/v1/x"]) {
+    assert.equal((await handle(new Request(H + p), env)).headers.get("x-robots-tag"), "noindex, nofollow", p);
+  }
+  assert.equal((await handle(new Request(H + "/"), { ...env, INDEXING: "on" })).headers.get("x-robots-tag"), null);
+});

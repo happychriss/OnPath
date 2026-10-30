@@ -3,7 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { handle } from "../src/index.js";
-import { MAX_IDS } from "../src/maps.js";
+import { MAX_IDS, purgeQuota } from "../src/maps.js";
+import { fakeD1 } from "./fake-d1.js";
 
 const KEY = "test-key-123";
 const H = "https://plan.example.org";
@@ -99,4 +100,48 @@ test("doorman not reachable → 502, no upstream configured → 503", async () =
   const r = await handle(post({ cells: ["10-1-1"] }), { MAP_KEY: KEY, DOORMAN: { fetch: async () => { throw new Error("network down"); } } });
   assert.equal(r.status, 502);
   assert.equal((await handle(post({ cells: ["10-1-1"] }), { MAP_KEY: KEY })).status, 503);
+});
+
+// ---- quotas for new map areas (A-011): per browser / IP / everyone, counts only ----
+const B1 = "0123456789abcdef0123456789abcdef", B2 = "fedcba9876543210fedcba9876543210";
+const postAs = (browser, ip = "1.2.3.4", cells = ["10-531-341"]) => new Request(H + "/maps/v1/cells/request", { method: "POST",
+  body: JSON.stringify({ cells, reason: "point" }), headers: { "content-type": "application/json", "cf-connecting-ip": ip, ...(browser ? { "x-onpath-browser": browser } : {}) } });
+
+test("quota: new areas counted per browser per day; over it → 429 {quota: browser}; another browser goes on", async () => {
+  const d = fakeDoorman(), db = fakeD1();
+  const env = { MAP_KEY: KEY, DOORMAN: d.binding, SYNC: db, MAPS_QUOTA_BROWSER_DAY: "2" };
+  assert.equal((await handle(postAs(B1), env)).status, 200);
+  assert.equal((await handle(postAs(B1), env)).status, 200);
+  const r = await handle(postAs(B1), env);
+  assert.equal(r.status, 429);
+  assert.equal((await r.json()).quota, "browser");
+  assert.equal(d.seen.length, 2, "nothing goes to the doorman over the quota");
+  assert.equal((await handle(postAs(B2), env)).status, 200);
+  // only counts: keys and numbers, no cell id or IP in the table
+  const rows = db.sqlite.prepare("SELECT k, period, n FROM map_quota").all();
+  assert.ok(rows.every((x) => !/10-531-341|1\.2\.3\.4/.test(x.k + x.period)), JSON.stringify(rows));
+  assert.ok(rows.some((x) => x.k === "b:" + B1 && x.period.length === 7 && x.n === 2), "the month is counted too");
+});
+
+test("quota: per IP (hashed) and for everyone; cells already built do not count; status calls never count", async () => {
+  const ready = fakeDoorman(() => Response.json({ cells: [{ id: "10-531-341", state: "ready" }] }));
+  const db = fakeD1();
+  const env = { MAP_KEY: KEY, DOORMAN: ready.binding, SYNC: db, MAPS_QUOTA_IP_DAY: "1" };
+  for (let i = 0; i < 3; i++) assert.equal((await handle(postAs(B1), env)).status, 200, "ready cells are no new work");
+  const d = fakeDoorman();
+  const env2 = { ...env, DOORMAN: d.binding };
+  assert.equal((await handle(postAs(B1), env2)).status, 200);
+  const r = await handle(postAs(B2), env2); // another browser, same IP
+  assert.equal((await r.json()).quota, "ip");
+  assert.equal((await handle(postAs(null, "9.9.9.9"), env2)).status, 200, "no browser id: the IP and global caps still apply");
+  const g = await handle(postAs(B2, "8.8.8.8"), { ...env2, MAPS_QUOTA_IP_DAY: "9", MAPS_QUOTA_GLOBAL_DAY: "2" });
+  assert.equal((await g.json()).quota, "global");
+  for (let i = 0; i < 3; i++) assert.equal((await handle(new Request(H + "/maps/v1/cells/status?ids=10-531-341"), env2)).status, 200);
+});
+
+test("quota: old counters are deleted by the daily job", async () => {
+  const db = fakeD1();
+  db.sqlite.exec("INSERT INTO map_quota VALUES ('all','2026-10-01',5), ('all','2026-10-30',1), ('b:x','2026-09',3), ('b:x','2026-10',3)");
+  await purgeQuota({ SYNC: db }, Date.parse("2026-10-30T12:00:00Z"));
+  assert.deepEqual(db.sqlite.prepare("SELECT period FROM map_quota ORDER BY period").all().map((x) => x.period), ["2026-10", "2026-10-30"]);
 });

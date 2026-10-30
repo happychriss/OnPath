@@ -9,18 +9,38 @@
 //   /maps/v1/cells/… map areas on demand: request + status passed to the doorman with the app key added here
 //                     (src/maps.js, web-planner.md §17) – the browser never holds the key
 //   everything else   the built page (web/app/dist, static assets)
+// Before the login goes (A-011, web-planner.md §18): per-IP limits for /data/ (DATA_RATE) and /segments/
+// (SEGMENTS_RATE) – generous for planning, against mass downloads; and search engines are kept out until launch
+// (X-Robots-Tag on every answer + the page's meta robots) – one switch: INDEXING = "on" in wrangler.toml [vars].
 import { serveFile } from "../../../tools/cloud/worker/src/api.js";
 import { handleSync, purgeIdle } from "./sync.js";
-import { handleMaps } from "./maps.js";
+import { handleMaps, purgeQuota } from "./maps.js";
 
 const RD5 = /^\/segments\/([EW]\d{1,3}_[NS]\d{1,2}\.rd5)$/;
 const UPSTREAM = "https://brouter.de/brouter/segments4/";
 
+/** Every answer: noindex until launch; at launch (INDEXING = "on") the page's meta robots is taken out instead. */
 export async function handle(request, env, fetchImpl = fetch) {
+  const r = await route(request, env, fetchImpl);
+  if (env.INDEXING === "on") {
+    const html = (r.headers.get("content-type") ?? "").includes("text/html");
+    // HTMLRewriter exists on Cloudflare (not in the Node tests)
+    return html && typeof HTMLRewriter !== "undefined" ? new HTMLRewriter().on('meta[name="robots"]', { element: (e) => e.remove() }).transform(r) : r;
+  }
+  const out = new Response(r.body, r); // headers of an assets / fetch answer are read-only
+  out.headers.set("x-robots-tag", "noindex, nofollow");
+  return out;
+}
+
+const tooMany = () => new Response("too many requests – try again in a minute", { status: 429, headers: { "retry-after": "60", "cache-control": "no-store" } });
+
+async function route(request, env, fetchImpl) {
   const url = new URL(request.url);
   const p = url.pathname;
   if (p.startsWith("/data/") || p.startsWith("/segments/")) {
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("method not allowed", { status: 405 });
+    const limit = p.startsWith("/data/") ? env.DATA_RATE : env.SEGMENTS_RATE;
+    if (limit && !(await limit.limit({ key: request.headers.get("cf-connecting-ip") ?? "?" })).success) return tooMany();
   }
   if (p.startsWith("/sync/")) return handleSync(request, env);
   if (p.startsWith("/maps/")) return handleMaps(request, env, fetchImpl);
@@ -45,5 +65,5 @@ export async function handle(request, env, fetchImpl = fetch) {
 
 export default {
   fetch: (request, env) => handle(request, env),
-  scheduled: (_event, env, ctx) => ctx.waitUntil(purgeIdle(env)),
+  scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([purgeIdle(env), purgeQuota(env)])),
 };
