@@ -1,5 +1,6 @@
 // Search with the app's code: offline hits from the map cell in view (POIs, base-map places and peaks, trail names),
-// the place card ("Add to route" says where before the click) and adding a found place as a named, pinned stop.
+// the place card (its button says what adding does – the app's AddPreview.label) and adding a found place as a named,
+// pinned stop.
 // Online (Photon) only when ONLINE=1 (CI has network; the result is checked loosely).
 // Usage: node test/search-smoke.mjs [segmentsDir] [mapStoreDir] [screenshot.png]
 import path from 'node:path';
@@ -47,29 +48,47 @@ hits = await searchFor('Waalweg');
 console.log('Waalweg →', hits.slice(0, 5));
 check(hits.length > 0, 'trail names (Waalweg)');
 
-// pick → card → Add to route (empty plan: as start)
+// pick → card → its button says what adding does, like the app's (0.13: "Set as start" / "Set as destination" /
+// "Add as stop 2" / "Add as new destination"); a small button doing the same as the main one is left out
 await searchFor('Vellau');
 await page.click('#results .hit');
 await page.waitForSelector('#placecard:not([hidden]) #cadd');
 const add = await page.textContent('#cadd');
 console.log('card:', add.replace(/\s+/g, ' '));
-check(/as start/.test(add), 'card says where it goes (empty plan → as start)');
+check(/^\s*Set as start/.test(add), 'empty plan: the card says "Set as start"');
+check(await page.locator('#placecard #cstart').count() === 0 && await page.locator('#placecard #cdest').count() === 1,
+  'empty plan: no small "As start" beside it (the main button does that), "As destination" stays');
 await page.click('#cadd');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 });
 await searchFor('Ifinger');
 await page.click('#results .hit');
-await page.waitForSelector('#placecard:not([hidden]) #cdest');
+await page.waitForSelector('#placecard:not([hidden]) #cadd');
+const add2 = await page.textContent('#cadd');
+check(/^\s*Set as destination/.test(add2), `only a start: the card says "Set as destination" (${add2.trim()})`);
+check(await page.locator('#placecard #cdest').count() === 0 && await page.locator('#placecard #cstart').count() === 1,
+  'only a start: no small "As destination" beside it, "As start" stays');
 await page.waitForTimeout(800); // the online search would have answered by now (owner 2026-10-28: the list came back)
 const card = await page.locator('#placecard').boundingBox(), sheet = await page.locator('#sheet').boundingBox();
 check(card.x >= sheet.x + sheet.width || card.y >= sheet.y + sheet.height, 'place card beside the plan sheet, not over it');
 check(await page.isHidden('#results'), 'the results list stays closed while the card is shown');
-await page.click('#cdest');
+await page.click('#cadd');
 check(await page.isHidden('#placecard'), 'the card closes after its action');
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 const pts = await page.textContent('#points');
 console.log('points:', pts.replace(/\s+/g, ' '));
 check(/Vellau/.test(pts) && /Ifinger/.test(pts), 'found places are named stops in the Points list');
 check((await page.evaluate(() => location.hash)).length > 10, 'plan with pinned, named places in the link');
+check(/Vellau/.test(pts.split(/Ifinger/)[0] ?? ''), 'the second place became the destination (after the start)');
+// a start and a destination: a third place is a stop or a new destination – said on the button, both small buttons back
+await searchFor('Meran');
+await page.click('#results .hit');
+await page.waitForSelector('#placecard:not([hidden]) #cadd');
+const add3 = (await page.textContent('#cadd')).trim();
+console.log('third place:', add3.replace(/\s+/g, ' '));
+check(/^(Add as stop 2|Add as new destination)/.test(add3), `two points: "Add as stop 2" or "Add as new destination" (${add3})`);
+check(await page.locator('#placecard #cstart').count() === 1 && await page.locator('#placecard #cdest').count() === 1,
+  'two points: As start and As destination both shown');
+await page.keyboard.press('Escape');
 await page.screenshot({ path: shot });
 // Save proposes a name like the app (RouteNamer: the places the stops came from)
 await page.click('#sheetMenuBtn');

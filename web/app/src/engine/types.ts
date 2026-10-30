@@ -63,4 +63,7 @@ export interface Hit {
   subtitle: string; address: string | null; glyph: string; color: string; online: boolean;
 }
 /** The place card's "Add to route" line (the app's AddPreview). */
-export interface PlacePreview { index?: number; existing?: number; subtitle: string }
+/** What adding a place does (the app's AddPreview / placeCardUi): button text, reason, index; or its role when planned. */
+export interface PlacePreview {
+  index?: number; existing?: number; label?: string; subtitle: string; addIsStart?: boolean; addIsDestination?: boolean;
+}

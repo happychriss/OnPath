@@ -313,6 +313,13 @@ export class Cells {
       src.tiles = [`cell://${layer}/{z}/{x}/{y}`];
       [src.minzoom, src.maxzoom] = [0, ZOOMS[layer][1]];
     }
+    // POIs: the cells carry pois.geojson, not the POI tiles the app writes when it joins cells – the style's stand-in
+    // source is used, its layers lose "source-layer" (the app's OptionalSources.strip, "onpath:fallback-sources")
+    const standIn = (s.metadata as Record<string, Record<string, unknown>> | undefined)?.['onpath:fallback-sources']?.pois;
+    if (standIn && (s.sources.pois as { type?: string } | undefined)?.type !== 'geojson') {
+      s.sources.pois = JSON.parse(JSON.stringify(standIn));
+      for (const l of s.layers) if ('source' in l && l.source === 'pois') delete (l as { 'source-layer'?: string })['source-layer'];
+    }
     if (s.sources.pois) (s.sources.pois as { data: unknown }).data = { type: 'FeatureCollection', features: [] };
     // the region packages' relief (map-cells.md §20): their hillshade.pmtiles, z7–9 – used by the style merged for
     // packages (Overview.merge with packages: region-relief over the overview's fills); the plain style drops it below

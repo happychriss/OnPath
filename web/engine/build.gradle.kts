@@ -12,11 +12,11 @@ val appFiles = listOf(
     "routing/RoutingContract.kt", "routing/Rd5Parts.kt", "routing/BRouterWayStats.kt", "routing/WaypointSnap.kt",
     "routing/BRouterEngine.kt", "routing/StraightLineEngine.kt", "routing/RouteTimeLimit.kt", "routing/TurnDetector.kt",
     "routing/Junctions.kt", "routing/Planner.kt", "routing/WaypointInsertion.kt", "routing/PlanEdits.kt",
-    "routing/RouteSummary.kt", "navigation/JunctionCues.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
+    "routing/RouteSummary.kt", "navigation/JunctionCues.kt", "navigation/CueRule.kt", "navigation/SpeedWindow.kt", "data/Geo.kt", "time/PaceModel.kt", "time/RouteTimes.kt",
     "routing/PlanCode.kt", "routing/PlanPoints.kt",
     // search (docs/design/web-planner.md §10): the app's index, ranking and Photon parsing
     "search/Place.kt", "search/SearchText.kt", "search/OfflineIndex.kt", "search/OnlineSearch.kt", "search/BaseMapPlaces.kt",
-    "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
+    "search/AddressSearch.kt", "search/AddressQuery.kt", "search/AddPreview.kt", "search/PlaceIndex.kt", "poi/Poi.kt", "poi/PoiKinds.kt",
     // web UI (docs/design/web-planner.md §13): route name proposal (Save), POI kind filters (Map content)
     "search/RouteNamer.kt", "poi/PoiFilter.kt",
     // page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out

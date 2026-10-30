@@ -75,7 +75,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.fill('#q', 'Ifinger');
   await page.waitForSelector('#results .hit', { timeout: 60_000 });
   await page.click('#results .hit');
-  await page.waitForSelector('#placecard:not([hidden]) #cdest');
+  await page.waitForSelector('#placecard:not([hidden]) #cclose');
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(out, `${name}-card.png`) });
   if (name === 'phone') {

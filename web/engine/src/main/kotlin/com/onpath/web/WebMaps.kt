@@ -22,7 +22,6 @@ object WebMaps {
         Res.string.maps_err_no_connection, Res.string.maps_load_loading, Res.string.maps_load_preparing, Res.string.maps_about_mb,
         Res.string.maps_time_lt_minute, Res.string.maps_time_one_minute, Res.string.maps_time_minutes,
         Res.string.maps_hide_cd, Res.string.plan_calculating, Res.string.plan_searching_gps, Res.string.plan_no_location_permission,
-        Res.string.msg_no_location_permission,
     )
     private val plurals: List<PluralStringResource> get() = listOf(
         Res.plurals.maps_card_more_ready, Res.plurals.maps_card_more_some_ready, Res.plurals.maps_card_more_waiting,

@@ -2,8 +2,8 @@
    the map below it; one top bar (search field + the map toolbar), the plan sheet – a bottom sheet on a phone, a side panel on
    a wide screen. Colours from the app's theme (ui/Theme OnPathColors); the header from onpath.earth (site colours). */
 :root {
-  --bg: #fff; --fg: #1d201e; --muted: #5f645e; --line: #e2e5e1; --surface2: #f3f5f2;
-  --green: #1F6E43; --green-fg: #1F6E43; --green-light: #DDEFE3; --route: #1E3FAE; --chip: #DCE3F6; --chip-fg: #14245e;
+  --bg: #fff; --fg: #243C31; --muted: #5f645e; --line: #e2e5e1; --surface2: #f3f5f2;
+  --green: #245F46; --green-fg: #245F46; --green-light: #E1EAD5; --route: #1E3FAE; --chip: #DCE3F6; --chip-fg: #14245e;
   --warn: #9A5B00; --warn-bg: #FFF0D2; --error: #C62828; --error-bg: #FDE0DC;
   --good: #2E7D32; --weak: #F9A825; --grey: #6B6F6A; --shadow: rgba(0,0,0,.2);
   --sheet-w: 384px; --sheet-h: 0px;

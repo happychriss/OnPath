@@ -588,7 +588,10 @@ async function pointMenu(i: number) {
     `<span class="num" style="background:${color}">${state.roundTrip && i === 0 ? '↺' : i + 1}</span><b>${escapeHtml(stopLabel(i, n, name))}</b>`);
 }
 
-/** POI menu (ui/MapOverlays.PoiMenu): name, kind · elevation; Add to route (empty plan: Start here · Go here); Google. */
+/**
+ * POI menu (ui/MapOverlays.PoiMenu): name, kind · elevation; what adding it does – "Set as destination", "Add as stop
+ * 2", … (the app's poiAddLabel = AddPreview.label) – (empty plan: Start here · Go here); Google.
+ */
 async function poiMenu(f: MapGeoJSONFeature) {
   const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
   const pr = f.properties ?? {};
@@ -598,7 +601,8 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const items: MenuItem[] = state.points.length === 0
     ? [{ icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') },
       await goHereItem(() => fromMe([Number(lat.toFixed(6)), Number(lon.toFixed(6))], { pinned: true, name: info.title }))]
-    : [{ icon: 'addLocation', label: t('plan_add_to_route'), act: () => addPlace(hit, 'SMART') }];
+    : [{ icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
+      act: () => addPlace(hit, 'SMART') }];
   items.push({ icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') });
   openMenu(new maplibregl.LngLat(lon, lat), items,
     `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`);

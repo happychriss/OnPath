@@ -1,7 +1,8 @@
 // Search like the app's (ui/search/SearchSession): offline on every keystroke – the app's index and ranking in the
 // engine, over the map areas in view – and online (Photon, OpenStreetMap data) after 350 ms without typing for 3+
-// letters, mixed in below the rows already shown. A pick opens the place card: "Add to route" (where it goes is said
-// before the click – the app's AddPreview), "As start", "As destination", "Google" (ui/search/PlaceCard).
+// letters, mixed in below the rows already shown. A pick opens the place card: one button that says what adding does
+// ("Set as destination", "Add as stop 2", … – the app's AddPreview), "As start", "As destination" (left out when the
+// main button does the same), "Google" (ui/search/PlaceCard).
 import * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import type { Hit } from './engine/types';
@@ -116,6 +117,8 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     const n = host.points().length;
     const atStart = pv.existing === 0, atEnd = pv.existing != null && pv.existing === n - 1;
+    // the main button already sets the start / the destination: its small button is left out (app PlaceCard)
+    const planned = pv.existing != null;
     if (my !== picked) return; // a newer pick or a close came first
     card.hidden = false;
     host.cardShown?.(true);
@@ -125,16 +128,16 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
         ${h.address ? `<span class="muted small">${esc(h.address)}</span>` : ''}</span>
         <button id="cclose" class="iconbtn" aria-label="${esc(t('common_close'))}">${icon('close', 20)}</button></div>
       ${pv.existing == null
-        ? `<button id="cadd" class="primary wide twoline">${icon('addLocation')}<span class="txt"><span>${esc(t('search_card_add'))}</span>${pv.subtitle ? `<span class="small">${esc(pv.subtitle)}</span>` : ''}</span></button>`
+        ? `<button id="cadd" class="primary wide twoline">${icon('addLocation')}<span class="txt"><span>${esc(pv.label ?? '')}</span>${pv.subtitle ? `<span class="small">${esc(pv.subtitle)}</span>` : ''}</span></button>`
         : `<button id="cremove" class="primary wide twoline">${icon('delete')}<span class="txt"><span>${esc(t('search_card_remove'))}</span><span class="small">${esc(pv.subtitle)}</span></span></button>`}
-      <div class="row three"><button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>${esc(t('search_card_as_start'))}</button>
-        <button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>${esc(t('search_card_as_destination'))}</button>
+      <div class="row three">${planned || !pv.addIsStart ? `<button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>${esc(t('search_card_as_start'))}</button>` : ''}
+        ${planned || !pv.addIsDestination ? `<button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>${esc(t('search_card_as_destination'))}</button>` : ''}
         <button id="cgoogle" class="outline" title="${esc(t('web_google_title'))}">${icon('map', 18)}Google</button></div>`;
     const done = (role: PlaceRole) => { close(); host.add(h, role); };
     card.querySelector<HTMLButtonElement>('#cadd')?.addEventListener('click', () => done('SMART'));
     card.querySelector<HTMLButtonElement>('#cremove')?.addEventListener('click', () => done('REMOVE'));
-    card.querySelector<HTMLButtonElement>('#cstart')!.onclick = () => done('START');
-    card.querySelector<HTMLButtonElement>('#cdest')!.onclick = () => done('DESTINATION');
+    card.querySelector<HTMLButtonElement>('#cstart')?.addEventListener('click', () => done('START'));
+    card.querySelector<HTMLButtonElement>('#cdest')?.addEventListener('click', () => done('DESTINATION'));
     card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => { close(); host.google(h); };
     card.querySelector<HTMLButtonElement>('#cclose')!.onclick = close;
     at = [h.lon, h.lat];

@@ -33,7 +33,7 @@ await page.waitForTimeout(1500);
 const summary = await page.textContent('#summary');
 const status = await page.textContent('#status');
 await page.screenshot({ path: shot });
-// one green (owner 2026-10-29): header, buttons and icons use the app's #1F6E43 (dark mode: its light tone as text),
+// one green (owner 2026-10-29): header, buttons and icons use the app's green (OnPathColors.Green, #245F46 since 0.13),
 // and green text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
 const greens = () => page.evaluate(() => {
   const rgb = (c) => (c.match(/[\d.]+/g) ?? []).map(Number);
@@ -51,7 +51,7 @@ const greens = () => page.evaluate(() => {
 });
 const contrastFails = [];
 const light = await greens();
-const appGreen = 'rgb(31, 110, 67)';
+const appGreen = 'rgb(36, 95, 70)';
 for (const sel of ['.product', '.nav button .ic', '.chip .ic']) {
   const g = light.find((x) => x.sel === sel);
   if (g && g.color !== appGreen) contrastFails.push(`${sel} is ${g.color}, not the app's green`);
