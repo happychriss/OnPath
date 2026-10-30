@@ -47,7 +47,7 @@ zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
 | Bucket access in the job | Cloud Storage **volume mount** at `/src` (gcsfuse) | No gcloud/gsutil in the image (keeps it small); plain file copies |
 | R2 upload | **stdlib SigV4 client** (`tools/cloud/r2.py`, tested against AWS's published examples) | No aws-cli/boto3/rclone in the image |
 | Job state | **D1** | A queue needs consistent reads (KV is eventually consistent) and the doc's design was already SQLite |
-| Rate limit | D1 counter per IP and minute (`RATE_LIMIT_PER_MIN`, default 30) on `/v1/cells/*` | Works on the free plan; fails open if D1 hiccups. File downloads are not rate-limited (only the key is checked) |
+| Rate limit | D1 counter per IP and minute (`RATE_LIMIT_PER_MIN`, default 30) on `/v1/cells/*` | Works on the free plan; fails open if D1 hiccups. File downloads are not rate-limited (only the key is checked). **No plain IP stored:** the row key is `ip:` + HMAC-SHA-256 of the IP with a salt that changes daily (SHA-256 of the secret `APP_KEYS` + UTC day – no extra secret; `api.js ipKey`); rows older than 2 minutes are deleted by the every-minute cron (`housekeeping`) |
 | Downloads | through the Worker from the R2 binding | One hostname, key check, Range + ETag/304; no public bucket. (A public R2 custom domain would save Worker requests – only worth it at > 100 000 requests/day) |
 | Worker → Google | service-account **key** of `doorman-invoker-<env>` as Worker secret; JWT signed with WebCrypto | Cloudflare Workers cannot use Workload Identity Federation. The key can only start/cancel that one job and read executions |
 | GitHub → Google | **Workload Identity Federation**, no key | Only repository `happychriss/OnPath` (by numeric id), branch `main`, GitHub Environments `test` / `production`; each environment can act only as its own `gh-deployer-<env>` |
@@ -120,7 +120,7 @@ Notes:
 | Bad cells published | Fix the pipeline, deploy, then queue a rebuild: `npx wrangler d1 execute onpath-doorman-<env> --remote --env <env> --command "UPDATE cells SET job='queued', priority=3, requested_at=unixepoch()*1000, attempts=0, permanent=0 WHERE id IN ('10-543-361')"` (all cells: drop the `WHERE`; the hourly cap paces it) |
 | Cell failed 3 times | Failed cells are retried automatically after the next deploy (the Worker compares `BUILD_REV`) when someone asks again |
 | Stop all builds now | `BUILDS_ENABLED = "false"` (see §3) |
-| Logs | Cloudflare: Worker → Logs (JSON lines: `request`, `execution-started`, `cell-ready`, `cell-failed`, `cost-guard`). Google: Cloud Run → Jobs → `onpath-cell-<env>` → Executions → Logs (the full `build_cell.sh` output) |
+| Logs | Cloudflare: Worker → Logs (the doorman's own JSON lines: `request`, `execution-started`, `cell-ready`, `cell-failed`, `cost-guard`, `error` with path + message – never an IP; the automatic per-request invocation logs are off, `[observability.logs] invocation_logs = false`, because they carry request headers with the client IP. A request's status code is therefore not logged; errors are). Google: Cloud Run → Jobs → `onpath-cell-<env>` → Executions → Logs (the full `build_cell.sh` output) |
 
 ## 6. Owner setup – step by step (≈ 45 minutes, once)
 

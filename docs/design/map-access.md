@@ -11,6 +11,9 @@ Related: `docs/design/map-hosting.md` (Worker, R2, Cloud Run), Settings → Priv
 - The Cloudflare Worker (`tools/cloud/worker/src/api.js`) compares it in constant time with the secret `APP_KEYS`
   (comma list, so keys can rotate: old,new). Unknown key → 401. Only `/v1/health` is open.
 - Rate limit 30 requests/min per IP for build requests and status (files are not counted); build caps per hour/day.
+  **Privacy:** the IP is never stored or logged in plain – the counter's key is a salted hash that changes daily
+  (secret salt from `APP_KEYS` + the day), kept for 2 minutes; Workers Logs hold only the doorman's own lines
+  (no invocation logs with request headers).
 - No user account, no device id, no signature.
 
 **Limits of this:** the key is readable from the public APK. It keeps random bots out, not someone who wants to

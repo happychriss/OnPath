@@ -6,8 +6,8 @@ import { verify } from "node:crypto";
 import { blockOf, cellBbox, parseCellId } from "../src/cells.js";
 import { config } from "../src/config.js";
 import * as gcp from "../src/gcp.js";
-import { handle } from "../src/api.js";
-import { pump, requestCells, schemaOf, statusFor } from "../src/queue.js";
+import { handle, ipKey, rateLimited } from "../src/api.js";
+import { housekeeping, pump, requestCells, schemaOf, statusFor } from "../src/queue.js";
 import worker from "../src/index.js";
 import { fakeGoogle, serviceAccountKey, testEnv } from "./fakes.js";
 
@@ -367,6 +367,48 @@ test("validation and limits", async () => {
   assert.equal((await post({ cells: [MERAN], reason: "fun" })).status, 400);
   // 4th call in the same minute from this IP
   assert.equal((await post({ cells: [MERAN] })).status, 429);
+});
+
+test("rate limit: no plain IP stored or logged; key = daily salted hash; same counts per IP", async () => {
+  const env = testEnv({ RATE_LIMIT_PER_MIN: "2" });
+  const lines = [];
+  const orig = console.log;
+  console.log = (...a) => lines.push(a.join(" "));
+  try {
+    const post = (ip) => handle(req("/v1/cells/request", { method: "POST", body: { cells: [MERAN] }, headers: { "cf-connecting-ip": ip } }), env, ctx(), fakeGoogle());
+    assert.equal((await post("203.0.113.9")).status, 200);
+    assert.equal((await post("203.0.113.9")).status, 200);
+    assert.equal((await post("203.0.113.9")).status, 429, "3rd call this minute");
+    assert.equal((await post("198.51.100.4")).status, 200, "another IP counts on its own");
+    const rows = env.DB.raw.prepare("SELECT * FROM ratelimit").all();
+    assert.equal(rows.length, 2);
+    assert.ok(rows.every((r) => /^ip:[0-9a-f]{32}$/.test(r.key)), JSON.stringify(rows));
+    assert.ok(!JSON.stringify(rows).includes("203.0.113") && !JSON.stringify(rows).includes("198.51.100"));
+    env.DB.prepare = () => { throw new Error("D1 down"); }; // fails open, and its log line has no IP
+    assert.equal(await rateLimited(env, config(env), "203.0.113.9"), false);
+  } finally {
+    console.log = orig;
+  }
+  assert.ok(lines.some((l) => l.includes("ratelimit-error")));
+  assert.ok(!lines.join("\n").includes("203.0.113") && !lines.join("\n").includes("198.51.100"), lines.join("\n"));
+  // the salt rotates daily and comes from the secret: other day or other APP_KEYS → another key; key order irrelevant
+  const t = Date.parse("2026-10-30T12:00:00Z");
+  const a = await ipKey({ APP_KEYS: "k1,k2" }, "203.0.113.9", t);
+  assert.match(a, /^ip:[0-9a-f]{32}$/);
+  assert.equal(await ipKey({ APP_KEYS: "k2, k1" }, "203.0.113.9", t + 3_600_000), a, "same day, same key set");
+  assert.notEqual(await ipKey({ APP_KEYS: "k1,k2" }, "203.0.113.9", t + 86_400_000), a, "next day");
+  assert.notEqual(await ipKey({ APP_KEYS: "k3" }, "203.0.113.9", t), a, "other secret");
+  assert.notEqual(await ipKey({ APP_KEYS: "k1,k2" }, "203.0.113.8", t), a, "other IP");
+});
+
+test("rate-limit rows older than 2 minutes go with the cron housekeeping", async () => {
+  const env = testEnv({ RATE_LIMIT_PER_MIN: "5" });
+  const t = Date.parse("2026-10-30T12:00:00Z");
+  await rateLimited(env, config(env), "203.0.113.9", t);
+  await housekeeping(env, t + 60_000);
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM ratelimit").first()).n, 1);
+  await housekeeping(env, t + 3 * 60_000);
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM ratelimit").first()).n, 0);
 });
 
 test("old ready cell: answered ready (+ updating) and a low-priority refresh is queued", async () => {
