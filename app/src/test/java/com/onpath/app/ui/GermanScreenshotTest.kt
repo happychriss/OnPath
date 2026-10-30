@@ -41,6 +41,7 @@ class GermanScreenshotTest {
     @Test fun planMenuSyncPaired() = shots.planMenuSyncPaired()
     @Test fun planMenuSyncProblem() = shots.planMenuSyncProblem()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
+    @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
     @Test fun navigateApproximatePosition() = shots.navigateApproximatePosition()

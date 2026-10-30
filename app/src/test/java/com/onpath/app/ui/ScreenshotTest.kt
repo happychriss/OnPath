@@ -518,6 +518,14 @@ class ScreenshotTest {
             .copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
     }
 
+    /**
+     * The hiking chip names the activity in every language ("Hike · T3" / "Wandern · T3", owner 2026-10-30) – a long
+     * day hike must still show time AND distance in full beside it.
+     */
+    @Test fun planChipLongHike() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3), PlanCallbacks()) }
+    }
+
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
