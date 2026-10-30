@@ -208,7 +208,7 @@
     <string name="nav_time_with_breaks">With breaks</string>
     <string name="nav_time_pace_level">Pace level</string>
     <string name="nav_notif_off">Notifications off</string>
-    <string name="nav_notif_off_line">No tour info on the lock screen</string>
+    <string name="nav_notif_off_line">No turns and no “New route?” on the lock screen</string>
     <string name="nav_notif_off_click">Set up notifications</string>
 
     <!-- rest view while cycling (smart screen) -->

@@ -30,7 +30,7 @@
     <string name="setup_locon_why">Your phone's location is switched off, so no app can find your position.</string>
     <string name="setup_locon_do">Tap Continue and switch location on.</string>
     <string name="setup_notif_title">Notifications</string>
-    <string name="setup_notif_why">While you record, a notification shows that OnPath is working and lets you pause. With the screen off it also asks when you leave the route.</string>
+    <string name="setup_notif_why">On the lock screen OnPath shows the next turn, the time left and your arrival (“Left in 300 m · arrive 13:00”). If you leave the route while the phone is locked, OnPath asks there “New route?”. And if something goes wrong, like storage full, you hear about it at once. Turn vibration and recording work without it too.</string>
     <string name="setup_notif_do">Allow notifications for OnPath.</string>
     <string name="setup_notif_blocked">Tap Continue and switch notifications for OnPath on.</string>
     <string name="setup_vib_title">Vibration</string>

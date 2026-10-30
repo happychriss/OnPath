@@ -30,7 +30,7 @@
     <string name="setup_locon_why">Der Standort deines Handys ist ausgeschaltet – so kann keine App deine Position finden.</string>
     <string name="setup_locon_do">Tippe auf Weiter und schalte den Standort ein.</string>
     <string name="setup_notif_title">Benachrichtigungen</string>
-    <string name="setup_notif_why">Während du aufzeichnest, zeigt eine Benachrichtigung, dass OnPath arbeitet, und du kannst pausieren. Bei ausgeschaltetem Bildschirm fragt sie auch, wenn du die Route verlässt.</string>
+    <string name="setup_notif_why">Auf dem Sperrbildschirm zeigt OnPath die nächste Abzweigung, die Restzeit und die Ankunft („Links in 300 m · Ankunft 13:00“). Verlässt du bei gesperrtem Handy die Route, fragt OnPath dort „Neue Route?“. Und wenn etwas schiefgeht, etwa Speicher voll, erfährst du es sofort. Abbiege-Vibration und Aufzeichnung laufen auch ohne.</string>
     <string name="setup_notif_do">Erlaube Benachrichtigungen für OnPath.</string>
     <string name="setup_notif_blocked">Tippe auf Weiter und schalte die Benachrichtigungen für OnPath ein.</string>
     <string name="setup_vib_title">Vibration</string>
