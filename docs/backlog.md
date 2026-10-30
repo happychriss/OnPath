@@ -79,6 +79,10 @@ the git log.
       seeing the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept per
       compartment in local storage (owner 2026-10-30). web-spike 14938ba has marks (A-017 point 7) but only
       `font-weight: 700` – make it as clearly bold as the app (ExtraBold vs SemiBold) and check it is live.
+    - Map look per activity (owner 2026-10-31: routes and map look identical in browser and app) · `map/ActivityLayers.kt`
+      (pure, shared) · the web always drew the Hike look (bike layers hidden): add the file to `appFiles`, engine call
+      `activityLayers`, apply it in `main.ts` on `load` and in `setActivity()`, smoke test Bike / Hike T4 – exact steps
+      in `docs/handoff-web-activity-layers.md`.
   - *Should:*
     - A stop on a way is always visited, a skipped stop is never moved (Bug 01, 2026-10-31) · 060f35e, 0ef8dd3,
       d5a7db5 · matched points now come from `OnPathHints.matched` (no reflection) and the Planner's spur rule is
