@@ -423,12 +423,14 @@ search-smoke (card beside the sheet, closes, results stay closed, name proposal)
 Follow-up (owner, same day): Manrope bundled (§11.3), search field and tools merged into one top bar. Colours from
 onpath.earth: page background `#fafaf6`, text `#243c31`, line `#dce1d6`, soft background `#eef0e8`, eyebrow / icon
 green `#526d57`, button green `#245f46`, logo green `#1F6E43` + path yellow `#FFC94D` – used for the header; the
-map, sheet and controls keep the app's `OnPathColors` (green `#1F6E43`, route blue, amber, red).
+map, sheet and controls keep the app's `OnPathColors` (green `#1F6E43`, route blue, amber, red). Since 2026-10-30 the
+page has one green, the app's (row 13b below).
 
 Owner decisions 2026-10-29 (cloud, 2026-10-30):
 
 | # | Owner | Now |
 | --- | --- | --- |
+| 13b | One green: the app's `#1F6E43` | Every green of the page is the app's: header eyebrow and header icons (were onpath.earth's `#526d57`; its button green `#245f46` was never used on the page), buttons, chip and menu icons, the Easy badge. Fills use `--green` (`#1F6E43`) in light and dark; green *text / icons* use `--green-fg` = the same green in light, in dark mode its light tone `#8ED6A8` (the app's `inversePrimary`) – `#1F6E43` on the dark background is only 2.7:1. Contrast (WCAG AA): white on the green button 6.2:1; green text on the header 6.0, on white 6.2, Easy badge 5.2; dark 6.7–10. The website's neutrals (`--site-bg/fg/line/soft`) stay. Test: ui-smoke (the app's green in light; ≥ 4.5:1 text, ≥ 3:1 icons in light and dark). |
 | 14 | Pace choice like the app's Settings → Pace | The activity drop-down ends with **Your pace**: the five levels of the current activity's group (Hiking, or "Cycling · <bike>" – the app keeps one level for hiking and one for cycling) with the app's labels and "about 4 km/h · 300 m up per hour" line and intro. A click sets it (the list stays open); the sheet's time is recomputed by the engine (`planTime`: the app's `TimeEstimate.planSeconds` with `planFactors` of the chosen level, no new routing); new plans and an imported track's model time use it too (`WebPace.kt`). Remembered in localStorage under the app's Prefs key names (`onpath.hikePaceLevel` / `onpath.bikePaceLevel`). The long-route question keeps Average, as in the app (`LongRoute`). Tests: browser-compare (every level, Hike / bike / e-bike, Wasm = JVM `JvmRun.paceRun` exactly), parity-smoke (section, time follows, stays open, remembered after reload). |
 
  Help is the credits dialog with four how-to lines (a real help

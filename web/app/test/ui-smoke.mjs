@@ -33,6 +33,38 @@ await page.waitForTimeout(1500);
 const summary = await page.textContent('#summary');
 const status = await page.textContent('#status');
 await page.screenshot({ path: shot });
+// one green (owner 2026-10-29): header, buttons and icons use the app's #1F6E43 (dark mode: its light tone as text),
+// and green text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
+const greens = () => page.evaluate(() => {
+  const rgb = (c) => (c.match(/[\d.]+/g) ?? []).map(Number);
+  const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const bgOf = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.9) return c; } return [255, 255, 255]; };
+  const out = [];
+  for (const [sel, min] of [['.product', 4.5], ['.textbtn', 4.5], ['button.primary', 4.5], ['.badge', 4.5], ['.chip .ic', 3], ['.nav button .ic', 3]]) {
+    const el = [...document.querySelectorAll(sel)].find((e) => e.getClientRects().length);
+    if (!el) continue;
+    const fg = rgb(getComputedStyle(el).color), bg = bgOf(el);
+    const [a, b] = [lum(fg), lum(bg)];
+    out.push({ sel, min, color: getComputedStyle(el).color, fill: getComputedStyle(el).backgroundColor, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) });
+  }
+  return out;
+});
+const contrastFails = [];
+const light = await greens();
+const appGreen = 'rgb(31, 110, 67)';
+for (const sel of ['.product', '.nav button .ic', '.chip .ic']) {
+  const g = light.find((x) => x.sel === sel);
+  if (g && g.color !== appGreen) contrastFails.push(`${sel} is ${g.color}, not the app's green`);
+}
+const prim = light.find((x) => x.sel === 'button.primary');
+if (prim && prim.fill !== appGreen) contrastFails.push(`button.primary fill ${prim.fill}, not the app's green`);
+await page.emulateMedia({ colorScheme: 'dark' });
+const dark = await greens();
+for (const [mode, list] of [['light', light], ['dark', dark]]) for (const x of list) {
+  if (x.ratio < x.min) contrastFails.push(`${mode}: ${x.sel} ${x.color} contrast ${x.ratio.toFixed(2)} < ${x.min}`);
+}
+console.log('greens:', [...light.map((x) => `light ${x.sel} ${x.ratio.toFixed(1)}`), ...dark.map((x) => `dark ${x.sel} ${x.ratio.toFixed(1)}`)].join(' · '));
+if (contrastFails.length) errors.push('one green / contrast: ' + contrastFails.join('; '));
 await browser.close(); server.close();
 console.log('summary:', summary.replace(/\s+/g, ' ').trim());
 console.log('status:', status);
