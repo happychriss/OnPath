@@ -48,7 +48,8 @@ object JcaAead : Aead {
  *
  * Triggers: after a change of a saved route / imported track ([changed], a short delay gathers several), at start
  * and when the app comes back ([request]), when the network comes back, and about every minute while the app stays
- * open on Plan / My routes / Browser sync ([poll], rule in [SyncPoll]). **Never during a recording** – the pass is
+ * open on My routes / Browser sync ([poll], rule in [SyncPoll]), and right away when My routes or Browser sync
+ * opens ([SyncPoll.opened], debounced). **Never during a recording** – the pass is
  * skipped and runs when the tour has ended ([request] from the view model). No sync while the app is closed or in the
  * background.
  */

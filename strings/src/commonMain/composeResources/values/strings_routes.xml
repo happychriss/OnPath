@@ -64,4 +64,6 @@
     <string name="routes_gpx_nothing">No track, route or waypoint found in this file.</string>
     <string name="routes_gpx_too_large">The file is larger than %1$d MB.</string>
     <string name="routes_replace_text_link">Your current route is not saved. Save it first, or replace it with the route from the link.</string>
+    <string name="routes_mark_new">New from the browser</string>
+    <string name="routes_mark_changed">Changed in the browser</string>
 </resources>

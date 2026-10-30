@@ -38,6 +38,7 @@ interface TourStore {
  * 2. **round** – hello, pull + merge, push ([SyncRound]);
  * 3. **import** – what came from the other side into the tours: a new plan / track is added (a plan is routed
  *    afterwards, [Result.toRoute]), a change updates it, a delete moves it to the recycle bin – never deletes it.
+ *    New and changed ones are marked until opened ([SyncFiles.marks], My routes: bold + "New from the browser").
  *
  * The ledger and the links are written after the round, also when it failed, and before the import starts; an import
  * that fails stays [SyncLinks.pending] and is tried again next pass. Runs on a background thread; never during a
@@ -104,6 +105,8 @@ class PlanSyncPass(
     private fun export(ledger: SyncLedger, links: SyncLinks, now: Long, device: String) {
         val tours = store.tours().filter(RouteItems::synced)
         val byUuid = tours.associateBy { it.uuid }
+        // a marked route that is in the recycle bin or gone: no mark (it was not opened, but it is not in the list)
+        files.marks.retain(tours.filter { it.deletedMs == null }.mapTo(HashSet()) { it.uuid })
         for (t in tours) {
             if (t.uuid.isEmpty()) continue
             val id = links.itemOf(t.uuid)
@@ -162,13 +165,14 @@ class PlanSyncPass(
             try {
                 val name = item.title ?: untitled(item.kind)
                 when {
-                    item.deleted -> if (tour != null && tour.deletedMs == null) { store.toBin(tour); binned++ }
+                    item.deleted -> if (tour != null && tour.deletedMs == null) { store.toBin(tour); binned++; files.marks.remove(tour.uuid) }
                     tour == null || RouteItems.kindOf(tour) != item.kind -> {
                         val t = if (item.kind == SyncItem.PLAN) RouteItems.planContent(item)?.let { store.addPlan(name, it) }
                             else RouteItems.trackContent(item)?.let { store.addTrack(name, it) }
                         if (t == null) unreadable++
                         else {
                             links.link(id, t.uuid); added++
+                            files.marks.arrived(t.uuid) // My routes: bold + "New from the browser" until opened
                             if (t.kind == TourKind.PLANNED) toRoute += t.id
                         }
                     }
@@ -186,7 +190,7 @@ class PlanSyncPass(
                             if (c == null) unreadable++ else if (store.replaceTrack(tour, c)) changed = true
                         }
                         if (tour.name != name && RouteItems.title(tour) != item.title) { store.rename(tour, name); changed = true }
-                        if (changed) updated++
+                        if (changed) { updated++; files.marks.changed(tour.uuid) } // "Changed in the browser" until opened
                     }
                 }
                 links.done(id)
@@ -217,6 +221,7 @@ class PlanSyncPass(
         val l = files.ledger()
         l.forget()
         files.saveLedger(l)
+        files.marks.clear()
         files.forgetPairing()
     }
 }

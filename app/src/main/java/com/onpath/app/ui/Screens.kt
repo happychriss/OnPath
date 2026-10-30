@@ -74,6 +74,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.routing.Activity
+import com.onpath.app.plansync.SyncMark
 import com.onpath.strings.*
 import org.jetbrains.compose.resources.StringResource
 import java.text.SimpleDateFormat
@@ -266,7 +267,8 @@ internal object SacScale {
 /**
  * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
- * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. ⋮ Export all takes both tabs.
+ * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
+ * has a bold title and "New from the browser" / "Changed in the browser" ([marks]). ⋮ Export all takes both tabs.
  * While [navigating], items that would replace the plan cannot be opened (they wait for the end of the tour).
  */
 @Composable
@@ -296,6 +298,8 @@ fun RoutesScreen(
     /** The tab shown first (the app keeps the last one chosen while it runs). */
     initialTab: RoutesTab = RoutesTab.PLANNED,
     onTab: (RoutesTab) -> Unit = {},
+    /** Routes from the browser not opened yet (tour uuid → mark): bold title + a grey line (plansync/SyncMarks). */
+    marks: Map<String, SyncMark> = emptyMap(),
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var tab by remember { mutableStateOf(initialTab) }
@@ -338,7 +342,7 @@ fun RoutesScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(shown, key = { it.id }) { t ->
                         val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
-                        TourCard(t, onOpen = if (openable) ({ onOpen(t) }) else null,
+                        TourCard(t, mark = marks[t.uuid].takeIf { t.uuid.isNotEmpty() }, onOpen = if (openable) ({ onOpen(t) }) else null,
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
@@ -389,7 +393,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 
 @Composable
 private fun TourCard(
-    t: Tour, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    t: Tour, mark: SyncMark?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
@@ -405,7 +409,12 @@ private fun TourCard(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(t.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // from the browser and not opened yet (owner 2026-10-30): bold title + a grey line, until opened
+                Text(t.name, fontWeight = if (mark != null) FontWeight.ExtraBold else FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                mark?.let {
+                    Text(str(if (it == SyncMark.NEW) Res.string.routes_mark_new else Res.string.routes_mark_changed),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)

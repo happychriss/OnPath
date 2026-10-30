@@ -3464,6 +3464,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openTour(t: Tour) {
+        syncMarkSeen(t)
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
             routesOpen = false
@@ -3508,10 +3509,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
      * back in the app, after a change here, when the network is back, about every minute while the app stays open on
-     * Plan / My routes / Browser sync ([syncPoll]) – never during a recording (after the tour).
+     * My routes / Browser sync ([syncPoll]) and right away when one of them opens – never during a recording (after the tour).
      */
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
+
+    /** Routes from the browser not opened yet (My routes → Planned: bold + "New from the browser"); read once at start. */
+    val syncMarks: kotlinx.coroutines.flow.StateFlow<Map<String, com.onpath.app.plansync.SyncMark>> get() = sync.files.marks.state
+
+    /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */
+    private fun syncMarkSeen(t: Tour) {
+        if (t.uuid.isEmpty() || t.uuid !in syncMarks.value) return
+        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
+    }
 
     /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
     var pairAsk by mutableStateOf<ByteArray?>(null)
@@ -3523,16 +3533,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
 
     init {
+        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.all() } // marks.txt → syncMarks (small file, never throws)
         sync.start()
         // a tour ended: what waited for it comes now
         viewModelScope.launch {
             var was = recState.value != null
             recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
         }
-        // on screen, paired, no tour, Plan / My routes / Browser sync shown: a pass about every minute (SyncPoll)
+        // on screen, paired, no tour, My routes / Browser sync shown (not the Plan map): a pass about every minute (SyncPoll)
         viewModelScope.launch {
             val screen = androidx.compose.runtime.snapshotFlow {
-                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(mode == AppMode.PLAN, routesOpen, showSettings,
+                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routesOpen, showSettings,
                     settingsPage == SettingsPage.SYNC)
             }
             combine(screen, recState, sync.state) { (visible, routesScreen), rec, st ->
@@ -3546,6 +3557,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         sync.poll("every minute") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
                         else -> delay(com.onpath.app.plansync.SyncPoll.BUSY_RECHECK_MS) // a pass runs or waits
                     }
+                }
+            }
+        }
+        // My routes / its Planned tab / Settings → Browser sync opened: pull right away (owner 2026-10-30), debounced
+        viewModelScope.launch {
+            var before = com.onpath.app.plansync.SyncPoll.Shown.OTHER
+            androidx.compose.runtime.snapshotFlow {
+                com.onpath.app.plansync.SyncPoll.shown(appOnScreen, routesOpen, routesTab == RoutesTab.PLANNED, showSettings,
+                    settingsPage == SettingsPage.SYNC)
+            }.collect { now ->
+                val why = com.onpath.app.plansync.SyncPoll.opened(before, now)
+                before = now
+                val t = android.os.SystemClock.elapsedRealtime()
+                if (why != null && syncPoll.openDue(t, sync.state.value.paired, recording = recState.value != null, busy = sync.busy())) {
+                    syncPoll.requested(t)
+                    sync.request(why)
                 }
             }
         }
@@ -3806,7 +3833,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
-            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("moved to the recycle bin") }
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.files.marks.remove(t.uuid); sync.changed("moved to the recycle bin") }
             withContext(Dispatchers.Main) {
                 if (!ok) { routesProblem = Txt.s(Res.string.msg_tour_delete_failed, t.name); return@withContext }
                 if (shown?.tourId == t.id) shown = null

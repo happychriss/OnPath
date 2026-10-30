@@ -383,5 +383,17 @@
     "context": "Text of the 'Replace current route?' dialog when a plan link (QR code, shared link) is opened while the plan has unsaved changes. Buttons: Save first / Replace.",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "routes_mark_new": {
+    "area": "My routes",
+    "context": "Grey line under the bold title of a route or imported track in My routes → Planned that arrived from the paired browser (Browser sync) and was not opened yet. Gone once the user opens it.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_mark_changed": {
+    "area": "My routes",
+    "context": "Grey line under the bold title of a route in My routes → Planned that was changed (or renamed) in the paired browser and not opened since. Gone once the user opens it.",
+    "priority": 2,
+    "confidence": "sicher"
   }
 }
