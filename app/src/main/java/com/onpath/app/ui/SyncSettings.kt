@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -89,6 +90,43 @@ object PairLanding {
 @Composable
 fun PairedNoteStrip(onOk: () -> Unit, modifier: Modifier = Modifier) =
     OkNoteStrip(str(Res.string.sync_paired_plan), Icons.Outlined.CheckCircle, onOk, modifier)
+
+/**
+ * ☰ → "Pair with browser" (owner 2026-10-30: shorter pairing): not paired → the phone's camera at once (it reads the QR
+ * code; the `#pair=` link comes back through PlanLinks). The one line "On your computer open plan.onpath.earth → …" is
+ * shown once before, as a blue step strip on the map with "Open camera" – no dialog; after the camera opened once, one
+ * tap. Paired, or a sync problem to look at → Settings → Browser sync (status, Unpair). No camera app → that page with
+ * its steps (fallback). Pure, unit-tested.
+ */
+object PairEntry {
+    enum class Step { SETTINGS, HINT, CAMERA }
+
+    /** `MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA`: the camera app in photo mode (Google / Samsung read QR codes there). */
+    const val CAMERA_ACTION = "android.media.action.STILL_IMAGE_CAMERA"
+
+    fun step(s: PlanSync.State, hintSeen: Boolean): Step = when {
+        s.paired || SyncMenuUi.attention(s) != null -> Step.SETTINGS
+        !hintSeen -> Step.HINT
+        else -> Step.CAMERA
+    }
+
+    /**
+     * Opens the camera through [start] (startActivity of [CAMERA_ACTION]); no camera app (it throws) → [fallback].
+     * True = the camera opened.
+     */
+    fun openCamera(start: (action: String) -> Unit, fallback: (Exception) -> Unit): Boolean = try {
+        start(CAMERA_ACTION); true
+    } catch (e: Exception) {
+        // expected on phones without a camera app (ActivityNotFoundException) – the caller logs it and falls back
+        fallback(e); false
+    }
+}
+
+/** The pairing step before the camera opens (first time): what to do on the computer + Cancel / Open camera. */
+@Composable
+fun PairHintStrip(onCamera: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) =
+    ActionStrip(str(Res.string.sync_pair_hint), Icons.Outlined.QrCodeScanner,
+        listOf(str(Res.string.common_cancel) to onCancel, str(Res.string.sync_open_camera) to onCamera), modifier)
 
 class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},

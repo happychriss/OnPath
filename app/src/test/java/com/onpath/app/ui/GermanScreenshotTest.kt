@@ -48,6 +48,7 @@ class GermanScreenshotTest {
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
     @Test fun planMenuUnsaved() = shots.planMenuUnsaved()
     @Test fun planPairedNote() = shots.planPairedNote()
+    @Test fun planPairHint() = shots.planPairHint()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
     @Test fun navigateRerouteSkipStop() = shots.navigateRerouteSkipStop()

@@ -38,6 +38,7 @@ import com.onpath.app.ui.FinishedTourDialogs
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
+import com.onpath.app.ui.ErrorCardHost
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.RouteDialogs
@@ -162,6 +163,7 @@ class MainActivity : ComponentActivity() {
                             onStartNavigation = {
                                 vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
                             },
+                            pairCamera = ::startPairCamera,
                         )
                         if (vm.routesOpen) {
                             BackHandler { vm.routesOpen = false }
@@ -296,7 +298,7 @@ class MainActivity : ComponentActivity() {
                             sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
                                 vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairJoining),
                             syncCb = com.onpath.app.ui.SyncCallbacks(
-                                onOpenCamera = ::openCameraForPairing,
+                                onOpenCamera = { vm.openPairCamera(::startPairCamera, fromSettings = true) },
                                 onPair = vm::confirmPair,
                                 onCancelPair = vm::cancelPair,
                                 onUnpair = vm::unpair,
@@ -329,13 +331,8 @@ class MainActivity : ComponentActivity() {
 
                     // The one error card (no dark bar; results go where the user acted – vm.say).
                     // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
-                    vm.errorCard?.let { msg ->
-                        com.onpath.app.ui.ErrorCard(msg, onOk = { vm.errorCard = null },
-                            // below the blue strip while it shows – never over its buttons
-                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp,
-                                top = com.onpath.app.ui.MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN,
-                                    vm.backgroundStripHeightDp).dp))
-                    }
+                    // Plan: below the blue strip while it shows; Navigate: below the turn card (MessagePlacement)
+                    ErrorCardHost(vm)
                 }
 
                 RouteDialogs(vm)
@@ -564,17 +561,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Settings → Browser sync → Open camera: the phone's camera app (it reads QR codes) – the pairing link it opens
-     * comes back to OnPath through the plan-link filter (PlanLinks, `#pair=`). No camera app → a line on the page.
+     * ☰ → Pair with browser / Settings → Browser sync → Open camera: the phone's camera app (it reads QR codes) – the
+     * pairing link it opens comes back to OnPath through the plan-link filter (PlanLinks, `#pair=`). Throws without a
+     * camera app: [com.onpath.app.ui.PairEntry] falls back.
      */
-    private fun openCameraForPairing() {
-        try {
-            startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
-        } catch (e: Exception) {
-            com.onpath.app.debug.Problems.warn("sync", "No camera app to scan the pairing code", e)
-            vm.sayError(Txt.s(Res.string.sync_no_camera), com.onpath.app.ui.NoticePlace.SETTINGS)
-        }
-    }
+    private fun startPairCamera(action: String) = startActivity(Intent(action))
 
     private fun launchImport() {
         try {

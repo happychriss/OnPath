@@ -76,7 +76,7 @@ class ScreenshotTest {
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = 68.dp, start = 16.dp, end = 16.dp)) { top() }
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)) { top() }
                 }
             }
         }
@@ -913,6 +913,11 @@ class ScreenshotTest {
     /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
     @Test fun planPairedNote() = paparazzi.snapshot {
         Frame(top = { PairedNoteStrip(onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line + Open camera, then the camera. */
+    @Test fun planPairHint() = paparazzi.snapshot {
+        Frame(top = { PairHintStrip(onCamera = {}, onCancel = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     @Test fun planUnsavedLongHike() = paparazzi.snapshot {

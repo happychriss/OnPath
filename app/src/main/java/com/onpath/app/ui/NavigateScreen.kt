@@ -58,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -184,10 +185,14 @@ fun NavigateOverlay(
     /** The "Notifications off" chip: tap → phone setup step, OK → gone for this tour. */
     onNotifications: () -> Unit = {},
     onNotificationsOk: () -> Unit = {},
+    /** Height of the top column (turn card, status, chips) below the status bar, dp: the error card goes below it. */
+    onTopHeightDp: (Int) -> Unit = {},
 ) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
+                .onSizeChanged { onTopHeightDp(with(density) { it.height.toDp().value.toInt() }) }
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -733,7 +738,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
-            onNotificationsOk = { vm.notificationsOkTour = rec?.tourId })
+            onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
+            onTopHeightDp = { vm.navigateTopDp = it })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

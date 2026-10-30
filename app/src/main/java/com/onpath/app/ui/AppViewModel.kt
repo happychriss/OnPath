@@ -911,8 +911,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
-    /** Height of that strip in dp (measured); the error card goes below it ([MessagePlacement]). */
-    var backgroundStripHeightDp by mutableStateOf(0)
+    /** Bottom of that strip / chip below the status bar in dp (measured); the error card goes below it ([MessagePlacement]). */
+    var backgroundStripBottomDp by mutableStateOf(0)
+    /** Navigate: height of the top column (turn card, status card, chips) in dp – the error card goes below it. */
+    var navigateTopDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
@@ -3527,6 +3529,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     fun pairedNoteOk() { pairedNote = false }
+
+    /** ☰ → Pair with browser, the first time: the step line + Open camera as a blue strip on the Plan map ([PairEntry]). */
+    var pairHint by mutableStateOf(false)
+        private set
+
+    /** ☰ → Pair with browser: camera at once (paired / a problem → Settings → Browser sync; first time the step line). */
+    fun startPairing(start: (String) -> Unit) {
+        val step = PairEntry.step(sync.state.value, prefs.pairHintSeen)
+        Problems.info("sync", "Pair with browser from the menu: $step")
+        when (step) {
+            PairEntry.Step.SETTINGS -> openSettings(SettingsPage.SYNC)
+            PairEntry.Step.HINT -> pairHint = true
+            PairEntry.Step.CAMERA -> openPairCamera(start, fromSettings = false)
+        }
+    }
+
+    fun pairHintCamera(start: (String) -> Unit) { pairHint = false; openPairCamera(start, fromSettings = false) }
+    fun pairHintCancel() { pairHint = false }
+
+    /**
+     * The camera for the pairing code. No camera app: from the map → Settings → Browser sync (its steps) with the line;
+     * on that page → the line there.
+     */
+    fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) {
+        val opened = PairEntry.openCamera(start) { e ->
+            Problems.warn("sync", "No camera app to scan the pairing code", e)
+            if (!fromSettings) openSettings(SettingsPage.SYNC)
+            sayError(Txt.s(Res.string.sync_no_camera), NoticePlace.SETTINGS)
+        }
+        if (opened) prefs.pairHintSeen = true
+    }
 
     /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()

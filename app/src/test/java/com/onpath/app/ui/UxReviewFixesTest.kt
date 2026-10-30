@@ -43,14 +43,19 @@ class UxReviewFixesTest {
 
     /** Problem 11: the message bar (stays until OK) never covers the blue strip – it goes below it. */
     @Test fun messageBarGoesBelowTheStrip() {
-        assertTrue(MessagePlacement.topDp(stripShown = false, stripHeightDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
+        assertTrue(MessagePlacement.topDp(stripShown = false, stripBottomDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
         val stripHeight = 96
-        val top = MessagePlacement.topDp(stripShown = true, stripHeightDp = stripHeight)
+        val top = MessagePlacement.topDp(stripShown = true, stripBottomDp = MessagePlacement.STRIP_TOP_DP + stripHeight)
         assertTrue("$top", top >= MessagePlacement.STRIP_TOP_DP + stripHeight)
+        // below the small chip under ☰ too
+        val chip = MessagePlacement.topDp(stripShown = true, stripBottomDp = MessagePlacement.CHIP_TOP_DP + 48)
+        assertTrue("$chip", chip >= MessagePlacement.CHIP_TOP_DP + 48)
         // not measured yet: as before
-        assertTrue(MessagePlacement.topDp(stripShown = true, stripHeightDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
+        assertTrue(MessagePlacement.topDp(stripShown = true, stripBottomDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue(main.contains("MessagePlacement.topDp(vm.backgroundStripShown"))
+        assertTrue(main.contains("ErrorCardHost(vm)"))
+        val host = File("src/main/java/com/onpath/app/ui/Notices.kt").readText()
+        assertTrue(host.contains("MessagePlacement.topDp(vm.backgroundStripShown"))
     }
 
     /** Owner text Q7: ⋯ → Time details keeps plain lines only; the formulas moved to Settings → Diagnostics. */

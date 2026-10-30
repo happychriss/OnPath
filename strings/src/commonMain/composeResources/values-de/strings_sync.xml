@@ -12,6 +12,7 @@
     <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth und klicke oben auf „Handy verbinden“. Scanne den Code dort mit der Kamera deines Handys – OnPath öffnet sich und zeigt sechs Prüfziffern.</string>
     <string name="sync_open_camera">Kamera öffnen</string>
     <string name="sync_no_camera">Keine Kamera-App gefunden – öffne die Kamera selbst und scanne den Code.</string>
+    <string name="sync_pair_hint">Öffne am PC plan.onpath.earth → ‚Handy verbinden‘ und scanne den Code</string>
     <string name="sync_ask_title">Mit diesem Browser verbinden?</string>
     <string name="sync_ask_check">Prüfe: %1$s – der Browser zeigt dieselben sechs Ziffern.</string>
     <string name="sync_pair">Verbinden</string>

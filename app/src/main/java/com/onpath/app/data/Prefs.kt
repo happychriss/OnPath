@@ -190,6 +190,11 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         }
         set(v) { if (v != null) sp.edit().putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }).apply() }
 
+    /** ☰ → Pair with browser opened the camera once: the step line before it is not shown again (PairEntry). */
+    var pairHintSeen: Boolean
+        get() = sp.getBoolean("pairHintSeen", false)
+        set(v) = sp.edit().putBoolean("pairHintSeen", v).apply()
+
     /** Developer tools unlocked by 7 taps on the version in Settings → About (owner); stays. */
     var devToolsUnlocked: Boolean
         get() = sp.getBoolean("devToolsUnlocked", false)

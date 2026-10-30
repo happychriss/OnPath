@@ -3,7 +3,6 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -13,7 +12,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -253,7 +251,7 @@ fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVecto
             Spacer(Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f, fill = false))
-            action?.let { (label, act) -> TextButton(onClick = act, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) } }
+            action?.let { (label, act) -> Spacer(Modifier.width(8.dp)); NoticeButton(label, act, NoticeTone.LIGHT) }
         }
     }
 }

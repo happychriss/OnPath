@@ -13,6 +13,7 @@
     <string name="sync_steps">On the computer, open plan.onpath.earth and click “Pair phone” at the top. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
     <string name="sync_open_camera">Open camera</string>
     <string name="sync_no_camera">No camera app found – open the camera yourself and scan the code.</string>
+    <string name="sync_pair_hint">On your computer open plan.onpath.earth → ‘Pair phone’ and scan the code</string>
     <string name="sync_ask_title">Pair with this browser?</string>
     <string name="sync_ask_check">Check: %1$s – the browser shows the same six digits.</string>
     <string name="sync_pair">Pair</string>

@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,10 +52,8 @@ fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit,
                 LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 Spacer(Modifier.height(8.dp))
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onLater, modifier = Modifier.heightIn(min = 44.dp)) { Text(str(Res.string.settings_upd_later)) }
-                    TextButton(onClick = onInstall, modifier = Modifier.heightIn(min = 44.dp)) { Text(str(Res.string.settings_upd_install), fontWeight = FontWeight.SemiBold) }
-                }
+                NoticeButtons(listOf(str(Res.string.settings_upd_later) to onLater, str(Res.string.settings_upd_install) to onInstall),
+                    NoticeTone.LIGHT, Modifier.padding(top = 4.dp, end = 4.dp, bottom = 4.dp))
             }
         }
     }

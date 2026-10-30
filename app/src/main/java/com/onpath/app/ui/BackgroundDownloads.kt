@@ -221,18 +221,27 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
 }
 
 /**
- * Where the error card (stays until OK) sits: it must never cover the blue strip's buttons (Try again, Allow location,
- * Load now) – below the strip while it shows. The loading chip under ☰ uses the same place: the card goes below it too.
- * Pure, tested.
+ * Where the strips and the error card (stays until OK) sit. Owner 2026-10-30: the blue strips not glued under the
+ * search bar – a calm gap below it; the small loading chip stays right under ☰. The error card never covers the blue
+ * strip's buttons (Try again, Allow location, Load now): below the strip / chip while it shows. In Navigate it goes below
+ * the turn card, status card and chips. The plan sheet is drawn over the strips (PlanMode), so they never cover its
+ * primary button. Pure, tested.
  */
 object MessagePlacement {
-    /** Top of the blue strip / the loading chip's touch area below the status bar (search pill + ☰ row above it). */
-    const val STRIP_TOP_DP = 68
-    /** The error card without a strip. */
-    const val MESSAGE_TOP_DP = 70
+    /** Top of the loading chip's touch area below the status bar (search pill + ☰ row above it). */
+    const val CHIP_TOP_DP = 68
+    /** Top of the blue / amber strips below the status bar: ≈ 24 dp below the search pill + ☰ row. */
+    const val STRIP_TOP_DP = 92
+    /** The error card without a strip: where a strip would be. */
+    const val MESSAGE_TOP_DP = STRIP_TOP_DP
+    const val GAP_DP = 8
 
-    fun topDp(stripShown: Boolean, stripHeightDp: Int): Int =
-        if (stripShown && stripHeightDp > 0) maxOf(MESSAGE_TOP_DP, STRIP_TOP_DP + stripHeightDp + 8) else MESSAGE_TOP_DP
+    /** Plan: [stripBottomDp] = the bottom of the strip / chip below the status bar (0 = not measured yet). */
+    fun topDp(stripShown: Boolean, stripBottomDp: Int): Int =
+        if (stripShown && stripBottomDp > 0) maxOf(MESSAGE_TOP_DP, stripBottomDp + GAP_DP) else MESSAGE_TOP_DP
+
+    /** Navigate: [topColumnDp] = height of the turn card + status card + chips column below the status bar. */
+    fun navigateTopDp(topColumnDp: Int): Int = topColumnDp.coerceAtLeast(0) + GAP_DP
 }
 
 /** The details dialog for [ui] while the user opened it (strip / chip tap). */
@@ -315,6 +324,12 @@ fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> 
 fun OkNoteStrip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onOk: () -> Unit, modifier: Modifier = Modifier) =
     Notice(title, warning = false, onClose = null, listOf(str(Res.string.common_ok) to onOk), modifier, icon = icon)
 
+/** A blue ACTION strip at the top of the map: a question / one step with its buttons (last = main), e.g. the pairing step. */
+@Composable
+fun ActionStrip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, buttons: List<Pair<String, () -> Unit>>,
+                modifier: Modifier = Modifier) =
+    Notice(title, warning = false, onClose = null, buttons, modifier, icon = icon)
+
 /**
  * One strip at the top: a title, an optional detail line, buttons right-aligned (last = main). Blue (ACTION) for a
  * question; amber with ⚠ (WARNING) for a failure that offers "Try again".
@@ -327,7 +342,7 @@ private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
     val fg = if (warning) OnPathColors.OnWarnContainer else Color.White
     Surface(shape = RoundedCornerShape(12.dp), color = bg, contentColor = fg, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
-        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (warning) Icons.Outlined.Warning else icon, null,
                     tint = if (warning) OnPathColors.Warn else fg, modifier = Modifier.size(18.dp))
@@ -340,14 +355,9 @@ private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
             }
             detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = fg.copy(alpha = 0.9f),
                 modifier = Modifier.padding(start = 26.dp, end = 8.dp)) }
-            if (buttons.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                buttons.forEachIndexed { i, (label, act) ->
-                    val main = i == buttons.lastIndex
-                    TextButton(onClick = act, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(label, color = if (warning) OnPathColors.Warn else Color.White,
-                            fontWeight = if (main) FontWeight.Bold else FontWeight.Normal)
-                    }
-                }
+            if (buttons.isNotEmpty()) {
+                NoticeButtons(buttons, if (warning) NoticeTone.AMBER else NoticeTone.BLUE,
+                    Modifier.padding(top = 6.dp, end = 4.dp, bottom = 4.dp))
             } else Spacer(Modifier.height(4.dp))
         }
     }

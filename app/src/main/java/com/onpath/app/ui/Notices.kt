@@ -3,7 +3,12 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +34,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
@@ -108,10 +117,79 @@ fun ErrorCard(text: String, onOk: () -> Unit, modifier: Modifier = Modifier) {
                 Spacer(Modifier.width(10.dp))
                 Text(text, style = MaterialTheme.typography.bodyLarge)
             }
-            TextButton(onClick = onOk, modifier = Modifier.heightIn(min = 48.dp).padding(end = 4.dp)) {
-                Text(str(Res.string.common_ok), fontWeight = FontWeight.Bold, color = OnPathColors.OnErrorContainer)
-            }
+            NoticeButton(str(Res.string.common_ok), onOk, NoticeTone.RED, modifier = Modifier.padding(start = 8.dp, end = 8.dp))
         }
+    }
+}
+
+/**
+ * Where the one error card goes ([MessagePlacement]): Plan – below the blue strip / loading chip while it shows;
+ * Navigate – below the turn card, status card and chips, never over the turn card. Its own composable, so the measured
+ * heights it reads recompose only the card.
+ */
+@Composable
+fun androidx.compose.foundation.layout.BoxScope.ErrorCardHost(vm: AppViewModel) {
+    val msg = vm.errorCard ?: return
+    val navigate = vm.mode == AppMode.NAVIGATE && !vm.showSettings && !vm.routesOpen
+    val top = if (navigate) MessagePlacement.navigateTopDp(vm.navigateTopDp)
+        else MessagePlacement.topDp(vm.backgroundStripShown && vm.mode == AppMode.PLAN, vm.backgroundStripBottomDp)
+    ErrorCard(msg, onOk = { vm.errorCard = null },
+        modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = top.dp))
+}
+
+/** The background a [NoticeButton] sits on: one colour = one meaning (OnPathColors). */
+enum class NoticeTone {
+    /** The blue ACTION strip (a question with buttons, the "Paired. …" note). */
+    BLUE,
+    /** Amber WARNING strip / chip (a download failed, notifications off). */
+    AMBER,
+    /** The light red error card. */
+    RED,
+    /** A white card or the grey pill (update card, "no downloads in this build"). */
+    LIGHT,
+}
+
+/**
+ * The button of every message strip and card (owner 2026-10-30: "bigger OK" – a proper button, not small text): Material
+ * button, 48 dp high (gloves), label in OnPathType's 16 sp (`labelLarge`). [main] = filled in the strip's colour (the
+ * answer most people give, OK); the others = text buttons in the same colour. One look for the blue map strips, the
+ * amber strip, the error card, the "Notifications off" chip and the update card.
+ */
+@Composable
+fun NoticeButton(label: String, onClick: () -> Unit, tone: NoticeTone, main: Boolean = true, modifier: Modifier = Modifier) {
+    val (fill, onFill) = when (tone) {
+        NoticeTone.BLUE -> Color.White to OnPathColors.InfoBlue
+        NoticeTone.AMBER -> OnPathColors.Warn to Color.White
+        NoticeTone.RED -> OnPathColors.Error to Color.White
+        NoticeTone.LIGHT -> OnPathColors.Green to Color.White
+    }
+    val textColour = when (tone) {
+        NoticeTone.BLUE -> Color.White
+        NoticeTone.AMBER -> OnPathColors.Warn
+        NoticeTone.RED -> OnPathColors.OnErrorContainer
+        NoticeTone.LIGHT -> OnPathColors.Green
+    }
+    val size = modifier.heightIn(min = NOTICE_BUTTON_DP.dp).widthIn(min = 64.dp)
+    val content: @Composable () -> Unit = {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = if (main) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.Center)
+    }
+    if (main) Button(onClick = onClick, modifier = size, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = fill, contentColor = onFill)) { content() }
+    else TextButton(onClick = onClick, modifier = size, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = textColour)) { content() }
+}
+
+/** Height of a [NoticeButton] (and its touch target): 48 dp. */
+const val NOTICE_BUTTON_DP = 48
+
+/** The buttons of a strip / card, right-aligned (last = main); they wrap to a second line when they do not fit. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun NoticeButtons(buttons: List<Pair<String, () -> Unit>>, tone: NoticeTone, modifier: Modifier = Modifier) {
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        buttons.forEachIndexed { i, (label, act) -> NoticeButton(label, act, tone, main = i == buttons.lastIndex) }
     }
 }
 

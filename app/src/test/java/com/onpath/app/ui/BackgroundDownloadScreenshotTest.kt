@@ -48,11 +48,11 @@ class BackgroundDownloadScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     BackgroundDownloadChip(u, onClick = {},
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.STRIP_TOP_DP.dp, end = 12.dp))
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.CHIP_TOP_DP.dp, end = 12.dp))
                     // the error card goes below the chip (MessagePlacement), never over it
                     ErrorCard("Couldn't find this place. Try again when you have internet.", onOk = {},
                         modifier = Modifier.align(Alignment.TopCenter)
-                            .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, 48).dp))
+                            .padding(start = 12.dp, end = 12.dp, top = MessagePlacement.topDp(true, MessagePlacement.CHIP_TOP_DP + 48).dp))
                 }
             }
         }
