@@ -77,5 +77,7 @@ cell_check_test_env() {
   for k in R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
     [ -n "$(envval $k)" ] || cell_die "$ENVF has no $k"
   done
-  grep -qE '^[A-Z0-9_]+=["'"'"']' "$ENVF" && cell_die "$ENVF: no quotes around values (docker --env-file keeps them)"
+  # an if, not "grep && die": as the function's last command a grep without a match would return 1 – under set -e
+  # the caller (publish_cells.sh) then stopped without a word
+  if grep -qE '^[A-Z0-9_]+=["'"'"']' "$ENVF"; then cell_die "$ENVF: no quotes around values (docker --env-file keeps them)"; fi
 }
