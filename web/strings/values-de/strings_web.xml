@@ -110,15 +110,9 @@
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_sync_paired">Verbunden</string>
     <string name="web_saved_short">Gespeichert</string>
-    <string name="web_saved_title">Gespeichert als „%1$s“ – klicken, um erneut oder als neue Route zu speichern</string>
-    <string name="web_plans_heading">Deine geplanten Routen</string>
     <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
     <string name="web_plans_open">Diese Route öffnen</string>
-    <string name="web_plans_from_other">vom anderen Gerät</string>
-    <string name="web_plans_shown_now">wird gezeigt</string>
     <string name="web_plans_new_name">Neuer Name der Route</string>
-    <string name="web_save_q">„%1$s“ speichern?</string>
-    <string name="web_save_choice_text">Speichern ersetzt die gespeicherte Route durch diese. Als neue speichern behält sie und legt diese Route dazu.</string>
     <string name="web_delete_q">„%1$s“ löschen? Auf dem verbundenen Handy kommt sie 30 Tage in den Papierkorb – dort wiederhergestellt, ist sie auch hier wieder da.</string>
     <string name="web_keep">Behalten</string>
 
@@ -131,18 +125,14 @@
     <string name="web_pair_link">Verbindungslink</string>
     <string name="web_pair_waiting">Warte auf das Handy…</string>
     <string name="web_pair_done">Verbunden mit %1$s. Gespeicherte Routen werden in beide Richtungen abgeglichen, solange diese Seite offen ist.</string>
-    <string name="web_pair_digits">Prüfziffern: %1$s</string>
     <string name="web_unpair">Trennen</string>
     <string name="web_join_title">Verbindungscode</string>
     <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Routen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>
     <string name="web_join_instead">Du kannst stattdessen auch diesen Browser verbinden – dann werden deine gespeicherten Routen auch hier abgeglichen.</string>
     <string name="web_join_ok">Diesen Browser verbinden</string>
     <string name="web_join_paired">Verbunden · Prüfziffern %1$s</string>
-    <string name="web_sync_browser_only">Nur in diesem Browser gespeichert. Verbinde dein Handy, dann hast du sie auch dort.</string>
     <string name="web_sync_no_phone_yet">noch kein Handy</string>
     <string name="web_sync_paired_with">Verbunden mit %1$s</string>
-    <string name="web_sync_synced_at">abgeglichen %1$s</string>
-    <string name="web_sync_to_send">%1$d zu senden</string>
     <string name="web_sync_not_kept">Dieser Browser behält gespeicherte Routen nicht, wenn der Tab zu ist (Speicher blockiert).</string>
     <string name="web_sync_pair_refused">Der Sync-Server hat eine neue Verbindung abgelehnt (%1$d). Versuch es später noch einmal.</string>
     <string name="web_sync_pair_cap">Zu viele neue Verbindungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
@@ -153,7 +143,6 @@
     <string name="web_sync_failed">Abgleich fehlgeschlagen: %1$s</string>
     <string name="web_sync_gone">Die Verbindung wurde am Handy getrennt.</string>
     <string name="web_sync_busy">der Sync-Server ist ausgelastet – in einer Minute geht es weiter</string>
-    <string name="web_sync_full">zu viele gespeicherte Routen</string>
     <string name="web_sync_answered">der Sync-Server antwortete %1$d</string>
     <string name="web_sync_unreadable">%1$d abgeglichene Routen konnten nicht gelesen werden (von einer neueren App?). Sie bleiben, wie sie sind.</string>
     <string name="web_device_name">%1$s auf %2$s</string>
@@ -176,7 +165,6 @@
     <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Routen abgeglichen. Änderungen von hier warten so lange.</string>
     <string name="web_phone_browser_synced">Verbunden · dieser Browser abgeglichen %1$s</string>
     <string name="web_ago_now">gerade eben</string>
-    <string name="web_phone_how_title">So funktioniert es</string>
     <string name="web_phone_how_2">Abgeglichen wird, wenn OnPath auf dem Handy offen ist – und solange diese Seite offen ist.</string>
     <string name="web_phone_how_3">Bei Konflikten gewinnt die neuere Änderung, die ältere bleibt als Kopie.</string>
     <string name="web_phone_privacy">Ende-zu-Ende verschlüsselt, kein Konto – der Server sieht keine Inhalte.</string>
@@ -186,21 +174,23 @@
     <string name="web_folder_none">Ohne Handy</string>
     <string name="web_folder_phone">Handy</string>
     <string name="web_folder_paired_on">%1$s · verbunden %2$s</string>
-    <string name="web_plans_heading_in">Deine geplanten Routen · %1$s</string>
-    <string name="web_folder_show_none">Ohne Handy (%1$d)</string>
-    <string name="web_folder_back">Zurück zu %1$s</string>
-    <string name="web_copy_to_phone">Zu %1$s kopieren</string>
-    <string name="web_copied_to_phone">Zu %1$s kopiert – Speichern schickt sie aufs Handy.</string>
     <string name="web_remove_folder">Routen von %1$s aus diesem Browser entfernen</string>
-    <string name="web_mark_new">Neu vom Handy</string>
-    <string name="web_mark_changed">Am Handy geändert</string>
     <string name="web_copy_suffix">(Kopie)</string>
-    <string name="web_plans_track">importierte Spur</string>
-    <string name="web_save_unsaved">Noch nicht auf dem Handy gespeichert</string>
     <string name="web_save_title_phone">Speichern – schickt deine Änderungen an %1$s</string>
     <string name="web_save_title_local">Route in diesem Browser speichern</string>
     <string name="web_sync_full_hint">Postfach voll – zu viele gespeicherte Routen. Lösch am Handy ein paar, dann noch einmal speichern.</string>
     <string name="web_pair_other">Anderes Handy verbinden</string>
+    <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
+    <string name="web_save_to_phone">Aufs Handy sichern</string>
+    <string name="web_saved_on_phone">Auf dem Handy</string>
+    <string name="web_saved_title_here">Alles ist in diesem Browser gespeichert</string>
+    <string name="web_saved_title_phone">Alles ist auf %1$s gesichert</string>
+    <string name="web_phone_synced_ago">abgeglichen %1$s</string>
+    <string name="web_phone_last_ago">zuletzt %1$s</string>
+    <string name="web_where_browser">In diesem Browser</string>
+    <string name="web_where_phone">Auf dem Handy</string>
+    <string name="web_kind_gpx">GPX</string>
+    <string name="web_phone_how_link">Wie funktioniert das?</string>
     <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
     <string name="web_far_title">Weit weg von deiner Route</string>
     <string name="web_far_point">Dein Punkt %1$s liegt %2$s von hier entfernt.</string>

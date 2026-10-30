@@ -1,5 +1,5 @@
 // OnPath web planner (docs/design/web-planner.md §6–§13). The page mirrors the phone's Plan screen in a web layout: a
-// header line (logo, My routes, Pair phone / Paired, Save route, …), the search pill with the map toolbar beside it (undo / redo, eye,
+// header line (logo, My routes, Import GPX, …; on the right Save and the Phone button), the search pill with the map toolbar beside it (undo / redo, eye,
 // compass, locate, Map content), the plan sheet (activity chip, time,
 // distance, climb + badge, profile, Points, one primary button) – a bottom sheet on a phone, a side panel on a wide
 // screen. The app's own code decides and plans (compiled to Wasm, in a Web Worker): Planner + BRouter, RouteTimes,
@@ -23,8 +23,8 @@ import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
-import { PlanSync, NONE, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, requestSave, phoneDialog, phoneState } from './plans';
+import { PlanSync, shownTitle, type SavedPlan } from './sync';
+import { myPlansDialog, joinDialog, savePopover, closeSavePop, phoneDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, type Before } from './longroute';
@@ -91,11 +91,9 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
  * what it does); `act` is set further down, once the page's parts exist.
  */
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
-  // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. The phone pairing entry (#syncBadge,
-  // drawn right after My routes) is always there: "Pair phone" opens the pairing dialog, "Paired" (green dot) My routes
+  // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. Save and the Phone button are not
+  // entries: they sit on the right of the header, also at phone width (web-sync.md §14.6)
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
-  // Save in the header (A-017, owner 2026-10-30: Save sends to the phone) – also in the sheet's ⋯ and in My routes
-  { id: 'menuSavePlan', icon: 'save', label: t('plan_save_route') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
 ];
@@ -108,14 +106,16 @@ document.title = t('web_page_title');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
     <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
-    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}<i class="menudot" aria-hidden="true" hidden></i></button>
+    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
-      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
-        + (n.id === 'menuSavePlan' ? `<span id="saveHint" class="savehint" role="status" hidden></span>` : '')
-        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" role="menuitem" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<i class="syncdot" aria-hidden="true" hidden></i><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span></button>` : '')).join('')}
+      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
+    <span id="headActs" class="headacts">
+      <button id="menuSavePlan" class="hbtn savebtn" data-state="empty" disabled>${icon('save', 20)}<span class="lbl">${escapeHtml(t('common_save'))}</span></button>
+      <button id="syncBadge" class="hbtn phonebtn" aria-haspopup="dialog" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<span class="lines"><span class="l1"><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span><i class="syncdot" aria-hidden="true" hidden></i></span><span class="sub" hidden></span></span></button>
+    </span>
     <span id="langSwitch" class="langswitch" role="group" aria-label="${escapeHtml(t('web_lang_switch'))}">${languages.map((l) =>
       `<button data-lang="${l}" lang="${l}" aria-pressed="${l === lang}" title="${escapeHtml(t('web_lang_name_' + l))}">${l.toUpperCase()}</button>`).join('')}</span>
   </header>
@@ -295,7 +295,7 @@ const syncReady = ready.then(async (ok) => {
   if (pairLink) joinDialog(sync, pairLink);
   syncBadge();
   sync.onChange(syncBadge);
-  sync.onChange(() => saveEntry(saveState)); // bold while anything is not on the phone yet (A-017 rule 6)
+  sync.onChange(() => saveEntry(saveState)); // dark while anything is to save or waits for the phone (§14.6)
   sync.onFolder((_from, to) => { openDraft(to); });
   saveEntry(saveState);
   $('syncBadge').dataset.ready = '1'; // the sync runs (tests wait for this)
@@ -925,65 +925,50 @@ async function renderSaved() {
   // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
   const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
   line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)}</span>`;
-  // A-017 point 6: a route from Without phone while a phone is paired – "Copy to ‹phone›", one action, no question
-  if (state.savedFolder === NONE && syncRef && syncRef.open !== NONE) {
-    const b = document.createElement('button');
-    b.id = 'copyToPhone';
-    b.className = 'textbtn';
-    b.textContent = t('web_copy_to_phone', syncRef.status.phone ?? '');
-    b.onclick = copyToPhone;
-    line.append(b);
-  }
   saveEntry(changed ? 'save' : 'saved');
 }
-/** "Copy to ‹phone›": the shown route from Without phone into the phone's folder (new id, not saved on the phone yet). */
-async function copyToPhone() {
-  const p = (await sync.list(NONE)).find((x) => x.id === state.savedId);
-  if (!p) return;
-  const c = await sync.copyToPhone(p);
-  if (!c) return;
-  state.savedId = c.id; state.savedTitle = c.title; state.savedCode = c.plan; state.savedFolder = sync.open;
-  render();
-  rememberInAddress();
-  status(t('web_copied_to_phone', sync.status.phone ?? ''));
-}
-/** For My routes → "Save current route" and the header's Save: greyed on an empty route, ✓ while saved and unchanged. */
+/** The shown route: empty (fewer than two points), save (new, or changed since it was saved), saved (and unchanged). */
 let saveState: 'empty' | 'save' | 'saved' = 'empty';
-/** The header's Save entry: greyed on an empty route, ✓ "Saved" while the shown plan is saved and unchanged (a click
- *  still asks Save again / Save as new – the app's saveMode), else "Save route". */
+/**
+ * The header's Save (web-sync.md §14.6): not paired 💾 "Save" (in this browser), paired 📱 "Save to phone". Dark (the
+ * app green) while anything is to save – the shown route new or changed, or (paired) the folder's unsent changes:
+ * renames, deletes, GPX imports, the routes waiting for the phone; light with ✓ "Saved" / "On the phone" when all is
+ * saved; greyed when there is nothing at all; amber when the mailbox is full (507, nothing lost). No hint beside it.
+ */
 function saveEntry(st: 'empty' | 'save' | 'saved') {
   saveState = st;
   const b = $<HTMLButtonElement>('menuSavePlan');
-  // A-017 rule 6: paired, Save is bold / filled while anything is not on the phone yet (the folder's outbox, or the
-  // shown route changed), the quiet "Not saved on the phone yet" beside it; Without phone it saves here only, no hint
   const s = syncRef?.status;
-  const paired = !!s?.paired, waiting = paired && (s!.pending > 0 || st === 'save');
-  const shown = paired && s!.pending > 0 && st !== 'save' ? 'save' : st;
-  const label = shown === 'saved' ? t('web_saved_short') : t('plan_save_route');
-  const tip = waiting ? t('web_save_title_phone', s!.phone ?? '') : shown === 'saved' ? t('web_saved_title', state.savedTitle ?? '')
-    : shown === 'empty' ? t('web_share_needs_two') : paired ? label : t('web_save_title_local');
+  const paired = !!s?.paired, waiting = paired && s!.pending > 0;
+  const shown = paired && s!.full ? 'full' : st === 'save' || waiting ? 'dark' : st === 'saved' ? 'done' : 'empty';
+  const label = shown === 'done' ? t(paired ? 'web_saved_on_phone' : 'web_saved_short') : paired ? t('web_save_to_phone') : t('common_save');
+  const tip = shown === 'full' ? s!.message : shown === 'dark' ? (paired ? t('web_save_title_phone', s!.phone ?? '') : t('web_save_title_local'))
+    : shown === 'done' ? (paired ? t('web_saved_title_phone', s!.phone ?? '') : t('web_saved_title_here')) : t('web_share_needs_two');
   b.disabled = shown === 'empty';
   b.dataset.state = shown;
-  b.classList.toggle('unsaved', waiting);
+  b.classList.toggle('unsaved', shown === 'dark');
   b.title = tip;
-  b.setAttribute('aria-label', tip);
-  b.innerHTML = `${icon(shown === 'saved' ? 'check' : 'save', 20)}<span>${escapeHtml(label)}</span>`;
-  const hint = $('saveHint');
-  const full = paired && !!s?.full;
-  hint.hidden = !waiting && !full;
-  hint.classList.toggle('warning', full);
-  hint.textContent = full ? s!.message : waiting ? t('web_save_unsaved') : '';
+  b.setAttribute('aria-label', label + ' – ' + tip);
+  b.innerHTML = `${icon(shown === 'done' ? 'check' : paired ? 'phone' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
 }
-/** The header's Save (A-017): the shown route into its folder (name proposal as before), then everything unsaved of
- *  the folder to the phone; nothing changed on the route → straight to the phone. Without phone: saves here only. */
+/**
+ * A click on Save (§14.6 rule 5, "as in Word"): the shown route new or changed – or saved, with nothing waiting – opens
+ * the small name field under the button (savePopover: the same name overwrites, a new name is a new route); then,
+ * paired, everything waiting goes to the phone. Only waiting changes (the routes from before pairing, a rename, a
+ * delete, a GPX import) and the route unchanged: the click sends them at once, no field. Never a question.
+ */
 async function headerSave() {
+  if (closeSavePop()) return; // a second click on the button closes the field
   if (!(await syncReady)) return;
   await draftsRestored;
   await renderSaved();
+  const paired = sync.status.paired, waiting = paired && sync.status.pending > 0;
   const send = () => { if (sync.status.paired) sync.sendAll(); };
-  if (saveState === 'save') { requestSave(sync, plansHost, send); return; }
-  if (sync.status.paired && sync.status.pending > 0) { send(); return; }
-  requestSave(sync, plansHost); // saved and unchanged: Save again / Save as new (the app's saveMode)
+  if (saveState === 'save' || (saveState === 'saved' && !waiting)) {
+    savePopover($('menuSavePlan'), sync, plansHost, paired ? t('web_save_to_phone') : t('common_save'), send);
+    return;
+  }
+  send();
 }
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
@@ -1144,7 +1129,7 @@ $('mainMenu').addEventListener('click', (e) => {
   e.stopPropagation(); closeMenus();
   NAV.find((n) => n.id === b.id)?.act?.();
 });
-$('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; $<HTMLButtonElement>('sheetSave').disabled = !state.plan; toggleMenu('sheetMenuBtn', 'sheetMenu'); };
+$('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; $<HTMLButtonElement>('sheetSave').disabled = state.points.length < 2; toggleMenu('sheetMenuBtn', 'sheetMenu'); }; // Save: a start and a destination are enough (as the header's)
 document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .nav')) closeMenus(); });
 
 $('reverse').onclick = () => applyEdit('reverse');
@@ -1156,7 +1141,6 @@ const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
   openId: () => state.savedId,
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
-  saveState: async () => { await renderSaved(); return { state: saveState, title: state.savedTitle }; },
   open: async (p: SavedPlan, folder: string) => {
     if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('plan_route_default_name'))); return; }
     const shared = await engine.parse('p=' + p.plan);
@@ -1173,7 +1157,31 @@ const plansHost = {
     status(t('plan_saved_as', p.title ?? t('plan_route_default_name')));
   },
   suggestName,
+  exportGpx: async (p: SavedPlan, folder: string) => {
+    if (p.kind === 'track') { download(await sync.trackGpx(p), gpxName(shownTitle(p.title, t('plan_route_default_name')), p.updatedAt)); return; }
+    await plansHost.open(p, folder);
+    // the route is planned first (the GPX holds the planned line, as the sheet's ⋯ → Export GPX)
+    const end = Date.now() + 60_000;
+    while ((state.planning || !state.plan) && Date.now() < end) await new Promise((r) => setTimeout(r, 200));
+    await exportGpx();
+  },
 };
+/** A GPX file name as the app's GpxWriter.fileName ("Meran 2000 _ Ifinger Hütte.gpx"); no name → the date. */
+function gpxName(title: string, ms: number): string {
+  return (title.replace(/[^A-Za-z0-9äöüÄÖÜß _.-]/g, '_').trim().slice(0, 60) || appDate(ms).replace(/[^A-Za-z0-9äöüÄÖÜß _.-]/g, '_')) + '.gpx';
+}
+function download(text: string, file: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/gpx+xml' }));
+  a.download = file;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
+/** The shown plan as GPX (the app's GpxWriter in the engine). */
+async function exportGpx() {
+  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
+  if (r) download(r.gpx, r.file);
+}
 /** The app's name proposal (AppViewModel.suggestName → RouteNamer): stop names from places, else the map's places. */
 async function suggestName(): Promise<string> {
   if (state.points.length < 2) return '';
@@ -1192,21 +1200,22 @@ async function suggestName(): Promise<string> {
   }
 }
 navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
-/** The phone entry in the header (☰ on phones), the one place for pairing (owner 2026-10-30): phone + "Pair phone"
- *  (no dot) / "Paired" with a green dot (the phone synced lately) or an amber one (it has not synced for a day) –
- *  phoneState; the tooltip says the state and why. A click opens the Phone window. Follows sync.onChange live, and the
- *  "… ago" moves on every 30 s. */
+/** The header's Phone button (§14.6): outlined "Pair phone"; paired a pill with the phone's name, its dot (green, or
+ *  amber when the phone was away for a day – phoneState) and a small second line "synced 2 min. ago" / "last 3 days
+ *  ago" (the tooltip says it all where the line has no room). A click opens the Phone window. Follows sync.onChange
+ *  live, and the "… ago" moves on every 30 s. */
 function syncBadge() {
-  const b = $('syncBadge'), s = sync.status, st = phoneState(s);
+  const b = $('syncBadge'), s = sync.status, pill = phonePill(s);
   const dot = b.querySelector<HTMLElement>('.syncdot')!;
   dot.hidden = !s.paired;
-  dot.dataset.kind = st.kind;
-  const md = $('menuBtn').querySelector<HTMLElement>('.menudot')!; // phone width: the same dot on ☰, seen without opening it
-  md.hidden = !s.paired;
-  md.dataset.kind = st.kind;
+  dot.dataset.kind = pill.kind;
   b.classList.toggle('paired', s.paired);
-  b.querySelector('.lbl')!.textContent = t(s.paired ? 'web_sync_paired' : 'web_pair_phone');
-  b.title = st.head + ' – ' + (s.paired && s.message ? s.message : st.why);
+  b.dataset.kind = pill.kind;
+  b.querySelector('.lbl')!.textContent = pill.name;
+  const sub = b.querySelector<HTMLElement>('.sub')!;
+  sub.textContent = pill.sub;
+  sub.hidden = !pill.sub;
+  b.title = s.paired ? [pill.name, pill.sub, s.message].filter(Boolean).join(' · ') : t('web_pair_phone') + ' – ' + t('web_phone_why');
   b.setAttribute('aria-label', b.title);
 }
 window.setInterval(() => syncBadge(), 30_000);
@@ -1215,19 +1224,11 @@ $('syncBadge').onclick = async () => {
   if (!(await syncReady)) return; // the engine did not start – the status line says so
   phoneDialog(sync, location.href);
 };
-// Save, two ways as in the app: the sheet's ⋯ → Save route (PlanPanel's SheetMenuItems) and My routes → Save current route
-$('sheetSave').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
-navItem('menuSavePlan').act = headerSave; // the header's Save (A-017: it sends to the phone)
-$('exportGpx').onclick = async () => {
-  closeMenus();
-  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
-  if (!r) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([r.gpx], { type: 'application/gpx+xml' }));
-  a.download = r.file;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-};
+// Save: the header's button (§14.6, sends to the phone when paired); the sheet's ⋯ → Save route (as in the app's
+// PlanPanel) opens the same name field under it
+$('sheetSave').onclick = () => { closeMenus(); headerSave(); };
+$('menuSavePlan').onclick = () => { closeMenus(); headerSave(); };
+$('exportGpx').onclick = () => { closeMenus(); exportGpx(); };
 const share = async () => {
   closeMenus();
   if (state.points.length < 2) { status(t('plan_err_set_start_dest')); return; }

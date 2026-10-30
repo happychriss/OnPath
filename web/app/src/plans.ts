@@ -1,6 +1,6 @@
-// "My routes" and "Pair phone" (web planner phase 2, docs/design/web-sync.md §9, §14). Saved routes live in this
-// browser in folders – one per paired phone, plus "Without phone" (owner order A-017) – and, after Save, on the phone,
-// end-to-end encrypted through the mailbox. Conflict copies show as "… (copy)" / "… (Kopie)".
+// "My routes" and the Phone window (web planner phase 2, docs/design/web-sync.md §9, §14; what they show: §14.6). Saved
+// routes live in this browser in folders – one per paired phone, plus "Without phone" (owner order A-017) – and, after
+// Save, on the phone, end-to-end encrypted through the mailbox. Conflict copies show as "… (copy)" / "… (Kopie)".
 import qrcode from 'qrcode-generator';
 import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from './sync';
 import { icon } from './icons';
@@ -13,14 +13,14 @@ export interface PlanHost {
   openId(): string | null;
   /** The folder the shown saved route belongs to (the open folder for a new route). */
   openFolder(): string;
-  /** The shown route's save state: empty (nothing to save), save, or saved and unchanged as [title]. */
-  saveState(): Promise<{ state: 'empty' | 'save' | 'saved'; title: string | null }>;
   /** Shows [plan] from [folder] (a route, or a synced GPX track). */
   open(plan: SavedPlan, folder: string): void;
   /** A name proposal for a new saved plan ("Algund → Meran", the app's RouteNamer), "" when none fits. */
   suggestName(): Promise<string>;
   /** The plan was saved as [p] in [folder] – the page shows "Saved as …". */
   saved(p: SavedPlan, folder: string): void;
+  /** My routes → ⋮ → Export GPX: [p] from [folder] as a GPX file (a route is opened and planned first). */
+  exportGpx(p: SavedPlan, folder: string): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -39,17 +39,12 @@ function dialog(cls: string, html: string): HTMLDialogElement {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const when = (ms: number) => new Date(ms).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const titleOf = (p: { title: string | null }) => shownTitle(p.title, t('plan_route_default_name'));
-
-/** The sync line under the lists: paired with whom, last sync, or what went wrong (plain words). */
-export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'] } {
-  if (s.message) return { text: s.message, kind: s.kind };
-  if (!s.paired) return { text: t('web_sync_browser_only'), kind: 'info' };
-  const who = s.phone ?? (s.devices.length ? s.devices.map((d) => d.name).join(', ') : t('web_sync_no_phone_yet'));
-  const last = s.lastSync ? ' · ' + t('web_sync_synced_at', new Date(s.lastSync).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })) : '';
-  const pending = s.pending ? ' · ' + t('web_sync_to_send', s.pending) : '';
-  return { text: t('web_sync_paired_with', who) + last + pending, kind: 'info' };
+/** A date as the app writes it in My routes (its common_date pattern: "30. Okt. 2026" / "30 Oct 2026"). */
+export function appDate(ms: number): string {
+  const d = new Date(ms), month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d);
+  return t('common_date').replace(/yyyy|MMM|d/g, (k) => (k === 'yyyy' ? String(d.getFullYear()) : k === 'MMM' ? month : String(d.getDate())));
 }
+const titleOf = (p: { title: string | null }) => shownTitle(p.title, t('plan_route_default_name'));
 
 /** "3 days ago" / "vor 3 Tagen", "2 min. ago" / "vor 2 Min." (Intl, the page's language); under a minute "just now". */
 export function ago(ms: number, now = Date.now()): string {
@@ -88,9 +83,101 @@ export function phoneState(s: SyncStatus, now = Date.now()): PhoneState {
   return { kind: 'fresh', head: s.lastSync ? t('web_phone_browser_synced', ago(s.lastSync, now)) : t('web_sync_paired'), why: t('web_sync_paired_with', who) };
 }
 
+/**
+ * The header's Phone button (§14.6): not paired "Pair phone"; paired the phone's name with the dot of [phoneState]
+ * and a small second line "synced 2 min. ago" (green) / "last 3 days ago" (amber, the phone away for a day).
+ */
+export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['kind']; name: string; sub: string } {
+  const kind = phoneState(s, now).kind;
+  if (!s.paired) return { kind, name: t('web_pair_phone'), sub: '' };
+  const name = s.phone ?? (s.devices.map((d) => d.name).join(', ') || t('web_folder_phone'));
+  const seen = s.phoneSeen ?? s.lastSync;
+  const sub = seen == null ? '' : kind === 'stale' ? t('web_phone_last_ago', ago(seen, now)) : t('web_phone_synced_ago', ago(seen, now));
+  return { kind, name, sub };
+}
+
+/**
+ * My routes – one plain list (web-sync.md §14.6): title, the rows, Close. A row: the kind in a circle as in the app
+ * (planned route blue, imported GPX purple), the name, "Planned · 30 Oct 2026" / "GPX · …"; on the right where it lies
+ * (🖥 this browser, 📱 the phone, both) and ⋮ with Rename, Export GPX, Delete. Bold = changed here and not on the phone
+ * yet; the open route on a light green. A click on the row opens it. Follows the sync live.
+ */
+export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
+  const d = dialog('plans', `
+    <h2 id="plansTitle">${esc(t('routes_title'))}</h2>
+    <ul id="planList" class="planlist" aria-labelledby="plansTitle"></ul>
+    <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
+  const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
+  const closeMenus = () => d.querySelectorAll<HTMLElement>('.rowmenu').forEach((m) => { m.hidden = true; m.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
+  d.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.rowmenu, .more')) closeMenus(); });
+  $('planList').addEventListener('scroll', closeMenus); // the menu stays fixed: it goes when its row moves
+
+  const render = async () => {
+    const folder = sync.open, paired = sync.status.paired;
+    const plans = await sync.list(folder);
+    const ul = $('planList');
+    if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
+    ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
+    for (const p of plans) {
+      const li = document.createElement('li');
+      li.dataset.id = p.id;
+      li.dataset.kind = p.kind;
+      // 🖥 = changed last here (all of Without phone), 📱 = a version of it is on the phone (in its mailbox)
+      const here = !paired || p.mine, phone = paired && p.onPhone;
+      li.dataset.where = [here ? 'browser' : '', phone ? 'phone' : ''].filter(Boolean).join('+');
+      if (paired && p.dirty) li.classList.add('waiting');
+      if (p.id === host.openId() && folder === host.openFolder()) li.classList.add('current');
+      const kind = p.kind === 'track' ? t('web_kind_gpx') : t('routes_tab_planned');
+      const kindName = p.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
+      const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
+        `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;
+      li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic" title="${esc(kindName)}">${icon(p.kind === 'track' ? 'fileOpen' : 'route', 22)}</span>
+        <span class="txt"><span class="name">${esc(titleOf(p))}</span><span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
+        <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
+        <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('plan_route_options'))}" title="${esc(t('plan_route_options'))}">${icon('moreVert', 22)}</button>
+        <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button><button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button><button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
+      const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel)!;
+      q('.open').onclick = () => { d.close(); sync.seen(p.id, folder); host.open(p, folder); };
+      q('.more').onclick = (e) => {
+        e.stopPropagation();
+        const m = q('.rowmenu'), open = m.hidden;
+        closeMenus();
+        m.hidden = !open;
+        q('.more').setAttribute('aria-expanded', String(open));
+        if (!open) return;
+        // fixed at its ⋮ (below it, or above when there is no room) – the scrolling list never cuts it off
+        const r = q('.more').getBoundingClientRect(), h = m.offsetHeight, w = m.offsetWidth;
+        m.style.left = Math.max(8, r.right - w) + 'px';
+        m.style.top = (r.bottom + 4 + h > innerHeight - 8 ? r.top - 4 - h : r.bottom + 4) + 'px';
+        q<HTMLButtonElement>('.rowmenu button').focus();
+      };
+      q('.rename').onclick = async () => {
+        closeMenus();
+        const name = prompt(t('web_plans_new_name'), titleOf(p));
+        if (name == null || !name.trim()) return;
+        const stored = storedTitle(name);
+        await sync.rename(p.id, stored, folder);
+        if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
+        render();
+      };
+      q('.export').onclick = () => { closeMenus(); d.close(); host.exportGpx(p, folder); };
+      q('.del').onclick = () => {
+        closeMenus();
+        askInPlace(li, folder === NONE ? t('web_delete_q_local', titleOf(p)) : t('web_delete_q', titleOf(p)),
+          t('common_delete'), () => li.querySelector('.more'), async () => { await sync.remove(p.id, folder); await render(); $('closePlans').focus(); }, t('web_keep'));
+      };
+      ul.append(li);
+    }
+  };
+  const off = sync.onChange(() => { if (d.open && !d.querySelector('.rowmenu:not([hidden])')) render(); });
+  d.addEventListener('close', () => off());
+  $('closePlans').onclick = () => d.close();
+  await render();
+}
+
 /** The quiet lines "Remove routes of ‹phone› from this browser" for the closed folders (A-017 rule 16), no question. */
 function removeLines(box: HTMLElement, sync: PlanSync) {
-  box.innerHTML = '';
+  box.querySelectorAll('.removefolder').forEach((b) => b.remove());
   for (const f of sync.status.closed) {
     const b = document.createElement('button');
     b.className = 'textbtn quiet removefolder';
@@ -99,103 +186,14 @@ function removeLines(box: HTMLElement, sync: PlanSync) {
     b.onclick = () => sync.removeFolder(f.key);
     box.append(b);
   }
-  box.hidden = !sync.status.closed.length;
 }
 
 /**
- * My routes (owner 2026-10-30 / A-017): the open folder's planned routes and imported tracks – heading "Your planned
- * routes · Pixel 8" (or "· Without phone"), Save current route, the list (the phone's new / changed routes bold with a
- * grey line until opened), Close. Paired, "Without phone (n)" looks into the routes planned before pairing (open one →
- * "Copy to ‹phone›"); the closed folders of other phones can be removed from here.
- */
-export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
-  const save = await host.saveState(); // before the dialog shows: its Save button is right from the start
-  let view = sync.open;
-  const d = dialog('plans', `
-    <h2>${esc(t('routes_title'))}</h2>
-    <h3 id="planHead" class="listhead">${icon('route', 20)}<span id="planHeadText"></span></h3>
-    <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('plan_save_current_route'))}</button>
-    <ul id="planList" class="planlist" aria-labelledby="planHead"></ul>
-    <div id="folderSwitch" class="folderswitch" hidden></div>
-    <div id="removeFolders" class="removefolders" hidden></div>
-    <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
-  const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
-  // Save: greyed on an empty route, ✓ while saved and unchanged (a click still asks Save again / Save as new – the
-  // app's saveMode)
-  const sb = $<HTMLButtonElement>('saveCurrent');
-  sb.disabled = save.state === 'empty';
-  sb.dataset.state = save.state;
-  if (save.state === 'empty') sb.title = t('plan_err_set_start_dest');
-  if (save.state === 'saved') {
-    sb.innerHTML = `${icon('check', 18)}<span>${t('web_saved_as', `<b>${esc(shownTitle(save.title, t('plan_route_default_name')))}</b>`)}</span>`;
-    sb.title = t('web_saved_title', save.title ?? t('plan_route_default_name'));
-  }
-  $('saveCurrent').onclick = () => { d.close(); requestSave(sync, host); };
-
-  const render = async () => {
-    if (view !== NONE && view !== sync.open) view = sync.open; // the folder closed meanwhile
-    const plans = await sync.list(view);
-    const ul = $('planList');
-    if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
-    const folderName = view === NONE ? t('web_folder_none') : sync.status.folder.name;
-    $('planHeadText').textContent = t('web_plans_heading_in', folderName);
-    $('saveCurrent').hidden = view === NONE && sync.open !== NONE; // looking into Without phone: new routes go to the phone's folder
-    ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
-    for (const p of plans) {
-      const li = document.createElement('li');
-      li.dataset.id = p.id;
-      li.dataset.kind = p.kind;
-      if (p.mark) li.classList.add('marked');
-      const line = p.mark ? esc(t(p.mark === 'new' ? 'web_mark_new' : 'web_mark_changed'))
-        : when(p.updatedAt) + (p.kind === 'track' ? ' · ' + esc(t('web_plans_track')) : '') + (p.id === host.openId() ? ' · ' + esc(t('web_plans_shown_now')) : '');
-      li.innerHTML = `<button class="open txt" title="${esc(t('web_plans_open'))}"><span class="name">${p.kind === 'track' ? icon('route', 16) : ''}${esc(titleOf(p))}</span>
-        <span class="muted small mark">${line}</span></button>
-        <button class="rename iconbtn" aria-label="${esc(t('common_rename'))}">✎</button><button class="del iconbtn" aria-label="${esc(t('common_delete'))}" title="${esc(t('common_delete'))}">${icon('delete', 20)}</button>`;
-      const folder = view;
-      li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); sync.seen(p.id, folder); host.open(p, folder); };
-      li.querySelector<HTMLButtonElement>('.rename')!.onclick = async () => {
-        const name = prompt(t('web_plans_new_name'), titleOf(p));
-        if (name != null && name.trim()) {
-          // a copy keeps its stored marker (SyncMerge.storedTitle): "… (Kopie)" typed back is " (copy)" in the item
-          const label = ' ' + t('web_copy_suffix');
-          const stored = name.trim().endsWith(label.trim()) ? name.trim().slice(0, -label.trim().length).trimEnd() + ' (copy)' : name.trim();
-          await sync.rename(p.id, stored, folder);
-          if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
-          render();
-        }
-      };
-      li.querySelector<HTMLButtonElement>('.del')!.onclick = () => askInPlace(li,
-        folder === NONE ? t('web_delete_q_local', titleOf(p)) : t('web_delete_q', titleOf(p)),
-        t('common_delete'), () => li.querySelector('.del'), async () => { await sync.remove(p.id, folder); await render(); $('saveCurrent').focus(); }, t('web_keep'));
-      ul.append(li);
-    }
-    // paired: a look into Without phone (and back)
-    const sw = $('folderSwitch');
-    sw.innerHTML = '';
-    const none = sync.open !== NONE ? await sync.count(NONE) : 0;
-    if (sync.open !== NONE && (view === NONE || none > 0)) {
-      const b = document.createElement('button');
-      b.className = 'textbtn quiet';
-      b.id = 'switchFolder';
-      b.textContent = view === NONE ? t('web_folder_back', sync.status.folder.name) : t('web_folder_show_none', none);
-      b.onclick = () => { view = view === NONE ? sync.open : NONE; render(); };
-      sw.append(b);
-    }
-    sw.hidden = !sw.childElementCount;
-    removeLines($('removeFolders'), sync);
-  };
-  const off = sync.onChange(() => { if (d.open) render(); });
-  d.addEventListener('close', () => off());
-  $('closePlans').onclick = () => d.close();
-  await render();
-}
-
-/**
- * The Phone window (owner 2026-10-30: the one place for pairing – header entry / ☰ entry, not in My routes): the state
- * on top ([phoneState] – grey / green / amber, one line why), "How it works" in three lines, privacy in one (+ More →
- * the privacy page), then Pair phone (→ the pairing dialog with the QR code and the steps) or Sync now · Pair another
- * phone · Unpair (A-017: no question – the routes stay here), the closed folders' "Remove routes of …" lines, Close at
- * the bottom right. Follows the sync live; the "… ago" text moves on every 30 s.
+ * The Phone window – small (web-sync.md §14.6): the state with its dot and one sentence ([phoneState]); not paired
+ * "Pair phone" (→ the pairing dialog: QR code, the steps, the check number), paired "Sync now" and "Unpair" (no
+ * question – the routes stay here, A-017); "How does it work?" opens the explanation and the privacy line in place;
+ * at the bottom, small: "Pair another phone" and the closed folders' "Remove routes of …"; Close. Follows the sync
+ * live; the "… ago" text moves on every 30 s.
  */
 export function phoneDialog(sync: PlanSync, page: string) {
   const d = dialog('phone', `
@@ -203,11 +201,13 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <div id="phoneState" class="phonestate">${icon('phone', 28)}<i class="pdot" aria-hidden="true"></i>
       <div><b id="phoneHead"></b><p id="phoneWhy" class="muted small"></p></div></div>
     <div id="phoneStatus" class="status" role="status"></div>
-    <h3 class="how">${esc(t('web_phone_how_title'))}</h3>
-    <ul class="how"><li id="how1">${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
-    <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
-    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="pairOther" hidden>${esc(t('web_pair_other'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
-    <div id="removeFolders" class="removefolders" hidden></div>
+    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+    <button id="howToggle" class="textbtn quiet howtoggle" aria-expanded="false" aria-controls="howBox">${esc(t('web_phone_how_link'))}</button>
+    <div id="howBox" class="howbox" hidden>
+      <ul class="how"><li>${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
+      <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
+    </div>
+    <div id="phoneMore" class="phonemore"><button id="pairOther" class="textbtn quiet" hidden>${esc(t('web_pair_other'))}</button></div>
     <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const render = () => {
@@ -215,20 +215,25 @@ export function phoneDialog(sync: PlanSync, page: string) {
     $('phoneState').dataset.kind = st.kind;
     $('phoneHead').textContent = st.head;
     $('phoneWhy').textContent = st.why;
-    $('phoneStatus').textContent = s.message ? s.message : s.paired && s.pending ? t('web_sync_to_send', s.pending) : '';
+    $('phoneStatus').textContent = s.message;
     $('phoneStatus').classList.toggle('error', s.kind === 'error' && !!s.message);
     $('phoneStatus').classList.toggle('warning', s.kind === 'warning' && !!s.message);
     $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
     $('syncNow').hidden = !s.paired;
-    $('pairOther').hidden = !s.paired;
     $('unpair').hidden = !s.paired;
     $('pairPhone').hidden = s.paired;
-    $('how1').hidden = !s.paired; // not paired: the state line says it already
-    removeLines($('removeFolders'), sync);
+    $('pairOther').hidden = !s.paired;
+    removeLines($('phoneMore'), sync);
+    $('phoneMore').hidden = !s.paired && !s.closed.length;
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   const tick = window.setInterval(render, 30_000);
   d.addEventListener('close', () => { off(); clearInterval(tick); });
+  $('howToggle').onclick = () => {
+    const open = $('howBox').hidden;
+    $('howBox').hidden = !open;
+    $('howToggle').setAttribute('aria-expanded', String(open));
+  };
   $('pairPhone').onclick = () => pairDialog(sync, page); // the pairing dialog takes this one's place
   $('pairOther').onclick = () => pairDialog(sync, page); // a new code; this phone's folder closes once the other phone answers
   $('syncNow').onclick = () => sync.syncNow();
@@ -244,57 +249,80 @@ export function phoneDialog(sync: PlanSync, page: string) {
   if (sync.status.paired) sync.syncNow(); // the phone's time fresh from the host
 }
 
-/**
- * Save, as the app's AppViewModel.requestSave (RouteRules.saveMode): a plan shown from My routes (and still there) asks
- * "Save" (a new version of it, name kept – saveChoiceOverwrite) or "Save as new…"; otherwise the name dialog with the
- * app's name proposal (RouteNamer). Saving closes the dialog; the sheet then says "Saved as …"; [then] runs after a
- * save (the header's Save sends to the phone then – A-017).
- */
-export async function requestSave(sync: PlanSync, host: PlanHost, then?: () => void) {
-  const cur = await host.current();
-  if (!cur) return;
-  const id = host.openId(), folder = host.openFolder();
-  const existing = id ? (await sync.list(folder)).find((p) => p.id === id && p.kind === 'plan') : undefined;
-  if (!existing) { nameDialog(sync, host, cur, then); return; }
-  const d = dialog('savechoice', `<h2>${esc(t('web_save_q', titleOf(existing)))}</h2>
-    <p class="muted">${esc(t('web_save_choice_text'))}</p>
-    <div class="row end"><button id="saveAsNew">${esc(t('plan_save_as_new'))}</button><button id="saveOver" class="primary">${esc(t('common_save'))}</button></div>`);
-  d.querySelector<HTMLButtonElement>('#saveAsNew')!.onclick = () => { d.close(); nameDialog(sync, host, cur, then); };
-  d.querySelector<HTMLButtonElement>('#saveOver')!.onclick = async () => {
-    d.close();
-    const title = existing.title ?? cur.title;
-    await sync.save(cur.code, title, existing.id, folder);
-    host.saved({ ...existing, title, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
-    then?.();
-  };
+/** A name as stored: a copy keeps its marker (SyncMerge.storedTitle) – "… (Kopie)" typed back is " (copy)" in the item. */
+function storedTitle(name: string): string {
+  const label = t('web_copy_suffix').trim(), n = name.trim();
+  return n.endsWith(label) ? n.slice(0, -label.length).trimEnd() + ' (copy)' : n;
 }
 
-/** The name dialog: opens at once, takes the app's proposal over while nothing was typed (AppViewModel.suggestedName). */
-function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: string | null }, then?: () => void) {
+let savePop: { el: HTMLElement; close(): void } | null = null;
+/** Closes the Save field if it is open; true when it was. */
+export function closeSavePop(): boolean {
+  if (!savePop) return false;
+  savePop.close();
+  return true;
+}
+
+/**
+ * Save "as in Word" (web-sync.md §14.6 rule 5): a small field right under the Save button (no dialog, never a question
+ * "overwrite or new"): the name – the open saved route's, else the app's proposal Start → Destination (RouteNamer) –
+ * selected, and one button [label]. Enter saves, Escape or a click beside it cancels. The same name overwrites the open
+ * saved route; a new route, or a saved one under a changed name ("Save as"), becomes a new route (the old one stays) and
+ * is the open route from then on. [then] runs after the save (paired: everything waiting goes to the phone).
+ */
+export async function savePopover(anchor: HTMLElement, sync: PlanSync, host: PlanHost, label: string, then?: () => void) {
+  closeSavePop();
+  const cur = await host.current();
+  if (!cur) { then?.(); return; }
+  const id = host.openId(), folder = host.openFolder();
+  const existing = id ? (await sync.list(folder)).find((p) => p.id === id && p.kind === 'plan') : undefined;
   const fallback = t('web_plan_dated', when(Date.now()));
-  const d = dialog('savename', `<h2>${esc(t('plan_save_route'))}</h2>
-    <label class="muted small" for="saveTitle">${esc(t('routes_name_label'))}</label>
-    <input id="saveTitle" maxlength="100" placeholder="${esc(fallback)}" value="${esc(cur.title ?? '')}">
-    <div class="row end"><button id="saveCancel">${esc(t('common_cancel'))}</button><button id="savePlan" class="primary">${esc(t('common_save'))}</button></div>`);
-  const input = d.querySelector<HTMLInputElement>('#saveTitle')!;
-  let typed = !!cur.title;
+  const el = document.createElement('div');
+  el.className = 'savepop';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', label);
+  el.innerHTML = `<label class="muted small" for="savePopName">${esc(t('routes_name_label'))}</label>
+    <div class="savepoprow"><input id="savePopName" maxlength="100" placeholder="${esc(fallback)}" value="${esc(existing ? titleOf(existing) : cur.title ?? '')}">
+    <button id="savePopGo" class="primary">${esc(label)}</button></div>`;
+  document.body.append(el);
+  const r = anchor.getBoundingClientRect(), w = el.offsetWidth;
+  el.style.top = r.bottom + 6 + 'px';
+  el.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+  const input = el.querySelector<HTMLInputElement>('#savePopName')!;
+  let typed = !!(existing || cur.title), busy = false;
   input.addEventListener('input', () => { typed = true; });
+  input.focus();
   input.select();
-  host.suggestName().then((n) => { if (n && !typed && d.open) { input.value = n; input.select(); } });
-  let busy = false;
-  const save = async () => {
-    if (busy) return; // one click, one plan (owner 2026-10-28: saving made duplicates)
+  if (!typed) host.suggestName().then((n) => { if (n && !typed && el.isConnected) { input.value = n; input.select(); } });
+  const outside = (e: PointerEvent) => { if (!el.contains(e.target as Node) && !anchor.contains(e.target as Node)) close(); };
+  const close = () => {
+    document.removeEventListener('pointerdown', outside, true);
+    el.remove();
+    if (savePop?.el === el) savePop = null;
+  };
+  setTimeout(() => document.addEventListener('pointerdown', outside, true)); // not the click that opened it
+  savePop = { el, close };
+  const go = async () => {
+    if (busy) return; // one click, one route (owner 2026-10-28: saving made duplicates)
     busy = true;
-    const title = input.value.trim() || fallback;
-    d.close();
-    const folder = sync.open; // a new route goes into the open folder
-    const newId = await sync.save(cur.code, title, undefined, folder);
-    host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true }, folder);
+    const name = input.value.trim() || fallback;
+    close();
+    anchor.focus();
+    if (existing && name === titleOf(existing)) { // the same name: a new version of the open saved route
+      await sync.save(cur.code, existing.title, existing.id, folder);
+      host.saved({ ...existing, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
+    } else { // a new route, or "Save as" under a new name – the old one stays as it is
+      const title = storedTitle(name), into = sync.open;
+      const newId = await sync.save(cur.code, title, undefined, into);
+      host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
+    }
     then?.();
   };
-  d.querySelector<HTMLButtonElement>('#saveCancel')!.onclick = () => d.close();
-  d.querySelector<HTMLButtonElement>('#savePlan')!.onclick = save;
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+  el.querySelector<HTMLButtonElement>('#savePopGo')!.onclick = go;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); go(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); anchor.focus(); }
+  });
 }
 
 /**

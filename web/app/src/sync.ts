@@ -6,12 +6,16 @@
 // Folders (owner order A-017, web-sync.md §14): one folder per phone (key = the phone's device id) plus "Without phone".
 // Pairing opens the phone's folder; Unpair closes it (no question, the routes stay here). Phone → browser comes by
 // itself (pull on load, when the tab is visible again, online, every 60 s); browser → phone only with Save (push).
+// Routes planned while no phone was paired belong to the next phone that is paired (§14.6 rule 2): they join its folder
+// as waiting (unsent) – nothing goes without a click on Save.
 import type { EngineClient } from './engine/client';
 import { t, locale } from './i18n';
 
 export interface SavedPlan {
   id: string; kind: 'plan' | 'track'; title: string | null; plan: string; track: string; updatedAt: number; device: string; mine: boolean;
-  /** From the phone since the last look (A-017 rule 11): "new" / "changed" until the route is opened. */
+  /** Not in the mailbox in this version yet (what Save sends) / a version of it is in the mailbox (§14.6: 🖥 📱, bold). */
+  dirty: boolean; onPhone: boolean;
+  /** From the phone since the last look (A-017 rule 11) – kept as data, no longer shown (§14.6). */
   mark?: 'new' | 'changed';
 }
 export interface Device { name: string; updatedAt: number }
@@ -128,6 +132,8 @@ export class PlanSync {
     if (!(await this.store.get('device'))) await this.store.set('device', await this.call('syncNewDevice', rand(8)));
     await this.migrate();
     this.dir = await this.readDir();
+    // paired from before §14.6 (a Without phone list beside the phone's folder): those routes join it as waiting now
+    if (this.dir.open !== NONE) { const key = this.dir.open; await this.locked(() => this.adoptNone(key, false)); }
     await this.refresh();
     if (!this.store.persistent) this.say(t('web_sync_not_kept'), 'warning');
     const tick = () => { if (document.visibilityState === 'visible') this.syncNow(); };
@@ -181,22 +187,6 @@ export class PlanSync {
 
   /** A synced track as GPX text (to show it like an imported file). */
   trackGpx(p: SavedPlan): Promise<string> { return this.call('syncTrackGpx', p.track, p.title ?? ''); }
-
-  /** "Copy to ‹phone›" (A-017 point 6): [p] from Without phone into the open phone folder, new id, unsaved there. */
-  async copyToPhone(p: SavedPlan): Promise<SavedPlan | null> {
-    if (this.dir.open === NONE) return null;
-    const folder = this.dir.open;
-    const id = await this.locked(async () => {
-      const k = await this.call('syncNewId', rand(16));
-      const l = await this.ledgerOf(folder), dev = await this.device();
-      await this.setLedgerOf(folder, p.kind === 'track'
-        ? await this.call('syncSaveTrack', l, k, p.track, p.title ?? '', Date.now(), dev)
-        : await this.call('syncSave', l, k, p.plan, p.title ?? '', Date.now(), dev));
-      return k;
-    });
-    await this.refresh();
-    return (await this.list(folder)).find((x) => x.id === id) ?? null;
-  }
 
   async rename(id: string, title: string, folder = this.dir.open) {
     await this.locked(async () => {
@@ -440,9 +430,39 @@ export class PlanSync {
     this.dir.open = key;
     await this.store.set('pair', pair);
     await this.writeDir();
+    await this.adoptNone(key, true);
     this.status.phoneSeen = null;
     await this.refresh();
     if (from !== key) for (const l of this.folderListeners) l(from, key);
+  }
+
+  /**
+   * §14.6 rule 2: the routes and tracks of Without phone join the folder [key] as waiting (same id, unsent – Save sends
+   * them; never uploaded by themselves), Without phone is emptied. [takeDraft] (a pairing): the route open in Without
+   * phone stays open – it becomes the folder's open route. Called inside the lock.
+   */
+  private async adoptNone(key: string, takeDraft: boolean) {
+    if (key === NONE) return;
+    const dev = await this.device();
+    const items = JSON.parse(await this.call('syncList', await this.ledgerOf(NONE), dev)) as SavedPlan[];
+    if (items.length) {
+      let l = await this.ledgerOf(key);
+      for (const p of items) {
+        l = p.kind === 'track' ? await this.call('syncSaveTrack', l, p.id, p.track, p.title ?? '', p.updatedAt, dev)
+          : await this.call('syncSave', l, p.id, p.plan, p.title ?? '', p.updatedAt, dev);
+      }
+      await this.setLedgerOf(key, l);
+      for (const x of ['ledger', 'marks']) await this.store.set(`fach:${NONE}:${x}`, null);
+    }
+    const moved = (d: Draft): Draft => ({ ...d, savedFolder: d.savedFolder === NONE ? key : d.savedFolder ?? null });
+    const none = await this.draft(NONE);
+    if (takeDraft && none?.code) {
+      await this.setDraft(moved(none), key);
+      await this.setDraft(null, NONE);
+    } else {
+      const own = await this.draft(key);
+      if (own?.savedFolder === NONE) await this.setDraft(moved(own), key);
+    }
   }
 
   /** The open folder closes (Unpair, or the phone ended the pairing): Without phone opens; nothing is deleted. */
