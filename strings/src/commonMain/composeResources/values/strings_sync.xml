@@ -27,8 +27,8 @@
     <string name="sync_unpair">Unpair</string>
     <string name="sync_unpair_title">Unpair the browser?</string>
     <string name="sync_unpair_text">Routes stop syncing. They stay on this phone and in the browser.</string>
-    <string name="sync_unpaired">Unpaired. Your routes stay on this phone and in the browser.</string>
-    <string name="sync_unpaired_offline">Unpaired on this phone. The browser was not reached – unpair it there too.</string>
+    <string name="sync_unpaired_plan">Unpaired. Your routes stay on your phone.</string>
+    <string name="sync_unpaired_plan_offline">Unpaired. Your routes stay on your phone – the browser couldn't be reached, unpair it there too.</string>
     <string name="sync_unpair_failed">Unpairing failed – please try again.</string>
     <string name="sync_ended">The pairing was ended in the browser. Your routes stay on this phone.</string>
     <string name="sync_offline">Offline – your routes sync when the connection is back.</string>

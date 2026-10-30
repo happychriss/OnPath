@@ -4,6 +4,8 @@ import com.onpath.app.plansync.PlanSync
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.sync_paired_plan
+import com.onpath.strings.sync_unpaired_plan
+import com.onpath.strings.sync_unpaired_plan_offline
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -27,8 +29,8 @@ class SyncSettingsTest {
      * back to the Plan screen with "Paired. …" + OK; already paired or a failure stays on the pairing step, no note.
      */
     @Test fun pairLanding() {
-        val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = false)
-        val plan = PairLanding.Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = true)
+        val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = null)
+        val plan = PairLanding.Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = SyncNote.PAIRED)
         assertEquals(plan, PairLanding.after(PairResult.PAIRED, onSync))
         assertEquals(plan, PairLanding.after(PairResult.JOINED, onSync))
         // Settings opened over My routes: both close, the Plan map shows
@@ -38,7 +40,7 @@ class SyncSettingsTest {
         assertEquals(onSync, PairLanding.after(PairResult.NOT_STORED, onSync))
         assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync))
         // a failure never leaves an older note behind
-        assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync.copy(note = true)))
+        assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync.copy(note = SyncNote.PAIRED)))
         assertEquals("Paired. What you save in the browser comes to your phone – everything is kept there.",
             Txt.s(Res.string.sync_paired_plan))
         val before = java.util.Locale.getDefault()
@@ -46,6 +48,37 @@ class SyncSettingsTest {
         try {
             assertEquals("Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.",
                 Txt.s(Res.string.sync_paired_plan))
+        } finally { java.util.Locale.setDefault(before) }
+    }
+
+    /**
+     * After Unpair (owner 2026-10-30: as simple as pairing): the one question, then straight back to the Plan screen
+     * with "Unpaired. …" + OK; the server not reached → the same strip asks to unpair the browser too; the phone could
+     * not forget the pairing → stay on Browser sync (its red line), no strip.
+     */
+    @Test fun unpairLanding() {
+        val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = null)
+        fun plan(n: SyncNote) = PairLanding.Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = n)
+        // the mailbox ended (or was gone already): Plan + "Unpaired. …"
+        assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(200, onSync))
+        assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(404, onSync))
+        assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(410, onSync.copy(routesOpen = true)))
+        // offline (-1) or another answer: unpaired on the phone anyway – the strip with the extra sentence
+        assertEquals(plan(SyncNote.UNPAIRED_OFFLINE), PairLanding.afterUnpair(-1, onSync))
+        assertEquals(plan(SyncNote.UNPAIRED_OFFLINE), PairLanding.afterUnpair(503, onSync))
+        // an older "Paired. …" never stays behind
+        assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(200, onSync.copy(note = SyncNote.PAIRED)))
+        // not forgotten here: stay, no strip
+        assertEquals(onSync, PairLanding.afterUnpair(PairLanding.UNPAIR_NOT_STORED, onSync.copy(note = SyncNote.PAIRED)))
+        assertEquals("Unpaired. Your routes stay on your phone.", Txt.s(Res.string.sync_unpaired_plan))
+        assertEquals("Unpaired. Your routes stay on your phone – the browser couldn't be reached, unpair it there too.",
+            Txt.s(Res.string.sync_unpaired_plan_offline))
+        val before = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            assertEquals("Getrennt. Deine Routen bleiben auf dem Handy.", Txt.s(Res.string.sync_unpaired_plan))
+            assertEquals("Getrennt. Deine Routen bleiben auf dem Handy – der Browser war nicht erreichbar, trenne ihn dort auch.",
+                Txt.s(Res.string.sync_unpaired_plan_offline))
         } finally { java.util.Locale.setDefault(before) }
     }
 

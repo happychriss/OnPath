@@ -191,10 +191,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var settings by mutableStateOf(prefs.settings)
         private set
     /**
-     * A pairing was just made here (first browser or another one, A-017): the Plan map shows "Paired. …" with OK at the
-     * top (owner 2026-10-30) until OK or Unpair; never for "already paired" or a failure ([PairLanding]).
+     * A pairing was just made (first browser or another one, A-017) or ended here: the Plan map shows "Paired. …" /
+     * "Unpaired. …" with OK at the top (owner 2026-10-30) until OK or the next Pair / Unpair; never for "already
+     * paired" or a failure ([PairLanding]).
      */
-    var pairedNote by mutableStateOf(false)
+    var syncNote by mutableStateOf<SyncNote?>(null)
         private set
 
     private var settingsShown by mutableStateOf(false)
@@ -3528,7 +3529,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var pairAsk by mutableStateOf<ByteArray?>(null)
         private set
 
-    fun pairedNoteOk() { pairedNote = false }
+    fun syncNoteOk() { syncNote = null }
 
     /** ☰ → Pair with browser, the first time: the step line + Open camera as a blue strip on the Plan map ([PairEntry]). */
     var pairHint by mutableStateOf(false)
@@ -3645,7 +3646,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun confirmPair() {
         val s = pairAsk ?: return
-        pairedNote = false
+        syncNote = null
         if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }; return }
         if (pairJoining) return
         pairJoining = true
@@ -3665,25 +3666,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Pair ended (main thread): made → back to the Plan map with "Paired. …" + OK (owner 2026-10-30); else stay. */
     private fun pairEnded(r: PairResult) {
-        val s = PairLanding.after(r, PairLanding.Screens(showSettings, settingsPage, routesOpen, pairedNote))
-        Problems.info("sync", "Pair ended: $r" + if (s.note) " – back to the Plan map with the note" else "")
+        val s = PairLanding.after(r, landingNow())
+        Problems.info("sync", "Pair ended: $r" + if (s.note != null) " – back to the Plan map with the note" else "")
+        landOn(s)
+    }
+
+    private fun landingNow() = PairLanding.Screens(showSettings, settingsPage, routesOpen, syncNote)
+
+    private fun landOn(s: PairLanding.Screens) {
         if (settingsPage != s.settingsPage) settingsPage = s.settingsPage
         if (showSettings != s.settingsOpen) showSettings = s.settingsOpen
         if (routesOpen != s.routesOpen) routesOpen = s.routesOpen
-        pairedNote = s.note
+        syncNote = s.note
     }
 
-    fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }
+    fun cancelPair() { pairAsk = null; syncNote = null; Problems.info("sync", "Pairing cancelled") }
 
-    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
+    /**
+     * Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. Then straight
+     * back to the Plan map with "Unpaired. …" + OK (owner 2026-10-30, like Pair); the phone could not forget the
+     * pairing → stay on the page with its red line.
+     */
     fun unpair() {
-        pairedNote = false
+        syncNote = null
         sync.unpair { status ->
-            when (status) {
-                200, 404, 410 -> sayInfo(Txt.s(Res.string.sync_unpaired), NoticePlace.SETTINGS)
-                -2 -> sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
-                else -> sayInfo(Txt.s(Res.string.sync_unpaired_offline), NoticePlace.SETTINGS)
-            }
+            if (status == PairLanding.UNPAIR_NOT_STORED) sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
+            landOn(PairLanding.afterUnpair(status, landingNow()))
         }
     }
 

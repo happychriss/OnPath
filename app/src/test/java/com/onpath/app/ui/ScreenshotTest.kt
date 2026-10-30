@@ -912,7 +912,17 @@ class ScreenshotTest {
     /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
     /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
     @Test fun planPairedNote() = paparazzi.snapshot {
-        Frame(top = { PairedNoteStrip(onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame(top = { SyncNoteStrip(SyncNote.PAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Right after Unpair (owner 2026-10-30, as simple as pairing): back on the Plan map, "Unpaired. …" with OK. */
+    @Test fun planUnpairedNote() = paparazzi.snapshot {
+        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Unpaired, the server not reached: the same strip asks to unpair the browser there too. */
+    @Test fun planUnpairedOfflineNote() = paparazzi.snapshot {
+        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED_OFFLINE, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     /** ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line + Open camera, then the camera. */

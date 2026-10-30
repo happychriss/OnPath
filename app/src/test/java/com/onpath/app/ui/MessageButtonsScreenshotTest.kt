@@ -38,7 +38,7 @@ open class MessageButtonsScreenshotTest {
             Column(Modifier.background(Color(0xFFE8EEDC)).fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 PairHintStrip(onCamera = {}, onCancel = {})
-                PairedNoteStrip(onOk = {})
+                SyncNoteStrip(SyncNote.PAIRED, onOk = {})
                 HereAskStrip(2, 21L * 1_048_576, {}, {})
                 MapNoticeStrip(CellCardUi.Working("Load the map along the route?", null, emptyList(), null, null,
                     MobileQuestion(4, 25L * 1_048_576), null), CellCardCallbacks())

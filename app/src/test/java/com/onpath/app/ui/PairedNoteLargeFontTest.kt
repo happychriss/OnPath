@@ -9,7 +9,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * "Paired. …" with OK at the top of the Plan map (owner 2026-10-30) at the phone's largest font (2.0): the whole
+ * "Paired. …" / "Unpaired. …" with OK at the top of the Plan map (owner 2026-10-30) at the phone's largest font (2.0): the whole
  * sentence wraps, OK stays a 48 dp target. Same picture as [ScreenshotTest.planPairedNote], drawn with this class's
  * Paparazzi.
  */
@@ -23,6 +23,8 @@ open class PairedNoteLargeFontTest {
     }
 
     @Test fun planPairedNote() = shots.planPairedNote()
+    @Test fun planUnpairedNote() = shots.planUnpairedNote()
+    @Test fun planUnpairedOfflineNote() = shots.planUnpairedOfflineNote()
 }
 
 /** The same in German. */

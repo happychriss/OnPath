@@ -26,8 +26,8 @@
     <string name="sync_unpair">Trennen</string>
     <string name="sync_unpair_title">Browser trennen?</string>
     <string name="sync_unpair_text">Die Routen werden nicht mehr abgeglichen. Sie bleiben auf diesem Handy und im Browser.</string>
-    <string name="sync_unpaired">Getrennt. Deine Routen bleiben auf diesem Handy und im Browser.</string>
-    <string name="sync_unpaired_offline">Auf diesem Handy getrennt. Der Browser war nicht erreichbar – trenne ihn dort auch.</string>
+    <string name="sync_unpaired_plan">Getrennt. Deine Routen bleiben auf dem Handy.</string>
+    <string name="sync_unpaired_plan_offline">Getrennt. Deine Routen bleiben auf dem Handy – der Browser war nicht erreichbar, trenne ihn dort auch.</string>
     <string name="sync_unpair_failed">Trennen fehlgeschlagen – bitte versuch es noch einmal.</string>
     <string name="sync_ended">Die Verbindung wurde im Browser beendet. Deine Routen bleiben auf diesem Handy.</string>
     <string name="sync_offline">Offline – deine Routen werden abgeglichen, sobald du wieder Verbindung hast.</string>

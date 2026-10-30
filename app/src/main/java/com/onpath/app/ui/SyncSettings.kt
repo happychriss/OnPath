@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
@@ -69,27 +70,61 @@ enum class PairResult {
     JOIN_FAILED,
 }
 
-/**
- * Where the app goes after Pair (owner 2026-10-30): a pairing made (first browser or another one) → straight back to
- * the Plan screen (Settings and My routes closed) with the "Paired. …" strip and OK at the top of the map, until OK;
- * anything else stays where it is, without the strip.
- */
-object PairLanding {
-    data class Screens(val settingsOpen: Boolean, val settingsPage: SettingsPage?, val routesOpen: Boolean, val note: Boolean)
-
-    fun after(result: PairResult, now: Screens): Screens = when (result) {
-        PairResult.PAIRED, PairResult.JOINED -> Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = true)
-        else -> now.copy(note = false)
-    }
+/** The strip at the top of the Plan map after a pairing was made or ended here (owner 2026-10-30), until OK. */
+enum class SyncNote {
+    /** "Paired. What you save in the browser comes to your phone – …" */
+    PAIRED,
+    /** "Unpaired. Your routes stay on your phone." */
+    UNPAIRED,
+    /** Unpaired here, the mailbox could not be ended: "… – the browser couldn't be reached, unpair it there too." */
+    UNPAIRED_OFFLINE,
 }
 
 /**
- * The pairing just made, at the top of the Plan map (owner 2026-10-30): what it means + OK. Stays until OK (never by
- * itself); the map below stays usable.
+ * Where the app goes after Pair / Unpair (owner 2026-10-30: unpairing as simple as pairing): a pairing made (first
+ * browser or another one) or ended → straight back to the Plan screen (Settings and My routes closed) with its strip and
+ * OK at the top of the map, until OK; anything else stays where it is, without a strip.
+ */
+object PairLanding {
+    data class Screens(val settingsOpen: Boolean, val settingsPage: SettingsPage?, val routesOpen: Boolean, val note: SyncNote?)
+
+    fun after(result: PairResult, now: Screens): Screens = when (result) {
+        PairResult.PAIRED, PairResult.JOINED -> plan(SyncNote.PAIRED)
+        else -> now.copy(note = null)
+    }
+
+    /**
+     * Unpair ended with the mailbox's [status] ([PlanSync.unpair]): ended (200) or gone already (404 / 410) → Plan +
+     * "Unpaired. …"; not reached (offline, other answers – unpaired on the phone anyway) → Plan + the sentence to
+     * unpair the browser too; not stored here (-2) → stay on Browser sync (its red line), no strip.
+     */
+    fun afterUnpair(status: Int, now: Screens): Screens = when (status) {
+        200, 404, 410 -> plan(SyncNote.UNPAIRED)
+        UNPAIR_NOT_STORED -> now.copy(note = null)
+        else -> plan(SyncNote.UNPAIRED_OFFLINE)
+    }
+
+    /** [PlanSync.unpair]'s status when the phone could not forget the pairing (storage). */
+    const val UNPAIR_NOT_STORED = -2
+
+    private fun plan(note: SyncNote) = Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = note)
+}
+
+/** The text of a [SyncNote] strip. */
+@Composable
+fun syncNoteText(note: SyncNote): String = when (note) {
+    SyncNote.PAIRED -> str(Res.string.sync_paired_plan)
+    SyncNote.UNPAIRED -> str(Res.string.sync_unpaired_plan)
+    SyncNote.UNPAIRED_OFFLINE -> str(Res.string.sync_unpaired_plan_offline)
+}
+
+/**
+ * A pairing just made or ended, at the top of the Plan map (owner 2026-10-30): what it means + OK – the same blue strip
+ * for both. Stays until OK (never by itself); the map below stays usable.
  */
 @Composable
-fun PairedNoteStrip(onOk: () -> Unit, modifier: Modifier = Modifier) =
-    OkNoteStrip(str(Res.string.sync_paired_plan), Icons.Outlined.CheckCircle, onOk, modifier)
+fun SyncNoteStrip(note: SyncNote, onOk: () -> Unit, modifier: Modifier = Modifier) =
+    OkNoteStrip(syncNoteText(note), if (note == SyncNote.PAIRED) Icons.Outlined.CheckCircle else Icons.Outlined.LinkOff, onOk, modifier)
 
 /**
  * ☰ → "Pair with browser" (owner 2026-10-30: shorter pairing): not paired → the phone's camera at once (it reads the QR

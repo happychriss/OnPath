@@ -338,19 +338,21 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val chipTop = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.CHIP_TOP_DP.dp)
     // plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
     val chipOn = bg != null && !vm.searchOpen && notice == null && !vm.pairHint
-    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null, vm.pairedNote, vm.pairHint) {
+    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null, vm.syncNote != null, vm.pairHint) {
         vm.backgroundStripShown = chipOn ||
-            ((notice != null || vm.hereAsk != null || vm.pairedNote || vm.pairHint) && !vm.searchOpen)
+            ((notice != null || vm.hereAsk != null || vm.syncNote != null || vm.pairHint) && !vm.searchOpen)
     }
     val here = vm.hereAsk
+    val syncNote = vm.syncNote
     val strip = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp)
         .measured(MessagePlacement.STRIP_TOP_DP)
     if (vm.pairHint && !vm.searchOpen) {
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line, then the camera
         PairHintStrip(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel, modifier = strip)
-    } else if (vm.pairedNote && !vm.searchOpen) {
-        // a pairing was just made (owner 2026-10-30): "Paired. …" with OK, until OK; the map strips wait for it
-        PairedNoteStrip(onOk = vm::pairedNoteOk, modifier = strip)
+    } else if (syncNote != null && !vm.searchOpen) {
+        // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK; the map
+        // strips wait for it
+        SyncNoteStrip(syncNote, onOk = vm::syncNoteOk, modifier = strip)
     } else if (notice != null && !vm.searchOpen) {
         MapNoticeStrip(notice, cellCb, strip)
     } else if (here != null && !vm.searchOpen) {
