@@ -1,6 +1,6 @@
 // Preview host only: binaries are published as base64 text, one file `<name>.b64.txt` or, when bigger than the host's
 // per-file limit, numbered pieces `<name>.b64.0.txt`, `.1.txt`, … (each a whole number of base64 quads).
-// Shared by the page (packed.ts) and the engine worker.
+// Shared by the page (packed.ts) and the engine worker (no engine code here: a change rebuilds the page only).
 
 /** Native decoder where the browser has one (Uint8Array.fromBase64), else atob – the native one is several times faster. */
 export function decodeBase64(text: string): Uint8Array {
