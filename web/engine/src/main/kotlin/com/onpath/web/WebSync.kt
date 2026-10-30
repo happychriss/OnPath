@@ -36,15 +36,19 @@ object WebSync {
     fun newDevice(random: String): String = b64(random).takeIf { it.size >= SyncFormat.DEVICE_BYTES }?.let(SyncFormat::newDevice) ?: ""
 
     /**
-     * Saved plans and imported tracks, newest first: [{id, kind, title, plan, track, updatedAt, device, mine}]
-     * ([kind] "plan" / "track", [mine] = last changed on this device, [device] = who changed it last).
+     * Saved plans and imported tracks, newest first: [{id, kind, title, plan, track, updatedAt, device, mine, dirty, onPhone}]
+     * ([kind] "plan" / "track", [mine] = last changed on this device, [device] = who changed it last, [dirty] = not in
+     * the mailbox in this version yet – what Save sends, [onPhone] = a version of it is in the mailbox: web-sync.md §14.6).
      */
-    fun list(ledger: String, device: String): String = SyncLedger.read(ledger).let { l ->
-        (l.plans() + l.tracks()).sortedWith(compareByDescending<SyncItem> { it.updatedAt }.thenBy { it.id })
-    }.joinToString(",", "[", "]") {
-        "{\"id\":" + str(it.id) + ",\"kind\":" + str(if (it.kind == SyncItem.TRACK) "track" else "plan") +
-            ",\"title\":" + (it.title?.let(::str) ?: "null") + ",\"plan\":" + str(it.plan ?: "") + ",\"track\":" + str(it.track ?: "") +
-            ",\"updatedAt\":" + it.updatedAt + ",\"device\":" + str(it.device) + ",\"mine\":" + (it.device == device) + "}"
+    fun list(ledger: String, device: String): String {
+        val l = SyncLedger.read(ledger)
+        return (l.plans() + l.tracks()).sortedWith(compareByDescending<SyncItem> { it.updatedAt }.thenBy { it.id }).joinToString(",", "[", "]") {
+            val e = l.entries[it.id]
+            "{\"id\":" + str(it.id) + ",\"kind\":" + str(if (it.kind == SyncItem.TRACK) "track" else "plan") +
+                ",\"title\":" + (it.title?.let(::str) ?: "null") + ",\"plan\":" + str(it.plan ?: "") + ",\"track\":" + str(it.track ?: "") +
+                ",\"updatedAt\":" + it.updatedAt + ",\"device\":" + str(it.device) + ",\"mine\":" + (it.device == device) +
+                ",\"dirty\":" + (e?.dirty ?: false) + ",\"onPhone\":" + ((e?.rev ?: 0L) > 0L) + "}"
+        }
     }
 
     /** The other devices: [{name, device, updatedAt}], newest first. */

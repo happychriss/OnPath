@@ -76,6 +76,11 @@ class WebSyncJoinTest {
         assertEquals(1, onlyHello.size)
         assertTrue(onlyHello[0].startsWith(WebSync.helloId(dev) + " "))
         assertTrue(WebSync.state(l), WebSync.state(l).contains("\"pending\":2,\"unsaved\":1"))
+        // §14.6: the list says what is not sent yet (bold) and what is in the mailbox (📱)
+        assertTrue(WebSync.list(l, dev), WebSync.list(l, dev).contains("\"mine\":true,\"dirty\":true,\"onPhone\":false"))
+        val routeLine = WebSync.outbox(l, browserCode, rnd, id).split(' ')
+        val sent = WebSync.acked(l, routeLine[3], 7.0)
+        assertTrue(WebSync.list(sent, dev), WebSync.list(sent, dev).contains("\"dirty\":false,\"onPhone\":true"))
         // read again from the start: the same mailbox keeps everything; a new mailbox keeps only the unsaved route
         val same = SyncLedger.read(WebSync.rebase(l, true))
         assertEquals(0, same.since)
