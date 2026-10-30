@@ -402,3 +402,50 @@ unchanged.
   by removing it. Proposal: the device id into the Android backup (A-017 app point 6), or allow "Copy to ‹phone›" from
   a closed folder too.
 - "Copy to ‹phone›" is offered for routes; an imported track from Without phone is not copied (import it again).
+
+### 14.6 What the page shows – the owner's display rules (2026-10-30, final; replaces the A-017 UI wording)
+
+The machinery of §14.1–14.3 stays; the page no longer shows it ("überladen", owner). No new dialogs.
+
+**Header, right: two real buttons side by side** (the other entries – My routes, Import GPX, Help, The app – stay on
+the left; at phone width Save and Phone stay in the header, the rest goes behind ☰).
+- **Save:** not paired "💾 Speichern" / "Save" (saves in this browser); paired "📱 Aufs Handy sichern" / "Save to
+  phone" (saves in this browser and sends to the phone). **Dark** (filled app green) while anything is to save: the
+  open route new or changed, a rename, a delete, a GPX import, routes waiting for the phone (below); otherwise
+  **light with ✓** ("✓ Gespeichert" / "✓ Auf dem Handy"); **greyed** when there is nothing at all; **amber** when the
+  mailbox is full (507, nothing lost). One click saves the open route (name proposed Start → Destination as today)
+  and sends everything waiting – no question. No hint text beside it.
+- **Phone:** not paired "Handy verbinden" (outlined, app green); paired "📱 ‹phone name› 🟢" with a small second line
+  "abgeglichen vor 2 Min."; phone away > 24 h: 🟡 + "zuletzt vor 3 Tagen". Click → the phone window.
+
+**My routes – one plain list** (title, rows, Close):
+```
+ (🔵)  Haus Witt → Dorothea-Erxleben-Str.     🖥 📱   ⋮
+       Geplant · 30.10.2026
+```
+- Left: kind symbol in a circle as in the app (🔵 route icon blue = planned, 📄 file icon GPX colour = imported track).
+- Name (one line, …), below it kind + date as in the app ("Geplant · 30.10.2026" / "GPX · …"). Distance / ascent /
+  time: unchanged for now (later decision).
+- Right: where it lies – 🖥 = saved in this browser, 📱 = on the phone, both when both. No grey symbols. Then ⋮ with
+  Rename, Export GPX, Delete (as in the app; no ✎ / 🗑 in the row).
+- **Bold** = changed here and not yet saved / not yet on the phone (incl. routes waiting for the phone). No red
+  (red is for errors). The marks "Neu vom Handy" / "Am Handy geändert" are dropped – 📱 already says where it came from.
+- The open route: light green background. Click on a row opens it.
+- Gone from the dialog: the "Deine geplanten Routen · …" heading, the "✓ Gespeichert als …" box, "Routen von ‹Handy›
+  … entfernen" (→ phone window), the in-row ✎ and 🗑.
+
+**Saving rules**
+1. A route from the phone shows 📱; change it and "Aufs Handy sichern" sends the change back → 🖥 📱.
+2. **Routes planned while no phone was paired belong to the next phone that is paired:** they join its folder as
+   *waiting* (bold, Save dark); one click on "Aufs Handy sichern" sends them all. Nothing goes without that click
+   (this is how A-017 rule 8 "not uploaded on pairing" now reads). A browser that never paired: all its routes. A
+   friend's PC that was paired before: his routes are in his phone's folder and **not visible at all** for my phone –
+   a new pairing shows only my phone's folder; his folder comes back when he pairs again. (Rare edge: routes he
+   planned after unpairing join my phone as waiting – nothing goes without my click.)
+3. Delete of a route with 📱 → on the next save it goes to the phone's recycle bin.
+4. Reload / closing the tab never loses anything unsaved.
+
+**Phone window – small:** state with dot + one sentence; not paired: "Handy verbinden" → QR code, 3 steps, check
+number; paired: "Jetzt abgleichen", "Trennen" (no question). "Wie funktioniert das?" expands the explanation and the
+privacy line in place. At the bottom, small: "Anderes Handy verbinden", "Routen von ‹Handy› aus diesem Browser
+entfernen" (closed folders).
