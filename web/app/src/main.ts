@@ -18,7 +18,7 @@ import { profileSvg } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
 import { setupSearch, type PlaceCard, type PlaceRole } from './search';
-import { roomFor } from './cardanchor';
+import { NO_PADDING, roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
@@ -126,6 +126,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="eye" class="tool" aria-label="${escapeHtml(t('plan_hold_hide_route'))}" title="${escapeHtml(t('plan_hold_hide_route'))}" disabled>${icon('eye')}</button>
     <button id="compass" class="tool"></button>
     <button id="locate" class="tool"></button>
+    <button id="fitRoute" class="tool" aria-label="${escapeHtml(t('web_fit_route'))}" disabled>${icon('fitScreen')}</button>
     <span class="sep"></span>
     <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="${escapeHtml(t('web_map_content_title'))}">${icon('layers')}<span>${escapeHtml(t('web_map_content'))}</span>${icon('dropDown', 18)}</button>
   </div>
@@ -870,12 +871,32 @@ function renderFabs() {
   const lw = position.status === 'OFF' ? t('web_locate_off_title') : position.status === 'NO_PERMISSION'
     ? t('web_locate_denied_title') : t('web_locate_title');
   l.title = lw; l.setAttribute('aria-label', lw);
+  const f = $<HTMLButtonElement>('fitRoute');
+  f.disabled = state.points.length < 2;
+  f.title = f.disabled ? t('web_share_needs_two') : t('web_fit_route');
 }
 map.on('rotate', () => renderFabs());
 $('compass').onclick = () => map.easeTo({ bearing: 0, pitch: 0 }, { keepFollow: true }); // north up keeps following
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
 $('locate').onclick = () => { locating = true; position.locate(); locateNotice(); };
+/** "Show whole route" (owner 2026-10-30): the planned line, every point and a shown GPX track in the free map room
+ *  (fitPadding: clear of the sheet in any step, the top bar, the place card and the controls). Not keepFollow – it
+ *  ends position following, like every camera move made for the user (CLAUDE.md "Map camera"). */
+function fitRoute() {
+  if (state.points.length < 2) return;
+  const b = new maplibregl.LngLatBounds();
+  state.points.forEach(([la, lo]) => b.extend([lo, la]));
+  state.plan?.legs.forEach((l) => l.points.forEach(([la, lo]) => b.extend([lo, la])));
+  const track = gpxImport.shown;
+  track?.segments.flat().forEach(([la, lo]) => b.extend([lo, la]));
+  track?.waypoints.forEach((w) => b.extend([w.lon, w.lat]));
+  // fitBounds adds the map's own padding to ours – a padding left by an older easeTo would shrink the room (§13 row 19)
+  const p = map.getPadding();
+  if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
+  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+}
+$('fitRoute').onclick = fitRoute;
 /** Eye: hold to hide the route and the markers, release shows them again (the app's EyeControl). */
 function peek(on: boolean) {
   if (hidden === on) return;

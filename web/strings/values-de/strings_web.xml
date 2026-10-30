@@ -48,6 +48,7 @@
     <string name="web_google_title">In Google Maps öffnen (neuer Tab)</string>
     <string name="web_google_failed">Google Maps ließ sich nicht öffnen – bitte noch einmal versuchen.</string>
 
+    <string name="web_fit_route">Ganze Route zeigen</string>
     <string name="web_locate_title">Auf meinen Standort zentrieren</string>
     <string name="web_locate_off_title">Standort ist aus oder hier nicht verfügbar</string>
     <string name="web_locate_denied_title">Standort ist in diesem Browser nicht erlaubt</string>

@@ -54,6 +54,7 @@
     <string name="web_google_failed">Google Maps could not be opened – please try again.</string>
 
     <!-- position -->
+    <string name="web_fit_route">Show whole route</string>
     <string name="web_locate_title">Centre on my position</string>
     <string name="web_locate_off_title">Location is off or not available here</string>
     <string name="web_locate_denied_title">Location not allowed in this browser</string>

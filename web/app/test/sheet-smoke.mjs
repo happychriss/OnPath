@@ -1,7 +1,8 @@
 // The plan sheet's three steps on both widths (owner 2026-10-30, option A; docs/design/web-planner.md §11.3 – the app's
 // PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, ⋯, chevron, a compact Share), profile = + profile,
 // points = + Points. Grab handle (the app's handle tap), chevron (Show more / Show less), a click on the summary, Arrow
-// keys; remembered after a reload; the camera fit leaves the sheet free; the place card, the GPX track panel and the
+// keys; remembered after a reload; the camera fit leaves the sheet free (also the toolbar's "Show whole route" after a
+// pan / zoom away, in the small and Points step, with a GPX track); the place card, the GPX track panel and the
 // header without Send to phone / Pair phone. Needs only the rd5 (CI); Photon is a fake answer.
 // Usage: node test/sheet-smoke.mjs [segmentsDir] [screenshotDir]
 import path from 'node:path';
@@ -37,6 +38,29 @@ const cardGeom = (page) => page.evaluate(() => {
   return { ring: ring && { x: ring.x + ring.w / 2, y: ring.y + ring.h / 2 }, card, side, tip, anchored: pc.classList.contains('anchored'),
     visible: getComputedStyle(pc).visibility !== 'hidden', sheet: box(document.getElementById('sheet')), bar: box(document.getElementById('topbar')) };
 });
+/** Every route point, the planned line and a shown GPX track (map coordinates) inside the free map room: in the map,
+ *  outside the plan sheet and the top bar. */
+const freeRoom = (page) => page.evaluate(() => {
+  const m = window.__map, st = window.__state, track = window.__gpx.shown;
+  const map = m.getContainer().getBoundingClientRect();
+  const sheet = document.getElementById('sheet').getBoundingClientRect(), bar = document.getElementById('topbar').getBoundingClientRect();
+  const ll = (a) => a.map(([la, lo]) => [lo, la]);
+  const pts = [...ll(st.points), ...(st.plan?.legs ?? []).flatMap((l) => ll(l.points)), ...(track ? ll(track.segments.flat()) : [])];
+  const inside = (p, r) => p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+  const bad = pts.map((c) => { const p = m.project(c); return { x: p.x + map.left, y: p.y + map.top }; })
+    .filter((p) => !(p.x >= map.left + 4 && p.x <= map.right - 4 && p.y >= map.top + 4 && p.y <= map.bottom - 4) || inside(p, sheet) || inside(p, bar));
+  return { n: pts.length, bad: bad.length, first: bad[0] && { x: Math.round(bad[0].x), y: Math.round(bad[0].y) }, zoom: +m.getZoom().toFixed(1) };
+});
+/** "Show whole route" after the map was moved away: pan + zoom far off, click (or Enter), every point in the free room. */
+async function checkFit(page, P, how = 'click') {
+  await page.evaluate(() => window.__map.jumpTo({ center: [11.45, 46.42], zoom: 16 }));
+  await settle(page);
+  check((await freeRoom(page)).bad > 0, `${P} moved away: the route is out of view`);
+  if (how === 'enter') { await page.focus('#fitRoute'); await page.keyboard.press('Enter'); } else await page.click('#fitRoute');
+  await settle(page);
+  const r = await freeRoom(page);
+  check(r.n >= 2 && r.bad === 0, `${P} "Show whole route" (${how}): all ${r.n} route points in the free map room, clear of sheet and top bar (zoom ${r.zoom}${r.bad ? `, ${r.bad} outside, e.g. ${JSON.stringify(r.first)}` : ''})`);
+}
 const overlaps = (a, b) => !!a && !!b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 function checkAnchored(g, vp, P) {
   const across = g.tip && g.ring ? (g.side === 'above' || g.side === 'below' ? Math.abs(g.tip.x - g.ring.x) : Math.abs(g.tip.y - g.ring.y)) : 99;
@@ -124,6 +148,24 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     return [...document.querySelectorAll('.pin')].every((p) => { const b = p.getBoundingClientRect(); return b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom; }); });
   check(clear, `${P} after the fit both points are clear of the sheet`);
 
+  // the toolbar's "Show whole route" (owner 2026-10-30): next to locate, a normal button, the whole route in the free room
+  check(!(await page.isDisabled('#fitRoute')) && await page.getAttribute('#fitRoute', 'aria-label') === 'Show whole route' && await page.getAttribute('#fitRoute', 'title') === 'Show whole route'
+    && await page.evaluate(() => document.getElementById('fitRoute').previousElementSibling?.id === 'locate'), `${P} "Show whole route" active next to locate (label + tooltip)`);
+  await checkFit(page, `${P} small step:`);
+  if (!phone) {
+    await checkFit(page, `${P} small step:`, 'enter');
+    // a padding left behind by an older move (route-warning spot / gap "Show") must not shrink or shift the room
+    await page.evaluate(() => window.__map.easeTo({ padding: { top: 300, bottom: 50, left: 446, right: 90 }, duration: 0 }));
+    await checkFit(page, `${P} after a left-over padding:`);
+  }
+  await page.click('#handle'); await page.click('#summary .big');
+  check(await step(page) === 'points', `${P} Points step for the fit`);
+  await checkFit(page, `${P} Points step:`);
+  await page.screenshot({ path: path.join(shots, `${name}-fit-route.png`) });
+  await page.focus('#handle');
+  await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp'); await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp');
+  check(await step(page) === 'small', `${P} back to the small step`);
+
   // a new error line shows in the small step (the app keeps route lines above its MINI step end)
   await page.evaluate(() => { const n = document.getElementById('notice'); n.hidden = false; n.textContent = '⚠ test'; });
   check(await page.isVisible('#notice'), `${P} the red route line is visible in the small step`);
@@ -187,6 +229,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     </trkseg></trk></gpx>`], 'test.gpx', { type: 'application/gpx+xml' })));
   await page.waitForSelector('#trackPanel', { timeout: 20_000 }).catch(() => {});
   check(await page.isVisible('#trackPanel .trackname') && await page.isVisible('#trackPanel #planFromTrack'), `${P} GPX track panel complete in the small step`);
+  await checkFit(page, `${P} with the GPX track:`); // the track is in the room too (the panel stands in for the sheet)
   await page.click('#closeTrack').catch(() => {});
   check(!(await page.$('#trackPanel')) && await step(page) === 'small' && await page.isVisible('#summary'), `${P} Close track: the small sheet is back`);
 
@@ -212,6 +255,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     'empty plan: Share icon shown but greyed (owner 2026-10-30), no big button');
   check(await page.getAttribute('#share', 'title') === 'Set a start and destination first' && await page.getAttribute('#share', 'aria-label') === 'Set a start and destination first',
     'empty plan: Share says "Set a start and destination first"');
+  check(await page.isVisible('#fitRoute') && await page.isDisabled('#fitRoute') && await page.getAttribute('#fitRoute', 'title') === 'Set a start and destination first'
+    && await page.getAttribute('#fitRoute', 'aria-label') === 'Show whole route', 'empty plan: "Show whole route" greyed, its tooltip says why');
   // header (owner 2026-10-30): "OnPath Planner" as one name; every icon with its text; no Save (⋯ and My routes have it)
   const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
     return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
