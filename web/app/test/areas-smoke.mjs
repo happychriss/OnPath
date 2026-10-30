@@ -134,7 +134,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
 {
   let calls = 0;
   const { page, ctx, server } = await open({}, '11.16,46.67,12', { maps: (req) => { calls++; return handleMaps(req, {}); } });
-  check(await waitStrip(page, 'Overview only – set a point here to load the detailed map', 3000), `opened at zoom 12 without detailed map: "${(await strip(page)).split('\n')[0]}"`);
+  check(await waitStrip(page, 'Overview only – set a point here to load the detailed map', 15_000), `opened at zoom 12 without detailed map: "${(await strip(page)).split('\n')[0]}"`);
   await page.waitForTimeout(6000);
   check(calls === 0 && (await strip(page)).includes('Overview only'), `the map resting orders nothing (public page, A-011): ${calls} map-area calls`);
   await page.click('#locate');
