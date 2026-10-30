@@ -143,9 +143,24 @@ class SourceSelection(unittest.TestCase):
         self.assertEqual(self.ids(529, 393), [])   # Mediterranean between Corsica and the Balearics
         self.assertEqual(self.ids(0, 0), [])
 
+    def test_bodensee_takes_five_leaves_not_dach_or_alps(self):
+        # Germany pre-build 2026-10-30: with at most 4 leaves these fell back to dach (over max_extract_mb – the cell
+        # could not be built) and alps (2.3 GB); every z10 cell of Europe needs at most 5 (osm_sources module doc)
+        self.assertEqual(self.ids(538, 357), ["tuebingen-regbez", "freiburg-regbez", "schwaben", "switzerland",
+                                              "austria"])                                     # Konstanz / Lindau
+        self.assertEqual(self.ids(539, 358), ["liechtenstein", "tuebingen-regbez", "schwaben", "switzerland",
+                                              "austria"])                                     # Bregenz
+        self.assertGreaterEqual(osm_sources.MAX_EXTRACTS, 5)
+
     def test_too_many_leaves_falls_back_to_a_containing_leaf(self):
         box = buffered_bbox(cell_bbox(10, 541, 361), 5)
         self.assertEqual([r.id for r in osm_sources.select(self.regions, box, max_extracts=2)], ["alps"])
+
+    def test_too_many_leaves_and_nothing_containing_takes_them_all(self):
+        # never drop a leaf: the 4 largest of 5 left luxembourg out of 10-529-349 (a hole in the map)
+        countries = [r for r in self.regions if r.country]     # without alps / dach nothing contains the Bodensee
+        box = buffered_bbox(cell_bbox(10, 538, 357), 5)
+        self.assertEqual(len(osm_sources.select(countries, box, max_extracts=2)), 5)
 
     def test_geometry(self):
         sq = {"properties": {"id": "sq", "urls": {"pbf": "u"}}, "geometry": {"type": "Polygon", "coordinates": [
