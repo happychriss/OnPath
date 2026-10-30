@@ -8,6 +8,7 @@
 //                     lets this path through (the phone app cannot log in), the mailbox token guards it
 //   /maps/v1/cells/… map areas on demand: request + status passed to the doorman with the app key added here
 //                     (src/maps.js, web-planner.md §17) – the browser never holds the key
+//   /.well-known/assetlinks.json  Android App Links: plan links (#p=) and pairing links (#pair=) open OnPath (A-016)
 //   everything else   the built page (web/app/dist, static assets)
 // Before the login goes (A-011, web-planner.md §18): per-IP limits for /data/ (DATA_RATE) and /segments/
 // (SEGMENTS_RATE) – generous for planning, against mass downloads; and search engines are kept out until launch
@@ -15,6 +16,14 @@
 import { serveFile } from "../../../tools/cloud/worker/src/api.js";
 import { handleSync, purgeIdle } from "./sync.js";
 import { handleMaps, purgeQuota } from "./maps.js";
+
+// Android App Links (A-016): the app's signing certificate (release key, public – not a secret). A later Play Store
+// signing key is added as a second fingerprint in the same list.
+export const ASSET_LINKS = JSON.stringify([{
+  relation: ["delegate_permission/common.handle_all_urls"],
+  target: { namespace: "android_app", package_name: "com.onpath.app",
+    sha256_cert_fingerprints: ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7"] },
+}]);
 
 const RD5 = /^\/segments\/([EW]\d{1,3}_[NS]\d{1,2}\.rd5)$/;
 const UPSTREAM = "https://brouter.de/brouter/segments4/";
@@ -42,6 +51,10 @@ async function route(request, env, fetchImpl) {
     const limit = p.startsWith("/data/") ? env.DATA_RATE : env.SEGMENTS_RATE;
     if (limit && !(await limit.limit({ key: request.headers.get("cf-connecting-ip") ?? "?" })).success) return tooMany();
   }
+  if (p === "/.well-known/assetlinks.json") {
+    return new Response(ASSET_LINKS, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
+  }
+  if (p.startsWith("/.well-known/")) return new Response("not found", { status: 404 });
   if (p.startsWith("/sync/")) return handleSync(request, env);
   if (p.startsWith("/maps/")) return handleMaps(request, env, fetchImpl);
   if (p.startsWith("/data/")) return serveFile({ BUCKET: env.MAPS }, request, decodeURIComponent(p.slice(6)));

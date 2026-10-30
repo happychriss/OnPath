@@ -96,3 +96,15 @@ test("search engines kept out until launch: X-Robots-Tag on every answer; INDEXI
   }
   assert.equal((await handle(new Request(H + "/"), { ...env, INDEXING: "on" })).headers.get("x-robots-tag"), null);
 });
+
+test("Android App Links: assetlinks.json, 200, JSON, no redirect (A-016)", async () => {
+  const r = await handle(new Request(H + "/.well-known/assetlinks.json"), env);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-type"), "application/json");
+  assert.equal(r.headers.get("location"), null);
+  const j = await r.json();
+  assert.equal(j[0].target.package_name, "com.onpath.app");
+  assert.deepEqual(j[0].relation, ["delegate_permission/common.handle_all_urls"]);
+  assert.deepEqual(j[0].target.sha256_cert_fingerprints, ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7"]);
+  assert.equal((await handle(new Request(H + "/.well-known/other"), env)).status, 404);
+});

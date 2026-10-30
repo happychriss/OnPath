@@ -231,6 +231,9 @@ in the browser.
   rules), imported, not copied.
 - `/segments/<rd5>` → brouter.de passed through with Range (brouter.de has no CORS header; the app also downloads from
   there). Only rd5 file names go upstream.
+- `/.well-known/assetlinks.json` → Android App Links for `com.onpath.app` (A-016): 200, `application/json`, no
+  redirect, no login, so plan links (`#p=`) and pairing links (`#pair=`) open OnPath. A Play Store signing key later
+  becomes a second fingerprint in the same list (`ASSET_LINKS` in `web/host/src/index.js`).
 - everything else → the built page.
 - `workers_dev` and preview URLs off: the only address is the custom domain, which **Cloudflare Access** guards
   (e-mail one-time code, free up to 50 users). Tests: `web/host/test` (CI); `wrangler deploy --dry-run` bundles 4 KiB.
