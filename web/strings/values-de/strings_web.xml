@@ -53,6 +53,7 @@
     <string name="web_locate_off_title">Standort ist aus oder hier nicht verfügbar</string>
     <string name="web_locate_denied_title">Standort ist in diesem Browser nicht erlaubt</string>
     <string name="web_locate_finding">Standort wird gesucht…</string>
+    <string name="web_locate_allow">Bitte erlaube oben im Browser-Fenster den Zugriff auf deinen Standort.</string>
     <string name="web_locate_still">Standort wird noch gesucht – der Browser hat ihn noch nicht gefunden…</string>
     <string name="web_locate_denied">Der Standort ist für diese Seite nicht erlaubt. Klicke links neben der Adresse auf das Symbol, schalte Standort ein und klicke dann noch einmal auf Standort.</string>
     <string name="web_locate_off">Dein Standort ist nicht verfügbar – er ist ausgeschaltet oder dieses Gerät findet ihn nicht.</string>

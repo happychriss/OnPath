@@ -42,7 +42,12 @@ const ROUTE = '#1E3FAE';
 const COLORS = { start: '#2E7D32', via: ROUTE, end: '#C62828' }; // OnPathColors.Good / Route / Bad (ui/PlanPanel.stopColor)
 const base = new URL('./', location.href).href;
 const params = new URLSearchParams(location.search);
-const startAt = (params.get('at') ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
+// start view: ?at=lon,lat,zoom, else the view kept over the language switch's reload (i18n.switchLanguage), else Meran
+const lastView = (() => {
+  try { const v = sessionStorage.getItem('onpath.viewOnce'); sessionStorage.removeItem('onpath.viewOnce'); return v; }
+  catch { return null; } // expected: storage blocked → the default view
+})();
+const startAt = (params.get('at') ?? lastView ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
 
 type Meta = { pinned: boolean; name?: string };
 type LatLon = [number, number];
@@ -169,6 +174,11 @@ const map = new maplibregl.Map({
   container: 'map', style: await loadStyle(), center: [startAt[0], startAt[1]], zoom: startAt[2],
   attributionControl: false, maxPitch: 0, // like the app: turn yes, tilt no
 });
+(window as unknown as { __viewText: () => string }).__viewText = () => { // read by i18n.switchLanguage before it reloads
+  const c = map.getCenter();
+  return `${c.lng.toFixed(5)},${c.lat.toFixed(5)},${map.getZoom().toFixed(2)}`;
+};
+
 (window as unknown as { __map: maplibregl.Map }).__map = map; // for the browser tests
 // the scale bar sits in our footer, above the short credit (the app's MapFooter)
 $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }).onAdd(map));
@@ -475,6 +485,11 @@ function locateNotice() {
     notices.set('locate', { kind: 'error', title: t('web_locate_off'), close });
   } else {
     notices.set('locate', { kind: 'busy', title: t('web_locate_finding'), close });
+    // the browser shows its own "allow location?" question now: say where it is, so nobody waits for nothing
+    navigator.permissions?.query({ name: 'geolocation' }).then((p) => {
+      if (p.state === 'prompt' && locating && !position.fix)
+        notices.set('locate', { kind: 'busy', title: t('web_locate_finding'), lines: [t('web_locate_allow')], close });
+    }).catch(() => { /* expected: permissions API missing (older Safari) – the plain line stays */ });
     // still nothing after 20 s: say so (the browser keeps trying; a fix still moves the map there)
     locateTimer = window.setTimeout(() => { if (locating && !position.fix) notices.set('locate', { kind: 'busy', title: t('web_locate_still'), close }); }, 20_000);
   }

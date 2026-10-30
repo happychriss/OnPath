@@ -53,6 +53,9 @@ export function tp(key: string, n: number, ...args: (string | number)[]): string
 /** The switch in the header: remembered, then the page reloads (the plan stays – it is in the address). */
 export function switchLanguage(l: Lang) {
   try { localStorage.setItem(STORE, l); } catch { /* expected: storage blocked – the switch then lasts for this load only */ }
+  // keep the map where it is over the reload (owner 2026-10-30: the switch reset the map)
+  try { const v = (window as unknown as { __viewText?: () => string }).__viewText?.(); if (v) sessionStorage.setItem('onpath.viewOnce', v); }
+  catch { /* expected: storage blocked – the map starts at the default view */ }
   const u = new URL(location.href);
   u.searchParams.delete('lang');
   if (u.href === location.href) location.reload(); // the same address with a #plan would only jump, not reload

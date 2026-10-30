@@ -708,7 +708,7 @@ Until launch every answer of the host carries `X-Robots-Tag: noindex, nofollow` 
 - `localStorage`: `onpath.activity`, `onpath.sac` (last activity and T level), `onpath.hikePaceLevel`,
   `onpath.bikePaceLevel` (pace setting), `onpath.mapContent` (POI kinds hidden, contour lines / relief on), `onpath.lang`
   (language chosen with the switch), `onpath.browserId` (random id for the map-area quota, see below).
-- `sessionStorage`: `onpath.appHintShown` (the app line was shown in this session).
+- `sessionStorage`: `onpath.appHintShown` (the app line was shown in this session), `onpath.viewOnce` (map view kept over the language switch reload, removed at once).
 - IndexedDB `onpath` (store `kv`): saved plans (My plans) and their sync ledger, a random device id, and – once paired –
   the pairing secret (the key for the end-to-end encryption; never leaves the browser except inside the pairing QR
   code / link the user shows to their phone).

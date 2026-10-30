@@ -275,15 +275,16 @@ dialog.pair .check { font-size: 16px; }
 dialog.pair .check b { letter-spacing: .08em; }
 
 /* ---- the map strip (mapnotice.ts, web-planner.md §17): why the user waits – position, map loading, map areas ---- */
-.mapnotes { position: absolute; z-index: 4; top: 76px; right: 12px; width: 340px; max-width: calc(100% - var(--sheet-w) - 48px);
+.mapnotes { position: absolute; z-index: 4; top: 76px; left: calc(var(--sheet-w) + 36px); width: 380px; max-width: calc(100% - var(--sheet-w) - 48px);
   display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.mapnote { pointer-events: auto; background: var(--bg); color: var(--fg); border-radius: 14px; box-shadow: 0 2px 8px var(--shadow);
+.mapnote { pointer-events: none; background: var(--bg); color: var(--fg); border-radius: 14px; box-shadow: 0 2px 8px var(--shadow);
   padding: 10px 12px; font-size: 14px; }
 .mapnote.info .title { color: var(--muted); }
 .mapnote.error { border-left: 4px solid var(--error); } .mapnote.error .warn { color: var(--error); }
 .mapnote .head { display: flex; align-items: flex-start; gap: 8px; }
 .mapnote .title { flex: 1; min-width: 0; }
 .mapnote .line { font-size: 12px; color: var(--muted); margin: 2px 0 0 22px; }
+.mapnote .x, .mapnote button, .mapnote a { pointer-events: auto; }  /* clicks on the strip's text reach the map below */
 .mapnote .x { flex: none; border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 2px; margin: -2px -4px 0 0; }
 .spinner { flex: none; width: 10px; height: 10px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--green);
   animation: spin .9s linear infinite; }

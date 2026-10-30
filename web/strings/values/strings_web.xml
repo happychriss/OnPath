@@ -59,6 +59,7 @@
     <string name="web_locate_off_title">Location is off or not available here</string>
     <string name="web_locate_denied_title">Location not allowed in this browser</string>
     <string name="web_locate_finding">Finding your position…</string>
+    <string name="web_locate_allow">Please allow location when the browser asks at the top of the window.</string>
     <string name="web_locate_still">Still finding your position – the browser has not found it yet…</string>
     <string name="web_locate_denied">Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again.</string>
     <string name="web_locate_off">Your position is not available – location is off or this device cannot find it.</string>
