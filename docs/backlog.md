@@ -11,7 +11,12 @@ the git log.
 ## Next
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
   the Pixel 2026-10-30, step 1 = fresh install → emulator); rest view + smarter cues on the bike and on foot; pocket after
-  5 s on the bike; lock-screen notification on the Pixel; the older phone checks below.
+  5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
+  all the time on the Pixel? (1c5b8ad); new off-route question "Abseits der Route – neu planen?" with "Ja" / "Ja, Stopp N
+  auslassen" (16, 81dbff7); map symbols: rock from z14, orchards / vineyards stronger.
+- **Off-route question refresh vibrates** – the existing 150 m refresh (`REFRESH_MOVE_M`) calls
+  `newJob(…, vibrateOnResult = true)`, so a refreshed question vibrates and gets a new id although the comment says
+  "(no vibration)" – owner to decide: vibrate on refresh or not (found 2026-10-30).
 - **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
   for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
   doorman adopts them. Production stays cloud-only.
@@ -99,9 +104,11 @@ the git log.
 - **Smart screen while cycling – built (e6ee6ed), measure + ride** – rest view for bike activities (owner decisions
   2026-10-30). Still: Pixel power rails A/B on a 10-min demo ride (Always on vs Smart), the owner rides with it.
   From `docs/design/battery-audit.md` still open: slower GPS with the screen off, frozen track + tail.
-- **Cycle junction networks ("Knotenpunkte", NL / BE / DE) on the map (owner)** – OSM nodes with `rcn_ref`
-  (`network:type=node_network`): green numbered circles + the network lines, own overlay layer, switchable in
-  Settings → Map. Needs `extract_overlays.py` + `make_style.py` + a cell schema bump (donald / map pipeline).
+- **Map: Knotenpunkte + cliffs/fords (owner 2026-10-30)** – cycle junction networks ("Knotenpunkte", NL / BE / DE: OSM
+  nodes with `rcn_ref`, `network:type=node_network` – green numbered circles + network lines, own overlay layer,
+  switchable in Settings → Map) and cliffs / fords on the map. Owner decision: these map-pipeline changes (together with
+  the sidewalk-fragment stub fix, merged with the map batch) go live WITH THE MONTHLY REFRESH – no CELL_SCHEMA bump just
+  for them; existing cells get them when their OSM data is 30 days old (Germany ~27.11), newly requested cells right away.
 - **Google Maps place → go there (owner)** – when a place arrives from Google Maps (Share → OnPath,
   `receiveSharedPlace`), ask "Route here?" (from the position / the plan's end) instead of only showing the place card.
 - **Two MainActivity instances at start (seen only on the first start after an install)** – one process, two
@@ -127,11 +134,9 @@ the git log.
   but the doorman rebuilds only on a CELL_SCHEMA bump or OSM age – a profile change still needs that bump. Later
   (captain): a doorman `WAYCLASS` value (wrangler.toml, = `wayclass.jar --hash` of the job image) so a published cell
   with another hash counts as stale and is rebuilt when asked.
-- **Safety:** cliffs and fords on the map.
 - **CI follow-ups:** lint reports only (known findings in `app/lint-baseline.xml`) – work the baseline down, then let
   lint fail the run; `gradle/actions` stays on v5 (MIT): v6 moves its caching into a closed component under Gradle's
   Terms of Use – owner to decide before upgrading.
-- **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt`, expects "unreachable", BRouter finds
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
