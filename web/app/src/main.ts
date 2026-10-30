@@ -607,7 +607,17 @@ async function poiMenu(f: MapGeoJSONFeature) {
 
 /** "Open in Google Maps": the app's link (PoiLinks.googleMaps), in a new tab – Google content is never drawn here. */
 async function google(name: string, lat: number, lon: number, label: string) {
-  window.open(await engine.call('googleMaps', name, lat, lon, label), '_blank', 'noopener');
+  // The tab opens right in the click: a window.open after an await (the engine may still be busy with a route) loses
+  // the click's permission and the browser blocks it silently (owner 2026-10-30: "Google geht nicht mehr").
+  const tab = window.open('', '_blank');
+  try {
+    const url = await engine.call('googleMaps', name, lat, lon, label) as string;
+    if (tab) { tab.opener = null; tab.location.href = url; } else window.open(url, '_blank', 'noopener');
+  } catch (e) {
+    tab?.close();
+    console.warn('[google] link not made', e);
+    status(t('web_google_failed'), 'error');
+  }
 }
 
 // ---- shared links ----

@@ -247,7 +247,7 @@ await page.locator('.pin').nth(1).click(); // Vellau, the named destination
 await page.waitForSelector('.pointmenu');
 check((await menuItems()).includes('Open in Google Maps'), 'named point: Open in Google Maps in the menu');
 const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click('.pointmenu button:has-text("Open in Google Maps")')]);
-await tab.waitForLoadState().catch(() => {});
+await tab.waitForURL(/google\.com/, { timeout: 15_000 }).catch(() => {}); // the tab opens blank in the click, then gets the link
 console.log('google tab:', tab.url());
 check(/^https:\/\/www\.google\.com\/maps\/search\/Vellau\/@46\.\d+,11\.\d+,16z$/.test(tab.url()), 'Google Maps opens in a new tab with the place name near its point');
 await tab.close();
