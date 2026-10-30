@@ -26,10 +26,14 @@ the git log.
       `navigation/CueRule.kt` + `navigation/SpeedWindow.kt` – add both to `appFiles` (pure Kotlin); `GeoPoint.shape`,
       `JunctionShape` (Junctions.kt) and the longer `OnPathHints.java` rows come along by themselves; `CueRuleTest.kt`
       may join `appTests`.
-    - Search index on disk · 156c265 · `OfflineIndex` implements `PlaceIndex` and `RouteNamer.placesNear` takes one,
-      but `PlaceIndex` sits in `search/DiskIndex.kt` (SQLite – not for the web): move it to its own
-      `search/PlaceIndex.kt` on main and add that to `appFiles` (or a web stand-in). `AddressSearch.kt` now uses a
-      `ThreadPoolExecutor` (d9cf983) – check the TeaVM link (unreached while the web has no address files).
+    - Search index on disk · 156c265 · `OfflineIndex` implements `PlaceIndex` and `RouteNamer.placesNear` takes one:
+      add `search/PlaceIndex.kt` to `appFiles` (moved out of the SQLite `DiskIndex.kt` on main – pure, no imports,
+      kept so by `SharedCoreRuleTest.files`; `DiskIndex.kt` / `SearchDb.kt` / `SearchAreas.kt` stay out). Nothing
+      else: all other `appFiles` changed since e8245e5 compile with what the list already has (`AppSettings` →
+      `BikeScreen` enum in the same file; `AddPreview` → new strings, generated; sync files → `TrackCode` / `SyncRound`
+      only in KDoc, see the sync line). `AddressSearch.kt` now has a `ThreadPoolExecutor` (d9cf983) – JVM compile
+      fine; TeaVM never links it, it sits only in `AddressIndex` (companion `pool`), which no web code reaches (the
+      web uses `AddressHit` / `AddressQuery` only). Only if the web ever calls `AddressIndex.search`: a stand-in.
     - String `msg_no_location_permission` removed · e7d4e5a · `WebMaps.kt` names it: use `plan_no_location_permission`
       or a web string.
     - f2 style: POI layers read `pois.pmtiles`, `onpath:fallback-sources` → `pois.geojson` · a85d8c7, 6ddc551 (POI
