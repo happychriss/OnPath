@@ -47,8 +47,11 @@ tour recording (also while looking at Plan during a tour).
 stays) · **Save as new…** (name dialog); a tap outside / Back cancels. Otherwise the name dialog (new entry).
 Rule: `RouteRules.saveMode`.
 
-**Plan sheet:** the primary button exists only with a route ("Start navigation", disabled while calculating) or
-while a tour runs ("Continue navigation"). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
+**Plan sheet:** the primary button exists from two points: "Start navigation · Hike" with a route line (also a
+straight-line fallback; disabled while the points wait for their line), "Continue navigation" while a tour runs. With
+no point or one, a free recording is ☰ → Start recording. One rule for the words and what Start does (`PlanStart`,
+owner 2026-10-30): nothing to follow = **"Start recording · Hike"** with the record dot – also in the track panel for a
+track without a line (an empty recorded tour, a GPX with one point; during a tour its button is off). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
 Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved".
 
@@ -72,7 +75,7 @@ undo step. Tracks open next to the plan without asking.
   Navigate: walking direction / north up toggle), eye (only with a route / track), locate. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
-- One primary action per mode: Plan → "Start navigation", Navigate → slide to plan.
+- One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide to plan.
 
 ## Plan gestures (owner spec, `ui/MapGestures.kt`)
 **Hold only.** A hold is ≥ 0.3 s (`HOLD_MS`) with a ring filling under the finger; the vibration comes the moment

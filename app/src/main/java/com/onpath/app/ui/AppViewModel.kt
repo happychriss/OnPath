@@ -2952,17 +2952,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Plan's primary action (location permission is checked by the caller). Follows the planned
-     * route, else the shown track, else nothing (free recording), and starts recording.
+     * Plan's primary action (location permission is checked by the caller). Follows the shown track, else the planned
+     * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
      */
     fun startNavigation(force: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
         val s = shown
         if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
-        when {
-            s != null -> { followShown(); shown = null }
-            route != null && waypoints.size >= 2 -> followPlanned()
-            else -> clearFollow()
+        // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
+        when (PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
+            PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
+            PlanStart.NAVIGATE_PLAN -> followPlanned()
+            // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
+            // A shown track without a line closes, like ☰ → Start recording.
+            PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
         }
         startRecording()
         // Navigate only once the service really records (R-01): a refused foreground service, a missing

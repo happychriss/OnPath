@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
@@ -170,8 +171,10 @@ data class PlanUi(
     /** "New route for … – check it" after an activity change: one grey INFO line (not a warning). */
     val changedText: String? = null,
 ) {
-    /** Without a route navigation just records; while a route is being computed, wait for it. */
-    val canStart: Boolean get() = pointCount < 2 || route != null
+    /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
+    val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
+    /** Without a point / with one point Start only records; while a route is being computed, wait for it. */
+    val canStart: Boolean get() = start != PlanStart.WAIT_FOR_ROUTE
 }
 
 /**
@@ -492,14 +495,22 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     // the button names the activity (owner: a wrong activity is a disaster)
     Button(onClick = if (ui.tourRunning) cb.onContinue else cb.onStartNavigation, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
+        // without a line it only records: the record dot of ☰ → Start recording, not the navigation arrow
+        Icon(if (!ui.tourRunning && ui.start == PlanStart.RECORD_ONLY) Icons.Filled.FiberManualRecord else Icons.Filled.Navigation, null)
+        Spacer(Modifier.width(8.dp))
         Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** "Start navigation · Hike" / "Continue navigation · Gravel bike". */
-internal fun primaryLabel(ui: PlanUi): String =
-    Txt.s(if (ui.tourRunning) Res.string.plan_continue_navigation_for else Res.string.plan_start_navigation_for, ui.activity.navName)
+/**
+ * "Start navigation · Hike" / "Continue navigation · Gravel bike"; no point or only one: "Start recording · Hike"
+ * (owner 2026-10-30: nothing to navigate – say what happens).
+ */
+internal fun primaryLabel(ui: PlanUi): String = Txt.s(when {
+    ui.tourRunning -> Res.string.plan_continue_navigation_for
+    ui.start == PlanStart.RECORD_ONLY -> Res.string.plan_start_recording_for
+    else -> Res.string.plan_start_navigation_for
+}, ui.activity.navName)
 
 /** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable

@@ -75,6 +75,7 @@
     <string name="plan_elevation_profile">Höhenprofil</string>
     <string name="plan_start_navigation_for">Navigation starten · %1$s</string>
     <string name="plan_continue_navigation_for">Navigation fortsetzen · %1$s</string>
+    <string name="plan_start_recording_for">Aufzeichnung starten · %1$s</string>
     <string name="plan_route_options">Routenoptionen</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>

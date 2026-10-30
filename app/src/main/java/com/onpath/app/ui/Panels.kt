@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -148,17 +149,29 @@ fun TrackPanel(
             Spacer(Modifier.height(8.dp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onFollow, enabled = !isFollowed || !recording, modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
-                Text(trackFollowLabel(recording, activity), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // a track without a line (an empty recording, one point) has nothing to follow: Start only records,
+            // during a tour there is nothing to switch to (PlanStart)
+            val line = track.points.size >= 2
+            Button(onClick = onFollow, enabled = (!isFollowed || !recording) && (line || !recording),
+                modifier = Modifier.weight(1f).height(56.dp)) {
+                Icon(if (line || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
+                Spacer(Modifier.width(8.dp))
+                Text(trackFollowLabel(recording, activity, line), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
 
-/** "Start navigation · Hike" / "Navigate this track · MTB": the button names the activity it navigates with. */
-internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity): String =
-    Txt.s(if (recording) Res.string.plan_navigate_track_for else Res.string.plan_start_navigation_for, activity.navName)
+/**
+ * "Start navigation · Hike" / "Navigate this track · MTB": the button names the activity it navigates with; a track
+ * without a line ([line] false) only records: "Start recording · Hike".
+ */
+internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity, line: Boolean = true): String =
+    Txt.s(when {
+        recording -> Res.string.plan_navigate_track_for
+        !line -> Res.string.plan_start_recording_for
+        else -> Res.string.plan_start_navigation_for
+    }, activity.navName)
 
 /** Placeholder for previews/screenshot tests where MapLibre cannot render. */
 @Composable

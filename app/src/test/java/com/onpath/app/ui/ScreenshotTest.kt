@@ -155,9 +155,14 @@ class ScreenshotTest {
         }
     }
 
-    /** App start without a plan: Plan is home; no points, Start navigation = free recording. GPS searching. */
+    /** App start without a plan: Plan is home; no points, no primary button (free recording = ☰ → Start recording). GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
         Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+    }
+
+    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = ☰ → Start recording). */
+    @Test fun planOnePoint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
 
     @Test fun plan() = paparazzi.snapshot {
@@ -766,6 +771,14 @@ class ScreenshotTest {
         Frame {
             TrackPanel(ShownTrack(1, "Waalweg Algund – Meran", listOf(routePts), emptyList(), 12_480.0, 842.0, 310.0, 4.6 * 3600),
                 isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, onPlan = {}, onHighlight = {})
+        }
+    }
+
+    /** A recorded tour ended before its first point (owner 2026-10-30): nothing to follow – "Start recording · Hike". */
+    @Test fun trackWithoutLine() = paparazzi.snapshot {
+        Frame {
+            TrackPanel(ShownTrack(1, "Tour 30 Oct, 09:14", emptyList(), emptyList(), 0.0, 0.0, 0.0, 0.0),
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, onHighlight = {})
         }
     }
 

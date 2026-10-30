@@ -33,6 +33,9 @@ class GermanScreenshotTest {
     private val shots get() = borrow(ScreenshotTest())
 
     @Test fun plan() = shots.plan()
+    @Test fun planEmpty() = shots.planEmpty()
+    @Test fun planOnePoint() = shots.planOnePoint()
+    @Test fun trackWithoutLine() = shots.trackWithoutLine()
     @Test fun planPointsFull() = shots.planPointsFull()
     @Test fun planFerryHint() = shots.planFerryHint()
     @Test fun routeSpotsListHints() = shots.routeSpotsListHints()

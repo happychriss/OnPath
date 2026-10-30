@@ -352,6 +352,14 @@
     "max": 34,
     "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
+  "plan_start_recording_for": {
+    "area": "Plan sheet",
+    "context": "Main button (plan sheet / track panel) when there is nothing to follow: starts a plain recording, no navigation. %1$s = activity name",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 34,
+    "decided": "Owner 2026-10-30: honest wording – no route, no \"Start navigation\""
+  },
   "plan_route_options": {
     "area": "Plan sheet",
     "context": "Accessibility: the ⋯ button of the plan sheet",

@@ -76,6 +76,7 @@
     <string name="plan_elevation_profile">Elevation profile</string>
     <string name="plan_start_navigation_for">Start navigation · %1$s</string>
     <string name="plan_continue_navigation_for">Continue navigation · %1$s</string>
+    <string name="plan_start_recording_for">Start recording · %1$s</string>
     <string name="plan_route_options">Route options</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
