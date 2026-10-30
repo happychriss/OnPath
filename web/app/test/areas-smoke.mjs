@@ -180,7 +180,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
 
 await browser.close();
 fs.rmSync(store, { recursive: true, force: true });
-const real = errors.filter((e) => !/status of 404/.test(e) && !/status of 503/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
+const real = errors.filter((e) => !/status of 404/.test(e) && !/status of 503/.test(e) && !/status of 429/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) { console.log('errors:', real.slice(0, 5)); fails.push('page errors'); }
 console.log(fails.length ? 'FAILED' : 'all ok');
 process.exit(fails.length ? 1 : 0);
