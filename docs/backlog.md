@@ -13,20 +13,12 @@ the git log.
   (`TimeEstimate.clock`, "10:20"), the lock-screen notification shows the exact minute ("10:22",
   `RecordingService.navNotification`) – same rule for both?; (2) End-tour dialog shows a bus icon when only a lift was
   detected; (3) activity chip in Plan: German shows only "T2", English "Hike · T2".
-- **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver); rest view +
-  smarter cues on the bike; lock-screen notification on the Pixel; the older phone checks below.
+- **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
+  the Pixel 2026-10-30, step 1 = fresh install → emulator); rest view + smarter cues on the bike and on foot; pocket after
+  5 s on the bike; lock-screen notification on the Pixel; the older phone checks below.
 - **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
   for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
   doorman adopts them. Production stays cloud-only.
-- **Map server: IP only as a daily hash, check Workers Logs (Drive order A-014, for the privacy page)** – the doorman's
-  per-minute limit keeps `ip:<plain IP>` in D1 `ratelimit` (`tools/cloud/worker/src/api.js` `rateLimited`, deleted after
-  ~2 min) and `[observability]` is on. Use a daily HMAC like the planer host (web-spike, A-011), find out what Workers Logs
-  store, and write the plain list of what the map server sees / keeps / how long into an "A-014 Ergebnis" in Drive.
-- **Phone setup – check on the Pixel (0.13.0)** – the appendix checklist of `docs/design/onboarding-phone-check.md`
-  (first start welcome, deny twice, approximate, notifications off, vibration test with Alarm vibration on / off,
-  battery Restricted, screen-off ride with battery saver); brand steps (Samsung, Xiaomi, Huawei, OnePlus) are not
-  checked on such phones – testers' diagnostics now carry a "Phone check:" line. Small follow-up: a quiet plan-sheet
-  line for recommended items instead of the guide before a tour, if the guide feels like too much.
 - **Flaky under full local load:** `NoStaleDownloadsTest.pointNoLongerWantedIsNotDownloaded` failed once in a full local
   run, green alone and in CI – watch it.
 - **Web planner: mirror the app's automatic sync + pairing indicator (owner 2026-10-30, app 9f25b29)** – drop any
@@ -37,10 +29,6 @@ the git log.
   this browser · 1 min ago"), amber on the same problems as the phone (507 full, refused, local storage failure, last
   online pass > 6 h after the last good one; never for plain offline); "ended from the phone" shown until the sync view
   is opened. Not paired: neutral "Pair phone".
-- **Web planner – owner confirmed the five assumptions (2026-10-30):** dark mode green text #8ED6A8; pace menu shows
-  only the current activity's group; the browser shows only built region packages (Germany is pre-built in TEST
-  overnight, `tools/dev/publish_area.sh`); on the PC a click adds a point, points drag, undo / redo / eye always shown;
-  address plan.onpath.earth.
 - **Web planner (branch web-spike): take over the app's plan-sync format (A-007, main 880850d)** – additive, old web code stays
   safe. New `SyncItem.kind = 3` (TRACK), field tag 4 = raw `TrackCode` bytes (`sync/TrackCode.kt`, frozen in `SyncTrackTest`;
   max 16,000 bytes, thinned by Douglas–Peucker); `PlanCode.activityCode` / `activityOf` now public; merge copies the losing
@@ -75,12 +63,6 @@ the git log.
   When should the way back skip the next route point (much closer to the one after) – or ask? Work from real cases:
   the owner's ride of 2026-10-28 (left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m) and routes the owner uploads.
   Idea: skip when the detour is far longer and the point is not POI-pinned / named; ask only when it might matter.
-- **[desktop] Smarter turn cues on the bike + map wake 20 s (owner decisions 2026-10-30)** – vibration: (1) lead by
-  time ~8 s at current speed (min 30 m, max 100 m) instead of a fixed 80 m; (2) turns within ~12 s of each other → one
-  cue before the first; (3) cue only where you would go wrong without it – no cue when the route follows the street /
-  the clearly straightest branch, cue on clear turns and forks with similar branches (BRouter voice hints carry the
-  other branches). Not chosen: signed cycle routes. Smart screen: full map **20 s** before every turn (at least 100 m)
-  instead of 50 s (the rest view already shows the arrow).
 - **Smart screen while cycling – built (e6ee6ed), measure + ride** – rest view for bike activities (owner decisions
   2026-10-30). Still: Pixel power rails A/B on a 10-min demo ride (Always on vs Smart), the owner rides with it.
   From `docs/design/battery-audit.md` still open: slower GPS with the screen off, frozen track + tail.
