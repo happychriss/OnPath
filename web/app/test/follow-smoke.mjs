@@ -44,5 +44,18 @@ await page.click('#compass').catch(() => {}); await settle();
 await page.evaluate(() => window.__fix(46.6780, 11.1680)); await settle();
 check(near(await centre(), [46.678, 11.168]), 'compass "north up" keeps following');
 
+// the real thing: a search pick (its camera move places point + card beside the sheet) ends following
+await ctx.route('https://photon.komoot.io/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ type: 'FeatureCollection',
+  features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [11.2585, 46.7006] }, properties: { name: 'Ifinger', osm_key: 'natural', osm_value: 'peak' } }] }) }));
+await page.fill('#q', 'Ifinger');
+await page.waitForSelector('#results .hit', { timeout: 30_000 });
+await page.click('#results .hit');
+await page.waitForSelector('#placecard:not([hidden])', { timeout: 20_000 }); await settle();
+const ring = () => page.evaluate(() => { const r = document.querySelector('.searchring').getBoundingClientRect(); return [r.x, r.y]; });
+const before = await ring();
+await page.evaluate(() => window.__fix(46.6790, 11.1690)); await settle();
+const after = await ring();
+check(Math.abs(before[0] - after[0]) < 2 && Math.abs(before[1] - after[1]) < 2 && await page.isVisible('#placecard'), 'after a real search pick, the next fix does not pull the map back');
+
 await browser.close(); server.close();
 process.exit(fails.length ? 1 : 0);

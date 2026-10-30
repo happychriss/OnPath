@@ -17,7 +17,8 @@ import { shareDialog } from './share';
 import { profileSvg } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
-import { setupSearch, type PlaceRole } from './search';
+import { setupSearch, type PlaceCard, type PlaceRole } from './search';
+import { roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
@@ -139,7 +140,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
-      <button id="share" class="iconbtn" aria-label="${escapeHtml(t('web_share'))}" title="${escapeHtml(t('web_share'))}" disabled>${icon('share')}</button>
+      <button id="share" class="iconbtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share')}</button>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
@@ -441,6 +442,7 @@ sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
+let placeCard: PlaceCard = { close: () => {}, isOpen: () => false }; // the search's place card (set up below)
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   closeMenu();
@@ -456,6 +458,7 @@ map.on('contextmenu', (e) => { e.preventDefault(); press(e.lngLat, -1, e.point);
 async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Point) {
   const results = document.getElementById('results');
   if (results && !results.hidden) { results.hidden = true; return; } // a click beside the search results only closes them
+  if (placeCard.isOpen()) { placeCard.close(); return; } // … and one beside the place card closes it (nothing added)
   if (marker < 0 && pt) marker = markerNear(pt);
   const poi = pt && marker < 0 ? poiAt(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
@@ -656,7 +659,9 @@ async function changed() {
   await drawPoints();
   const h = JSON.parse(await engine.call('historyState'));
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
-  $<HTMLButtonElement>('share').disabled = state.points.length < 2; // Share (icon next to ⋯): a plan needs two points
+  // Share (icon next to ⋯): always there (owner 2026-10-30), greyed until a start and a destination are set
+  const sh = $<HTMLButtonElement>('share'), two = state.points.length >= 2, shw = two ? t('web_share') : t('web_share_needs_two');
+  sh.disabled = !two; sh.title = shw; sh.setAttribute('aria-label', shw);
   rememberInAddress();
   state.notRouted = false;
   if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
@@ -858,7 +863,7 @@ eye.addEventListener('keyup', () => peek(false));
 eye.addEventListener('contextmenu', (e) => e.preventDefault()); // a long press must not open the browser's menu
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   const typing = (e.target as HTMLElement).closest('input, textarea');
-  if (e.key === 'Escape') { closeMenu(); closeMenus(); picker.close(); }
+  if (e.key === 'Escape') { closeMenu(); closeMenus(); picker.close(); placeCard.close(); }
   if (typing || !(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); step('undo'); }
@@ -866,8 +871,8 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
 });
 
 // ---- search (the app's search code in the engine, search.ts) ----
-setupSearch({
-  map, engine,
+placeCard = setupSearch({
+  map, engine, fitPadding,
   areas: async () => (useCells ? cells.searchAreas(map) : [{ key: 'map', dir: mapFolder }]),
   points: () => state.points,
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
@@ -1014,7 +1019,7 @@ $('spots').addEventListener('click', (e) => {
   const i = (e.target as HTMLElement).closest<HTMLElement>('[data-spot]')?.dataset.spot;
   const s = i != null ? state.plan?.spots[Number(i)] : null;
   if (!s || !s.line.length) return;
-  if (s.zoom != null) { const [la, lo] = s.line[Math.floor(s.line.length / 2)]; map.easeTo({ center: [lo, la], zoom: s.zoom, padding: fitPadding() }); return; }
+  if (s.zoom != null) { const [la, lo] = s.line[Math.floor(s.line.length / 2)]; map.easeTo({ center: [lo, la], zoom: s.zoom, ...roomFor(map, fitPadding()) }); return; }
   const b = new maplibregl.LngLatBounds();
   s.line.forEach(([la, lo]) => b.extend([lo, la]));
   map.fitBounds(b, { padding: fitPadding(), maxZoom: 17 });

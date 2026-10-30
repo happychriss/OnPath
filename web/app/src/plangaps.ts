@@ -6,6 +6,7 @@ import type * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource } from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import type { Activity } from './engine/types';
+import { roomFor } from './cardanchor';
 
 type LatLon = [number, number];
 interface Gap { index: number; point: LatLon; end: LatLon; show: [number, number, number] }
@@ -43,7 +44,7 @@ export class PlanGapsLayer {
   /** "Show": the middle of the missing piece, close enough to see both ends (PlanGaps.showTarget). */
   show(padding: maplibregl.PaddingOptions) {
     const g = this.last.gaps[0];
-    if (g) this.map.easeTo({ center: [g.show[1], g.show[0]], zoom: g.show[2], padding });
+    if (g) this.map.easeTo({ center: [g.show[1], g.show[0]], zoom: g.show[2], ...roomFor(this.map, padding) });
   }
 
   private draw() {

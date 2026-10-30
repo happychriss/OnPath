@@ -7,6 +7,7 @@ import type { EngineClient } from './engine/client';
 import type { Hit } from './engine/types';
 import { icon } from './icons';
 import { t } from './i18n';
+import { boxesOf, NO_PADDING, offsetTo, placeCard, pointTarget } from './cardanchor';
 
 export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
 
@@ -24,7 +25,16 @@ export interface SearchHost {
   cardShown?(open: boolean): void;
   /** A result is shown on the map (the app's trigger T2: its map area is asked for – areas.ts). */
   placeShown?(lat: number, lon: number): void;
+  /** The free room of the map (top bar, plan sheet or bottom card, controls) – main.ts fitPadding. */
+  fitPadding(): maplibregl.PaddingOptions;
 }
+
+/** What the page can do with the place card: close it (a map click elsewhere, Escape) and ask whether it is open. */
+export interface PlaceCard { close(): void; isOpen(): boolean }
+
+/** The elements the anchored card must not cover (wide screen). */
+const BLOCKERS = ['#topbar', '#sheet', '#trackPanel', '#mapnotes', '#footer', '.maplibregl-ctrl-bottom-right'];
+const phone = () => matchMedia('(max-width: 700px)').matches;
 
 const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
 
@@ -36,11 +46,12 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
 }
 
 /**
- * [box] holds the search pill and its results; [card] is the place card's own spot – a floating card beside the plan
- * sheet on a wide screen, a bottom card in place of the sheet on a phone (owner 2026-10-28: it must not cover the
- * sheet, and it closes after any action).
+ * [box] holds the search pill and its results; [card] is the place card – on a wide screen a callout at the picked
+ * point with a tail to it, moving with the map (owner 2026-10-30, like the app: the card belongs to the point); on a
+ * phone a bottom card in place of the sheet with the point visible above it. It never covers the sheet (owner
+ * 2026-10-28) and closes after any action, on ✕, Escape and a map click elsewhere.
  */
-export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElement) {
+export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElement): PlaceCard {
   box.innerHTML = `
     <div class="searchrow">${icon('search')}<input id="q" type="search" placeholder="${esc(t('search_placeholder'))}" autocomplete="off" aria-label="${esc(t('search_placeholder'))}">
       <button id="qclear" class="iconbtn" aria-label="${esc(t('search_clear_query'))}" hidden>${icon('close', 20)}</button></div>
@@ -101,7 +112,6 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     const ring = document.createElement('div');
     ring.className = 'searchring';
     marker = new maplibregl.Marker({ element: ring }).setLngLat([h.lon, h.lat]).addTo(host.map);
-    host.map.flyTo({ center: [h.lon, h.lat], zoom: Math.max(host.map.getZoom(), 14) });
     host.placeShown?.(h.lat, h.lon);
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     const n = host.points().length;
@@ -127,12 +137,41 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     card.querySelector<HTMLButtonElement>('#cdest')!.onclick = () => done('DESTINATION');
     card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => { close(); host.google(h); };
     card.querySelector<HTMLButtonElement>('#cclose')!.onclick = close;
+    at = [h.lon, h.lat];
+    layout();
+    // the camera: point and card in the free room (beside the sheet / above the bottom card). Not keepFollow – this
+    // ends following my position (CLAUDE.md map camera). padding 0 resets one an earlier move may have left behind.
+    const c = host.map.getContainer(), w = c.clientWidth, hh = c.clientHeight;
+    const [tx, ty] = pointTarget(host.fitPadding(), w, hh, card.offsetHeight, !phone());
+    host.map.flyTo({ center: at, zoom: Math.max(host.map.getZoom(), 14), offset: offsetTo(tx, ty, w, hh),
+      padding: NO_PADDING });
   };
+
+  /** The card at its point (wide screen): the side with room, the tail pointing at the point; off the map → hidden. */
+  let at: [number, number] | null = null;
+  const layout = () => {
+    if (card.hidden || !at) return;
+    if (phone()) { card.classList.remove('anchored'); card.style.cssText = ''; return; }
+    const stage = host.map.getContainer().parentElement!, c = host.map.getContainer();
+    const w = c.clientWidth, h = c.clientHeight;
+    const p = host.map.project(at);
+    card.classList.add('anchored');
+    const off = p.x < 0 || p.y < 0 || p.x > w || p.y > h;
+    const pl = placeCard(p.x, p.y, card.offsetWidth, card.offsetHeight, w, h, boxesOf(stage, BLOCKERS));
+    card.style.left = pl.x + 'px'; card.style.top = pl.y + 'px';
+    card.style.setProperty('--tail', pl.tail + 'px');
+    card.style.visibility = off ? 'hidden' : '';
+    card.dataset.side = pl.side;
+  };
+  host.map.on('move', layout);
+  host.map.on('resize', layout);
+  new ResizeObserver(layout).observe(card);
 
   const close = () => {
     picked++; // a pick still waiting for its preview must not open the card afterwards
     const was = !card.hidden;
-    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null;
+    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null; at = null;
+    card.classList.remove('anchored'); card.style.cssText = '';
     if (was) host.cardShown?.(false);
   };
   card.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
@@ -140,6 +179,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('input', () => { run(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
+  return { close, isOpen: () => !card.hidden };
 }
 
 function esc(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }

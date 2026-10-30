@@ -37,6 +37,7 @@
     <string name="web_sheet_more">Show more</string>
     <string name="web_sheet_less">Show less</string>
     <string name="web_share">Share</string>
+    <string name="web_share_needs_two">Set a start and destination first</string>
     <string name="web_hint_first_point">Click the map where you want to start or go.</string>
     <string name="web_hint_destination">Click the map to set the destination.</string>
     <string name="web_marker_title">%1$s – click for options, drag to move</string>

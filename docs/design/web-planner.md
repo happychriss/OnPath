@@ -394,7 +394,7 @@ browser's cache storage (IndexedDB) across visits.
   beside the files, named in Help & credits) – no font-service requests.
 - **Wide screen (> 700 px)**: the top bar top left (up to 860 px), the plan sheet below it as a side
   panel (384 px; three steps, see below; a long Points list scrolls inside), zoom ±
-  bottom right, scale + "© OpenStreetMap" bottom left beside the panel. The place card floats beside the sheet.
+  bottom right, scale + "© OpenStreetMap" bottom left beside the panel. The place card is a callout at the picked point (row 19 in §13).
 - **Phone width**: the top bar across the top (search, tools below), the plan sheet as a bottom sheet (the same three steps); the place card is a bottom card that stands in for the
   sheet while it is open.
 - **Plan sheet steps** (owner 2026-10-30, option A – the app's `PlanSize` MINI / COMPACT / FULL, one step model for
@@ -410,12 +410,12 @@ browser's cache storage (IndexedDB) across visits.
     chevron. Remembered in `localStorage` `onpath.sheetStep` (try / catch); nothing remembered → side panel *points*
     (as before), bottom sheet *profile* (the app's default), following the width until a step is chosen. A Points row
     tapped on a phone → *profile* (the app's `showPointFromList`).
-  - Unchanged in every step: the place card (beside the panel / instead of the bottom sheet), the GPX track panel (takes
+  - Unchanged in every step: the place card (at its point / instead of the bottom sheet), the GPX track panel (takes
     the sheet's place completely; Close track brings the step back), the long-route question (a dialog), the status
     line's waits and errors (plain info only from *profile*; the developer timing "Planned in … ms" only with `?debug`).
   - Map fit (`fitPadding`): phone → bottom = sheet (or place card) height; wide → the room beside the panel, or below
     it when that is larger (a short *small* panel).
-- **No big main button** (owner 2026-10-30): Share is an icon next to ⋯ (hidden until two points); it opens the
+- **No big main button** (owner 2026-10-30): Share is an icon next to ⋯ (always there, greyed until two points – row 20 in §13); it opens the
   dialog (QR code with "Scan with the OnPath app" above it, Copy link, system share, the one app line below).
 - **Pairing lives in My routes** – section "Pair with phone / Mit dem Handy verbinden" at the bottom: not paired → Pair
   phone (the QR code + check digits dialog); paired → "Paired with …", Sync now, Unpair. While paired a small phone
@@ -493,8 +493,10 @@ Owner decisions 2026-10-30 (cloud, same day):
 | # | Owner | Now |
 | --- | --- | --- |
 | 16 | Plan sheet collapsible on wide screens too, three steps like the app (option A) | §11.3 "Plan sheet steps": small / profile / points on both widths, grab handle + chevron + summary click + arrow keys, remembered (`onpath.sheetStep`), map fit follows the panel. Test: `test/sheet-smoke.mjs` (CI) – three steps on desktop (1440×900) and phone (390×844), every control, reload, fit, place card, GPX track panel. |
-| 17 | "Send to phone" and "Pair phone" side by side confuse | Header: My routes · Import GPX · Help & credits · The app. Share = icon next to ⋯ (no big green button; hidden on an empty plan), dialog "Scan with the OnPath app" above the QR code. Pairing = section "Pair with phone" in My routes; a phone with a green dot beside My routes while paired. Tests: sheet-smoke, sync-smoke (pair / unpair through My routes, header status), share-smoke, lang-smoke. |
+| 17 | "Send to phone" and "Pair phone" side by side confuse | Header: My routes · Import GPX · Help & credits · The app. Share = icon next to ⋯ (no big green button; greyed on an empty plan since row 20), dialog "Scan with the OnPath app" above the QR code. Pairing = section "Pair with phone" in My routes; a phone with a green dot beside My routes while paired. Tests: sheet-smoke, sync-smoke (pair / unpair through My routes, header status), share-smoke, lang-smoke. |
 | 18 | "Route planen" wrapped beside the chip; "Planned in … ms · routing data …" is a developer line | The head puts chip and icons on one line and time / title on its own line (never wrapped); the timing shows only with `?debug`. Test: sheet-smoke. |
+| 19 | Place card "at the point where I add it, like the app" (after an online pick it floated beside the sheet, the ring far away, the result not centred) | Wide: the card is a callout at the picked point with a small tail (above; below / right / left when there is no room – never over the sheet, top bar, area strip, credits or zoom ±), moving with the map (`cardanchor.ts`, laid out on every `move`). Opening flies so point + card sit in the middle of the free room (`fitPadding`), not keepFollow (ends position following). Phone: the bottom card as before, the point centred in the map above it. ✕, Escape and a map click beside it close it (the click adds nothing). **Why it was not centred (reproduced, the likely cause of the screenshot):** maplibre keeps the `padding` of an `easeTo` for every later move – after a route-warning spot or a plan-gap "Show" (both `easeTo({ padding })`) the next search `flyTo({ center })` put the result in the middle of that old padding (right of / below the middle, ~1100 px across on a 1866 px window). Those moves now pass an `offset` with padding 0 (`roomFor`), the pick resets it too. The map menus (first point, point, POI) were already popups at their point; they now show their tail too. Tests: sheet-smoke (tail ≤ 3 px across and ≤ 16 px from the point, inside the window, clear of sheet and top bar, follows a pan, flips under the top bar, map click / Escape close, a far result after a left-over padding lands in the free room; phone: point above the card), follow-smoke (a real pick ends following). |
+| 20 | Share icon missing on an empty route | Always shown; greyed with "Set a start and destination first" / "Erst Start und Ziel setzen" (tooltip + label) until two points. Test: sheet-smoke. |
 
  Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help).

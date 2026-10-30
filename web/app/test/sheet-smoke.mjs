@@ -22,10 +22,34 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
 const errors = [];
 const photon = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [11.2585, 46.7006] },
   properties: { name: 'Ifinger', osm_key: 'natural', osm_value: 'peak', state: 'Trentino-Südtirol', country: 'Italien' } }] };
+// a far result (owner 2026-10-30: "hilden, fabriciusstr. 11" picked online was not centred, its card far from it)
+const far = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [6.9339, 51.1683] },
+  properties: { name: 'Fabriciusstraße', housenumber: '11', osm_key: 'place', osm_value: 'house', city: 'Hilden', country: 'Deutschland' } }] };
+
+const settle = (page) => page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 }).then(() => page.waitForTimeout(300));
+/** The search ring (the picked point), the card, its side and tail tip, sheet and top bar – page pixels. */
+const cardGeom = (page) => page.evaluate(() => {
+  const box = (e) => { if (!e || e.hidden || !e.offsetParent) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+  const ring = box(document.querySelector('.searchring')), pc = document.getElementById('placecard'), card = box(pc);
+  const side = pc.dataset.side, t = parseFloat(pc.style.getPropertyValue('--tail'));
+  const tip = !card || !side ? null : side === 'above' ? { x: card.x + t, y: card.y + card.h + 10 } : side === 'below' ? { x: card.x + t, y: card.y - 10 }
+    : side === 'right' ? { x: card.x - 10, y: card.y + t } : { x: card.x + card.w + 10, y: card.y + t };
+  return { ring: ring && { x: ring.x + ring.w / 2, y: ring.y + ring.h / 2 }, card, side, tip, anchored: pc.classList.contains('anchored'),
+    visible: getComputedStyle(pc).visibility !== 'hidden', sheet: box(document.getElementById('sheet')), bar: box(document.getElementById('topbar')) };
+});
+const overlaps = (a, b) => !!a && !!b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function checkAnchored(g, vp, P) {
+  const across = g.tip && g.ring ? (g.side === 'above' || g.side === 'below' ? Math.abs(g.tip.x - g.ring.x) : Math.abs(g.tip.y - g.ring.y)) : 99;
+  const along = g.tip && g.ring ? Math.hypot(g.tip.x - g.ring.x, g.tip.y - g.ring.y) : 99;
+  check(g.anchored && g.visible && across <= 3 && along <= 16, `${P} the card's tail points at the point (${g.side}, tip ${across.toFixed(1)} px across, ${along.toFixed(1)} px from it)`);
+  check(g.card.x >= 0 && g.card.y >= 0 && g.card.x + g.card.w <= vp.width && g.card.y + g.card.h <= vp.height && g.ring.x > 0 && g.ring.x < vp.width && g.ring.y > 0 && g.ring.y < vp.height,
+    `${P} card and point inside the window`);
+  check(!overlaps(g.card, g.sheet) && !overlaps(g.card, g.bar), `${P} the card covers neither the plan sheet nor the top bar`);
+}
 
 async function open(vp, phone) {
   const ctx = await browser.newContext({ viewport: vp, isMobile: phone, hasTouch: phone });
-  await ctx.route('https://photon.komoot.io/**', (r) => r.fulfill({ body: JSON.stringify(photon), contentType: 'application/json' }));
+  await ctx.route('https://photon.komoot.io/**', (r) => r.fulfill({ body: JSON.stringify(/hilden/i.test(r.request().url()) ? far : photon), contentType: 'application/json' }));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -55,8 +79,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   let s = await shown(page);
   check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
     `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
-  check(s['#share'] && await page.getAttribute('#share', 'aria-label') === 'Share' && await page.getAttribute('#share', 'title') === 'Share' && !(await page.$('#sheet button.primary')),
-    `${P} small: Share is the icon next to ⋯ (label + tooltip), no big green button`);
+  check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' &&await page.getAttribute('#share', 'title') === 'Share' && !(await page.$('#sheet button.primary')),
+    `${P} small: Share is the icon next to ⋯, active with two points (label + tooltip), no big green button`);
   const sh = await page.locator('#sheet').boundingBox();
   check(sh.height < 180, `${P} small step is compact (${Math.round(sh.height)} px)`);
   check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show more' && await page.getAttribute('#sheetStep', 'title') === 'Show more', `${P} chevron says "Show more" (label + tooltip)`);
@@ -105,14 +129,52 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await page.isVisible('#notice'), `${P} the red route line is visible in the small step`);
   await page.evaluate(() => { document.getElementById('notice').hidden = true; });
 
-  // the place card still works in the small step
-  await page.fill('#q', 'Ifinger');
-  await page.waitForSelector('#results .hit', { timeout: 30_000 });
-  await page.click('#results .hit');
-  await page.waitForSelector('#placecard:not([hidden]) #cdest', { timeout: 20_000 });
-  const card = await page.locator('#placecard').boundingBox(), sheet = await page.locator('#sheet').boundingBox().catch(() => null);
-  check(phone ? await page.isHidden('#sheet') && card.y + card.height >= vp.height - 2 : card.x >= sheet.x + sheet.width,
-    `${P} place card ${phone ? 'stands in for the sheet at the bottom' : 'beside the small sheet'}`);
+  // the place card still works in the small step – and belongs to its point (owner 2026-10-30, like the app): wide →
+  // a callout whose tail points at the search ring, clear of sheet and top bar, following a pan; phone → the bottom
+  // card with the point visible above it
+  const pick = async (q) => {
+    await page.fill('#q', q);
+    await page.waitForSelector('#results .hit', { timeout: 30_000 });
+    await page.click('#results .hit');
+    await page.waitForSelector('#placecard:not([hidden]) #cdest', { timeout: 20_000 });
+    await settle(page);
+  };
+  await pick('Ifinger');
+  const card = await page.locator('#placecard').boundingBox();
+  let g = await cardGeom(page);
+  if (phone) {
+    check(await page.isHidden('#sheet') && card.y + card.height >= vp.height - 2, `${P} place card stands in for the sheet at the bottom`);
+    check(g.ring && g.ring.y + 13 < g.card.y && g.ring.y - 13 > g.bar.y + g.bar.h && g.ring.x > 0 && g.ring.x < vp.width,
+      `${P} the picked point is visible above the bottom card (ring ${JSON.stringify(g.ring)}, card top ${Math.round(g.card.y)})`);
+  } else {
+    checkAnchored(g, vp, `${P} small step:`);
+    await page.evaluate(() => window.__map.panBy([-140, 70], { duration: 0 })); await settle(page);
+    const g2 = await cardGeom(page);
+    checkAnchored(g2, vp, `${P} after a pan:`);
+    check(Math.abs(g2.ring.x - g.ring.x - 140) < 3 && Math.abs(g2.ring.y - g.ring.y + 70) < 3, `${P} the card followed the point during the pan`);
+    // no room above (the point just under the top bar): the card flips to another side
+    await page.evaluate((dy) => window.__map.panBy([0, dy], { duration: 0 }), Math.round(g2.ring.y - (g2.bar.y + g2.bar.h + 90))); await settle(page);
+    const g3 = await cardGeom(page);
+    check(g3.side !== 'above', `${P} point under the top bar: the card flips (${g3.side})`);
+    checkAnchored(g3, vp, `${P} flipped:`);
+    // a map click beside the card closes it and adds nothing; Escape closes it too
+    const pins = await page.locator('.pin').count();
+    await page.mouse.click(vp.width - 120, vp.height - 200);
+    await page.waitForTimeout(400);
+    check(await page.isHidden('#placecard') && await page.locator('.pin').count() === pins, `${P} a map click beside the card closes it (nothing added)`);
+    await pick('Ifinger');
+    await page.keyboard.press('Escape');
+    check(await page.isHidden('#placecard'), `${P} Escape closes the card`);
+    // a far result after a move that left a padding behind (spot / gap "show"): centred in the free room, card at it
+    await page.evaluate(() => window.__map.easeTo({ padding: { top: 90, bottom: 50, left: 446, right: 90 }, duration: 0 }));
+    await pick('hilden fabriciusstr 11');
+    g = await cardGeom(page);
+    checkAnchored(g, vp, `${P} far result (Hilden):`);
+    check(g.ring.x > g.sheet.x + g.sheet.w && g.ring.y > g.bar.y + g.bar.h && g.ring.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.ring)})`);
+    await page.screenshot({ path: path.join(shots, `${name}-card-far.png`) });
+    await page.keyboard.press('Escape');
+    await pick('Ifinger');
+  }
   await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
   await page.click('#cdest');
   check(await page.isHidden('#placecard') && await page.isVisible('#sheet'), `${P} the card closes after its action, the sheet is back`);
@@ -146,7 +208,10 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(url + 'index.html');
   await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 120_000 });
-  check(await page.isHidden('#share') && !(await page.$('#sheet button.primary')), 'empty plan: no Share, no big button');
+  check(await page.isVisible('#share') && await page.isDisabled('#share') && !(await page.$('#sheet button.primary')),
+    'empty plan: Share icon shown but greyed (owner 2026-10-30), no big button');
+  check(await page.getAttribute('#share', 'title') === 'Set a start and destination first' && await page.getAttribute('#share', 'aria-label') === 'Set a start and destination first',
+    'empty plan: Share says "Set a start and destination first"');
   await page.waitForFunction(() => document.querySelector('#summary .title')?.getBoundingClientRect().height > 0, null, { timeout: 30_000 }).catch(() => {});
   const title = await page.evaluate(() => { const e = document.querySelector('#summary .title');
     return e ? { h: e.getBoundingClientRect().height, text: e.textContent } : { h: 0, text: document.querySelector('.sheethead').outerHTML.slice(0, 300) }; });
