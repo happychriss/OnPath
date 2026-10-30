@@ -9,6 +9,9 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
+  for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
+  doorman adopts them. Production stays cloud-only.
 - **Map server: IP only as a daily hash, check Workers Logs (Drive order A-014, for the privacy page)** – the doorman's
   per-minute limit keeps `ip:<plain IP>` in D1 `ratelimit` (`tools/cloud/worker/src/api.js` `rateLimited`, deleted after
   ~2 min) and `[observability]` is on. Use a daily HMAC like the planer host (web-spike, A-011), find out what Workers Logs
