@@ -12,8 +12,8 @@
     <string name="sync_paired_browser">Mit einem Browser verbunden</string>
     <string name="sync_last">Zuletzt abgeglichen: %1$s</string>
     <string name="sync_never">Noch nicht abgeglichen</string>
-    <string name="sync_now">Jetzt abgleichen</string>
-    <string name="sync_running">Wird abgeglichen…</string>
+    <string name="sync_ago_now">gerade eben</string>
+    <string name="sync_ago_min">vor %1$d min</string>
     <string name="sync_unpair">Trennen</string>
     <string name="sync_unpair_title">Browser trennen?</string>
     <string name="sync_unpair_text">Die Routen werden nicht mehr abgeglichen. Sie bleiben auf diesem Handy und im Browser.</string>

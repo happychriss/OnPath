@@ -50,6 +50,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -3445,7 +3447,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
-     * back in the app, after a change here, when the network is back – never during a recording (after the tour).
+     * back in the app, after a change here, when the network is back, about every minute while the app stays open on
+     * Plan / My routes / Browser sync ([syncPoll]) – never during a recording (after the tour).
      */
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
@@ -3454,12 +3457,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var pairAsk by mutableStateOf<ByteArray?>(null)
         private set
 
+    /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
+    private val syncPoll = com.onpath.app.plansync.SyncPoll()
+
     init {
         sync.start()
         // a tour ended: what waited for it comes now
         viewModelScope.launch {
             var was = recState.value != null
             recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
+        }
+        // on screen, paired, no tour, Plan / My routes / Browser sync shown: a pass about every minute (SyncPoll)
+        viewModelScope.launch {
+            val screen = androidx.compose.runtime.snapshotFlow {
+                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(mode == AppMode.PLAN, routesOpen, showSettings,
+                    settingsPage == SettingsPage.SYNC)
+            }
+            combine(screen, recState, sync.state) { (visible, routesScreen), rec, st ->
+                com.onpath.app.plansync.SyncPoll.wanted(visible, st.paired, recording = rec != null, routesScreen)
+            }.distinctUntilChanged().collectLatest { on ->
+                if (!on) return@collectLatest
+                while (isActive) {
+                    val wait = syncPoll.waitMs(android.os.SystemClock.elapsedRealtime())
+                    when {
+                        wait > 0 -> delay(wait)
+                        sync.poll("every minute") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
+                        else -> delay(com.onpath.app.plansync.SyncPoll.BUSY_RECHECK_MS) // a pass runs or waits
+                    }
+                }
+            }
         }
     }
 
@@ -3485,12 +3511,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelPair() { pairAsk = null; Problems.info("sync", "Pairing cancelled") }
 
-    /** Settings → Sync now. */
-    fun syncNow() {
-        if (recState.value != null) { sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS); return }
-        sync.request("Sync now", manual = true)
-    }
-
     /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
     fun unpair() {
         sync.unpair { status ->
@@ -3505,8 +3525,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A sync pass ended (main thread): new / changed routes into My routes, plans from the browser routed. */
     private fun syncReport(r: com.onpath.app.plansync.PlanSync.Report) {
         val res = r.result
+        syncPoll.passEnded(android.os.SystemClock.elapsedRealtime(), com.onpath.app.plansync.SyncPoll.ok(r))
         if (r.ended) sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS)
-        // Pair / Sync now during a tour: nothing ran – it comes after the tour
+        // Pair during a tour: nothing ran – it comes after the tour
         if (r.manual && res == null && !r.error && recState.value != null) sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS)
         if (res?.toursChanged == true) {
             refreshTours()

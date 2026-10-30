@@ -22,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.plansync.PlanSync
 import com.onpath.strings.*
+import kotlinx.coroutines.delay
 
 /** Settings → Browser sync (plan sync with the web planner, A-007): what the page shows. */
 data class SyncUi(
@@ -37,13 +39,12 @@ data class SyncUi(
     /** The browser's name ("Chrome on Linux"); null = it has not said it yet. */
     val peer: String? = null,
     val lastOkMs: Long = 0,
-    val running: Boolean = false,
     val problem: PlanSync.Problem? = null,
     /** A scanned pairing code waits for Pair / Cancel: its six check digits ("395 514"). */
     val askCheck: String? = null,
 ) {
     companion object {
-        fun of(s: PlanSync.State, askCheck: String?) = SyncUi(s.paired, s.peer, s.lastOkMs, s.running, s.problem, askCheck)
+        fun of(s: PlanSync.State, askCheck: String?) = SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck)
     }
 }
 
@@ -51,7 +52,6 @@ class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},
     val onPair: () -> Unit = {},
     val onCancelPair: () -> Unit = {},
-    val onSyncNow: () -> Unit = {},
     /** After the question (it can lose something: the browser stops getting the routes). */
     val onUnpair: () -> Unit = {},
 )
@@ -77,9 +77,28 @@ fun syncProblemText(p: PlanSync.Problem): Pair<String, NoticeKind?> = when (p) {
     PlanSync.Problem.Storage -> Txt.s(Res.string.sync_storage) to NoticeKind.ERROR
 }
 
+/** When the last good pass was: "just now", "5 min ago", then "today 18:40" / "yesterday 09:12" / "21 Oct 18:40". */
+fun syncAgo(lastMs: Long, now: Long): String {
+    val min = (now - lastMs).coerceAtLeast(0) / 60_000
+    return when {
+        min < 1 -> Txt.s(Res.string.sync_ago_now)
+        min < 60 -> Txt.s(Res.string.sync_ago_min, min.toInt())
+        else -> SettingsSummary.whenText(lastMs, now)
+    }
+}
+
+/**
+ * Settings → Browser sync. No "Sync now" (owner 2026-10-30: automatic like WhatsApp Web – the app syncs about every
+ * minute while it is open, plansync/SyncPoll); the status line "Last synced: 1 min ago" moves on by itself.
+ */
 @Composable
 fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMillis()) {
     var askUnpair by remember { mutableStateOf(false) }
+    // the relative time moves on while the page is open ([now] + the time since; screenshots keep [now])
+    val shownNow by produceState(now, now) {
+        val start = System.currentTimeMillis()
+        while (true) { delay(AGO_TICK_MS); value = now + (System.currentTimeMillis() - start) }
+    }
     Section(SettingsPage.SYNC.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
@@ -99,12 +118,9 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                 }
                 else -> {
                     Text(peerLine(ui), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Text(if (ui.lastOkMs > 0) str(Res.string.sync_last, SettingsSummary.whenText(ui.lastOkMs, now)) else str(Res.string.sync_never),
+                    Text(if (ui.lastOkMs > 0) str(Res.string.sync_last, syncAgo(ui.lastOkMs, shownNow)) else str(Res.string.sync_never),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     ui.problem?.let { p -> SyncStatusLine(syncProblemText(p)) }
-                    OutlinedButton(onClick = { if (!ui.running) cb.onSyncNow() }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        if (ui.running) BusyContent(str(Res.string.sync_running)) else Text(str(Res.string.sync_now))
-                    }
                     TextButton(onClick = { askUnpair = true }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_unpair)) }
                 }
             }
@@ -118,6 +134,8 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
         dismissButton = { TextButton(onClick = { askUnpair = false }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
+
+private const val AGO_TICK_MS = 20_000L
 
 /** Grey ⓘ (INFO), amber ⚠ (null = WARNING) or red ⚠ (ERROR) – the Messages rules (CLAUDE.md). */
 @Composable

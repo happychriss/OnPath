@@ -47,14 +47,16 @@ object JcaAead : Aead {
  * [PlanSyncPass] – one background thread, the triggers and the state Settings shows.
  *
  * Triggers: after a change of a saved route / imported track ([changed], a short delay gathers several), at start
- * and when the app comes back ([request]), when the network comes back. **Never during a recording** – the pass is
- * skipped and runs when the tour has ended ([request] from the view model). No sync while the app is closed.
+ * and when the app comes back ([request]), when the network comes back, and about every minute while the app stays
+ * open on Plan / My routes / Browser sync ([poll], rule in [SyncPoll]). **Never during a recording** – the pass is
+ * skipped and runs when the tour has ended ([request] from the view model). No sync while the app is closed or in the
+ * background.
  */
 class PlanSync(
     context: Context,
     private val store: TourStore,
     private val recording: () -> Boolean,
-    /** Main thread: a pass ended ([Report.manual] = Settings → Sync now / pairing). */
+    /** Main thread: a pass ended ([Report.manual] = the pass right after pairing). */
     private val onReport: (Report) -> Unit,
     private val server: String = SERVER,
     dir: File = File(context.filesDir, SyncFiles.DIR),
@@ -113,21 +115,32 @@ class PlanSync(
     /** A saved route / imported track was saved, renamed, deleted or restored: sync soon. */
     fun changed(why: String) = request(why, delayMs = CHANGE_DELAY_MS)
 
-    /** Sync now ([manual]: Settings → Sync now – its result is said there). */
-    fun request(why: String, manual: Boolean = false, delayMs: Long = 0) {
+    /** A pass runs or waits to run. */
+    fun busy(): Boolean = pendingRun?.isDone == false
+
+    /** The regular pass while the app stays open ([SyncPoll]): only when no pass runs or waits. True = asked for. */
+    fun poll(why: String): Boolean {
+        if (busy()) return false
+        request(why, quiet = true)
+        return true
+    }
+
+    /** Sync now ([manual]: right after pairing – its result is said in Settings → Browser sync). */
+    /** [quiet]: a regular poll – it goes into the event log only when it moved something or failed (one a minute). */
+    fun request(why: String, manual: Boolean = false, delayMs: Long = 0, quiet: Boolean = false) {
         if (manual) manualWaiting = true
         pendingRun?.cancel(false)
-        pendingRun = try { worker.schedule({ run(why) }, delayMs, TimeUnit.MILLISECONDS) } catch (e: Exception) {
+        pendingRun = try { worker.schedule({ run(why, quiet) }, delayMs, TimeUnit.MILLISECONDS) } catch (e: Exception) {
             Problems.warn("sync", "Sync not scheduled ($why)", e); null
         }
     }
 
-    private fun run(why: String) {
+    private fun run(why: String, quiet: Boolean = false) {
         val manual = manualWaiting
         manualWaiting = false
         if (files.pairing() == null) { if (manual) report(Report(true, null)); return }
         if (recording()) {
-            Problems.trace("sync", "Sync ($why) skipped: a tour is recording – after the tour")
+            if (!quiet) Problems.trace("sync", "Sync ($why) skipped: a tour is recording – after the tour")
             if (manual) report(Report(true, null))
             return
         }
@@ -142,7 +155,7 @@ class PlanSync(
         if (ended) {
             Problems.info("sync", "Sync: the pairing was ended in the browser – plans stay on the phone")
             safely("forget") { pass().forgetHere() }
-        } else Problems.trace("sync", "Sync ($why): ${describe(r)}")
+        } else if (!(quiet && idle(r))) Problems.trace("sync", "Sync ($why): ${describe(r)}")
         refreshState(r)
         report(Report(manual, r, ended = ended))
     }
@@ -241,6 +254,13 @@ class PlanSync(
         const val CHANGE_DELAY_MS = 1_500L
 
         fun deviceName(): String = android.os.Build.MODEL?.trim()?.takeIf { it.isNotEmpty() } ?: "Android"
+
+        /** A pass that reached the server and moved nothing. */
+        fun idle(r: PlanSyncPass.Result?): Boolean {
+            val o = r?.outcome as? SyncRound.Outcome.Done ?: return false
+            return o.pulled == 0 && o.pushed == 0 && o.unreadable == 0 && r.added == 0 && r.updated == 0 && r.binned == 0 &&
+                r.failed == 0 && !r.toursChanged && !r.skippedForRecording
+        }
 
         fun describe(r: PlanSyncPass.Result?): String = when (val o = r?.outcome) {
             null -> "not paired"

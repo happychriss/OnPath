@@ -296,7 +296,6 @@ class MainActivity : ComponentActivity() {
                                 onOpenCamera = ::openCameraForPairing,
                                 onPair = vm::confirmPair,
                                 onCancelPair = vm::cancelPair,
-                                onSyncNow = vm::syncNow,
                                 onUnpair = vm::unpair,
                             ),
                             backupCb = com.onpath.app.ui.BackupCallbacks(

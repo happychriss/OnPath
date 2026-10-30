@@ -11,10 +11,10 @@
     <string name="sync_pair">Pair</string>
     <string name="sync_paired_with">Paired with %1$s</string>
     <string name="sync_paired_browser">Paired with a browser</string>
-    <string name="sync_last">Last sync: %1$s</string>
+    <string name="sync_last">Last synced: %1$s</string>
     <string name="sync_never">Not synced yet</string>
-    <string name="sync_now">Sync now</string>
-    <string name="sync_running">Syncing…</string>
+    <string name="sync_ago_now">just now</string>
+    <string name="sync_ago_min">%1$d min ago</string>
     <string name="sync_unpair">Unpair</string>
     <string name="sync_unpair_title">Unpair the browser?</string>
     <string name="sync_unpair_text">Routes stop syncing. They stay on this phone and in the browser.</string>

@@ -46,7 +46,7 @@ class SettingsScreenshotTest {
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
-        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 600_000),
+        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
         phone: com.onpath.app.setup.PhoneState? = null) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
@@ -115,16 +115,17 @@ class SettingsScreenshotTest {
     @Test fun syncNotPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi()) }
     /** A pairing link was opened: the check digits, Pair / Cancel. */
     @Test fun syncAsk() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi(askCheck = "395 514")) }
-    /** Paired: the browser's name, the last sync, Sync now, Unpair. */
+    /** Paired: the browser's name, "Last synced: 1 min ago", Unpair – no Sync now (it syncs every minute by itself). */
     @Test fun syncPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC) }
     /** Paired, the last pass found items from a newer app (amber line). */
     @Test fun syncNewerApp() = paparazzi.snapshot {
         Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Firefox on Windows", lastOkMs = now - 86_400_000,
             problem = com.onpath.app.plansync.PlanSync.Problem.NewerApp(2)))
     }
-    /** Paired, offline (grey line), Sync now running. */
+    /** Paired, offline (grey line), the last good pass 25 min ago. */
     @Test fun syncOffline() = paparazzi.snapshot {
-        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, running = true, problem = com.onpath.app.plansync.PlanSync.Problem.Offline))
+        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, lastOkMs = now - 25 * 60_000,
+            problem = com.onpath.app.plansync.PlanSync.Problem.Offline))
     }
 
     /** Offline maps → Clean up: what goes and what stays, before anything is removed. */
