@@ -280,9 +280,11 @@ check(await page.locator('#spots li').count() > 0, 'click → the spots on this 
 
 // 10. phone width: bottom sheet; the handle shows the Points
 await page.setViewportSize({ width: 412, height: 860 });
-await page.waitForTimeout(300);
+// the sheet moves to the bottom with a transition – wait until it has settled (CI: once read mid-way after 300 ms)
+await page.waitForFunction(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return r.top > 300 && r.bottom >= 855; },
+  null, { timeout: 5000 }).catch(() => {});
 const sheet = await page.locator('#sheet').boundingBox();
-check(sheet.y > 300 && sheet.y + sheet.height >= 855, 'phone: the plan sheet sits at the bottom');
+check(sheet.y > 300 && sheet.y + sheet.height >= 855, `phone: the plan sheet sits at the bottom (top ${Math.round(sheet.y)}, bottom ${Math.round(sheet.y + sheet.height)})`);
 check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'), 'phone: header entries behind ☰');
 const ptb = await page.locator('#toolbar').boundingBox(), psb = await page.locator('#searchbox').boundingBox(), pbar = await page.locator('#topbar').boundingBox();
 check(ptb.y >= psb.y + psb.height - 1 && ptb.y + ptb.height <= pbar.y + pbar.height + 1 && Math.abs(psb.width - pbar.width) < 2,
