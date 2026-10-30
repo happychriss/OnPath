@@ -300,8 +300,11 @@ check(await page.isVisible('#points'), 'phone: the handle shows the Points');
 await page.evaluate(() => { localStorage.setItem('onpath.hikePaceLevel', 'FIT'); localStorage.setItem('onpath.bikePaceLevel', 'FIT'); });
 await page.reload();
 await page.waitForSelector('#activityChip');
+// the pace section needs the engine (paceReady); after a reload on a slow CI machine its start took over 20 s
+await page.waitForFunction(() => /ready/.test(document.getElementById('status')?.textContent ?? '') || !!document.querySelector('#summary .big'),
+  null, { timeout: 120_000 }).catch(() => {});
 await page.click('#activityChip');
-await page.waitForSelector('#paceRow [data-pace]', { timeout: 20_000 }).catch(() => {});
+await page.waitForSelector('#paceRow [data-pace]', { timeout: 60_000 }).catch(() => {});
 const afterReload = await page.evaluate(() => [localStorage.getItem('onpath.hikePaceLevel'), document.getElementById('paceRow')?.outerHTML.slice(0, 300), document.getElementById('status').textContent]);
 check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(() => null) === 'true', 'pace remembered after a reload (Fit)' + (afterReload[1] ? '' : ' – no pace section'));
 
