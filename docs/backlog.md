@@ -115,9 +115,6 @@ the git log.
   BRouter's data – from our overlays / POIs); times and seasons, borders (own data needed); hints in Navigate ("Ferry in
   2 km"); Bike / Gravel over smoothness=very_horrible (a profile question). Not planned: bollards, gates, barriers,
   access=destination / agricultural, node bicycle=no, toll.
-- **Map cells: partial rebuild (`docs/design/map-hosting.md` §7h)** – a look-only schema bump rebuilds every layer.
-  Per-layer schema in `cells.py` / the manifest; `job_build.py` rebuilds only the changed layers when the extract date
-  is the same and copies the rest (R2 CopyObject, sha256 kept). Hilden: cloud 9.7 → ~4.2 min, donald 179 → ~80 s.
 - **requirements.md sync (cloud / owner)** – `docs/requirements.md` is the copy of the shared Claude doc. Needed there:
   activity table with the app's names (Bike, Gravelbike, E-bike, MTB, E-MTB, Hike) and E-bike routing like the Bike
   (touring.brf, assist ~25 km/h); Komoot `<trk><type>` preselects the activity on import, export writes it; F-PLAN-06
