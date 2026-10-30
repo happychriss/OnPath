@@ -350,9 +350,10 @@ dialog.plans .syncsec h3 .ic { color: var(--green-fg); }
 dialog.plans .syncsec .row { margin-top: 8px; }
 dialog.plans .syncsec .danger { color: var(--error); }
 dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
-/* paired with the phone: a small phone + green dot beside My routes (header); a click opens My routes at the sync part */
+/* the phone pairing entry beside My routes (header, always there): "Pair phone" or, paired, phone + green dot + "Paired" */
 .nav button.syncbadge { position: relative; }
-.nav button.syncbadge[hidden] { display: none; }
 /* the icon + "Paired" (owner 2026-10-30: every header icon has its text; narrow widths keep the icon, its title says it all) */
+
+.syncbadge .syncdot[hidden] { display: none; }
 .syncbadge .syncdot { position: absolute; top: 7px; left: 23px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
 @media (max-width: 700px) { .nav.open .syncbadge .syncdot { top: 10px; left: 29px; } }

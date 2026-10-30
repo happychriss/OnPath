@@ -26,8 +26,9 @@ const text = (sel) => page.evaluate((s) => document.querySelector(s)?.textConten
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 check(await page.evaluate(() => document.documentElement.lang) === 'de', 'html lang = de');
-check((await text('#header')).includes('Meine Routen') && (await text('#header')).includes('GPX importieren') && !/Handy verbinden|Aufs Handy/.test(await text('#header')),
-  'header in German (no Send to phone / Pair with phone entries – owner 2026-10-30)');
+check((await text('#header')).includes('Meine Routen') && (await text('#header')).includes('GPX importieren') && !/Aufs Handy/.test(await text('#header'))
+  && (await text('#syncBadge')).trim() === 'Handy verbinden',
+  'header in German (no Send to phone; the phone entry "Handy verbinden" – owner 2026-10-30)');
 check((await text('#activityChip')).includes('Wandern'), `activity from the engine in German: ${(await text('#activityChip')).trim()}`);
 check(/\d,\d km/.test(await text('#summary')), `distance with a decimal comma: ${(await text('#summary .dist')).trim()}`);
 check((await text('#pointsSection')).includes('Punkte') && await page.getAttribute('#share', 'aria-label') === 'Teilen', 'sheet in German (Share icon = Teilen)');

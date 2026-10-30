@@ -40,14 +40,21 @@ const ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } }
 const ctxB = await browser.newContext({ viewport: { width: 400, height: 800 }, userAgent: ANDROID });
 /** A header entry: inline on a wide screen, behind ☰ at phone width. */
 const menu = async (P, id) => { if (await P.isVisible('#menuBtn')) await P.click('#menuBtn'); await P.click(id); };
-/** Pairing lives in My routes → "Pair with phone" (owner 2026-10-30; no header entry): Pair phone opens the QR code. */
+/** Pairing from My routes → "Pair with phone" (the section stays): Pair phone opens the QR code. */
 const openPair = async (P) => { await menu(P, '#menuPlans'); await P.click('dialog.plans .syncsec #pairPhone'); };
+/** The header's phone entry (owner 2026-10-30, always there): its label, title and whether the green dot shows. */
+const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncBadge');
+  return { label: b.querySelector('.lbl').textContent.trim(), title: b.title, dot: !b.querySelector('.syncdot').hidden, shown: !b.hidden }; });
 const A = await open(ctxA, '#p=' + CODE);
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 60_000 });
 
 // 1. A shows the pairing code; B opens the link (as the phone app would after scanning) and pairs
-check(await A.isHidden('#syncBadge'), 'not paired: no status in the header');
-await openPair(A);
+// not paired: the header entry "Pair phone" (phone, no dot) opens the pairing dialog directly, not My routes
+let e = await entry(A);
+check(e.shown && e.label === 'Pair phone' && !e.dot && e.title === 'Pair phone' && await A.isVisible('#header #syncBadge'), `not paired: header entry "Pair phone", no dot (${JSON.stringify(e)})`);
+await A.click('#syncBadge');
+await A.waitForSelector('dialog.pair[open]', { timeout: 30_000 });
+check(!(await A.$('dialog.plans[open]')), 'header "Pair phone" opens the pairing dialog directly (not My routes)');
 await A.waitForSelector('#pairLink', { timeout: 30_000 });
 const link = await A.inputValue('#pairLink');
 const checkA = await A.textContent('#checkDigits');
@@ -66,7 +73,9 @@ check((await A.textContent('#pairBody')).includes('Chrome on Android'), 'browser
 await A.click('#closePair');
 // the header shows the pairing: a phone with a green dot beside My routes; a click opens My routes at "Pair with phone"
 await A.waitForSelector('#syncBadge:not([hidden])', { timeout: 10_000 }).catch(() => {});
-check(await A.isVisible('#syncBadge') && (await A.getAttribute('#syncBadge', 'title')).startsWith('Paired with your phone'), 'header: paired status beside My routes (' + await A.getAttribute('#syncBadge', 'title') + ')');
+await A.waitForFunction(() => document.querySelector('#syncBadge .lbl')?.textContent === 'Paired', null, { timeout: 10_000 }).catch(() => {});
+e = await entry(A);
+check(e.label === 'Paired' && e.dot && e.title.startsWith('Paired with your phone'), `header after pairing (no reload): "Paired" + green dot (${JSON.stringify(e)})`);
 await A.click('#syncBadge');
 await A.waitForSelector('dialog.plans[open] .syncsec');
 await A.waitForFunction(() => !!document.activeElement?.closest('.syncsec'), null, { timeout: 10_000 }).catch(() => {}); // focus moves there once the list is drawn
@@ -150,9 +159,15 @@ await B.click('dialog.plans .confirm .danger');
 await B.waitForFunction(() => document.getElementById('plansStatus')?.textContent?.includes('Unpaired'), null, { timeout: 30_000 }).catch(() => {});
 check((await B.textContent('#plansStatus')).includes('Unpaired') && await B.isVisible('dialog.plans #pairPhone'), 'unpair on the phone side (in My routes; Pair phone offered again)');
 await B.click('#closePlans');
-check(await B.isHidden('#syncBadge'), 'after unpairing: no paired status in the header');
+e = await entry(B);
+check(e.label === 'Pair phone' && !e.dot && e.title === 'Pair phone', `after unpairing (no reload): header back to "Pair phone" (${JSON.stringify(e)})`);
+await B.click('#menuBtn');
+check(await B.isVisible('#mainMenu #syncBadge .lbl') && (await B.textContent('#mainMenu #syncBadge')).trim() === 'Pair phone', 'phone width: the ☰ list shows "Pair phone" with its text');
+await B.click('#menuBtn');
 await syncNow(A);
 const sa = await status(A);
+e = await entry(A);
+check(e.label === 'Pair phone' && !e.dot, `the browser's header follows the ended pairing: "Pair phone" (${JSON.stringify(e)})`);
 check(!sa.paired && sa.message.includes('ended on the other device'), 'the browser learns the pairing was ended');
 check(JSON.stringify(await plans(A)) === '["Browser name"]' && JSON.stringify(await plans(B)) === '["Browser name"]', 'plans stay on both sides');
 check(env.SYNC.sqlite.prepare('SELECT COUNT(*) AS n FROM item').get().n === 0, 'the mailbox is empty after unpairing');

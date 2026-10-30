@@ -385,8 +385,8 @@ browser's cache storage (IndexedDB) across visits.
 ### 11.3 Page structure (web layout since 2026-10-28, §13)
 
 - **Header line** (56 px; onpath.earth's look: logo, Manrope, site colours): "OnPath Planner" / "OnPath Planer" (one product name, row 21), then the entries
-  My routes (+ a phone with a green dot and "Paired" while paired) · Save route (row 22) · Import GPX · Help & credits · The app (one list, `NAV` in `main.ts` – new entries go there), right
-  "No account · routes stay in this browser". Phone width: 48 px, the entries behind ☰. No Send to phone / Pair phone entries (owner 2026-10-30): sharing is the sheet's Share icon, pairing a section of My routes.
+  My routes · the phone entry (always there, row 25: "Pair phone" / "Handy verbinden", or phone + green dot + "Paired" / "Verbunden") · Save route (row 22) · Import GPX · Help & credits · The app (one list, `NAV` in `main.ts` – new entries go there), right
+  "No account · routes stay in this browser". Phone width: 48 px, the entries behind ☰. No Send to phone entry (owner 2026-10-30): sharing is the sheet's Share icon.
 - **Top bar = one unit** (shared background and shadow): the search field (flexible width), then the map tools
   separated by thin dividers – undo, redo | eye, compass, locate + GPS dot | Map content ▾ (always there, greyed when
   not possible). Phone width: the search across the top and the tools as a row directly below it in the same bar.
@@ -418,9 +418,10 @@ browser's cache storage (IndexedDB) across visits.
 - **No big main button** (owner 2026-10-30): Share is a small icon + text button next to ⋯ (always there, greyed until two points – row 20 in §13); it opens the
   dialog (QR code with "Scan with the OnPath app" above it, Copy link, system share, the one app line below).
 - **Pairing lives in My routes** – section "Pair with phone / Mit dem Handy verbinden" at the bottom: not paired → Pair
-  phone (the QR code + check digits dialog); paired → "Paired with …", Sync now, Unpair. While paired a small phone
-  with a green dot sits beside My routes in the header (tooltip "Paired with your phone · last synced …"); a click opens
-  My routes at that section. `#pair=` links open the join dialog as before.
+  phone (the QR code + check digits dialog); paired → "Paired with …", Sync now, Unpair. The header's phone entry
+  beside My routes is always there (row 25): not paired → phone + "Pair phone", a click opens the QR code + check digits
+  dialog directly; paired → phone + green dot + "Paired" (tooltip "Paired with your phone · last synced …"), a click
+  opens My routes at that section; it follows pairing / unpairing live. `#pair=` links open the join dialog as before.
 - Menus: point / POI / first-point menus are map popups at the point; ⋯ is a drop-down; the activity picker is a
   drop-down at the chip; Map content is a large panel; share, save and credits are dialogs. Colours and type follow
   `OnPathColors` (green primary, route blue, amber warnings, red errors); icons are the app's Material icons.
@@ -501,6 +502,7 @@ Owner decisions 2026-10-30 (cloud, same day):
 | 22 | "The floating window is planning, the header is managing": Save in the header | Header entry **Save route** (app key `plan_save_route`) beside My routes, also in ☰ on phones: greyed on an empty route (tooltip "Set a start and destination first"); ✓ **Saved** / **Gespeichert** while the shown plan is saved and unchanged (`renderSaved` – the same check as the sheet's "Saved as …" line; tooltip names it; a click still asks Save / Save as new, the app's `saveMode`); "Save route" again after a change. **Removed from the sheet's ⋯** (now Export GPX · Clear route): the app keeps Save in its ⋯ only because it has no header – on the web one place is clearer. Tests: parity-smoke (header, not in ⋯, Saved, changed, back), sheet-smoke (greyed when empty), search-smoke. |
 | 23 | Every header icon with its text | The paired status: phone + green dot + "Paired" / "Verbunden" (tooltip "Paired with your phone · last synced …"). Narrower than 1180 px (and 701–860 px as before) only the icons stay, each with its title; phones: the ☰ list with icon + text. Test: sheet-smoke (labels at 1440 px, icons only at 1000 px). |
 | 24 | Pointing hand over clickable map things | `mousemove` → one `queryRenderedFeatures` per frame on the `poi-*` layers and the route line (a click there opens the POI menu / puts a point into that leg); markers have their own pointer; plain map keeps maplibre's grab cursor. Test: parity-smoke (a station POI, the route line, the plain map). |
+| 25 | "The header manages, the floating sheet plans": the phone pairing entry always in the header | `#syncBadge` beside My routes, always shown: not paired → phone (no dot) + "Pair phone" / "Handy verbinden" (`web_pair_phone`), a click opens the pairing dialog (QR code + check digits) directly; paired → phone + green dot + "Paired" / "Verbunden", tooltip "Paired with your phone · last synced …", a click opens My routes at "Pair with phone" (Sync now, Unpair). Follows `sync.onChange` – no reload after pairing / unpairing. Below 1180 px icon only with its title, phones: the ☰ list with text. My routes keeps its section. Tests: sync-smoke (Pair phone → the pairing dialog directly, "Paired" after pairing, back to "Pair phone" after unpairing on both sides, ☰), sheet-smoke (labels incl. the entry, both states), lang-smoke ("Handy verbinden"), ui-shots (`desktop-header-unpaired/-paired.png`). |
 
  Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help).

@@ -1,4 +1,4 @@
-// Screenshots of the page layout (header, toolbar, the sheet's three steps, place card, activity drop-down, Map content,
+// Screenshots of the page layout (header – not paired and paired –, toolbar, the sheet's three steps, place card, activity drop-down, Map content,
 // My routes) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
 // Usage: node test/ui-shots.mjs [segmentsDir] [mapStoreDir] [outDir]
 import path from 'node:path';
@@ -23,6 +23,15 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   await page.waitForTimeout(2500);
   await page.screenshot({ path: path.join(out, `${name}-plan.png`) });
+  // the header's phone entry (owner 2026-10-30): "Pair phone" while not paired, phone + green dot + "Paired" while paired
+  if (name === 'desktop') {
+    await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 });
+    const clip = { x: 0, y: 0, width: vp.width, height: 56 };
+    await page.screenshot({ path: path.join(out, `${name}-header-unpaired.png`), clip });
+    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: true, lastSync: Date.now() }; s.changed(); }); // the look only
+    await page.screenshot({ path: path.join(out, `${name}-header-paired.png`), clip });
+    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: false, lastSync: null }; s.changed(); });
+  }
   // the sheet's three steps (sheetstep.ts): the chevron goes one step more until Points, then back to small
   for (let i = 0; i < 3; i++) {
     await page.click('#sheetStep');

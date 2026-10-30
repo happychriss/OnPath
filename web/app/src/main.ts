@@ -1,5 +1,5 @@
 // OnPath web planner (docs/design/web-planner.md §6–§13). The page mirrors the phone's Plan screen in a web layout: a
-// header line (logo, My plans, Pair phone, …), the search pill with the map toolbar beside it (undo / redo, eye,
+// header line (logo, My routes, Pair phone / Paired, Save route, …), the search pill with the map toolbar beside it (undo / redo, eye,
 // compass, locate, Map content), the plan sheet (activity chip, time,
 // distance, climb + badge, profile, Points, one primary button) – a bottom sheet on a phone, a side panel on a wide
 // screen. The app's own code decides and plans (compiled to Wasm, in a Web Worker): Planner + BRouter, RouteTimes,
@@ -89,8 +89,8 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
  * what it does); `act` is set further down, once the page's parts exist.
  */
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
-  // owner 2026-10-30: no "Send to phone" / "Pair with phone" here – sharing is the sheet's Share icon, pairing a section
-  // of My routes ("Pair with phone"); while paired a small phone with a green dot sits beside My routes
+  // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. The phone pairing entry (#syncBadge,
+  // drawn right after My routes) is always there: "Pair phone" opens the pairing dialog, "Paired" (green dot) My routes
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
   // owner 2026-10-30: "the floating sheet is planning, the header is managing" – Save lives here, not in the sheet's ⋯
   { id: 'menuSavePlan', icon: 'save', label: t('plan_save_route') },
@@ -109,7 +109,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
       ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
-        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" title="${escapeHtml(t('web_sync_badge'))}" hidden>${icon('phone', 20)}<i class="syncdot" aria-hidden="true"></i><span class="lbl">${escapeHtml(t('web_sync_paired'))}</span></button>` : '')).join('')}
+        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" role="menuitem" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<i class="syncdot" aria-hidden="true" hidden></i><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span></button>` : '')).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
@@ -278,12 +278,13 @@ ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchVi
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
-ready.then(async (ok) => {
-  if (!ok) return;
+const syncReady = ready.then(async (ok) => {
+  if (!ok) return false;
   await sync.init();
   if (pairLink) joinDialog(sync, pairLink);
   syncBadge();
   sync.onChange(syncBadge);
+  return true;
 });
 addEventListener('hashchange', () => openFromLink());
 
@@ -1003,17 +1004,23 @@ async function suggestName(): Promise<string> {
 }
 const plansDialog = (atSync = false) => myPlansDialog(sync, plansHost, () => pairDialog(sync, location.href), atSync);
 navItem('menuPlans').act = () => plansDialog();
-/** Paired with the phone: a small phone with a green dot beside My routes (owner 2026-10-30); a click opens My routes at
- *  "Pair with phone". Not paired: nothing. */
+/** The phone pairing entry in the header, always there (owner 2026-10-30, "the header manages, the floating sheet plans"):
+ *  not paired → phone + "Pair phone", a click opens the pairing dialog (QR code + check digits) directly; paired → phone +
+ *  green dot + "Paired", a click opens My routes at "Pair with phone" (Sync now, Unpair). Follows sync.onChange live. */
 function syncBadge() {
   const b = $('syncBadge'), s = sync.status;
-  b.hidden = !s.paired;
-  if (!s.paired) return;
-  const last = s.lastSync ? ' · ' + t('web_sync_badge_last', new Date(s.lastSync).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })) : '';
-  b.title = t('web_sync_badge') + last;
+  b.querySelector<HTMLElement>('.syncdot')!.hidden = !s.paired;
+  b.classList.toggle('paired', s.paired);
+  b.querySelector('.lbl')!.textContent = t(s.paired ? 'web_sync_paired' : 'web_pair_phone');
+  const last = s.paired && s.lastSync ? ' · ' + t('web_sync_badge_last', new Date(s.lastSync).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })) : '';
+  b.title = s.paired ? t('web_sync_badge') + last : t('web_pair_phone');
   b.setAttribute('aria-label', b.title);
 }
-$('syncBadge').onclick = () => { closeMenus(); plansDialog(true); };
+$('syncBadge').onclick = async () => {
+  closeMenus();
+  if (!(await syncReady)) return; // the engine did not start – the status line says so
+  if (sync.status.paired) plansDialog(true); else pairDialog(sync, location.href);
+};
 navItem('menuSavePlan').act = () => requestSave(sync, plansHost); // header (owner 2026-10-30: the header manages, the sheet plans)
 $('exportGpx').onclick = async () => {
   closeMenus();

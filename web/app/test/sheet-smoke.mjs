@@ -69,8 +69,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await step(page) === (phone ? 'profile' : 'points'), `${P} first step without storage = ${phone ? 'profile' : 'points'}`);
   check(await page.isVisible('#handle') && await page.isVisible('#sheetStep'), `${P} grab handle and chevron visible`);
   const header = await page.textContent('#header');
-  check(!/Send to phone|Pair phone/.test(header) && /Import GPX/.test(phone ? await page.textContent('#mainMenu') : header),
-    `${P} header without Send to phone / Pair phone (owner 2026-10-30)`);
+  check(!/Send to phone/.test(header) && /Import GPX/.test(phone ? await page.textContent('#mainMenu') : header) && /Pair phone/.test(header),
+    `${P} header without Send to phone, with the phone entry "Pair phone" (owner 2026-10-30)`);
 
   // the three steps, every control
   if (await step(page) !== 'small') { // reach small with the chevron (Show more … until Points, then Show less → small)
@@ -218,10 +218,14 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(brand.text === 'OnPath Planner' && brand.same && brand.upper === 'none', `header: "OnPath Planner" in one size (${JSON.stringify(brand)})`);
   check(await page.isVisible('#header #menuSavePlan') && await page.isDisabled('#menuSavePlan'), 'header: Save route beside My routes, greyed on an empty route');
   const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
-  await page.evaluate(() => { document.getElementById('syncBadge').hidden = false; }); // the paired status, shown for the look
   let l = await labels();
-  check(l.length >= 4 && l.every((x) => x.icon && x.label), `header at 1440 px: every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
-  check((await page.textContent('#syncBadge')).trim() === 'Paired', 'header: the paired status says "Paired"');
+  check(l.length >= 5 && l.every((x) => x.icon && x.label), `header at 1440 px: every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
+  check((await page.textContent('#syncBadge')).trim() === 'Pair phone' && await page.isHidden('#syncBadge .syncdot'), 'header: not paired, the phone entry says "Pair phone" (no dot)');
+  await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 }); // sync ready, the entry follows it
+  await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: true }; s.changed(); }); // the paired status, shown for the look
+  check((await page.textContent('#syncBadge')).trim() === 'Paired' && await page.isVisible('#syncBadge .syncdot'), 'header: the paired status says "Paired" with the green dot');
+  l = await labels();
+  check(l.length >= 5 && l.every((x) => x.icon && x.label), 'header at 1440 px, paired: every icon has its text');
   await page.setViewportSize({ width: 1000, height: 800 });
   l = await labels();
   check(l.every((x) => x.icon && !x.label && x.title), 'header at 1000 px: icons only, each with its title');
