@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- onpath_bearing.xml in grey: the compass is unsure (map/CompassTrust, owner 2026-10-30 – grey, never hidden).
+     Colour = OnPathColors.PositionUnsure. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="44"
+    android:viewportHeight="44">
+    <path
+        android:fillColor="#8A8F94"
+        android:pathData="M22,3.5L28.5,12.5L15.5,12.5Z" />
+</vector>

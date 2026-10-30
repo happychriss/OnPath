@@ -149,6 +149,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         var x by androidx.compose.runtime.mutableFloatStateOf(0f)
         var y by androidx.compose.runtime.mutableFloatStateOf(0f)
         var viewHeading by androidx.compose.runtime.mutableFloatStateOf(0f)
+        /** The compass is unsure: the arrow is grey (HeadingEngine.arrowGrey). */
+        var unsure by androidx.compose.runtime.mutableStateOf(false)
     }
     val facing = Facing()
 
@@ -338,32 +340,42 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         return bmp
     }
 
+    /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
+    private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
+        .accuracyAlpha(0.18f)
+        .enableStaleState(true)
+        .staleStateTimeout(30_000)
+        // HeadingEngine turns smoothly at display rate itself
+        .compassAnimationEnabled(false)
+        // pinch zoom while following must not end direction-up (owner): zoom around the
+        // dot and a higher move threshold for two fingers – only a real pan or a turn ends following
+        .trackingGesturesManagement(true)
+        // the dot a little larger (owner: tell it apart from the turn badge at a glance)
+        .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
+        // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner)
+        .bearingDrawable(if (grey) com.onpath.app.R.drawable.onpath_bearing_unsure else com.onpath.app.R.drawable.onpath_bearing)
+        .build()
+
     @SuppressLint("MissingPermission")
     private fun activateLocation() {
         try {
             val lc = map.locationComponent
-            val options = LocationComponentOptions.builder(context)
-                .accuracyAlpha(0.18f)
-                .enableStaleState(true)
-                .staleStateTimeout(30_000)
-                // HeadingEngine turns smoothly at display rate itself
-                .compassAnimationEnabled(false)
-                // pinch zoom while following must not end direction-up (owner): zoom around the
-                // dot and a higher move threshold for two fingers – only a real pan or a turn ends following
-                .trackingGesturesManagement(true)
-                // the dot a little larger (owner: tell it apart from the turn badge at a glance)
-                .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
-                // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner)
-                .bearingDrawable(com.onpath.app.R.drawable.onpath_bearing)
-                .build()
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
                     .useDefaultLocationEngine(false)
-                    .locationComponentOptions(options)
+                    .locationComponentOptions(puckOptions(heading.arrowGrey))
                     .build()
             )
             lc.setCompassEngine(heading)
             heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
+            facing.unsure = heading.arrowGrey
+            // compass unsure → the arrow grey, never hidden (owner); in north-up / Plan it is MapLibre's bearing image
+            heading.onArrowGrey = { grey ->
+                facing.unsure = grey
+                try { if (live()) map.locationComponent.applyStyle(puckOptions(grey)) } catch (e: Exception) {
+                    Problems.warn("map", "Facing arrow colour on the position dot not changed", e)
+                }
+            }
             // the app's own "where I face" arrow sits on the dot; keep its screen position with every camera move
             map.addOnCameraMoveListener { if (facing.visible) placeFacing() }
             // No frame cap on the position dot (owner: while you look at the app it must run smooth;

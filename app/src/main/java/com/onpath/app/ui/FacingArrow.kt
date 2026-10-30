@@ -13,6 +13,7 @@ import com.onpath.app.map.MapController
 /**
  * The small blue arrow at the position dot showing where you face (owner: "turn the phone – the arrow turns"), drawn
  * by the app in heading-up following, where MapLibre's own arrow would show the route direction.
+ * Grey while the compass is unsure (map/CompassTrust; owner: grey, never hidden).
  * Placed at the dot's fixed screen point and turned by (view direction − map bearing). Reads its state only in the
  * draw phase: no recomposition per frame.
  */
@@ -32,7 +33,7 @@ fun FacingArrow(f: MapController.Facing, mapBearing: () -> Float) {
                 lineTo(c.x + w, c.y - r)
                 close()
             }
-            drawPath(path, OnPathColors.Position)
+            drawPath(path, if (f.unsure) OnPathColors.PositionUnsure else OnPathColors.Position)
         }
     }
 }

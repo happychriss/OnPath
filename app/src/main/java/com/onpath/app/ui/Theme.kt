@@ -41,6 +41,11 @@ object OnPathColors {
     val Grey = Color(0xFF6B6F6A)
     /** Own position / "where I face" arrow on the map (map furniture, like the location puck). */
     val Position = Color(0xFF1A73E8)
+    /**
+     * The "where I face" arrow while the compass is unsure (map/CompassTrust, owner: grey, never hidden). Same as
+     * res/drawable/onpath_bearing_unsure.xml.
+     */
+    val PositionUnsure = Color(0xFF8A8F94)
 
     // ---- Rest view while cycling (ui/RestView.kt): black = OLED pixels off; grey, not white, so it does not dazzle ----
     val RestBackground = Color(0xFF000000)
