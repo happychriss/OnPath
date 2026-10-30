@@ -118,18 +118,21 @@ def landcover():
         L.insert(at, {"id": "land-tint", "type": "background", "maxzoom": T("land.tint.maxzoom", 13),
                       "paint": {"background-color": Z("land.tint.color"), "background-opacity": Z("land.tint.opacity")}})
     # Ground symbols (sprite "pattern-*", tools/make_sprite.py) only close in (GROUND_SYMBOLS_ZOOM, the last two zoom
-    # steps before the app's max zoom 18 – owner: below that plain landcover colour), very light.
+    # steps before the app's max zoom 18 – owner: below that plain landcover colour), light. Rock / scree from
+    # ROCK_SYMBOLS_ZOOM (owner 2026-10-30: mountain terrain, no towns – the stones help reading the slope from z14).
     # None for forest and meadow, none for settlements (owner: too busy when cycling through a town).
     # OpenMapTiles classes / subclasses (Planetiler): grass = meadow, grassland, grass, scrub, heath, park … → plain colour;
     # wetland = natural=wetland (subclasses wetland, marsh, wet_meadow, swamp, bog, reedbed, …) → marsh tufts;
     # farmland: only subclasses orchard / vineyard get a symbol, plain farmland / farm none (see make_sprite.py).
-    for pid, cls, sub in (("wetland", "wetland", None), ("orchard", "farmland", "orchard"),
-                          ("vineyard", "farmland", "vineyard"), ("rock", "rock", None), ("sand", "sand", None)):
+    for pid, cls, sub, minz in (("wetland", "wetland", None, GROUND_SYMBOLS_ZOOM),
+                                ("orchard", "farmland", "orchard", GROUND_SYMBOLS_ZOOM),
+                                ("vineyard", "farmland", "vineyard", GROUND_SYMBOLS_ZOOM),
+                                ("rock", "rock", None, ROCK_SYMBOLS_ZOOM), ("sand", "sand", None, GROUND_SYMBOLS_ZOOM)):
         flt = ["==", ["get", "class"], cls]
         if sub:
             flt = ["all", flt, ["==", ["get", "subclass"], sub]]
         layer(id_=f"landcover-{pid}-pattern", type="fill", source="base", **{"source-layer": "landcover"},
-              minzoom=GROUND_SYMBOLS_ZOOM, filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
+              minzoom=minz, filter=flt, paint={"fill-pattern": f"pattern-{pid}"})
     layer(id_="landcover-ice-outline", type="line", source="base", **{"source-layer": "landcover"}, minzoom=10,
           filter=["==", ["get", "class"], "ice"],
           paint={"line-color": T("ice.outline.color"), "line-width": Z("ice.outline.width"),
@@ -1550,6 +1553,7 @@ POI_SORT_RANK_STEP = 2 * POI_SORT_UNNAMED  # one kind rank = named + unnamed ban
 POI_SMALL_UNTIL = 13  # tier 1 uses the small dot variant below this zoom
 LOW_ZOOM_SOLID = 13   # below this zoom dashed paths / tracks / trails are drawn solid and darker
 GROUND_SYMBOLS_ZOOM = 16  # ground symbol patterns only from here (app max zoom 18: the last two zoom steps)
+ROCK_SYMBOLS_ZOOM = 14    # rock / scree symbols from here (owner 2026-10-30: back to z14, mountains only)
 # Layer id suffixes MapController.setOverlay switches by activity: "-bikeview" only for bike activities, "-hikeview" only
 # for hiking (owner: a quieter track / path look for bikes; hiking keeps its look)
 BIKEVIEW, HIKEVIEW = "-bikeview", "-hikeview"
