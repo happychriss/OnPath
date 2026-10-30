@@ -74,6 +74,11 @@ the git log.
       transfer (only `sync/device.txt`): a reinstalled phone opens its old folder. Node e2e: `SyncMailboxE2ETest.
       aSecondBrowserJoinsThroughTheRealMailbox`; `tools/sync/e2e.sh` now copies every `web/host/src/*.js` (sync.js
       imports maps.js).
+    - Mark plans that came from the phone (order A-018) · 4673d12 (app side: `plansync/SyncMarks.kt`) · bold title +
+      'Neu vom Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened;
+      seeing the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept per
+      compartment in local storage (owner 2026-10-30). web-spike 14938ba has marks (A-017 point 7) but only
+      `font-weight: 700` – make it as clearly bold as the app (ExtraBold vs SemiBold) and check it is live.
   - *Should:*
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As
@@ -95,10 +100,6 @@ the git log.
       Browser sync opens (`SyncPoll.opened` / `openDue`), not within 10 s of another pass, never during a tour; the
       ~60 s poll runs only while My routes / Browser sync is shown, no longer on the Plan map · browser: poll only
       while the plans list (or the sync view) is visible, pull on open (same 10 s debounce).
-    - Mark plans that came from the phone · (this commit, app side: `plansync/SyncMarks.kt`) · bold title + 'Neu vom
-      Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened; seeing
-      the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept in local
-      storage (owner 2026-10-30).
     - Save at hand (owner 2026-10-30) · (this commit, `RouteRules.saveAtHand`) · app: green tonal "Speichern" beside ⋯
       in the plan sheet's first line (icon only at a large font) and "Route speichern" on top of ☰ – only while the plan
       is new / changed, hidden once saved. Web already has Speichern in its header (A-017, bold when unsaved); differs
