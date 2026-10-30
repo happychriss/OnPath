@@ -3585,22 +3585,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val current = withContext(Dispatchers.IO) {
                 try { sync.pairedMailbox() } catch (e: Exception) { Problems.warn("sync", "Stored pairing not read", e); null }
             }
-            val incoming = com.onpath.app.sync.SyncKeys(secret).mailbox
-            Problems.info("sync", "Pairing link ($via): " + when (current) { null -> "asking"; incoming -> "already paired"; else -> "paired with another browser" })
-            when (current) {
-                null -> pairAsk = secret
-                incoming -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
-                else -> sayError(Txt.s(Res.string.sync_unpair_first), NoticePlace.SETTINGS)
+            val step = com.onpath.app.plansync.PairStep.of(current, com.onpath.app.sync.SyncKeys(secret).mailbox)
+            Problems.info("sync", "Pairing link ($via): " + when (step) {
+                com.onpath.app.plansync.PairStep.PAIR -> "asking"
+                com.onpath.app.plansync.PairStep.ALREADY -> "already paired"
+                com.onpath.app.plansync.PairStep.JOIN -> "another browser – asking (it joins this phone's mailbox)"
+            })
+            when (step) {
+                com.onpath.app.plansync.PairStep.ALREADY -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                // A-017: a second browser (laptop + desktop, a friend's PC) – the same check digits and Pair, no "unpair first"
+                else -> if (!pairJoining) pairAsk = secret
             }
         }
     }
 
-    /** "Pair": store the pairing, say hello, sync at once (the page shows "Paired with …" when the browser answered). */
+    /** Pair with another browser runs (A-017): the check digits stay, a spinner instead of Pair / Cancel. */
+    var pairJoining by mutableStateOf(false)
+        private set
+
+    /**
+     * "Pair": not paired yet → store the pairing, say hello, sync at once (the page shows "Paired with …" when the
+     * browser answered). Paired already (A-017) → that browser is sent into this phone's mailbox (one JOIN item); the
+     * phone's pairing stays. Both end in "Paired – …" with OK.
+     */
     fun confirmPair() {
         val s = pairAsk ?: return
-        pairAsk = null
         pairedNote = false
-        sync.pair(s) { ok -> pairedNote = ok }
+        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairedNote = ok }; return }
+        if (pairJoining) return
+        pairJoining = true
+        sync.join(s) { o ->
+            pairJoining = false
+            if (pairAsk === s) pairAsk = null // (Pair / Cancel are hidden meanwhile; a newer scanned code stays)
+            when (o) {
+                null -> sync.pair(s) { ok -> pairedNote = ok } // unpaired meanwhile: a normal pairing
+                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairedNote = true
+                is com.onpath.app.sync.SyncRound.Outcome.Offline -> sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS)
+                is com.onpath.app.sync.SyncRound.Outcome.Ended -> sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS)
+                is com.onpath.app.sync.SyncRound.Outcome.Refused -> sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS)
+            }
+        }
     }
 
     fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }

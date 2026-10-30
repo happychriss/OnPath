@@ -1,9 +1,9 @@
 package com.onpath.app.sync
 
 /**
- * One synced thing (docs/design/web-sync.md §5): a saved plan, an imported GPX track, or a device's "hello" (its name,
- * so the other side can say "Paired with Pixel 8"). Deleting keeps a tombstone ([deleted], no content), so the delete
- * reaches every device.
+ * One synced thing (docs/design/web-sync.md §5): a saved plan, an imported GPX track, a device's "hello" (its name and
+ * role, so the other side can say "Paired with Pixel 8"), or a JOIN ([SyncJoin], §5.1). Deleting keeps a tombstone
+ * ([deleted], no content), so the delete reaches every device.
  */
 data class SyncItem(
     /** Random id (16 bytes, Base64url, 22 characters) – the server sees it as the item's name, nothing else. */
@@ -24,17 +24,32 @@ data class SyncItem(
      * the item bytes it is the raw bytes (field 4).
      */
     val track: String? = null,
+    /** Kind [JOIN] only: the phone's own pairing code ([PairCode] text, the part after `#pair=`). Field 5. */
+    val pairCode: String? = null,
+    /** Kind [DEVICE] only: who says hello – [ROLE_PHONE] / [ROLE_BROWSER]; null = unknown (an older app or page). Field 6. */
+    val role: Int? = null,
 ) {
     companion object {
         const val PLAN = 1
         const val DEVICE = 2
         /** An imported GPX track (owner 2026-10-29: synced like saved plans; not recorded tours). Older readers skip it. */
         const val TRACK = 3
+        /**
+         * A redirect (A-017, [SyncJoin]): written by a phone that is already paired into the fresh mailbox of another
+         * browser – "use my mailbox instead". Older readers skip it; it is never a user item.
+         */
+        const val JOIN = 4
+
+        /** [role] of a hello: the phone app. */
+        const val ROLE_PHONE = 1
+        /** [role] of a hello: a web planner page. */
+        const val ROLE_BROWSER = 2
     }
 
     /** Same content (what the user sees), ignoring who changed it when. */
     fun sameContent(o: SyncItem) =
-        kind == o.kind && deleted == o.deleted && title == o.title && plan == o.plan && name == o.name && track == o.track
+        kind == o.kind && deleted == o.deleted && title == o.title && plan == o.plan && name == o.name && track == o.track &&
+            pairCode == o.pairCode && role == o.role
 
     /** A plan or a track – what the user saves, renames and deletes (copies keep the losing version of these). */
     val isUserItem: Boolean get() = kind == PLAN || kind == TRACK
@@ -45,8 +60,10 @@ data class SyncItem(
  *
  * Item (the plain bytes, version 1): version (1), kind (1), id (16), device (8), updatedAt (varint ms),
  * flags (bit 0 = deleted), then optional fields until the end: tag (varint), length (varint), bytes –
- * 1 = title (UTF-8), 2 = plan code (ASCII), 3 = device name (UTF-8), 4 = track ([TrackCode] bytes, kind 3 only).
- * Unknown tags are skipped (newer apps).
+ * 1 = title (UTF-8), 2 = plan code (ASCII), 3 = device name (UTF-8), 4 = track ([TrackCode] bytes, kind 3 only),
+ * 5 = pairing code (ASCII, [PairCode] text, kind 4 JOIN only), 6 = role (one varint: 1 phone, 2 browser; kind 2 hello
+ * only, missing = unknown). Unknown tags are skipped (newer apps); one tag never means two things (the reader does not
+ * look at the kind).
  *
  * Blob (what the server stores, version 1): version (1), nonce (12), AES-256-GCM(item) with the 16-byte tag. The
  * additional data binds the blob to its place: version byte + mailbox id (16 bytes) + item id (16 bytes), so the
@@ -64,11 +81,15 @@ object SyncFormat {
     const val MAX_TRACK = 16_000
     /** Largest blob a client writes (the server allows a little more). */
     const val MAX_BLOB = 24_000
+    /** Longest pairing code field (a version-1 code is 44 characters; newer versions may append fields). */
+    const val MAX_PAIR_CODE = 200
 
     private const val TAG_TITLE = 1
     private const val TAG_PLAN = 2
     private const val TAG_NAME = 3
     private const val TAG_TRACK = 4
+    private const val TAG_PAIR_CODE = 5
+    private const val TAG_ROLE = 6
 
     /** A new item id from 16 random bytes. */
     fun newId(random: ByteArray): String { require(random.size >= ID_BYTES); return B64.encode(random.copyOf(ID_BYTES)) }
@@ -94,6 +115,9 @@ object SyncFormat {
         item.plan?.filter(B64::isCodeChar)?.take(MAX_PLAN)?.takeIf { it.isNotEmpty() }?.let { out.field(TAG_PLAN, it.encodeToByteArray()) }
         clean(item.name, MAX_NAME)?.let { out.field(TAG_NAME, it.encodeToByteArray()) }
         item.track?.let(B64::decode)?.takeIf { it.isNotEmpty() && it.size <= MAX_TRACK }?.let { out.field(TAG_TRACK, it) }
+        item.pairCode?.takeIf { it.isNotEmpty() && it.length <= MAX_PAIR_CODE && it.all(B64::isCodeChar) }
+            ?.let { out.field(TAG_PAIR_CODE, it.encodeToByteArray()) }
+        item.role?.takeIf { it > 0 }?.let { r -> out.field(TAG_ROLE, Out().apply { varint(r.toLong()) }.toArray()) }
         return out.toArray()
     }
 
@@ -106,6 +130,7 @@ object SyncFormat {
             val at = r.varint()
             val flags = r.byte()
             var title: String? = null; var plan: String? = null; var name: String? = null; var track: String? = null
+            var pairCode: String? = null; var role: Int? = null
             while (r.more()) {
                 val tag = r.varint()
                 val len = r.varint()
@@ -116,10 +141,14 @@ object SyncFormat {
                     TAG_PLAN.toLong() -> plan = raw.decodeToString().takeIf { it.isNotEmpty() && it.length <= MAX_PLAN && it.all(B64::isCodeChar) }
                     TAG_NAME.toLong() -> name = clean(raw.decodeToString(), MAX_NAME)
                     TAG_TRACK.toLong() -> track = raw.takeIf { it.isNotEmpty() && it.size <= MAX_TRACK }?.let(B64::encode)
+                    TAG_PAIR_CODE.toLong() -> pairCode = raw.decodeToString()
+                        .takeIf { it.isNotEmpty() && it.length <= MAX_PAIR_CODE && it.all(B64::isCodeChar) }
+                    TAG_ROLE.toLong() -> role = raw.takeIf { it.isNotEmpty() }?.let { In(it).varint() }
+                        ?.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt()
                     else -> Unit // a field from a newer app: skip it
                 }
             }
-            SyncItem(id, at, device, flags and 1 != 0, kind, title, plan, name, track)
+            SyncItem(id, at, device, flags and 1 != 0, kind, title, plan, name, track, pairCode, role)
         }
     } catch (_: IndexOutOfBoundsException) {
         null // expected: cut-off bytes (damaged local store line); the caller counts it as unreadable
@@ -182,4 +211,31 @@ object SyncFormat {
         }
         fun take(n: Int): ByteArray { if (n > left()) throw IndexOutOfBoundsException(); return b.copyOfRange(pos, pos + n).also { pos += n } }
     }
+}
+
+/**
+ * JOIN – the redirect of another browser into the phone's one mailbox (A-017, docs/design/web-sync.md §5.1). Pure,
+ * shared by app and web planner.
+ *
+ * A phone already paired with mailbox P scans the code B of another browser (laptop + desktop, a friend's PC, a browser
+ * whose data was cleared). It shows B's check digits; on Pair it writes exactly one item into B's mailbox (claimed
+ * first when needed): kind 4 JOIN, id [ID], device = the phone's device id, field 5 = P's pairing code (the text after
+ * `#pair=`), sealed with B's keys like every item there. Nothing else goes into B, and the phone stays in P (one
+ * mailbox, one ledger). The browser finds it on its next pull ([secretIn]), adopts P, deletes B and reads P from
+ * revision 0. Older pages skip kind 4.
+ */
+object SyncJoin {
+    /** The JOIN item's id: the first 16 bytes of SHA-256("OnPath join") – one JOIN per mailbox, the same everywhere. */
+    val ID: String = B64.encode(Sha256.hash("OnPath join".encodeToByteArray()).copyOf(SyncFormat.ID_BYTES))
+
+    /** The JOIN item that sends a browser to the mailbox of [phoneSecret] (the phone's own pairing secret). */
+    fun item(phoneSecret: ByteArray, device: String, now: Long): SyncItem =
+        SyncItem(ID, now, device, kind = SyncItem.JOIN, pairCode = PairCode.encode(phoneSecret))
+
+    /** The pairing secret a JOIN item carries, or null when [item] is no live, valid JOIN. */
+    fun secretOf(item: SyncItem?): ByteArray? =
+        item?.takeIf { it.kind == SyncItem.JOIN && !it.deleted && it.id == ID }?.pairCode?.let { PairCode.parse("pair=$it") }
+
+    /** Browser side: the phone's pairing secret when a JOIN arrived in [ledger] (its own mailbox's ledger), else null. */
+    fun secretIn(ledger: SyncLedger): ByteArray? = secretOf(ledger.get(ID))
 }

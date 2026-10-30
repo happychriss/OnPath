@@ -11,11 +11,12 @@ cd "$(dirname "$0")/../.."
 ref=${1:-origin/web-spike}
 out=app/build/sync-e2e
 rm -rf "$out"; mkdir -p "$out/src" "$out/migrations"
+# every host module (sync.js imports helpers such as maps.js), plus the migrations
 if [ -f web/host/src/sync.js ]; then
-  cp web/host/src/sync.js "$out/src/"
+  cp web/host/src/*.js "$out/src/"
   cp web/host/migrations/*.sql "$out/migrations/"
 else
-  git show "$ref:web/host/src/sync.js" > "$out/src/sync.js"
+  git ls-tree --name-only "$ref" web/host/src/ | grep '\.js$' | while read -r f; do git show "$ref:$f" > "$out/src/$(basename "$f")"; done
   git ls-tree --name-only "$ref" web/host/migrations/ | while read -r f; do git show "$ref:$f" > "$out/migrations/$(basename "$f")"; done
 fi
 echo "mailbox: $(wc -l < "$out/src/sync.js") lines of sync.js, $(ls "$out/migrations" | wc -l) migration(s); node $(node --version)"

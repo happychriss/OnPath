@@ -101,39 +101,6 @@
     </issue>
 
     <issue
-        id="FullBackupContent"
-        message="`sync/` is not in an included path"
-        errorLine1="    &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
-        errorLine2="                                 ~~~~~">
-        <location
-            file="src/main/res/xml/backup_rules.xml"
-            line="14"
-            column="34"/>
-    </issue>
-
-    <issue
-        id="FullBackupContent"
-        message="`sync/` is not in an included path"
-        errorLine1="        &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
-        errorLine2="                                     ~~~~~">
-        <location
-            file="src/main/res/xml/data_extraction_rules.xml"
-            line="16"
-            column="38"/>
-    </issue>
-
-    <issue
-        id="FullBackupContent"
-        message="`sync/` is not in an included path"
-        errorLine1="        &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
-        errorLine2="                                     ~~~~~">
-        <location
-            file="src/main/res/xml/data_extraction_rules.xml"
-            line="24"
-            column="38"/>
-    </issue>
-
-    <issue
         id="LogNotTimber"
         message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
         errorLine1="            override fun i(tag: String, msg: String) { Log.i(tag, msg) }"

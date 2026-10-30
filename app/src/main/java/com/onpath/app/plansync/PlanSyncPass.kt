@@ -9,7 +9,10 @@ import com.onpath.app.sync.Mailbox
 import com.onpath.app.sync.SyncFormat
 import com.onpath.app.sync.SyncItem
 import com.onpath.app.sync.SyncKeys
+import com.onpath.app.sync.JoinRound
+import com.onpath.app.sync.SyncJoin
 import com.onpath.app.sync.SyncLedger
+import com.onpath.app.sync.SyncMerge
 import com.onpath.app.sync.SyncRound
 
 /**
@@ -53,7 +56,12 @@ class PlanSyncPass(
     private val deviceName: String,
     private val untitled: (kind: Int) -> String,
     private val aead: Aead,
+    /** How a copy ("… (copy)" in the item) is named on this phone, e.g. " (Kopie)" ([SyncMerge.shownTitle]). */
+    private val copyLabel: String = SyncMerge.COPY,
 ) {
+    /** The tour's name as the item keeps it (the local copy label back to [SyncMerge.COPY]). */
+    private fun title(t: Tour): String? = RouteItems.title(t, copyLabel)
+
     data class Result(
         val outcome: SyncRound.Outcome?,
         /** The other side's name ("Chrome on Linux"), newest hello first; null = none yet. */
@@ -80,7 +88,7 @@ class PlanSyncPass(
         val links = files.links()
         val now = clock()
         export(ledger, links, now, device)
-        ledger.hello(device, deviceName, now)
+        ledger.hello(device, deviceName, now, SyncItem.ROLE_PHONE)
         val before = ledger.entries.mapValues { it.value.item }
         val outcome = SyncRound(keys, mailbox(keys), { random(12) }, aead).run(ledger)
         // what the round changed (only the other side and the merge change items): new or different items, and the
@@ -98,7 +106,7 @@ class PlanSyncPass(
         files.saveLinks(links)
         if (outcome is SyncRound.Outcome.Done) files.saveLastOk(now)
         return r.copy(outcome = outcome, peer = peer, unreadable = r.unreadable + ((outcome as? SyncRound.Outcome.Done)?.unreadable ?: 0) +
-            ledger.entries.values.count { !it.item.deleted && it.item.kind != SyncItem.DEVICE && !it.item.isUserItem })
+            ledger.entries.values.count { !it.item.deleted && it.item.kind != SyncItem.DEVICE && it.item.kind != SyncItem.JOIN && !it.item.isUserItem })
     }
 
     /** Local tours → ledger. */
@@ -124,7 +132,7 @@ class PlanSyncPass(
                     item.deleted || item.kind != RouteItems.kindOf(t) -> save(ledger, id, t, now, device)
                     item.kind == SyncItem.PLAN && !RouteItems.samePlan(RouteItems.planOf(t), item.plan) -> save(ledger, id, t, now, device)
                     item.kind == SyncItem.TRACK && !RouteItems.sameTrackHeader(t, item) -> save(ledger, id, t, now, device)
-                    item.title != RouteItems.title(t) -> ledger.rename(id, RouteItems.title(t), now, device)
+                    item.title != title(t) -> ledger.rename(id, title(t), now, device)
                 }
             } catch (e: Exception) {
                 Problems.warn("sync", "Sync: a saved route could not be prepared for the browser; tried again next time", e)
@@ -142,13 +150,13 @@ class PlanSyncPass(
     }
 
     private fun save(ledger: SyncLedger, id: String, t: Tour, now: Long, device: String): Boolean {
-        val title = RouteItems.title(t)
+        val stored = title(t)
         return if (t.kind == TourKind.PLANNED) {
             val plan = RouteItems.planOf(t) ?: return false // fewer than two points: nothing to plan with
-            ledger.save(id, plan, title, now, device) != null
+            ledger.save(id, plan, stored, now, device) != null
         } else {
             val track = RouteItems.trackOf(t, store.segments(t.id)) ?: return false
-            ledger.saveTrack(id, track, title, now, device) != null
+            ledger.saveTrack(id, track, stored, now, device) != null
         }
     }
 
@@ -163,7 +171,7 @@ class PlanSyncPass(
             if (item == null || !item.isUserItem) { links.done(id); continue }
             val tour = links.tourOf(id)?.let { tours[it] }
             try {
-                val name = item.title ?: untitled(item.kind)
+                val name = SyncMerge.shownTitle(item.title, copyLabel) ?: untitled(item.kind)
                 when {
                     item.deleted -> if (tour != null && tour.deletedMs == null) { store.toBin(tour); binned++; files.marks.remove(tour.uuid) }
                     tour == null || RouteItems.kindOf(tour) != item.kind -> {
@@ -189,7 +197,7 @@ class PlanSyncPass(
                             val c = RouteItems.trackContent(item)
                             if (c == null) unreadable++ else if (store.replaceTrack(tour, c)) changed = true
                         }
-                        if (tour.name != name && RouteItems.title(tour) != item.title) { store.rename(tour, name); changed = true }
+                        if (tour.name != name && title(tour) != item.title) { store.rename(tour, name); changed = true }
                         if (changed) { updated++; files.marks.changed(tour.uuid) } // "Changed in the browser" until opened
                     }
                 }
@@ -214,6 +222,20 @@ class PlanSyncPass(
         val status = pairing?.secret?.let { mailbox(SyncKeys(it)).end().status } ?: 200
         forgetHere()
         return status
+    }
+
+    /**
+     * Another browser's code scanned while paired (A-017, [SyncJoin]): one JOIN item with this phone's own pairing
+     * code goes into that browser's mailbox ([browserSecret] = the scanned code), so the browser moves into this
+     * phone's mailbox. The phone keeps its one pairing, ledger and links – nothing of them changes. Null when not
+     * paired (then the scanned code is paired the normal way). Blocking network – background only.
+     */
+    fun join(browserSecret: ByteArray): SyncRound.Outcome? {
+        val own = files.pairing()?.secret ?: return null
+        val keys = SyncKeys(browserSecret)
+        if (keys.mailbox == SyncKeys(own).mailbox) return null // the same browser: nothing to redirect
+        val item = SyncJoin.item(own, files.device(random), clock())
+        return JoinRound(keys, mailbox(keys), { random(12) }, aead).run(item)
     }
 
     /** The pairing ended (here or in the browser): plans stay, the mailbox is forgotten. */

@@ -96,6 +96,78 @@ class PlanSyncTest {
         repeat(2000) { SyncFormat.decode(rnd.nextBytes(rnd.nextInt(0, 80))) }
     }
 
+    // ---- A-017: JOIN item and the role in a hello (docs/design/web-sync.md §5.1) ----
+
+    /** Frozen: the web planner reads exactly these bytes (kind 4, id SHA-256("OnPath join"), field 5 = the code). */
+    @Test fun joinItemIsFrozen() {
+        assertEquals(FROZEN_JOIN_ID, SyncJoin.ID)
+        val join = SyncJoin.item(secret, phone, 1_793_000_000_000)
+        assertEquals(SyncItem.JOIN, join.kind)
+        assertEquals(PairCode.encode(secret), join.pairCode)
+        val bytes = SyncFormat.encode(join)
+        assertEquals(FROZEN_JOIN_ITEM, B64.encode(bytes))
+        val back = SyncFormat.decode(bytes)!!
+        assertEquals(join, back)
+        assertTrue(secret.contentEquals(SyncJoin.secretOf(back)!!))
+        assertFalse("a JOIN is never a user item – never copied, never a route", back.isUserItem)
+        // sealed with the browser's keys, readable only with them
+        val browserKeys = SyncKeys(ByteArray(32) { (it + 100).toByte() })
+        val blob = SyncFormat.seal(browserKeys, join, ByteArray(12) { 3 })
+        assertNull(SyncFormat.open(keys, join.id, blob))
+        val ledger = SyncLedger.empty()
+        assertEquals(0, ledger.apply(browserKeys, listOf(Triple(join.id, 1L, blob)), 1))
+        assertTrue(secret.contentEquals(SyncJoin.secretIn(ledger)!!))
+        // no JOIN, a deleted one, a damaged code or another id: nothing to adopt
+        assertNull(SyncJoin.secretIn(SyncLedger.empty()))
+        assertNull(SyncJoin.secretOf(join.copy(deleted = true)))
+        assertNull(SyncJoin.secretOf(join.copy(pairCode = "AQEI")))
+        assertNull(SyncJoin.secretOf(join.copy(id = id(1))))
+        assertNull(SyncJoin.secretOf(item(1, 10)))
+    }
+
+    @Test fun helloCarriesTheRoleAndOldHellosStillRead() {
+        val hello = SyncItem(SyncFormat.deviceItemId(phone), 5, phone, kind = SyncItem.DEVICE, name = "Pixel 8", role = SyncItem.ROLE_PHONE)
+        assertEquals(hello, SyncFormat.decode(SyncFormat.encode(hello)))
+        val browser = hello.copy(device = web, role = SyncItem.ROLE_BROWSER)
+        assertEquals(SyncItem.ROLE_BROWSER, SyncFormat.decode(SyncFormat.encode(browser))!!.role)
+        // a hello from an older app / page: no field 6 → role unknown; its bytes are unchanged by the new code
+        val old = hello.copy(role = null)
+        assertNull(SyncFormat.decode(SyncFormat.encode(old))!!.role)
+        assertEquals(SyncFormat.encode(old).size + 3, SyncFormat.encode(hello).size) // tag 6, length 1, value 1
+        // an old reader skips field 6: the bytes before it are the old hello's
+        assertTrue(SyncFormat.encode(hello).copyOf(SyncFormat.encode(old).size).contentEquals(SyncFormat.encode(old)))
+        // the ledger writes the role and writes the hello again once when a role comes in
+        val l = SyncLedger.empty()
+        l.hello(phone, "Pixel 8", 10)
+        assertNull(l.get(SyncFormat.deviceItemId(phone))!!.role)
+        l.hello(phone, "Pixel 8", 20, SyncItem.ROLE_PHONE)
+        assertEquals(SyncItem.ROLE_PHONE, l.get(SyncFormat.deviceItemId(phone))!!.role)
+        val e = l.entries.getValue(SyncFormat.deviceItemId(phone))
+        l.acked(e.item, 3)
+        l.hello(phone, "Pixel 8", 30, SyncItem.ROLE_PHONE)
+        l.hello(phone, "Pixel 8", 40) // a caller without a role keeps the one there
+        assertTrue("unchanged hello: nothing to upload", l.outbox().isEmpty())
+        assertEquals(SyncItem.ROLE_PHONE, l.get(SyncFormat.deviceItemId(phone))!!.role)
+    }
+
+    /** The stored copy marker stays " (copy)" everywhere; a phone shows it in its language and stores it back unchanged. */
+    @Test fun copyMarkerIsShownLocalizedAndStoredStable() {
+        val de = " (Kopie)"
+        assertEquals("Waalweg (Kopie)", SyncMerge.shownTitle("Waalweg (copy)", de))
+        assertEquals("Waalweg (copy)", SyncMerge.storedTitle("Waalweg (Kopie)", de))
+        assertEquals("Waalweg (copy)", SyncMerge.storedTitle("Waalweg (Kopie) ", de))
+        assertEquals("Waalweg (copy) (Kopie)", SyncMerge.shownTitle("Waalweg (copy) (copy)", de))
+        assertEquals("Waalweg (copy) (copy)", SyncMerge.storedTitle("Waalweg (copy) (Kopie)", de))
+        assertEquals("Waalweg", SyncMerge.shownTitle("Waalweg", de))
+        assertEquals("Waalweg", SyncMerge.storedTitle("Waalweg", de))
+        assertNull(SyncMerge.shownTitle(null, de))
+        // English: unchanged both ways
+        assertEquals("A (copy)", SyncMerge.shownTitle("A (copy)", SyncMerge.COPY))
+        assertEquals("A (copy)", SyncMerge.storedTitle("A (copy)", SyncMerge.COPY))
+        // the merge itself stays language free
+        assertEquals("Plan 1 (copy)", SyncMerge.copyOf(item(1, 10)).title)
+    }
+
     @Test fun blobOpensOnlyWithTheRightKeyAndPlace() {
         val it = item(1, 10)
         val blob = SyncFormat.seal(keys, it, ByteArray(12) { 3 })
@@ -302,6 +374,8 @@ class PlanSyncTest {
         const val FROZEN_MAILBOX = "6_ppugL_I2cbDsZYhdOddA"
         const val FROZEN_TOKEN = "wHErkFiAjM3dUXVy18TJETV0arl4vvuSa21gZUBEpjE" // ggignore: test vector
         const val FROZEN_CHECK = "395 514"
+        const val FROZEN_JOIN_ID = "sAZCnWUrch6J4Mt9nYTAzw" // also from Python hashlib (A-017)
+        const val FROZEN_JOIN_ITEM = "AQSwBkKdZStyHongy32dhMDPAQEBAQEBAQGAlIO5lzQABSxBUUVJRHhZZEpDc3lPVUJIVGxWY1kycHhlSC1HalpTYm9xbXd0NzdGek5QYQ"
         const val FROZEN_BLOB = "AQUFBQUFBQUFBQUFBezwy_DS4VFukiv3lciLKrMNNEjd7xcqYoHVER5ZBI4rz0TPbKW5EUMZ1tFYUge1Y3M852rKXkBCQZmq1iHBROEndXRK7OMGVOO4YsmD_ALasLkzfJMGpmhFHoqWt-FC"
     }
 }

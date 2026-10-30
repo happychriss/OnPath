@@ -43,7 +43,10 @@
     </plurals>
     <string name="sync_storage">The sync files could not be written – the phone's storage may be full.</string>
     <string name="sync_already_paired">This phone is already paired with this browser.</string>
-    <string name="sync_unpair_first">This phone is paired with another browser. Unpair it first, then scan the code again.</string>
+    <string name="sync_join_offline">The browser was not reached – check the connection and scan the code again.</string>
+    <string name="sync_join_used">This code is no longer valid – show a new code in the browser and scan it.</string>
+    <string name="sync_join_failed">Pairing this browser failed – show a new code in the browser and scan it again.</string>
+    <string name="sync_copy">copy</string>
     <string name="sync_link_broken">This pairing code can't be read. Show the code in the browser again and scan it once more.</string>
     <string name="sync_during_tour">Routes sync after the tour.</string>
     <string name="sync_untitled_route">Route</string>

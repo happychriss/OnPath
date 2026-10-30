@@ -9,6 +9,7 @@ import com.onpath.app.routing.PlanCode
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.sync.SyncFormat
 import com.onpath.app.sync.SyncItem
+import com.onpath.app.sync.SyncMerge
 import com.onpath.app.sync.SyncTrack
 import com.onpath.app.sync.TrackCode
 import com.onpath.app.sync.TrackMark
@@ -69,6 +70,9 @@ object RouteItems {
             tr.marks.map { GpxWaypoint(it.lat, it.lon, it.name) }, tr.activity, tr.sac)
     }
 
-    /** The name as the item keeps it (compare with [SyncItem.title]). */
-    fun title(t: Tour): String? = SyncFormat.cleanTitle(t.name)
+    /**
+     * The name as the item keeps it (compare with [SyncItem.title]); a copy shown with the local [copyLabel]
+     * (" (Kopie)") keeps the stored marker [SyncMerge.COPY].
+     */
+    fun title(t: Tour, copyLabel: String = SyncMerge.COPY): String? = SyncFormat.cleanTitle(SyncMerge.storedTitle(t.name, copyLabel))
 }

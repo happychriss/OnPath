@@ -10,7 +10,9 @@ import com.onpath.app.routing.SharedPlan
 import com.onpath.app.sync.AesGcm
 import com.onpath.app.sync.MemoryServer
 import com.onpath.app.sync.SyncFormat
+import com.onpath.app.sync.PairCode
 import com.onpath.app.sync.SyncItem
+import com.onpath.app.sync.SyncJoin
 import com.onpath.app.sync.SyncKeys
 import com.onpath.app.sync.SyncLedger
 import com.onpath.app.sync.SyncRound
@@ -201,6 +203,109 @@ class CorePlanSyncTest {
         // a second pass changes nothing
         phoneSync(); browserSync()
         assertEquals(2, store.live().size)
+    }
+
+    /** A-017: a German phone shows the losing version as "… (Kopie)"; the browser keeps " (copy)" and nothing is renamed back. */
+    @Test fun aConflictCopyIsShownInThePhonesLanguage() {
+        val de = PlanSyncPass(files, store, { server.box(it) }, { n -> rnd.nextBytes(n) }, { clock }, "Pixel 8",
+            { "Route" }, AesGcm, PlanSync.copyLabel("Kopie"))
+        fun deSync() = de.run { recording }!!.also { clock += 1000 }
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        deSync(); browserSync()
+        val id = browser.plans().single().id
+        store.update(t) { it.copy(name = "Handy") }
+        clock += 10
+        browser.rename(id, "Browser", clock + 5_000, web)
+        browserSync(); deSync(); browserSync()
+        assertEquals(setOf("Browser", "Handy (Kopie)"), store.live().map { it.name }.toSet())
+        assertEquals(setOf("Browser", "Handy (copy)"), browser.plans().map { it.title }.toSet())
+        // more passes: the German name is not sent back as a rename
+        deSync(); browserSync()
+        val again = deSync().outcome as SyncRound.Outcome.Done
+        assertEquals(0, again.pushed)
+        assertEquals(setOf("Browser", "Handy (copy)"), browser.plans().map { it.title }.toSet())
+        assertEquals(" (copy)", PlanSync.copyLabel(" "))
+    }
+
+    /**
+     * A-017: the phone is paired; a second browser (laptop + desktop, a friend's PC) shows its own code, the phone scans
+     * it → the same check digits and Pair (never "unpair first") → one JOIN item in that browser's fresh mailbox, readable
+     * only with that browser's key; it carries the phone's code. The phone keeps its one mailbox, ledger and links; the
+     * second browser moves in and sees the phone's routes.
+     */
+    @Test fun aSecondBrowserIsSentIntoThePhonesMailbox() {
+        store.savePlanned("Waalweg", listOf(a, b, c))
+        phoneSync(); browserSync()
+        val ledgerBefore = files.ledger().write()
+        val linksBefore = files.links().write()
+        // the second browser: its own fresh code, it has claimed its mailbox and waits (its own hello in it)
+        val secretB = ByteArray(32) { (it * 5 + 77).toByte() }
+        val keysB = SyncKeys(secretB)
+        val webB = SyncFormat.newDevice(ByteArray(8) { 6 })
+        val browserB = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(browserB)
+        assertEquals(PairStep.JOIN, PairStep.of(keys.mailbox, keysB.mailbox))
+        assertEquals(PairStep.ALREADY, PairStep.of(keys.mailbox, keys.mailbox))
+        assertEquals(PairStep.PAIR, PairStep.of(null, keysB.mailbox))
+
+        val o = phone.join(secretB)
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), o)
+        // the phone: still paired with its mailbox, ledger and links unchanged, nothing new in its mailbox
+        assertEquals(keys.mailbox, SyncKeys(files.pairing()!!.secret!!).mailbox)
+        assertEquals(ledgerBefore, files.ledger().write())
+        assertEquals(linksBefore, files.links().write())
+        assertEquals(2, server.itemCount(keysB)) // the browser's hello + the JOIN – nothing else
+        assertFalse("the server cannot read the code", server.stored(keysB).contains(PairCode.encode(secret)))
+        // the second browser's next pull finds the JOIN, opened with its own key only
+        val bRound = SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(browserB)
+        assertEquals(0, (bRound as SyncRound.Outcome.Done).unreadable)
+        val adopted = SyncJoin.secretIn(browserB)!!
+        assertTrue(secret.contentEquals(adopted))
+        assertEquals(files.device { ByteArray(it) }, browserB.get(SyncJoin.ID)!!.device) // folder key = the phone's id
+        // it moves into the phone's mailbox (deletes its own) and reads from 0: the phone's routes, the phone's hello
+        assertEquals(200, server.box(keysB).end().status)
+        val moved = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(SyncKeys(adopted), server.box(SyncKeys(adopted)), { ByteArray(12) { (n++).toByte() } }).run(moved)
+        assertEquals(listOf("Waalweg"), moved.plans().map { it.title })
+        val phoneHello = moved.devices(webB).single { it.role == SyncItem.ROLE_PHONE }
+        assertEquals("Pixel 8", phoneHello.name)
+        // the phone sees the second browser's hello in its own mailbox now
+        phoneSync()
+        assertTrue(files.ledger().devices(files.device { ByteArray(it) }).any { it.name == "Firefox on Windows" && it.role == SyncItem.ROLE_BROWSER })
+        // scanning the same second code again just writes the JOIN once more (on its current revision)
+        val secretC = ByteArray(32) { (it * 9 + 3).toByte() }
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretC))
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretC))
+        assertEquals(1, server.itemCount(SyncKeys(secretC)))
+        // a used-up code (that browser already moved and deleted its mailbox): Ended; offline: Offline
+        assertEquals(SyncRound.Outcome.Ended, phone.join(secretB))
+        server.offline = true
+        assertEquals(SyncRound.Outcome.Offline, phone.join(secretC))
+        server.offline = false
+        // the own browser's code: nothing to redirect
+        assertNull(phone.join(secret))
+    }
+
+    @Test fun joinNeedsAPairing() {
+        val unpaired = PlanSyncPass(SyncFiles(tmp.newFolder("fresh")), store, { server.box(it) }, { n -> rnd.nextBytes(n) }, { clock },
+            "Pixel 8", { "Route" }, AesGcm)
+        assertNull(unpaired.join(ByteArray(32) { 4 }))
+    }
+
+    /** A-017: the phone's hello says "phone" (role 1), so a browser with several partners knows which hello names the phone. */
+    @Test fun thePhonesHelloCarriesThePhoneRole() {
+        phoneSync(); browserSync()
+        assertEquals(SyncItem.ROLE_PHONE, browser.devices(web).single().role)
+    }
+
+    /** A-017: the browser shows the phone by the name the user gave it; without one the model; never fails. */
+    @Test fun phoneNameIsTheUsersDeviceNameElseTheModel() {
+        assertEquals("Christophs Pixel", PlanSync.deviceName({ " Christophs Pixel " }, "Pixel 8"))
+        assertEquals("Pixel 8", PlanSync.deviceName({ null }, "Pixel 8"))
+        assertEquals("Pixel 8", PlanSync.deviceName({ "  " }, "Pixel 8"))
+        assertEquals("Pixel 8", PlanSync.deviceName({ throw SecurityException("not allowed") }, "Pixel 8"))
+        assertEquals("Android", PlanSync.deviceName({ null }, null))
+        assertEquals("Android", PlanSync.deviceName({ null }, " "))
     }
 
     @Test fun nothingComesInDuringARecording() {

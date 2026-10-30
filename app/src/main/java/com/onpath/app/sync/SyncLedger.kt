@@ -82,12 +82,16 @@ class SyncLedger private constructor(
         return true
     }
 
-    /** This device's hello (its name for the other side's "Paired with …"); written again only when it changes. */
-    fun hello(device: String, name: String, now: Long) {
+    /**
+     * This device's hello (its name for the other side's "Paired with …" and its [role]: [SyncItem.ROLE_PHONE] /
+     * [SyncItem.ROLE_BROWSER], so a browser tells the phone's hello from other browsers'); written again only when it
+     * changes. [role] null = say none (an older caller) – an existing role is then kept as it is.
+     */
+    fun hello(device: String, name: String, now: Long, role: Int? = null) {
         val id = SyncFormat.deviceItemId(device)
         val old = entries[id]
-        if (old != null && !old.item.deleted && old.item.name == name) return
-        put(SyncItem(id, stamp(old, now), device, kind = SyncItem.DEVICE, name = name), old)
+        if (old != null && !old.item.deleted && old.item.name == name && (role == null || old.item.role == role)) return
+        put(SyncItem(id, stamp(old, now), device, kind = SyncItem.DEVICE, name = name, role = role ?: old?.item?.role), old)
     }
 
     /**

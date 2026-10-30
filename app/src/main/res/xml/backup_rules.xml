@@ -2,8 +2,9 @@
 <!--
   Android Auto Backup up to Android 11 (android:fullBackupContent). Only the tours and the settings: map data, map
   cells, caches and the backup folder link are large or device-bound (keep in step with data_extraction_rules.xml).
-  With <include> rules nothing else is backed up. files/sync/ (the plan sync's pairing secret and ledger) is excluded
-  on purpose: a restored phone must not reuse the old phone's mailbox (docs/design/web-sync.md §11.2).
+  With <include> rules nothing else is backed up. Of the plan sync's files/sync/ only device.txt (this phone's sync
+  device id, A-017: a reinstalled phone finds its folder in the browser again); the pairing secret, ledger, links and
+  marks stay out on purpose – a restored phone must not reuse the old phone's mailbox (docs/design/web-sync.md §11.2).
 -->
 <full-backup-content>
     <include domain="database" path="onpath.db" />
@@ -11,5 +12,5 @@
     <include domain="sharedpref" path="onpath.xml" />
     <include domain="file" path="tour-times.json" />
     <include domain="file" path="plan-times.json" />
-    <exclude domain="file" path="sync/" />
+    <include domain="file" path="sync/device.txt" />
 </full-backup-content>

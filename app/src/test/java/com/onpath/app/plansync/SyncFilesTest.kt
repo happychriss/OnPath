@@ -95,12 +95,26 @@ class SyncFilesTest {
         f.clearEnded() // nothing to remove: fine
     }
 
-    /** files/sync/ (pairing secret, ledger) never goes into Android's backup or a device transfer. */
-    @Test fun syncFolderIsNotBackedUp() {
+    /**
+     * Of files/sync/ only device.txt goes into Android's backup and a device transfer (A-017: a reinstalled phone keeps
+     * its device id – its folder in the browser); the pairing secret, ledger, links and marks never do. With <include>
+     * rules nothing else is backed up, so device.txt must be the only sync include, in every section.
+     */
+    @Test fun onlyTheDeviceIdOfTheSyncFolderIsBackedUp() {
+        val f = SyncFiles(tmp.newFolder("sync"))
+        f.device { ByteArray(it) { 7 } }
+        f.savePairing(ByteArray(32) { 1 }, 5)
+        f.saveLedger(com.onpath.app.sync.SyncLedger.empty())
+        assertTrue(File(f.dir, "device.txt").isFile)
         for (name in listOf("backup_rules.xml", "data_extraction_rules.xml")) {
             val xml = File("src/main/res/xml/$name").readText()
-            assertFalse(name, Regex("""<include[^>]*path="sync""").containsMatchIn(xml))
-            assertTrue(name, Regex("""<exclude domain="file" path="sync/?"""").findAll(xml).count() >= 1)
+            val sections = if (name == "backup_rules.xml") listOf(xml)
+                else listOf("cloud-backup", "device-transfer").map { s -> xml.substringAfter("<$s>").substringBefore("</$s>") }
+            for (s in sections) {
+                val syncPaths = Regex("""<include domain="file" path="(sync[^"]*)"""").findAll(s).map { it.groupValues[1] }.toList()
+                assertEquals(name, listOf("${SyncFiles.DIR}/device.txt"), syncPaths)
+            }
+            assertFalse(name, Regex("""path="sync/(pair|ledger|links|marks|status|ended)""").containsMatchIn(xml))
         }
         assertEquals("sync", SyncFiles.DIR)
     }
