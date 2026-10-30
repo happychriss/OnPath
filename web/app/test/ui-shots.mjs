@@ -28,7 +28,12 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
     await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 });
     const clip = { x: 0, y: 0, width: vp.width, height: 56 };
     await page.screenshot({ path: path.join(out, `${name}-header-unpaired.png`), clip });
-    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: true, lastSync: Date.now() }; s.changed(); }); // the look only
+    // the paired status, for the look only: the page's own first sync (sync.init → syncSoon → refresh) may still set
+    // "not paired" from its store, so stop its timer and set the status until the entry shows it
+    await page.evaluate(() => clearInterval(window.__sync.timer));
+    await page.waitForTimeout(1500); // a sync already started ends
+    await page.waitForFunction(() => { const s = window.__sync; if (!s.status.paired) { s.status = { ...s.status, paired: true, lastSync: Date.now() }; s.changed(); }
+      return document.querySelector('#syncBadge .lbl')?.textContent === 'Paired'; }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
     await page.screenshot({ path: path.join(out, `${name}-header-paired.png`), clip });
     await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: false, lastSync: null }; s.changed(); });
   }
