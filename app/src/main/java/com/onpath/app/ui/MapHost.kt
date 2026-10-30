@@ -133,6 +133,7 @@ fun MapHost(
                     com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
                         "${android.os.SystemClock.elapsedRealtime() - t0} ms, native heap " +
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
+                    com.onpath.app.debug.Health.noteStyleLoad(n, loadedFrom?.name, MapMemory.geoJsonBytes(style))
                     vm.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)

@@ -301,5 +301,8 @@ class SearchSession(
             areaStores.getOrPut(filesDir.path) {
                 SearchAreas(File(filesDir, "search-areas"), legacyCache = File(filesDir, "search-places-v1.tsv"), opener = opener)
             }
+
+        /** The [SearchAreas] of this app folder if a search created it already, else null (health line: never creates one). */
+        @Synchronized fun peekAreas(filesDir: File): SearchAreas? = areaStores[filesDir.path]
     }
 }

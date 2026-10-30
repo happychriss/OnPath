@@ -49,6 +49,9 @@ object MapMemory {
         Problems.info("map", "Map sources not readable (style being replaced)", e); emptyList()
     }
 
+    /** Size of the local GeoJSON files [style] draws (the native index grows with it) – health line. */
+    fun geoJsonBytes(style: Style): Long = fileGeoJson(style).sumOf { (_, f) -> f.length() }
+
     /**
      * Empties [style]'s file GeoJSON sources before the style is replaced, so MapLibre frees their index with the next
      * frame instead of holding it beside the new one. Returns how many were emptied. Never throws.

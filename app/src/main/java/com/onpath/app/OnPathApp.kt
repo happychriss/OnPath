@@ -22,6 +22,10 @@ class OnPathApp : Application() {
         // Must happen before any MapView is created. No API key / network needed.
         MapLibre.getInstance(this)
         RecordingService.createChannels(this)
+        // the search index's size in the health line (only when it was built – the line never builds it)
+        com.onpath.app.debug.Health.searchEntries = {
+            com.onpath.app.ui.search.SearchSession.peekAreas(filesDir)?.latest?.size
+        }
         com.onpath.app.debug.Health.start() // a health line every 10 min in the event log
     }
 
