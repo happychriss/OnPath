@@ -190,7 +190,12 @@ check((await B.textContent('#points')).includes('Vellau'), 'a synced plan opens 
 
 // 6. delete on A (with the question) → gone on B
 await menu(A, '#menuPlans');
-await A.click('#planList li:has-text("Phone name (copy)") .del');
+const del = A.locator('#planList li:has-text("Phone name (copy)") .del');
+await del.waitFor();
+const delLook = { svg: await del.locator('svg').count(), text: (await del.textContent()).trim() };
+check(delLook.svg === 1 && delLook.text === '', `a route is deleted with the trash can, like the app (no ✕) ${JSON.stringify(delLook)}`);
+await del.click();
+check(/recycle bin for 30 days/.test(await A.textContent('dialog.plans .confirm')), 'the question says the phone keeps it 30 days in its recycle bin');
 await A.click('dialog.plans .confirm .danger');
 await A.waitForFunction(() => !document.getElementById('planList')?.textContent?.includes('(copy)'));
 await A.click('#closePlans');

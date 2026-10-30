@@ -131,7 +131,7 @@
     <string name="web_plans_new_name">New name of the route</string>
     <string name="web_save_q">Save “%1$s”?</string>
     <string name="web_save_choice_text">Save replaces the saved route with this one. Save as new keeps it and adds this route.</string>
-    <string name="web_delete_q">Delete “%1$s”? It is also deleted on the paired phone.</string>
+    <string name="web_delete_q">Delete “%1$s”? On the paired phone it goes to the recycle bin for 30 days – restore it there and it comes back here too.</string>
     <string name="web_keep">Keep</string>
 
     <!-- Pair phone, sync -->

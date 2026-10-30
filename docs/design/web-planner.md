@@ -554,8 +554,12 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 1. **Shared code updates itself:** web-spike merges main (`web/parity/merge-main.sh`: fetch, merge, build the engine,
    all JVM / Wasm / browser tests, the parity check; exit codes say why it stopped). Scheduled GitHub workflows only
    run from the default branch, so the daily run is a **scheduled Claude task** (prompt in the task report): it runs
-   the script, pushes when green (CI = the gate, a green push deploys), and when mirrors or plan behaviour changed it
-   writes a proposal of web adjustments instead of guessing.
+   the script, pushes when green (CI = the gate, a green push deploys). **The app leads** (owner 2026-10-30): when a
+   mirrored app file changed (texts, buttons, menus, colours, plan behaviour), the task adopts the change in the web
+   itself, tests, `--update`s and pushes – it does not wait for the owner. Only a change with no web counterpart yet
+   (a new screen, phone-only hardware) goes to the owner as a proposal, and even then the merge with everything else is
+   pushed, so shared code never stays behind. (30 Oct: one open question about the POI button kept 100 app commits
+   – incl. 0.13's "Set as destination / Add as stop 2" buttons – off the web for a day.)
 2. **Mirrors cannot drift silently:** `web/parity.json` stores, per mirrored app file, the git blob hash it was last
    checked at. `web/parity/check.mjs` (first step of the web CI) **fails** when such a file changed – look at the
    change, adjust the web, then `node web/parity/check.mjs --update <app file>`.

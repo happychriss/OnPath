@@ -118,7 +118,7 @@
     <string name="web_plans_new_name">Neuer Name der Route</string>
     <string name="web_save_q">„%1$s“ speichern?</string>
     <string name="web_save_choice_text">Speichern ersetzt die gespeicherte Route durch diese. Als neue speichern behält sie und legt diese Route dazu.</string>
-    <string name="web_delete_q">„%1$s“ löschen? Sie wird auch auf dem verbundenen Handy gelöscht.</string>
+    <string name="web_delete_q">„%1$s“ löschen? Auf dem verbundenen Handy kommt sie 30 Tage in den Papierkorb – dort wiederhergestellt, ist sie auch hier wieder da.</string>
     <string name="web_keep">Behalten</string>
 
     <string name="web_pair_preparing">Wird vorbereitet…</string>

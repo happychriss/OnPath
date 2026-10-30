@@ -118,7 +118,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       li.dataset.id = p.id;
       li.innerHTML = `<button class="open txt" title="${esc(t('web_plans_open'))}"><span class="name">${esc(p.title ?? t('plan_route_default_name'))}</span>
         <span class="muted small">${when(p.updatedAt)}${p.mine ? '' : ' · ' + esc(t('web_plans_from_other'))}${p.id === host.openId() ? ' · ' + esc(t('web_plans_shown_now')) : ''}</span></button>
-        <button class="rename iconbtn" aria-label="${esc(t('common_rename'))}">✎</button><button class="del iconbtn" aria-label="${esc(t('common_delete'))}">✕</button>`;
+        <button class="rename iconbtn" aria-label="${esc(t('common_rename'))}">✎</button><button class="del iconbtn" aria-label="${esc(t('common_delete'))}" title="${esc(t('common_delete'))}">${icon('delete', 20)}</button>`;
       li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); host.open(p); };
       li.querySelector<HTMLButtonElement>('.rename')!.onclick = async () => {
         const name = prompt(t('web_plans_new_name'), p.title ?? '');

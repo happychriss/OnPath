@@ -97,7 +97,7 @@ const summaryText = () => page.textContent('#summary .subline');
 await page.goto(url + 'index.html');
 await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
 await toHilden();
-await hildenAs('#cstart');
+await hildenAs('#cadd'); // empty plan: the main button is "Set as start" (app 0.13), no small As start beside it
 await page.waitForTimeout(1500);
 check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summaryText()).includes('1 point · Hilden'),
   `empty plan + Hilden as start: no question, "1 point · Hilden" (${await summaryText()})`);
