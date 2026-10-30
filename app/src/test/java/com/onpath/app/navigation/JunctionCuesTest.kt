@@ -18,25 +18,72 @@ class JunctionCuesTest {
     private fun walk(c: JunctionCues, l: List<GeoPoint>, from: Int = 0, to: Int = l.size * 10, onRoute: (Int) -> Boolean = { true }):
         List<Pair<Int, JunctionCue>> = (from..to step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), onRoute(m))?.let { m to it } }
 
-    @Test fun oncePerJunctionAboutFortyMetresBefore() {
+    @Test fun oncePerJunctionBeforeIt() {
         val l = line(1000, mapOf(200 to JunctionCue.LEFT, 600 to JunctionCue.RIGHT))
         val cues = walk(JunctionCues(), l)
         assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), cues.map { it.second })
-        assertTrue("left cue 40 m before: ${cues[0].first}", cues[0].first in 155..165)
-        assertTrue("right cue 40 m before: ${cues[1].first}", cues[1].first in 555..565)
+        // on foot, speed unknown: 25 s at 5 km/h = 35 m
+        assertTrue("left cue 35 m before: ${cues[0].first}", cues[0].first == 165)
+        assertTrue("right cue 35 m before: ${cues[1].first}", cues[1].first == 565)
     }
 
-    // ---- on foot: unchanged by the bike's rules (pinned 2026-10-30) ----
+    // ---- on foot (owner 2026-10-30: the bike's smarter cues, timed for walking) ----
 
-    @Test fun hikeIgnoresSpeedAndJunctionShape() {
-        // a junction the bike would not vibrate for (straight on through a crossing) and a fast fix: on foot as before
-        val l = line(1000, mapOf(200 to JunctionCue.KEEP_LEFT, 230 to JunctionCue.RIGHT, 600 to JunctionCue.SLIGHT_RIGHT))
-            .map { if (it.turn == JunctionCue.KEEP_LEFT) it.copy(shape = crossingStraightOn) else it }
-        val c = JunctionCues()
-        val cues = (0..1000 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true, speedMps = 12.0)?.let { m to it } }
-        assertEquals(listOf(JunctionCue.KEEP_LEFT, JunctionCue.SLIGHT_RIGHT), cues.map { it.second })
-        assertTrue(cues[0].first in 155..165) // 40 m, whatever the speed
-        assertTrue(cues[1].first in 555..565)
+    // shapes with hiking-mountain.brf's classes: 3 path, 2 gravel path, 8 track
+    private val trailT = JunctionShape(-88f, 3, 3, listOf(JunctionShape.Branch(2f, 3))) // left off the path, it goes on
+    private val trailOn = JunctionShape(12f, 3, 3, listOf(JunctionShape.Branch(-70f, 2))) // the path goes on, one branches off
+    private val trackBends = JunctionShape(40f, 8, 8, listOf(JunctionShape.Branch(-3f, 3))) // the track bends, a path straight on
+
+    /** A trail: [turns] (metre → T-junction left), [quiet] (metre → the path / track simply goes on). */
+    private fun trail(lengthM: Int, turns: List<Int> = emptyList(), quiet: List<Int> = emptyList()) =
+        line(lengthM, turns.associateWith { JunctionCue.LEFT } + quiet.associateWith { JunctionCue.SLIGHT_RIGHT }).mapIndexed { i, p ->
+            when (i * 10) { in turns -> p.copy(shape = trailT); in quiet -> p.copy(shape = if (i % 2 == 0) trailOn else trackBends); else -> p }
+        }
+
+    private fun hike(l: List<GeoPoint>, speed: Double?) = ride(JunctionCues(), l, speed)
+
+    @Test fun hikeCueComesTwentyFiveSecondsBefore() {
+        val l = trail(1000, turns = listOf(500))
+        assertEquals(475, hike(l, 1.0).single().first) // 3.6 km/h → 25 m
+        assertEquals(460, hike(l, 1.6).single().first) // 5.8 km/h → 40 m (as before)
+        assertEquals(440, hike(l, 3.0).single().first) // a jump of the GPS speed: at most 60 m
+        assertEquals(475, hike(l, 0.4).single().first) // a steep climb: at least 25 m
+        assertEquals(465, hike(l, null).single().first) // speed unknown: 5 km/h → 35 m
+        assertEquals(30.0, JunctionCues.hikeLeadM(1.2), 0.01)
+    }
+
+    @Test fun hikeOnlyWhereOneCouldGoWrong() {
+        // along a trail: the path goes on while another branches off, a track bends while a path goes straight on – quiet;
+        // the T-junction where the route leaves the path vibrates
+        val l = trail(1500, quiet = listOf(200, 450, 700), turns = listOf(1000))
+        assertEquals(listOf(JunctionCue.LEFT), hike(l, 1.3).map { it.second })
+        // the quiet ones are still on the lock screen
+        assertEquals("Slight right", JunctionCues().nextAheadText(l, 1, 100.0)!!.first)
+    }
+
+    @Test fun hikeCloseJunctionsAreOneCue() {
+        // two turns 60 m apart: at 5 km/h (1.4 m/s · 30 s = 42 m → 50 m) each its own cue; at 8 km/h (2.2 m/s → 66 m) one
+        val l = trail(1000, turns = listOf(300, 360, 700))
+        assertEquals(3, hike(l, 1.4).size)
+        assertEquals(2, hike(l, 2.2).size)
+        assertEquals(60.0, JunctionCues.hikeMergeM(2.0), 0.01)
+        assertEquals(JunctionCues.MERGE_M, JunctionCues.hikeMergeM(1.0), 0.01)
+        // a quiet junction between them does not split the chain
+        val l2 = trail(1000, turns = listOf(300, 350), quiet = listOf(330))
+        assertEquals(1, hike(l2, 2.0).size)
+    }
+
+    @Test fun hikeAndBikeReadTheSameLineDifferently() {
+        // a fork of two paths 20° / 30°, one tagged gravel: the bike's classes would call it "along the path"; on foot a fork
+        val fork = JunctionShape(-20f, 3, 3, listOf(JunctionShape.Branch(30f, 2)))
+        val l = line(600, mapOf(300 to JunctionCue.KEEP_LEFT)).map { if (it.turn != null) it.copy(shape = fork) else it }
+        assertEquals(1, ride(JunctionCues(), l, 1.4).size)
+        assertEquals(0, ride(JunctionCues.bike(), l, 5.5).size)
+        // switching one instance between them (another tour) re-reads the line
+        val c = JunctionCues.bike()
+        assertNull(c.update(l, 1, 280.0, true, 5.5))
+        c.bike = false
+        assertEquals(JunctionCue.KEEP_LEFT, c.update(l, 1, 280.0, true, 1.4))
     }
 
     // ---- on the bike (owner 2026-10-30) ----
@@ -205,12 +252,12 @@ class JunctionCuesTest {
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
     }
 
-    /** A line without the junctions' ways (routed before, an old session): the bike skips slight bends as before. */
-    @Test fun bikeSkipsSlightBendsWithoutShape() {
+    /** A line without the junctions' ways (routed before, an old session): slight bends skipped, on the bike and on foot. */
+    @Test fun slightBendsSkippedWithoutShape() {
         val l = line(800, mapOf(100 to JunctionCue.SLIGHT_LEFT, 300 to JunctionCue.LEFT, 500 to JunctionCue.KEEP_RIGHT, 700 to JunctionCue.SLIGHT_RIGHT))
         fun walk(c: JunctionCues) = (0..800 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true) }
         assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues.bike()))
-        assertEquals("hiking: every junction", 4, walk(JunctionCues(40.0)).size)
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues()))
     }
 
     @Test fun sessionFileKeepsTheJunctionShapes() {

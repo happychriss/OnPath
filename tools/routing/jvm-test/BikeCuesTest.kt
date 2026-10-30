@@ -43,7 +43,11 @@ fun main() {
         val speeds = listOf(4.0, 5.5, 7.0) // 14, 20, 25 km/h
         val sb = StringBuilder()
         // before: fixed 80 m, every junction (up to 0.11) / slight bends skipped (0.12)
-        val all = JunctionCues(80.0).let { c -> (0..r.distanceM.toInt() step 5).mapNotNull { m -> c.update(r.points, 1, m.toDouble(), true) } }
+        // the old rule: a cue at every junction not within 50 m of the junction before it
+        val cum0 = Geo.cumulative(r.points)
+        var prev = Double.NEGATIVE_INFINITY
+        val all = r.points.indices.filter { r.points[it].turn != null }
+            .filter { i -> (cum0[i] - prev >= JunctionCues.MERGE_M).also { prev = cum0[i] } }.map { r.points[it].turn!! }
         val nBefore = all.count { it != JunctionCue.SLIGHT_LEFT && it != JunctionCue.SLIGHT_RIGHT }
         sb.append(String.format("0.11 %3d  0.12 %3d", all.size, nBefore))
         for (v in speeds) {

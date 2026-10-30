@@ -610,8 +610,8 @@ class RecordingService : Service() {
     }
 
     /**
-     * Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. On the
-     * bike only where one could go wrong, timed by the speed of [loc] ([com.onpath.app.navigation.SpeedWindow]).
+     * Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. Only
+     * where one could go wrong, timed by the speed of [loc] ([com.onpath.app.navigation.SpeedWindow]; bike and on foot).
      */
     private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
@@ -621,13 +621,15 @@ class RecordingService : Service() {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
             val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
-            val worth = st.line.count { p -> p.turn?.let { com.onpath.app.navigation.CueRule.needed(it, p.shape) } == true }
-            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts" +
-                (if (junctions.bike) ", $worth worth a bike cue" else "") +
+            val worth = st.line.count { p ->
+                p.turn?.let { com.onpath.app.navigation.CueRule.needed(it, p.shape, hike = !junctions.bike) } == true
+            }
+            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts, $worth worth a " +
+                (if (junctions.bike) "bike" else "hike") + " cue" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
         val onRoute = st.prompt == null && st.shownAlongM != null
-        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speed(nowEl)) ?: return
+        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
         val choice = (settings ?: Prefs(this).settings).junctionVibration
         val locked = screenLocked()
         if (choice.plays(locked)) {

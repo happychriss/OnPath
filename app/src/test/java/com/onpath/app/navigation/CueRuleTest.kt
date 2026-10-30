@@ -87,6 +87,66 @@ class CueRuleTest {
         assertFalse(cue(JunctionCue.SLIGHT_RIGHT, null))
     }
 
+    // ---- on foot (owner 2026-10-30): the same rule with hiking-mountain.brf's classes ----
+    // 2 gravel / grass path, 3 path, 4 path grade2, 6 paved path, 8 track, 10 paved track, 12 / 14 service, 16 steps,
+    // 18 residential, 24 secondary. "Meran" / "Algund" cases = hints of the routed hikes in tools/routing/jvm-test/JunctionsTest.kt.
+
+    private fun hike(c: JunctionCue, s: JunctionShape?) = CueRule.needed(c, s, hike = true)
+
+    @Test fun hikeTJunctionOnAMountainPathVibrates() {
+        // off the path to the left, the path goes on straight
+        assertTrue(hike(JunctionCue.LEFT, shape(-88f, 3, 3, 2f to 3)))
+        // the end of a path at a crossing path: left or right
+        assertTrue(hike(JunctionCue.LEFT, shape(-90f, 3, 3, 90f to 3)))
+        // Meran 2000 → Ifinger 1245 m: 70° left, the other path 11° right
+        assertTrue(hike(JunctionCue.LEFT, shape(-70f, 3, 3, 11f to 3)))
+        // Algund → Vellau 199 m: off the track onto a path, the track goes on straight
+        assertTrue(hike(JunctionCue.RIGHT, shape(73f, 8, 3, -128f to 3, 1f to 8)))
+    }
+
+    @Test fun hikeForkOfTwoPathsVibratesWhateverTheirSurface() {
+        assertTrue(hike(JunctionCue.KEEP_LEFT, shape(-20f, 3, 3, 30f to 3)))
+        // one of them tagged gravel (class 2): still two paths – the raw classes would call it "along the path"
+        assertTrue(hike(JunctionCue.KEEP_LEFT, shape(-20f, 3, 3, 30f to 2)))
+        assertFalse(CueRule.needed(JunctionCue.KEEP_LEFT, shape(-20f, 3, 3, 30f to 2)))
+        assertTrue(hike(JunctionCue.KEEP_RIGHT, shape(25f, 4, 2, -20f to 6)))
+        // Meran 2000 → Ifinger 862 m: 39° right, the other path 7° left
+        assertTrue(hike(JunctionCue.SLIGHT_RIGHT, shape(39f, 3, 3, -7f to 3)))
+    }
+
+    @Test fun hikeAlongTheTrailIsQuiet() {
+        // the path goes on (12°), a path branches off at 70°: clearly the straightest way
+        assertFalse(hike(JunctionCue.SLIGHT_RIGHT, shape(12f, 3, 3, -70f to 2)))
+        // a forest track bends 40°, a path goes straight on: along the track
+        assertFalse(hike(JunctionCue.SLIGHT_RIGHT, shape(40f, 8, 8, -3f to 3)))
+        // paved and unpaved stretches of the same track are one class
+        assertFalse(hike(JunctionCue.SLIGHT_LEFT, shape(-50f, 10, 8, 5f to 3)))
+        // Meran Obermais 42 m / 173 m: the service road bends 48° / 41°, a path branches off
+        assertFalse(hike(JunctionCue.SLIGHT_RIGHT, shape(48f, 14, 14, -103f to 3)))
+        assertFalse(hike(JunctionCue.SLIGHT_LEFT, shape(-41f, 12, 12, 49f to 3)))
+        // a right-angle bend of the track with a path straight on still vibrates
+        assertTrue(hike(JunctionCue.LEFT, shape(-90f, 8, 8, 2f to 3)))
+    }
+
+    @Test fun hikeLeavingTheTrackForAPathVibratesEvenStraightOn() {
+        // the track bends 50° right, the route goes straight on into a path: the classic missed turn on foot
+        assertTrue(hike(JunctionCue.SLIGHT_LEFT, shape(-5f, 8, 3, 50f to 8)))
+        // (the bike's rule: straight on along the clearly straightest way – quiet)
+        assertFalse(CueRule.needed(JunctionCue.SLIGHT_LEFT, shape(-5f, 8, 3, 50f to 8)))
+        // Algund → Vellau 700 m: off the residential street into a service road, the street goes on
+        assertTrue(hike(JunctionCue.SLIGHT_LEFT, shape(-18f, 18, 14, 42f to 18)))
+        // the track ends in two paths: no bigger way goes on – the plain rule (clearly the straighter one: quiet)
+        assertFalse(hike(JunctionCue.SLIGHT_LEFT, shape(-5f, 8, 3, 60f to 3)))
+    }
+
+    @Test fun hikeClasses() {
+        assertEquals(listOf(0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 18, 24), listOf(0, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, 24).map { CueRule.hikeClass(it) })
+        // roundabouts / U-turns / no shape as on the bike
+        assertTrue(hike(JunctionCue.ROUNDABOUT, shape(-147f, 18, 18)))
+        assertFalse(hike(JunctionCue.SLIGHT_LEFT, null))
+        assertFalse(hike(JunctionCue.LEFT, shape(-90f, 3, 3)))
+    }
+
     // ---- reading BRouter's rows (btools.router.OnPathHints) ----
 
     @Test fun rowWithWaysBecomesAShape() {
