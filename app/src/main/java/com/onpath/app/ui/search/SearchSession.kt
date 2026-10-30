@@ -29,6 +29,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -112,6 +114,12 @@ class SearchSession(
         val ctx = context()
         ui = ui.copy(query = "", category = null, recent = recentHits(ctx), hasRoute = ctx.route != null)
         run() // clears the old results and stops a search still on its way
+        // the address files opened now (one per map cell, each reads its towns), not on the first letter
+        scope.launch(Dispatchers.IO) {
+            try { ensureAddresses() } catch (e: Exception) {
+                Problems.warn("search", "Offline address files not opened in advance; opened when searching", e)
+            }
+        }
         scope.launch {
             val idx = ensureIndex(force = true)
             // the word index into memory now (once per process), so the first keystroke answers at once
@@ -250,7 +258,9 @@ class SearchSession(
         offlineJob = scope.launch {
             val idx = ensureIndex()
             val hits = withContext(Dispatchers.IO) {
-                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) else emptyList()
+                // a newer keystroke cancels this job: the address files not searched yet are skipped
+                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
+                ensureActive()
                 idx.search(q, addr)
             }
             if (gen == generation) ui = ui.copy(hits = hits, hasRoute = ctx.route != null)
