@@ -87,12 +87,12 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         }
         val anchor = streetSets.withIndex().filter { it.value.isNotEmpty() }.minByOrNull { it.value.size } ?: return emptyList()
         val matched = words.indices.filter { streetSets[it].isNotEmpty() || townSets[it].isNotEmpty() }
-        val streets = streetRows(anchor.value).filter { s ->
-            val v = villageAt(s.lat, s.lon)?.id
-            matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }
-        }
         val out = ArrayList<AddressHit>()
-        for (s in streets) {
+        // street rows chunk by chunk and only until [max] hits: a short word ("s") matches thousands of streets a file
+        for (chunk in anchor.value.chunked(500)) for (s in streetRows(chunk)) {
+            // the village only when the street's own words and towns do not decide (a scan of the file's places)
+            val v by lazy(LazyThreadSafetyMode.NONE) { villageAt(s.lat, s.lon)?.id }
+            if (!matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }) continue
             val sWords = (listOf(s.name) + s.alt).flatMap { SearchText.tokens(it) }.flatMap { listOf(it) + AddressQuery.splitSuffix(it) }.toSet()
             val byStreet = matched.filter { s.id in streetSets[it] }.map { words[it] }
             var score = 0.0
@@ -109,7 +109,7 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
             if (house != null) out += AddressHit(place(s, house.first, house.second, house.third), score + 0.05, tier)
             out += AddressHit(place(s, null, s.lat, s.lon), score - if (q.number != null) 0.1 else 0.0,
                 if (q.number != null && house == null) tier else minOf(tier, 2))
-            if (out.size >= max) break
+            if (out.size >= max) return out
         }
         return out
     }
@@ -132,12 +132,12 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     private fun streetsWithPrefix(w: String): Set<Long> =
         db.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 5000", w, upper(w)).map { it[0] as Long }.toSet()
 
-    private fun streetRows(ids: Set<Long>): List<Street> = ids.chunked(500).flatMap { chunk ->
-        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${chunk.joinToString(",")})").map { r ->
+    /** The street rows of [ids] (one chunk of a few hundred), in id order. */
+    private fun streetRows(ids: List<Long>): List<Street> =
+        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids.joinToString(",")})").map { r ->
             Street(r[0] as Long, r[1] as String, split(r[2]), r[3] as Long?, r[4] as Long?, r[5] as String?,
                 (r[6] as Long).toInt(), e5(r[7]), e5(r[8]))
         }
-    }
 
     /** Exact house number, else the first one starting with it ("7" → "7a"). */
     private fun houseOf(street: Long, n: String): Triple<String, Double, Double>? {

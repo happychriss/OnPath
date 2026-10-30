@@ -34,6 +34,7 @@ class AddressSpeedLocalTest {
         for (t in typed) idx.search(AddressQuery.parse(t))
         val out = StringBuilder()
         val times = ArrayList<String>()
+        var sum = 0.0
         for (t in typed) {
             val t0 = System.nanoTime()
             val addr = idx.search(AddressQuery.parse(t))
@@ -41,12 +42,17 @@ class AddressSpeedLocalTest {
             val q = SearchQuery(t, null, lat, lon)
             val hits = places?.search(q, addr) ?: addr.map { SearchRanking.addressHit(it, q) }.sortedWith(SearchRanking.ORDER)
             val t2 = System.nanoTime()
-            times += String.format(Locale.ROOT, "%-16s addr %4d ms (%3d hits)  index %4d ms", "'$t'", (t1 - t0) / 1_000_000, addr.size, (t2 - t1) / 1_000_000)
+            // address time: median of 7 more runs
+            val med = (0 until 7).map { val a = System.nanoTime(); idx.search(AddressQuery.parse(t)); System.nanoTime() - a }.sorted()[3] / 1e6
+            sum += med
+            times += String.format(Locale.ROOT, "%-16s addr %6.1f ms (first %4d ms, %3d hits)  index %4d ms", "'$t'", med,
+                (t1 - t0) / 1_000_000, addr.size, (t2 - t1) / 1_000_000)
             out.append("Q '").append(t).append("' → ").append(hits.size).append(" (").append(hits.count { it.place.id.startsWith("a:") }).append(" addresses)\n")
             for (h in hits) out.append("  ").append(h.place.id).append(' ').append(h.tier).append(' ')
                 .append(String.format(Locale.ROOT, "%.6f", h.score)).append(' ').append(h.place.name).append('\n')
         }
         println(times.joinToString("\n"))
+        println(String.format(Locale.ROOT, "addr total of medians %.1f ms", sum))
         System.getenv("ONPATH_ADDRESS_OUT")?.let { File(it).writeText(out.toString()) }
         idx.close()
     }
