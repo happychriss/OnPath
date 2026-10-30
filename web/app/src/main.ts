@@ -97,7 +97,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <span class="product">${escapeHtml(t('web_product'))}</span>
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
-      ${NAV.map((n) => `<button id="${n.id}" role="menuitem">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
+      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>

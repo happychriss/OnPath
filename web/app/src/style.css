@@ -300,7 +300,10 @@ dialog.pair .check b { letter-spacing: .08em; }
 .langswitch button { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 5px 8px; }
 .langswitch button[aria-pressed="true"] { background: var(--site-soft); color: var(--site-fg); }
 .langswitch button:hover { color: var(--site-fg); }
-@media (max-width: 1020px) { .langswitch { margin-left: auto; } }
+/* German labels are longer: one line each; the hint goes first, then the labels (icons stay, with their title) */
+.nav button, .nav a.navlink { white-space: nowrap; }
+@media (max-width: 1560px) { #header .hint { display: none; } .langswitch { margin-left: auto; } }
+@media (max-width: 1180px) and (min-width: 701px) { .nav button span { display: none; } }
 .sitelinks { display: inline-flex; gap: 6px; align-items: center; background: rgba(255,255,255,.7); color: #333; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
 .sitelinks a { color: #333; text-decoration: none; } .sitelinks a:hover { text-decoration: underline; }
 .apphint { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 6px 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
