@@ -1,8 +1,12 @@
 package btools.router;
 
+import btools.mapaccess.MatchedWaypoint;
+
 /**
- * Reads BRouter's turn instructions ("voice hints", computed at real junctions only) from a finished track. In
- * BRouter's own package because VoiceHint's fields are package-private. Never throws; no hints = empty array.
+ * Reads BRouter's turn instructions ("voice hints", computed at real junctions only) and matched waypoints from a
+ * finished track. In BRouter's own package because VoiceHint's fields are package-private and
+ * OsmTrack.matchedWaypoints is protected – no reflection, so the same code runs in the web planner (TeaVM). Never
+ * throws; no hints = empty array.
  */
 public final class OnPathHints {
     private OnPathHints() {}
@@ -39,6 +43,30 @@ public final class OnPathHints {
             // expected: hints are optional – an unreadable list means a route without junction cues
             return new double[0][];
         }
+    }
+
+    /**
+     * Where BRouter matched each input point on a way (its crosspoint), by the names the app gave the points ("from",
+     * "via1", …, "to"): one { lat, lon } row per name, null where unknown (no list, no crosspoint, name not found).
+     */
+    public static double[][] matched(OsmTrack track, String[] names) {
+        int n = names == null ? 0 : names.length;
+        double[][] out = new double[n][];
+        try {
+            java.util.List<MatchedWaypoint> list = track == null ? null : track.matchedWaypoints;
+            if (list == null) return out;
+            for (MatchedWaypoint m : list) {
+                if (m == null || m.name == null || m.crosspoint == null) continue;
+                for (int i = 0; i < n; i++) {
+                    if (out[i] == null && m.name.equals(names[i])) {
+                        out[i] = new double[] { m.crosspoint.ilat / 1_000_000.0 - 90.0, m.crosspoint.ilon / 1_000_000.0 - 180.0 };
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            // expected: matched points are optional – unknown means the route geometry is used instead
+        }
+        return out;
     }
 
     private static double[] row(VoiceHint h) {

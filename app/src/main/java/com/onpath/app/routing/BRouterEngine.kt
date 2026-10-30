@@ -211,19 +211,15 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     }
 
     /**
-     * BRouter's snapped crosspoint per input node (matched by name), or empty when unavailable.
-     * `OsmTrack.matchedWaypoints` is protected, hence reflection; any failure just means "unknown".
+     * BRouter's snapped crosspoint per input node (matched by name), null where unknown. Read in BRouter's own package
+     * ([btools.router.OnPathHints.matched], `OsmTrack.matchedWaypoints` is protected) – no reflection, so the web
+     * planner (TeaVM) gets them too and re-routes to a stop on a way that the via correction cut out ([Planner.plan]).
      */
-    private fun matchedPoints(track: OsmTrack, nodes: List<OsmNodeNamed>): List<GeoPoint?> = try {
-        val f = OsmTrack::class.java.getDeclaredField("matchedWaypoints").apply { isAccessible = true }
-        val list = (f.get(track) as? List<*>).orEmpty().filterIsInstance<MatchedWaypoint>()
-        val byName = list.filter { it.crosspoint != null && it.name != null }.associateBy { it.name }
-        nodes.map { n ->
-            byName[n.name]?.crosspoint?.let { c -> GeoPoint(c.ilat / 1_000_000.0 - 90.0, c.ilon / 1_000_000.0 - 180.0) }
-        }
-    } catch (e: Throwable) {
-        Problems.warn("routing", "BRouter matched waypoints not readable (reflection); using route geometry instead", e)
-        emptyList()
+    private fun matchedPoints(track: OsmTrack, nodes: List<OsmNodeNamed>): List<GeoPoint?> {
+        val rows = btools.router.OnPathHints.matched(track, nodes.map { it.name }.toTypedArray())
+        val out = nodes.indices.map { i -> rows.getOrNull(i)?.takeIf { it.size == 2 }?.let { GeoPoint(it[0], it[1]) } }
+        if (out.all { it == null }) Problems.info("routing", "BRouter reported no matched waypoints; using route geometry instead")
+        return out
     }
 
     // ---- result conversion -------------------------------------------------------------
