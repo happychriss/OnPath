@@ -1,6 +1,9 @@
 package com.onpath.app.ui
 
 import com.onpath.app.plansync.PlanSync
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.sync_paired_note
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -17,6 +20,23 @@ class SyncSettingsTest {
         assertEquals(Summary.Attention.PROBLEM, SettingsSummary.sync(SyncUi(paired = true, problem = PlanSync.Problem.NewerApp(1))).attention)
         // a scanned code waits for an answer
         assertEquals(Summary("Pair with this browser?", Summary.Attention.ACCENT), SettingsSummary.sync(SyncUi(askCheck = "395 514")))
+    }
+
+    /** "Paired – …" with OK right after Pair (owner 2026-10-30): only once a pairing made here was stored. */
+    @Test fun pairedNoteShowsOnlyAfterAPairingMadeHere() {
+        val paired = PlanSync.State(paired = true, peer = "Chrome on Linux")
+        // Pair tapped, the pairing stored: the confirmation instead of the paired page
+        assertTrue(SyncUi.of(paired, askCheck = null, pairedNote = true).pairedNote)
+        // OK tapped (or the page left): the normal paired page
+        assertEquals(SyncUi(paired = true, peer = "Chrome on Linux"), SyncUi.of(paired, askCheck = null, pairedNote = false))
+        // "already paired" (a code of the same browser scanned again) never sets it
+        assertTrue(!SyncUi.of(paired, askCheck = null).pairedNote)
+        // the pairing could not be stored / was ended meanwhile: not paired – no confirmation
+        assertTrue(!SyncUi.of(PlanSync.State(), askCheck = null, pairedNote = true).pairedNote)
+        // a new code waits for Pair / Cancel: the question first
+        assertTrue(!SyncUi.of(paired, askCheck = "395 514", pairedNote = true).pairedNote)
+        assertEquals("Paired – you can now edit your routes in the browser too. They're kept on your phone.",
+            Txt.s(Res.string.sync_paired_note))
     }
 
     @Test fun statusLines() {

@@ -42,9 +42,16 @@ data class SyncUi(
     val problem: PlanSync.Problem? = null,
     /** A scanned pairing code waits for Pair / Cancel: its six check digits ("395 514"). */
     val askCheck: String? = null,
+    /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, before the paired page. */
+    val pairedNote: Boolean = false,
 ) {
     companion object {
-        fun of(s: PlanSync.State, askCheck: String?) = SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck)
+        /**
+         * [pairedNote]: a pairing made here was stored and its OK not tapped yet. Shown only while the state says paired
+         * and no new code waits for Pair / Cancel ("already paired" never sets it).
+         */
+        fun of(s: PlanSync.State, askCheck: String?, pairedNote: Boolean = false) =
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, pairedNote = pairedNote && s.paired && askCheck == null)
     }
 }
 
@@ -52,6 +59,8 @@ class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},
     val onPair: () -> Unit = {},
     val onCancelPair: () -> Unit = {},
+    /** OK under the "Paired – …" confirmation: the normal paired page. */
+    val onPairedOk: () -> Unit = {},
     /** After the question (it can lose something: the browser stops getting the routes). */
     val onUnpair: () -> Unit = {},
 )
@@ -166,6 +175,11 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                         Button(onClick = cb.onPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_pair)) }
                         TextButton(onClick = cb.onCancelPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
                     }
+                }
+                ui.pairedNote -> {
+                    // the pairing just made (owner 2026-10-30): what it means, then OK → the paired page
+                    Text(str(Res.string.sync_paired_note), style = MaterialTheme.typography.bodyLarge)
+                    Button(onClick = cb.onPairedOk, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_ok)) }
                 }
                 !ui.paired -> {
                     Text(str(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium)

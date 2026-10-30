@@ -65,6 +65,9 @@ the git log.
       daily salted `ipHash`; `[observability.logs] invocation_logs = false` in `web/host/wrangler.toml`.
     - Plan header: time + distance never cut (own line when narrow) · e55badb · check the web sheet on a narrow phone.
       The German chip "Wandern · T2" – the web already builds it so.
+    - Pairing confirmation · after pairing the browser shows the same short confirmation ('Verbunden – … Gespeichert
+      wird auf deinem Handy.', app string `sync_paired_note`, with OK); the route list may say 'Gespeichert auf deinem
+      Handy' (owner 2026-10-30).
   - *Open order A-016 (replaces A-005):* `/.well-known/assetlinks.json` built on web-spike (ad990c9, v0.13.1 key);
     plan.onpath.earth answers 404 today → deploy the host, let Cloudflare Access pass `/.well-known/*` without login,
     check `adb shell pm get-app-links com.onpath.app`. Until then Android opens `#p=` / `#pair=` links in the browser.

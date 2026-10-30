@@ -66,6 +66,7 @@ class GermanScreenshotTest {
     @Test fun settingsOfflineMaps() = borrow(SettingsScreenshotTest()).offlineMaps()
     @Test fun settingsNavigation() = borrow(SettingsScreenshotTest()).navigation()
     @Test fun settingsSyncPaired() = borrow(SettingsScreenshotTest()).syncPaired()
+    @Test fun settingsSyncPairedNote() = borrow(SettingsScreenshotTest()).syncPairedNote()
     @Test fun settingsSyncOffline() = borrow(SettingsScreenshotTest()).syncOffline()
     @Test fun settingsSyncNotPaired() = borrow(SettingsScreenshotTest()).syncNotPaired()
 }

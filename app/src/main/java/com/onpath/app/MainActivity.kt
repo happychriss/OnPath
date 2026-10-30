@@ -293,11 +293,12 @@ class MainActivity : ComponentActivity() {
                                     backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
                             sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
-                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }),
+                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairedNote),
                             syncCb = com.onpath.app.ui.SyncCallbacks(
                                 onOpenCamera = ::openCameraForPairing,
                                 onPair = vm::confirmPair,
                                 onCancelPair = vm::cancelPair,
+                                onPairedOk = vm::pairedNoteOk,
                                 onUnpair = vm::unpair,
                             ),
                             backupCb = com.onpath.app.ui.BackupCallbacks(

@@ -171,8 +171,11 @@ class PlanSync(
         report(Report(manual, r, ended = ended))
     }
 
-    /** The pairing from a scanned / opened link: stored, hello, synced at once. Main-thread callback with the report. */
-    fun pair(secret: ByteArray) {
+    /**
+     * The pairing from a scanned / opened link: stored, hello, synced at once. Main-thread callback with the report;
+     * [stored] (main thread) as soon as the pairing is stored – before the first pass – false when it could not be.
+     */
+    fun pair(secret: ByteArray, stored: (Boolean) -> Unit = {}) {
         manualWaiting = true
         worker.execute {
             try {
@@ -186,9 +189,11 @@ class PlanSync(
                 manualWaiting = false
                 _state.value = _state.value.copy(problem = Problem.Storage)
                 report(Report(true, null, error = true))
+                main.post { stored(false) }
                 return@execute
             }
             refreshState()
+            main.post { stored(true) }
             request("paired", manual = true)
         }
     }

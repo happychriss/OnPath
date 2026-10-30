@@ -15,6 +15,7 @@
     <string name="sync_ask_title">Mit diesem Browser verbinden?</string>
     <string name="sync_ask_check">Prüfe: %1$s – der Browser zeigt dieselben sechs Ziffern.</string>
     <string name="sync_pair">Verbinden</string>
+    <string name="sync_paired_note">Verbunden – du kannst deine Routen jetzt auch im Browser bearbeiten. Gespeichert wird auf deinem Handy.</string>
     <string name="sync_paired_with">Verbunden mit %1$s</string>
     <string name="sync_paired_browser">Mit einem Browser verbunden</string>
     <string name="sync_last">Zuletzt abgeglichen: %1$s</string>

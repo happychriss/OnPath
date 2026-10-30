@@ -14,6 +14,7 @@
   "sync_ask_title": {"area": "Settings · Browser sync", "context": "Question after a pairing code was scanned (with Pair / Cancel)", "priority": 1, "confidence": "sicher"},
   "sync_ask_check": {"area": "Settings · Browser sync", "context": "%1$s = six digits like \"395 514\"", "priority": 1, "confidence": "sicher"},
   "sync_pair": {"area": "Settings · Browser sync", "context": "Button: confirm the pairing", "priority": 1, "confidence": "sicher", "max": 16},
+  "sync_paired_note": {"area": "Settings · Browser sync", "context": "Shown once right after Pair succeeded, with an OK button (owner 2026-10-30); the web planner shows the same text", "priority": 1, "confidence": "sicher"},
   "sync_paired_with": {"area": "Settings · Browser sync", "context": "%1$s = the browser's name, e.g. \"Chrome on Linux\" (also the Settings list line)", "priority": 1, "confidence": "sicher", "max": 50},
   "sync_paired_browser": {"area": "Settings · Browser sync", "context": "Paired, the browser has not said its name yet", "priority": 2, "confidence": "sicher"},
   "sync_last": {"area": "Settings · Browser sync", "context": "%1$s = when the last good sync was: \"just now\", \"5 min ago\", later \"today 18:40\" (moves on while the page is open)", "priority": 2, "confidence": "sicher"},

@@ -190,6 +190,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
         private set
+    /**
+     * The pairing just made here was stored: Browser sync shows "Paired – … They're kept on your phone." with OK
+     * (owner 2026-10-30) until OK, Unpair or the page is left; never for "already paired".
+     */
+    var pairedNote by mutableStateOf(false)
+        private set
+
     private var settingsShown by mutableStateOf(false)
     var showSettings: Boolean
         get() = settingsShown
@@ -203,6 +210,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
+            if (v != SettingsPage.SYNC) pairedNote = false // the "Paired – …" confirmation lasts until the page is left
             page = v
         }
 
@@ -3509,6 +3517,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var pairAsk by mutableStateOf<ByteArray?>(null)
         private set
 
+    fun pairedNoteOk() { pairedNote = false }
+
     /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
 
@@ -3559,12 +3569,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** "Pair": store the pairing, say hello, sync at once (the page shows "Paired with …" when the browser answered). */
-    fun confirmPair() { val s = pairAsk ?: return; pairAsk = null; sync.pair(s) }
+    fun confirmPair() {
+        val s = pairAsk ?: return
+        pairAsk = null
+        pairedNote = false
+        sync.pair(s) { ok -> pairedNote = ok }
+    }
 
-    fun cancelPair() { pairAsk = null; Problems.info("sync", "Pairing cancelled") }
+    fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }
 
     /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
     fun unpair() {
+        pairedNote = false
         sync.unpair { status ->
             when (status) {
                 200, 404, 410 -> sayInfo(Txt.s(Res.string.sync_unpaired), NoticePlace.SETTINGS)
