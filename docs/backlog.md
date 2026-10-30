@@ -53,6 +53,13 @@ the git log.
       with ✓ (tooltip "Pixel 8 ↔ this browser · 1 min ago"), amber on the phone's problems (507 full, refused, local
       storage, last online pass > 6 h after the last good one; never plain offline); "ended from the phone" until the
       sync view is opened. Not paired: neutral "Pair phone".
+    - Sync model "one compartment per phone, Speichern sends to the phone" (owner 2026-10-30, after the e2e test) ·
+      Drive order A-017 (01 Aufträge) · browser: one store per phone (keyed by the phone's device id) + "Ohne Handy";
+      pull automatic, push only with the header's Speichern (bold + "Noch nicht auf dem Handy gespeichert"); no upload of
+      older browser routes on pairing ("Zu <Handy> kopieren"); unpair in the browser closes, never ends the mailbox.
+      App side (donald, after the format is in web-sync.md §5): JOIN redirect instead of "Unpair first" (the phone
+      keeps one mailbox, writes its code into the new browser's mailbox), hello role field (phone / browser), name from
+      Settings.Global.DEVICE_NAME else Build.MODEL; "(copy)" shown as "(Kopie)" in German.
   - *Should:*
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As
