@@ -193,7 +193,8 @@ const myRoutesSave = async () => {
   await page.click('#closePlans');
   return r;
 };
-check(!(await page.$('#header #menuSavePlan')) && !/Save route/.test(await page.textContent('#header')), 'header: no Save entry (Save is in ⋯ and in My routes)');
+check(await page.isVisible('#header #menuSavePlan') && await page.isEnabled('#menuSavePlan') && (await page.textContent('#menuSavePlan')).trim() === 'Save route',
+  'header: "Save route", active with a route (A-017: Save stays in the header; also in ⋯ and My routes)');
 let ms = await myRoutesSave();
 check(ms.state === 'save' && !ms.disabled && ms.text === 'Save current route', `My routes: "Save current route", active with a route (${JSON.stringify(ms)})`);
 await page.click('#sheetMenuBtn');
@@ -207,6 +208,7 @@ await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catc
 check(await page.locator('dialog[open]').count() === 0 && (await page.textContent('#savedLine')).includes('Saved as Test loop'), 'Save closes the dialog; the sheet says "Saved as Test loop"');
 ms = await myRoutesSave();
 check(ms.state === 'saved' && ms.text === 'Saved as Test loop', `My routes: saved and unchanged → ✓ "Saved as Test loop" (${JSON.stringify(ms)})`);
+check((await page.textContent('#menuSavePlan')).trim() === 'Saved' && (await page.getAttribute('#menuSavePlan', 'title')).includes('Test loop'), 'header: saved and unchanged → ✓ "Saved" (tooltip names it)');
 await page.click('#menuPlans');
 await page.click('#saveCurrent'); // saved: still asks Save again / Save as new (the app's saveMode)
 await page.waitForSelector('dialog.savechoice[open] #saveOver');

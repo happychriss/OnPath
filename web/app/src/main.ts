@@ -92,6 +92,8 @@ const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
   // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. The phone pairing entry (#syncBadge,
   // drawn right after My routes) is always there: "Pair phone" opens the pairing dialog, "Paired" (green dot) My routes
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
+  // Save in the header (A-017, owner 2026-10-30: Save sends to the phone) – also in the sheet's ⋯ and in My routes
+  { id: 'menuSavePlan', icon: 'save', label: t('plan_save_route') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
 ];
@@ -169,6 +171,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
+saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
 const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), document.querySelector<HTMLElement>('.sheethead')!, () => {});
 
@@ -871,14 +874,27 @@ function savedUntitled(code: string): Promise<string | null> {
 async function renderSaved() {
   const line = $('savedLine');
   line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
-  if (line.hidden) { saveState = state.points.length >= 2 ? 'save' : 'empty'; return; }
+  if (line.hidden) { saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return; }
   // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
   const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
   line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(state.savedTitle!)}</b>`)}</span>`;
-  saveState = changed ? 'save' : 'saved';
+  saveEntry(changed ? 'save' : 'saved');
 }
-/** For My routes → "Save current route": greyed on an empty route, ✓ "Saved as …" while saved and unchanged. */
+/** For My routes → "Save current route" and the header's Save: greyed on an empty route, ✓ while saved and unchanged. */
 let saveState: 'empty' | 'save' | 'saved' = 'empty';
+/** The header's Save entry: greyed on an empty route, ✓ "Saved" while the shown plan is saved and unchanged (a click
+ *  still asks Save again / Save as new – the app's saveMode), else "Save route". */
+function saveEntry(st: 'empty' | 'save' | 'saved') {
+  saveState = st;
+  const b = $<HTMLButtonElement>('menuSavePlan');
+  const label = st === 'saved' ? t('web_saved_short') : t('plan_save_route');
+  const tip = st === 'saved' ? t('web_saved_title', state.savedTitle ?? '') : st === 'empty' ? t('web_share_needs_two') : label;
+  b.disabled = st === 'empty';
+  b.dataset.state = st;
+  b.title = tip;
+  b.setAttribute('aria-label', tip);
+  b.innerHTML = `${icon(st === 'saved' ? 'check' : 'save', 20)}<span>${escapeHtml(label)}</span>`;
+}
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
 const picker = new ActivityPicker((a, sac) => setActivity(a, sac, true), {
@@ -1108,6 +1124,7 @@ $('syncBadge').onclick = async () => {
 };
 // Save, two ways as in the app: the sheet's ⋯ → Save route (PlanPanel's SheetMenuItems) and My routes → Save current route
 $('sheetSave').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
+navItem('menuSavePlan').act = () => requestSave(sync, plansHost); // the header's Save (A-017)
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));

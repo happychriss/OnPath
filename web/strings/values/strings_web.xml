@@ -122,6 +122,7 @@
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Sync now</string>
     <string name="web_sync_paired">Paired</string>
+    <string name="web_saved_short">Saved</string>
     <string name="web_saved_title">Saved as “%1$s” – click to save again or as a new route</string>
     <string name="web_plans_heading">Your planned routes</string>
     <string name="web_plans_none">No saved routes yet.</string>
@@ -199,8 +200,6 @@
     <string name="web_phone_how_3">On a conflict the newer change wins; the older one stays as a copy.</string>
     <string name="web_phone_privacy">End-to-end encrypted, no account – the server sees no content.</string>
     <string name="web_phone_more">More</string>
-    <string name="web_phone_code_again">Show code again</string>
-    <string name="web_phone_code_again_title">For another device: it joins the same pairing</string>
     <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
     <string name="web_far_title">Far from your route</string>
     <string name="web_far_point">Your point %1$s is %2$s from here.</string>

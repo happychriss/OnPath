@@ -230,8 +230,7 @@ Header `Authorization: Bearer <token>` on every call.
 - Header phone entry → **Phone window** (since 2026-10-30; web-planner.md §13 row 29): the state (not paired / paired
   and the phone synced within 24 h – green / the phone not for longer – amber, from `appSeen` below), How it works,
   privacy; **Pair phone**: QR code of the pairing link, "Open OnPath on the phone → ☰ → Pair with browser → scan this
-  code", check digits, "Waiting for the phone…" → "Paired with Pixel 8"; paired: **Sync now**, **Show code again** (the
-  same code, for another device), **Unpair** (asks in place: "Routes stop syncing. They stay in this browser and on
+  code", check digits, "Waiting for the phone…" → "Paired with Pixel 8"; paired: **Sync now**, **Unpair** (asks in place: "Routes stop syncing. They stay in this browser and on
   the phone.").
 - A pairing link opened in a browser (e.g. the phone's camera opened the web page instead of the app): "Pairing code –
   usually you scan it with the OnPath app; you can also pair this browser instead". The secret is removed from the

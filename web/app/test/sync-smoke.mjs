@@ -103,11 +103,8 @@ const info = await A.evaluate(() => ({ how: [...document.querySelectorAll('dialo
   privacy: document.querySelector('dialog.phone .privacy')?.textContent, more: document.querySelector('dialog.phone .privacy a')?.getAttribute('href'),
   buttons: [...document.querySelectorAll('#phoneRow button')].filter((b) => !b.hidden).map((b) => b.textContent) }));
 check(info.how === 3 && info.privacy.startsWith('End-to-end encrypted, no account') && info.more === 'https://onpath.earth/privacy/'
-  && info.buttons.join() === 'Sync now,Show code again,Unpair', `the Phone window explains: How it works (3 lines), privacy + More; Sync now · Show code again · Unpair (${JSON.stringify(info)})`);
-await A.click('dialog.phone #codeAgain');
-await A.waitForSelector('dialog.pair[open] #checkDigits', { timeout: 30_000 });
-check(await A.textContent('#checkDigits') === checkA && (await A.inputValue('#pairLink')) === link, 'Show code again: the same code and check digits (a second device joins the same pairing)');
-await A.click('#closePair');
+  && info.buttons.join() === 'Sync now,Unpair', `the Phone window explains: How it works (3 lines), privacy + More; Sync now · Unpair (${JSON.stringify(info)})`);
+await A.click('#closePhone');
 // the three states with the phone's time from the host (appSeen): the app reached the mailbox 2 minutes ago → green
 // "Paired · synced 2 min. ago"; 3 days ago → amber "Paired · phone last 3 days ago" + what to do
 await appVisit(A, Date.now() - 2 * 60_000);

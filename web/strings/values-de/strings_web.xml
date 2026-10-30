@@ -109,6 +109,7 @@
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_sync_paired">Verbunden</string>
+    <string name="web_saved_short">Gespeichert</string>
     <string name="web_saved_title">Gespeichert als „%1$s“ – klicken, um erneut oder als neue Route zu speichern</string>
     <string name="web_plans_heading">Deine geplanten Routen</string>
     <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
@@ -184,8 +185,6 @@
     <string name="web_phone_how_3">Bei Konflikten gewinnt die neuere Änderung, die ältere bleibt als Kopie.</string>
     <string name="web_phone_privacy">Ende-zu-Ende verschlüsselt, kein Konto – der Server sieht keine Inhalte.</string>
     <string name="web_phone_more">Mehr dazu</string>
-    <string name="web_phone_code_again">Code noch einmal zeigen</string>
-    <string name="web_phone_code_again_title">Für ein weiteres Gerät: es kommt zur selben Verbindung dazu</string>
     <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
     <string name="web_far_title">Weit weg von deiner Route</string>
     <string name="web_far_point">Dein Punkt %1$s liegt %2$s von hier entfernt.</string>

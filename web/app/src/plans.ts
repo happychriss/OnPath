@@ -142,8 +142,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
 /**
  * The Phone window (owner 2026-10-30: the one place for pairing – header entry / ☰ entry, not in My routes): the state
  * on top ([phoneState] – grey / green / amber, one line why), "How it works" in three lines, privacy in one (+ More →
- * the privacy page), then Pair phone (→ the pairing dialog with the QR code and the steps) or Sync now · Show code
- * again · Unpair (the question takes their place), Close at the bottom right. Follows the sync live; the "… ago"
+ * the privacy page), then Pair phone (→ the pairing dialog with the QR code and the steps) or Sync now · Unpair (the question takes their place), Close at the bottom right. Follows the sync live; the "… ago"
  * text moves on every 30 s.
  */
 export function phoneDialog(sync: PlanSync, page: string) {
@@ -155,7 +154,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <h3 class="how">${esc(t('web_phone_how_title'))}</h3>
     <ul class="how"><li id="how1">${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
     <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
-    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="codeAgain" hidden title="${esc(t('web_phone_code_again_title'))}">${esc(t('web_phone_code_again'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
     <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   let said = ''; // a result of Unpair, shown until the next change of the sync
@@ -171,7 +170,6 @@ export function phoneDialog(sync: PlanSync, page: string) {
     $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
     if (!s.paired) d.querySelector<AskBox>('.confirm')?.cancel(); // ended meanwhile: nothing to ask
     $('syncNow').hidden = !s.paired;
-    $('codeAgain').hidden = !s.paired;
     $('unpair').hidden = !s.paired;
     $('pairPhone').hidden = s.paired;
     $('how1').hidden = !s.paired; // not paired: the state line says it already
@@ -181,7 +179,6 @@ export function phoneDialog(sync: PlanSync, page: string) {
   d.addEventListener('close', () => { off(); clearInterval(tick); });
   $('pairPhone').onclick = () => pairDialog(sync, page); // the pairing dialog takes this one's place
   $('syncNow').onclick = () => sync.syncNow();
-  $('codeAgain').onclick = () => pairDialog(sync, page, true); // a second device joins the same pairing (web-sync.md §13.2)
   // the question takes the place of "Sync now / Unpair" (owner 2026-10-30: one "Unpair" at a time, above Close)
   $('unpair').onclick = () => askInPlace($('phoneRow'), t('web_unpair_q'), t('web_unpair'), () => $('unpair'), async () => {
     const err = await sync.unpair();
@@ -247,11 +244,10 @@ function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: 
 
 /**
  * Pair phone: the QR code, the steps in the app and the check digits; once the phone said hello, "Paired with …".
- * [again] (Phone window → Show code again, paired): the same code for a second device – it stays on the code.
  * Unpair lives in the Phone window only (owner 2026-10-30: not three "Unpair").
  */
-export async function pairDialog(sync: PlanSync, page: string, again = false) {
-  const d = dialog('pair', `<h2>${esc(t(again ? 'web_phone_code_again' : 'web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
+export async function pairDialog(sync: PlanSync, page: string) {
+  const d = dialog('pair', `<h2>${esc(t('web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
     <div id="pairStatus" class="status muted"></div>
     <div class="row end" id="pairButtons"><button id="closePair">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
@@ -281,7 +277,7 @@ export async function pairDialog(sync: PlanSync, page: string, again = false) {
     const line = syncLine(s);
     $('pairStatus').textContent = s.paired && !s.devices.length && !s.message ? t('web_pair_waiting') : line.text;
     $('pairStatus').classList.toggle('error', line.kind === 'error');
-    if (s.paired && s.devices.length && !again) {
+    if (s.paired && s.devices.length) {
       clearInterval(poll);
       $('pairBody').innerHTML = `<p>${t('web_pair_done', `<b>${esc(s.devices.map((x) => x.name).join(', '))}</b>`)}</p>
         <p class="muted small">${esc(t('web_pair_digits', s.check ?? ''))}</p>`;
@@ -289,7 +285,7 @@ export async function pairDialog(sync: PlanSync, page: string, again = false) {
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   d.addEventListener('close', () => off());
-  if (sync.status.paired && sync.status.devices.length && !again) render(); else { await showCode(); render(); }
+  if (sync.status.paired && sync.status.devices.length) render(); else { await showCode(); render(); }
 }
 
 type AskBox = HTMLElement & { cancel(): void };
