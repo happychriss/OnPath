@@ -88,8 +88,8 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         val anchor = streetSets.withIndex().filter { it.value.isNotEmpty() }.minByOrNull { it.value.size } ?: return emptyList()
         val matched = words.indices.filter { streetSets[it].isNotEmpty() || townSets[it].isNotEmpty() }
         val out = ArrayList<AddressHit>()
-        // street rows chunk by chunk and only until [max] hits: a short word ("s") matches thousands of streets a file
-        for (chunk in anchor.value.chunked(500)) for (s in streetRows(chunk)) {
+        // street rows only until [max] hits: a short word ("s") matches thousands of streets a file
+        for (s in streetsOf(anchor.value)) {
             // the village only when the street's own words and towns do not decide (a scan of the file's places)
             val v by lazy(LazyThreadSafetyMode.NONE) { villageAt(s.lat, s.lon)?.id }
             if (!matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }) continue
@@ -132,9 +132,26 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     private fun streetsWithPrefix(w: String): Set<Long> =
         db.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 5000", w, upper(w)).map { it[0] as Long }.toSet()
 
-    /** The street rows of [ids] (one chunk of a few hundred), in id order. */
+    /**
+     * The streets of [ids], read lazily: in blocks of 500 ids (in the order of [ids]), each block by ascending id, read
+     * in growing steps (40, 80, … rows) – the caller stops as soon as it has its hits.
+     */
+    private fun streetsOf(ids: Set<Long>): Sequence<Street> = ids.asSequence().chunked(500).flatMap { block ->
+        val sorted = block.sorted()
+        sequence {
+            var from = 0
+            var step = 40
+            while (from < sorted.size) {
+                val to = minOf(sorted.size, from + step)
+                yieldAll(streetRows(sorted.subList(from, to)))
+                from = to; step *= 2
+            }
+        }
+    }
+
+    /** The street rows of [ids] (a few hundred at most), in id order. */
     private fun streetRows(ids: List<Long>): List<Street> =
-        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids.joinToString(",")})").map { r ->
+        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids.joinToString(",")}) ORDER BY id").map { r ->
             Street(r[0] as Long, r[1] as String, split(r[2]), r[3] as Long?, r[4] as Long?, r[5] as String?,
                 (r[6] as Long).toInt(), e5(r[7]), e5(r[8]))
         }

@@ -55,5 +55,19 @@ class AddressSpeedLocalTest {
         println(String.format(Locale.ROOT, "addr total of medians %.1f ms", sum))
         System.getenv("ONPATH_ADDRESS_OUT")?.let { File(it).writeText(out.toString()) }
         idx.close()
+        // the bare SQL of a one-letter word over every file (what is left when nothing else is done)
+        val dbs = AddressIndex.sources(dir).map { JdbcAddressDb(it) }
+        for (w in listOf("s", "k", "ko")) {
+            fun med(block: () -> Unit) = (0 until 7).map { val a = System.nanoTime(); block(); System.nanoTime() - a }.sorted()[3] / 1e6
+            val up = AddressFile.upper(w)
+            val words5000 = med { for (d in dbs) d.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 5000", w, up) }
+            val words500 = med { for (d in dbs) d.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 500", w, up) }
+            val ids = dbs.map { d -> d.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 500", w, up).map { it[0] as Long }.distinct() }
+            val streets500 = med { dbs.forEachIndexed { i, d -> d.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids[i].joinToString(",")})") } }
+            val streets40 = med { dbs.forEachIndexed { i, d -> d.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids[i].sorted().take(40).joinToString(",")})") } }
+            println(String.format(Locale.ROOT, "addr SQL '%s' over %d files: words ≤5000 %.1f ms, ≤500 %.1f ms; streets 500 %.1f ms, 40 %.1f ms",
+                w, dbs.size, words5000, words500, streets500, streets40))
+        }
+        dbs.forEach { it.close() }
     }
 }
