@@ -9,6 +9,10 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **Map server: IP only as a daily hash, check Workers Logs (Drive order A-014, for the privacy page)** – the doorman's
+  per-minute limit keeps `ip:<plain IP>` in D1 `ratelimit` (`tools/cloud/worker/src/api.js` `rateLimited`, deleted after
+  ~2 min) and `[observability]` is on. Use a daily HMAC like the planer host (web-spike, A-011), find out what Workers Logs
+  store, and write the plain list of what the map server sees / keeps / how long into an "A-014 Ergebnis" in Drive.
 - **Phone setup – check on the Pixel (0.13.0)** – the appendix checklist of `docs/design/onboarding-phone-check.md`
   (first start welcome, deny twice, approximate, notifications off, vibration test with Alarm vibration on / off,
   battery Restricted, screen-off ride with battery saver); brand steps (Samsung, Xiaomi, Huawei, OnePlus) are not
