@@ -62,6 +62,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/**
+ * The fixes a tour records and navigates on: GPS only (owner, robust first – a clean track, and no "off route" from a
+ * ±100 m Wi-Fi fix). Network and fused fixes – the app's provisional indoor position included – never become a point.
+ * Pure.
+ */
+internal fun tracksFix(provider: String?): Boolean = provider == LocationManager.GPS_PROVIDER
+
 /** Live recording state for the UI. */
 data class RecState(
     val tourId: Long,
@@ -83,6 +90,11 @@ data class RecState(
     val time: com.onpath.app.time.TripTime? = null,
     /** The last track point could not be written (storage full, database broken): the UI must say so. */
     val saveFailed: Boolean = false,
+    /**
+     * A usable GPS fix came since the service started (this tour or its continuation). False = started indoors: the app
+     * shows its Wi-Fi / fused fix as a provisional position until then ([com.onpath.app.navigation.Provisional]).
+     */
+    val hadGpsFix: Boolean = true,
 )
 
 /**
@@ -105,7 +117,9 @@ class RecordingService : Service() {
     private var distance = 0.0
     private var ascent = 0.0
     private var descent = 0.0
-    private var eleRef: Double? = null
+    /** Ascent / descent from the terrain under the points, GPS altitude where there is none ([AscentCounter]). */
+    private val climb = AscentCounter()
+    private var terrain: com.onpath.app.data.TerrainHeights? = null
     private var elapsedS = 0L
     private var last: TrackPoint? = null
     private var lastGoodFixElapsed = 0L
@@ -124,6 +138,7 @@ class RecordingService : Service() {
     private var navigator: Navigator? = null
     /** Vibration before junctions of the followed line + the next junction for the lock screen (owner). */
     private val junctions = com.onpath.app.navigation.JunctionCues()
+    private val junctionSpeeds = com.onpath.app.navigation.SpeedWindow()
     /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
     private var junctionsTracedVersion = Int.MIN_VALUE
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
@@ -157,11 +172,15 @@ class RecordingService : Service() {
         db = TourDb.get(this)
         tracker = LocationTracker(this, 1000L, useNetwork = false) // the track is GPS only; no network fixes (battery)
         createChannels(this)
+        routeChannelOk = Build.VERSION.SDK_INT < 26 || try {
+            nm().getNotificationChannel(TourChannels.NAVIGATION) != null
+        } catch (e: Exception) { Problems.warn("recording", "Navigation notification channel not readable; tour uses the recording channel", e); false }
+        if (!routeChannelOk) Problems.warn("recording", "Navigation notification channel missing; the route notification stays off the lock screen")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
-            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
+            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
@@ -185,6 +204,11 @@ class RecordingService : Service() {
             }
             ACTION_TAKE_ROUTE -> {
                 navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_TAKE_VIA -> {
+                // "Off route – re-plan?" – Yes: the new route via the stop in question
+                navigator?.let { handle(it.takeVia(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_KEEP_ROUTE -> {
@@ -235,7 +259,7 @@ class RecordingService : Service() {
                 val segs = db.loadSegments(tourId)
                 segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
                 trackSeg = lastSeg
-                eleRef = segs.lastOrNull()?.lastOrNull()?.ele
+                climb.restart()
                 last = null
                 recActivity = activityOf(existing.activity)
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
@@ -252,6 +276,7 @@ class RecordingService : Service() {
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
                 firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
+                climb.restart()
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 saveTrip()
             }
@@ -264,6 +289,11 @@ class RecordingService : Service() {
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
+        // terrain for the ascent: opened on its own thread now, so the first points already have ground heights
+        try {
+            val t = terrain ?: com.onpath.app.data.TerrainHeights({ DataFiles(this).mapDir() }).also { terrain = it }
+            t.prepare()
+        } catch (e: Exception) { Problems.warn("elevation", "Terrain for the ascent not prepared; ascent from GPS altitude", e) }
         // T5 in the background (owner): map areas ahead load also with the screen off; joined after the tour
         try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = true; holdUpdates = true } } catch (e: Exception) {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
@@ -279,7 +309,7 @@ class RecordingService : Service() {
 
     private fun goForeground(): Boolean = try {
         ServiceCompat.startForeground(
-            this, NOTIF_ID, buildNotification(),
+            this, tourPost().id, buildNotification(),
             if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0,
         )
         true
@@ -358,14 +388,15 @@ class RecordingService : Service() {
             return
         }
         if (tourId < 0) return
-        if (loc.provider != LocationManager.GPS_PROVIDER) return
+        // the track, off-route and the time model take GPS only: a Wi-Fi / fused fix (±100 m) never gets here
+        if (!tracksFix(loc.provider)) return
         val demoFix = DemoLocation.isDemo(loc)
         if (!demoMarked && demoFix) markDemoTour()
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
         if (demoFix != lastFixDemo) {
             // the simulated place is far from the real one: without a new piece every later fix would be a "GPS jump"
             lastFixDemo = demoFix
-            if (last != null) { last = null; seg++; eleRef = null }
+            if (last != null) { last = null; seg++; climb.restart() }
             Problems.trace("gps", "Demo location ${if (demoFix) "started" else "ended"} during the tour: new track piece")
         }
         // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
@@ -383,7 +414,7 @@ class RecordingService : Service() {
         try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
-        try { junctionCue() } catch (e: Exception) {
+        try { junctionCue(loc, nowEl) } catch (e: Exception) {
             Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
         }
         try { mapsAhead(p.toGeo()) } catch (e: Exception) {
@@ -406,12 +437,12 @@ class RecordingService : Service() {
         if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
         distance += moved
         if (wasLost && prev != null && !bridged) seg++                // long GPS gap: new segment
-        p.ele?.let { e ->
-            val r = eleRef
-            if (r == null) eleRef = e
-            else if (e - r >= 5) { ascent += e - r; eleRef = e }
-            else if (r - e >= 5) { descent += r - e; eleRef = e }
-        }
+        // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track
+        try {
+            val ground = terrain?.heightAt(p.lat, p.lon)
+            val (up, down) = climb.add(ground, p.ele, moved)
+            ascent += up; descent += down
+        } catch (e: Exception) { Problems.warn("recording", "Ascent not updated on a GPS fix; the track is still recorded", e) }
         // The point goes to SQLite first (R-07). seq advances only when it is really stored.
         if (safeDb("point") { db.appendPoint(tourId, seq, seg, p, loc.accuracy) }) {
             seq++
@@ -591,21 +622,27 @@ class RecordingService : Service() {
         com.onpath.app.data.AppRouting.get(this).ensure(com.onpath.app.data.RoutingTiles.forPoints(listOf(g), T5_ROUTING_MARGIN_M))
     }
 
-    /** Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. */
-    private fun junctionCue() {
+    /**
+     * Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. Only
+     * where one could go wrong, timed by the speed of [loc] ([com.onpath.app.navigation.SpeedWindow]; bike and on foot).
+     */
+    private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
-        junctions.skipSlight = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
-        junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
-            com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
+        junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
+        junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         if (st.version != junctionsTracedVersion) {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
             val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
-            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts" +
+            val worth = st.line.count { p ->
+                p.turn?.let { com.onpath.app.navigation.CueRule.needed(it, p.shape, hike = !junctions.bike) } == true
+            }
+            Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts, $worth worth a " +
+                (if (junctions.bike) "bike" else "hike") + " cue" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
         val onRoute = st.prompt == null && st.shownAlongM != null
-        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
+        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
         val choice = (settings ?: Prefs(this).settings).junctionVibration
         val locked = screenLocked()
         if (choice.plays(locked)) {
@@ -654,29 +691,8 @@ class RecordingService : Service() {
         true
     }
 
-    /** Plays [pattern]; false when the phone has no vibrator or it failed (reported). */
-    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean {
-        return try {
-            val vib = if (Build.VERSION.SDK_INT >= 31) {
-                (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            if (!vib.hasVibrator()) { Problems.warn("sensor", "This phone reports no vibrator ($what); given without vibration"); return false }
-            val effect = VibrationEffect.createWaveform(pattern, -1)
-            // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
-            // pocket). Alarm vibrations also pass the touch setting.
-            if (Build.VERSION.SDK_INT >= 33) {
-                vib.vibrate(effect, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-            }
-            true
-        } catch (e: Exception) {
-            Problems.warn("sensor", "Vibration failed ($what); given without vibration", e)
-            false
-        }
-    }
+    /** Plays [pattern] through [Cues]; false when the phone has no vibrator or it failed (reported). */
+    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean = Cues.vibrate(this, pattern, what)
 
     /**
      * The off-route notification carries the same question as the screen ("Take new route" / "Keep original").
@@ -713,7 +729,13 @@ class RecordingService : Service() {
                 .setContentIntent(openAppIntent())
             // an activity switch was asked for on the screen: no sound (the user is looking), the question stays
             if (pr is NavPrompt.Question && pr.switch != null) b.setSilent(true)
-            if (pr is NavPrompt.Question) {
+            if (pr is NavPrompt.Question && pr.via != null) {
+                // "Off route – re-plan?": Yes (via the stop) · Yes, skip it (without it) · Keep original. Three actions
+                // share one row and Android cuts long labels: the short skip label, the text names the stop.
+                b.addAction(0, NavText.YES, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.SKIP_SHORT, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
+            } else if (pr is NavPrompt.Question) {
                 b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
             }
@@ -776,6 +798,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map areas loaded during the tour not released; they join at the next app start", e)
         }
         if (tourId >= 0) {
+            climb.flush().let { (up, down) -> ascent += up; descent += down }
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
             // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
             // rides are only marked. The points stay as recorded; never throws (failures reported, tour as recorded).
@@ -814,6 +837,8 @@ class RecordingService : Service() {
         cancelReroute()
         scope.cancel()
         routeExec.shutdown()
+        try { terrain?.close() } catch (e: Exception) { Problems.warn("elevation", "Terrain file not closed", e) }
+        terrain = null
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         if (tourId >= 0) {
@@ -830,19 +855,20 @@ class RecordingService : Service() {
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
-            navigator?.state, tripTime(), saveFailed,
+            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
         val now = SystemClock.elapsedRealtime()
         navText = navNotification()
-        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "")
+        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "") +
+            tourPost().channel
         // following: what the lock screen shows (next junction, time to go) changes often – at most every 10 s
         val minGap = if (navText != null) 10_000 else 5000
         if (force || (now - lastNotify > minGap && key != lastNotifyKey) || now - lastNotify > 60_000) {
             lastNotify = now
             lastNotifyKey = key
-            try { nm().notify(NOTIF_ID, buildNotification()) } catch (e: SecurityException) {
+            try { nm().notify(tourPost().id, buildNotification()) } catch (e: SecurityException) {
                 Problems.warn("recording", "Recording notification update refused (notification permission?)", e)
             }
         }
@@ -956,8 +982,7 @@ class RecordingService : Service() {
             com.onpath.app.navigation.NavNotification.of(notifStatus(),
                 junctions.nextAheadText(st.line, st.version, along), toGo,
                 t?.toGoS?.takeIf { ok }, t?.arrivalMs?.takeIf { ok },
-                distance = { Format.distance(it) }, duration = { Format.duration(it) },
-                clock = { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) })
+                distance = { Format.distance(it) }, duration = { Format.duration(it) })
         }
     } catch (e: Exception) {
         Problems.warn("recording", "Lock-screen route info not built; plain recording notification", e)
@@ -972,9 +997,17 @@ class RecordingService : Service() {
         else -> Txt.s(Res.string.nav_status_recording)
     }
 
+    /**
+     * Following a route: the "navigation" channel (shown on the lock screen, still silent); a plain recording: the
+     * quiet "recording" channel. Same id either way – a switch is an update, the service keeps running.
+     */
+    private fun tourPost() = TourChannels.forTour(followingRoute = navigator != null && routeChannelOk)
+    /** The "navigation" channel exists (a missing channel would make startForeground throw). */
+    private var routeChannelOk = false
+
     private fun buildNotification(): Notification {
         val status = notifStatus()
-        val b = NotificationCompat.Builder(this, CHANNEL_REC)
+        val b = NotificationCompat.Builder(this, tourPost().channel)
             .setSmallIcon(R.drawable.ic_notification)
             // running: distance + a system-run clock (no re-post every second); paused: the clock stands still
             .setContentTitle(if (paused) "${Format.distance(distance)} · ${Format.clock(elapsedS)}" else Format.distance(distance))
@@ -1020,6 +1053,7 @@ class RecordingService : Service() {
         /** Answer to the off-route question [EXTRA_QUESTION] (app button or notification action). */
         const val ACTION_TAKE_ROUTE = "com.onpath.app.TAKE_ROUTE"
         const val ACTION_KEEP_ROUTE = "com.onpath.app.KEEP_ROUTE"
+        const val ACTION_TAKE_VIA = "com.onpath.app.TAKE_VIA"
         const val EXTRA_QUESTION = "question"
         /** Activity check: a proposed session for another activity is in ActivityCheck.PROPOSAL_FILE ([EXTRA_TIME_S] = its time). */
         const val ACTION_PROPOSE_SWITCH = "com.onpath.app.PROPOSE_SWITCH"
@@ -1037,13 +1071,12 @@ class RecordingService : Service() {
         fun newTourSac(extra: Int, stored: Int): Int =
             com.onpath.app.data.LastActivity.sac(extra.takeIf { it in 1..5 }, stored)
 
-        const val CHANNEL_REC = "recording"
+        const val CHANNEL_REC = TourChannels.RECORDING
         /** Old off-route channel (vibrated by itself); deleted, see [CHANNEL_NAV]. */
         private const val CHANNEL_ALERT_OLD = "offroute"
         /** Off-route question: high importance with sound, no channel vibration (the service vibrates once itself). */
         const val CHANNEL_NAV = "offroute-question"
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
-        private const val NOTIF_ID = 42
         private const val ALERT_ID = 43
         private const val PAUSE_ALERT_ID = 44
         /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
@@ -1068,8 +1101,21 @@ class RecordingService : Service() {
             if (Build.VERSION.SDK_INT < 26) return
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_REC, Txt.s(Res.string.nav_channel_recording), NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CHANNEL_REC, Txt.s(Res.string.nav_channel_recording), TourChannels.recordingSpec.importance).apply {
                     description = Txt.s(Res.string.nav_channel_recording_desc)
+                }
+            )
+            // following a route: on the lock screen (importance DEFAULT, Android 14+ hides silent ones there) but
+            // never a sound, buzz, light or heads-up popup – TourChannels.navigationSpec
+            val nav = TourChannels.navigationSpec
+            nm.createNotificationChannel(
+                NotificationChannel(nav.id, Txt.s(Res.string.nav_channel_navigation), nav.importance).apply {
+                    description = Txt.s(Res.string.nav_channel_navigation_desc)
+                    if (!nav.sound) setSound(null, null)
+                    enableVibration(nav.vibration)
+                    if (!nav.vibration) vibrationPattern = null
+                    enableLights(nav.lights)
+                    if (nav.lockScreenPublic) lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
             )
             runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) } // expected to be harmless: old channel may not exist

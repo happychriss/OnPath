@@ -33,11 +33,13 @@ enum class Activity(private val labelRes: StringResource, private val lineRes: S
  * A point. [way]: what the way from this point to the next one is like (routed lines only, see [WayAttrs]; time model);
  * [turn]: a junction instruction at this point (navigation); [exit]: with a roundabout [turn], the exit to take (1, 2, …;
  * 0 = unknown); [turnAngle]: BRouter's angle of that turn in degrees (> 0 right, < 0 left; the roundabout sign draws its
- * exit there). Equality uses only lat, lon and ele (two points at the same place are the same point), so lines with and
- * without way attributes compare equal.
+ * exit there); [shape]: the ways at that junction (null = unknown) – the bike vibrates only where one could go wrong
+ * ([JunctionShape]). Equality uses only lat, lon and ele (two points at the same place are the same point), so lines with
+ * and without way attributes compare equal.
  */
 data class GeoPoint(val lat: Double, val lon: Double, val ele: Double? = null, val way: WayAttrs? = null,
-                    val turn: JunctionCue? = null, val exit: Int = 0, val turnAngle: Float = 0f) {
+                    val turn: JunctionCue? = null, val exit: Int = 0, val turnAngle: Float = 0f,
+                    val shape: JunctionShape? = null) {
     override fun equals(other: Any?): Boolean =
         this === other || (other is GeoPoint && lat == other.lat && lon == other.lon && ele == other.ele)
 

@@ -22,7 +22,8 @@ object CellFixtures {
     }
 
     /** Writes the files of one cell version (as downloaded and verified) into [dir]; returns its manifest. */
-    fun cell(dir: File, cell: CellId, version: String, tag: String = "$cell@$version", pois: Int = 3, maxZ: Int = 12): CellManifest {
+    fun cell(dir: File, cell: CellId, version: String, tag: String = "$cell@$version", pois: Int = 3, maxZ: Int = 12,
+             wayclass: String? = null): CellManifest {
         dir.mkdirs()
         val files = JSONArray()
         for ((name, tt) in LAYERS) {
@@ -40,6 +41,7 @@ object CellFixtures {
         files.put(fileJson("addresses/${cell.id}.sqlite", addr, cell, version))
         val m = JSONObject().put("cell", cell.id).put("format", 2).put("osm_date", version).put("built", "${version}T03:00:00Z")
             .put("min_app", "0.1.0").put("files", files).put("total_size", (0 until files.length()).sumOf { files.getJSONObject(it).getLong("size") })
+        if (wayclass != null) m.put("wayclass", wayclass)
         File(dir, CellStore.MANIFEST).writeText(m.toString())
         return CellManifest.parse(m.toString())
     }

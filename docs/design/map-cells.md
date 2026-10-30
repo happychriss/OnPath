@@ -2,7 +2,7 @@
 
 Status: **built** – cells, app store and cloud hosting (owner decisions §16; hosting: `docs/design/map-hosting.md`;
 when maps update: `docs/design/map-updates-ux.md`).
-Related: `docs/map-pipeline.md` (region pipeline), `tools/hetzner/README.md` (superseded region server),
+Related: `docs/map-pipeline.md` (region pipeline),
 **`docs/design/map-data-size.md`** (how to make the data smaller – file formats may change, so this design keeps the
 cell format versioned and does not fix the file list).
 Requirements touched: F-OFF-01 (download an area), F-OFF-02 (route corridor secured automatically), F-OFF-03
@@ -28,7 +28,8 @@ version, roll back).
 
 - The world is cut into fixed **cells**. A cell is built the first time anyone needs it, then kept for everyone.
 - The app ships an **overview map**, so a new place is never blank. Details come where the user *plans*.
-- Same Docker setup on zo (now) and Hetzner (later); only settings differ.
+- Same pipeline image on zo (test machine) and Cloud Run (`tools/cells/Dockerfile`, `tools/cloud/Dockerfile.job`); only
+  settings differ.
 
 ## 2. Cells
 
@@ -52,7 +53,7 @@ to **3–4 min (estimate, not yet measured)**.
 
 | # | Step | How | Measured / expected |
 | --- | --- | --- | --- |
-| 0 | Source extract | Regional `.osm.pbf` covering the cell + buffer (reuse `tools/hetzner/server/onpath_maps/sources.py` for the choice). Refreshed monthly, all cells of one build round use the same OSM date | cached |
+| 0 | Source extract | Regional `.osm.pbf` covering the cell + buffer (choice: `tools/cloud/osm_sources.py`, `docs/design/map-hosting.md` §7e). Refreshed monthly, all cells of one build round use the same OSM date | cached |
 | 1 | **Cut** | `osmium extract -b <cell bbox + 5 km> -s smart -S types=multipolygon,route` → `cell.osm.pbf` (a few MB). `smart` keeps ways complete and multipolygons/route relations whole, so features crossing the edge are complete | ~10 s |
 | 2 | Base | Planetiler on `cell.osm.pbf`, `--bounds=<exact cell bbox> --minzoom=10 --maxzoom=14`. Tiles align with the cell exactly; the tile buffer holds neighbour geometry from the 5 km buffer | was 212 s → ~40 s? |
 | 3 | Overlays | `extract_overlays.py` on `cell.osm.pbf`, then clip per §4 | 63 s → less |
@@ -95,8 +96,7 @@ refreshed. Accepted; refreshes of a used area happen together (§9).
 ## 5. Server: doorman + builder
 
 > **Hosting decided (owner): Cloudflare Worker (doorman, D1 queue) + R2 (cells) + Google Cloud Run
-> Jobs (builder) – see `docs/design/map-hosting.md`.** It replaces the Hetzner mode below (`BUILDER_MODE=hetzner`,
-> `STORAGE=s3` on Hetzner, the Hetzner builder rules); zo keeps `BUILDER_MODE=local` as the test machine. Queue,
+> Jobs (builder) – see `docs/design/map-hosting.md`.** zo keeps `BUILDER_MODE=local` as the test machine. Queue,
 > dedupe and priorities below are implemented as described, in D1.
 
 Same Docker images everywhere (`docker compose`), switched by settings. On zo: code in `~/onpath` (git clone),
@@ -106,20 +106,9 @@ for now – in the app it is a **setting** (preset in dev builds), so a later mo
 | Setting | Values | Meaning |
 | --- | --- | --- |
 | `BUILDER_MODE` | `local` (zo, interim) | Builder container always running, waits on the queue |
-| | `hetzner` (later) | Small always-on Hetzner doorman creates a builder server from a snapshot via the Hetzner Cloud API, attaches a Volume (source OSM extracts + Planetiler caches), deletes the server afterwards |
 | `STORAGE` | `local` (zo: `~/onpath-data/store`) | Files served by the doorman (through the tunnel) |
-| | `s3` (Hetzner Object Storage) | Files served from the bucket (public-read, immutable paths) |
 | `APP_KEYS` | list | Keys accepted from the app (against abuse of a public URL) |
 | `MAX_BUILDERS` | 1 | Never more than one builder |
-
-Hetzner builder rules (phase 3):
-- Hetzner bills **started hours** → keep the builder while the queue has work, and also idle until just before the
-  hour ends (in case new requests come); delete it ~5 min before the next hour starts.
-- **Hard stop 2 h** per builder, **max 1 builder**. Powered-off servers still bill → always **delete**, never stop.
-- API token lives in a **separate, empty Hetzner project "OnPath-builders"** – it can't touch anything else.
-- The builder pulls jobs from the doorman over HTTPS with a builder token, uploads to storage, reports done. It runs
-  `git pull` of `main` at start (like today's worker), so pipeline fixes are used automatically.
-- No GitHub Actions involved.
 
 ### Job queue and dedupe
 
@@ -172,6 +161,10 @@ Cells nobody requested for 12 months are deleted (storage is cheap; rebuilding i
   "attribution": ["© OpenStreetMap contributors", "© OpenMapTiles", "Terrain: Mapzen / AWS Open Data"]
 }
 ```
+
+Format-2 cells also carry `"layers"`: per layer (`base`, `overlays`, `pois`, `addresses`, `terrain`, `contours`) the
+schema it was built for and the version folder it was built in, plus `"reused_from"` after a partial rebuild
+(map-hosting.md §7h "Partial rebuild"). The app ignores both; every file of a version still lies in its own folder.
 
 `format` lets the file set change (map-data-size.md) without breaking old apps: the app sends the formats it
 understands, the server builds/serves the newest of those. An old format is built only while app versions that need
@@ -322,7 +315,7 @@ ship in format 2 only, Q11).
 | Storage full | Card: "Not enough space (needs 85 MB). Delete old areas in Settings → Map data." | Nothing written (R-11) |
 | New version broken | Nothing visible | Keep and roll back to the previous version (R-16) |
 | Wrong / missing app key | Card: "Map server refused the request – update the app." | `Problems.error` |
-| Builder stuck (Hetzner) | Card keeps "building", ETA grows | Hard stop at 2 h, server deleted, job back in queue |
+| Builder stuck | Card keeps "building", ETA grows | Cloud Run stops the task at its timeout; the doorman cancels a late execution, the cell goes back to the queue (failed after the last attempt) |
 
 ## 11. Costs
 
@@ -450,7 +443,7 @@ clustered archives with leaf directories when the root would exceed 16 KiB.
 ### 19.2 Layout and rules
 
 ```
-<dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson store.json
+<dataDir>/cells/store/g000007/   base.pmtiles overlays.pmtiles terrain.pmtiles contours.pmtiles pois.geojson pois.pmtiles store.json
 <dataDir>/cells/download/10-543-361/2026-10-19.part/   downloading (Range resume, never read by the map)
 <dataDir>/cells/download/10-543-361/2026-10-19/        complete, size + sha256 verified, waiting to be joined
 <dataDir>/cells/requests.json   queue (survives restarts)      <dataDir>/cells/usage.json   last use per cell (T6)
@@ -467,8 +460,20 @@ clustered archives with leaf directories when the root would exceed 16 KiB.
   without cells and z0–9); cells override it where both exist. A new import → `regionChanged()` → joined again.
   A **format-1** package is not joined (GeoJSON overlays, other terrain encoding – mixing would break the style):
   with the first cell the map shows cells only (+ overview). Without cells, both formats work as before.
-- **POIs:** one merged `pois.geojson` per generation (same ownership rule, streamed) – the style's single geojson
-  source, POI tap and search stay unchanged. Chosen over one file per cell (would need a source per cell).
+- **POIs:** one merged `pois.geojson` per generation (same ownership rule, streamed) – read by the search index and
+  the style's stand-in source. Chosen over one file per cell (would need a source per cell).
+- **POI tiles** (`cells/PoiTiles.kt`, 2026-10-30): the map draws the POIs from `pois.pmtiles` (one MVT layer `pois`,
+  z10–14, gzip, extent 8192, every property kept; a POI only from the zoom its kind is drawn: train z10, tier 1 z12,
+  rest z14 – `PoiTilesStyleTest` keeps it in step with `make_style.py` POI_TIERS). Why: as one GeoJSON source
+  MapLibre's geojson-vt held every POI with its properties in every tile it cut, ~5.5 KB per POI – 0.8 GB native heap
+  for 145 k POIs (19 cells); from tiles only the tiles on screen (largest tile 18 KB). The **app** builds them while
+  writing a generation (kept cells' tiles copied from the previous generation, added cells / region package encoded
+  from their `pois.geojson`, joined by tile ownership like the other layers) – no cell format or schema change, every
+  installed cell gets them. A store written by an older app is rewritten once at start (`needsPoiTiles`, not during a
+  tour). Without `pois.pmtiles` (data folder only, a failed build – reported, `poiTilesFailed` in `store.json`, not
+  retried at every start) the style's metadata `onpath:fallback-sources` makes `OptionalSources` swap in the GeoJSON
+  source. Phone (Pixel 8, 19 cells + packages, Plan, cold start 60 s): PSS 1.49 → 0.45 GB, native heap 1.21 → 0.10 GB;
+  the one-time rewrite took 21 s (294 MB).
 - **Generations:** number = highest folder + 1; current = highest complete one with a readable `store.json`
   (`.tmp` / `.bad` / unreadable folders are ignored and cleaned). After the map loaded a generation
   (`confirmLoaded`), older ones are deleted; if MapLibre fails to load it, `rollback` sets it aside and the previous

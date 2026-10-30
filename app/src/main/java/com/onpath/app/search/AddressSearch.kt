@@ -4,6 +4,12 @@ import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import java.io.Closeable
 import java.io.File
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 /** Minimal read-only SQL access (Android SQLite on the phone, JDBC in unit tests). */
 interface AddressDb : Closeable {
@@ -77,7 +83,17 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     fun search(q: AddressQuery, max: Int = 30): List<AddressHit> {
         val words = q.words.filter { it.length >= 2 }.ifEmpty { q.words }
         if (words.isEmpty()) return emptyList()
-        val streetSets = words.map { w -> streetsWithPrefix(w) }.toMutableList()
+        // One word: each street of its first block of ids ([streetsOf]) is a hit, so all hits come from that block – only
+        // its ids are read ("s" matches thousands of streets). Several words: whole sets (each is checked per street).
+        val first = if (words.size == 1 && max <= BLOCK) streetsWithPrefix(words[0], enough = BLOCK) else null
+        val hits = search(q, words, max, first)
+        // fewer hits than streets in the block (street rows missing: a broken file): as before, with the whole set
+        if (first != null && first.size >= BLOCK && hits.size < max) return search(q, words, max, null)
+        return hits
+    }
+
+    private fun search(q: AddressQuery, words: List<String>, max: Int, firstSet: Set<Long>?): List<AddressHit> {
+        val streetSets = words.mapIndexed { i, w -> if (i == 0 && firstSet != null) firstSet else streetsWithPrefix(w) }.toMutableList()
         val townSets = words.map { w -> towns.values.filter { t -> t.words.any { it.startsWith(w) } }.map { it.id }.toSet() }
         // Typo tolerance: a word that matches nothing ("garibali") is retried with up to 1 (2 for long words) wrong
         // letters; such matches rank lower (tier 1).
@@ -87,13 +103,14 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         }
         val anchor = streetSets.withIndex().filter { it.value.isNotEmpty() }.minByOrNull { it.value.size } ?: return emptyList()
         val matched = words.indices.filter { streetSets[it].isNotEmpty() || townSets[it].isNotEmpty() }
-        val streets = streetRows(anchor.value).filter { s ->
-            val v = villageAt(s.lat, s.lon)?.id
-            matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }
-        }
         val out = ArrayList<AddressHit>()
-        for (s in streets) {
-            val sWords = (listOf(s.name) + s.alt).flatMap { SearchText.tokens(it) }.flatMap { listOf(it) + AddressQuery.splitSuffix(it) }.toSet()
+        // street rows only until [max] hits: a short word ("s") matches thousands of streets a file
+        for (s in streetsOf(anchor.value)) {
+            // the village only when the street's own words and towns do not decide (a scan of the file's places)
+            val v by lazy(LazyThreadSafetyMode.NONE) { villageAt(s.lat, s.lon)?.id }
+            if (!matched.all { i -> s.id in streetSets[i] || s.town in townSets[i] || s.loc in townSets[i] || v in townSets[i] }) continue
+            val norms = (listOf(s.name) + s.alt).map { SearchText.normalize(it) } // once per name (the costly part)
+            val sWords = norms.flatMap { n -> n.split(' ').filter { it.isNotEmpty() } }.flatMap { listOf(it) + AddressQuery.splitSuffix(it) }.toSet()
             val byStreet = matched.filter { s.id in streetSets[it] }.map { words[it] }
             var score = 0.0
             for (i in matched) {
@@ -102,14 +119,14 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
             }
             score = score / words.size + (if (q.postcode != null && q.postcode == s.pc) 0.1 else 0.0)
             val joined = byStreet.joinToString(" ")
-            val exactName = (listOf(s.name) + s.alt).any { SearchText.normalize(it).replace(" ", "") == joined.replace(" ", "") }
+            val exactName = norms.any { it.replace(" ", "") == joined.replace(" ", "") }
             var tier = when { exactName -> 3; byStreet.all { it in sWords } -> 2; else -> 1 }
             if (matched.size < words.size || fuzzy.isNotEmpty()) tier = 1
             val house = q.number?.let { n -> houseOf(s.id, n) }
             if (house != null) out += AddressHit(place(s, house.first, house.second, house.third), score + 0.05, tier)
             out += AddressHit(place(s, null, s.lat, s.lon), score - if (q.number != null) 0.1 else 0.0,
                 if (q.number != null && house == null) tier else minOf(tier, 2))
-            if (out.size >= max) break
+            if (out.size >= max) return out
         }
         return out
     }
@@ -129,15 +146,47 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
         }.toSet()
     }
 
-    private fun streetsWithPrefix(w: String): Set<Long> =
-        db.rows("SELECT street FROM word WHERE w >= ? AND w < ? LIMIT 5000", w, upper(w)).map { it[0] as Long }.toSet()
+    /**
+     * Streets with a word starting with [w], in word order, from at most [WORD_ROWS] word rows; read page by page only
+     * until [enough] streets are known (then the set is its first [enough] streets).
+     */
+    private fun streetsWithPrefix(w: String, enough: Int = Int.MAX_VALUE): Set<Long> {
+        val out = LinkedHashSet<Long>()
+        var offset = 0
+        var page = if (enough == Int.MAX_VALUE) WORD_ROWS else 2 * enough
+        while (offset < WORD_ROWS && out.size < enough) {
+            val n = minOf(page, WORD_ROWS - offset)
+            val rows = db.rows("SELECT street FROM word WHERE w >= ? AND w < ? ORDER BY w, street LIMIT $n OFFSET $offset", w, upper(w))
+            for (r in rows) out += r[0] as Long
+            if (rows.size < n) break
+            offset += n; page *= 2
+        }
+        return out
+    }
 
-    private fun streetRows(ids: Set<Long>): List<Street> = ids.chunked(500).flatMap { chunk ->
-        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${chunk.joinToString(",")})").map { r ->
+    /**
+     * The streets of [ids], read lazily: in blocks of [BLOCK] ids (in the order of [ids]), each block by ascending id,
+     * read in growing steps (40, 80, … rows) – the caller stops as soon as it has its hits.
+     */
+    private fun streetsOf(ids: Set<Long>): Sequence<Street> = ids.asSequence().chunked(BLOCK).flatMap { block ->
+        val sorted = block.sorted()
+        sequence {
+            var from = 0
+            var step = 40
+            while (from < sorted.size) {
+                val to = minOf(sorted.size, from + step)
+                yieldAll(streetRows(sorted.subList(from, to)))
+                from = to; step *= 2
+            }
+        }
+    }
+
+    /** The street rows of [ids] (a few hundred at most), in id order. */
+    private fun streetRows(ids: List<Long>): List<Street> =
+        db.rows("SELECT id, name, alt, town, loc, pc, p, lat, lon FROM street WHERE id IN (${ids.joinToString(",")}) ORDER BY id").map { r ->
             Street(r[0] as Long, r[1] as String, split(r[2]), r[3] as Long?, r[4] as Long?, r[5] as String?,
                 (r[6] as Long).toInt(), e5(r[7]), e5(r[8]))
         }
-    }
 
     /** Exact house number, else the first one starting with it ("7" → "7a"). */
     private fun houseOf(street: Long, n: String): Triple<String, Double, Double>? {
@@ -174,6 +223,10 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
     companion object {
         /** A village / fraction further than this from an address is not named for it. */
         const val VILLAGE_M = 2000.0
+        /** Street ids are read in blocks of this many (the order hits are found in). */
+        private const val BLOCK = 500
+        /** At most this many word rows per query word (a cap that also decides which streets a short word finds). */
+        private const val WORD_ROWS = 5000
         val VILLAGE_KINDS = setOf("city", "town", "village", "suburb")
         val HAMLET_KINDS = setOf("hamlet", "quarter", "neighbourhood")
 
@@ -199,8 +252,22 @@ class AddressFile(private val db: AddressDb, val key: String) : Closeable {
 /** All address files of the data folder: `addresses.sqlite` plus `addresses/` (one file per map cell). */
 class AddressIndex(val files: List<AddressFile>, val signature: String = "") : Closeable {
 
-    fun search(q: AddressQuery): List<AddressHit> {
-        val all = files.flatMap { f -> safe { f.search(q) } ?: emptyList() }
+    /**
+     * Hits of every file, in file order. The files are searched side by side (one file per map cell, often 20+);
+     * [cancelled] (a newer keystroke) stops the files not started yet – the answer is then incomplete and not shown.
+     */
+    fun search(q: AddressQuery, cancelled: () -> Boolean = { false }): List<AddressHit> {
+        val perFile = if (files.size < 2) files.map { f -> safe { f.search(q) } ?: emptyList() } else {
+            val tasks = files.map { f -> Callable { if (cancelled()) emptyList() else safe { f.search(q) } ?: emptyList() } }
+            val done = try { pool.invokeAll(tasks) } catch (e: InterruptedException) {
+                // expected: the caller is being stopped and does not use the answer
+                Thread.currentThread().interrupt(); return emptyList()
+            }
+            done.map { r -> try { r.get() } catch (e: ExecutionException) {
+                Problems.warn("search", "Offline address search failed in one file; no offline addresses from it", e.cause ?: e); emptyList()
+            } }
+        }
+        val all = perFile.flatten()
         // the same street from two cells: keep one per name within 2 km
         val out = ArrayList<AddressHit>()
         for (h in all) if (out.none { it.place.name == h.place.name &&
@@ -222,6 +289,14 @@ class AddressIndex(val files: List<AddressFile>, val signature: String = "") : C
     companion object {
         const val FILE = "addresses.sqlite"
         const val DIR = "addresses"
+
+        /** Threads for searching the files side by side (daemon threads, kept for the process; idle ones end). */
+        private val pool: ExecutorService by lazy {
+            val n = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+            ThreadPoolExecutor(n, n, 30, TimeUnit.SECONDS, LinkedBlockingQueue()) { r ->
+                Thread(r, "address-search").apply { isDaemon = true }
+            }.apply { allowCoreThreadTimeOut(true) }
+        }
 
         fun sources(dataDir: File): List<File> =
             (listOf(File(dataDir, FILE)) + (File(dataDir, DIR).listFiles { f -> f.name.endsWith(".sqlite") }?.sortedBy { it.name } ?: emptyList()))

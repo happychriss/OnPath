@@ -22,6 +22,10 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     NAVIGATION(Res.string.settings_page_navigation),
     OFFLINE_MAPS(Res.string.settings_page_offline_maps),
     BACKUP(Res.string.settings_page_backup),
+    /** Plan sync with the web planner (A-007): shown when the app has the sync (always, not in older screenshots). */
+    SYNC(Res.string.settings_page_sync),
+    /** Phone setup (location, notifications, vibration, battery …): shown when the app passes the checks. */
+    PHONE(Res.string.settings_page_phone, app = true),
     UPDATES(Res.string.settings_page_updates, app = true),
     PRIVACY(Res.string.settings_page_privacy, app = true),
     DIAGNOSTICS(Res.string.settings_page_diagnostics, app = true),
@@ -43,10 +47,14 @@ object DevToolsUnlock {
     fun shown(debugBuild: Boolean, unlocked: Boolean): Boolean = debugBuild || unlocked
 }
 
-/** One line under a topic in the Settings list; [attention] colours it (problem = red, news = accent). */
+/** One line under a topic in the Settings list; [attention] colours it (problem = red, recommended = amber, news = accent). */
 data class Summary(val text: String, val attention: Attention = Attention.NONE) {
-    enum class Attention { NONE, ACCENT, PROBLEM }
+    /** NONE grey, ACCENT blue (news), WARNING amber (recommended), PROBLEM red. */
+    enum class Attention { NONE, ACCENT, WARNING, PROBLEM }
 }
+
+/** The groups of the Settings list: an urgent row on top (no heading), "Your settings", "App". */
+enum class TopicGroup { URGENT, YOURS, APP }
 
 /**
  * The one-line summaries of the Settings list (Android settings style: the current values at a glance).
@@ -111,6 +119,35 @@ object SettingsSummary {
             problems.isEmpty() -> Summary(Txt.s(Res.string.settings_sum_diag))
             else -> Summary(Txt.p(Res.plurals.settings_sum_diag_notes, problems.size, problems.size))
         }
+    }
+
+    /**
+     * Phone setup in the list (owner 2026-10-30): something a tour needs → red, "1 item needed for tours"; only
+     * recommended items missing → amber, "2 recommended"; else "Everything set up". Optional items never count.
+     */
+    fun phone(checks: List<com.onpath.app.setup.Check>): Summary {
+        val needed = checks.count { !it.ok && it.need == com.onpath.app.setup.Need.REQUIRED }
+        val recommended = checks.count { !it.ok && it.need == com.onpath.app.setup.Need.RECOMMENDED }
+        return when {
+            needed > 0 -> Summary(Txt.p(Res.plurals.settings_sum_phone_needed, needed, needed), Summary.Attention.PROBLEM)
+            recommended > 0 -> Summary(Txt.p(Res.plurals.settings_sum_phone_recommended, recommended, recommended), Summary.Attention.WARNING)
+            else -> Summary(Txt.s(Res.string.settings_sum_phone_ok))
+        }
+    }
+
+    /** Something a tour needs is missing on the phone: Phone setup goes to the top of Settings and into the ☰ menu. */
+    fun phoneNeeded(checks: List<com.onpath.app.setup.Check>?): Boolean =
+        checks.orEmpty().any { !it.ok && it.need == com.onpath.app.setup.Need.REQUIRED }
+
+    /**
+     * The Settings list in groups, in order: [TopicGroup.URGENT] (only Phone setup, only when [phoneNeeded] – owner:
+     * "at the top, red"), then "Your settings", then "App". Empty groups are left out.
+     */
+    fun groups(topics: List<SettingsPage>, phoneChecks: List<com.onpath.app.setup.Check>?): List<Pair<TopicGroup, List<SettingsPage>>> {
+        val urgent = if (phoneNeeded(phoneChecks) && SettingsPage.PHONE in topics) listOf(SettingsPage.PHONE) else emptyList()
+        val rest = topics - urgent.toSet()
+        return listOf(TopicGroup.URGENT to urgent, TopicGroup.YOURS to rest.filter { !it.app }, TopicGroup.APP to rest.filter { it.app })
+            .filter { it.second.isNotEmpty() }
     }
 
     val privacy: Summary get() = Summary(Txt.s(Res.string.settings_sum_privacy))

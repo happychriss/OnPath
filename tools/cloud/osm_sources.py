@@ -16,12 +16,19 @@ Rule for the bbox B = cell + buffer (5 km):
         builder cuts each one and merges the small cuts (memory stays that of one cut, see build_cell.sh).
   3. otherwise the smallest leaf of any kind that contains B (great-britain, canary-islands, alps …);
      else nothing: open sea → the cell is answered "no map data" for good.
+
+MAX_EXTRACTS (z10 cells) = 8: the leaves are cut one after the other and only the small cuts are merged, so a further
+leaf costs one more sequential cut (~10 s for a German Regierungsbezirk, ~50 s for austria) – never memory, and the
+work disk only holds the small cuts. Falling back to a containing extract (rule 3) is never cheaper: in Europe that is
+alps (2.3 GB, cut 60 s+) or dach (over max_extract_mb → the cell could not be built at all). Every z10 cell of
+Europe (lat 35–64, Geofabrik index 2026-10) needs at most 5 leaves: Bodensee (10-538-357: tuebingen + freiburg +
+schwaben + switzerland + austria), English counties, the NL / BE / LU / FR corners – 8 leaves room to spare.
 """
 import json
 import math
 
 INDEX_URL = "https://download.geofabrik.de/index-v1.json"
-MAX_EXTRACTS = 4
+MAX_EXTRACTS = 8  # z10 cells; region packages pass their own (job_build.PACKAGE_MAX_EXTRACTS)
 
 
 # ------------------------------------------------------------------------------------------------ geometry
@@ -180,8 +187,9 @@ def select(regions, box, max_extracts=MAX_EXTRACTS):
     any_containing = sorted((r for r in regions if r.leaf and r.contains_box(box)), key=lambda r: r.area)
     if any_containing:
         return [any_containing[0]]
-    if leaves:  # many small leaves and nothing containing all (never seen in Europe): the largest overlaps
-        return sorted(leaves, key=lambda r: r.area)[-max_extracts:]
+    if leaves:  # many small leaves and nothing containing all: all of them – leaving the smallest out (as before
+        # 2026-10-30) cut a hole into the map (10-529-349 built without luxembourg, 10-529-339 without limburg)
+        return sorted(leaves, key=lambda r: r.area)
     return []
 
 

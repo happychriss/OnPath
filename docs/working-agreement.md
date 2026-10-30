@@ -38,7 +38,7 @@ When sessions are active at the same time, split like this (laptop = laptop or d
 | --- | --- |
 | On-device feel: plan panel, gestures, map style fine-tuning (`tools/themes/*.json`, `tools/make_style.py`) | **laptop** |
 | Releases (`app/build.gradle.kts` version, `docs/release-notes/`, `.github/workflows/`) | **cloud** (laptop may release too, see §4) |
-| Data pipeline (`tools/build_region.sh`, `tools/extract_*`, `tools/build_*`), regions, server/Hetzner | **cloud** |
+| Data pipeline (`tools/build_region.sh`, `tools/extract_*`, `tools/build_*`), regions, map server (`tools/cells/`, `tools/cloud/`) | **cloud** |
 | Routing engine (`routing/BRouter*`, `app/libs`, `assets/brouter`) | **cloud** |
 | New features, bug fixes | whoever claims them in the backlog |
 | `docs/requirements.md` (copy of the shared Claude doc) | cloud syncs it; laptop adds requests to the backlog |

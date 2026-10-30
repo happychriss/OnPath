@@ -3,6 +3,7 @@ package com.onpath.app.ui.search
 import com.onpath.app.search.AreaPlan
 import com.onpath.app.search.OfflineIndex
 import com.onpath.app.search.SearchStore
+import com.onpath.app.search.places
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,6 +50,7 @@ class SearchIndexSwapTest {
             override fun getSharedPreferences(name: String?, mode: Int): android.content.SharedPreferences? = null
         }), null,
             areaPlan = { block.get().await(30, TimeUnit.SECONDS); AreaPlan.of(data) },
+            openIndex = com.onpath.app.search.JdbcSearchDb.opener,
             context = { SearchContext(46.5, 10.9, null) })
         try {
             // first build: nothing to answer with yet → "Preparing offline search…" until it is ready
@@ -73,7 +75,7 @@ class SearchIndexSwapTest {
             assertTrue(slow.count == 1L) // the rebuild is still waiting
 
             slow.countDown()
-            waitFor("new index swapped in") { runBlocking { s.offlineIndex() }.entries.any { it.place.name == "Zonsalm Neu" } }
+            waitFor("new index swapped in") { runBlocking { s.offlineIndex() }.places().any { it.name == "Zonsalm Neu" } }
             s.onQuery("zonsalm")
             waitFor("new results") { s.ui.hits.any { it.place.name == "Zonsalm Neu" } }
         } finally {

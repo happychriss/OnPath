@@ -1,7 +1,7 @@
 # Map rules vs. BRouter: audit (origin/main 3511f3c, 2026-10-21)
 
-> **Status:** quick fixes A and approach 1 ("router decides") are built; open: the app does not check the cells'
-> `wayclass` hash, tertiary and bigger roads have no class (backlog). Classifier `tools/routing/wayclass/`, details and
+> **Status:** quick fixes A and approach 1 ("router decides") are built; the app compares the cells'
+> `wayclass` hash with its own profiles (`cells/RouterClassCheck`); open: tertiary and bigger roads have no class (backlog). Classifier `tools/routing/wayclass/`, details and
 > thresholds in `docs/map-style-notes.md` "Router classes". The numbers below are the audit's snapshot: "Touring" there
 > is the road-bike profile fastbike-verylowtraffic that Bike used then; today Bike + E-bike use OnPath's `touring.brf`
 > (a trekking copy, `docs/design/bike-routing.md`) and share the touring class. "Trekking" = trekking.brf (Gravelbike).

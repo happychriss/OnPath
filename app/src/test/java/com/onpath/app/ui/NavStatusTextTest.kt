@@ -28,6 +28,13 @@ class NavStatusTextTest {
         assertEquals("Time paused · no progress", timePausedText(toGo.copy(pausedBecause = "no progress"), waitingGps = false))
     }
 
+    @Test fun approximatePositionLineSaysHowRough() {
+        assertEquals("Approximate position (Wi-Fi, ±80 m) – GPS comes outside",
+            approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80)))
+        assertEquals("Approximate position (±70 m) – GPS still weak",
+            approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WEAK_GPS, 70)))
+    }
+
     @Test fun paceInPlainWordsOnlyWhenClearlyDifferent() {
         assertNull(paceNote(Factors(down = 1.1, flat = 1.0, up = 0.9)))
         assertEquals("Faster than planned uphill", paceNote(Factors(up = 0.8)))

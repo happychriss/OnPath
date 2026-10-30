@@ -61,7 +61,8 @@ enum class GpsStatus(private val res: org.jetbrains.compose.resources.StringReso
  * for [GPS_STALE_MS] (indoors, a restaurant – owner: "when I plan it must know where I am") or is weak
  * and the Wi-Fi fix twice as accurate (train station roof) – but only when it is at least
  * [NET_MAX_ACCURACY_M] accurate (Wi-Fi), never a cell guess kilometres off in the mountains.
- * [useNetwork] = false never asks for it (recording service: the track is GPS only).
+ * [useNetwork] = false never asks for it (recording service: the track is GPS only). A tour started indoors adds the
+ * fused provider until its first GPS fix ([setFusedWanted]; the app's tracker only).
  * While a [DemoLocation] demo runs, real fixes are ignored and the simulated ones are published instead.
  */
 class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L, private val useNetwork: Boolean = true) {
@@ -95,20 +96,34 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
         @Deprecated("Deprecated in Java")
         override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
     }
-    private val netListener = object : LocationListener {
-        override fun onLocationChanged(loc: Location) {
-            if (!DemoLocation.takesRealFix()) return
-            val now = SystemClock.elapsedRealtime()
-            if (useNetworkFix(lastGpsElapsed, now, loc.hasAccuracy(), loc.accuracy, lastGpsAccuracy)) {
-                lastNetElapsed = now; lastNetAccuracy = loc.accuracy
-                publish(loc)
-            }
+    /** A network or fused fix: the same rules ([useNetworkFix]) – it stands in for GPS, never beside it. */
+    private fun onNetworkLikeFix(loc: Location) {
+        if (!DemoLocation.takesRealFix()) return
+        val now = SystemClock.elapsedRealtime()
+        if (useNetworkFix(lastGpsElapsed, now, loc.hasAccuracy(), loc.accuracy, lastGpsAccuracy)) {
+            lastNetElapsed = now; lastNetAccuracy = loc.accuracy
+            publish(loc)
         }
+    }
+    private val netListener = object : LocationListener {
+        override fun onLocationChanged(loc: Location) = onNetworkLikeFix(loc)
         override fun onProviderEnabled(provider: String) { _enabled.value = isEnabled() }
         override fun onProviderDisabled(provider: String) { _enabled.value = isEnabled() }
         @Deprecated("Deprecated in Java")
         override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
     }
+    /** Separate object: removeUpdates(netListener) must not end the fused request, nor the other way round. */
+    private val fusedListener = object : LocationListener {
+        override fun onLocationChanged(loc: Location) = onNetworkLikeFix(loc)
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+        @Deprecated("Deprecated in Java")
+        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+    }
+
+    /** [setFusedWanted]: a tour waits for its first GPS fix (indoors); [fusedRunning]: the request is active. */
+    private var fusedWanted = false
+    private var fusedRunning = false
 
     /** Simulated fixes (Developer tools → Demo) take the place of GPS; at its end the phone's own last fix. */
     private val demoSink = object : DemoLocation.Sink {
@@ -177,6 +192,7 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
                 netRunning = true
             }
             running = true
+            if (fusedWanted) startFused()
             // Seed with the last known position so the map has something immediately (not during a demo: never real).
             if (!DemoLocation.takesRealFix()) Unit
             else if (_location.value == null) {
@@ -209,7 +225,64 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
             Problems.warn("gps", "Location updates could not be removed on stop", e)
         }
         stopNetwork()
+        stopFused()
         running = false
+    }
+
+    /**
+     * Provisional position for a tour started indoors ([com.onpath.app.navigation.Provisional], owner): while [on], the
+     * platform fused provider (Android 12+, no Play Services library; on a Pixel Google's location service – Wi-Fi, a
+     * faster and better first fix indoors) is asked every [FUSED_MS] beside GPS. Below Android 12 or without it the
+     * network request stands in. Only while the app is visible (it stops with [stop]) and only until the tour's first
+     * GPS fix, a pause or the end of the tour – the caller switches it off.
+     */
+    fun setFusedWanted(on: Boolean) {
+        if (on == fusedWanted) return
+        fusedWanted = on
+        if (!running) return
+        if (on) startFused() else stopFused()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startFused() {
+        if (fusedRunning || !useNetwork) return
+        if (Build.VERSION.SDK_INT < 31) {
+            Problems.info("gps", "Tour without a GPS fix yet: Android ${Build.VERSION.SDK_INT} has no fused provider, " +
+                "the network position stands in")
+            return
+        }
+        try {
+            if (!lm.hasProvider(LocationManager.FUSED_PROVIDER)) {
+                Problems.info("gps", "Tour without a GPS fix yet: no fused provider on this phone, the network position stands in")
+                return
+            }
+            val request = android.location.LocationRequest.Builder(FUSED_MS)
+                .setQuality(android.location.LocationRequest.QUALITY_BALANCED_POWER_ACCURACY).build()
+            lm.requestLocationUpdates(LocationManager.FUSED_PROVIDER, request, ContextCompat.getMainExecutor(app), fusedListener)
+            fusedRunning = true
+            Problems.trace("gps", "Tour without a GPS fix yet: fused position asked every ${FUSED_MS / 1000} s until the first GPS fix")
+            // a recent fused fix (Wi-Fi) at once – the screen is useful before the first update
+            // (never an old one: the dot must not jump to where the phone was an hour ago)
+            lm.getLastKnownLocation(LocationManager.FUSED_PROVIDER)?.let { last ->
+                val held = _location.value
+                val fresh = SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos <=
+                    com.onpath.app.navigation.Provisional.MAX_AGE_MS * 1_000_000L
+                if (fresh && (held == null || last.elapsedRealtimeNanos > held.elapsedRealtimeNanos)) onNetworkLikeFix(last)
+            }
+        } catch (e: Exception) {
+            Problems.warn("gps", "Fused position could not be asked; the network position stands in until the first GPS fix", e)
+        }
+    }
+
+    private fun stopFused() {
+        if (!fusedRunning) return
+        fusedRunning = false
+        try {
+            lm.removeUpdates(fusedListener)
+            Problems.trace("gps", "Fused position no longer asked (GPS fix, pause or tour end)")
+        } catch (e: Exception) {
+            Problems.warn("gps", "Fused location updates could not be removed", e)
+        }
     }
 
     /** Change the GPS rate while running (pause = slower); GPS is never switched off by this. */
@@ -250,6 +323,9 @@ class LocationTracker(context: Context, private var gpsIntervalMs: Long = 1000L,
     }
 
     companion object {
+        /** Fused request rate while a tour waits for its first GPS fix. */
+        const val FUSED_MS = 2_000L
+
         fun ageSeconds(loc: Location): Long =
             (SystemClock.elapsedRealtimeNanos() - loc.elapsedRealtimeNanos) / 1_000_000_000L
     }

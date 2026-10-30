@@ -1,0 +1,477 @@
+{
+  "setup_welcome_title": {
+    "area": "Phone setup",
+    "context": "First start, title of the welcome page",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_welcome_text": {
+    "area": "Phone setup",
+    "context": "Welcome page text",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_welcome_now": {
+    "area": "Phone setup",
+    "context": "Welcome page: start the guide",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_later": {
+    "area": "Phone setup",
+    "context": "Guide: skip this step / the welcome",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_step_of": {
+    "area": "Phone setup",
+    "context": "Guide header: %1$d = this step, %2$d = all steps",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_continue": {
+    "area": "Phone setup",
+    "context": "Guide: main button, opens the system dialog or phone settings",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_try_again": {
+    "area": "Phone setup",
+    "context": "Guide: ask the system dialog again after a no",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_close": {
+    "area": "Phone setup",
+    "context": "Guide: close at the end",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_all_set_title": {
+    "area": "Phone setup",
+    "context": "Guide end, everything is fine",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_all_set_text": {
+    "area": "Phone setup",
+    "context": "Guide end text, everything fine",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_some_later_title": {
+    "area": "Phone setup",
+    "context": "Guide end, something was put off",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_some_later_text": {
+    "area": "Phone setup",
+    "context": "Guide end text when something was skipped",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_tour_needs": {
+    "area": "Phone setup",
+    "context": "Guide end before a tour, location still missing",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_taken_phone": {
+    "area": "Phone setup",
+    "context": "Note above a step: Android's unused-app reset removed the permission",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_taken_off": {
+    "area": "Phone setup",
+    "context": "Note above a step: someone switched it off",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_loc_title": {
+    "area": "Phone setup",
+    "context": "Step L1 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_loc_why": {
+    "area": "Phone setup",
+    "context": "Step L1: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_loc_do": {
+    "area": "Phone setup",
+    "context": "Step L1: what to do in the system dialog (no system button text)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_loc_denied": {
+    "area": "Phone setup",
+    "context": "Step L1 after the user said no",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_loc_blocked": {
+    "area": "Phone setup",
+    "context": "Step L1 when Android no longer shows the dialog: app settings path",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_precise_title": {
+    "area": "Phone setup",
+    "context": "Step L2 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_precise_why": {
+    "area": "Phone setup",
+    "context": "Step L2: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_precise_do": {
+    "area": "Phone setup",
+    "context": "Step L2: what to do",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_locon_title": {
+    "area": "Phone setup",
+    "context": "Step L3 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_locon_why": {
+    "area": "Phone setup",
+    "context": "Step L3: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_locon_do": {
+    "area": "Phone setup",
+    "context": "Step L3: what to do",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_notif_title": {
+    "area": "Phone setup",
+    "context": "Step N1 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_notif_why": {
+    "area": "Phone setup",
+    "context": "Step N1: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_notif_do": {
+    "area": "Phone setup",
+    "context": "Step N1: what to do (system dialog)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_notif_blocked": {
+    "area": "Phone setup",
+    "context": "Step N1 via phone settings",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_title": {
+    "area": "Phone setup",
+    "context": "Step V1 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_why": {
+    "area": "Phone setup",
+    "context": "Step V1: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_do": {
+    "area": "Phone setup",
+    "context": "Step V1: what to do",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_test": {
+    "area": "Phone setup",
+    "context": "Step V1: play the test vibration",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_question": {
+    "area": "Phone setup",
+    "context": "Step V1 after the test",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_yes": {
+    "area": "Phone setup",
+    "context": "Step V1 answer",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_no": {
+    "area": "Phone setup",
+    "context": "Step V1 answer",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_not_felt": {
+    "area": "Phone setup",
+    "context": "Step V1 when not felt: where the setting is",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_vib_sound_settings": {
+    "area": "Phone setup",
+    "context": "Step V1: open the phone's sound settings",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_vib_none": {
+    "area": "Phone setup",
+    "context": "Step V1 when there is no vibrator",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_bat_title": {
+    "area": "Phone setup",
+    "context": "Step B1 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_bat_why": {
+    "area": "Phone setup",
+    "context": "Step B1: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_bat_do": {
+    "area": "Phone setup",
+    "context": "Step B1: what to do in app settings (labels differ per phone)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_brand_title": {
+    "area": "Phone setup",
+    "context": "Step B2 title: %1$s = brand (Samsung, Xiaomi …)",
+    "priority": 1,
+    "confidence": "bitte prüfen"
+  },
+  "setup_brand_why": {
+    "area": "Phone setup",
+    "context": "Step B2: why; %1$s = brand",
+    "priority": 1,
+    "confidence": "bitte prüfen"
+  },
+  "setup_brand_samsung": {
+    "area": "Phone setup",
+    "context": "Step B2 Samsung: numbered steps (labels approximate, One UI)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_brand_xiaomi": {
+    "area": "Phone setup",
+    "context": "Step B2 Xiaomi / Redmi / POCO",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_brand_huawei": {
+    "area": "Phone setup",
+    "context": "Step B2 Huawei / Honor",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_brand_oneplus": {
+    "area": "Phone setup",
+    "context": "Step B2 OnePlus / Oppo / realme",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_open_app_settings": {
+    "area": "Phone setup",
+    "context": "Step B1/B2: open Android's app info of OnPath",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_more_help": {
+    "area": "Phone setup",
+    "context": "Step B2: link to dontkillmyapp.com for this brand",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_brand_done": {
+    "area": "Phone setup",
+    "context": "Step B2: user went through the steps",
+    "priority": 1,
+    "confidence": "bitte prüfen"
+  },
+  "setup_saver_title": {
+    "area": "Phone setup",
+    "context": "Step B3 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_saver_why": {
+    "area": "Phone setup",
+    "context": "Step B3 + Settings row when battery saver turns GPS off: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_saver_ok_why": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup, battery saver row when this phone keeps GPS running in battery saver (green tick)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_saver_do": {
+    "area": "Phone setup",
+    "context": "Step B3: what to do",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_unused_title": {
+    "area": "Phone setup",
+    "context": "Step H1 title",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_unused_why": {
+    "area": "Phone setup",
+    "context": "Step H1: why (optional)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_unused_do": {
+    "area": "Phone setup",
+    "context": "Step H1: what to do",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Menu names of the phone in German not checked on such a phone"
+  },
+  "setup_unused_on": {
+    "area": "Phone setup",
+    "context": "Settings row H1: Android's reset is on",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_unused_off": {
+    "area": "Phone setup",
+    "context": "Settings row H1: Android's reset is off",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_state_ok": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: row is fine",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_state_missing": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: row missing",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_state_untested": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: vibration not tested",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_state_none": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: state of the vibration row when the phone has no vibrator (grey, no tick)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_fix": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: button of a missing row",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_phone_intro": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: intro",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_required": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: group of required items",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_recommended": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: group of recommended items",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_optional": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: group of optional items",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_nav_check": {
+    "area": "Phone setup",
+    "context": "Settings → Navigation: row that opens Phone setup",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_nav_test_vibration": {
+    "area": "Phone setup",
+    "context": "Settings → Navigation: play the turn vibration",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_page_phone": {
+    "area": "Phone setup",
+    "context": "Settings topic name",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_sum_phone_ok": {
+    "area": "Phone setup",
+    "context": "Settings list: Phone setup summary when fine",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_sum_phone_needed": {
+    "area": "Phone setup",
+    "context": "Settings list: Phone setup summary in red (row moved to the top), %1$d = number of items a tour needs",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_sum_phone_recommended": {
+    "area": "Phone setup",
+    "context": "Settings list: Phone setup summary in amber, %1$d = number of recommended items missing",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_locon_row": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: row name of the phone's location switch",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_saver_row": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: row name of battery saver",
+    "priority": 1,
+    "confidence": "sicher"
+  }
+}

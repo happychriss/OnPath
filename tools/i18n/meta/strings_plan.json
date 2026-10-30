@@ -875,12 +875,6 @@
     "doubt": "Alternative \"Hierher navigieren\" / \"Ziel hier\"",
     "max": 24
   },
-  "plan_add_to_route": {
-    "area": "Map (Plan)",
-    "context": "Hold menu of a POI: add it as a point",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "plan_open_google_maps": {
     "area": "Map (Plan)",
     "context": "Hold menu item",
@@ -1222,5 +1216,23 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 24
+  },
+  "plan_from_track": {
+    "area": "Track panel",
+    "context": "Button: make a plannable route with few points from the shown track",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_from_track_failed": {
+    "area": "Track panel",
+    "context": "Error line: no route could be made from the track",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_from_track_wait": {
+    "area": "Track panel",
+    "context": "Progress line while the route from the track is calculated",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

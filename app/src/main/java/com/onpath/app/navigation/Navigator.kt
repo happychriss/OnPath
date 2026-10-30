@@ -3,6 +3,7 @@ package com.onpath.app.navigation
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
+import kotlin.math.abs
 import kotlin.math.min
 
 /** What Navigate shows about being off the route. Every state stays until answered or the situation is gone. */
@@ -27,6 +28,22 @@ sealed interface NavPrompt {
         val switch: ActivitySwitch? = null,
         /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round". */
         val turnRound: Boolean = false,
+        /** The new line leaves out this stop (index in the session's stops, [StopSkip]); null = none. */
+        val skipStop: Int? = null,
+        /** Name of [skipStop] when it has one (else "Stop N"). */
+        val skipName: String? = null,
+        /**
+         * Non-null: "Off route – re-plan?" with [skipStop] in question – "Yes" takes [via] (the way via it), "Yes, skip
+         * stop N" takes this line (without it); Keep original stays possible.
+         */
+        val via: Question? = null,
+        /**
+         * The rider kept moving while the question is open: the way from here is this much longer (> 0, moving away)
+         * or shorter than when [line] was computed. Only the shown numbers change ([NavText.question]); [line],
+         * [legM] and [id] stay, so "Take new route" takes exactly what was computed (A-015: the card said "+80 m"
+         * while the rider walked from 77 to 183 m away).
+         */
+        val movedM: Double = 0.0,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -105,6 +122,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var runningJob = -1
     private var vibrateOnResult = false
     private var refreshing = false
+    /** Refreshes of the open question in this off-route episode (owner 2026-10-30: only the first one vibrates). */
+    private var refreshes = 0
     private var questionId = 0
     private var askAt: GeoPoint? = null
     private var askAtMs = 0L
@@ -117,6 +136,12 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var turnRoundAt: GeoPoint? = null
     /** The rider's latest positions, oldest first ([TurnRound]). */
     private val recent = ArrayDeque<GeoPoint>()
+    /** Where the running routing job was asked from. */
+    private var jobFrom: GeoPoint? = null
+    /** The open question's way back ([live]) and its cost from where it was computed. */
+    private var liveLine: NavLine? = null
+    private var liveWindowM = 0.0
+    private var liveBase = 0.0
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
@@ -177,6 +202,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (st.confirmedNow && enabled && navigating && prompt == null) return step + ask(f, vibrate = true)
         if (prompt != null && !switchAsked) {
             toRoute = hint(p)
+            live(p)
             step += followUp(f)
         }
         return step
@@ -209,8 +235,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (prompt == null) return Step() // back on route meanwhile
         return when (outcome) {
             is Rerouter.Found -> {
-                prompt = NavPrompt.Question(++questionId, outcome.extraM, outcome.rejoinInM, outcome.startOffM, outcome.line,
-                    outcome.legM, outcome.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), outcome.line))
+                val q = question(++questionId, outcome)
+                prompt = q
+                startLive(q)
                 failures = 0
                 Step(vibrate = vib)
             }
@@ -236,14 +263,27 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             original = NavLine(session.original)
             leftAtM = 0.0
             detector.setLine(original, 0.0, assumeOnRoute = true)
-            prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
+            prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
+        return takeLine(q)
+    }
+
+    /** "Yes" to "Off route – re-plan?" with a stop in question [id]: the new route via that stop. */
+    fun takeVia(id: Int): Step {
+        val q = prompt as? NavPrompt.Question ?: return Step()
+        if (q.id != id) return Step()
+        return takeLine(q.via ?: return Step())
+    }
+
+    private fun takeLine(q: NavPrompt.Question): Step {
         turnRoundAt = if (q.turnRound) q.line.firstOrNull() else null
+        // a stop left out on purpose stays out: later re-routes never send back to it (like a passed one)
+        val visited = q.skipStop?.let { session.visited + it } ?: session.visited
         session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
-            version = session.version + 1)
+            visited = visited, version = session.version + 1)
         detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
-        prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
+        prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
         return Step(cancelJob = true, lineChanged = true)
     }
 
@@ -258,16 +298,21 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             return Step()
         }
         prompt = NavPrompt.Kept
-        keeps++
+        keeps++; refreshes = 0
         lastFix?.let { markAsked(it); toRoute = hint(it.point) }
         return Step(cancelJob = true)
     }
 
     // ---- internals -------------------------------------------------------------------------------------------
 
+    private fun question(id: Int, f: Rerouter.Found): NavPrompt.Question = NavPrompt.Question(id, f.extraM, f.rejoinInM,
+        f.startOffM, f.line, f.legM, f.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), f.line),
+        skipStop = f.skipStop, skipName = f.skipStop?.let { session.stops.getOrNull(it)?.name?.takeIf { n -> n.isNotBlank() } },
+        via = f.ask?.let { question(id, it) })
+
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {
         prompt = NavPrompt.Searching
-        failures = 0
+        failures = 0; refreshes = 0
         toRoute = hint(f.point)
         markAsked(f)
         // the vibration comes with the question: at once (the way back is usually found in < 1 s)
@@ -282,7 +327,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val since = f.timeMs - askAtMs
         return when (val pr = prompt) {
             is NavPrompt.Question ->
-                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) { markAsked(f); Step(job = newJob(f, true, vibrateOnResult = true)) } else Step()
+                // the first refresh of an episode is a second reminder (vibrates); later ones update the card silently
+                if (moved >= REFRESH_MOVE_M && since >= REFRESH_MIN_MS) {
+                    markAsked(f); Step(job = newJob(f, true, vibrateOnResult = refreshes++ == 0))
+                } else Step()
             is NavPrompt.NoWay ->
                 if (failures < MAX_FAILURES && pr.reason != Rerouter.Reason.UNAVAILABLE && (moved >= RETRY_MOVE_M || since >= RETRY_MS)) {
                     markAsked(f); Step(job = newJob(f, false, vibrateOnResult = true))
@@ -298,14 +346,47 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun newJob(f: OffRouteDetector.Fix, refresh: Boolean, vibrateOnResult: Boolean): Job {
         val id = ++jobId
         runningJob = id; refreshing = refresh; this.vibrateOnResult = vibrateOnResult
+        jobFrom = f.point
         return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac))
+    }
+
+    /** A new question: remember its way back and the cost from where it was asked; then catch up with the rider. */
+    private fun startLive(q: NavPrompt.Question) {
+        val from = jobFrom
+        val nl = NavLine(q.line)
+        liveWindowM = q.legM.coerceIn(0.0, nl.lengthM)
+        val base = from?.let { cost(nl, it) }
+        if (base == null) { liveLine = null; return }
+        liveLine = nl; liveBase = base
+        lastFix?.let { live(it.point) }
+    }
+
+    /**
+     * Keeps the open question's numbers true while the rider moves on (every fix, no routing): the change in
+     * "distance to the way back + what is left of it" since it was computed. Updated in steps of [LIVE_STEP_M], so GPS
+     * noise does not make the numbers flicker; same question (id, line), no vibration, no new notification sound.
+     */
+    private fun live(p: GeoPoint) {
+        val q = prompt as? NavPrompt.Question ?: return
+        if (q.switch != null) return
+        val nl = liveLine ?: return
+        val now = cost(nl, p) ?: return
+        val moved = now - liveBase
+        if (abs(moved - q.movedM) < LIVE_STEP_M) return
+        prompt = q.copy(movedM = moved, via = q.via?.copy(movedM = moved))
+    }
+
+    /** Distance to the way back plus what is left of it from the nearest point (relative: only differences count). */
+    private fun cost(nl: NavLine, p: GeoPoint): Double? {
+        val m = nl.match(p, 0.0, liveWindowM) ?: return null
+        return m.distanceM - m.alongM
     }
 
     private fun markAsked(f: OffRouteDetector.Fix) { askAt = f.point; askAtMs = f.timeMs }
 
     private fun clearPrompt(): Step {
         val had = prompt != null || runningJob >= 0
-        prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false
+        prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false; refreshes = 0
         return Step(cancelJob = had)
     }
 
@@ -356,7 +437,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         const val RECENT_FIXES = 30
         /** The U-turn sign stays until this far along the new line. */
         const val TURN_ROUND_DONE_M = 40.0
-        /** A question is recomputed (no vibration) after moving this far from where it was computed … */
+        /**
+         * A question is recomputed after moving this far from where it was computed (a new question id; only the first
+         * refresh of an off-route episode vibrates – a second reminder – later ones are silent) …
+         */
         const val REFRESH_MOVE_M = 150.0
         /** … but not more often than this. */
         const val REFRESH_MIN_MS = 30_000L
@@ -370,5 +454,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         /** On a new route: this far into the untouched rest = back on the original. */
         const val REST_REACHED_M = 30.0
         const val HINT_AHEAD_M = 3_000.0
+        /** An open question's numbers follow the rider in steps of this much ([live]). */
+        const val LIVE_STEP_M = 20.0
     }
 }

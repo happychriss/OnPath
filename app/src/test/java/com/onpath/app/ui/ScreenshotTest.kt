@@ -66,12 +66,13 @@ class ScreenshotTest {
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
                       footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
+                      menu: PlanMenu = PlanMenu(onUpdates = {}),
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth())
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -286,16 +287,47 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun TopMenu(state: RouteMenuState, bottom: @Composable () -> Unit) {
+    private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
+                        bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
-            Frame { bottom() }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) { PlanMenuItems(PlanMenu(state, onUpdates = {})) {} } }
+            // [sync] is built inside the composition: its texts follow the test's language
+            val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
+                sync = sync?.invoke() ?: SyncMenuUi())
+            Frame(menu = menu) { bottom() }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
+                PlanMenuItems(menu) {}
+            } }
         }
     }
 
     /** ☰ with a route planned: My routes on, Start recording greyed. */
     @Test fun planMenuOpen() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false)) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ☰ while a tour needs something from the phone (location off …): red "Phone setup" first (owner 2026-10-30). */
+    @Test fun planMenuPhoneSetup() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), phoneSetup = true) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    private val syncNow = 1_761_150_000_000L
+    private val paired = com.onpath.app.plansync.PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = syncNow - 60_000,
+        sinceMs = syncNow - 86_400_000, checkedMs = syncNow - 60_000)
+
+    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · 1 min ago". */
+    @Test fun planMenuSyncPaired() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired, "Pixel 8", syncNow) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** ☰ with a sync problem worth a look (mailbox full): amber dot on ☰, the item amber with the reason. */
+    @Test fun planMenuSyncProblem() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired.copy(problem = com.onpath.app.plansync.PlanSync.Problem.Refused(507, "full")), "Pixel 8", syncNow) }) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }
@@ -365,6 +397,24 @@ class ScreenshotTest {
             pausedBecause = com.onpath.app.time.PauseReason.NO_GPS.text), arriveAt = "16:40", waitingGps = true, fixAgeS = 250))
     }
 
+    /** Tour started indoors: what is left counts from the Wi-Fi fix, the amber line says how rough it is (owner). */
+    @Test fun navigateApproximatePosition() = paparazzi.snapshot {
+        NavFrame(navUi.copy(recordedM = 0.0, elapsedS = 40, arriveAt = "16:40",
+            approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80))))
+    }
+
+    /** Notifications off during a tour: the small amber chip under the status card (tap → setup, OK → gone this tour). */
+    @Test fun navigateNotificationsOff() = paparazzi.snapshot {
+        NavFrame(navUi.copy(arriveAt = "16:40", notificationsOff = true))
+    }
+
+    /** Started indoors with notifications off: the approximate-position line and the chip at once, both readable. */
+    @Test fun navigateNotificationsOffApproximate() = paparazzi.snapshot {
+        NavFrame(navUi.copy(recordedM = 0.0, elapsedS = 40, arriveAt = "16:40", notificationsOff = true,
+            approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80)),
+            turn = TurnHint(com.onpath.app.routing.TurnKind.LEFT, 180.0)))
+    }
+
     /** The question: stays until answered or back on the route; big buttons in thumb reach above the map controls. */
     @Test fun navigateRerouteQuestion() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question, hint)))
@@ -378,6 +428,20 @@ class ScreenshotTest {
     /** The way back starts by turning round: U-turn sign + "turn round" in the question. */
     @Test fun navigateRerouteQuestionTurnRound() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(turnRound = true), hint)))
+    }
+
+    /**
+     * The next route point now lies behind (StopSkip, borderline): "Off route – re-plan?" · "Via stop 3: +1.4 km" –
+     * Yes / Yes, skip stop 3 + Keep original (owner 2026-10-30).
+     */
+    @Test fun navigateRerouteSkipStop() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
+    }
+
+    /** The same for a named stop: "Yes, skip Gasthof Hochmuth" wraps to two lines (at a large font: "stop 3"). */
+    @Test fun navigateRerouteSkipStopNamed() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, skipName = "Gasthof Hochmuth",
+            via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
     }
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
@@ -466,6 +530,14 @@ class ScreenshotTest {
     @Test fun planChipLongBikeTour() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 112_480.0, durationS = 12.6 * 3600))
             .copy(activity = Activity.BIKE_TREKKING), PlanCallbacks()) }
+    }
+
+    /**
+     * The hiking chip names the activity in every language ("Hike · T3" / "Wandern · T3", owner 2026-10-30) – a long
+     * day hike must still show time AND distance in full beside it.
+     */
+    @Test fun planChipLongHike() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3), PlanCallbacks()) }
     }
 
     @Test fun arrival() = paparazzi.snapshot {
@@ -577,13 +649,18 @@ class ScreenshotTest {
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
-                             content: @Composable () -> Unit) {
+                             ring: Boolean = false, content: @Composable () -> Unit) {
         Frame { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
         val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
         if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
+        }
+        // the orange ring of a search result / shared place (MapController.setSearchMark: radius 22, stroke 3.5)
+        if (ring) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawCircle(androidx.compose.ui.graphics.Color(0xFFF28C00), 22.dp.toPx(), a,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(3.5.dp.toPx()))
         }
         AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }
@@ -606,11 +683,12 @@ class ScreenshotTest {
         }
     }
 
-    /** Hold on a POI in Plan: its menu "Add to route · Open in Google Maps". */
+    /** Hold on a POI in Plan: its menu "Add as stop 2 · Open in Google Maps". */
     @Test fun poiMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
-                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {})
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
+                    addLabel = "Add as stop 2")
             }
         }
     }
@@ -621,6 +699,29 @@ class ScreenshotTest {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
                 PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
                     emptyPlan = true)
+            }
+        }
+    }
+
+    /** A place shared from Google Maps: once the map is there its ring's menu opens by itself (SharedPlaceMenu). */
+    private val shared = com.onpath.app.search.Place("shared:46.6712,11.1598", "Gelateria Costantin", "other", 46.6712, 11.1598)
+
+    /** Shared place, plan with points: "Add as new destination" (AddPreview.label, like a hold on the ring). */
+    @Test fun sharedPlaceMenu() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {},
+                    addLabel = com.onpath.app.search.AddPreview.label(
+                        com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
+            }
+        }
+    }
+
+    /** Shared place, empty plan: "Start here · Go here · Open in Google Maps". */
+    @Test fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true)
             }
         }
     }
@@ -675,11 +776,27 @@ class ScreenshotTest {
         Tour(1, TourKind.PLANNED, "Route Meran – Hirzer", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 300.0, 6.1 * 3600, "done", viaPts),
         Tour(2, TourKind.RECORDED, "Tour 12 Oct 2026, 09:14", 1_760_200_000_000, "MTB", 3, 32_800.0, 940.0, 940.0, 3.2 * 3600, "done", emptyList()),
         Tour(3, TourKind.IMPORTED, "Komoot – Waalweg Algund", 1_760_400_000_000, "HIKE", 3, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
+        Tour(4, TourKind.RECORDED, "Demo · Algund", 1_760_500_000_000, "HIKE", 2, 5_300.0, 120.0, 120.0, 1.4 * 3600, "done", emptyList()),
     )
 
-    /** My routes: one list of planned / recorded / imported, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
+    /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     @Test fun tours() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
+    }
+
+    /** My routes, tab Done: recorded tours (a demo tour too); no Import GPX here. */
+    @Test fun toursDone() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
+    }
+
+    /** Planned tab with nothing planned yet (recorded tours exist). */
+    @Test fun toursEmptyPlanned() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList.filter { it.kind == TourKind.RECORDED }, {}, {}, {}, {}, {}) }
+    }
+
+    /** Done tab with nothing recorded yet. */
+    @Test fun toursEmptyDone() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList.filter { it.kind != TourKind.RECORDED }, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
     /** Delete asks first and stays until answered. */

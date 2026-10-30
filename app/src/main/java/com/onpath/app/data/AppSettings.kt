@@ -14,6 +14,25 @@ enum class JunctionVibration {
     }
 }
 
+/**
+ * Screen while cycling (owner 2026-10-30, Settings → Navigation; Bike, Gravel, E-bike, MTB, E-MTB – a hike keeps
+ * [AppSettings.keepScreenOn] with the pocket logic): [ALWAYS] = the map stays on while following a route; [SMART] (default)
+ * = far from the next turn a dim rest view on black instead of the map (ui/RestView.kt), the map comes back before each
+ * turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout.
+ */
+enum class BikeScreen {
+    ALWAYS, SMART, PHONE;
+
+    /** The screen is kept on while following a route. */
+    val keepsOn: Boolean get() = this != PHONE
+
+    companion object {
+        /** Stored name → value; before this setting existed the one switch "keep screen on" decided – off stays off. */
+        fun of(stored: String?, keepScreenOn: Boolean): BikeScreen =
+            entries.firstOrNull { it.name == stored } ?: if (keepScreenOn) SMART else PHONE
+    }
+}
+
 /** User settings (Settings page). Persisted by [Prefs]; immutable so Compose can diff it. */
 data class AppSettings(
     /** POI kinds the user switched off (keys of poi/PoiKinds). Empty = show all. */
@@ -31,7 +50,10 @@ data class AppSettings(
      * default, independent of the system "Touch feedback" setting).
      */
     val planVibrate: Boolean = true,
+    /** Keep the screen on while following a route – hiking (bike activities: [bikeScreen]). */
     val keepScreenOn: Boolean = true,
+    /** Screen while cycling: always on / smart rest view (default) / like the phone. */
+    val bikeScreen: BikeScreen = BikeScreen.SMART,
     /** Navigate: the dot sits on the followed route while within ~25 m of it (owner, like Komoot; default on). */
     val positionOnRoute: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled; others = adb overrides. */

@@ -52,6 +52,12 @@ object PlanCode {
     private const val TAG_TITLE = 1
     private const val TAG_NAME = 2
 
+    /** The stored code of [a] – the same fixed table for the plan sync's track code (sync/TrackCode). */
+    fun activityCode(a: Activity): Int = ACTIVITIES.indexOf(a).coerceAtLeast(0)
+
+    /** The activity of a stored [code], or null for a code from a newer app. */
+    fun activityOf(code: Int): Activity? = ACTIVITIES.getOrNull(code)
+
     /** The code for [plan] (without "p="). Points beyond [MAX_POINTS] and over-long names are cut. */
     fun encode(plan: SharedPlan): String {
         val pts = plan.points.take(MAX_POINTS)

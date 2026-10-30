@@ -49,6 +49,10 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
@@ -111,7 +115,7 @@ sealed interface UiEvent {
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val dataFiles = DataFiles(app)
-    private val prefs = Prefs(app)
+    val prefs = Prefs(app)
     private val db = TourDb.get(app)
     // time estimate state, declared before init {} uses it (recalc / refreshTours)
     init {
@@ -159,6 +163,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routesOpen: Boolean
         get() = routesShown
         set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
+    /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
+    var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -184,6 +190,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- settings (Settings page) ---
     var settings by mutableStateOf(prefs.settings)
         private set
+    /**
+     * The pairing just made here was stored: Browser sync shows "Paired – … They're kept on your phone." with OK
+     * (owner 2026-10-30) until OK, Unpair or the page is left; never for "already paired".
+     */
+    var pairedNote by mutableStateOf(false)
+        private set
+
     private var settingsShown by mutableStateOf(false)
     var showSettings: Boolean
         get() = settingsShown
@@ -196,6 +209,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
+            if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
+            if (v != SettingsPage.SYNC) pairedNote = false // the "Paired – …" confirmation lasts until the page is left
             page = v
         }
 
@@ -289,6 +304,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == AppMode.NAVIGATE && tracker.location.value != null) { followMe = true; recentreTick++ }
         appVisible = true; appOnScreen = true
         cells.setForeground(true)
+        sync.request("back in the app")
         if (mode == AppMode.PLAN) t3Pending = true // T3: the next usable fix checks the own area
     }
 
@@ -986,7 +1002,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The user drags the map (true) / the map came to rest (false): new map areas are not joined meanwhile. */
-    fun mapGesture(on: Boolean) { safeCells("gesture") { cells.userBusy = on } }
+    fun mapGesture(on: Boolean) {
+        // the map moved by hand during the flight to a shared place: its menu no longer opens by itself
+        if (on && sharedMenu.cancel()) { sharedMenuWaiting = false; Problems.trace("plan", "Shared place: menu not opened – map moved by hand") }
+        safeCells("gesture") { cells.userBusy = on }
+    }
 
     /** Map cell triggers never break planning: a failure is logged, planning goes on. */
     private inline fun safeCells(what: String, block: () -> Unit) {
@@ -1004,12 +1024,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = cells.installed.value.map { it.id }.filter { it !in areaNames }
         if (todo.isEmpty()) return
         viewModelScope.launch {
-            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+            val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) { Problems.info("cells", "No place index for map area names; coordinates shown", e); return@launch }
-            val names = withContext(Dispatchers.Default) {
-                todo.associateWith { c -> com.onpath.app.search.RouteNamer.label(c.center, places) }.filterValues { it != null }
-                    .mapValues { it.value!! }
+            val names = withContext(Dispatchers.IO) {
+                todo.associateWith { c ->
+                    com.onpath.app.search.RouteNamer.label(c.center, com.onpath.app.search.RouteNamer.placesNear(index, listOf(c.center)))
+                }.filterValues { it != null }.mapValues { it.value!! }
             }
             areaNames = areaNames + names
         }
@@ -1089,6 +1110,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
+    /** Navigate while cycling: the rest view covers the map, which gets no fixes meanwhile (ui/RestView.kt, SmartScreen). */
+    var screenRest by mutableStateOf(false)
 
     // --- planning ---
     val waypoints = mutableStateListOf<GeoPoint>().apply { addAll(prefs.planWaypoints) }
@@ -1465,6 +1488,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
+            .put("phone", com.onpath.app.setup.PhoneCheck.describe(phone))
             .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
                 .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
                 .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
@@ -1879,6 +1903,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
+    /** The POI menu's add item, saying what it does ("Set as destination", "Add as stop 2", …) – same rule as [addPoint]. */
+    fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
+        val w = waypoints.toList()
+        return com.onpath.app.search.AddPreview.label(
+            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM), w.size)
+    }
+
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
         closeMapOverlays()
         val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
@@ -1927,7 +1958,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Nearest place / hut / peak for route points without a name of their own (offline index, RouteNamer.label). */
     private var nearbyNames by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
-    private var namePlaces: List<com.onpath.app.search.Place>? = null
     private var namesJob: Job? = null
 
     /** Rows of the Points section: names (pinned POI / search first, then the nearest place), leg distances. */
@@ -1942,15 +1972,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
         if (todo.isEmpty() || namesJob?.isActive == true) return
         namesJob = viewModelScope.launch {
-            // the index can be large: its places are copied off the main thread (else the sheet stutters)
-            val places = namePlaces ?: try {
-                val index = search.offlineIndex()
-                withContext(Dispatchers.Default) { index.entries.map { it.place } }.also { namePlaces = it }
-            }
+            // only the places near each point are read from the index file (off the main thread)
+            val index = try { search.offlineIndex() }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launch }
-            val names = withContext(Dispatchers.Default) {
-                todo.mapNotNull { p -> com.onpath.app.search.RouteNamer.label(p, places)?.let { p to it } }.toMap()
+            val names = withContext(Dispatchers.IO) {
+                todo.mapNotNull { p ->
+                    com.onpath.app.search.RouteNamer.label(p, com.onpath.app.search.RouteNamer.placesNear(index, listOf(p)))?.let { p to it }
+                }.toMap()
             }
             nearbyNames = nearbyNames + names
         }
@@ -2080,10 +2109,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi {
         val idx = routeIndexOf(place)
         val r = route
-        val subtitle = if (idx != null) com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size)
-        else com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
-            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }).subtitle
-        return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size, subtitle)
+        if (idx != null) return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size,
+            com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
+        val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
+            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS })
+        val k = pv.decision.kind
+        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
+            addIsStart = k == WaypointInsertion.Kind.START,
+            addIsDestination = k == WaypointInsertion.Kind.DESTINATION && waypoints.size <= 1)
     }
 
     /** Adds the place as a pinned stop (passed exactly), named after the place. Moves it when already planned. */
@@ -2224,8 +2257,45 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchPlace = p
         searchMark = p
         followMe = false
+        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – once per share
+        sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
+        if (!sharedMenuWaiting) Problems.trace("plan", "Shared place again: its menu opened before – ring only")
         // outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear
         flyToPlace(p)
+    }
+
+    private val sharedMenu = SharedPlaceMenu()
+    /** The shared place's menu waits for the camera to arrive ([openSharedMenuIfArrived], asked by MapScreen). */
+    var sharedMenuWaiting by mutableStateOf(false)
+        private set
+    /** Bumped on every camera stop (MapHost): MapScreen then asks [openSharedMenuIfArrived]. */
+    var cameraIdleTick by mutableStateOf(0)
+        private set
+    fun cameraIdle() { cameraIdleTick++ }
+
+    /**
+     * The camera stopped with a shared place's menu waiting: opens the ring's POI menu when the map is there – same
+     * menu and rules as holding the ring ([SharedPlaceMenu]). [cameraLat] / [cameraLon] = camera centre.
+     */
+    fun openSharedMenuIfArrived(cameraLat: Double?, cameraLon: Double?, metersPerPx: Double, arrivedPx: Double) {
+        val m = searchMark
+        val off = if (m != null && cameraLat != null && cameraLon != null && metersPerPx > 0)
+            Geo.distance(m.lat, m.lon, cameraLat, cameraLon) / metersPerPx else null
+        val step = sharedMenu.check(m?.let { SharedPlaceMenu.key(it.lat, it.lon, it.name) }, off, arrivedPx, canEditMap,
+            elsewhere = mapOverlayOpen || searchOpen || routesOpen || showSettings, loading = loadModalOpen)
+        when (step) {
+            SharedPlaceMenu.Step.OPEN -> {
+                sharedMenuWaiting = false
+                Problems.trace("plan", "Shared place: the map is there – its menu opens (plan ${waypoints.size} points)")
+                if (m != null) openPoiMenu(m.toPoi())
+            }
+            SharedPlaceMenu.Step.DROP -> {
+                sharedMenuWaiting = false
+                Problems.trace("plan", "Shared place: menu not opened – the user went on (ring ${if (m == null) "gone" else "shown"}, " +
+                    "map editable $canEditMap)")
+            }
+            SharedPlaceMenu.Step.WAIT, SharedPlaceMenu.Step.NONE -> Unit
+        }
     }
 
     private fun holdCameraForSharedPlace() {
@@ -2670,6 +2740,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
             Backups.tourChanged(getApplication(), id)
+            sync.changed("route saved")
             setSaved(title, id, pts)
             refreshTours()
             then?.invoke()
@@ -2715,7 +2786,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             ok.onSuccess { replaced ->
-                if (replaced) { Backups.tourChanged(getApplication(), id); setSaved(name, id, pts); refreshTours(); then?.invoke() }
+                if (replaced) { Backups.tourChanged(getApplication(), id); sync.changed("route overwritten"); setSaved(name, id, pts); refreshTours(); then?.invoke() }
                 else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
             }.onFailure {
                 Problems.error("db", "Overwriting a saved route failed", it)
@@ -2741,6 +2812,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
             if (!ok) { routesProblem = Txt.s(Res.string.msg_route_rename_failed); return@launch }
             Backups.tourChanged(getApplication(), t.id)
+            sync.changed("renamed")
             if (linkId == t.id) setSaved(name, linkId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
             refreshTours()
@@ -2808,11 +2880,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val startName = stopName(pts.first()); val endName = stopName(pts.last())
         val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
         nameJob = viewModelScope.launch {
-            val places = try { search.offlineIndex().entries.map { it.place } } catch (e: kotlinx.coroutines.CancellationException) {
+            val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); emptyList() }
-            suggestedName = withContext(Dispatchers.Default) {
-                try { com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via) } catch (e: Exception) {
+            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); null }
+            suggestedName = withContext(Dispatchers.IO) {
+                try {
+                    val places = index?.let { com.onpath.app.search.RouteNamer.placesNear(it, line) }.orEmpty()
+                    com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via)
+                } catch (e: Exception) {
                     Problems.warn("search", "No route name proposed (naming failed)", e); null
                 }
             }
@@ -2833,11 +2908,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!dateName.startsWith("Tour ") && !dateName.startsWith(datePrefix)) return
         viewModelScope.launch {
             val name = try {
-                val places = search.offlineIndex().entries.map { it.place }
+                val index = search.offlineIndex()
                 withContext(Dispatchers.IO) {
                     // "Save only until …": named after the part that is the tour
                     val line = com.onpath.app.rides.RideView.keptSegments(db.loadSegments(t.id), t.rides).flatten().map { GeoPoint(it.lat, it.lon) }
-                    com.onpath.app.search.RouteNamer.name(line, places)
+                    com.onpath.app.search.RouteNamer.name(line, com.onpath.app.search.RouteNamer.placesNear(index, line))
                 }?.let { if (demo) com.onpath.app.recording.DemoLocation.TOUR_PREFIX + it else it }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
@@ -2960,6 +3035,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Off-route question in Navigate: take the new route the service found. */
     fun takeNewRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_TAKE_ROUTE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** "Off route – re-plan?" in Navigate – Yes: take the new route via the stop in question. */
+    fun takeViaRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_TAKE_VIA) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
@@ -3286,6 +3366,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun continueRecording(t: Tour) {
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.CONTINUE)
         unfinished = null
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {
             putExtra(RecordingService.EXTRA_CONTINUE_ID, t.id)
@@ -3323,6 +3404,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
         val rides = unfinishedRides?.second?.rides
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.SAVE)
         unfinished = null; unfinishedRides = null
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
@@ -3344,6 +3426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
     fun deleteUnfinished(t: Tour) {
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.DELETE)
         unfinished = null; unfinishedRides = null
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")
@@ -3420,6 +3503,154 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------- plan sync with the browser (A-007: plansync/, docs/design/web-sync.md) ----------------
+
+    /**
+     * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
+     * back in the app, after a change here, when the network is back, about every minute while the app stays open on
+     * Plan / My routes / Browser sync ([syncPoll]) – never during a recording (after the tour).
+     */
+    val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
+        recording = { recState.value != null }, onReport = ::syncReport)
+
+    /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
+    var pairAsk by mutableStateOf<ByteArray?>(null)
+        private set
+
+    fun pairedNoteOk() { pairedNote = false }
+
+    /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
+    private val syncPoll = com.onpath.app.plansync.SyncPoll()
+
+    init {
+        sync.start()
+        // a tour ended: what waited for it comes now
+        viewModelScope.launch {
+            var was = recState.value != null
+            recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
+        }
+        // on screen, paired, no tour, Plan / My routes / Browser sync shown: a pass about every minute (SyncPoll)
+        viewModelScope.launch {
+            val screen = androidx.compose.runtime.snapshotFlow {
+                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(mode == AppMode.PLAN, routesOpen, showSettings,
+                    settingsPage == SettingsPage.SYNC)
+            }
+            combine(screen, recState, sync.state) { (visible, routesScreen), rec, st ->
+                com.onpath.app.plansync.SyncPoll.wanted(visible, st.paired, recording = rec != null, routesScreen)
+            }.distinctUntilChanged().collectLatest { on ->
+                if (!on) return@collectLatest
+                while (isActive) {
+                    val wait = syncPoll.waitMs(android.os.SystemClock.elapsedRealtime())
+                    when {
+                        wait > 0 -> delay(wait)
+                        sync.poll("every minute") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
+                        else -> delay(com.onpath.app.plansync.SyncPoll.BUSY_RECHECK_MS) // a pass runs or waits
+                    }
+                }
+            }
+        }
+    }
+
+    /** A pairing link (camera / QR code, a tapped link): Settings → Browser sync shows the check digits and asks. */
+    private fun receivePairing(secret: ByteArray, via: String) {
+        openSettings(SettingsPage.SYNC)
+        viewModelScope.launch {
+            val current = withContext(Dispatchers.IO) {
+                try { sync.pairedMailbox() } catch (e: Exception) { Problems.warn("sync", "Stored pairing not read", e); null }
+            }
+            val incoming = com.onpath.app.sync.SyncKeys(secret).mailbox
+            Problems.info("sync", "Pairing link ($via): " + when (current) { null -> "asking"; incoming -> "already paired"; else -> "paired with another browser" })
+            when (current) {
+                null -> pairAsk = secret
+                incoming -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                else -> sayError(Txt.s(Res.string.sync_unpair_first), NoticePlace.SETTINGS)
+            }
+        }
+    }
+
+    /** "Pair": store the pairing, say hello, sync at once (the page shows "Paired with …" when the browser answered). */
+    fun confirmPair() {
+        val s = pairAsk ?: return
+        pairAsk = null
+        pairedNote = false
+        sync.pair(s) { ok -> pairedNote = ok }
+    }
+
+    fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }
+
+    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
+    fun unpair() {
+        pairedNote = false
+        sync.unpair { status ->
+            when (status) {
+                200, 404, 410 -> sayInfo(Txt.s(Res.string.sync_unpaired), NoticePlace.SETTINGS)
+                -2 -> sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
+                else -> sayInfo(Txt.s(Res.string.sync_unpaired_offline), NoticePlace.SETTINGS)
+            }
+        }
+    }
+
+    /** A sync pass ended (main thread): new / changed routes into My routes, plans from the browser routed. */
+    private fun syncReport(r: com.onpath.app.plansync.PlanSync.Report) {
+        val res = r.result
+        syncPoll.passEnded(android.os.SystemClock.elapsedRealtime(), com.onpath.app.plansync.SyncPoll.ok(r))
+        if (r.ended) sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS)
+        // Pair during a tour: nothing ran – it comes after the tour
+        if (r.manual && res == null && !r.error && recState.value != null) sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS)
+        if (res?.toursChanged == true) {
+            refreshTours()
+            followSyncedSavedPlan()
+            routeSyncedPlans(res.toRoute)
+        }
+    }
+
+    /** The open plan's saved route was renamed or deleted from the browser: "Saved as …" follows (like Rename / Delete). */
+    private fun followSyncedSavedPlan() {
+        val id = linkId.takeIf { it >= 0 } ?: return
+        viewModelScope.launch {
+            val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() }
+            if (linkId != id) return@launch
+            if (t == null || t.deletedMs != null) setSaved(null, -1, null) else if (t.name != linkName) setSaved(t.name, id, savedPoints)
+        }
+    }
+
+    /**
+     * Routes from the browser are saved with their points as the line; here they get the real route (the router, the
+     * pace) like a route saved on the phone. No routing data there yet: the points stay – opening the route routes it.
+     */
+    private fun routeSyncedPlans(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            for (id in ids.distinct()) {
+                val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() } ?: continue
+                if (t.kind != TourKind.PLANNED || t.waypoints.size < 2 || t.deletedMs != null) continue
+                val act = activityOrNull(t.activity) ?: Activity.HIKE
+                val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
+                val f = planFactors(act)
+                val r = withContext(routingDispatcher) {
+                    try {
+                        val eng = routingEngine()
+                        if (eng is com.onpath.app.routing.StraightLineEngine) null
+                        else withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel()).plan(pts, act, t.sac, t.pinned), act, f)
+                    } catch (e: Exception) {
+                        Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
+                    }
+                } ?: continue
+                val ok = withContext(Dispatchers.IO) {
+                    try {
+                        // changed again meanwhile (a newer sync): leave it to that one's routing
+                        val now = db.getTour(id)
+                        now != null && now.waypoints == t.waypoints && db.replacePlanned(id, act.name, t.sac, r.distanceM, r.ascentM, r.descentM,
+                            r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned)
+                            .also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
+                    } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
+                }
+                if (ok) Backups.tourChanged(getApplication(), id)
+            }
+            refreshTours()
+        }
+    }
+
     // ---------------- plan links (A-005: routing/PlanLinks, docs/core-features.md C15) ----------------
 
     /** Name a plan link brought, for the Save dialog while the plan still has the link's points. */
@@ -3444,6 +3675,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
             is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
+            // a pairing link of the web planner ("Pair phone" in its header): Settings → Browser sync asks first (A-007)
+            is com.onpath.app.routing.PlanLinks.Found.Pairing -> { receivePairing(found.secret, via); return }
+            is com.onpath.app.routing.PlanLinks.Found.BrokenPairing -> {
+                Problems.warn("sync", "Pairing link ($via) could not be read: cut off or a newer version")
+                openSettings(SettingsPage.SYNC)
+                sayError(Txt.s(Res.string.sync_link_broken), NoticePlace.SETTINGS)
+                return
+            }
         }
         viewModelScope.launch {
             // Cold start: the start mode (Plan / Navigate, an unfinished tour) is decided after a database check
@@ -3567,7 +3806,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
-            if (ok) Backups.tourChanged(getApplication(), t.id)
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("moved to the recycle bin") }
             withContext(Dispatchers.Main) {
                 if (!ok) { routesProblem = Txt.s(Res.string.msg_tour_delete_failed, t.name); return@withContext }
                 if (shown?.tourId == t.id) shown = null
@@ -3597,7 +3836,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
             }
-            if (ok) Backups.tourChanged(getApplication(), t.id)
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("restored from the recycle bin") }
             else routesProblem = Txt.s(Res.string.msg_tour_restore_failed, t.name)
             openRecycleBin(); refreshTours()
         }
@@ -3609,7 +3848,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.deleteTour(t.id) }.onFailure { Problems.error("db", "Deleting a tour for good failed", it) }.isSuccess
             }
-            if (ok) Backups.purge(getApplication(), listOf(t.uuid))
+            if (ok) { Backups.purge(getApplication(), listOf(t.uuid)); sync.changed("deleted for good") }
             openRecycleBin()
         }
     }
@@ -3651,6 +3890,114 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var locationAsking by mutableStateOf(false)
     /** The loading modal waits for the map / routing data of the user's area. */
     val loadModalOpen: Boolean get() = loadModalFor.isNotEmpty() || routingModal
+    // ---------------- Phone setup (docs/design/onboarding-phone-check.md) ----------------
+    /** The phone as last read by MainActivity (every return to the app, every system answer). */
+    var phone by mutableStateOf(com.onpath.app.setup.PhoneState(sdk = android.os.Build.VERSION.SDK_INT))
+        private set
+    /** Android's unused-app reset for OnPath (read off the main thread at start). */
+    var unusedReset = com.onpath.app.setup.ResetStatus.UNKNOWN
+    /** What the phone or the user removed since the last use (the guide and Settings say so calmly). */
+    var phoneTaken by mutableStateOf<Map<com.onpath.app.setup.CheckId, com.onpath.app.setup.Taken>>(emptyMap())
+    /** The first-start welcome ("Set up now / Later"). */
+    var setupWelcome by mutableStateOf(false)
+    /** The open step-by-step guide; null = none. */
+    var setupGuide by mutableStateOf<com.onpath.app.setup.SetupGuide?>(null)
+        private set
+    private var setupThen: (() -> Unit)? = null
+    val setupOpen: Boolean get() = setupWelcome || setupGuide != null
+    /** The tour whose "Notifications off" chip was confirmed with OK (in memory: the next tour shows it again). */
+    var notificationsOkTour by mutableStateOf<Long?>(null)
+
+    /** Navigation vibrations in use: the vibration step applies only then. */
+    val vibrationUsed: Boolean get() = settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF ||
+        (settings.offRouteWarning && settings.offRouteVibrate)
+
+    fun updatePhone(s: com.onpath.app.setup.PhoneState) {
+        phone = s
+        setupGuide = setupGuide?.refresh(s, vibrationUsed)
+        finishSetupIfDone()
+    }
+
+    /**
+     * Opens the guide for [purpose] with what is missing; nothing missing → [then] runs at once. Before a tour and for
+     * the locate button [then] runs when the guide ends and what it needs is there.
+     */
+    fun openSetup(purpose: com.onpath.app.setup.Purpose, then: (() -> Unit)? = null) {
+        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, prefs.snoozed(System.currentTimeMillis()))
+            ?.refresh(phone, vibrationUsed)
+        if (g == null || g.finished && then != null && setupReady(purpose)) { then?.invoke(); return }
+        Problems.trace("setup", "Phone setup guide ($purpose): ${g.steps.joinToString()}")
+        setupThen = then
+        setupGuide = g
+    }
+
+    /** Settings → Phone setup → a row: that one step. */
+    fun openSetupStep(id: com.onpath.app.setup.CheckId) {
+        setupThen = null
+        setupGuide = com.onpath.app.setup.SetupGuide.single(id)
+    }
+
+    fun setupWelcomeNow() {
+        setupWelcome = false; prefs.setupWelcomeSeen = true
+        openSetup(com.onpath.app.setup.Purpose.FIRST_SETUP)
+    }
+
+    /** "Later": before a tour a recommended step stays quiet for a week. */
+    fun setupLater() {
+        val g = setupGuide ?: return
+        val id = g.current
+        if (id != null && g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR &&
+            com.onpath.app.setup.PhoneCheck.need(id) != com.onpath.app.setup.Need.REQUIRED) prefs.snooze(id, System.currentTimeMillis())
+        setupGuide = g.putOff().refresh(phone, vibrationUsed)
+        finishSetupIfDone()
+    }
+
+    /** The system dialog for [id] came back without it. */
+    fun setupDenied(id: com.onpath.app.setup.CheckId) {
+        val g = setupGuide ?: return
+        if (g.current == id && !com.onpath.app.setup.PhoneCheck.isOk(id, phone)) setupGuide = g.denied(id)
+    }
+
+    fun setupVibrationPlayed() { setupGuide = setupGuide?.vibrationPlayed() }
+
+    fun setupVibrationAnswer(f: com.onpath.app.setup.Felt) {
+        prefs.vibrationFelt = f
+        Problems.trace("setup", "Vibration test: felt = $f")
+        setupGuide = setupGuide?.vibrationAnswer(f)
+        updatePhone(phone.copy(vibrationFelt = f))
+    }
+
+    fun setupBrandDone() {
+        prefs.brandStepsDone = true
+        updatePhone(phone.copy(brandDone = true))
+    }
+
+    /** Closes the welcome / guide (Back, Close, Later on the welcome). */
+    fun closeSetup() {
+        if (setupWelcome) { setupWelcome = false; prefs.setupWelcomeSeen = true }
+        setupGuide = null
+        setupThen = null
+    }
+
+    private fun setupReady(purpose: com.onpath.app.setup.Purpose) = when (purpose) {
+        com.onpath.app.setup.Purpose.BEFORE_TOUR -> com.onpath.app.setup.PhoneCheck.tourReady(phone)
+        com.onpath.app.setup.Purpose.LOCATE -> com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.LOCATION, phone)
+        else -> true
+    }
+
+    /** At its end a guide for a tour / the locate button closes by itself and goes on; the others show their end page. */
+    private fun finishSetupIfDone() {
+        val g = setupGuide ?: return
+        if (!g.finished) return
+        val goOn = g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR || g.purpose == com.onpath.app.setup.Purpose.LOCATE
+        val single = g.purpose == com.onpath.app.setup.Purpose.SETTINGS && g.steps.size == 1
+        if (goOn && setupReady(g.purpose) || single) {
+            val then = setupThen
+            setupGuide = null; setupThen = null
+            then?.invoke()
+        }
+    }
+
     /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
     var restoreProgress by mutableStateOf<String?>(null)
         private set
@@ -3693,6 +4040,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
             }
             restoreProgress = null
+            if (r != null) sync.changed("restored from the backup folder")
             // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
             // offered at the first start); a failure there → the error card
             if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
@@ -3769,6 +4117,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, dist, up, down, dur, segs, data.waypoints)
                 }
                 Backups.tourChanged(app, id)
+                sync.changed("GPX imported")
                 val pts = geo.flatten().ifEmpty { data.waypoints.map { GeoPoint(it.lat, it.lon) } }
                 routesOpen = false // show the imported track on the map
                 refreshTours()
@@ -3888,6 +4237,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
+        // a joined / removed map area → the offline search index follows in the background (only changed areas are read;
+        // not at start – an unchanged index needs nothing), so the next search or route name does not wait for it
+        viewModelScope.launch {
+            cells.generation.drop(1).collectLatest { delay(5_000); search.prepare() }
+        }
         // map cells (map-cells.md §9): Wi-Fi setting, cells still loading from the last run on the card, T3 on fixes
         cells.wifiOnly = settings.mapsWifiOnly
         // asked right before each download (owner): does a point request still belong to the user?
@@ -3910,12 +4264,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tracker.location.filterNotNull().collect { cellsForFix(it) } }
         // a tour runs (Navigate): newer map versions wait – the map never switches under the user's feet
         viewModelScope.launch { androidx.compose.runtime.snapshotFlow { mode }.collect { cells.holdUpdates = it == AppMode.NAVIGATE } }
+        // a tour started indoors (owner): the fused position until its first GPS fix – off with that fix, a pause, the end
+        viewModelScope.launch {
+            var asked = false
+            recState.collect { r ->
+                val ask = com.onpath.app.navigation.Provisional.asksPosition(r != null, r?.paused == true, r?.hadGpsFix == true)
+                if (ask != asked) {
+                    asked = ask
+                    try { tracker.setFusedWanted(ask) } catch (e: Exception) {
+                        Problems.warn("gps", "Provisional position request not ${if (ask) "started" else "stopped"}", e)
+                    }
+                }
+            }
+        }
     }
 
     override fun onCleared() {
         com.onpath.app.data.AppRouting.unlisten(routingListener)
         // the screen's state is gone: only the age / corridor rules apply – unless a newer screen set its own already
         ownRelevance?.let { cells.releaseRelevance(it) }
+        sync.stop()
         routingDispatcher.close()
         super.onCleared()
     }

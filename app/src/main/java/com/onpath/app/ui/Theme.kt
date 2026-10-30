@@ -18,8 +18,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.onpath.app.routing.Activity
 
 object OnPathColors {
-    val Green = Color(0xFF1F6E43)
-    val GreenLight = Color(0xFFDDEFE3)
+    /**
+     * Primary: the muted forest green of onpath.earth (white on it 7.5:1). The launcher icon keeps its brighter
+     * `#1F6E43` (res/values/colors.xml) – the logo is separate from the UI palette.
+     */
+    val Green = Color(0xFF245F46)
+    /**
+     * Light olive container (selected picker row, "easy" badge): two shades stronger than the website's `#EDF1E3`, so
+     * it still stands out on the grey-green dialogs in sunlight.
+     */
+    val GreenLight = Color(0xFFE1EAD5)
+    /** Text on light surfaces: the website's dark green-grey (11.4:1 on the background). */
+    val Ink = Color(0xFF243C31)
+    /** Page background (website `#FAFAF6`). */
+    val Paper = Color(0xFFFAFAF6)
     val Route = Color(0xFF1E3FAE)
     val Gpx = Color(0xFF8E24AA)
     val Rec = Color(0xFFEF6C00)
@@ -29,6 +41,18 @@ object OnPathColors {
     val Grey = Color(0xFF6B6F6A)
     /** Own position / "where I face" arrow on the map (map furniture, like the location puck). */
     val Position = Color(0xFF1A73E8)
+    /**
+     * The "where I face" arrow while the compass is unsure (map/CompassTrust, owner: grey, never hidden). Same as
+     * res/drawable/onpath_bearing_unsure.xml.
+     */
+    val PositionUnsure = Color(0xFF8A8F94)
+
+    // ---- Rest view while cycling (ui/RestView.kt): black = OLED pixels off; grey, not white, so it does not dazzle ----
+    val RestBackground = Color(0xFF000000)
+    /** Arrow and distance: 10:1 on black – readable at a glance in the sun at the phone's normal brightness. */
+    val RestInk = Color(0xFFB3B3B3)
+    /** Direction, time left, arrival, the tap hint: 6:1 on black (above the 4.5:1 text minimum). */
+    val RestDim = Color(0xFF8A8A8A)
 
     // ---- Message kinds: one colour = one meaning ----
     /** ACTION: the blue strip / card that asks a question with buttons – never a status or a failure. */
@@ -51,17 +75,17 @@ private val scheme = lightColorScheme(
     primary = OnPathColors.Green,
     onPrimary = Color.White,
     primaryContainer = OnPathColors.GreenLight,
-    onPrimaryContainer = Color(0xFF0B3A21),
+    onPrimaryContainer = Color(0xFF173A29),
     secondary = OnPathColors.Route,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE3F7),
     onSecondaryContainer = Color(0xFF0E1E57),
     surface = Color.White,
-    onSurface = Color(0xFF1B1D1B),
+    onSurface = OnPathColors.Ink,
     surfaceVariant = Color(0xFFF1F3EF),
     onSurfaceVariant = Color(0xFF4A4F4A),
-    background = Color(0xFFF7F8F5),
-    onBackground = Color(0xFF1B1D1B),
+    background = OnPathColors.Paper,
+    onBackground = OnPathColors.Ink,
     tertiary = OnPathColors.Warn,
     onTertiary = Color.White,
     tertiaryContainer = OnPathColors.WarnContainer,
@@ -69,7 +93,7 @@ private val scheme = lightColorScheme(
     error = OnPathColors.Error,
     errorContainer = OnPathColors.ErrorContainer,
     onErrorContainer = OnPathColors.OnErrorContainer,
-    inversePrimary = Color(0xFF8ED6A8),
+    inversePrimary = Color(0xFFA6CBAF),
     outline = Color(0xFF737970),
     outlineVariant = Color(0xFFC3C8C0),
     // Neutral (slightly green) containers instead of Material's default purple tint:
@@ -78,7 +102,7 @@ private val scheme = lightColorScheme(
     surfaceBright = Color.White,
     surfaceDim = Color(0xFFDADDD7),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF7F8F5),
+    surfaceContainerLow = OnPathColors.Paper,
     surfaceContainer = Color(0xFFF1F3EF),
     surfaceContainerHigh = Color(0xFFEBEEE9),
     surfaceContainerHighest = Color(0xFFE5E8E3),

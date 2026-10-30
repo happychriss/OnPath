@@ -24,8 +24,8 @@ class SearchAreasTest {
     private val a = CellId(543, 361)
     private val b = CellId(544, 361)
 
-    private fun keys(idx: OfflineIndex) = idx.entries.map { e ->
-        val p = e.place; "${p.id}|${p.name}|${p.kind}|${p.sub}|${p.lat}|${p.lon}|${p.ele}|${p.alt}|${p.poi}"
+    private fun keys(idx: PlaceIndex) = idx.places().map { p ->
+        "${p.id}|${p.name}|${p.kind}|${p.sub}|${p.lat}|${p.lon}|${p.ele}|${p.alt}|${p.poi}"
     }.sorted()
 
     private fun download(store: CellStore, c: CellId, version: String): CellStore.Download {
@@ -38,18 +38,18 @@ class SearchAreasTest {
         val data = tmp.newFolder("data")
         CellFixtures.region(data)
         val store = CellStore(data)
-        val live = SearchAreas(tmp.newFolder("areas"))
+        val live = SearchAreas(tmp.newFolder("areas"), opener = JdbcSearchDb.opener)
 
         fun check(expectAdded: Int, expectRemoved: Int) {
             val plan = AreaPlan.of(data)
             val inc = live.build(plan)
             val s = live.lastStats!!
             assertEquals("added", expectAdded, s.added); assertEquals("removed", expectRemoved, s.removed)
-            val full = SearchAreas(tmp.newFolder()).build(plan)
+            val full = SearchAreas(tmp.newFolder(), opener = JdbcSearchDb.opener).build(plan)
             assertEquals(keys(full), keys(inc))
             // the same POIs as a full read of the joined map store ([OfflineIndex.load])
             val gen = store.mapDir()!!
-            assertEquals(OfflineIndex.load(gen, tmp.newFolder()).entries.map { it.place.id }.sorted(), inc.entries.map { it.place.id }.sorted())
+            assertEquals(OfflineIndex.load(gen, tmp.newFolder()).entries.map { it.place.id }.sorted(), inc.places().map { it.id }.sorted())
         }
 
         store.apply(add = listOf(download(store, a, "v1")))
@@ -61,9 +61,9 @@ class SearchAreasTest {
         store.remove(setOf(b))
         check(expectAdded = 0, expectRemoved = 1)
         val now = live.build(AreaPlan.of(data))
-        assertEquals(3, now.entries.count { it.place.name?.startsWith("$a@v2") == true })
-        assertEquals(0, now.entries.count { it.place.name?.startsWith("$b@") == true })
-        assertEquals(3, now.entries.count { it.place.name?.startsWith("region") == true }) // 4 region POIs, one inside a
+        assertEquals(3, now.places().count { it.name?.startsWith("$a@v2") == true })
+        assertEquals(0, now.places().count { it.name?.startsWith("$b@") == true })
+        assertEquals(3, now.places().count { it.name?.startsWith("region") == true }) // 4 region POIs, one inside a
     }
 
     /** Without cells: the data folder is one area, and the index equals [OfflineIndex.load] (POIs, trails, places). */
@@ -78,7 +78,7 @@ class SearchAreasTest {
             {"type":"Feature","geometry":{"type":"LineString","coordinates":[[11.12,46.68],[11.13,46.68]]},"properties":{"t":"n","name":"Algunder Waalweg","len":700}}]}""")
         javaClass.classLoader!!.getResourceAsStream("search/mini.pmtiles")!!.use { File(dir, OfflineIndex.BASE).outputStream().use(it::copyTo) }
         val files = tmp.newFolder("files")
-        val areas = SearchAreas(File(files, "search-areas"))
+        val areas = SearchAreas(File(files, "search-areas"), opener = JdbcSearchDb.opener)
         val idx = areas.build(AreaPlan.of(dir))
         val former = OfflineIndex.load(dir, tmp.newFolder())
         assertEquals(keys(former), keys(idx))
@@ -88,7 +88,7 @@ class SearchAreasTest {
             assertEquals(q, former.search(sq).map { it.place.id }, idx.search(sq).map { it.place.id })
         }
         // after an app start: read from the area file, nothing extracted, same content
-        val again = SearchAreas(File(files, "search-areas"))
+        val again = SearchAreas(File(files, "search-areas"), opener = JdbcSearchDb.opener)
         val idx2 = again.build(AreaPlan.of(dir))
         assertEquals(1, again.lastStats!!.fromFiles); assertEquals(0, again.lastStats!!.extracted)
         assertEquals(keys(idx), keys(idx2))
@@ -98,11 +98,14 @@ class SearchAreasTest {
         File(dir, OfflineIndex.POIS).setLastModified(System.currentTimeMillis() + 5000)
         val idx3 = again.build(AreaPlan.of(dir))
         assertEquals(1, again.lastStats!!.extracted); assertEquals(1, again.lastStats!!.removed)
-        assertTrue(idx3.entries.any { it.place.name == "Zoggler Hütte" })
+        assertTrue(idx3.places().any { it.name == "Zoggler Hütte" })
         assertEquals(1, File(files, "search-areas").listFiles()!!.size)
     }
 
-    /** Old installs: the single place cache goes, per-area files are written; a damaged area file is extracted again. */
+    /**
+     * Old installs: the 0.12 per-area files are read instead of the map files (then deleted with the single place
+     * cache); a damaged one is extracted again.
+     */
     @Test fun migrationAndDamagedFile() {
         val data = tmp.newFolder("data")
         CellFixtures.region(data)
@@ -111,17 +114,61 @@ class SearchAreasTest {
         val files = tmp.newFolder("files")
         val legacy = File(files, "search-places-v1.tsv").apply { writeText("1:2\n") }
         val areasDir = File(files, "search-areas")
-        val first = SearchAreas(areasDir, legacy).build(AreaPlan.of(data))
+        val areas = SearchAreas(areasDir, legacy, opener = JdbcSearchDb.opener)
+        val plan = AreaPlan.of(data)
+        // 0.12 files: a and the region (marked, to see they were read), b damaged (cut short)
+        for (s in plan.areas) {
+            val c = s.cell?.center
+            val poi = Place.fromPoi(com.onpath.app.poi.Poi("L-${s.key}", "hut", "Legacy ${s.key}", c?.lat ?: 46.6, c?.lon ?: 11.1))
+            SearchAreas.write(areas.fileOf(s), s, SearchAreas.Content(listOf(poi), emptyList(), emptyList()))
+        }
+        val fb = areas.fileOf(plan.areas.first { it.cell == b })
+        fb.writeText(fb.readLines().dropLast(1).joinToString("\n"))
+        val idx = areas.build(plan)
+        assertEquals(2, areas.lastStats!!.fromFiles); assertEquals(1, areas.lastStats!!.extracted)
+        val names = idx.places().mapNotNull { it.name }
+        assertTrue(names.contains("Legacy cell-${a.id}"))
+        assertFalse(names.any { it == "Legacy cell-${b.id}" })
+        assertTrue(names.any { it.startsWith("$b@v1") }) // b extracted from the map
         assertFalse(legacy.exists())
-        assertEquals(3, areasDir.listFiles()!!.size) // a, b, region
-        // damaged (cut short) file of a
-        val fa = areasDir.listFiles()!!.first { it.name.startsWith("cell-${a.id}@") }
-        fa.writeText(fa.readLines().dropLast(2).joinToString("\n"))
-        val restarted = SearchAreas(areasDir, legacy)
-        val second = restarted.build(AreaPlan.of(data))
-        assertEquals(2, restarted.lastStats!!.fromFiles); assertEquals(1, restarted.lastStats!!.extracted)
-        assertEquals(keys(first), keys(second))
-        assertNotNull(SearchAreas.read(fa, AreaPlan.of(data).areas.first { it.cell == a }))
+        assertEquals(listOf(SearchAreas.FILE), areasDir.listFiles()!!.map { it.name }.filter { !it.endsWith("-wal") && !it.endsWith("-shm") })
+        // after an app start: everything from the index file
+        val restarted = SearchAreas(areasDir, legacy, opener = JdbcSearchDb.opener)
+        val again = restarted.build(plan)
+        assertEquals(3, restarted.lastStats!!.fromFiles); assertEquals(0, restarted.lastStats!!.extracted)
+        assertEquals(keys(idx), keys(again))
+    }
+
+    /** A damaged or foreign index file is deleted and built again – same index, no crash. */
+    @Test fun damagedIndexFileIsBuiltAgain() {
+        val data = tmp.newFolder("data")
+        CellFixtures.region(data)
+        val store = CellStore(data)
+        store.apply(add = listOf(download(store, a, "v1")))
+        val plan = AreaPlan.of(data)
+        val good = keys(SearchAreas(tmp.newFolder(), opener = JdbcSearchDb.opener).build(plan))
+        // garbage instead of a database
+        val dir1 = tmp.newFolder("garbage")
+        File(dir1, SearchAreas.FILE).writeText("this is not a database at all ".repeat(200))
+        val g = SearchAreas(dir1, opener = JdbcSearchDb.opener)
+        assertEquals(good, keys(g.build(plan)))
+        assertEquals(2, g.lastStats!!.extracted)
+        // another schema
+        val dir2 = tmp.newFolder("schema")
+        JdbcSearchDb(File(dir2, SearchAreas.FILE)).use { d ->
+            d.exec("CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT)"); d.exec("INSERT INTO meta VALUES ('schema', '0')")
+            d.exec("CREATE TABLE entry(x INTEGER)")
+        }
+        val sc = SearchAreas(dir2, opener = JdbcSearchDb.opener)
+        assertEquals(good, keys(sc.build(plan)))
+        // the file goes while an index answers: no crash, no results, marked broken; the next build is whole again
+        val idx = sc.latest!!
+        SearchDb.files(sc.file).forEach { it.delete() }
+        File(dir2, SearchAreas.FILE).writeText("broken ".repeat(500))
+        // (what the open driver still sees varies: the point is that none of these throws)
+        idx.search(SearchQuery("region", null, 46.6, 11.1))
+        idx.place("nothing")
+        idx.placesIn(46.0, 11.0, 47.0, 12.0, setOf("restaurant"))
     }
 
     // ------------------------------------------------------------------------------------------- 130k entries
@@ -157,27 +204,27 @@ class SearchAreasTest {
         val data = tmp.newFolder("data")
         val cells = (0 until 40).map { CellId(540 + it % 8, 358 + it / 8) }
         writeGeneration(data, 1, cells.associateWith { "v1" }, 3250)
-        val live = SearchAreas(tmp.newFolder("areas"))
+        val live = SearchAreas(tmp.newFolder("areas"), opener = JdbcSearchDb.opener)
         live.build(AreaPlan.of(data)) // warm-up (JIT), not measured
-        val measured = SearchAreas(tmp.newFolder("areas2"))
+        val measured = SearchAreas(tmp.newFolder("areas2"), opener = JdbcSearchDb.opener)
         val full = measured.build(AreaPlan.of(data))
         val fullMs = measured.lastStats!!.ms
-        assertEquals(130_000, full.entries.size)
+        assertEquals(130_000, full.size)
 
         writeGeneration(data, 2, cells.associateWith { if (it == cells[7]) "v2" else "v1" }, 3250)
         val inc = measured.build(AreaPlan.of(data))
         val incMs = measured.lastStats!!.ms
         assertEquals(1, measured.lastStats!!.added); assertEquals(1, measured.lastStats!!.removed)
-        assertEquals(130_000, inc.entries.size)
-        assertEquals(3250, inc.entries.count { it.place.name?.contains("-v2 ") == true })
+        assertEquals(130_000, inc.size)
+        assertEquals(3250, inc.places().count { it.name?.contains("-v2 ") == true })
 
-        val restart = SearchAreas(File(measured.dir.path))
+        val restart = SearchAreas(File(measured.dir.path), opener = JdbcSearchDb.opener)
         restart.build(AreaPlan.of(data))
         val fromFilesMs = restart.lastStats!!.ms
         println("Search index, 130k entries / 40 areas: full build $fullMs ms, one area changed $incMs ms, " +
             "after an app start (from files) $fromFilesMs ms")
         assertTrue("one area changed ($incMs ms) must be much faster than the full build ($fullMs ms)", incMs * 2 < fullMs)
-        assertEquals(keys(SearchAreas(tmp.newFolder()).build(AreaPlan.of(data))), keys(inc))
+        assertEquals(keys(SearchAreas(tmp.newFolder(), opener = JdbcSearchDb.opener).build(AreaPlan.of(data))), keys(inc))
     }
 
     private companion object {

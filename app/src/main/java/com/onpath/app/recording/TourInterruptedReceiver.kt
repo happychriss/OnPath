@@ -2,15 +2,12 @@ package com.onpath.app.recording
 
 import com.onpath.strings.*
 
-import android.Manifest
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.onpath.app.MainActivity
 import com.onpath.app.R
 import com.onpath.app.data.TourDb
@@ -36,17 +33,8 @@ class TourInterruptedReceiver : BroadcastReceiver() {
     private fun handle(app: Context, boot: Boolean) {
         if (RecordingService.state.value != null) return
         val tour = TourDb.get(app).findActiveRecording() ?: return
-        val background = ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        if (background) {
-            try {
-                RecordingService.send(app, RecordingService.ACTION_START) { putExtra(RecordingService.EXTRA_CONTINUE_ID, tour.id) }
-                Problems.info("recording", "Recording of '${tour.name}' continued after ${if (boot) "a restart" else "an update"}")
-                return
-            } catch (e: Exception) {
-                Problems.warn("recording", "Recording could not continue by itself after ${if (boot) "a restart" else "an update"}", e)
-            }
-        }
+        // No background location (owner, before Google Play): a location service may only start from the visible app,
+        // so the notification asks to open OnPath and tap Continue – no point is lost before the restart.
         RecordingService.createChannels(app)
         val open = PendingIntent.getActivity(app, 0, Intent(app, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
@@ -63,7 +51,7 @@ class TourInterruptedReceiver : BroadcastReceiver() {
         try { NotificationManagerCompat.from(app).notify(INTERRUPTED_ID, n) } catch (e: SecurityException) {
             Problems.warn("recording", "Interrupted-tour notification refused (notification permission?)", e)
         }
-        Problems.warn("recording", "Recording of '${tour.name}' was interrupted by ${if (boot) "a restart" else "an update"}; user asked to continue")
+        Problems.warn("recording", InterruptedLog.interruptedLine(tour.name, boot))
     }
 
     companion object { private const val INTERRUPTED_ID = 45 }

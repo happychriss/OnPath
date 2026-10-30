@@ -31,7 +31,10 @@
     <string name="routes_title">My routes</string>
     <string name="routes_importing">Importing…</string>
     <string name="routes_import_gpx">Import GPX</string>
-    <string name="routes_empty">No routes yet.\nSave a planned route, record a tour or import a GPX file.</string>
+    <string name="routes_tab_planned">Planned</string>
+    <string name="routes_tab_done">Done</string>
+    <string name="routes_empty_planned">No planned routes yet.\nSave a planned route or import a GPX file.</string>
+    <string name="routes_empty_done">No tours recorded yet.</string>
     <string name="routes_kind_planned">Planned route</string>
     <string name="routes_kind_recorded">Recorded track</string>
     <string name="routes_kind_imported">Imported GPX</string>

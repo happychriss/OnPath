@@ -19,7 +19,12 @@ A region package (map-cells.md §20, build_package.sh) is the tile z7/x/y: it ow
   cells.py manifest Z X Y DIR OSM_DATE GIT_REV URL_PREFIX [--format N] [--wayclass wayclass.json]
                                              write DIR/manifest.json (sizes + sha256 of every file in DIR and its
                                              sub folders, e.g. addresses/10-543-361.sqlite; format default 1)
+                                             [--layers "overlays pois" --base-manifest published.json]: partial
+                                             rebuild – DIR has only these layers, the rest is listed from the
+                                             published manifest (map-hosting.md §7h)
   cells.py version-name OSM_DATE [--package] "2026-10-20-s7" (a package: its own schema, PACKAGE_SCHEMA)
+  cells.py osm-date PBF...                   OSM date of a cell cut from these extracts (the oldest header date)
+  cells.py layers                            the layer names of a format-2 cell (LAYER_SCHEMA)
   cells.py selftest                          checks the Meran example (10/543/361) and a package (7/66/42)
 """
 import hashlib
@@ -44,8 +49,19 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 # rebuilt), the app re-requests installed cells below the schema its style needs (cells/CellApi.CELL_SCHEMA – stays 3
 # for schemas 4 to 7: s3 cells just place same-kind POIs in tile order / show the older router classes / draw towns and
 # bike routes as before). Keep builder
-# and doorman in step.
+# and doorman in step. CELL_SCHEMA stays a plain number on this line (tools/dev/publish_area.sh reads it) and is always
+# the highest value in LAYER_SCHEMA (selftest).
 CELL_SCHEMA = 7
+# Per-layer content schema (docs/design/map-hosting.md §7h "Partial rebuild"): for each layer of a format-2 cell, the
+# cell schema in which its data last changed. A change bumps CELL_SCHEMA (version name, doorman and app see only that)
+# AND the layer(s) it touches; a change that needs two layers in step (e.g. trim_base hiding lines the overlays draw
+# from then on) bumps both. When the OSM extract date is the same, job_build.py then rebuilds only the layers whose
+# schema is newer than the published version's and copies the others into the new version. 7 = all layers when the
+# table came in: older versions (< PARTIAL_FROM_SCHEMA) are always rebuilt whole.
+LAYER_SCHEMA = {"base": 7, "overlays": 7, "pois": 7, "addresses": 7, "terrain": 7, "contours": 7}
+PARTIAL_FROM_SCHEMA = 7
+OSM_LAYERS = ("base", "overlays", "pois", "addresses")  # these need the OSM cut; terrain + contours only AWS tiles
+REQUIRED_LAYERS = ("base", "overlays", "terrain")       # a published version without one of them is never reused
 # Region packages (z7 tile, map z7-9: main roads, towns, forests, rivers, long-distance routes, relief) have their own
 # content schema – the doorman compares a package version with PACKAGE_SCHEMA (wrangler.toml), never with CELL_SCHEMA.
 # 1 = OpenMapTiles base z7-9 without farmland, overlays layer "routes" (net >= 3), hillshade.pmtiles.
@@ -237,6 +253,72 @@ def list_files(d):
     return sorted(out, key=lambda r: (r.count("/"), r))
 
 
+def layer_of(name):
+    """Layer of a format-2 cell file ("overlays.pmtiles" -> "overlays", "addresses/10-1-2.sqlite" -> "addresses"),
+    None for anything else."""
+    if name.startswith("addresses/") and name.endswith(".sqlite") and name.count("/") == 1:
+        return "addresses"
+    stem, _, ext = name.partition(".")
+    if "/" in name or stem not in LAYER_SCHEMA or stem == "addresses":
+        return None
+    return stem if ext == ("geojson" if stem == "pois" else "pmtiles") else None
+
+
+def schema_of(version):
+    """"2026-10-20-s7" -> 7; versions named by the OSM date alone are schema 1 (the app's and doorman's rule)."""
+    _, sep, tail = str(version or "").rpartition("-s")
+    return int(tail) if sep and tail.isdigit() else 1
+
+
+def layer_schemas(manifest):
+    """{layer: schema it was built for} of a published manifest: from its "layers" when it has them, else (built
+    before the table) every layer as new as the version's schema allows – min(version schema, LAYER_SCHEMA)."""
+    s = schema_of(manifest.get("version"))
+    rec = manifest.get("layers") if isinstance(manifest.get("layers"), dict) else {}
+    out = {}
+    for name, cur in LAYER_SCHEMA.items():
+        r = rec.get(name)
+        out[name] = r["schema"] if isinstance(r, dict) and isinstance(r.get("schema"), int) else min(s, cur)
+    return out
+
+
+def rebuild_plan(published, osm_date, z, x, y, fmt=2):
+    """Layers to build for a new version of cell z/x/y, given its published manifest (dict or None) and the OSM date of
+    the sources now. None = build the whole cell: nothing usable published, another OSM date, a region package, format
+    1, a version older than PARTIAL_FROM_SCHEMA, a file of no known layer, a required layer missing, an entry without
+    size / sha256, or nothing (or everything) to rebuild. Else the sorted list of the stale layers."""
+    if not isinstance(published, dict) or is_package(z) or fmt != 2 or published.get("format") != fmt:
+        return None
+    if published.get("cell") != cell_id(z, x, y) or not osm_date or published.get("osm_date") != osm_date:
+        return None
+    if schema_of(published.get("version")) < PARTIAL_FROM_SCHEMA:
+        return None
+    files = published.get("files") or []
+    if any(not isinstance(f, dict) or not isinstance(f.get("size"), int) or len(str(f.get("sha256", ""))) != 64
+           for f in files):
+        return None
+    have = {layer_of(str(f.get("name", ""))) for f in files}
+    if None in have or not set(REQUIRED_LAYERS) <= have:
+        return None
+    built = layer_schemas(published)
+    stale = sorted(name for name, cur in LAYER_SCHEMA.items() if built[name] < cur)
+    return stale if 0 < len(stale) < len(LAYER_SCHEMA) else None
+
+
+def osm_date(paths):
+    """OSM date of a cell cut from these extracts: the oldest header date (the cell is as new as its oldest part); a
+    file without one: its modification day."""
+    import osmium
+    dates = []
+    for p in paths:
+        r = osmium.io.Reader(p, osmium.osm.osm_entity_bits.NOTHING)
+        h = r.header()
+        d = (h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")[:10]
+        r.close()
+        dates.append(d or time.strftime("%Y-%m-%d", time.gmtime(os.path.getmtime(p))))
+    return min(dates)
+
+
 def version_name(osm_date, schema=CELL_SCHEMA):
     """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone); a region
     package: version_name(date, PACKAGE_SCHEMA)."""
@@ -247,17 +329,49 @@ def is_package(z):
     return z == PACKAGE_Z
 
 
-def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None, wayclass=None):
+def merge_files(built, base, layers, url_prefix):
+    """Partial rebuild: the file entries of a new version = the freshly built files (`built`, all of `layers`) + the
+    published version's (`base` manifest) entries of every other layer, size and sha256 kept, url moved into the new
+    version folder (job_build.py copies them there – a version folder stays complete and immutable)."""
+    out = []
+    for f in built:
+        if layer_of(f["name"]) not in layers:
+            raise ValueError(f"{f['name']} is not part of the rebuilt layers {sorted(layers)}")
+        out.append(f)
+    for f in base.get("files") or []:
+        layer = layer_of(f["name"])
+        if layer is None:
+            raise ValueError(f"published file {f['name']} belongs to no layer")
+        if layer not in layers:
+            out.append({"name": f["name"], "size": f["size"], "sha256": f["sha256"],
+                        "url": f"{url_prefix.rstrip('/')}/{f['name']}"})
+    return sorted(out, key=lambda e: (e["name"].count("/"), e["name"]))
+
+
+def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, version=None, sources=None, wayclass=None,
+                   layers=None, base=None):
     """sources: [{id, date, url}] of the OSM extracts the cell was cut from (debugging aid; the app ignores it).
-    wayclass: hash of the BRouter profiles the router classes were made with (extract_overlays.py --wayclass)."""
+    wayclass: hash of the BRouter profiles the router classes were made with (extract_overlays.py --wayclass).
+    layers + base: partial rebuild (map-hosting.md §7h) – d holds only the files of `layers`; the other layers' entries
+    come from the published manifest `base` (same OSM date required) and are copied into the version by the job."""
     files = []
     for name in list_files(d):
         p = os.path.join(d, name)
         files.append({"name": name, "size": os.path.getsize(p), "sha256": sha256(p),
                       "url": f"{url_prefix.rstrip('/')}/{name}"})
+    version = version or osm_date
+    partial = layers is not None
+    if partial:
+        layers = set(layers)
+        if not layers or not layers <= set(LAYER_SCHEMA) or base is None:
+            raise ValueError(f"partial rebuild needs known layers and the published manifest (got {sorted(layers)})")
+        if base.get("osm_date") != osm_date or base.get("cell") != cell_id(z, x, y) or base.get("format") != fmt:
+            raise ValueError(f"published manifest is of another cell / OSM date / format "
+                             f"({base.get('cell')} {base.get('osm_date')} f{base.get('format')}) – rebuild it whole")
+        files = merge_files(files, base, layers, url_prefix)
     pkg = is_package(z)
     m = {"cell": cell_id(z, x, y), "format": fmt, "bbox": [round(v, 6) for v in cell_bbox(z, x, y)],
-         "osm_date": osm_date, "version": version or osm_date, "schema": PACKAGE_SCHEMA if pkg else CELL_SCHEMA,
+         "osm_date": osm_date, "version": version, "schema": PACKAGE_SCHEMA if pkg else CELL_SCHEMA,
          "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "pipeline": f"git:{git_rev}", "min_app": PACKAGE_MIN_APP if pkg else MIN_APP, "files": files,
          "total_size": sum(f["size"] for f in files), "attribution": ATTRIBUTION}
@@ -266,8 +380,19 @@ def write_manifest(z, x, y, d, osm_date, git_rev, url_prefix, fmt=FORMAT, versio
         m["zooms"] = [PACKAGE_Z, PACKAGE_MAXZOOM]
     if sources:
         m["sources"] = [{k: s.get(k) for k in ("id", "date", "url")} for s in sources]
+    if partial and "overlays" not in layers and base.get("wayclass"):
+        wayclass = base["wayclass"]  # the router classes are part of the overlays kept from the published version
     if wayclass:
         m["wayclass"] = wayclass
+    if not pkg and fmt == 2:
+        # per layer: the schema it was built for and the version folder it was built in (kept ones: as published)
+        prev = layer_schemas(base) if partial else {}
+        prev_rec = base.get("layers") if partial and isinstance(base.get("layers"), dict) else {}
+        m["layers"] = {name: {"schema": cur, "version": version} if not partial or name in layers else
+                       {"schema": prev[name], "version": (prev_rec.get(name) or {}).get("version") or base["version"]}
+                       for name, cur in LAYER_SCHEMA.items()}
+        if partial:
+            m["reused_from"] = base["version"]
     with open(os.path.join(d, "manifest.json.tmp"), "w") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
     os.replace(os.path.join(d, "manifest.json.tmp"), os.path.join(d, "manifest.json"))
@@ -291,6 +416,10 @@ def selftest():
     assert not owns_tile(7, 66, 42, 10, 531, 342, 7, 9) and not owns_tile(7, 66, 42, 6, 33, 21, 7, 9)
     assert (531 >> 3, 342 >> 3) == (66, 42)  # the Hilden cell lies under it
     assert version_name("2026-10-26", PACKAGE_SCHEMA) == f"2026-10-26-s{PACKAGE_SCHEMA}"
+    # per-layer schema: the cell schema is the newest layer's (version name, doorman and app compare only that)
+    assert CELL_SCHEMA == max(LAYER_SCHEMA.values()) and PARTIAL_FROM_SCHEMA <= CELL_SCHEMA
+    assert [layer_of(n) for n in ("base.pmtiles", "pois.geojson", "addresses/10-1-2.sqlite", "build.json")] == \
+        ["base", "pois", "addresses", None]
     print("ok")
 
 
@@ -307,6 +436,12 @@ def main(argv):
         return 0
     if cmd == "remap-ids":
         print(f"    {os.path.basename(rest[1])}: {remap_ids(rest[0], rest[1])} ids mapped back to OSM ids")
+        return 0
+    if cmd == "osm-date":
+        print(osm_date(rest))
+        return 0
+    if cmd == "layers":
+        print(" ".join(LAYER_SCHEMA))
         return 0
     z, x, y = map(int, rest[:3])
     a = rest[3:]
@@ -341,7 +476,14 @@ def main(argv):
         if "--wayclass" in a:
             with open(a[a.index("--wayclass") + 1]) as f:
                 wc = json.load(f).get("profiles")
-        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver, src, wc)
+        layers = base = None
+        if "--layers" in a and a[a.index("--layers") + 1].strip():
+            layers = a[a.index("--layers") + 1].split()
+            with open(a[a.index("--base-manifest") + 1]) as f:
+                base = json.load(f)
+        m = write_manifest(z, x, y, a[0], a[1], a[2], a[3], fmt, ver, src, wc, layers, base)
+        if layers:
+            print(f"    partial: rebuilt {' '.join(sorted(layers))}, the rest kept from {base['version']}")
         print(f"    manifest: {len(m['files'])} files, {m['total_size'] / 1e6:.1f} MB")
     else:
         print(__doc__)

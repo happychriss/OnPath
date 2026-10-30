@@ -144,7 +144,7 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 14,
-    "decided": "Owner 2026-10-26: \"T2\" alone next to the hiking icon"
+    "decided": "Owner 2026-10-30: \"Wandern · T2\" like English (2026-10-26 it was \"T2\" alone); time and distance move under the chip when they do not fit beside it"
   },
   "activity_bike_touring_button": {
     "area": "Plan sheet",

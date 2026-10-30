@@ -500,22 +500,6 @@
     "confidence": "sicher",
     "max": 90
   },
-  "settings_nav_battery_hint": {
-    "area": "Settings · Navigation",
-    "context": "Hint beside the \"App settings\" button: Android battery setting of the app",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Must match the German Android label of the battery option (Pixel: „Nicht eingeschränkt“ / „Uneingeschränkt“)",
-    "max": 90
-  },
-  "settings_nav_location_hint": {
-    "area": "Settings · Navigation",
-    "context": "Hint beside \"App settings\" when background location is not allowed: after a phone restart the tour is continued by a tap",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "„Fortsetzen“ = the button of the interrupted-tour dialog; „Immer zulassen“ = German Android permission label",
-    "max": 90
-  },
   "settings_pace_intro": {
     "area": "Settings · Your pace",
     "context": "Intro line of the pace page",
@@ -629,8 +613,8 @@
   },
   "settings_privacy_tracks": {
     "area": "Settings · Privacy",
-    "context": "Second line of the privacy page",
-    "priority": 2,
+    "context": "Second paragraph of the privacy page: what stays on the phone, what goes to the paired browser (plan sync). Wording approved by the owner 2026-10-30",
+    "priority": 1,
     "confidence": "sicher"
   },
   "settings_privacy_what": {
@@ -837,5 +821,74 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 45
+  },
+  "settings_page_sync": {
+    "area": "Settings list",
+    "context": "Topic: pair with the web planner in a browser, sync routes both ways",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "\"Abgleich\" vs \"Sync\"",
+    "max": 28
+  },
+  "settings_privacy_sync_what": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: what (plan sync)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_to": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: to whom",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_when": {
+    "area": "Settings · Privacy",
+    "context": "Data flow 9: when",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_title": {
+    "area": "Settings · Privacy",
+    "context": "Heading of the plan sync paragraph (docs/design/web-sync.md §12; same text on the website)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_privacy_sync_text": {
+    "area": "Settings · Privacy",
+    "context": "Plan sync paragraph (web-sync.md §12; the website's privacy notice says the same)",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "Must match the website text"
+  },
+  "settings_nav_junction_off": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: off",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_junction_always": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: always",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_junction_locked": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: only while the screen is locked",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_on_route": {
+    "area": "Settings → Navigation",
+    "context": "Switch: draw the position dot on the route line when close to it",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_on_route_sub": {
+    "area": "Settings → Navigation",
+    "context": "Line under the switch 'Position on route'",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

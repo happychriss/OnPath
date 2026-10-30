@@ -130,7 +130,14 @@ class MapCells(
     private val freshMs: Long = FRESH_MS,
     /** Ask for region packages with the cells (map-cells.md §20); off in tests about the cells alone. */
     private val regionPackages: Boolean = true,
+    /**
+     * Hash of the routing profiles this app routes with ([com.onpath.app.routing.RouterClassHash]); installed cells
+     * whose router classes come from other profiles are reported and refreshed ([RouterClassCheck]). Null = no check.
+     */
+    routerClassHash: (() -> String?)? = null,
 ) : CellSource {
+    private val routerClasses = routerClassHash?.let { RouterClassCheck(it) }
+
     // ------------------------------------------------------------------------------------------- public state
 
     private val _states = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
@@ -296,13 +303,17 @@ class MapCells(
                 added += c
             }
             saveQueue()
+            // the state together with the queue entry (lock order queue → states, as in loadQueue): a worker round
+            // dropping the request at once ([prune]) never leaves it "requested" for ever.
+            // An UPDATE replaces an installed (outdated) cell: show it as loading, not as ready.
+            if (added.isNotEmpty()) update { m ->
+                added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested }
+            }
         }
         // the region view around them (quiet, small): the packages these cells need
         if (reason != CellReason.PACKAGE) ensurePackages(cells)
         if (added.isNotEmpty()) {
             Problems.trace("cells", "Requested ${added.size} region(s) (${reason.name.lowercase()}): ${added.joinToString { it.id }}")
-            // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
-            update { m -> added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }
@@ -327,11 +338,14 @@ class MapCells(
                 queue[p] = Pending(p, CellReason.PACKAGE, ownPoint = false, at = t, approvedMobile = false)
                 added += p
             }
-            if (added.isNotEmpty()) saveQueue()
+            if (added.isNotEmpty()) {
+                saveQueue()
+                // with the queue entry, as in [request]
+                update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
+            }
         }
         if (added.isNotEmpty()) {
             Problems.trace("cells", "Requested ${added.size} region package(s): ${added.joinToString { it.id }}")
-            update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }
@@ -483,6 +497,7 @@ class MapCells(
         ensurePackages()
         worker = scope.launch {
             work.withLock { recover() }
+            checkRouterClasses()
             loop()
         }
     }
@@ -574,6 +589,22 @@ class MapCells(
 
     private fun publish(gen: CellStore.Generation) {
         refreshInstalled(gen.number)
+        checkRouterClasses()
+    }
+
+    /**
+     * Installed cells whose router classes come from other routing profiles than this app's ([RouterClassCheck]): asked
+     * for again quietly ([CellReason.REFRESH] – Wi-Fi rule, held during a tour, the map stays until a newer build is
+     * there). Never blocks the map or routing; a failure only goes to the problem log.
+     */
+    private fun checkRouterClasses() {
+        val check = routerClasses ?: return
+        try {
+            val ask = check.check(_installed.value, downloadsAvailable)
+            if (ask.isNotEmpty()) request(ask, CellReason.REFRESH, ownPoint = false)
+        } catch (e: Exception) {
+            Problems.warn("cells", "Router class check of the map regions failed; maps kept as they are", e)
+        }
     }
 
     private fun recover() {
@@ -589,6 +620,15 @@ class MapCells(
             } else if (store.regionChanged()) publish(store.apply())
         } catch (e: Exception) {
             Problems.error("cells", "Downloaded map areas could not be joined after a restart; they load again", e)
+        }
+        // a store written before POI tiles (PoiTiles): rewritten once, so MapLibre reads the POIs as tiles, not GeoJSON
+        try {
+            if (!holdUpdates && store.needsPoiTiles()) {
+                Problems.info("cells", "Map store rewritten with POI tiles (once after the app update)")
+                publish(store.apply())
+            }
+        } catch (e: Exception) {
+            Problems.warn("cells", "Map store could not get POI tiles now (POIs drawn the old way); tried again at the next start", e)
         }
     }
 
@@ -697,8 +737,11 @@ class MapCells(
             }
         }
         if (drop.isEmpty()) return
-        synchronized(queue) { drop.forEach { queue.remove(it.first.id) }; saveQueue() }
-        update { m -> drop.forEach { (p, _) -> if (m[p.id] !is CellState.Ready) m.remove(p.id) } }
+        synchronized(queue) {
+            drop.forEach { queue.remove(it.first.id) }; saveQueue()
+            // under the queue lock like [request]: queue entry and state change together
+            update { m -> drop.forEach { (p, _) -> if (m[p.id] !is CellState.Ready) m.remove(p.id) } }
+        }
         drop.groupBy { it.second }.forEach { (why, list) ->
             Problems.trace("cells", "Dropped ${list.size} region request(s) before download – $why: " +
                 list.joinToString { "${it.first.id} (${it.first.reason.name.lowercase()})" })

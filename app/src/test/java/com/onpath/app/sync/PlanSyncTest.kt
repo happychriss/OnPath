@@ -297,9 +297,10 @@ class PlanSyncTest {
     }
 
     companion object {
-        // filled from the first run (frozen format version 1)
+        // Frozen format version 1: values derived from the fixed test secret above (bytes 1, 8, 15 …) – test vectors,
+        // not credentials of any real mailbox (GitGuardian flags the token by its name).
         const val FROZEN_MAILBOX = "6_ppugL_I2cbDsZYhdOddA"
-        const val FROZEN_TOKEN = "wHErkFiAjM3dUXVy18TJETV0arl4vvuSa21gZUBEpjE"
+        const val FROZEN_TOKEN = "wHErkFiAjM3dUXVy18TJETV0arl4vvuSa21gZUBEpjE" // ggignore: test vector
         const val FROZEN_CHECK = "395 514"
         const val FROZEN_BLOB = "AQUFBQUFBQUFBQUFBezwy_DS4VFukiv3lciLKrMNNEjd7xcqYoHVER5ZBI4rz0TPbKW5EUMZ1tFYUge1Y3M852rKXkBCQZmq1iHBROEndXRK7OMGVOO4YsmD_ALasLkzfJMGpmhFHoqWt-FC"
     }

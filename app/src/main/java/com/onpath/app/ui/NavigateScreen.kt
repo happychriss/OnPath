@@ -118,6 +118,13 @@ data class NavUi(
     val positionCopy: String? = null,
     /** Age of the last fix (s) – shown with "Waiting for GPS" so an old position is not taken for the current one. */
     val fixAgeS: Long? = null,
+    /**
+     * Tour started indoors, no GPS fix yet: "Approximate position (Wi-Fi, ±80 m) – GPS comes outside" – the amber line
+     * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
+     */
+    val approx: String? = null,
+    /** OnPath's notifications are off during this tour: the amber chip under the status card ([NotificationsOffChip]). */
+    val notificationsOff: Boolean = false,
 )
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
@@ -163,6 +170,8 @@ fun NavigateOverlay(
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
+    /** "Off route – re-plan?" – Yes: the new route via the stop in question (StopSkip). */
+    onTakeVia: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
@@ -172,6 +181,9 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
+    /** The "Notifications off" chip: tap → phone setup step, OK → gone for this tour. */
+    onNotifications: () -> Unit = {},
+    onNotificationsOk: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -188,12 +200,13 @@ fun NavigateOverlay(
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
+            if (ui.notificationsOff) NotificationsOffChip(onNotifications, onNotificationsOk)
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
             Appearing(ui.offRoute?.prompt as? NavPrompt.Question) { q ->
-                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) },
+                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) },
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
             }
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
@@ -231,7 +244,7 @@ internal fun turnDistance(m: Double): String = when {
     else -> "${Math.round(m / 50) * 50} m"
 }
 
-private fun turnIcon(k: TurnKind): ImageVector = when (k) {
+internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
     TurnKind.SLIGHT_LEFT -> Icons.Filled.TurnSlightLeft
     TurnKind.LEFT -> Icons.Filled.TurnLeft
     TurnKind.SHARP_LEFT -> Icons.Filled.TurnSharpLeft
@@ -324,7 +337,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                if (ui.recordedM != null && ui.waitingGps) {
+                // (the provisional-position line has its own full-width row under this one)
+                if (ui.recordedM != null && ui.waitingGps && ui.approx == null) {
                     // no fix: the arrow and the to-go are stale – a warning, not grey small text
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
@@ -364,6 +378,15 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (ui.recordedM != null) ui.approx?.let {
+            // indoors at the start: what is left counts from a Wi-Fi fix – amber ⚠, the card's full width (owner)
+            Row(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+                    color = OnPathColors.Warn, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         ui.routeNote?.let {
@@ -463,6 +486,11 @@ internal fun movingLine(ui: NavUi): String? {
 }
 
 /** "No GPS · position 4 min old" (the age once it is a minute or more). */
+/** "Approximate position (Wi-Fi, ±80 m) – GPS comes outside" / "… (±80 m) – GPS still weak". */
+internal fun approxLine(fix: com.onpath.app.navigation.Provisional.Fix): String = Txt.s(
+    if (fix.source == com.onpath.app.navigation.Provisional.Source.WIFI) Res.string.nav_approx_wifi else Res.string.nav_approx_weak_gps,
+    fix.accuracyM)
+
 internal fun noGpsLine(fixAgeS: Long?): String =
     Txt.s(Res.string.nav_no_gps) + (fixAgeS?.takeIf { it >= 60 }?.let { " · " + Txt.s(Res.string.nav_position_age, (it / 60).toInt()) } ?: "")
 
@@ -514,10 +542,14 @@ private fun OffRouteCard(o: OffRouteUi) {
 
 /**
  * The off-route question (owner: ask every time, never re-route silently): stays until one of the two big buttons is
- * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves.
+ * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves. With a stop in
+ * question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
  */
 @Composable
-internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
+                                 onVia: () -> Unit = {}) {
+    val large = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp,
         border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
@@ -528,12 +560,40 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(NavText.question(q), style = MaterialTheme.typography.bodyMedium,
+                    Text(NavText.question(q, maxName), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(Modifier.size(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (q.via != null) {
+                // "Off route – re-plan?" (StopSkip: borderline, or a stop chosen on purpose): Yes = via the stop,
+                // "Yes, skip stop 3" = without it. The skip label wraps to two lines; at a large font (like the setup
+                // guide, > 1.3) the two buttons are stacked full width and only a short name is used
+                val yes: @Composable (Modifier) -> Unit = { m ->
+                    Button(onClick = onVia, modifier = m.heightIn(min = 56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
+                        Text(NavText.YES, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    }
+                }
+                val skip: @Composable (Modifier) -> Unit = { m ->
+                    OutlinedButton(onClick = onTake, modifier = m.heightIn(min = 56.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                        Text(NavText.skipButton(q, maxName), style = MaterialTheme.typography.titleSmall, maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+                if (large) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    yes(Modifier.fillMaxWidth())
+                    skip(Modifier.fillMaxWidth())
+                } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    yes(Modifier.weight(1f))
+                    skip(Modifier.weight(2f))
+                }
+                TextButton(onClick = onKeep, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) {
+                    Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onKeep, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
                     Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 }
@@ -563,17 +623,28 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
     val hint = remember(line) { intArrayOf(0) }
     val here = location?.let { GeoPoint(it.latitude, it.longitude) }
-    val remaining = remember(progress, location, nav?.shownAlongM, nav?.offM) {
+    // started indoors (owner): until the tour's first GPS fix the app's Wi-Fi / fused fix stands in – here only; the
+    // service never sees it (no track point, no off-route, no re-route) and the arrival question waits for GPS
+    val prov = location?.let { l ->
+        com.onpath.app.navigation.Provisional.of(rec != null, rec?.paused == true, rec?.hadGpsFix == true, l.provider,
+            l.hasAccuracy(), l.accuracy, (android.os.SystemClock.elapsedRealtimeNanos() - l.elapsedRealtimeNanos) / 1_000_000L)
+    }
+    val remaining = remember(progress, location, nav?.shownAlongM, nav?.offM, prov) {
         when {
             progress == null -> null
+            prov != null -> here?.let { progress.remaining(it, hint[0]) }?.also { hint[0] = it.index }
             nav != null -> nav.shownAlongM?.let { progress.at(it, nav.offM) }
             here == null -> null
             else -> progress.remaining(here, hint[0])?.also { hint[0] = it.index }
         }
     }
-    LaunchedEffect(location) { if (here != null) vm.checkArrival(here, remaining?.distanceM) }
-    val next = remember(turns, remaining, rec?.offRouteAlert) {
-        nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
+    // a provisional position far from the line: "not on route" (calm), never a "to go" from the line's nearest point
+    val provOff = prov != null && remaining != null && !com.onpath.app.navigation.Provisional.onRoute(remaining.offM, prov)
+    LaunchedEffect(location) {
+        if (here != null && com.onpath.app.navigation.Provisional.arrivalCheck(prov)) vm.checkArrival(here, remaining?.distanceM)
+    }
+    val next = remember(turns, remaining, rec?.offRouteAlert, provOff) {
+        if (provOff) null else nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
     // a roundabout from the router's instructions wins over the drawn arrow when it comes first
     val cues = remember { com.onpath.app.navigation.JunctionCues() }
@@ -589,7 +660,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val shownTurn = next?.first?.takeIf { turnHint(next.first.kind to next.second, roundabout)?.roundabout == null }
     LaunchedEffect(shownTurn) { vm.navTurn = shownTurn }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
-    val tt = rec?.time
+    // provisional: the service knows no position yet – its time state ("no GPS") does not apply, the plain model counts
+    val tt = rec?.time?.takeIf { prov == null }
     // the service's calm, learned value while it knows the line; else the plain model from here
     val toGoS = remaining?.let { r -> tt?.toGoS ?: toGoSeconds(times, r.distanceM, vm.planFactors()) }
     val arrive = toGoS?.let { s ->
@@ -597,16 +669,18 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
     // the named last stop; an unnamed one is just "the destination" (no extra line: the card has no room to spare)
     val target = nav?.session?.stops?.lastOrNull()?.name
-    val notOnRoute = nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
+    val notOnRoute = if (prov != null) line != null && (remaining == null || provOff)
+        else nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
     val ui = NavUi(
-        toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, nav?.offM, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
+        toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, if (prov != null) remaining?.offM else nav?.offM,
+            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
-        waitingGps = rec?.gpsLost == true,
+        waitingGps = rec?.gpsLost == true && prov == null,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
@@ -615,9 +689,9 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
-        movingS = tt?.movingS, breakS = tt?.breakS,
-        paceNote = tt?.learned?.let { paceNote(it) },
-        routeNote = tt?.lineNote?.text(),
+        movingS = rec?.time?.movingS, breakS = rec?.time?.breakS,
+        paceNote = rec?.time?.learned?.let { paceNote(it) },
+        routeNote = rec?.time?.lineNote?.text(),
         // what the service navigates is the truth; free recording: the app's activity
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,
@@ -628,16 +702,41 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         positionCopy = location?.let { NavText.positionCopy(it.latitude, it.longitude) },
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
+        approx = prov?.let { approxLine(it) },
+        notificationsOff = com.onpath.app.navigation.NotificationsOff.shown(rec?.tourId,
+            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.phone), vm.notificationsOkTour),
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
     val bg = rememberBackgroundDownload(vm)
     val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
-    NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-        onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
-        onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
-        onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
-        download = bg, onDownload = { vm.downloadDetailsOpen = true })
+    // Cycling, "Screen while cycling: Smart" (owner): far from the next turn the dim rest view covers the map (RestView.kt)
+    val restEvents = remember(line, turns) { line?.let { RestEvents.of(it, turns) } ?: emptyList() }
+    val restTarget = remember(restEvents, remaining, notOnRoute) {
+        RestEvents.next(restEvents, remaining?.takeUnless { notOnRoute }?.let { (total - it.distanceM).coerceAtLeast(0.0) })
+    }
+    val restOn = ScreenPolicy.of(vm.settings, ui.activity ?: vm.activity).rest && rec != null && nav != null
+    val restWanted = rememberRest(restOn,
+        // until the tour's first GPS fix (provisional Wi-Fi / fused position, amber line) always the full map
+        attention = SmartScreen.needsUser(paused = rec?.paused == true, gpsLost = rec?.gpsLost == true,
+            hadGpsFix = rec?.hadGpsFix == true, provisional = prov != null, offRouteAlert = rec?.offRouteAlert == true,
+            prompt = nav?.prompt != null, notOnRoute = notOnRoute, noFix = location == null, notFollowing = !vm.followMe,
+            dialog = vm.restBlocked()),
+        target = restTarget, fix = location)
+    val rest = restWanted && restTarget != null
+    LaunchedEffect(rest) { vm.screenRest = rest }
+    DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
+    Box(Modifier.fillMaxSize()) {
+        NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
+            onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
+            onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+            onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
+            download = bg, onDownload = { vm.downloadDetailsOpen = true },
+            onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
+            onNotificationsOk = { vm.notificationsOkTour = rec?.tourId })
+        RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
+            onTap = ScreenTouch::note)
+    }
     BackgroundDownloadDetails(vm, bg)
 }
 

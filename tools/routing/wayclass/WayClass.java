@@ -23,7 +23,7 @@ import java.util.Map;
  * overlay tile layers "paths" and "streets" (and blocked barrier nodes on "barriers").
  *
  * Usage:  java -jar wayclass.jar --profiles DIR [--costs]  < requests  > answers
- *         java -jar wayclass.jar --profiles DIR --hash               (profile hash only)
+ *         java -jar wayclass.jar --profiles DIR --hash               (profile hash only, "2-<16 hex>", see hash())
  *         java -jar wayclass.jar --profiles DIR --selftest           (known tag sets, exit 1 on a wrong class)
  *   DIR = lookups.dat + hiking-mountain.brf, trekking.brf, touring.brf, mtb.brf
  *         (app/src/main/assets/brouter, the files the app routes with)
@@ -108,18 +108,56 @@ public class WayClass {
     }
   }
 
+  /**
+   * Profile hash, format 2: "2-" + 16 hex digits of sha256 over VERSION, GOOD and, per file, its name + its
+   * [normalize]d text – a comment-only or blank-line edit of a profile keeps the hash (format 1, before: 16 hex digits
+   * over the raw bytes). The app computes the same (app RouterClassHash, RouterClassHashTest compiles this file and
+   * compares) and treats any other format as unknown.
+   */
   static String hash(File dir) throws Exception {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
     md.update(VERSION.getBytes(StandardCharsets.UTF_8));
     md.update(Arrays.toString(GOOD).getBytes(StandardCharsets.UTF_8));
     for (String f : new String[]{"lookups.dat", "hiking-mountain.brf", "trekking.brf", "touring.brf", "mtb.brf"}) {
       md.update(f.getBytes(StandardCharsets.UTF_8));
-      md.update(Files.readAllBytes(new File(dir, f).toPath()));
+      md.update(normalize(f, Files.readAllBytes(new File(dir, f).toPath())));
     }
     StringBuilder sb = new StringBuilder();
     for (byte b : md.digest()) sb.append(String.format("%02x", b));
-    return sb.substring(0, 16);
+    return "2-" + sb.substring(0, 16);
   }
+
+  /**
+   * A profile file without what BRouter ignores: per line the whitespace-separated tokens (space, tab, CR, FF); in a
+   * .brf a comment starts at a token beginning with '#' (BExpressionContext: '#' only at a token start), in
+   * lookups.dat only a whole line starting with '#' is one (BExpressionMetaData); lines without tokens go. A .brf
+   * comment naming "noStartWay" is kept (BRouter reads those under check_start_way). Lines joined by single spaces,
+   * each ended by "\n"; bytes as ISO-8859-1 (1:1, no charset surprises).
+   */
+  static byte[] normalize(String name, byte[] bytes) {
+    boolean brf = name.endsWith(".brf");
+    StringBuilder out = new StringBuilder(bytes.length);
+    for (String line : new String(bytes, StandardCharsets.ISO_8859_1).split("\n", -1)) {
+      List<String> tokens = new ArrayList<>();
+      int i = 0, n = line.length();
+      while (i < n) {
+        while (i < n && blank(line.charAt(i))) i++;
+        int s = i;
+        while (i < n && !blank(line.charAt(i))) i++;
+        if (i > s) tokens.add(line.substring(s, i));
+      }
+      int cut = tokens.size();
+      for (int t = 0; t < tokens.size(); t++) {
+        if (tokens.get(t).startsWith("#") && (brf || t == 0)) { cut = t; break; }
+      }
+      if (cut < tokens.size() && brf && String.join(" ", tokens.subList(cut, tokens.size())).contains("noStartWay")) cut = tokens.size();
+      if (cut == 0) continue;
+      out.append(String.join(" ", tokens.subList(0, cut))).append('\n');
+    }
+    return out.toString().getBytes(StandardCharsets.ISO_8859_1);
+  }
+
+  private static boolean blank(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\f'; }
 
   /** lookup data of one profile's way context; the hike evaluation leaves sac_scale / mtb:scale out */
   byte[] encodeWay(int p, List<String[]> tags) {

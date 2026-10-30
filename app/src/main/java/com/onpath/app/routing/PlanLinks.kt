@@ -12,6 +12,8 @@ object PlanLinks {
     const val BASE = "https://$HOST/"
     /** What marks a plan link anywhere (any host: a planner copy, a test page, a link shortener's target). */
     private const val MARK = "#p="
+    /** What marks a pairing link (plan sync, docs/design/web-sync.md §4) – never a plan, and a plan link is never one. */
+    private const val PAIR_MARK = "#pair="
 
     /** How a link reached the app: opened (VIEW: camera, a tapped link) or shared as text (SEND). */
     enum class Via { OPENED, SHARED }
@@ -21,23 +23,36 @@ object PlanLinks {
         data class Plan(val plan: SharedPlan) : Found
         /** It is a plan link, but the plan can't be read (cut off, typed wrong, newer format, no points). */
         data object Broken : Found
+        /** A pairing link of the web planner ("Pair phone" in its header, its QR code): [secret] = the shared pairing secret. */
+        class Pairing(val secret: ByteArray) : Found
+        /** A pairing link that can't be read (cut off, a newer version). */
+        data object BrokenPairing : Found
     }
 
     /** The link for [plan] (Share plan). */
     fun link(plan: SharedPlan): String = PlanCode.link(BASE, plan)
 
-    /** A link opened in OnPath (VIEW): a planner link or any link with `#p=` → its plan or [Found.Broken]; else null. */
+    /**
+     * A link opened in OnPath (VIEW): a pairing link (`#pair=`) → [Found.Pairing]; a planner link or any link with
+     * `#p=` → its plan or [Found.Broken]; else null.
+     */
     fun fromLink(uri: String?): Found? {
         val u = uri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (PAIR_MARK in u) return readPairing(u)
         if (!isPlannerLink(u) && MARK !in u) return null
         return read(u)
     }
 
-    /** Text shared to OnPath or pasted into the search box: only when it holds a `#p=` link; else null (a place …). */
+    /** Text shared to OnPath or pasted into the search box: only when it holds a `#p=` / `#pair=` link; else null (a place …). */
     fun fromText(text: String?): Found? {
-        val token = text?.split(Regex("""\s+"""))?.firstOrNull { MARK in it } ?: return null
+        val words = text?.split(Regex("""\s+"""))
+        words?.firstOrNull { PAIR_MARK in it }?.let { return readPairing(it) }
+        val token = words?.firstOrNull { MARK in it } ?: return null
         return read(token)
     }
+
+    private fun readPairing(s: String): Found =
+        com.onpath.app.sync.PairCode.parse(s)?.let { Found.Pairing(it) } ?: Found.BrokenPairing
 
     /**
      * What an intent brings (MainActivity.planLinkOf, its fields as plain strings): VIEW with a plan link, or SEND of

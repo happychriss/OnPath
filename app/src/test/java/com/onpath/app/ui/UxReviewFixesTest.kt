@@ -26,7 +26,7 @@ class UxReviewFixesTest {
         assertFalse(choose, choose.contains("selectActivity(a)\n"))
     }
 
-    /** Problem 10: on a first start the restore offer waits for the location answer and the loading modal. */
+    /** Problem 10: on a first start the restore offer waits for the welcome / phone setup guide and the loading modal. */
     @Test fun firstStartDialogsComeOneAfterTheOther() {
         assertTrue(RestoreOfferRule.show(offer = true, recording = false, locationAsking = false, loadModalOpen = false))
         assertFalse("location request open", RestoreOfferRule.show(true, recording = false, locationAsking = true, loadModalOpen = false))
@@ -35,7 +35,10 @@ class UxReviewFixesTest {
         assertFalse("nothing to offer", RestoreOfferRule.show(false, recording = false, locationAsking = false, loadModalOpen = false))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
         assertTrue(main.contains("RestoreOfferRule.show(vm.restoreOffer"))
-        assertTrue(main.contains("vm.locationAsking = true; permissionLauncher.launch"))
+        assertTrue(main.contains("vm.locationAsking || vm.setupOpen, vm.loadModalOpen"))
+        // no system dialog at the first screen: the welcome page, location only from the guide after its explanation
+        assertTrue(main.contains("else vm.setupWelcome = true"))
+        assertTrue(main.contains("vm.locationAsking = true\n                    permissionLauncher.launch"))
     }
 
     /** Problem 11: the message bar (stays until OK) never covers the blue strip – it goes below it. */

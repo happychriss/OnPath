@@ -9,8 +9,15 @@ compatibility_date = "2026-06-01"
 workers_dev = false
 preview_urls = false
 
+# Workers Logs keep only the doorman's own JSON lines (console.log: builds, errors with path + message – never an IP).
+# The automatic per-request invocation logs are off: they carry the request headers (cf-connecting-ip,
+# x-forwarded-for) and the client's location, i.e. plain IPs (map-hosting.md, privacy).
 [observability]
 enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = false
 
 # every minute: check the running build, start the next one (inherited by both environments)
 [triggers]

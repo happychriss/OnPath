@@ -45,7 +45,10 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
             else -> null
         }
 
-        /** Puts BRouter's hints ({index, cmd, angle} rows) on the route points; unknown indices are skipped. */
+        /**
+         * Puts BRouter's hints ({index, cmd, angle, exit, branches…} rows, btools.router.OnPathHints) on the route
+         * points; unknown indices are skipped.
+         */
         fun apply(points: MutableList<GeoPoint>, hints: Array<DoubleArray>) {
             for (h in hints) {
                 if (h.size < 2) continue
@@ -53,8 +56,59 @@ enum class JunctionCue(val code: String, private val res: org.jetbrains.compose.
                 val cue = ofBRouter(h[1].toInt()) ?: continue
                 val exit = if (cue == ROUNDABOUT && h.size >= 4) kotlin.math.abs(h[3].toInt()) else 0
                 val angle = if (h.size >= 3) h[2].toFloat() else 0f
-                if (i in points.indices) points[i] = points[i].copy(turn = cue, exit = exit, turnAngle = angle)
+                if (i in points.indices) points[i] = points[i].copy(turn = cue, exit = exit, turnAngle = angle,
+                    shape = JunctionShape.ofRow(h))
             }
+        }
+    }
+}
+
+/**
+ * A junction as the route meets it, from BRouter's hint (btools.router.OnPathHints): [angle] = the way the route takes
+ * (degrees, > 0 right, 0 = straight on, relative to the way it comes on), [inPrio] / [outPrio] = road class of the way it
+ * comes on / goes on (the profile's priorityclassifier: 30 motorway … 26 primary … 22 tertiary, 20 unclassified, 6
+ * residential / service / cycleway, 4 path / footway / track, 2 steps / pedestrian), [others] = the other ways one could
+ * take there (oneways against the direction and ways without access left out). The bike's "could one go wrong here"
+ * check ([com.onpath.app.navigation.CueRule]) reads it.
+ */
+data class JunctionShape(val angle: Float, val inPrio: Int, val outPrio: Int, val others: List<Branch>) {
+    data class Branch(val angle: Float, val prio: Int)
+
+    /** Compact text for the navigation session file: "angle,in,out" then ";angle,prio" per other way. */
+    fun encode(): String = buildString {
+        append(Math.round(angle)).append(',').append(inPrio).append(',').append(outPrio)
+        others.forEach { append(';').append(Math.round(it.angle)).append(',').append(it.prio) }
+    }
+
+    companion object {
+        /** BRouter's cost factor of a way without access (10000; a little below for float rounding). */
+        const val NO_ACCESS_COST = 9_999.0
+
+        /** From an OnPathHints row; null when it has no branch data (old row, hint without ways). */
+        fun ofRow(h: DoubleArray): JunctionShape? {
+            if (h.size < 8) return null
+            val n = h[7].toInt()
+            if (n < 0 || h.size < 8 + 4 * n) return null
+            val others = (0 until n).mapNotNull { k ->
+                val o = 8 + 4 * k
+                if (h[o + 2] != 0.0 || h[o + 3] >= NO_ACCESS_COST) null else Branch(h[o].toFloat(), h[o + 1].toInt())
+            }
+            return JunctionShape(h[4].toFloat(), h[5].toInt(), h[6].toInt(), others)
+        }
+
+        /** Reads [encode]; null when unreadable (the cue then falls back to the plain rule). */
+        fun decode(s: String?): JunctionShape? = try {
+            if (s.isNullOrEmpty()) null else {
+                val parts = s.split(';')
+                val head = parts[0].split(',').map { it.trim().toInt() }
+                JunctionShape(head[0].toFloat(), head[1], head[2], parts.drop(1).map { b ->
+                    val v = b.split(',').map { it.trim().toInt() }
+                    Branch(v[0].toFloat(), v[1])
+                })
+            }
+        } catch (e: RuntimeException) {
+            // expected: an odd value = no shape; the junction is then cued as before (never fewer cues by mistake)
+            null
         }
     }
 }

@@ -177,7 +177,8 @@ class CellApi(
          * (docs/map-style-notes.md "Router classes"). Installed cells of an older schema are requested again
          * (MapCells.outdated); until then the style draws them with the tag rules. Schema 4 (POI priority "pr") is not
          * required: s3 cells only place same-kind POIs in tile order and get s4 on the normal refresh; newer schemas are
-         * accepted as any version.
+         * accepted as any version. Cells whose router classes come from other routing profiles than the app's are found
+         * by their manifest hash instead ([RouterClassCheck]).
          */
         const val CELL_SCHEMA = 3
 

@@ -1,17 +1,17 @@
 # OnPath – project status and decisions
 
-Current release **0.12.0** (2026-10-28). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.13.0** (2026-10-30). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
-- **cloud, 2026-10-29 – clean-up after 0.12.0 (owner: "no history in comments or docs, no duplicates, dead code
-  out").** Code comments say what the code does (history left to git); repeated code folded into helpers; test-only
-  and unused code removed. Docs: the dated one-off files (field tests, handovers, owner list, review sheets) are
-  deleted – their open points are in the backlog; this file and the backlog hold only the current state. Drive: new
-  handoff in `00 Übergabe`. **Next:** see backlog "Next" – top: memory (donald), phone checks of 0.11.6–0.12.0,
-  smarter rejoin, Knotenpunkte.
+- **cloud, 2026-10-29/30 – 0.13.0 phone setup (owner: yes to all 4 decisions).** Welcome page instead of the start-up
+  dialog; step-by-step guide (location precise / on, notifications, vibration test, battery, brand steps, battery
+  saver, unused-app reset) from the welcome, before a tour, the ◎ button and Settings → Phone setup; re-check on every
+  return; "removed by the phone" after months; background location removed; "Add to route" → "Set as destination" /
+  "Add as stop N" / "Add as new destination". Earlier the same day: code + docs clean-up, Drive handoffs consolidated.
+  **Next:** owner's Pixel checklist (backlog), memory work (donald, wip/memory-fix1), smarter rejoin, Knotenpunkte.
 
 ## Where we are
 - Android app, Kotlin + Compose + MapLibre, fully offline: map cells and routing data load per area from the map
@@ -36,6 +36,8 @@ the current state.
 | Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
 | Google | Never store or draw Google content; link out only (exception: a place shared from Google Maps) |
+| Place shared from Google Maps | The map flies there, shows the orange ring and opens the ring's add menu by itself, once per share |
+| Footways without a bicycle tag | Bike / Gravel keep avoiding them; the amber "… m pushing" note is enough (owner 2026-10-30) |
 | POIs | From OSM, offline; calm defaults like Komoot |
 | Pace | Settings pace (5 levels); during a tour the arrival adapts after ~15 min / 1 km; nothing carried across tours |
 | Battery | Slower GPS at rest, never lose a point; no battery % in the summary |

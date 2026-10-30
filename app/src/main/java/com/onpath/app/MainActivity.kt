@@ -49,17 +49,29 @@ import com.onpath.strings.*
 class MainActivity : ComponentActivity() {
 
     private val vm: AppViewModel by viewModels()
-    private var afterPermission: (() -> Unit)? = null
-    private var askedThisSession = false
+    /** The phone state was read in this process (lastSeen is only written from a real reading). */
+    private var phoneRead = false
+    private var takenChecked = false
 
+    /** Location (fine + coarse together) – asked from the phone setup guide only, after its explanation. */
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         vm.locationAsking = false
         vm.tracker.start()
-        if (vm.tracker.hasPermission()) afterPermission?.invoke()
-        // asked for an action (Start): it did not happen – say why; the plain start-up ask needs no message
-        else if (afterPermission != null) vm.sayError(Txt.s(Res.string.msg_no_location_permission), com.onpath.app.ui.NoticePlace.MAP)
-        else com.onpath.app.debug.Problems.info("gps", "Location permission not given at the start-up ask")
-        afterPermission = null
+        refreshPhone()
+        val id = vm.setupGuide?.current
+        if (id == com.onpath.app.setup.CheckId.LOCATION || id == com.onpath.app.setup.CheckId.PRECISE) vm.setupDenied(id)
+        if (!vm.tracker.hasPermission()) com.onpath.app.debug.Problems.info("gps", "Location access not given in the system dialog")
+    }
+
+    /** Android 13+: the notification dialog (phone setup step). */
+    private val notificationLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        refreshPhone()
+        vm.setupDenied(com.onpath.app.setup.CheckId.NOTIFICATIONS)
+    }
+
+    /** Settings screens opened from the guide that report back (unused-app restrictions needs ForResult). */
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        readUnusedReset()
     }
 
 
@@ -146,11 +158,9 @@ class MainActivity : ComponentActivity() {
                     } else {
                         MapScreen(
                             vm = vm,
-                            onRequestLocation = { requestLocation(force = true) },
+                            onRequestLocation = { vm.openSetup(com.onpath.app.setup.Purpose.LOCATE) { vm.tracker.start() } },
                             onStartNavigation = {
-                                withLocation {
-                                    vm.startNavigation()
-                                }
+                                vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
                             },
                         )
                         if (vm.routesOpen) {
@@ -171,6 +181,8 @@ class MainActivity : ComponentActivity() {
                                 note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
+                                initialTab = vm.routesTab,
+                                onTab = { vm.routesTab = it },
                             )
                         }
                         vm.editRides?.let { (t, s) ->
@@ -184,7 +196,7 @@ class MainActivity : ComponentActivity() {
                         }
                         // one dialog after the other on a first start: location first, then the map, then this
                         if (com.onpath.app.ui.RestoreOfferRule.show(vm.restoreOffer, vm.recState.collectAsState().value != null,
-                                vm.locationAsking, vm.loadModalOpen)) {
+                                vm.locationAsking || vm.setupOpen, vm.loadModalOpen)) {
                             com.onpath.app.ui.RestoreOfferDialog(
                                 onRestore = { vm.restoreOfferAnswered(); launchTreePicker(pickRestoreFolder) },
                                 onNotNow = { vm.restoreOfferAnswered() })
@@ -202,7 +214,9 @@ class MainActivity : ComponentActivity() {
                             settings = vm.settings,
                             onChange = vm::updateSettings,
                             activity = vm.activity,
-                            onAppSettings = ::openAppSettings,
+                            phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken),
+                            phone = vm.phone,
+                            onPhoneFix = vm::openSetupStep,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
                             diagnostics = true,
@@ -278,6 +292,15 @@ class MainActivity : ComponentActivity() {
                                     needsStorageAccess = remember(b) { needsStorageAccess() },
                                     backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
+                            sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
+                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairedNote),
+                            syncCb = com.onpath.app.ui.SyncCallbacks(
+                                onOpenCamera = ::openCameraForPairing,
+                                onPair = vm::confirmPair,
+                                onCancelPair = vm::cancelPair,
+                                onPairedOk = vm::pairedNoteOk,
+                                onUnpair = vm::unpair,
+                            ),
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
                                     vm.busy = com.onpath.app.ui.Busy.BACKUP
@@ -316,6 +339,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 RouteDialogs(vm)
+                if (vm.setupOpen) {
+                    BackHandler { vm.closeSetup() }
+                    com.onpath.app.ui.setup.SetupGuideScreen(vm.setupGuide, vm.setupWelcome, vm.phone, vm.phoneTaken, setupCallbacks())
+                }
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
                 // "Allow all the time" is never asked (owner) – only the quiet hint in Settings → Navigation
                 if (vm.askUpdateDuringTour) {
@@ -328,7 +355,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 vm.unfinished?.let { t ->
-                    UnfinishedDialog(t, onContinue = { withLocation { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
+                    UnfinishedDialog(t, onContinue = { vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
                         onDelete = { vm.deleteUnfinished(t) })
                 }
                 vm.unfinishedRides?.let { (t, s) ->
@@ -344,7 +371,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        requestLocation(force = false)
+        if (!vm.prefs.setupWelcomeSeen) {
+            if (com.onpath.app.ui.setup.PhoneStateReader.location(this) != com.onpath.app.setup.LocationGrant.NONE) vm.prefs.setupWelcomeSeen = true
+            else vm.setupWelcome = true
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -417,6 +447,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Every finger-down: the full map stays for a while instead of the rest view while cycling (ui/RestView.kt). */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) com.onpath.app.ui.ScreenTouch.note()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onStart() {
         com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
@@ -426,7 +462,15 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.debug.Health.attach(window) // janky frames + main-thread watchdog while on screen
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshPhone() // the user may come back from a settings screen of the guide
+        readUnusedReset()
+    }
+
     override fun onStop() {
+        if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
+            System.currentTimeMillis())
         vm.onAppStop()
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
@@ -519,6 +563,19 @@ class MainActivity : ComponentActivity() {
         null
     }
 
+    /**
+     * Settings → Browser sync → Open camera: the phone's camera app (it reads QR codes) – the pairing link it opens
+     * comes back to OnPath through the plan-link filter (PlanLinks, `#pair=`). No camera app → a line on the page.
+     */
+    private fun openCameraForPairing() {
+        try {
+            startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+        } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("sync", "No camera app to scan the pairing code", e)
+            vm.sayError(Txt.s(Res.string.sync_no_camera), com.onpath.app.ui.NoticePlace.SETTINGS)
+        }
+    }
+
     private fun launchImport() {
         try {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
@@ -592,27 +649,97 @@ class MainActivity : ComponentActivity() {
         }.start()
     }
 
-    private fun hasLocation() =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    // ---------------- Phone setup (docs/design/onboarding-phone-check.md) ----------------
 
-    private fun withLocation(action: () -> Unit) {
-        if (hasLocation()) action() else { afterPermission = action; requestLocation(force = true) }
+    /** Reads the phone state now (cheap) – after every system answer and on every return to the app. */
+    private fun refreshPhone() {
+        val locBlocked = vm.prefs.asks("location") > 0 && !hasFine() &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+        val notifBlocked = Build.VERSION.SDK_INT >= 33 && vm.prefs.asks("notifications") > 0 &&
+            !com.onpath.app.ui.setup.PhoneStateReader.granted(this, Manifest.permission.POST_NOTIFICATIONS) &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
+        vm.updatePhone(com.onpath.app.ui.setup.PhoneStateReader.read(this, vm.prefs, locBlocked, notifBlocked, vm.unusedReset))
+        phoneRead = true
     }
 
-    /** Asks once per start; when the user chose "don't ask again", opens app settings instead. */
-    private fun requestLocation(force: Boolean) {
-        if (hasLocation() && (Build.VERSION.SDK_INT < 33 ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) return
-        if (!force && askedThisSession) return
-        val permanentlyDenied = askedThisSession && !hasLocation() &&
-            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
-        askedThisSession = true
-        if (permanentlyDenied) { openAppSettings(); return }
-        val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-        if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.POST_NOTIFICATIONS
-        try { vm.locationAsking = true; permissionLauncher.launch(perms.toTypedArray()) } catch (e: Exception) {
-            vm.locationAsking = false
-            com.onpath.app.debug.Problems.error("gps", "Location permission request could not be shown", e)
+    /** Android's unused-app reset (slow): read off the main thread; the first reading also finds what was removed. */
+    private fun readUnusedReset() {
+        Thread {
+            val r = com.onpath.app.ui.setup.PhoneStateReader.readUnusedReset(applicationContext)
+            runOnUiThread {
+                vm.unusedReset = r
+                refreshPhone()
+                if (!takenChecked) {
+                    takenChecked = true
+                    vm.phoneTaken = com.onpath.app.setup.PhoneCheck.takenAway(vm.prefs.lastSeen, vm.phone, System.currentTimeMillis())
+                    if (vm.phoneTaken.isNotEmpty()) com.onpath.app.debug.Problems.info("setup",
+                        "Removed since the last use: ${vm.phoneTaken.entries.joinToString { "${it.key} (${it.value})" }}")
+                }
+            }
+        }.apply { name = "phone-check" }.start()
+    }
+
+    private fun hasFine() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private fun setupCallbacks() = com.onpath.app.ui.setup.SetupCallbacks(
+        onContinue = ::setupContinue,
+        onLater = vm::setupLater,
+        onTestVibration = {
+            com.onpath.app.recording.Cues.vibrate(this, com.onpath.app.recording.Cues.TEST_PATTERN, "test")
+            vm.setupVibrationPlayed()
+        },
+        onVibrationAnswer = vm::setupVibrationAnswer,
+        onSoundSettings = { open(Intent(Settings.ACTION_SOUND_SETTINGS), "sound settings") },
+        onAppSettings = ::openAppSettings,
+        onMoreHelp = { b -> open(Intent(Intent.ACTION_VIEW, Uri.parse("https://dontkillmyapp.com/${b.helpPage}")), "brand help page") },
+        onBrandDone = vm::setupBrandDone,
+        onClose = vm::closeSetup,
+        onWelcomeNow = vm::setupWelcomeNow,
+    )
+
+    /** The guide's main button: the system dialog where Android still shows it, else the right settings screen. */
+    private fun setupContinue(id: com.onpath.app.setup.CheckId) {
+        val p = vm.phone
+        when (id) {
+            com.onpath.app.setup.CheckId.LOCATION, com.onpath.app.setup.CheckId.PRECISE ->
+                if (p.locationAskBlocked) openAppSettings() else try {
+                    vm.prefs.countAsk("location")
+                    vm.locationAsking = true
+                    permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                } catch (e: Exception) {
+                    vm.locationAsking = false
+                    com.onpath.app.debug.Problems.error("gps", "Location permission request could not be shown", e)
+                    openAppSettings()
+                }
+            com.onpath.app.setup.CheckId.LOCATION_ON -> open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), "location settings")
+            com.onpath.app.setup.CheckId.NOTIFICATIONS ->
+                if (Build.VERSION.SDK_INT >= 33 && !p.notificationsOn && !p.notificationAskBlocked) try {
+                    vm.prefs.countAsk("notifications")
+                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } catch (e: Exception) {
+                    com.onpath.app.debug.Problems.warn("ui", "Notification permission request could not be shown", e)
+                    openNotificationSettings()
+                } else openNotificationSettings()
+            com.onpath.app.setup.CheckId.BATTERY, com.onpath.app.setup.CheckId.BRAND -> openAppSettings()
+            com.onpath.app.setup.CheckId.BATTERY_SAVER -> open(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS), "battery saver settings")
+            com.onpath.app.setup.CheckId.UNUSED_RESET -> try {
+                settingsLauncher.launch(androidx.core.content.IntentCompat.createManageUnusedAppRestrictionsIntent(this, packageName))
+            } catch (e: Exception) {
+                com.onpath.app.debug.Problems.warn("ui", "Unused-app settings could not be opened", e)
+                openAppSettings()
+            }
+            com.onpath.app.setup.CheckId.VIBRATION -> Unit // its own buttons (Test / Yes / No)
+        }
+    }
+
+    private fun openNotificationSettings() =
+        open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName), "notification settings")
+
+    private fun open(intent: Intent, what: String) {
+        try { startActivity(intent) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("ui", "Could not open $what", e)
+            if (intent.action != Settings.ACTION_APPLICATION_DETAILS_SETTINGS) openAppSettings()
         }
     }
 

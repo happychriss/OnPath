@@ -14,23 +14,29 @@ class AddPreviewAndDataTest {
     private val a = GeoPoint(46.60, 11.10)
     private val b = GeoPoint(46.60, 11.20)
 
-    @Test fun roleSubtitles() {
-        assertEquals("as start", AddPreview.of(emptyList(), a, null).subtitle)
-        assertEquals("as destination", AddPreview.of(listOf(a), b, null).subtitle)
+    /** Owner: with only a start the next point is the destination – the button says so, not "Add to route". */
+    @Test fun buttonSaysWhatAddingDoes() {
+        val e = AddPreview.of(emptyList(), a, null)
+        assertEquals("Set as start", e.label); assertEquals("", e.subtitle)
+        val one = AddPreview.of(listOf(a), b, null)
+        assertEquals("Set as destination", one.label); assertEquals("", one.subtitle)
         // Beside the middle of A→B: best-fit stop 2 with an estimated detour.
         val mid = GeoPoint(46.605, 11.15)
         val v = AddPreview.of(listOf(a, b), mid, null)
         assertEquals(WaypointInsertion.Kind.VIA_BEST_FIT, v.decision.kind)
-        assertTrue(v.subtitle, v.subtitle.startsWith("as stop 2 – fits best · about +"))
+        assertEquals("Add as stop 2", v.label)
+        assertTrue(v.subtitle, v.subtitle.startsWith("fits best there · about +"))
         // Beyond B: new destination, distance about straight line × 1.3.
         val beyond = GeoPoint(46.60, 11.30)
         val d = AddPreview.of(listOf(a, b), beyond, null, speedMps = 1.0)
         assertEquals(WaypointInsertion.Kind.DESTINATION, d.decision.kind)
+        assertEquals("Add as new destination", d.label)
         assertEquals(7640.0 * 1.3, d.extraM!!, 150.0)
-        assertTrue(d.subtitle, d.subtitle.startsWith("as new destination · about +9.9 km, +2 h"))
+        assertTrue(d.subtitle, d.subtitle.startsWith("about +9.9 km, +2 h"))
         // On the line.
         val on = AddPreview.of(listOf(a, b), GeoPoint(46.60, 11.15), listOf(a, b))
-        assertEquals("as stop 2 – on your route", on.subtitle)
+        assertEquals("Add as stop 2", on.label)
+        assertEquals("on your route", on.subtitle)
         assertNull(on.extraM)
     }
 

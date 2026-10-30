@@ -40,8 +40,13 @@ data class PlaceCardUi(
     /** Index in the waypoint list when the place already is a route point. */
     val routeIndex: Int? = null,
     val waypointCount: Int = 0,
-    /** "as stop 2 – fits best · about +0.9 km, +15 min" (AddPreview) or "is stop 2". */
+    /** "fits best there · about +0.9 km, +15 min" (AddPreview) or "is stop 2". */
     val subtitle: String = "",
+    /** What the main button does: "Set as destination", "Add as stop 2", … (AddPreview.label). */
+    val addLabel: String = "",
+    /** The main button already sets the start / the destination: the small button for it is left out. */
+    val addIsStart: Boolean = false,
+    val addIsDestination: Boolean = false,
 )
 
 data class PlaceCardActions(
@@ -55,8 +60,9 @@ data class PlaceCardActions(
 
 /**
  * The one place card for search results and POIs tapped on the map while planning:
- * name, kind / address, elevation, opening hours, ONE primary "Add to route" button that says what it
- * will do before the tap, and As start · As destination · Google Maps. All data is OpenStreetMap.
+ * name, kind / address, elevation, opening hours, ONE primary button that says what it will do
+ * ("Set as destination", "Add as stop 2", …), and As start · As destination · Google Maps (a small button that
+ * would do the same as the main one is left out). All data is OpenStreetMap.
  */
 @Composable
 fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = Modifier) {
@@ -107,7 +113,7 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     Icon(if (isStop) Icons.Filled.Remove else Icons.Filled.Add, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(str(if (isStop) Res.string.search_card_remove else Res.string.search_card_add), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(if (isStop) str(Res.string.search_card_remove) else ui.addLabel, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                         if (ui.subtitle.isNotEmpty()) Text(ui.subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
@@ -116,11 +122,11 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     val small = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     val atStart = ui.routeIndex == 0
                     val atEnd = ui.routeIndex != null && ui.routeIndex == ui.waypointCount - 1 && ui.waypointCount > 1
-                    OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
+                    if (isStop || !ui.addIsStart) OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Text(str(Res.string.search_card_as_start), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
-                    OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
+                    if (isStop || !ui.addIsDestination) OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
                         modifier = Modifier.weight(1.25f).heightIn(min = 48.dp)) {
                         Text(str(Res.string.search_card_as_destination), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }

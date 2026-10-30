@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,12 +26,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.filled.CheckCircle
@@ -106,8 +110,11 @@ fun SettingsScreen(
     /** Available map themes (StyleLoader.themes); the chooser is shown when there is more than one. */
     themes: List<String> = listOf("classic"),
     onImportData: () -> Unit = {},
-    /** Opens Android's app settings (battery usage). */
-    onAppSettings: () -> Unit = {},
+    /** Settings → Phone setup: the checks of this phone; null = topic hidden (screenshots of older pages). */
+    phoneChecks: List<com.onpath.app.setup.Check>? = null,
+    phone: com.onpath.app.setup.PhoneState = com.onpath.app.setup.PhoneState(sdk = 35),
+    /** A row's "Set up" (or the vibration test): that step of the guide. */
+    onPhoneFix: (com.onpath.app.setup.CheckId) -> Unit = {},
     /** Diagnostics → "Download routing data" (normally it comes with the map by itself). */
     onDownloadRouting: () -> Unit = {},
     /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
@@ -137,6 +144,9 @@ fun SettingsScreen(
     /** Settings → "Backup" (tours and routes as GPX in Documents/OnPath); null = topic hidden. */
     backup: BackupUi? = null,
     backupCb: BackupCallbacks = BackupCallbacks(),
+    /** Settings → "Browser sync" (plan sync with the web planner); null = topic hidden. */
+    sync: SyncUi? = null,
+    syncCb: SyncCallbacks = SyncCallbacks(),
     /** Current activity: "Your pace" explains the cycling levels for this bike. */
     activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
     /** Diagnostics → "Developer tools" open at first (screenshots). */
@@ -163,8 +173,10 @@ fun SettingsScreen(
         when (it) {
             SettingsPage.OFFLINE_MAPS -> offlineMaps != null
             SettingsPage.BACKUP -> backup != null
+            SettingsPage.SYNC -> sync != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
+            SettingsPage.PHONE -> phoneChecks != null
             else -> true
         }
     }
@@ -179,15 +191,15 @@ fun SettingsScreen(
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    // two groups (owner): what the user sets, then the smaller "App" group
-                    listOf(false, true).forEach { app ->
-                        val group = topics.filter { it.app == app }
-                        if (group.isEmpty()) return@forEach
-                        item {
+                    // two groups (owner): what the user sets, then the smaller "App" group; Phone setup on top (no
+                    // heading) while a tour needs something from the phone (owner 2026-10-30)
+                    SettingsSummary.groups(topics, phoneChecks).forEachIndexed { gi, (kind, group) ->
+                        val app = kind == TopicGroup.APP
+                        if (kind != TopicGroup.URGENT) item {
                             Text(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours), style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp, top = if (app) 20.dp else 4.dp, bottom = 6.dp))
-                        }
+                                modifier = Modifier.padding(start = 16.dp, top = if (gi > 0) 20.dp else 4.dp, bottom = 6.dp))
+                        } else item { Spacer(Modifier.height(4.dp)) }
                         item {
                             Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
                                 Column {
@@ -200,9 +212,11 @@ fun SettingsScreen(
                                             SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
                                             SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
                                             SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
+                                            SettingsPage.SYNC -> SettingsSummary.sync(sync!!)
                                             SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
                                             SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
                                             SettingsPage.PRIVACY -> SettingsSummary.privacy
+                                            SettingsPage.PHONE -> SettingsSummary.phone(phoneChecks!!)
                                             SettingsPage.ABOUT -> SettingsSummary.about
                                         }
                                         TopicRow(t, s, small = app) { onPage(t) }
@@ -219,9 +233,17 @@ fun SettingsScreen(
                         SettingsPage.PACE -> item { PaceSection(settings, onChange, activity) } // PaceSettings.kt
                         SettingsPage.POI -> item { PoiSection(settings, onChange, initiallyExpanded) }
                         SettingsPage.MAP -> item { MapSection(settings, onChange, themes) }
-                        SettingsPage.NAVIGATION -> item { NavigationSection(settings, onChange, onAppSettings) }
+                        SettingsPage.NAVIGATION -> item {
+                            NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
+                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
+                        }
+                        SettingsPage.PHONE -> if (phoneChecks != null) item {
+                            com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
+                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
+                        }
                         SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                         SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
+                        SettingsPage.SYNC -> if (sync != null) item { SyncSection(sync, syncCb, now) }
                         SettingsPage.UPDATES -> if (update != null) item {
                             Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
@@ -249,7 +271,9 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.NAVIGATION -> Icons.Outlined.Navigation
         SettingsPage.OFFLINE_MAPS -> Icons.Outlined.CloudDownload
         SettingsPage.BACKUP -> Icons.Outlined.SaveAlt
+        SettingsPage.SYNC -> Icons.Outlined.Sync
         SettingsPage.PRIVACY -> Icons.Outlined.Lock
+        SettingsPage.PHONE -> Icons.Outlined.PhoneAndroid
         SettingsPage.UPDATES -> Icons.Outlined.SystemUpdate
         SettingsPage.DIAGNOSTICS -> Icons.Outlined.BugReport
         SettingsPage.ABOUT -> Icons.Outlined.Info
@@ -263,7 +287,10 @@ private val SettingsPage.icon: ImageVector
 private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = if (small) 56.dp else 64.dp).clickable(role = Role.Button, onClick = onClick)
         .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(t.icon, null, tint = if (small) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Green,
+        // a topic that blocks tours (Phone setup): the red ✗-mark of the phone checks instead of its icon
+        val blocking = s.attention == Summary.Attention.PROBLEM && t == SettingsPage.PHONE
+        Icon(if (blocking) Icons.Outlined.ErrorOutline else t.icon, null,
+            tint = when { blocking -> OnPathColors.Error; small -> MaterialTheme.colorScheme.onSurfaceVariant; else -> OnPathColors.Green },
             modifier = Modifier.size(if (small) 22.dp else 24.dp))
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
@@ -273,6 +300,7 @@ private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClic
                 color = when (s.attention) {
                     Summary.Attention.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
                     Summary.Attention.ACCENT -> OnPathColors.Route
+                    Summary.Attention.WARNING -> OnPathColors.Warn
                     Summary.Attention.PROBLEM -> OnPathColors.Bad
                 })
         }
@@ -360,10 +388,11 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
     }
 }
 
-/** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
+/** Navigation, in the owner's order: warning → distance → vibrations (+ test) → screen → phone setup. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
+internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onPhoneSetup: () -> Unit,
+                               onTestVibration: () -> Unit) {
     Section(SettingsPage.NAVIGATION.title) {
         SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
@@ -394,29 +423,43 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
                 }
             }
         }
+        if (settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF || settings.offRouteVibrate)
+            TextButton(onClick = onTestVibration, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
+                Text(str(Res.string.setup_nav_test_vibration))
+            }
         SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
             onChange(settings.copy(positionOnRoute = it))
         }
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
-        // a quiet hint, never a pop-up (owner)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(str(Res.string.settings_nav_battery_hint),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f))
-            TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
+        BikeScreenRow(settings, onChange)
+        // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
+        Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(str(Res.string.setup_nav_check), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            val ctx = androidx.compose.ui.platform.LocalContext.current
-            val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
-                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // a quiet hint instead of a question (owner: never ask); nothing to say once it is set
-            if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(str(Res.string.settings_nav_location_hint),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f))
-                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
+    }
+}
+
+/** "Screen while cycling: Always on / Smart / Like the phone" (owner 2026-10-30), the chosen one explained in one line. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Text(str(Res.string.settings_nav_bike_screen), style = MaterialTheme.typography.bodyLarge)
+        Text(str(when (settings.bikeScreen) {
+                com.onpath.app.data.BikeScreen.ALWAYS -> Res.string.settings_nav_bike_screen_always_sub
+                com.onpath.app.data.BikeScreen.SMART -> Res.string.settings_nav_bike_screen_smart_sub
+                com.onpath.app.data.BikeScreen.PHONE -> Res.string.settings_nav_bike_screen_phone_sub
+            }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(com.onpath.app.data.BikeScreen.ALWAYS to Res.string.settings_nav_bike_screen_always,
+                com.onpath.app.data.BikeScreen.SMART to Res.string.settings_nav_bike_screen_smart,
+                com.onpath.app.data.BikeScreen.PHONE to Res.string.settings_nav_bike_screen_phone).forEach { (v, label) ->
+                FilterChip(selected = settings.bikeScreen == v, onClick = { onChange(settings.copy(bikeScreen = v)) },
+                    label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
             }
         }
     }
@@ -670,6 +713,10 @@ private fun PrivacySection() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // plan sync (docs/design/web-sync.md §12 – the website's privacy notice says the same)
+            HorizontalDivider()
+            Text(str(Res.string.settings_privacy_sync_title), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(str(Res.string.settings_privacy_sync_text), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -691,6 +738,9 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOf(
         Txt.s(Res.string.settings_privacy_web_when)),
     PrivacyFlow(Txt.s(Res.string.settings_privacy_diag_what), Txt.s(Res.string.settings_privacy_diag_to),
         Txt.s(Res.string.settings_privacy_diag_when)),
+    // plan sync with the web planner (plansync/HttpMailbox → plan.onpath.earth/sync/v1, only when paired)
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_sync_what), Txt.s(Res.string.settings_privacy_sync_to),
+        Txt.s(Res.string.settings_privacy_sync_when)),
 )
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */

@@ -2,7 +2,7 @@
 
 Status: **owner decision.** Test environment deployed and used by the app (`maps-test…`, auto
 deploy on push to `main`); **production not deployed yet** (owner: later).
-Replaces the Hetzner plan in `docs/design/map-cells.md` §5 (`tools/hetzner/` is superseded).
+Hosts the doorman and builder of `docs/design/map-cells.md` §5.
 The cell format, the build steps, the `/v1` API and the app side stay exactly as in map-cells.md.
 zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
 
@@ -47,7 +47,7 @@ zo stays a test machine: `tools/cells/run.sh` (BUILDER_MODE=local) is unchanged.
 | Bucket access in the job | Cloud Storage **volume mount** at `/src` (gcsfuse) | No gcloud/gsutil in the image (keeps it small); plain file copies |
 | R2 upload | **stdlib SigV4 client** (`tools/cloud/r2.py`, tested against AWS's published examples) | No aws-cli/boto3/rclone in the image |
 | Job state | **D1** | A queue needs consistent reads (KV is eventually consistent) and the doc's design was already SQLite |
-| Rate limit | D1 counter per IP and minute (`RATE_LIMIT_PER_MIN`, default 30) on `/v1/cells/*` | Works on the free plan; fails open if D1 hiccups. File downloads are not rate-limited (only the key is checked) |
+| Rate limit | D1 counter per IP and minute (`RATE_LIMIT_PER_MIN`, default 30) on `/v1/cells/*` | Works on the free plan; fails open if D1 hiccups. File downloads are not rate-limited (only the key is checked). **No plain IP stored:** the row key is `ip:` + HMAC-SHA-256 of the IP with a salt that changes daily (SHA-256 of the secret `APP_KEYS` + UTC day – no extra secret; `api.js ipKey`); rows older than 2 minutes are deleted by the every-minute cron (`housekeeping`) |
 | Downloads | through the Worker from the R2 binding | One hostname, key check, Range + ETag/304; no public bucket. (A public R2 custom domain would save Worker requests – only worth it at > 100 000 requests/day) |
 | Worker → Google | service-account **key** of `doorman-invoker-<env>` as Worker secret; JWT signed with WebCrypto | Cloudflare Workers cannot use Workload Identity Federation. The key can only start/cancel that one job and read executions |
 | GitHub → Google | **Workload Identity Federation**, no key | Only repository `happychriss/OnPath` (by numeric id), branch `main`, GitHub Environments `test` / `production`; each environment can act only as its own `gh-deployer-<env>` |
@@ -120,7 +120,7 @@ Notes:
 | Bad cells published | Fix the pipeline, deploy, then queue a rebuild: `npx wrangler d1 execute onpath-doorman-<env> --remote --env <env> --command "UPDATE cells SET job='queued', priority=3, requested_at=unixepoch()*1000, attempts=0, permanent=0 WHERE id IN ('10-543-361')"` (all cells: drop the `WHERE`; the hourly cap paces it) |
 | Cell failed 3 times | Failed cells are retried automatically after the next deploy (the Worker compares `BUILD_REV`) when someone asks again |
 | Stop all builds now | `BUILDS_ENABLED = "false"` (see §3) |
-| Logs | Cloudflare: Worker → Logs (JSON lines: `request`, `execution-started`, `cell-ready`, `cell-failed`, `cost-guard`). Google: Cloud Run → Jobs → `onpath-cell-<env>` → Executions → Logs (the full `build_cell.sh` output) |
+| Logs | Cloudflare: Worker → Logs (the doorman's own JSON lines: `request`, `execution-started`, `cell-ready`, `cell-failed`, `cost-guard`, `error` with path + message – never an IP; the automatic per-request invocation logs are off, `[observability.logs] invocation_logs = false`, because they carry request headers with the client IP. A request's status code is therefore not logged; errors are). Google: Cloud Run → Jobs → `onpath-cell-<env>` → Executions → Logs (the full `build_cell.sh` output) |
 
 ## 6. Owner setup – step by step (≈ 45 minutes, once)
 
@@ -302,14 +302,20 @@ Every cell is built, wherever it is:
   Adige pin was removed (owner), South Tyrol uses the automatic choice like everywhere else (Meran →
   nord-est + austria, the buffer crosses the main ridge; Bozen → nord-est). Cells already built from the Trentino
   extract stay as they are until their normal refresh (osm_date older than `REFRESH_DAYS` 35, asked for again) – no
-  schema bump, the content is the same kind. `osm/trentino_alto_adige.osm.pbf` in the source bucket is unused and
-  can be deleted by hand. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
+  schema bump, the content is the same kind. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
   region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
   dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
-  states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–4 leaves touching B,
-  smallest first (border cell; Innsbruck reaches the Brenner → nord-est + austria, Scuol → 4). (3) More than 4, or
-  none of them: the smallest leaf of any kind containing B (alps, great-britain …). (4) Nothing → open sea, a
-  permanent failure. Tests on a 24-region subset of the real index (`testdata/`).
+  states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–8 leaves touching B
+  (`MAX_EXTRACTS`), smallest first (border cell; Innsbruck reaches the Brenner → nord-est + austria, Scuol → 4,
+  Bodensee 10/538/357 → 5). (3) More than 8, or none of them: the smallest leaf of any kind containing B (alps,
+  great-britain …); nothing containing B either → all the leaves (never a subset – a dropped leaf is a hole in the
+  map). (4) Nothing → open sea, a permanent failure. Tests on a 25-region subset of the real index (`testdata/`).
+  Why 8 (2026-10-30, was 4): the leaves are cut one after the other and only the small cuts are merged, so one more
+  leaf is one more cut (time: ~10 s Regierungsbezirk, ~50 s austria), not memory; the old fallback for 5 leaves was
+  dach (over `max_extract_mb` → the Bodensee cells could not be built) or alps (2.3 GB), and two cells with 5 leaves
+  and nothing containing them were cut from only the 4 largest (10/529/349 without luxembourg, 10/529/339 without
+  NL limburg – rebuild them). Every z10 cell of Europe (lat 35–64) needs at most 5 leaves (English counties, NL /
+  BE / LU / FR / CZ / PL corners, Bodensee).
 - **Cut** (`build_cell.sh CUT=raw`): each extract is cut raw (`osmium extract -s smart`, ~4.0 GB peak for any
   extract – the bit sets span the OSM id range; trentino 8 s, alps 2.3 GB 62 s locally), several cuts are merged
   and `osmium time-filter` keeps one version per object (extracts of different days), then only the small cut is
@@ -402,10 +408,6 @@ Proof on test (2026-10-21, pipeline 79b1500, no measured builds yet → fallback
   version (`current.json`) and the previous one, older versions go once their newest object is older than 7 days
   (an app that read the old manifest just before can finish its download). At most 1000 objects per run, the rest the
   next day. Logged as `{"ev":"cleanup", f1Objects, f1Rows, oldVersions, oldObjects}`.
-- **Unused Trentino extract** in the source bucket (since the Geofabrik choice) – the Worker cannot reach
-  GCS; delete once by hand (Cloud Shell, owner):
-  `gsutil rm gs://onpath-maps-onpath-sources/osm/trentino_alto_adige.osm.pbf` (bucket = `<project>-onpath-sources`, see
-  gcp-setup.sh; `gsutil ls gs://onpath-maps-onpath-sources/osm/` first).
 - **Manifest `sources`**: `[{id, date, url}]` of the OSM extracts the cell was cut from (job → `SRC_META` →
   build_cell.sh → `cells.py manifest --sources`); debugging aid, the app ignores it.
 
@@ -422,8 +424,40 @@ the after-routing refresh (~09:45 UTC) to the map on the phone (10:34). From the
 
 The same cell (10-531-342) on donald with the job image (4 CPUs, low priority): 247 s cold (+ 89 s for the two
 Geofabrik extracts), **179 s warm** (overlays 61 s, base 30 s, pois 22 s, addresses 23 s, terrain 20 s) – 2.5–3× faster
-than Cloud Run's 2 vCPU. An overlays-only rebuild would take ~80 s here, ~4.2 min in the cloud (see backlog: partial
-rebuild).
+than Cloud Run's 2 vCPU. An overlays-only rebuild takes ~80 s here, ~4.2 min in the cloud (partial rebuild, below).
+
+**Partial rebuild** (`cells.py LAYER_SCHEMA`, `job_build.py plan / reuse`): a look-only schema bump no longer
+rebuilds every layer.
+- **Per-layer schema:** `LAYER_SCHEMA` = per layer of a format-2 cell (`base`, `overlays`, `pois`, `addresses`,
+  `terrain`, `contours`) the cell schema in which its data last changed. A change bumps `CELL_SCHEMA` **and** the
+  layer(s) it touches (a change needing two layers in step bumps both). `CELL_SCHEMA` stays the highest of them
+  (selftest), so the version name `<osm_date>-s<CELL_SCHEMA>`, the doorman's "current" test (`schemaOf(version) ≥
+  CELL_SCHEMA`, adoption, pre-warm) and the app (`CellApi.schemaOf`) are **unchanged** – no doorman or app change.
+  The table starts with every layer at 7; versions below `PARTIAL_FROM_SCHEMA` (7) are always rebuilt whole.
+- **Decision** (`rebuild_plan`, per cell, in the job after the sources are fresh): the published version (R2
+  `current.json` + manifest) has the same OSM date as the extracts now (`cells.py osm-date`, header dates) and some –
+  not all – of its layers are older than `LAYER_SCHEMA` (from its manifest's `"layers"`, else min(version schema,
+  layer schema)) → only those are built. Whole build as before for: another OSM date (the normal refresh), no / an
+  unreadable published version, region packages (own `PACKAGE_SCHEMA`), a file of no known layer, a required layer
+  (base, overlays, terrain) missing, nothing stale (a plain re-run), `PARTIAL=0`. Any error in the decision → whole.
+- **Build:** `build_cell.sh` with `LAYERS="overlays"` + `BASE_MANIFEST` runs only that layer's steps (the cut only for
+  base / overlays / pois / addresses; terrain / contours need none). The manifest lists the new files plus the published
+  version's entries of the other layers (size + sha256 kept, url in the **new** version folder); the local version
+  folder holds only the rebuilt files. A failed partial build is retried whole in the same execution.
+- **Publish:** the kept files are copied into the new version folder in R2 (**CopyObject**, server-side; checked by
+  size + ETag = same bytes as the source), fallback: download, check size + sha256 against the manifest, upload. Then
+  the new files, the manifest, `current.json` – as before. Every version folder stays complete and immutable, so the
+  daily cleanup (keeps current + previous) never removes a file a newer version needs; the phone downloads the whole
+  new version as before (an app that reused unchanged files by sha256 would also save the download – not done).
+- **Manifest:** `"layers": {"overlays": {"schema": 8, "version": "<osm>-s8"}, "base": {"schema": 7, "version":
+  "<osm>-s7"}, …}` (where each layer was built) and `"reused_from"`; the ready status file has `layers` /
+  `reused_from` (diagnostics). The doorman's ETA average then mixes partial and whole build times (accepted).
+- **Measured** (donald, 2026-10-30, Hilden 10-531-342, job image, `--cpus 4`, low priority, but the PC heavily loaded
+  by other work): whole build 403 s (cut + merge + renumber 13 s, base 39 s, overlays 274 s, pois 25 s, addresses 28 s,
+  terrain 23 s); the same steps of an overlays-only rebuild = **~290 s** under that load (≈ 80 s with the warm, quiet
+  numbers above: cut ~15 s + overlays ~61 s). The copy + merge, run on that real s7 output with a local store: 5 of 6
+  files kept, sha256 of all 6 equal to the manifest, < 1 s. Cloud (not yet measured): overlays 129–197 s + cut 25–35 s
+  + upload instead of 8–10.5 min → **~4 min**.
 
 **App poll while updating:** a cell answered "ready + updating" counts as being built (`MapCells.updatingOnServer`):
 the app asks again at the doorman's `poll_s`, and the doorman answers `poll_s` 15 while any asked cell is rebuilt
@@ -443,7 +477,7 @@ waiting for it; cost ≈ $0.01 per cell. The first deploy of this code also pre-
 
 **Dev loop – `tools/dev/push_cell.sh <cell>`** (pipeline work on donald, no cloud): builds the cell from the *current
 working tree* with the cloud job image (`tools/dev/cell_lib.sh`: base image with make -j4, `docker run --cpus 4
---cpu-shares 64 --blkio-weight 10`, 8 GiB; work folder `~/onpath-cells-work`, not the repo), renames the version to
+--cpu-shares 64 --blkio-weight 10`, 8 GiB, `CELL_CPUS=2` for 2 CPUs; work folder `~/onpath-cells-work`, not the repo), renames the version to
 `<osm_date>-dev<MMDDHHMM>-s<schema>`, force-stops OnPath (refused while a tour records), pushes it as a complete
 download (`cells/download/<cell>/<version>/`, via `<version>.part` + one rename) and starts OnPath: `MapCells.recover()`
 joins it at start like a download finished before a crash. ~3–4 min per cell, the push + join ~12 s.
@@ -472,6 +506,18 @@ status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` =
   Revoke: dashboard → R2 → Manage API tokens → delete the donald token.
 - Expected: 6 dense cells ≈ 10 min (2 at once, ~3 min each warm) + upload (~130 MB); the phone loads them at its
   next refresh / request for them.
+- **A whole area overnight – `tools/dev/publish_area.sh <dir>`** (owner 2026-10-30: all of Germany into TEST):
+  `tools/dev/area_cells.py <natural_earth_vector.sqlite> DEU [--packages]` lists the z10 cells touching the country
+  (Natural Earth 10 m admin-0 + 2 km: border cells in, open sea out – Germany 708 cells, 17 region packages) into
+  `<dir>/cells.txt` / `packages.txt`. The runner pins origin/main, asks the bucket which ids are already current
+  (`area_state.py` in the job image – resume after a crash or stop), then builds cells (grouped by z7 block), then
+  packages: up to `PARALLEL` containers of `BATCH` ids each; a container starts only while the RAM left after its cut
+  peak (and the running ones' growth to theirs) stays ≥ 6 GB; a failed id is tried once more, then listed in
+  `failed.txt`. One-line `<dir>/status.txt` (done / failed / left / ETA), log `<dir>/run-YYYYMMDD.log`. Run as a user
+  unit, e.g. `systemd-run --user --unit onpath-germany --on-calendar='… 19:00' -p Nice=19 -p IOSchedulingClass=idle
+  tools/dev/publish_area.sh ~/onpath-cells-work/germany`; `systemctl --user stop onpath-germany` kills its containers.
+  Probe on donald (pipeline 32ac3de, warm): Berlin 10/550/335 159 s 23 MB, Passau 10/550/353 (niederbayern + austria)
+  93 s 10 MB, Seenplatte 10/548/331 61 s 4 MB; peak 4.0 GB (the raw cut); the doorman adopted all three at the first request.
 
 ## 7i. Region packages (z7)
 

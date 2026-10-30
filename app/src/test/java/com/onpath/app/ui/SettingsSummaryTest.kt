@@ -96,8 +96,52 @@ class SettingsSummaryTest {
     /** "Your settings" first, then the smaller "App" group. */
     @Test fun twoGroups() {
         assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
-            SettingsPage.BACKUP), SettingsPage.entries.filter { !it.app })
-        assertEquals(listOf(SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
+            SettingsPage.BACKUP, SettingsPage.SYNC), SettingsPage.entries.filter { !it.app })
+        assertEquals(listOf(SettingsPage.PHONE, SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
             SettingsPage.entries.filter { it.app })
+    }
+
+    /**
+     * Phone setup (owner 2026-10-30): a tour need → red "n items needed for tours"; only recommended → amber "n recommended";
+     * optional items never count; else "Everything set up".
+     */
+    @Test fun phoneSetupSummary() {
+        val good = com.onpath.app.setup.PhoneState(sdk = 35, location = com.onpath.app.setup.LocationGrant.PRECISE,
+            vibrationFelt = com.onpath.app.setup.Felt.YES, unusedReset = com.onpath.app.setup.ResetStatus.ON)
+        assertEquals(Summary("Everything set up"), SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good)))
+        val two = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false, backgroundRestricted = true)))
+        assertEquals(Summary("2 recommended", Summary.Attention.WARNING), two)
+        val one = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false)))
+        assertEquals(Summary("1 recommended", Summary.Attention.WARNING), one)
+        // location off + a recommended item: only the tour need is counted, red
+        val off = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(locationOn = false, notificationsOn = false)))
+        assertEquals(Summary("1 item needed for tours", Summary.Attention.PROBLEM), off)
+        val approx = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(
+            good.copy(location = com.onpath.app.setup.LocationGrant.APPROXIMATE, locationOn = false)))
+        assertEquals(Summary("2 items needed for tours", Summary.Attention.PROBLEM), approx)
+    }
+
+    /** Settings list order: Phone setup on top only while a tour needs something; otherwise at its place in "App". */
+    @Test fun phoneSetupPlaceInList() {
+        val all = SettingsPage.entries.toList()
+        val good = com.onpath.app.setup.PhoneState(sdk = 35, location = com.onpath.app.setup.LocationGrant.PRECISE,
+            vibrationFelt = com.onpath.app.setup.Felt.YES)
+        fun groups(s: com.onpath.app.setup.PhoneState?) = SettingsSummary.groups(all, s?.let { com.onpath.app.setup.PhoneCheck.all(it) })
+        val normal = listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app })
+
+        // all fine / recommended only / no phone checks at all: the usual two groups, Phone setup first in "App"
+        assertEquals(normal, groups(good))
+        assertEquals(normal, groups(good.copy(notificationsOn = false, backgroundRestricted = true)))
+        assertEquals(normal, groups(null))
+        assertEquals(false, SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false))))
+
+        // a tour need (no location access): Phone setup alone on top, not in "App" any more
+        val noLoc = good.copy(location = com.onpath.app.setup.LocationGrant.NONE)
+        assertEquals(true, SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(noLoc)))
+        assertEquals(listOf(TopicGroup.URGENT to listOf(SettingsPage.PHONE), TopicGroup.YOURS to all.filter { !it.app },
+            TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE }), groups(noLoc))
+        // the topic hidden (older screens): nothing on top
+        assertEquals(listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE }),
+            SettingsSummary.groups(all - SettingsPage.PHONE, com.onpath.app.setup.PhoneCheck.all(noLoc)))
     }
 }

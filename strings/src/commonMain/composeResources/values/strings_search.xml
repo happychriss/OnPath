@@ -38,16 +38,15 @@
     <string name="search_place_quarter">District</string>
     <string name="search_place_isolated_dwelling">Farm / house</string>
     <string name="search_place_locality">Locality</string>
-
-    <string name="search_card_add">Add to route</string>
     <string name="search_card_remove">Remove from route</string>
+    <string name="search_card_set_start">Set as start</string>
+    <string name="search_card_set_destination">Set as destination</string>
+    <string name="search_card_new_destination">Add as new destination</string>
+    <string name="search_card_add_stop">Add as stop %1$d</string>
+    <string name="search_add_on_route">on your route</string>
+    <string name="search_add_fits_best">fits best there</string>
     <string name="search_card_as_start">As start</string>
     <string name="search_card_as_destination">As destination</string>
-    <string name="search_add_as_start">as start</string>
-    <string name="search_add_as_destination">as destination</string>
-    <string name="search_add_as_new_destination">as new destination</string>
-    <string name="search_add_as_stop_on_route">as stop %1$d – on your route</string>
-    <string name="search_add_as_stop_best">as stop %1$d – fits best</string>
     <string name="search_add_about">about %1$s</string>
     <string name="search_is_start">is the start</string>
     <string name="search_is_destination">is the destination</string>

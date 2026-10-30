@@ -33,6 +33,11 @@ class SyncLedger private constructor(
         .filter { it.kind == SyncItem.PLAN && !it.deleted }
         .sortedWith(compareByDescending<SyncItem> { it.updatedAt }.thenBy { it.id })
 
+    /** Synced imported tracks, newest first (no tombstones). */
+    fun tracks(): List<SyncItem> = entries.values.map { it.item }
+        .filter { it.kind == SyncItem.TRACK && !it.deleted }
+        .sortedWith(compareByDescending<SyncItem> { it.updatedAt }.thenBy { it.id })
+
     /** The other paired devices that said hello (newest first). */
     fun devices(myDevice: String): List<SyncItem> = entries.values.map { it.item }
         .filter { it.kind == SyncItem.DEVICE && !it.deleted && it.device != myDevice }
@@ -53,14 +58,24 @@ class SyncLedger private constructor(
         return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.PLAN, title = title, plan = plan), old)
     }
 
-    /** Renames a saved plan; false when there is none under [id]. */
+    /**
+     * Saves an imported track ([track] = [TrackCode] bytes as Base64url, from [TrackCode.fit]): a new one under [id] or
+     * a new version. Returns the stored item, or null when [id] is not an item id.
+     */
+    fun saveTrack(id: String, track: String, title: String?, now: Long, device: String): SyncItem? {
+        if (!SyncFormat.isId(id)) return null
+        val old = entries[id]
+        return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.TRACK, title = title, track = track), old)
+    }
+
+    /** Renames a saved plan or track; false when there is none under [id]. */
     fun rename(id: String, title: String?, now: Long, device: String): Boolean {
-        val old = entries[id]?.takeIf { !it.item.deleted && it.item.kind == SyncItem.PLAN } ?: return false
+        val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
         put(old.item.copy(title = title, updatedAt = stamp(old, now), device = device), old)
         return true
     }
 
-    /** Deletes a saved plan (a tombstone that reaches the other devices); false when there is none. */
+    /** Deletes a saved plan or track (a tombstone that reaches the other devices); false when there is none. */
     fun delete(id: String, now: Long, device: String): Boolean {
         val old = entries[id]?.takeIf { !it.item.deleted } ?: return false
         put(SyncItem(id, stamp(old, now), device, deleted = true, kind = old.item.kind), old)
@@ -104,7 +119,7 @@ class SyncLedger private constructor(
      * tombstones go, every plan is marked to upload again, so a new pairing brings them all to the other side.
      */
     fun forget() {
-        entries = entries.filterValues { it.item.kind == SyncItem.PLAN && !it.item.deleted }
+        entries = entries.filterValues { it.item.isUserItem && !it.item.deleted }
             .mapValues { SyncEntry(it.value.item, 0, dirty = true) }
         since = 0
     }

@@ -22,6 +22,12 @@
 #                            /opt/wayclass/brouter (job image)
 #   BUFFER_KM=5              osmium cut buffer (complete features at the edge)
 #   KEEP_WORK=1              keep the temp folder (raw unclipped files, for the seam check)
+#   LAYERS="overlays pois"   partial rebuild (format 2, set by job_build.py – map-hosting.md §7h): build only these
+#                            layers (cells.py LAYER_SCHEMA: base overlays pois addresses terrain contours); the cut runs
+#   BASE_MANIFEST=<path>     only for base / overlays / pois / addresses. BASE_MANIFEST = the published version's
+#                            manifest (same OSM date, else the build fails): the new manifest lists its other layers'
+#                            files, and the version folder holds ONLY the rebuilt files – the job copies the rest
+#                            from the published version in the store. Empty = the whole cell (default).
 #
 # Memory of the cut: osmium's smart strategy keeps bit sets over the whole id range – with today's OSM node ids
 # (~13e9) that is ~4.0 GB for ANY raw source (measured: trentino 136 MB 8 s, alps 2.3 GB 62 s, both
@@ -113,24 +119,25 @@ if [ "$FORMAT" = 2 ]; then
   fi
   [ -s "$BROUTER_PROFILES/lookups.dat" ] || die "BRouter profiles missing: $BROUTER_PROFILES (set BROUTER_PROFILES)"
 fi
+# partial rebuild (map-hosting.md §7h): only these layers; empty = all
+LAYERS=$(echo ${LAYERS:-})
+if [ -n "$LAYERS" ]; then
+  [ "$FORMAT" = 2 ] || die "LAYERS (partial rebuild) is for format 2 only"
+  [ -s "${BASE_MANIFEST:-}" ] || die "LAYERS needs BASE_MANIFEST (the published version's manifest.json)"
+  ALL_LAYERS=" $($PY layers) "
+  for l in $LAYERS; do [[ "$ALL_LAYERS" == *" $l "* ]] || die "unknown layer '$l' (known:$ALL_LAYERS)"; done
+fi
+# has LAYER: is this layer built?
+has() { [ -z "$LAYERS" ] || [[ " $LAYERS " == *" $1 "* ]]; }
+NEED_OSM=0
+for l in base overlays pois addresses; do has $l && NEED_OSM=1; done
 
 CELL_BBOX=$($PY bbox "$Z" "$X" "$Y")                              # exact (for --bounds and clipping)
 INSET_BBOX=$($PY bbox "$Z" "$X" "$Y" --inset)                     # tile-range tools: no neighbour tiles
 BUF_BBOX=$($PY bbox "$Z" "$X" "$Y" --buffer-km "$BUFFER_KM")
 RING_BBOX=$($PY bbox "$Z" "$X" "$Y" --ring-z12 --inset)
 # several sources: the oldest date (the cell is as new as its oldest part)
-OSM_DATE=$(python3 - "${SRCS[@]}" <<'PY'
-import os, sys, time, osmium
-dates = []
-for p in sys.argv[1:]:
-    r = osmium.io.Reader(p, osmium.osm.osm_entity_bits.NOTHING)
-    h = r.header()
-    d = (h.get("osmosis_replication_timestamp") or h.get("timestamp") or "")[:10]
-    r.close()
-    dates.append(d or time.strftime("%Y-%m-%d", time.gmtime(os.path.getmtime(p))))
-print(min(dates))
-PY
-)
+OSM_DATE=$($PY osm-date "${SRCS[@]}")
 GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 DEST="$DATA_ROOT/cells/f$FORMAT/$Z/$X/$Y"
@@ -143,6 +150,7 @@ rm -rf "$TMP"; mkdir -p "$TMP/logs" "$TMP/raw" "$TMP/out" "$TMP/planetiler"
 : > "$STEPS"
 T0=$(date +%s)
 log "cell $ID  format $FORMAT  bbox=$CELL_BBOX  buffer=${BUFFER_KM} km  osm=$(for f in "${SRCS[@]}"; do basename "$f"; done | paste -sd+) ($OSM_DATE) cut=$CUT  git=$GIT_REV"
+[ -n "$LAYERS" ] && log "partial rebuild: $LAYERS (the other layers stay as in $(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$BASE_MANIFEST"))"
 
 IFS=, read -r -a CELL_ARGS <<<"$CELL_BBOX"
 IFS=, read -r -a BUF_ARGS <<<"$BUF_BBOX"
@@ -151,7 +159,9 @@ IFS=, read -r -a RING_ARGS <<<"$RING_BBOX"
 
 # boundary relations complete too: the address index needs whole municipality polygons
 CUT_ARGS=(-b "$BUF_BBOX" -s smart -S types=multipolygon,route,boundary --overwrite)
-if [ "$CUT" = renumbered ]; then
+if [ "$NEED_OSM" = 0 ]; then
+  log "    no OSM layer to build: no cut"
+elif [ "$CUT" = renumbered ]; then
   # renumbered source, shared by all cells of one source (rebuilt when the source is newer)
   RENUM="$WORK/osm/$(basename "${SRCS[0]}" .osm.pbf).renum"
   if [ ! -s "$RENUM/renum.osm.pbf" ] || [ "${SRCS[0]}" -nt "$RENUM/renum.osm.pbf" ]; then
@@ -179,38 +189,47 @@ else
   run renumber osmium renumber -i "$IDX" --overwrite -o "$TMP/cell.osm.pbf" "$TMP/raw-cut.osm.pbf"
   rm -f "$TMP/raw-cut.osm.pbf"
 fi
-log "    cell.osm.pbf $(du -h "$TMP/cell.osm.pbf" | cut -f1)"
+[ "$NEED_OSM" = 1 ] && log "    cell.osm.pbf $(du -h "$TMP/cell.osm.pbf" | cut -f1)"
 
 # ---------------------------------------------------------------------------------------- base map
-PT_TRIM=""
-[ "$FORMAT" = 2 ] && PT_TRIM="--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de"
-# Planetiler: run inside TMP so its stray files stay there
-run base bash -c "cd '$TMP' && exec java -Xmx$JAVA_XMX -jar '$PLANETILER_JAR' --osm-path='$TMP/cell.osm.pbf' \
-  --output='$TMP/raw/base.pmtiles' --download --download_dir='$PLANETILER_SOURCES' --tmpdir='$TMP/planetiler' \
-  --bounds='$CELL_BBOX' --minzoom=10 --maxzoom=14 --force $PT_TRIM"
-rm -rf "$TMP/planetiler"
-if [ "$FORMAT" = 2 ]; then
-  run base-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/base.pmtiles" "$TMP/raw/base-own.pmtiles"
-  run base-trim "$TOOLS/trim_base.sh" "$TMP/raw/base-own.pmtiles" "$TMP/out/base.pmtiles"
-else
-  run base-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/base.pmtiles" "$TMP/out/base.pmtiles"
+if has base; then
+  PT_TRIM=""
+  [ "$FORMAT" = 2 ] && PT_TRIM="--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de"
+  # Planetiler: run inside TMP so its stray files stay there
+  run base bash -c "cd '$TMP' && exec java -Xmx$JAVA_XMX -jar '$PLANETILER_JAR' --osm-path='$TMP/cell.osm.pbf' \
+    --output='$TMP/raw/base.pmtiles' --download --download_dir='$PLANETILER_SOURCES' --tmpdir='$TMP/planetiler' \
+    --bounds='$CELL_BBOX' --minzoom=10 --maxzoom=14 --force $PT_TRIM"
+  rm -rf "$TMP/planetiler"
+  if [ "$FORMAT" = 2 ]; then
+    run base-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/base.pmtiles" "$TMP/raw/base-own.pmtiles"
+    run base-trim "$TOOLS/trim_base.sh" "$TMP/raw/base-own.pmtiles" "$TMP/out/base.pmtiles"
+  else
+    run base-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/base.pmtiles" "$TMP/out/base.pmtiles"
+  fi
 fi
 
 # ---------------------------------------------------------------------------------- overlays + pois
 if [ "$FORMAT" = 2 ]; then
-  mkdir -p "$TMP/raw/otiles" "$TMP/raw/pois"
-  run overlays python3 "$TOOLS/extract_overlays.py" "$TMP/cell.osm.pbf" "$TMP/raw/otiles" "${BUF_ARGS[@]}" \
-    --tiles "$TMP/raw/otiles" --no-geojson --smooth --wayclass "$WAYCLASS_JAR" --profiles "$BROUTER_PROFILES"
-  cp "$TMP/raw/otiles/wayclass.json" "$TMP/wayclass.json"
-  run overlays-tiles "$TOOLS/build_overlays.sh" "$TMP/raw/otiles" "$TMP/raw/overlays.pmtiles" --clip "$BUF_BBOX"
-  run overlays-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/overlays.pmtiles" "$TMP/out/overlays.pmtiles"
-  run pois python3 "$TOOLS/extract_pois.py" "$TMP/cell.osm.pbf" "$TMP/raw/pois" "${BUF_ARGS[@]}"
-  run pois-ids $PY remap-ids "$IDX" "$TMP/raw/pois/pois.geojson"
-  run clip $PY clip "$Z" "$X" "$Y" "$TMP/raw/pois" "$TMP/out"
-  mkdir -p "$TMP/out/addresses"
-  # streets / places by the owner rule (point inside the cell); municipalities from the whole boundaries of the cut
-  run addresses python3 "$TOOLS/extract_addresses.py" "$TMP/cell.osm.pbf" "$TMP/out/addresses/$ID.sqlite" \
-    "${CELL_ARGS[@]}" --owner
+  if has overlays; then
+    mkdir -p "$TMP/raw/otiles"
+    run overlays python3 "$TOOLS/extract_overlays.py" "$TMP/cell.osm.pbf" "$TMP/raw/otiles" "${BUF_ARGS[@]}" \
+      --tiles "$TMP/raw/otiles" --no-geojson --smooth --wayclass "$WAYCLASS_JAR" --profiles "$BROUTER_PROFILES"
+    cp "$TMP/raw/otiles/wayclass.json" "$TMP/wayclass.json"
+    run overlays-tiles "$TOOLS/build_overlays.sh" "$TMP/raw/otiles" "$TMP/raw/overlays.pmtiles" --clip "$BUF_BBOX"
+    run overlays-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/overlays.pmtiles" "$TMP/out/overlays.pmtiles"
+  fi
+  if has pois; then
+    mkdir -p "$TMP/raw/pois"
+    run pois python3 "$TOOLS/extract_pois.py" "$TMP/cell.osm.pbf" "$TMP/raw/pois" "${BUF_ARGS[@]}"
+    run pois-ids $PY remap-ids "$IDX" "$TMP/raw/pois/pois.geojson"
+    run clip $PY clip "$Z" "$X" "$Y" "$TMP/raw/pois" "$TMP/out"
+  fi
+  if has addresses; then
+    mkdir -p "$TMP/out/addresses"
+    # streets / places by the owner rule (point inside the cell); municipalities from the whole boundaries of the cut
+    run addresses python3 "$TOOLS/extract_addresses.py" "$TMP/cell.osm.pbf" "$TMP/out/addresses/$ID.sqlite" \
+      "${CELL_ARGS[@]}" --owner
+  fi
 else
   mkdir -p "$TMP/raw/overlays"
   run overlays python3 "$TOOLS/extract_overlays.py" "$TMP/cell.osm.pbf" "$TMP/raw/overlays" "${BUF_ARGS[@]}"
@@ -218,27 +237,28 @@ else
   run pois-ids $PY remap-ids "$IDX" "$TMP/raw/overlays/pois.geojson"
   run clip $PY clip "$Z" "$X" "$Y" "$TMP/raw/overlays" "$TMP/out"
 fi
-sed 's/^/    /' "$TMP/logs/clip.log"
+[ -f "$TMP/logs/clip.log" ] && sed 's/^/    /' "$TMP/logs/clip.log"
 
 # ------------------------------------------------------------------------------- terrain + contours
 if [ "$FORMAT" = 2 ]; then
   # only the cell's own z10-13 tiles (WebP lossless, 0.25 m); the AWS PNGs stay in the cache for the contours
-  run terrain python3 "$TOOLS/build_terrain.py" "$TMP/out/terrain.pmtiles" --cell "$Z/$X/$Y" --format 2 \
-    --cache "$TERRARIUM_CACHE"
+  has terrain && run terrain python3 "$TOOLS/build_terrain.py" "$TMP/out/terrain.pmtiles" --cell "$Z/$X/$Y" \
+    --format 2 --cache "$TERRARIUM_CACHE"
   # 50 m lines at z12, 20 m at z13 from the original AWS tiles (+ one tile ring read, so lines meet the neighbour)
-  run contours python3 "$TOOLS/build_contours.py" aws "$TMP/raw/contours.pmtiles" "${CELL_ARGS[@]}" \
+  has contours && run contours python3 "$TOOLS/build_contours.py" aws "$TMP/raw/contours.pmtiles" "${CELL_ARGS[@]}" \
     --cache "$TERRARIUM_CACHE"
 else
   run terrain python3 "$TOOLS/build_terrain.py" "$TMP/raw/terrain.pmtiles" "${RING_ARGS[@]}" 13
   run contours python3 "$TOOLS/build_contours.py" "$TMP/raw/terrain.pmtiles" "$TMP/raw/contours.pmtiles" "${INSET_ARGS[@]}"
   run terrain-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/terrain.pmtiles" "$TMP/out/terrain.pmtiles"
 fi
-run contours-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/contours.pmtiles" "$TMP/out/contours.pmtiles"
-cat "$TMP"/logs/*-own.log | sed 's/^/    /'
+has contours && run contours-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/contours.pmtiles" "$TMP/out/contours.pmtiles"
+for f in "$TMP"/logs/*-own.log; do [ -f "$f" ] && sed 's/^/    /' "$f"; done
 
 if [ "$FORMAT" = 2 ]; then REQ="base.pmtiles terrain.pmtiles overlays.pmtiles"
 else REQ="base.pmtiles terrain.pmtiles routes.geojson trails.geojson"; fi
 for f in $REQ; do
+  has "${f%%.*}" || continue  # partial rebuild: the published version has it
   [ -s "$TMP/out/$f" ] || die "required file $f missing or empty"
 done
 # the OSM extracts this cell was cut from (debugging aid in the manifest): id + url from the cloud job (SRC_META, JSON
@@ -264,20 +284,25 @@ json.dump(res, open(out, "w"))
 PY
 WC_ARGS=()
 [ -s "$TMP/wayclass.json" ] && WC_ARGS=(--wayclass "$TMP/wayclass.json")
+[ -n "$LAYERS" ] && WC_ARGS+=(--layers "$LAYERS" --base-manifest "$BASE_MANIFEST")
 run manifest $PY manifest "$Z" "$X" "$Y" "$TMP/out" "$OSM_DATE" "$GIT_REV" "cells/f$FORMAT/$Z/$X/$Y/$VERSION" \
   --format "$FORMAT" --version "$VERSION" --sources "$TMP/sources.json" "${WC_ARGS[@]}"
+[ -n "$LAYERS" ] && sed 's/^/    /' "$TMP/logs/manifest.log"
 
 # build.json: timings + sizes (diagnostics only, not listed in the manifest)
-python3 - "$STEPS" "$TMP/out" "$TMP/cell.osm.pbf" "$ID" "$(( $(date +%s) - T0 ))" "$FORMAT" > "$TMP/build.json" <<'PY'
+python3 - "$STEPS" "$TMP/out" "$TMP/cell.osm.pbf" "$ID" "$(( $(date +%s) - T0 ))" "$FORMAT" "$LAYERS" \
+  > "$TMP/build.json" <<'PY'
 import json, os, sys
-steps, out, cut, cid, total, fmt = sys.argv[1:]
+steps, out, cut, cid, total, fmt, layers = sys.argv[1:]
 rows = [l.rstrip("\n").split("\t") for l in open(steps) if "\t" in l]
 files = {}
 for root, _, names in os.walk(out):
     for n in names:
         p = os.path.join(root, n)
         files[os.path.relpath(p, out)] = os.path.getsize(p)
-print(json.dumps({"cell": cid, "format": int(fmt), "total_s": int(total), "cut_pbf_bytes": os.path.getsize(cut),
+print(json.dumps({"cell": cid, "format": int(fmt), "total_s": int(total),
+                  "cut_pbf_bytes": os.path.getsize(cut) if os.path.exists(cut) else 0,
+                  "layers": layers.split() or "all",
                   "steps": [{"step": n, "wall_s": float(t), "peak_rss_mb": round(int(m) / 1024)} for n, t, m in rows],
                   "files": dict(sorted(files.items()))}, indent=1))
 PY

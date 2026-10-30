@@ -9,7 +9,7 @@
 #
 # tippecanoe 2.79.0 + tile-join (format 2 cells) are built from source in a builder stage of the base image
 # (tools/cells/Dockerfile); the RUN below fails the build on an old base image without them.
-# Build context = tools/ (Dockerfile.job.dockerignore keeps the Worker, Hetzner and icon folders out).
+# Build context = tools/ (Dockerfile.job.dockerignore keeps the Worker and icon folders out).
 # Router classes (extract_overlays.py --wayclass): the classifier is compiled in a JDK stage against the BRouter jars
 # the app routes with, and the app's profiles come along – two more build contexts from the app folder:
 #   --build-context brouterlibs=app/libs --build-context brouter=app/src/main/assets/brouter

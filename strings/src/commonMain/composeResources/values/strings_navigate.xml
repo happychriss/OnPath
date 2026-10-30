@@ -38,6 +38,8 @@
     <string name="nav_breaks">breaks %1$s</string>
     <string name="nav_no_gps">No GPS</string>
     <string name="nav_position_age">position %1$d min old</string>
+    <string name="nav_approx_wifi">Approximate position (Wi-Fi, ±%1$d m) – GPS comes outside</string>
+    <string name="nav_approx_weak_gps">Approximate position (±%1$d m) – GPS still weak</string>
     <string name="nav_time_paused">Time paused</string>
     <string name="nav_off_route">Off route</string>
     <string name="nav_pace_faster">faster than planned</string>
@@ -84,6 +86,15 @@
     <string name="nav_compass_nw">north-west</string>
     <string name="nav_back_to">Back to %1$s</string>
     <string name="nav_back_to_route">Back to the route</string>
+    <!-- re-route and the next stop: "Off route – re-plan?" – Yes (via the stop) / Yes, skip stop 3 (navigation/StopSkip) -->
+    <string name="nav_title_replan">Off route – re-plan?</string>
+    <string name="nav_state_replan">Re-plan?</string>
+    <string name="nav_via_stop">Via %1$s: %2$s</string>
+    <string name="nav_yes">Yes</string>
+    <string name="nav_yes_skip_stop">Yes, skip %1$s</string>
+    <string name="nav_notif_skip">Yes, skip it</string>
+    <string name="nav_stop_n">stop %1$d</string>
+    <string name="nav_without_stop">without %1$s</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">%1$s to go</string>
@@ -97,6 +108,8 @@
     <!-- recording notifications and problems -->
     <string name="nav_channel_recording">Recording</string>
     <string name="nav_channel_recording_desc">Shows distance and time while recording</string>
+    <string name="nav_channel_navigation">Navigation</string>
+    <string name="nav_channel_navigation_desc">Next turn, time to go and arrival while you follow a route – also on the lock screen. Silent.</string>
     <string name="nav_channel_off_route">Off route</string>
     <string name="nav_channel_off_route_desc">Asks when you leave the route you follow: take a new route or keep the original</string>
     <string name="nav_rec_stopped_title">Recording stopped</string>
@@ -203,4 +216,12 @@
     <string name="nav_time_moving">Moving time</string>
     <string name="nav_time_with_breaks">With breaks</string>
     <string name="nav_time_pace_level">Pace level</string>
+    <string name="nav_notif_off">Notifications off</string>
+    <string name="nav_notif_off_line">No turns and no “New route?” on the lock screen</string>
+    <string name="nav_notif_off_click">Set up notifications</string>
+
+    <!-- rest view while cycling (smart screen) -->
+    <string name="nav_rest_destination">Destination</string>
+    <string name="nav_rest_tap">Tap for the map</string>
+    <string name="nav_rest_cd">%1$s in %2$s. Tap for the map</string>
 </resources>

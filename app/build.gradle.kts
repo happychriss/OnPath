@@ -29,7 +29,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.12.0"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.13.1"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
@@ -100,6 +100,12 @@ android {
     lint {
         abortOnError = false
         checkReleaseBuilds = false
+        // Known findings live in the baseline: only new ones are reported (CI job "lint" in unit.yml).
+        // Refresh after fixing some: delete the file, run ./gradlew :app:lintDebug once (it writes a new one).
+        baseline = file("lint-baseline.xml")
+        // "a newer version exists" depends on the day, not on the code: it would show up as new after every library
+        // release (the baseline matches the message, which names the version)
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
@@ -129,6 +135,8 @@ dependencies {
     implementation(project(":strings"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
+    // the one interface androidx.core's getUnusedAppRestrictionsStatus returns (Phone setup); no Guava, no Play services
+    implementation("com.google.guava:listenablefuture:1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

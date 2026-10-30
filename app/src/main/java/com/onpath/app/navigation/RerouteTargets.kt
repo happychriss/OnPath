@@ -7,13 +7,18 @@ import kotlin.math.max
 /** A planned stop on the original line ([alongM] = metres from its start). POI-pinned stops are skipped too (owner). */
 data class NavStop(val point: GeoPoint, val alongM: Double, val name: String? = null, val pinned: Boolean = false)
 
-/** Where a way back may rejoin the original line. [stopIndex] = a planned stop, null = a point on the line. */
-data class RejoinTarget(val alongM: Double, val point: GeoPoint, val stopIndex: Int?)
+/**
+ * Where a way back may rejoin the original line. [stopIndex] = a planned stop, null = a point on the line.
+ * [skips] = the next stop, when this target lies past it (the way back would leave that stop out, [StopSkip]).
+ */
+data class RejoinTarget(val alongM: Double, val point: GeoPoint, val stopIndex: Int?, val skips: Int? = null)
 
 /**
  * Rejoin candidates and splicing for re-routing (pure, unit-tested; docs/plan-auto-reroute.md §5, option C).
  * Candidates are always **ahead** on the original line: never a stop already passed (also not a POI-pinned one),
- * never the start of a round trip, never the end of a track that would skip the track.
+ * never the start of a round trip, never the end of a track that would skip the track. Past the next stop only when
+ * it is an ordinary route point ([StopSkip.deliberate] = false, not the destination) within [STOP_MAX_AHEAD_M]:
+ * then up to [PAST_CANDIDATES] more, between it and the stop after (marked [RejoinTarget.skips]; [Rerouter] decides with [StopSkip]).
  */
 object RerouteTargets {
     /** The next stop is a candidate only up to this far ahead (along the line). */
@@ -27,6 +32,11 @@ object RerouteTargets {
     const val PASSED_SLACK_M = 20.0
     /** Only look this far ahead for "where am I abeam of the line" (shortcut). */
     const val PROJECT_AHEAD_M = 5_000.0
+    /** Past the next stop: a line point this far past it, and the stop after it (when ≤ [PAST_MAX_AHEAD_M] along). */
+    const val PAST_STOP_M = 500.0
+    const val PAST_CANDIDATES = 2
+    /** The stop after the next one is a candidate up to this far along (the plan's detour to the next stop counts in). */
+    const val PAST_MAX_AHEAD_M = 10_000.0
 
     /**
      * Where the user is along the original line for re-routing: the progress when they left it, or further when they
@@ -70,7 +80,21 @@ object RerouteTargets {
                 if (t.stopIndex != null) kept[kept.lastIndex] = t // a stop wins over a line point next to it
             } else kept += t
         }
-        return kept.take(MAX_CANDIDATES)
+        return kept.take(MAX_CANDIDATES) + pastNext(line, baseM, stops, nextStop)
+    }
+
+    /** Candidates past the next stop [n] when it may be skipped; empty for a deliberate stop or the destination. */
+    private fun pastNext(line: NavLine, baseM: Double, stops: List<NavStop>, n: Int?): List<RejoinTarget> {
+        if (n == null || n >= stops.lastIndex || stops[n].alongM - baseM > STOP_MAX_AHEAD_M) return emptyList()
+        if (StopSkip.deliberate(stops[n], line)) return emptyList()
+        val after = n + 1
+        val from = stops[n].alongM
+        val to = stops[after].alongM
+        val out = ArrayList<RejoinTarget>()
+        if (from + PAST_STOP_M < to - MIN_GAP_M) out += RejoinTarget(from + PAST_STOP_M, line.pointAt(from + PAST_STOP_M), null, n)
+        if (to - baseM <= PAST_MAX_AHEAD_M) out += RejoinTarget(to, stops[after].point, after, n)
+        else if (from + 3 * PAST_STOP_M < to - MIN_GAP_M) out += RejoinTarget(from + 3 * PAST_STOP_M, line.pointAt(from + 3 * PAST_STOP_M), null, n)
+        return out.take(PAST_CANDIDATES)
     }
 
     /** New navigation line: the way back ([leg]) and then the original line from [targetAlongM] to the end. */

@@ -12,7 +12,7 @@ Design: `docs/design/map-cells.md` (cells = z10 tiles, owner rule, manifest). Me
 | `build_cell.sh Z X Y` | The build inside the container (steps, timings, publish) – see its header |
 | `build_package.sh 7 X Y` | A **region package** (z7 tile, map z7–9; `build_cell.sh 7 X Y` hands over to it) – `docs/design/map-cells.md` §20 |
 | `package_routes.py` | The package's long-distance route lines (net ≥ 3) for tippecanoe |
-| `cells.py` | Cell math (bbox, buffer, owner rule), pmtiles owned-tile filter, GeoJSON clip, POI id remap, manifest; `cells.py selftest` |
+| `cells.py` | Cell math (bbox, buffer, owner rule), pmtiles owned-tile filter, GeoJSON clip, POI id remap, manifest, content schema per layer (`LAYER_SCHEMA`, partial rebuild: `docs/design/map-hosting.md` §7h); `cells.py selftest` |
 | `seam_check.py WEST EAST LON [--png P]` | Seam report for two side-by-side cells (format 1 and 2) + PNG renders across the border |
 
 ## Format 1 and 2

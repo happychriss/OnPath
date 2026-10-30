@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plan sync with the web planner (plansync/, ui/SyncSettings). Context: tools/i18n/meta/strings_sync.json -->
+<resources>
+    <string name="sync_menu_pair">Pair with browser</string>
+    <string name="sync_menu_paired">Paired with browser</string>
+    <string name="sync_menu_browser">browser</string>
+    <string name="sync_menu_full">Browser sync is full</string>
+    <string name="sync_menu_refused">The sync server refuses the routes</string>
+    <string name="sync_menu_storage">Sync files not written – storage full?</string>
+    <string name="sync_menu_ended">Pairing ended in the browser</string>
+    <string name="sync_menu_stale">Not synced for over 6 hours</string>
+    <string name="sync_intro">Your saved routes and imported GPX tracks can also be in the web planner on your computer – both ways, encrypted on the device before they leave it.</string>
+    <string name="sync_steps">On the computer, open plan.onpath.earth and click “Pair phone” at the top. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
+    <string name="sync_open_camera">Open camera</string>
+    <string name="sync_no_camera">No camera app found – open the camera yourself and scan the code.</string>
+    <string name="sync_ask_title">Pair with this browser?</string>
+    <string name="sync_ask_check">Check: %1$s – the browser shows the same six digits.</string>
+    <string name="sync_pair">Pair</string>
+    <string name="sync_paired_note">Paired – you can now edit your routes in the browser too. They're kept on your phone.</string>
+    <string name="sync_paired_with">Paired with %1$s</string>
+    <string name="sync_paired_browser">Paired with a browser</string>
+    <string name="sync_last">Last synced: %1$s</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_ago_now">just now</string>
+    <string name="sync_ago_min">%1$d min ago</string>
+    <string name="sync_unpair">Unpair</string>
+    <string name="sync_unpair_title">Unpair the browser?</string>
+    <string name="sync_unpair_text">Routes stop syncing. They stay on this phone and in the browser.</string>
+    <string name="sync_unpaired">Unpaired. Your routes stay on this phone and in the browser.</string>
+    <string name="sync_unpaired_offline">Unpaired on this phone. The browser was not reached – unpair it there too.</string>
+    <string name="sync_unpair_failed">Unpairing failed – please try again.</string>
+    <string name="sync_ended">The pairing was ended in the browser. Your routes stay on this phone.</string>
+    <string name="sync_offline">Offline – your routes sync when the connection is back.</string>
+    <string name="sync_refused">The sync server did not accept the routes (%1$s). Try again later.</string>
+    <string name="sync_full">The browser sync is full – delete some routes or tracks, then try again.</string>
+    <plurals name="sync_newer_app">
+        <item quantity="one">%1$d synced route comes from a newer app – update OnPath to see it.</item>
+        <item quantity="other">%1$d synced routes come from a newer app – update OnPath to see them.</item>
+    </plurals>
+    <plurals name="sync_not_saved">
+        <item quantity="one">%1$d route from the browser could not be saved on the phone – it is tried again.</item>
+        <item quantity="other">%1$d routes from the browser could not be saved on the phone – they are tried again.</item>
+    </plurals>
+    <string name="sync_storage">The sync files could not be written – the phone's storage may be full.</string>
+    <string name="sync_already_paired">This phone is already paired with this browser.</string>
+    <string name="sync_unpair_first">This phone is paired with another browser. Unpair it first, then scan the code again.</string>
+    <string name="sync_link_broken">This pairing code can't be read. Show the code in the browser again and scan it once more.</string>
+    <string name="sync_during_tour">Routes sync after the tour.</string>
+    <string name="sync_untitled_route">Route</string>
+    <string name="sync_untitled_track">Track</string>
+    <string name="sync_sum_off">Not paired · your routes in the web planner too</string>
+</resources>

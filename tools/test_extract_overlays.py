@@ -269,6 +269,10 @@ class JunctionAreas(unittest.TestCase):
         o.way([(350, 135), (350, 150)], highway="footway")             # short, but touches the street: stays drawn
         o.way([(112, 132), (100, 140)], highway="footway", footway="crossing")
         o.way([(380, 150), (380, 160)], highway="footway", footway="traffic_island")  # hidden like a sidewalk
+        # T junction (Hilden, Hegelstraße): a 20 m stub from the sidewalk, and a 40 m path ends in its middle – the
+        # stub stays drawn, else the path hangs loose without a link
+        o.way([(150, 140), (150, 130), (150, 120)], highway="footway")
+        o.way([(150, 130), (190, 130)], highway="footway")
         cls.tmp = tempfile.TemporaryDirectory()
         cls.layers = run_extract(o, cls.tmp.name)
 
@@ -302,6 +306,8 @@ class JunctionAreas(unittest.TestCase):
         self.assertEqual(k_at(300, 100), ("p", 0))       # long enough to be a path
         self.assertEqual(k_at(350, 135), ("p", 0))       # touches a drawn way
         self.assertEqual(k_at(380, 160), ("x", None))    # footway=traffic_island
+        self.assertEqual(k_at(150, 120), ("p", 0))       # a path ends in its middle (T junction)
+        self.assertEqual(k_at(190, 130), ("p", 0))       # that path
 
     def test_hidden_footways_say_what_they_are(self):
         fw = sorted({f["properties"]["fw"] for f in self.layers["paths"] if "fw" in f["properties"]})

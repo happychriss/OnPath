@@ -73,10 +73,15 @@
     <string name="settings_nav_junction_locked">Nur gesperrt</string>
     <string name="settings_nav_on_route">Position auf der Route</string>
     <string name="settings_nav_on_route_sub">Solange du nah an der Route bist, sitzt der Punkt auf ihr</string>
-    <string name="settings_nav_screen_on">Bildschirm beim Navigieren anlassen</string>
+    <string name="settings_nav_screen_on">Bildschirm beim Wandern anlassen</string>
     <string name="settings_nav_screen_on_sub">Nur beim Folgen einer Route; in der Tasche aus</string>
-    <string name="settings_nav_battery_hint">Aufzeichnen bei ausgeschaltetem Bildschirm: am besten mit Akku „Nicht eingeschränkt“.</string>
-    <string name="settings_nav_location_hint">Tippe nach einem Neustart auf „Fortsetzen“. Automatisch mit Standort „Immer zulassen“.</string>
+    <string name="settings_nav_bike_screen">Bildschirm beim Radfahren</string>
+    <string name="settings_nav_bike_screen_always">Immer an</string>
+    <string name="settings_nav_bike_screen_smart">Smart</string>
+    <string name="settings_nav_bike_screen_phone">Wie das Handy</string>
+    <string name="settings_nav_bike_screen_always_sub">Die Karte bleibt an, solange du einer Route folgst</string>
+    <string name="settings_nav_bike_screen_smart_sub">Dunkel bis kurz vor jeder Abzweigung – spart Akku. Tippen zeigt die Karte.</string>
+    <string name="settings_nav_bike_screen_phone_sub">Der Bildschirm geht aus, wie am Handy eingestellt</string>
     <string name="settings_pace_intro">Ändert nur die Zeiten, nicht die Route. Die Zeiten sind Geh- bzw. Fahrzeit ohne Pausen.</string>
     <string name="settings_pace_hiking">Wandern</string>
     <string name="settings_pace_cycling">Radfahren · %1$s</string>
@@ -94,7 +99,7 @@
     <string name="settings_upd_check">Nach Updates suchen</string>
     <string name="settings_upd_source">Updates kommen von der OnPath-Seite auf GitHub. Android fragt bei jeder Installation nach deiner Bestätigung.</string>
     <string name="settings_privacy_lead">Nichts wird verfolgt. Kein Konto, keine Analyse, keine Werbung.</string>
-    <string name="settings_privacy_tracks">Deine Tracks und Routen verlassen das Handy nie – außer in deinen eigenen Sicherungsordner.</string>
+    <string name="settings_privacy_tracks">Deine Touren und Routen bleiben auf deinem Handy und in deinem eigenen Sicherungsordner. Wenn du dein Handy mit deinem Browser verbindest, werden deine gespeicherten Routen und importierten Tracks dorthin übertragen, damit du sie auch am Computer planen kannst. Sie werden vorher auf dem Handy verschlüsselt: Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen.</string>
     <string name="settings_privacy_what">Was dein Handy verlässt</string>
     <string name="settings_privacy_maps_what">Welches Kartengebiet du brauchst (ein Gebiet von etwa 30 × 40 km, nicht deine Position)</string>
     <string name="settings_privacy_maps_to">OnPath-Kartenserver</string>
@@ -128,4 +133,10 @@
     <plurals name="settings_sum_maps_areas"><item quantity="one">%1$s · %2$d Gebiet</item><item quantity="other">%1$s · %2$d Gebiete</item></plurals>
     <plurals name="settings_sum_diag_new"><item quantity="one">%1$d neues Problem</item><item quantity="other">%1$d neue Probleme</item></plurals>
     <plurals name="settings_sum_diag_notes"><item quantity="one">Für Fehlerberichte · %1$d Eintrag</item><item quantity="other">Für Fehlerberichte · %1$d Einträge</item></plurals>
+    <string name="settings_page_sync">Browser-Abgleich</string>
+    <string name="settings_privacy_sync_what">Deine gespeicherten Routen und importierten Tracks, verschlüsselt auf dem Handy</string>
+    <string name="settings_privacy_sync_to">OnPath-Sync-Server (Cloudflare, EU)</string>
+    <string name="settings_privacy_sync_when">nur wenn du einen Browser verbindest: nach einer Änderung und beim Öffnen der App</string>
+    <string name="settings_privacy_sync_title">Abgleich mit dem Web-Planer (nur wenn du verbindest)</string>
+    <string name="settings_privacy_sync_text">Deine gespeicherten Routen und importierten Tracks werden auf deinem Handy und in deinem Browser verschlüsselt, bevor sie das Gerät verlassen. Sie laufen als verschlossene Daten über unseren Sync-Server (Cloudflare, EU): Der Server kann sie nicht lesen und erfährt nie deinen Namen, deine E-Mail-Adresse oder wohin du planst. Er speichert eine zufällige Postfachnummer, die verschlossenen Routen und wann sie zuletzt geändert wurden. Beim Trennen wird dort sofort alles gelöscht; ein Postfach, das 12 Monate niemand nutzt, wird automatisch gelöscht. Wer deinen Verbindungscode hat, kann deine gespeicherten Routen sehen – gib ihn nicht weiter.</string>
 </resources>

@@ -131,7 +131,10 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         MapSync(vm, controller, rec, location, panelHeightPx)
-        KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
+        // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
+        // rest view in NavigateMode)
+        val screen = ScreenPolicy.of(vm.settings, rec?.nav?.session?.activity ?: vm.activity)
+        KeepScreenOn(screen.keepOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE, pocketAfterMs = screen.pocketAfterMs)
         // Quiet update check (once a day, only when online; F-OFF-06).
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
@@ -146,7 +149,8 @@ fun MapScreen(
             navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
-        controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
+        // (not over the rest view while cycling)
+        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: the blue strip with a question is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
@@ -213,16 +217,12 @@ fun MapScreen(
         onKeepGoing = { vm.arrivalAsk = false })
     if (vm.navSettingsOpen) {
         // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
-        val ctx = androidx.compose.ui.platform.LocalContext.current
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
             androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(bottom = 24.dp)) {
                 item {
-                    NavigationSection(vm.settings, vm::updateSettings) {
-                        try {
-                            ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                android.net.Uri.fromParts("package", ctx.packageName, null)))
-                        } catch (e: Exception) { Problems.warn("ui", "App settings could not be opened from Navigate", e) }
-                    }
+                    NavigationSection(vm.settings, vm::updateSettings,
+                        onPhoneSetup = { vm.navSettingsOpen = false; vm.openSetup(com.onpath.app.setup.Purpose.SETTINGS) },
+                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) })
                 }
             }
         }
@@ -250,6 +250,14 @@ private fun PlanMode(
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
+                // plan sync (A-007): Settings → Browser sync – how to pair, or "Paired with …"
+                onPairBrowser = { vm.openSettings(SettingsPage.SYNC) },
+                // owner 2026-10-30: "Paired with browser ✓ · Pixel 8 ↔ Chrome · 1 min ago"; amber + ☰ dot on a real problem
+                sync = SyncMenuUi.of(vm.sync.state.collectAsState().value, com.onpath.app.plansync.PlanSync.deviceName(),
+                    System.currentTimeMillis()),
+                // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
+                onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
+                    else ({ vm.openSettings(SettingsPage.PHONE) }),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
@@ -413,7 +421,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
 
 /** Keeps the map layers in step with the app state. */
 @Composable
-private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, location: android.location.Location?, panelHeightPx: Int) {
+private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, panelHeightPx: Int) {
     val context = LocalContext.current
     if (c == null) {
         // share events must also work before the map is ready
@@ -457,6 +465,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
     val nav = rec?.nav
+    // rest view while cycling (NavigateMode): the covered map gets no fixes, no direction and no track updates, so it
+    // draws no frames; the camera mode is kept, everything is sent again the moment the map shows
+    val rest = vm.screenRest
+    val location = fix.takeUnless { rest }
+    LaunchedEffect(c, rest) { c.setQuiet(rest) }
     LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
@@ -475,13 +488,23 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         val guide = nav?.toRoute?.takeIf { nav.prompt != null && nav.prompt !is com.onpath.app.navigation.NavPrompt.Question }
         c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
     }
-    LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
+    LaunchedEffect(c, rec?.track?.sumOf { it.size }?.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }
     LaunchedEffect(c, vm.searchMark) {
         val m = vm.searchMark
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
+    }
+    // Google Maps place → go there (owner): the ring's menu opens by itself once the camera has arrived there (and the
+    // map-download modal for it is gone) – checked on every camera stop while it waits (SharedPlaceMenu)
+    LaunchedEffect(c, vm.sharedMenuWaiting, vm.cameraIdleTick, vm.loadModalOpen) {
+        if (!vm.sharedMenuWaiting) return@LaunchedEffect
+        delay(SharedPlaceMenu.SETTLE_MS)
+        val t = try { c.map.cameraPosition.target } catch (e: Exception) {
+            Problems.warn("map", "Camera position unreadable; shared place menu waits", e); null
+        }
+        vm.openSharedMenuIfArrived(t?.latitude, t?.longitude, c.metersPerPixel(), c.dpToPx(SharedPlaceMenu.ARRIVED_DP).toDouble())
     }
     // Marked route networks always show (owner): the band of the current activity.
     LaunchedEffect(c, vm.activity, vm.sac) { c.setOverlay(vm.activity, true, vm.sac) }

@@ -11,8 +11,11 @@ import java.util.Locale
 /**
  * "Does the phone slow down over time?" in the event log (owner: the log may be big):
  *
- * - every [INTERVAL_MS] while the process runs one line: memory (PSS, native / Java / graphics), native heap, CPU used
- *   since the last line, janky frames while the app was on screen, map store generation, waiting downloads;
+ * - every [INTERVAL_MS] while the process runs one line: memory (PSS with the part in swap, native / Java / graphics),
+ *   native heap allocated (counts swapped-out memory too – the "native" PSS figure does not), Java heap used, the map's
+ *   GeoJSON files (MapLibre's native index grows with them) and the search entries, style loads since start (a reload
+ *   must not leave the old map data behind), CPU used since the last line, janky frames while the app was on screen, map
+ *   store generation, waiting downloads;
  * - a main-thread watchdog while the app is on screen: a stall over [STALL_MS] → Problems.warn with where it was.
  *
  * Overhead: one sample every 10 min; one tiny message to the main thread per second while on screen; a counter per
@@ -29,15 +32,25 @@ object Health {
         val nativeHeapBytes: Long, val cpuMs: Long, val wallMs: Long,
         val frames: Long, val jankyFrames: Long,
         val storeChanges: Int?, val cells: Int?, val cellQueue: Int?, val routingQueue: Int?,
+        val swapKb: Long? = null, val javaUsedBytes: Long? = null, val mapGeoJsonBytes: Long? = null,
+        val searchEntries: Int? = null, val styleLoads: Int = 0, val styleData: String? = null,
     )
 
-    /** "Health: PSS 2.1 GB (native 1.5, java 0.1, gfx 0.2), native heap 1.47 GB, CPU 0.35 cores, janky 4.8 % of 12000 frames, …". */
+    /**
+     * "Health: PSS 2.10 GB (swap 0.40; native 1.50, java 0.10, gfx 0.20), native heap 1.47 GB allocated, java used
+     * 0.09 GB, map GeoJSON 23 MB, search 167202 entries, style loads 2 (g000093), CPU 0.35 cores, janky …".
+     */
     fun line(s: Sample): String = buildString {
         append("Health: PSS ").append(gb(s.pssKb?.times(1024)))
-        append(" (native ").append(gb(s.nativePssKb?.times(1024), unit = false))
+        append(" (swap ").append(gb(s.swapKb?.times(1024), unit = false))
+        append("; native ").append(gb(s.nativePssKb?.times(1024), unit = false))
         append(", java ").append(gb(s.javaPssKb?.times(1024), unit = false))
         append(", gfx ").append(gb(s.graphicsKb?.times(1024), unit = false)).append(")")
-        append(", native heap ").append(gb(s.nativeHeapBytes))
+        append(", native heap ").append(gb(s.nativeHeapBytes)).append(" allocated")
+        append(", java used ").append(gb(s.javaUsedBytes))
+        append(", map GeoJSON ").append(s.mapGeoJsonBytes?.let { "${(it + 512 * 1024) / 1_048_576} MB" } ?: "?")
+        append(", search ").append(s.searchEntries?.let { "$it entries" } ?: "not built")
+        append(", style loads ").append(s.styleLoads).append(" (").append(s.styleData ?: "–").append(")")
         val cores = if (s.wallMs > 0) s.cpuMs.toDouble() / s.wallMs else 0.0
         append(", CPU ").append(String.format(Locale.ROOT, "%.2f", cores)).append(" cores")
         append(" (").append(s.cpuMs / 1000).append(" s in ").append(s.wallMs / 60_000).append(" min)")
@@ -97,7 +110,29 @@ object Health {
             cells?.generation?.value, cells?.installed?.value?.size,
             try { cells?.waiting()?.regions } catch (e: Exception) { Problems.info("perf", "Waiting regions unknown", e); null },
             routing?.status?.names?.size,
+            swapKb = stat("summary.total-swap"),
+            javaUsedBytes = Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() },
+            mapGeoJsonBytes = mapGeoJsonBytes,
+            searchEntries = try { searchEntries() } catch (e: Exception) { Problems.info("perf", "Search entries unknown", e); null },
+            styleLoads = styleLoads, styleData = styleData,
         )
+    }
+
+    // ------------------------------------------------------------------------------------------------ map + search
+
+    @Volatile private var styleLoads = 0
+    @Volatile private var styleData: String? = null
+    @Volatile private var mapGeoJsonBytes: Long? = null
+
+    /** Entries of the offline search index, null = not built in this process (set at app start; must not build it). */
+    @Volatile var searchEntries: () -> Int? = { null }
+
+    /**
+     * A map style finished loading: [loads] since the process started, [data] = the map data it shows (store
+     * generation folder), [geoJsonBytes] = size of the GeoJSON files it draws (null = unknown).
+     */
+    fun noteStyleLoad(loads: Int, data: String?, geoJsonBytes: Long?) {
+        styleLoads = loads; styleData = data; mapGeoJsonBytes = geoJsonBytes
     }
 
     // ------------------------------------------------------------------------------------------------ frames

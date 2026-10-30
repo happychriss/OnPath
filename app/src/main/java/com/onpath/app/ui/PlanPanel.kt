@@ -64,7 +64,9 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanPointRow
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalConfiguration
 
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
@@ -202,6 +204,32 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
     }
 }
 
+/**
+ * The sheet's first line: activity chip · time + distance · ⋯. The chip always names the activity ("Wandern · T2",
+ * owner 2026-10-30) and time and distance are always shown in full (owner rule) – when both do not fit beside each
+ * other (German, a long day, a large phone font), time and distance move to their own line under the chip.
+ */
+@Composable
+private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Unit, overflow: @Composable () -> Unit) {
+    Layout(content = { chip(); title(); overflow() }) { ms, c ->
+        val gap = 8.dp.roundToPx()
+        val below = 2.dp.roundToPx()
+        val max = c.maxWidth
+        val ov = ms[2].measure(c.copy(minWidth = 0, minHeight = 0))
+        val ch = ms[0].measure(Constraints(maxWidth = (max - ov.width - gap).coerceAtLeast(0)))
+        val besideW = (max - ch.width - gap - ov.width).coerceAtLeast(0)
+        val oneLine = ms[1].maxIntrinsicWidth(Constraints.Infinity) <= besideW
+        val t = ms[1].measure(Constraints(maxWidth = if (oneLine) besideW else max))
+        val line1 = maxOf(ch.height, ov.height, if (oneLine) t.height else 0)
+        val h = if (oneLine) line1 else line1 + below + t.height
+        layout(max, h) {
+            ch.placeRelative(0, (line1 - ch.height) / 2)
+            ov.placeRelative(max - ov.width, (line1 - ov.height) / 2)
+            if (oneLine) t.placeRelative(ch.width + gap, (line1 - t.height) / 2) else t.placeRelative(0, line1 + below)
+        }
+    }
+}
+
 /** Share of the screen height the pulled-up plan sheet always takes (below the grab handle). */
 internal const val FULL_SHEET_FRACTION = 0.62f
 /** Height of the primary button row at the sheet's bottom (12 dp gap + 56 dp button). */
@@ -217,12 +245,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
     // Line 1: activity · time + distance · ⋯ (Undo and Redo are map buttons).
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        ActivityButton(ui.activity, ui.sac, cb.onActivity)
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.weight(1f)) { Title(ui, route) }
-        SheetOverflow(ui, cb, menuInitiallyOpen)
-    }
+    HeaderLine(
+        chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
+        title = { Title(ui, route) },
+        overflow = { SheetOverflow(ui, cb, menuInitiallyOpen) },
+    )
     if (ui.routing && ui.routingSlow) {
         // a long calculation can be stopped (the last change is taken back)
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

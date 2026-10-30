@@ -1,5 +1,5 @@
 """Tiny S3 client (AWS Signature V4, Python stdlib only) for Cloudflare R2 – keeps the builder image small
-(no aws-cli / boto3). Only what the builder needs: PUT an object, GET an object (status files).
+(no aws-cli / boto3). Only what the builder needs: PUT, GET, HEAD and server-side COPY of an object.
 
 R2: endpoint https://<account_id>[.<jurisdiction>].r2.cloudflarestorage.com (our buckets: jurisdiction "eu"), region "auto", path-style /<bucket>/<key>.
 `LocalStore` writes the same keys into a folder instead (zo / tests: R2_LOCAL_DIR).
@@ -28,7 +28,8 @@ def signing_key(secret, date, region, service):
 
 
 def sign(method, url, headers, payload_sha256, access_key, secret_key, region="auto", service="s3", now=None):
-    """Return headers incl. Authorization for a SigV4 request. `headers` must not contain host/x-amz-*."""
+    """Return headers incl. Authorization for a SigV4 request. `headers` must not contain host / x-amz-date /
+    x-amz-content-sha256 (others, e.g. x-amz-copy-source, are signed as given)."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     amz_date = now.strftime("%Y%m%dT%H%M%SZ")
     date = amz_date[:8]
@@ -112,6 +113,39 @@ class R2Store:
                 return None
             raise
 
+    def get_file(self, key, path):
+        """Stream an object into path (raises when it is missing)."""
+        with self._send("GET", key) as r, open(path, "wb") as f:
+            shutil.copyfileobj(r, f, 1 << 20)
+
+    def head(self, key):
+        """{"size", "etag"} of an object, or None when it does not exist. The ETag of a single-part upload is its MD5:
+        equal ETags = equal bytes."""
+        try:
+            with self._send("HEAD", key) as r:
+                return {"size": int(r.headers.get("Content-Length") or -1),
+                        "etag": (r.headers.get("ETag") or "").strip('"')}
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+    def copy(self, src_key, dst_key):
+        """Server-side copy inside the bucket (S3 CopyObject: no bytes through this machine; content type and
+        cache-control are copied with the object)."""
+        h = {"x-amz-copy-source": f"/{self.bucket}/{urllib.parse.quote(src_key, safe='/~')}"}
+        for attempt in range(3):
+            try:
+                with self._send("PUT", dst_key, b"", EMPTY_SHA256, dict(h, **{"content-length": "0"})) as r:
+                    body = r.read()
+                # S3 may answer 200 with an <Error> body when a copy fails late
+                if b"<Error>" in body:
+                    raise OSError(f"copy {src_key} -> {dst_key} failed: {body[:300]!r}")
+                return
+            except (urllib.error.URLError, TimeoutError):
+                if attempt == 2:
+                    raise
+
 
 class LocalStore:
     """Same interface, keys below a folder (zo with BUILDER_MODE=local, tests)."""
@@ -143,6 +177,26 @@ class LocalStore:
             return None
         with open(p, "rb") as f:
             return f.read()
+
+    def get_file(self, key, path):
+        shutil.copyfile(self._p(key), path)
+
+    def head(self, key):
+        p = self._p(key)
+        if not os.path.exists(p):
+            return None
+        d = hashlib.md5()
+        with open(p, "rb") as f:
+            for b in iter(lambda: f.read(1 << 20), b""):
+                d.update(b)
+        return {"size": os.path.getsize(p), "etag": d.hexdigest()}
+
+    def copy(self, src_key, dst_key):
+        src, dst = self._p(src_key), self._p(dst_key)
+        if not os.path.exists(src):
+            raise FileNotFoundError(src_key)
+        shutil.copyfile(src, dst + ".tmp")
+        os.replace(dst + ".tmp", dst)
 
 
 def from_env(env=os.environ):

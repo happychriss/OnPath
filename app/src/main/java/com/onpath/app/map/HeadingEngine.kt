@@ -132,6 +132,18 @@ class HeadingFilter {
         return step(headingDeg, SENSOR_ALPHA)
     }
 
+    /**
+     * A compass reading that cannot be trusted ([CompassTrust]) – for the map direction (heading-up) only: the map is
+     * not turned by it. Instead the direction you last really moved in (every [MOVE_STEP_M], for [MOVE_VALID_MS]) when
+     * there is one – slow uphill below [MOVING_MPS] – else the last good heading is held (no spinning map).
+     */
+    fun onUntrustedSensor(nowMs: Long): Double? {
+        if (usingGps(nowMs) || usingRoute(nowMs)) return null
+        val m = moveBearing ?: return null
+        if (nowMs - moveAt > MOVE_VALID_MS) return null
+        return step(m, SENSOR_ALPHA)
+    }
+
     private fun step(target: Double, alpha: Double): Double? {
         val s = smooth?.let { norm(it + alpha * diff(it, target)) } ?: norm(target)
         smooth = s
@@ -139,6 +151,69 @@ class HeadingFilter {
         if (last != null && abs(diff(last, s)) < DEADBAND_DEG) return null
         heading = s
         return s
+    }
+}
+
+/**
+ * Whether the phone's compass can be trusted now (owner 2026-10-30). Pure, unit-tested.
+ *
+ * Untrusted while Android says the sensor's accuracy is UNRELIABLE / LOW (or no contact), while the rotation vector's
+ * own heading accuracy estimate is worse than [BAD_ACCURACY_DEG] (back below [GOOD_ACCURACY_DEG] – hysteresis), and for
+ * [JUMP_HOLD_MS] after the heading jumped (≥ [JUMP_DEG] between two readings at most [JUMP_WITHIN_MS] apart: faster
+ * than a hand turns a phone – magnetic disturbance or a recalibration). What follows from it: the "where I face"
+ * arrow is drawn grey instead of blue (never hidden), and heading-up does not turn the map by it
+ * ([HeadingFilter.onUntrustedSensor]).
+ */
+class CompassTrust {
+    companion object {
+        /** SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM: from here on the sensor is fine. */
+        const val STATUS_MEDIUM = 2
+        const val BAD_ACCURACY_DEG = 35.0
+        const val GOOD_ACCURACY_DEG = 25.0
+        const val JUMP_DEG = 45.0
+        const val JUMP_WITHIN_MS = 200L
+        const val JUMP_HOLD_MS = 3_000L
+    }
+
+    /** Last status from Android; medium until told otherwise (most phones never report a change). */
+    var status = STATUS_MEDIUM; private set
+    private var badEstimate = false
+    private var lastDeg = Double.NaN
+    private var lastAt = -1L
+    private var jumpAt = -1L
+
+    /** SensorManager accuracy status (onAccuracyChanged, or SensorEvent.accuracy). */
+    fun onStatus(s: Int) { status = s }
+
+    /**
+     * One reading: [headingDeg] and the rotation vector's heading accuracy estimate in degrees (null / negative = the
+     * sensor gives none).
+     */
+    fun onReading(headingDeg: Double, accuracyDeg: Double?, nowMs: Long) {
+        if (accuracyDeg != null && accuracyDeg >= 0 && !accuracyDeg.isNaN()) {
+            badEstimate = if (badEstimate) accuracyDeg > GOOD_ACCURACY_DEG else accuracyDeg > BAD_ACCURACY_DEG
+        }
+        if (headingDeg.isNaN()) return
+        if (!lastDeg.isNaN() && nowMs - lastAt in 0..JUMP_WITHIN_MS &&
+            abs(HeadingFilter.diff(lastDeg, headingDeg)) >= JUMP_DEG) jumpAt = nowMs
+        lastDeg = headingDeg; lastAt = nowMs
+    }
+
+    fun reliable(nowMs: Long): Boolean =
+        status >= STATUS_MEDIUM && !badEstimate && (jumpAt < 0 || nowMs - jumpAt > JUMP_HOLD_MS)
+
+    /**
+     * The "where I face" arrow is grey: its direction comes from the compass (not the GPS bearing while moving) and the
+     * compass is not [reliable].
+     */
+    fun arrowGrey(viewFromGps: Boolean, nowMs: Long): Boolean = !viewFromGps && !reliable(nowMs)
+
+    /** Why not reliable (for the trace), or null. */
+    fun why(nowMs: Long): String? = when {
+        status < STATUS_MEDIUM -> "sensor accuracy ${when (status) { 1 -> "LOW"; 0 -> "UNRELIABLE"; else -> "NO CONTACT" }}"
+        badEstimate -> "heading accuracy estimate > ${BAD_ACCURACY_DEG.toInt()}°"
+        jumpAt >= 0 && nowMs - jumpAt <= JUMP_HOLD_MS -> "heading jumped"
+        else -> null
     }
 }
 
@@ -169,6 +244,12 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     /** View direction (where you face) at display rate, for the app's own arrow; main thread. */
     var onViewHeading: ((Double) -> Unit)? = null
 
+    /** The "where I face" arrow turns grey (true) / back to blue (false) – [CompassTrust.arrowGrey]; main thread. */
+    var onArrowGrey: ((Boolean) -> Unit)? = null
+    /** Current state of [onArrowGrey]. */
+    var arrowGrey = false; private set
+    private val trust = CompassTrust()
+
     /** True: MapLibre gets the map direction (heading-up camera); false: the view direction. */
     var mapToCompass = false
         set(v) { if (field != v) { field = v; reemit() } }
@@ -180,7 +261,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     private inner class Channel(val out: (Double) -> Unit) {
         var shown: Double? = null
         var target: Double? = null
-        fun set(h: Double) { target = h; if (shown == null || choreographer == null) { shown = h; out(h) } else kick() }
+        fun set(h: Double) { target = h; if (quiet) shown = h else if (shown == null || choreographer == null) { shown = h; out(h) } else kick() }
         /** Next frame; true while still moving. */
         fun step(dt: Double): Boolean {
             val s = shown ?: return false; val t = target ?: return false
@@ -232,12 +313,16 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     override fun addCompassListener(l: CompassListener) {
         listeners += l
         // a (re)added listener gets the current direction at once – it must not wait for the next change
-        current()?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
+        if (!quiet) current()?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
         if (!registered && sensor == null && !noSensorReported) {
             noSensorReported = true
             Problems.info("sensor", "No rotation sensor – map heading follows the GPS bearing only")
         }
-        if (!registered && sensor != null) {
+        register()
+    }
+
+    private fun register() {
+        if (!registered && sensor != null && !quiet) {
             registered = try {
                 sm?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI) == true
             } catch (e: Exception) {
@@ -245,6 +330,26 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
             }
         }
     }
+
+    /**
+     * The map is covered by the rest view (ui/RestView.kt, cycling): nothing goes to MapLibre (no camera turns, so the
+     * map draws no frames) and the sensor is off; the route / GPS direction is still taken in. Back to false: the
+     * sensor again and the current direction at once (no glide from the old one).
+     */
+    var quiet = false
+        set(v) {
+            if (field == v) return
+            field = v
+            if (v) {
+                release()
+                if (animating) { choreographer?.removeFrameCallback(frame); animating = false }
+            } else if (listeners.isNotEmpty()) {
+                register()
+                mapCh.target?.let { mapCh.shown = it }
+                view.target?.let { view.shown = it }
+                reemit()
+            }
+        }
 
     override fun removeCompassListener(l: CompassListener) {
         listeners -= l
@@ -279,6 +384,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         val b = if (loc.hasBearing()) loc.bearing else null
         val sp = if (loc.hasSpeed()) loc.speed else null
         viewFilter.onGps(b, sp, now())?.let { view.set(it) }
+        updateGrey()
         // every fix passes the map direction on, changed or not (after Plan → Navigate the camera must not wait for a
         // change of direction)
         val m = mapFilter.onGps(b, sp, now())
@@ -309,8 +415,16 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
             val ex = ux + bx; val ny = uy + by
             if (hypot(ex, ny) < 0.2f) return
             val true_ = HeadingFilter.norm(Math.toDegrees(atan2(ex.toDouble(), ny.toDouble())) + declination)
+            // rotation vector: values[4] = estimated heading accuracy in radians (-1 = none; not on every phone)
+            val accDeg = if (event.values.size > 4 && event.values[4] >= 0f) Math.toDegrees(event.values[4].toDouble()) else null
+            trust.onStatus(event.accuracy)
+            trust.onReading(true_, accDeg, now())
+            // the arrow shows where the phone points also when the compass is unsure (grey, owner); the map is not
+            // turned by an unsure compass (held, or the direction you really moved in)
             viewFilter.onSensor(true_, now())?.let { view.set(it) }
-            mapFilter.onSensor(true_, now())?.let { mapCh.set(it) }
+            val m = if (trust.reliable(now())) mapFilter.onSensor(true_, now()) else mapFilter.onUntrustedSensor(now())
+            m?.let { mapCh.set(it) }
+            updateGrey()
         } catch (e: Exception) {
             Problems.warn("sensor", "Compass reading failed, reading skipped", e)
         }
@@ -318,12 +432,24 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
 
     override fun onAccuracyChanged(s: Sensor?, acc: Int) {
         accuracy = acc
+        trust.onStatus(acc)
+        updateGrey()
         listeners.toList().forEach { l ->
             try { l.onCompassAccuracyChange(acc) } catch (e: Exception) { Problems.warn("sensor", "Compass accuracy not passed to the map", e) }
         }
     }
 
-    private fun pushView(h: Double) = listeners.toList().forEach { l ->
+    /** Arrow grey or blue again; only a change is passed on (and traced). */
+    private fun updateGrey() {
+        val g = sensor != null && trust.arrowGrey(viewFilter.usingGps(now()), now())
+        if (g == arrowGrey) return
+        arrowGrey = g
+        Problems.trace("sensor", if (g) "Compass unsure (${trust.why(now()) ?: "?"}): facing arrow grey, map not turned by it"
+            else "Compass fine again (or GPS direction): facing arrow blue")
+        try { onArrowGrey?.invoke(g) } catch (e: Exception) { Problems.warn("sensor", "Facing arrow colour not changed", e) }
+    }
+
+    private fun pushView(h: Double) = if (quiet) Unit else listeners.toList().forEach { l ->
         try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) }
     }
 

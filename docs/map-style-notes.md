@@ -275,8 +275,17 @@ profiles, evaluated per way with BRouter's expression engine – no tag rules of
   10 m – **0** on a forbidden way, 0 hiking samples above T3; 220 forbidden ways – **0** routed along (14 "no route").
   Samples on base-map roads (tertiary+, no class) are counted apart (touring ~47 %). Renders (before / after per
   activity at the audit's spots): `onpath-build/out-f2d/renders/`.
-- **Open:** the app does not yet compare the cells' `wayclass` hash with its own profiles (a profile change needs a
-  rebuild of all cells); tertiary and bigger roads have no class (base map); the cloud job image needs BuildKit
+- **App check** (`cells/RouterClassCheck`, `routing/RouterClassHash`): the app computes the same hash from the profiles
+  it ships (`RouterClassHashTest` compiles WayClass.java and compares) and compares it with each installed cell's manifest
+  `wayclass` (kept in `store.json`). Different → one WARNING (Settings → Diagnostics) and a quiet refresh request
+  (`CellReason.REFRESH`), once per cell version and app run; unknown (older cells / store, region packages) → quiet;
+  developer cells only reported. **Hash format 2** `2-<16 hex>`: comments and blank lines do not count
+  (`WayClass.normalize` = `RouterClassHash.normalize`: tokens per line, a .brf comment from a token starting with `#`,
+  lookups.dat only whole `#` lines); the app compares only format 2 – a format-1 hash (16 hex over the raw bytes, cells
+  built before) is unknown, so nothing happens until a cell's normal rebuild brings format 2. The doorman rebuilds only
+  on a CELL_SCHEMA bump or OSM age, so **a profile change still needs a CELL_SCHEMA bump** – the app then pulls the
+  rebuilt cells by itself.
+- **Open:** tertiary and bigger roads have no class (base map); the cloud job image needs BuildKit
   (`--build-context`, the GitHub runner has it).
 - **Owner: difficulty is not "forbidden".** New class **3 = too hard**: forbidden only
   because of `sac_scale` / `mtb:scale` / `trail_visibility`, or as a via ferrata (WayClass re-evaluates without them,

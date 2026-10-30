@@ -31,14 +31,32 @@ export async function keyOk(env, given) {
   return ok;
 }
 
-/** Fixed-window counter per IP and minute in D1. Fails open (a broken counter must not block the app). */
+/**
+ * The rate-limit key of an IP: "ip:" + HMAC-SHA-256(salt, ip), 32 hex chars – the plain address is never stored.
+ * The salt rotates daily (UTC): SHA-256 of the secret APP_KEYS (sorted, so the order in the secret does not matter)
+ * and the day – no extra secret; without APP_KEYS the doorman answers 503 before any rate limit. Yesterday's hashes
+ * cannot be linked to today's, and without the secret they cannot be turned back into addresses (IPv4 is small enough
+ * to try them all, hence a secret salt, not a public one). The window is one minute and starts at :00, so the daily
+ * change (at 00:00) never splits a window; a key rotation restarts at most one minute's count.
+ */
+export async function ipKey(env, ip, now = Date.now()) {
+  const keys = String(env.APP_KEYS || "").split(",").map((k) => k.trim()).filter(Boolean).sort().join(",");
+  const day = new Date(now).toISOString().slice(0, 10);
+  const salt = await sha(`onpath-ratelimit|${day}|${keys}`);
+  const k = await crypto.subtle.importKey("raw", salt, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(ip)));
+  return "ip:" + [...mac.subarray(0, 16)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Fixed-window counter per IP (as [ipKey]) and minute in D1; rows older than 2 minutes go with the cron's
+ *  housekeeping. Fails open (a broken counter must not block the app). */
 export async function rateLimited(env, cfg, ip, now = Date.now()) {
   if (!cfg.rateLimitPerMin) return false;
   const win = Math.floor(now / 60_000);
   try {
     const r = await env.DB.prepare(`INSERT INTO ratelimit (key, win, count) VALUES (?1, ?2, 1)
         ON CONFLICT (key) DO UPDATE SET count = CASE WHEN win = ?2 THEN count + 1 ELSE 1 END, win = ?2
-        RETURNING count`).bind(`ip:${ip}`, win).first();
+        RETURNING count`).bind(await ipKey(env, ip, now), win).first();
     return r.count > cfg.rateLimitPerMin;
   } catch (e) {
     log({ ev: "ratelimit-error", err: String(e) });

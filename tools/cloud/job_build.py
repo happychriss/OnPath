@@ -17,6 +17,12 @@ Geofabrik index (osm_sources.py; pinned extracts in sources.json first – none 
 An extract older than max_age_days is downloaded again – straight into the bucket mount (no copy in memory, a
 <path>.lock file keeps two jobs from fetching the same one) – and build_cell.sh reads it from there.
 
+Partial rebuild (map-hosting.md §7h): when the cell's published version has the same OSM date as the sources now and
+only some of its layers are of an older schema (cells.py LAYER_SCHEMA / rebuild_plan), build_cell.sh builds only those
+(LAYERS, BASE_MANIFEST) and the other layers' files are copied from the published version into the new version folder
+(R2 CopyObject, checked by size + ETag; fallback: download, check sha256, upload). The new version is complete and has
+the usual name and manifest – app and doorman see no difference. A failed partial build is retried whole at once.
+
 Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execution from the doorman's overrides):
   CELLS="10-543-361 10-544-361"   cell ids (also 10/543/361), space or comma separated
   FORMAT=2                        cell format (build_cell.sh writes cells/f<FORMAT>/…)
@@ -25,7 +31,7 @@ Env (set by the job definition tools/cloud/job.yaml; CELLS/FORMAT come per execu
   WORK=/tmp/onpath/work  DATA_ROOT=/tmp/onpath/store   local (in-memory on Cloud Run) work + output folders
   R2_ACCOUNT_ID (+ R2_JURISDICTION, default eu) or R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY   upload target
   R2_LOCAL_DIR=/data/store        instead of R2: write into this folder (zo, tests)
-  BUILD_CELL=<repo>/tools/cells/build_cell.sh   BUFFER_KM=5
+  BUILD_CELL=<repo>/tools/cells/build_cell.sh   BUFFER_KM=5   PARTIAL=0: always build whole cells
   CLOUD_RUN_EXECUTION / CLOUD_RUN_TASK_ATTEMPT   set by Cloud Run
 
 Exit code 0 when every cell got a final status (ready or failed) – a failed cell is the doorman's business (it
@@ -43,6 +49,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "cells"))
+import cells as cell_tools  # noqa: E402
 import osm_sources  # noqa: E402
 import r2  # noqa: E402
 import src_objects  # noqa: E402
@@ -66,6 +73,32 @@ STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.23, "re
 PACKAGE_STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.35, "renumber": 0.4, "base": 0.45,
                          "base-own": 0.75, "base-trim": 0.76, "routes-filter": 0.78, "routes": 0.8, "routes-tiles": 0.85,
                          "routes-own": 0.88, "shade": 0.9, "manifest": 0.97, "upload": 0.98}
+# steps of each layer (partial rebuild, map-hosting.md §7h); the cut runs when an OSM layer is built
+CUT_STEPS = ("cut", "merge", "renumber")
+LAYER_STEPS = {"base": ("base", "base-own", "base-trim"), "overlays": ("overlays", "overlays-tiles", "overlays-own"),
+               "pois": ("pois", "pois-ids", "clip"), "addresses": ("addresses",), "terrain": ("terrain",),
+               "contours": ("contours", "contours-own")}
+
+
+def partial_progress(layers):
+    """STEP_PROGRESS for a build of only these layers: each step's share of a whole build (its STEP_PROGRESS span),
+    summed over the steps that run and stretched to 0..0.98 – the app's progress bar moves evenly also then."""
+    known = set(CUT_STEPS) | {s for v in LAYER_STEPS.values() for s in v} | {"manifest", "upload"}
+    steps = [s for s in STEP_PROGRESS if s in known]  # format-2 steps in build order
+    span = {s: max(0.0, STEP_PROGRESS[steps[i + 1]] - STEP_PROGRESS[s]) for i, s in enumerate(steps[:-1])}
+    runs = {s for layer in layers for s in LAYER_STEPS[layer]} | {"manifest"}
+    if set(layers) & set(cell_tools.OSM_LAYERS):
+        runs |= set(CUT_STEPS)
+    total = sum(span[s] for s in runs) or 1.0
+    out, done = {"source": 0.0, "download": 0.0}, 0.0
+    for s in steps[:-1]:
+        out[s] = round(done / total * STEP_PROGRESS["upload"], 3)
+        if s in runs:
+            done += span[s]
+    out["upload"] = STEP_PROGRESS["upload"]
+    return out
+
+
 PACKAGE_Z = 7
 PACKAGE_BUFFER_KM = 10  # build_package.sh PKG_BUFFER_KM: the sources must cover the package + this
 # a package (~200 km) touches many Geofabrik leaves – Düsseldorf's 7/66/42: 15 (NL provinces, NRW districts, Belgium,
@@ -112,7 +145,7 @@ def content_type(name):
 
 class Builder:
     def __init__(self, env=os.environ, store=None, run=subprocess.Popen, download=None, sleep=time.sleep,
-                 objects=None):
+                 objects=None, osm_date=None):
         self.env = env
         self.fmt = int(env.get("FORMAT", "2"))
         self.src_dir = env.get("SRC_DIR", "/src")
@@ -136,6 +169,8 @@ class Builder:
         self.objects = objects or src_objects.from_env(env, self.src_dir)
         self.dl = {"s": 0.0, "mb": 0.0}
         self.waited_for_source = False
+        self.osm_date = osm_date or cell_tools.osm_date
+        self.partial_on = env.get("PARTIAL", "1") != "0"
 
     # ------------------------------------------------------------------ status
     def status_key(self, cid):
@@ -357,16 +392,72 @@ class Builder:
         except OSError as e:
             log(f"WARN: could not save planetiler sources: {e}")
 
+    # ------------------------------------------------------------------ partial rebuild (map-hosting.md §7h)
+    def cell_prefix(self, z, x, y):
+        return f"cells/f{self.fmt}/{z}/{x}/{y}"
+
+    def plan(self, z, x, y, pbfs, cid):
+        """Partial rebuild: {"layers", "from", "manifest"} when the published version has the same OSM date and only
+        some layers are of an older schema (cells.rebuild_plan); None = build the whole cell. Any doubt → whole."""
+        if not self.partial_on or z == PACKAGE_Z or self.fmt != 2:
+            return None
+        try:
+            raw = self.store.get_bytes(f"{self.cell_prefix(z, x, y)}/current.json")
+            if not raw:
+                return None
+            version = json.loads(raw)["version"]
+            raw = self.store.get_bytes(f"{self.cell_prefix(z, x, y)}/{version}/manifest.json")
+            published = json.loads(raw) if raw else None
+            if not published or published.get("version") != version:
+                return None
+            layers = cell_tools.rebuild_plan(published, self.osm_date(pbfs), z, x, y, self.fmt)
+        except Exception as e:  # noqa: BLE001 – a whole build is always right
+            log(f"cell {cid}: no partial rebuild ({type(e).__name__}: {e}) – building it whole")
+            return None
+        if not layers:
+            return None
+        path = os.path.join(self.work, f"published-{cid}.json")
+        os.makedirs(self.work, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(published, f)
+        log(f"cell {cid}: partial rebuild of {' '.join(layers)} – the other layers are copied from {version}")
+        return {"layers": layers, "from": version, "manifest": path}
+
+    def reuse(self, src_key, dst_key, entry):
+        """Puts a published file of the old version into the new one: server-side copy, checked by size + ETag
+        (= same bytes as the source, whose sha256 the old manifest has); else download it, check size + sha256 against
+        the manifest and upload it. Returns "copy" or "upload"."""
+        try:
+            self.store.copy(src_key, dst_key)
+            src, dst = self.store.head(src_key), self.store.head(dst_key)
+            if dst and src and dst["size"] == entry["size"] and dst["etag"] and dst["etag"] == src["etag"]:
+                return "copy"
+            log(f"WARN: copy of {src_key} does not match ({src} → {dst}) – downloading it")
+        except Exception as e:  # noqa: BLE001 – the download below is the fallback
+            log(f"WARN: copy of {src_key} failed ({type(e).__name__}: {e}) – downloading it")
+        tmp = os.path.join(self.work, "reuse.tmp")
+        os.makedirs(self.work, exist_ok=True)
+        try:
+            self.store.get_file(src_key, tmp)
+            if os.path.getsize(tmp) != entry["size"] or r2.file_sha256(tmp) != entry["sha256"]:
+                raise RuntimeError(f"{src_key}: size / sha256 differ from the manifest")
+            self.store.put_file(dst_key, tmp, content_type(entry["name"]), IMMUTABLE)
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        return "upload"
+
     # ------------------------------------------------------------------ one cell
-    def run_build(self, z, x, y, src_pbfs, cid, src_meta=None):
+    def run_build(self, z, x, y, src_pbfs, cid, src_meta=None, plan=None):
         env = dict(self.env, SRC_PBF=" ".join(src_pbfs), DATA_ROOT=self.data_root, WORK=self.work,
                    SRC_META=json.dumps([{"id": m.get("id"), "url": m.get("url")} for m in (src_meta or [])]),
                    FORMAT=str(self.fmt), PLANETILER_SOURCES=os.path.join(self.work, "planetiler-sources"),
-                   KEEP_WORK="0", BUFFER_KM=str(self.buffer_km).rstrip("0").rstrip("."))
+                   KEEP_WORK="0", BUFFER_KM=str(self.buffer_km).rstrip("0").rstrip("."),
+                   LAYERS=" ".join(plan["layers"]) if plan else "", BASE_MANIFEST=plan["manifest"] if plan else "")
         p = self.popen(["bash", self.build_cell, str(z), str(x), str(y)], env=env, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, text=True, bufsize=1)
         tail, progress = [], 0.0
-        table = PACKAGE_STEP_PROGRESS if z == PACKAGE_Z else STEP_PROGRESS
+        table = PACKAGE_STEP_PROGRESS if z == PACKAGE_Z else partial_progress(plan["layers"]) if plan else STEP_PROGRESS
         for line in p.stdout:
             sys.stdout.write(line)
             tail = (tail + [line.rstrip()])[-30:]
@@ -378,29 +469,44 @@ class Builder:
         rc = p.wait()
         return rc, tail
 
-    def publish(self, z, x, y, cid):
+    def publish(self, z, x, y, cid, plan=None):
         dest = os.path.join(self.data_root, "cells", f"f{self.fmt}", str(z), str(x), str(y))
         with open(os.path.join(dest, "current.json")) as f:
             version = json.load(f)["version"]
         vdir = os.path.join(dest, version)
         with open(os.path.join(vdir, "manifest.json")) as f:
             manifest = json.load(f)
+        prefix = self.cell_prefix(z, x, y)
+        reused = []
         for e in manifest["files"]:
             p = os.path.join(vdir, e["name"])
-            if os.path.getsize(p) != e["size"]:
+            if plan and not os.path.exists(p) and cell_tools.layer_of(e["name"]) not in plan["layers"]:
+                reused.append(e)  # a kept layer: it lives in the published version (partial rebuild)
+            elif os.path.getsize(p) != e["size"]:
                 raise RuntimeError(f"{e['name']}: size differs from the manifest")
-        prefix = f"cells/f{self.fmt}/{z}/{x}/{y}"
+        if plan and version == plan["from"]:
+            raise RuntimeError(f"partial rebuild would overwrite the published version {version}")
         # every file below the version folder (format 2 has addresses/<cell>.sqlite in a sub folder)
         names = sorted(os.path.relpath(os.path.join(r, n), vdir) for r, _, ns in os.walk(vdir) for n in ns)
         names = [n for n in names if n != "manifest.json" and not os.path.basename(n).startswith(".")]
-        for n in names:  # files first, manifest after them, current.json last (readers never see half a cell)
+        # files first (the kept layers copied from the published version), manifest after them, current.json last
+        # (readers never see half a cell)
+        how = [self.reuse(f"{prefix}/{plan['from']}/{e['name']}", f"{prefix}/{version}/{e['name']}", e)
+               for e in reused]
+        if reused:
+            log(f"cell {cid}: {len(reused)} files of {plan['from']} reused ({how.count('copy')} copied in the bucket, "
+                f"{how.count('upload')} downloaded + uploaded)")
+        for n in names:
             self.store.put_file(f"{prefix}/{version}/{n}", os.path.join(vdir, n), content_type(n), IMMUTABLE)
         self.store.put_file(f"{prefix}/{version}/manifest.json", os.path.join(vdir, "manifest.json"),
                             "application/json", IMMUTABLE)
         self.store.put_bytes(f"{prefix}/current.json", json.dumps({"version": version}).encode(),
                              "application/json", "no-cache")
         shutil.rmtree(vdir, ignore_errors=True)  # Cloud Run's disk is memory
-        return {"version": version, "osm_date": manifest.get("osm_date"), "size": manifest.get("total_size")}
+        info = {"version": version, "osm_date": manifest.get("osm_date"), "size": manifest.get("total_size")}
+        if plan:  # diagnostics: which layers were built (the doorman ignores it)
+            info.update(layers=plan["layers"], reused_from=plan["from"])
+        return info
 
     def build_one(self, z, x, y):
         cid = f"{z}-{x}-{y}"
@@ -428,7 +534,12 @@ class Builder:
             self.status(cid, "failed", reason=UNAVAILABLE, detail=str(e)[:500])
             return False
         t_build = time.time()
-        rc, tail = self.run_build(z, x, y, pbfs, cid, sources)
+        plan = self.plan(z, x, y, pbfs, cid)
+        rc, tail = self.run_build(z, x, y, pbfs, cid, sources, plan)
+        if rc != 0 and plan:
+            log(f"cell {cid}: partial rebuild failed – building it whole")
+            plan = None
+            rc, tail = self.run_build(z, x, y, pbfs, cid, sources)
         if rc != 0:
             step = next((m.group(1) for line in reversed(tail) for m in [re.search(r"step (\S+) failed", line)] if m),
                         None)
@@ -437,7 +548,7 @@ class Builder:
             return False
         self.status(cid, "building", step="upload", progress=STEP_PROGRESS["upload"])
         try:
-            info = self.publish(z, x, y, cid)
+            info = self.publish(z, x, y, cid, plan)
         except Exception as e:  # noqa: BLE001
             log(f"cell {cid}: upload failed: {e}")
             self.status(cid, "failed", reason="Upload failed", detail=str(e)[:500])

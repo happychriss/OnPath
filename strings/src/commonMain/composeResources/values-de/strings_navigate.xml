@@ -37,6 +37,8 @@
     <string name="nav_breaks">Pausen %1$s</string>
     <string name="nav_no_gps">Kein GPS</string>
     <string name="nav_position_age">Position %1$d min alt</string>
+    <string name="nav_approx_wifi">Ungefähre Position (WLAN, ±%1$d m) – GPS kommt draußen</string>
+    <string name="nav_approx_weak_gps">Ungefähre Position (±%1$d m) – GPS noch schwach</string>
     <string name="nav_time_paused">Zeit pausiert</string>
     <string name="nav_off_route">Abseits der Route</string>
     <string name="nav_pace_faster">schneller als geplant</string>
@@ -83,6 +85,15 @@
     <string name="nav_compass_nw">nordwestlich</string>
     <string name="nav_back_to">Zurück zu %1$s</string>
     <string name="nav_back_to_route">Zurück zur Route</string>
+    <!-- re-route and the next stop: "Off route – re-plan?" – Yes (via the stop) / Yes, skip stop 3 (navigation/StopSkip) -->
+    <string name="nav_title_replan">Abseits der Route – neu planen?</string>
+    <string name="nav_state_replan">Neu planen?</string>
+    <string name="nav_via_stop">Über %1$s: %2$s</string>
+    <string name="nav_yes">Ja</string>
+    <string name="nav_yes_skip_stop">Ja, %1$s auslassen</string>
+    <string name="nav_notif_skip">Ja, auslassen</string>
+    <string name="nav_stop_n">Stopp %1$d</string>
+    <string name="nav_without_stop">ohne %1$s</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">noch %1$s</string>
@@ -96,6 +107,8 @@
     <!-- recording notifications and problems -->
     <string name="nav_channel_recording">Aufzeichnung</string>
     <string name="nav_channel_recording_desc">Zeigt Strecke und Zeit während der Aufzeichnung</string>
+    <string name="nav_channel_navigation">Navigation</string>
+    <string name="nav_channel_navigation_desc">Nächste Abzweigung, Restzeit und Ankunft, während du einer Route folgst – auch auf dem Sperrbildschirm. Lautlos.</string>
     <string name="nav_channel_off_route">Abseits der Route</string>
     <string name="nav_channel_off_route_desc">Fragt nach, wenn du die Route verlässt: neue Route nehmen oder die ursprüngliche behalten</string>
     <string name="nav_rec_stopped_title">Aufzeichnung gestoppt</string>
@@ -124,7 +137,7 @@
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Tour beenden?</string>
     <string name="nav_delete_track_title">Diesen Track löschen?</string>
-    <string name="nav_recycle_bin_note">Er bleibt %1$d Tage im Papierkorb.</string>
+    <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
     <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
     <string name="nav_continue">Weiter</string>
@@ -202,4 +215,12 @@
     <string name="nav_time_moving">Bewegungszeit</string>
     <string name="nav_time_with_breaks">Mit Pausen</string>
     <string name="nav_time_pace_level">Tempo</string>
+    <string name="nav_notif_off">Benachrichtigungen aus</string>
+    <string name="nav_notif_off_line">Sperrbildschirm ohne Abzweigungen und ohne „Neue Route?“</string>
+    <string name="nav_notif_off_click">Benachrichtigungen einrichten</string>
+
+    <!-- Ruheansicht beim Radfahren (smarter Bildschirm) -->
+    <string name="nav_rest_destination">Ziel</string>
+    <string name="nav_rest_tap">Tippen für die Karte</string>
+    <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
 </resources>

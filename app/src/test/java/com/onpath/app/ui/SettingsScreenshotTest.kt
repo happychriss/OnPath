@@ -46,7 +46,8 @@ class SettingsScreenshotTest {
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
-        demo: DemoUi? = null) = OnPathTheme {
+        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
+        phone: com.onpath.app.setup.PhoneState? = null) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -65,6 +66,8 @@ class SettingsScreenshotTest {
             diagnosticsSeenMs = seenMs,
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
             demo = demo,
+            sync = sync,
+            phoneChecks = phone?.let { com.onpath.app.setup.PhoneCheck.all(it) },
             now = now,
         )
     }
@@ -72,6 +75,15 @@ class SettingsScreenshotTest {
     @Test fun list() = paparazzi.snapshot { Screen(null) }
     /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */
     @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
+    // Phone setup in the list (owner 2026-10-30)
+    private val phoneOk = com.onpath.app.setup.PhoneState(sdk = 35, manufacturer = "Google", location = com.onpath.app.setup.LocationGrant.PRECISE,
+        vibrationFelt = com.onpath.app.setup.Felt.YES)
+    /** A tour needs something (location off): Phone setup on top, red mark, "1 item needed for tours". */
+    @Test fun listPhoneNeeded() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false, notificationsOn = false)) }
+    /** Only recommended items missing: Phone setup at its place in "App", amber "2 recommended". */
+    @Test fun listPhoneRecommended() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(notificationsOn = false, backgroundRestricted = true)) }
+    /** All set up: at its place, grey "Everything set up". */
+    @Test fun listPhoneOk() = paparazzi.snapshot { Screen(null, phone = phoneOk) }
     @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
     @Test fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }
@@ -97,6 +109,28 @@ class SettingsScreenshotTest {
         }
     }
     @Test fun about() = paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
+
+    // Browser sync (plan sync with the web planner, A-007)
+    /** Not paired: how to pair (the system camera opens the pairing link). */
+    @Test fun syncNotPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi()) }
+    /** A pairing link was opened: the check digits, Pair / Cancel. */
+    @Test fun syncAsk() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi(askCheck = "395 514")) }
+    /** Paired: the browser's name, "Last synced: 1 min ago", Unpair – no Sync now (it syncs every minute by itself). */
+    @Test fun syncPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC) }
+    /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, then the paired page. */
+    @Test fun syncPairedNote() = paparazzi.snapshot {
+        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 5_000, pairedNote = true))
+    }
+    /** Paired, the last pass found items from a newer app (amber line). */
+    @Test fun syncNewerApp() = paparazzi.snapshot {
+        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Firefox on Windows", lastOkMs = now - 86_400_000,
+            problem = com.onpath.app.plansync.PlanSync.Problem.NewerApp(2)))
+    }
+    /** Paired, offline (grey line), the last good pass 25 min ago. */
+    @Test fun syncOffline() = paparazzi.snapshot {
+        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, lastOkMs = now - 25 * 60_000,
+            problem = com.onpath.app.plansync.PlanSync.Problem.Offline))
+    }
 
     /** Offline maps → Clean up: what goes and what stays, before anything is removed. */
     @Test fun offlineMapsCleanUp() = paparazzi.snapshot {

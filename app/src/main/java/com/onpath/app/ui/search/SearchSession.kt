@@ -12,7 +12,9 @@ import com.onpath.app.search.SearchAreas
 import com.onpath.app.search.AddressIndex
 import com.onpath.app.search.AddressQuery
 import com.onpath.app.search.AndroidAddressDb
-import com.onpath.app.search.OfflineIndex
+import com.onpath.app.search.AndroidSearchDb
+import com.onpath.app.search.PlaceIndex
+import com.onpath.app.search.SearchDb
 import com.onpath.app.search.OnlineRanking
 import com.onpath.app.search.SearchText
 import com.onpath.app.search.Place
@@ -27,6 +29,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -76,6 +80,8 @@ class SearchSession(
      * open (and now and then while typing): a changed area is re-indexed in the background, the rest is reused.
      */
     private val areaPlan: () -> AreaPlan = { AreaPlan.of(dataDir) },
+    /** Opens the offline index file (SQLite); replaced in tests. */
+    private val openIndex: (File) -> SearchDb = { AndroidSearchDb(it) },
     private val context: () -> SearchContext,
 ) {
     @Volatile private var addresses: AddressIndex? = null
@@ -91,11 +97,11 @@ class SearchSession(
     var ui by mutableStateOf(SearchUi())
         private set
 
-    @Volatile private var index: OfflineIndex? = null
+    @Volatile private var index: PlaceIndex? = null
     private val indexLock = Mutex()
     private var refreshJob: Job? = null
     @Volatile private var lastCheck = 0L
-    private val areas: SearchAreas get() = areasFor(cacheDir)
+    private val areas: SearchAreas get() = areasFor(cacheDir, openIndex)
     private var offlineJob: Job? = null
     private var onlineJob: Job? = null
     private var generation = 0
@@ -108,7 +114,30 @@ class SearchSession(
         val ctx = context()
         ui = ui.copy(query = "", category = null, recent = recentHits(ctx), hasRoute = ctx.route != null)
         run() // clears the old results and stops a search still on its way
-        scope.launch { ensureIndex(force = true); if (ui.active) run() }
+        // the address files opened now (one per map cell, each reads its towns), not on the first letter
+        scope.launch(Dispatchers.IO) {
+            try { ensureAddresses() } catch (e: Exception) {
+                Problems.warn("search", "Offline address files not opened in advance; opened when searching", e)
+            }
+        }
+        scope.launch {
+            val idx = ensureIndex(force = true)
+            // the word index into memory now (once per process), so the first keystroke answers at once
+            withContext(Dispatchers.IO) { idx.warmUp() }
+            if (ui.active) run()
+        }
+    }
+
+    /**
+     * The map areas changed (a cell joined or left): bring the offline index up to date in the background, so the next
+     * search (or route name) does not wait for it. Only the changed areas are read.
+     */
+    fun prepare() {
+        scope.launch {
+            try { rebuild() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                Problems.warn("search", "Offline search index not updated after a map change; updated when searching", e)
+            }
+        }
     }
 
     fun onQuery(q: String) { ui = ui.copy(query = q); run() }
@@ -121,15 +150,18 @@ class SearchSession(
 
     fun clearRecent() { store.clearRecent(); ui = ui.copy(recent = emptyList()) }
 
-    /** A recent entry picked again: the offline copy (full details) when the index still has it. */
-    fun resolve(p: Place): Place = index?.entries?.firstOrNull { it.place.id == p.id }?.place ?: p
+    /**
+     * A result or recent entry picked: the offline copy (full details) when the index has it. A shown result is that
+     * copy already; a recent one is one indexed lookup.
+     */
+    fun resolve(p: Place): Place = ui.hits.firstOrNull { it.place.id == p.id }?.place ?: index?.place(p.id) ?: p
 
     private fun recentHits(ctx: SearchContext) = store.recent().map { p ->
         SearchHit(p, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, p.lat, p.lon), false)
     }
 
     /** The offline index, built (off the main thread) when needed; for route names (search/RouteNamer). */
-    suspend fun offlineIndex(): OfflineIndex = ensureIndex()
+    suspend fun offlineIndex(): PlaceIndex = ensureIndex()
 
     /**
      * The index to answer with now. When there is one it answers at once, and a newer one is built in the background
@@ -137,8 +169,8 @@ class SearchSession(
      * (no index yet) this waits; the view then shows
      * "Preparing offline search…" ([SearchUi.indexing]).
      */
-    private suspend fun ensureIndex(force: Boolean = false): OfflineIndex {
-        val cur = index ?: areas.latest
+    private suspend fun ensureIndex(force: Boolean = false): PlaceIndex {
+        val cur = (index ?: areas.latest)?.takeIf { !it.broken }
         if (cur != null) { index = cur; refresh(force); return cur }
         return rebuild()
     }
@@ -157,8 +189,8 @@ class SearchSession(
     }
 
     /** Builds the index for the current areas when it changed (only changed areas are read); swaps it in when ready. */
-    private suspend fun rebuild(): OfflineIndex = indexLock.withLock {
-        val cur = index ?: areas.latest
+    private suspend fun rebuild(): PlaceIndex = indexLock.withLock {
+        val cur = (index ?: areas.latest)?.takeIf { !it.broken }
         if (cur == null) ui = ui.copy(indexing = true)
         try {
             val plan = withContext(Dispatchers.IO) { areaPlan() }
@@ -226,7 +258,9 @@ class SearchSession(
         offlineJob = scope.launch {
             val idx = ensureIndex()
             val hits = withContext(Dispatchers.IO) {
-                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) else emptyList()
+                // a newer keystroke cancels this job: the address files not searched yet are skipped
+                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
+                ensureActive()
                 idx.search(q, addr)
             }
             if (gen == generation) ui = ui.copy(hits = hits, hasRoute = ctx.route != null)
@@ -272,9 +306,13 @@ class SearchSession(
         const val RECHECK_MS = 5_000L
         private val areaStores = HashMap<String, SearchAreas>()
 
-        /** One [SearchAreas] per app folder for the whole process (its areas stay in memory between builds). */
-        @Synchronized fun areasFor(filesDir: File): SearchAreas = areaStores.getOrPut(filesDir.path) {
-            SearchAreas(File(filesDir, "search-areas"), legacyCache = File(filesDir, "search-places-v1.tsv"))
-        }
+        /** One [SearchAreas] per app folder for the whole process (one open index file). */
+        @Synchronized fun areasFor(filesDir: File, opener: (File) -> SearchDb = { AndroidSearchDb(it) }): SearchAreas =
+            areaStores.getOrPut(filesDir.path) {
+                SearchAreas(File(filesDir, "search-areas"), legacyCache = File(filesDir, "search-places-v1.tsv"), opener = opener)
+            }
+
+        /** The [SearchAreas] of this app folder if a search created it already, else null (health line: never creates one). */
+        @Synchronized fun peekAreas(filesDir: File): SearchAreas? = areaStores[filesDir.path]
     }
 }

@@ -22,7 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Commute
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Elevator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -44,11 +46,14 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
+import com.onpath.app.rides.Ride
 import com.onpath.app.rides.RideChoice
+import com.onpath.app.rides.RideKind
 import com.onpath.app.rides.RideView
 import java.time.Instant
 import java.time.ZoneId
@@ -57,6 +62,20 @@ import kotlin.math.cos
 
 private val RideGrey = Color(0xFF8A8F98)
 private val LiftPurple = Color(0xFF8E24AA)
+
+/**
+ * The dialog's icon for the rides found (owner 2026-10-30): only lifts (chairlift / gondola / cable car,
+ * [RideKind.LIFT]) → the lift icon, only road rides (bus / car, [RideKind.VEHICLE]) → the bus, both → a neutral ride icon.
+ * Material has no gondola in the icon set the app uses: [Icons.Filled.Elevator] ("Lift") stands for it.
+ */
+fun rideIcon(rides: List<Ride>): ImageVector {
+    val kinds = rides.map { it.kind }.toSet()
+    return when {
+        kinds == setOf(RideKind.LIFT) -> Icons.Filled.Elevator
+        RideKind.LIFT in kinds -> Icons.Filled.Commute
+        else -> Icons.Filled.DirectionsBus
+    }
+}
 
 /**
  * "End tour" when a bus / car / lift was found (docs/design/vehicle-detection.md): instead of the
@@ -87,7 +106,7 @@ fun RideSummaryDialog(
     val rides = summary.rides.size
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.DirectionsBus, null) },
+        icon = { Icon(rideIcon(summary.rides), null) },
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
