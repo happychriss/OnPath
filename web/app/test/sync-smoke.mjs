@@ -421,7 +421,9 @@ await L.click('#syncBadge');
 await L.click('dialog.phone #unpair');
 await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.querySelectorAll('dialog.phone .removefolder').length === 2, null, { timeout: 30_000 }).catch(() => {});
 check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).folder.key === 'none', 'Unpair: no question, the folder closes (Without phone)');
-check((await L.textContent('#phoneStatus')).startsWith('Unpaired. The routes of Pixel 8'), 'the quiet line says the routes stay ' + await L.textContent('#phoneStatus'));
+await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Unpaired. The routes of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
+const quiet = await L.textContent('#phoneStatus');
+check(quiet.startsWith('Unpaired. The routes of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
 const removes = await L.evaluate(() => [...document.querySelectorAll('dialog.phone .removefolder')].map((b) => b.textContent));
 check(removes.length === 2 && removes.every((r) => r.startsWith('Remove routes of Pixel 8 · paired')), 'the Phone window offers removing each closed folder ' + JSON.stringify(removes));
 await L.click(`dialog.phone .removefolder[data-folder="${friend.device}"]`);
