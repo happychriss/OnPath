@@ -918,7 +918,7 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 24,
-    "decided": "Owner answer 2026-10-26: \"Edit route\" (sentence case) / \"Route ändern\""
+    "decided": "Owner 2026-10-30: \"Plan\" / \"Planen\" (was \"Edit route\" / \"Route ändern\" from 2026-10-26) – behind the slider you do much more than change the route (pause, end tour, search, add stops, look at the map); pairs with the \"Weiter · Wandern\" button"
   },
   "plan_slide_desc": {
     "area": "Navigate",

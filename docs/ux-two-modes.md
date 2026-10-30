@@ -8,7 +8,7 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
 | Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
-| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
+| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "Plan" / „Planen“ at the bottom (owner 2026-10-30; was "Edit route" – behind it is more than changing the route: pause, end tour, search, add stops) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to

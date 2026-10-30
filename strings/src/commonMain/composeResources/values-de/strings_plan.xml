@@ -167,7 +167,7 @@
     <string name="plan_same_round_trip">Gleiche Rundtour, startet hier</string>
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
-    <string name="plan_slide_to_plan">Route ändern</string>
+    <string name="plan_slide_to_plan">Planen</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>
