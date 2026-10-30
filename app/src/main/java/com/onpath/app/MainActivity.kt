@@ -445,6 +445,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Every finger-down: the full map stays for a while instead of the rest view while cycling (ui/RestView.kt). */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) com.onpath.app.ui.ScreenTouch.note()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onStart() {
         com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()

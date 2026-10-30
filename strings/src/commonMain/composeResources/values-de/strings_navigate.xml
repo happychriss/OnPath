@@ -207,4 +207,9 @@
     <string name="nav_notif_off">Benachrichtigungen aus</string>
     <string name="nav_notif_off_line">Keine Tour-Hinweise auf dem Sperrbildschirm</string>
     <string name="nav_notif_off_click">Benachrichtigungen einrichten</string>
+
+    <!-- Ruheansicht beim Radfahren (smarter Bildschirm) -->
+    <string name="nav_rest_destination">Ziel</string>
+    <string name="nav_rest_tap">Tippen für die Karte</string>
+    <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
 </resources>

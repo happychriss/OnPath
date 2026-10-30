@@ -180,7 +180,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     private inner class Channel(val out: (Double) -> Unit) {
         var shown: Double? = null
         var target: Double? = null
-        fun set(h: Double) { target = h; if (shown == null || choreographer == null) { shown = h; out(h) } else kick() }
+        fun set(h: Double) { target = h; if (quiet) shown = h else if (shown == null || choreographer == null) { shown = h; out(h) } else kick() }
         /** Next frame; true while still moving. */
         fun step(dt: Double): Boolean {
             val s = shown ?: return false; val t = target ?: return false
@@ -232,12 +232,16 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
     override fun addCompassListener(l: CompassListener) {
         listeners += l
         // a (re)added listener gets the current direction at once – it must not wait for the next change
-        current()?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
+        if (!quiet) current()?.let { h -> try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) } }
         if (!registered && sensor == null && !noSensorReported) {
             noSensorReported = true
             Problems.info("sensor", "No rotation sensor – map heading follows the GPS bearing only")
         }
-        if (!registered && sensor != null) {
+        register()
+    }
+
+    private fun register() {
+        if (!registered && sensor != null && !quiet) {
             registered = try {
                 sm?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI) == true
             } catch (e: Exception) {
@@ -245,6 +249,26 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
             }
         }
     }
+
+    /**
+     * The map is covered by the rest view (ui/RestView.kt, cycling): nothing goes to MapLibre (no camera turns, so the
+     * map draws no frames) and the sensor is off; the route / GPS direction is still taken in. Back to false: the
+     * sensor again and the current direction at once (no glide from the old one).
+     */
+    var quiet = false
+        set(v) {
+            if (field == v) return
+            field = v
+            if (v) {
+                release()
+                if (animating) { choreographer?.removeFrameCallback(frame); animating = false }
+            } else if (listeners.isNotEmpty()) {
+                register()
+                mapCh.target?.let { mapCh.shown = it }
+                view.target?.let { view.shown = it }
+                reemit()
+            }
+        }
 
     override fun removeCompassListener(l: CompassListener) {
         listeners -= l
@@ -323,7 +347,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         }
     }
 
-    private fun pushView(h: Double) = listeners.toList().forEach { l ->
+    private fun pushView(h: Double) = if (quiet) Unit else listeners.toList().forEach { l ->
         try { l.onCompassChanged(h.toFloat()) } catch (e: Exception) { Problems.warn("sensor", "Heading not passed to the map", e) }
     }
 

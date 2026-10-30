@@ -42,6 +42,13 @@ object OnPathColors {
     /** Own position / "where I face" arrow on the map (map furniture, like the location puck). */
     val Position = Color(0xFF1A73E8)
 
+    // ---- Rest view while cycling (ui/RestView.kt): black = OLED pixels off; grey, not white, so it does not dazzle ----
+    val RestBackground = Color(0xFF000000)
+    /** Arrow and distance: 10:1 on black – readable at a glance in the sun at the phone's normal brightness. */
+    val RestInk = Color(0xFFB3B3B3)
+    /** Direction, time left, arrival, the tap hint: 6:1 on black (above the 4.5:1 text minimum). */
+    val RestDim = Color(0xFF8A8A8A)
+
     // ---- Message kinds: one colour = one meaning ----
     /** ACTION: the blue strip / card that asks a question with buttons – never a status or a failure. */
     val InfoBlue = Color(0xFF1565C0)

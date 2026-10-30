@@ -1093,6 +1093,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     /** Next turn ahead in Navigate (arrow on the map); null = none / off route / Plan mode. */
     var navTurn by mutableStateOf<com.onpath.app.routing.Turn?>(null)
+    /** Navigate while cycling: the rest view covers the map, which gets no fixes meanwhile (ui/RestView.kt, SmartScreen). */
+    var screenRest by mutableStateOf(false)
 
     // --- planning ---
     val waypoints = mutableStateListOf<GeoPoint>().apply { addAll(prefs.planWaypoints) }

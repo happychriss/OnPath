@@ -74,8 +74,15 @@
     <string name="settings_nav_junction_locked">Screen locked</string>
     <string name="settings_nav_on_route">Position on the route</string>
     <string name="settings_nav_on_route_sub">While you are close to the route, the dot sits on it</string>
-    <string name="settings_nav_screen_on">Keep screen on while navigating</string>
+    <string name="settings_nav_screen_on">Keep screen on while hiking</string>
     <string name="settings_nav_screen_on_sub">Only while following a route; off in your pocket</string>
+    <string name="settings_nav_bike_screen">Screen while cycling</string>
+    <string name="settings_nav_bike_screen_always">Always on</string>
+    <string name="settings_nav_bike_screen_smart">Smart</string>
+    <string name="settings_nav_bike_screen_phone">Like the phone</string>
+    <string name="settings_nav_bike_screen_always_sub">The map stays on while you follow a route</string>
+    <string name="settings_nav_bike_screen_smart_sub">Dark until shortly before each turn – saves battery. Tap for the map.</string>
+    <string name="settings_nav_bike_screen_phone_sub">The screen turns off as set on the phone</string>
     <string name="settings_pace_intro">Changes the times only, not the route. Times are walking / riding time without breaks.</string>
     <string name="settings_pace_hiking">Hiking</string>
     <string name="settings_pace_cycling">Cycling · %1$s</string>

@@ -29,10 +29,11 @@ const val POCKET_SLEEP_MS = 60_000L
  * the screen stays on while you look at it; the proximity sensor turns it off when covered (like during a call)
  * and on again when you take the phone out. Covered for [POCKET_SLEEP_MS]: keep-on is dropped and the phone sleeps
  * as usual (the map stops, GPS recording goes on in the service). Only while the screen is started; without a
- * proximity sensor it is plain keep-screen-on. Never throws.
+ * proximity sensor it is plain keep-screen-on. [pocket] = false (bike on the handlebar, ScreenPolicy): plain
+ * keep-screen-on, no proximity sensor. Never throws.
  */
 @Composable
-fun KeepScreenOn(on: Boolean) {
+fun KeepScreenOn(on: Boolean, pocket: Boolean = true) {
     val view = LocalView.current
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -43,8 +44,9 @@ fun KeepScreenOn(on: Boolean) {
         onDispose { lifecycle.removeObserver(obs) }
     }
     val active = on && started
-    DisposableEffect(active) {
+    DisposableEffect(active, pocket) {
         if (!active) { view.keepScreenOn = false; return@DisposableEffect onDispose { } }
+        if (!pocket) { view.keepScreenOn = true; return@DisposableEffect onDispose { view.keepScreenOn = false } }
         val guard = PocketGuard(context.applicationContext) { keep -> view.keepScreenOn = keep }
         guard.start()
         onDispose { guard.stop(); view.keepScreenOn = false }

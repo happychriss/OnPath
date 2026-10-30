@@ -208,4 +208,9 @@
     <string name="nav_notif_off">Notifications off</string>
     <string name="nav_notif_off_line">No tour info on the lock screen</string>
     <string name="nav_notif_off_click">Set up notifications</string>
+
+    <!-- rest view while cycling (smart screen) -->
+    <string name="nav_rest_destination">Destination</string>
+    <string name="nav_rest_tap">Tap for the map</string>
+    <string name="nav_rest_cd">%1$s in %2$s. Tap for the map</string>
 </resources>

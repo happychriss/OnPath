@@ -242,7 +242,7 @@ internal fun turnDistance(m: Double): String = when {
     else -> "${Math.round(m / 50) * 50} m"
 }
 
-private fun turnIcon(k: TurnKind): ImageVector = when (k) {
+internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
     TurnKind.SLIGHT_LEFT -> Icons.Filled.TurnSlightLeft
     TurnKind.LEFT -> Icons.Filled.TurnLeft
     TurnKind.SHARP_LEFT -> Icons.Filled.TurnSharpLeft
@@ -676,13 +676,30 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
     val bg = rememberBackgroundDownload(vm)
     val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
-    NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-        onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
-        onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
-        onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
-        download = bg, onDownload = { vm.downloadDetailsOpen = true },
-        onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
-        onNotificationsOk = { vm.notificationsOkTour = rec?.tourId })
+    // Cycling, "Screen while cycling: Smart" (owner): far from the next turn the dim rest view covers the map (RestView.kt)
+    val restEvents = remember(line, turns) { line?.let { RestEvents.of(it, turns) } ?: emptyList() }
+    val restTarget = remember(restEvents, remaining, notOnRoute) {
+        RestEvents.next(restEvents, remaining?.takeUnless { notOnRoute }?.let { (total - it.distanceM).coerceAtLeast(0.0) })
+    }
+    val restOn = ScreenPolicy.of(vm.settings, ui.activity ?: vm.activity).rest && rec != null && nav != null
+    val restWanted = rememberRest(restOn,
+        attention = rec?.paused == true || rec?.gpsLost == true || rec?.offRouteAlert == true || nav?.prompt != null ||
+            notOnRoute || location == null || !vm.followMe || vm.restBlocked(),
+        target = restTarget, fix = location)
+    val rest = restWanted && restTarget != null
+    LaunchedEffect(rest) { vm.screenRest = rest }
+    DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
+    Box(Modifier.fillMaxSize()) {
+        NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
+            onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
+            onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+            onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
+            download = bg, onDownload = { vm.downloadDetailsOpen = true },
+            onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
+            onNotificationsOk = { vm.notificationsOkTour = rec?.tourId })
+        RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
+            onTap = ScreenTouch::note)
+    }
     BackgroundDownloadDetails(vm, bg)
 }
 

@@ -427,11 +427,34 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
+        BikeScreenRow(settings, onChange)
         // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
         Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.setup_nav_check), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** "Screen while cycling: Always on / Smart / Like the phone" (owner 2026-10-30), the chosen one explained in one line. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Text(str(Res.string.settings_nav_bike_screen), style = MaterialTheme.typography.bodyLarge)
+        Text(str(when (settings.bikeScreen) {
+                com.onpath.app.data.BikeScreen.ALWAYS -> Res.string.settings_nav_bike_screen_always_sub
+                com.onpath.app.data.BikeScreen.SMART -> Res.string.settings_nav_bike_screen_smart_sub
+                com.onpath.app.data.BikeScreen.PHONE -> Res.string.settings_nav_bike_screen_phone_sub
+            }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(com.onpath.app.data.BikeScreen.ALWAYS to Res.string.settings_nav_bike_screen_always,
+                com.onpath.app.data.BikeScreen.SMART to Res.string.settings_nav_bike_screen_smart,
+                com.onpath.app.data.BikeScreen.PHONE to Res.string.settings_nav_bike_screen_phone).forEach { (v, label) ->
+                FilterChip(selected = settings.bikeScreen == v, onClick = { onChange(settings.copy(bikeScreen = v)) },
+                    label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
+            }
         }
     }
 }

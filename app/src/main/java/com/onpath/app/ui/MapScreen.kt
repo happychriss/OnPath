@@ -131,7 +131,9 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         MapSync(vm, controller, rec, location, panelHeightPx)
-        KeepScreenOn(vm.settings.keepScreenOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE)
+        // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling" (ScreenPolicy, rest view in NavigateMode)
+        val screen = ScreenPolicy.of(vm.settings, rec?.nav?.session?.activity ?: vm.activity)
+        KeepScreenOn(screen.keepOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE, pocket = screen.pocket)
         // Quiet update check (once a day, only when online; F-OFF-06).
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 
@@ -146,7 +148,8 @@ fun MapScreen(
             navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
-        controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
+        // (not over the rest view while cycling)
+        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: the blue strip with a question is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
@@ -411,7 +414,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
 
 /** Keeps the map layers in step with the app state. */
 @Composable
-private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, location: android.location.Location?, panelHeightPx: Int) {
+private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, panelHeightPx: Int) {
     val context = LocalContext.current
     if (c == null) {
         // share events must also work before the map is ready
@@ -455,6 +458,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
     val nav = rec?.nav
+    // rest view while cycling (NavigateMode): the covered map gets no fixes, no direction and no track updates, so it
+    // draws no frames; the camera mode is kept, everything is sent again the moment the map shows
+    val rest = vm.screenRest
+    val location = fix.takeUnless { rest }
+    LaunchedEffect(c, rest) { c.setQuiet(rest) }
     LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
@@ -473,7 +481,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, locatio
         val guide = nav?.toRoute?.takeIf { nav.prompt != null && nav.prompt !is com.onpath.app.navigation.NavPrompt.Question }
         c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
     }
-    LaunchedEffect(c, rec?.track?.sumOf { it.size }) { c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
+    LaunchedEffect(c, rec?.track?.sumOf { it.size }?.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }

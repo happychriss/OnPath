@@ -73,8 +73,15 @@
     <string name="settings_nav_junction_locked">Nur gesperrt</string>
     <string name="settings_nav_on_route">Position auf der Route</string>
     <string name="settings_nav_on_route_sub">Solange du nah an der Route bist, sitzt der Punkt auf ihr</string>
-    <string name="settings_nav_screen_on">Bildschirm beim Navigieren anlassen</string>
+    <string name="settings_nav_screen_on">Bildschirm beim Wandern anlassen</string>
     <string name="settings_nav_screen_on_sub">Nur beim Folgen einer Route; in der Tasche aus</string>
+    <string name="settings_nav_bike_screen">Bildschirm beim Radfahren</string>
+    <string name="settings_nav_bike_screen_always">Immer an</string>
+    <string name="settings_nav_bike_screen_smart">Smart</string>
+    <string name="settings_nav_bike_screen_phone">Wie das Handy</string>
+    <string name="settings_nav_bike_screen_always_sub">Die Karte bleibt an, solange du einer Route folgst</string>
+    <string name="settings_nav_bike_screen_smart_sub">Dunkel bis kurz vor jeder Abzweigung – spart Akku. Tippen zeigt die Karte.</string>
+    <string name="settings_nav_bike_screen_phone_sub">Der Bildschirm geht aus, wie am Handy eingestellt</string>
     <string name="settings_pace_intro">Ändert nur die Zeiten, nicht die Route. Die Zeiten sind Geh- bzw. Fahrzeit ohne Pausen.</string>
     <string name="settings_pace_hiking">Wandern</string>
     <string name="settings_pace_cycling">Radfahren · %1$s</string>

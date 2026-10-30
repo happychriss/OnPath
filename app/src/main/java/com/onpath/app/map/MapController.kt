@@ -413,6 +413,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         try { heading.setRoute(bearingDeg) } catch (e: Exception) { Problems.warn("map", "Route direction not passed to the map", e) }
     }
 
+    /**
+     * Rest view while cycling (ui/RestView.kt covers the map): no compass / direction goes to the camera, so with no
+     * fixes fed ([updateLocation] is not called meanwhile – ui/MapScreen.kt) the map draws no frames. The camera mode
+     * (following, heading-up) is never touched; false = the current direction again at once. Never throws.
+     */
+    fun setQuiet(on: Boolean) {
+        try { heading.quiet = on } catch (e: Exception) { Problems.warn("map", "Map not paused / resumed for the rest view", e) }
+    }
+
     /** Plan mode follow (north stays where the user left it). */
     fun setFollow(follow: Boolean, onDismissed: () -> Unit) { setCamera(follow, navigating = false, headingUp = false, onDismissed = onDismissed) }
 
