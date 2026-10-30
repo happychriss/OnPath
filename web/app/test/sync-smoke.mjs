@@ -69,6 +69,7 @@ await A.waitForSelector('#syncBadge:not([hidden])', { timeout: 10_000 }).catch((
 check(await A.isVisible('#syncBadge') && (await A.getAttribute('#syncBadge', 'title')).startsWith('Paired with your phone'), 'header: paired status beside My routes (' + await A.getAttribute('#syncBadge', 'title') + ')');
 await A.click('#syncBadge');
 await A.waitForSelector('dialog.plans[open] .syncsec');
+await A.waitForFunction(() => !!document.activeElement?.closest('.syncsec'), null, { timeout: 10_000 }).catch(() => {}); // focus moves there once the list is drawn
 check(await A.evaluate(() => !!document.activeElement?.closest('.syncsec')), 'a click opens My routes at Pair with phone');
 await A.click('#closePlans');
 
