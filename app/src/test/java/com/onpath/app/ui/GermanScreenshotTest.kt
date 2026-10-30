@@ -48,6 +48,8 @@ class GermanScreenshotTest {
     @Test fun navigateNotificationsOff() = shots.navigateNotificationsOff()
     @Test fun navigateNotificationsOffApproximate() = shots.navigateNotificationsOffApproximate()
     @Test fun arrival() = shots.arrival()
+    @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
+    @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
     @Test fun tours() = shots.tours()
     @Test fun unfinishedTour() = shots.unfinishedTour()
     @Test fun pickerHikeT2() = borrow(ActivityPickerScreenshotTest()).pickerHikeT2()

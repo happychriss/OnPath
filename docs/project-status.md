@@ -36,6 +36,8 @@ the current state.
 | Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
 | Google | Never store or draw Google content; link out only (exception: a place shared from Google Maps) |
+| Place shared from Google Maps | The map flies there, shows the orange ring and opens the ring's add menu by itself, once per share |
+| Footways without a bicycle tag | Bike / Gravel keep avoiding them; the amber "… m pushing" note is enough (owner 2026-10-30) |
 | POIs | From OSM, offline; calm defaults like Komoot |
 | Pace | Settings pace (5 levels); during a tour the arrival adapts after ~15 min / 1 km; nothing carried across tours |
 | Battery | Slower GPS at rest, never lose a point; no battery % in the summary |

@@ -496,6 +496,16 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         val m = vm.searchMark
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
+    // Google Maps place → go there (owner): the ring's menu opens by itself once the camera has arrived there (and the
+    // map-download modal for it is gone) – checked on every camera stop while it waits (SharedPlaceMenu)
+    LaunchedEffect(c, vm.sharedMenuWaiting, vm.cameraIdleTick, vm.loadModalOpen) {
+        if (!vm.sharedMenuWaiting) return@LaunchedEffect
+        delay(SharedPlaceMenu.SETTLE_MS)
+        val t = try { c.map.cameraPosition.target } catch (e: Exception) {
+            Problems.warn("map", "Camera position unreadable; shared place menu waits", e); null
+        }
+        vm.openSharedMenuIfArrived(t?.latitude, t?.longitude, c.metersPerPixel(), c.dpToPx(SharedPlaceMenu.ARRIVED_DP).toDouble())
+    }
     // Marked route networks always show (owner): the band of the current activity.
     LaunchedEffect(c, vm.activity, vm.sac) { c.setOverlay(vm.activity, true, vm.sac) }
     // hiking route band above the T level from Settings: grey dashes (the router forbids those trails)

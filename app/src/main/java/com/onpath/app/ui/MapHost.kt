@@ -160,6 +160,7 @@ fun MapHost(
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
+                vm.cameraIdle()
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }

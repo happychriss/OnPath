@@ -992,7 +992,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The user drags the map (true) / the map came to rest (false): new map areas are not joined meanwhile. */
-    fun mapGesture(on: Boolean) { safeCells("gesture") { cells.userBusy = on } }
+    fun mapGesture(on: Boolean) {
+        // the map moved by hand during the flight to a shared place: its menu no longer opens by itself
+        if (on && sharedMenu.cancel()) { sharedMenuWaiting = false; Problems.trace("plan", "Shared place: menu not opened – map moved by hand") }
+        safeCells("gesture") { cells.userBusy = on }
+    }
 
     /** Map cell triggers never break planning: a failure is logged, planning goes on. */
     private inline fun safeCells(what: String, block: () -> Unit) {
@@ -2243,8 +2247,45 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchPlace = p
         searchMark = p
         followMe = false
+        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – once per share
+        sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
+        if (!sharedMenuWaiting) Problems.trace("plan", "Shared place again: its menu opened before – ring only")
         // outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear
         flyToPlace(p)
+    }
+
+    private val sharedMenu = SharedPlaceMenu()
+    /** The shared place's menu waits for the camera to arrive ([openSharedMenuIfArrived], asked by MapScreen). */
+    var sharedMenuWaiting by mutableStateOf(false)
+        private set
+    /** Bumped on every camera stop (MapHost): MapScreen then asks [openSharedMenuIfArrived]. */
+    var cameraIdleTick by mutableStateOf(0)
+        private set
+    fun cameraIdle() { cameraIdleTick++ }
+
+    /**
+     * The camera stopped with a shared place's menu waiting: opens the ring's POI menu when the map is there – same
+     * menu and rules as holding the ring ([SharedPlaceMenu]). [cameraLat] / [cameraLon] = camera centre.
+     */
+    fun openSharedMenuIfArrived(cameraLat: Double?, cameraLon: Double?, metersPerPx: Double, arrivedPx: Double) {
+        val m = searchMark
+        val off = if (m != null && cameraLat != null && cameraLon != null && metersPerPx > 0)
+            Geo.distance(m.lat, m.lon, cameraLat, cameraLon) / metersPerPx else null
+        val step = sharedMenu.check(m?.let { SharedPlaceMenu.key(it.lat, it.lon, it.name) }, off, arrivedPx, canEditMap,
+            elsewhere = mapOverlayOpen || searchOpen || routesOpen || showSettings, loading = loadModalOpen)
+        when (step) {
+            SharedPlaceMenu.Step.OPEN -> {
+                sharedMenuWaiting = false
+                Problems.trace("plan", "Shared place: the map is there – its menu opens (plan ${waypoints.size} points)")
+                if (m != null) openPoiMenu(m.toPoi())
+            }
+            SharedPlaceMenu.Step.DROP -> {
+                sharedMenuWaiting = false
+                Problems.trace("plan", "Shared place: menu not opened – the user went on (ring ${if (m == null) "gone" else "shown"}, " +
+                    "map editable $canEditMap)")
+            }
+            SharedPlaceMenu.Step.WAIT, SharedPlaceMenu.Step.NONE -> Unit
+        }
     }
 
     private fun holdCameraForSharedPlace() {

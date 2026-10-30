@@ -635,13 +635,18 @@ class ScreenshotTest {
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
-                             content: @Composable () -> Unit) {
+                             ring: Boolean = false, content: @Composable () -> Unit) {
         Frame { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
         val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
         if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
+        }
+        // the orange ring of a search result / shared place (MapController.setSearchMark: radius 22, stroke 3.5)
+        if (ring) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawCircle(androidx.compose.ui.graphics.Color(0xFFF28C00), 22.dp.toPx(), a,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(3.5.dp.toPx()))
         }
         AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }
@@ -680,6 +685,29 @@ class ScreenshotTest {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
                 PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
                     emptyPlan = true)
+            }
+        }
+    }
+
+    /** A place shared from Google Maps: once the map is there its ring's menu opens by itself (SharedPlaceMenu). */
+    private val shared = com.onpath.app.search.Place("shared:46.6712,11.1598", "Gelateria Costantin", "other", 46.6712, 11.1598)
+
+    /** Shared place, plan with points: "Add as new destination" (AddPreview.label, like a hold on the ring). */
+    @Test fun sharedPlaceMenu() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {},
+                    addLabel = com.onpath.app.search.AddPreview.label(
+                        com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
+            }
+        }
+    }
+
+    /** Shared place, empty plan: "Start here · Go here · Open in Google Maps". */
+    @Test fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true)
             }
         }
     }
