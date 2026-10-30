@@ -86,6 +86,13 @@ class SyncFilesTest {
         assertTrue(SyncLinks.read("nonsense").all.isEmpty())
         f.saveLastOk(99)
         assertEquals(99, f.lastOk())
+        // "ended in the browser" stays noted (☰ amber) until Browser sync is opened or a new pairing is made
+        assertEquals(0, f.ended())
+        f.saveEnded(1234)
+        assertEquals(1234, f.ended())
+        f.clearEnded()
+        assertEquals(0, f.ended())
+        f.clearEnded() // nothing to remove: fine
     }
 
     /** files/sync/ (pairing secret, ledger) never goes into Android's backup or a device transfer. */

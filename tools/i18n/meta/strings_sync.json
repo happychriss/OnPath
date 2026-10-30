@@ -1,5 +1,12 @@
 {
   "sync_menu_pair": {"area": "Plan · ☰ menu", "context": "Menu item: opens Settings → Browser sync (pair the phone with the web planner)", "priority": 1, "confidence": "bitte prüfen", "doubt": "\"verbinden\" vs \"koppeln\"", "max": 26},
+  "sync_menu_paired": {"area": "Plan · ☰ menu", "context": "Menu item when paired (the app adds \" ✓\" when all is well); opens Settings → Browser sync", "priority": 1, "confidence": "sicher", "max": 26},
+  "sync_menu_browser": {"area": "Plan · ☰ menu", "context": "In the grey line \"Pixel 8 ↔ browser · 1 min ago\" when the browser has not said its name yet", "priority": 3, "confidence": "sicher"},
+  "sync_menu_full": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: the mailbox is full (507)", "priority": 2, "confidence": "sicher", "max": 40},
+  "sync_menu_refused": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: the server refused the last pass", "priority": 2, "confidence": "sicher", "max": 40},
+  "sync_menu_storage": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: the phone could not write its sync files", "priority": 2, "confidence": "sicher", "max": 48},
+  "sync_menu_ended": {"area": "Plan · ☰ menu", "context": "Amber second line of \"Pair with browser\": the pairing was ended in the browser (until Browser sync is opened)", "priority": 2, "confidence": "sicher", "max": 40},
+  "sync_menu_stale": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: online and paired, but no good sync for more than 6 hours", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_intro": {"area": "Settings · Browser sync", "context": "First line of the page when not paired", "priority": 2, "confidence": "sicher"},
   "sync_steps": {"area": "Settings · Browser sync", "context": "How to pair: the web planner's menu item is \"Pair phone\" (the German web text must match)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Must match the web planner's German menu text"},
   "sync_open_camera": {"area": "Settings · Browser sync", "context": "Button: opens the phone's camera app (it reads the QR code)", "priority": 2, "confidence": "sicher", "max": 24},

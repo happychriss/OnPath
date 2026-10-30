@@ -68,6 +68,8 @@ class PlanSync(
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var pendingRun: ScheduledFuture<*>? = null
     @Volatile private var manualWaiting = false
+    /** When the last pass ended in this run of the app ([State.checkedMs]); only the worker thread writes it. */
+    @Volatile private var checkedMs = 0L
 
     /** What Settings → Browser sync shows. */
     data class State(
@@ -79,6 +81,12 @@ class PlanSync(
         val problem: Problem? = null,
         /** The six check digits of the pairing ("395 514"). */
         val check: String? = null,
+        /** When the pairing was made (ms; 0 = unknown / not paired). */
+        val sinceMs: Long = 0,
+        /** When the last pass ended in this run of the app, well or not (ms; 0 = none yet). */
+        val checkedMs: Long = 0,
+        /** The pairing was ended in the browser and Settings → Browser sync was not opened since (☰ shows it amber). */
+        val ended: Boolean = false,
     )
 
     /** Why the last pass did not end well. */
@@ -147,14 +155,17 @@ class PlanSync(
         _state.value = _state.value.copy(running = true)
         val r = try { pass().run(recording) } catch (e: Exception) {
             Problems.error("sync", "Sync files could not be written", e)
-            _state.value = _state.value.copy(running = false, problem = Problem.Storage)
+            checkedMs = System.currentTimeMillis()
+            _state.value = _state.value.copy(running = false, problem = Problem.Storage, checkedMs = checkedMs)
             report(Report(manual, null, error = true))
             return
         }
         val ended = r?.outcome is SyncRound.Outcome.Ended
+        checkedMs = System.currentTimeMillis()
         if (ended) {
             Problems.info("sync", "Sync: the pairing was ended in the browser – plans stay on the phone")
             safely("forget") { pass().forgetHere() }
+            safely("ended note") { files.saveEnded(System.currentTimeMillis()) }
         } else if (!(quiet && idle(r))) Problems.trace("sync", "Sync ($why): ${describe(r)}")
         refreshState(r)
         report(Report(manual, r, ended = ended))
@@ -168,6 +179,7 @@ class PlanSync(
                 // a ledger from an earlier pairing: its plans upload again, nothing else of the old mailbox stays
                 val l = files.ledger(); l.forget(); files.saveLedger(l)
                 files.savePairing(secret, System.currentTimeMillis())
+                files.clearEnded()
                 Problems.info("sync", "Paired with a browser (check ${SyncKeys(secret).check})")
             } catch (e: Exception) {
                 Problems.error("sync", "Pairing could not be stored", e)
@@ -193,6 +205,12 @@ class PlanSync(
         }
     }
 
+    /** Settings → Browser sync was opened: an "ended in the browser" was seen – the ☰ item is no longer amber. */
+    fun endedSeen() {
+        if (!_state.value.ended) return
+        worker.execute { safely("ended note") { files.clearEnded() }; safely("state") { refreshState() } }
+    }
+
     /** The mailbox of the stored pairing (same browser again?), or null. Reads a small file: background or rare taps. */
     fun pairedMailbox(): String? = files.pairing()?.secret?.let { SyncKeys(it).mailbox }
 
@@ -213,7 +231,8 @@ class PlanSync(
             }
         }
         _state.value = State(paired = p != null, peer = if (p == null) null else peer, lastOkMs = if (p == null) 0 else files.lastOk(),
-            running = false, problem = if (p == null) null else problem, check = p?.secret?.let { SyncKeys(it).check })
+            running = false, problem = if (p == null) null else problem, check = p?.secret?.let { SyncKeys(it).check },
+            sinceMs = p?.since ?: 0, checkedMs = checkedMs, ended = p == null && files.ended() > 0)
     }
 
     private fun report(r: Report) = main.post { try { onReport(r) } catch (e: Exception) { Problems.warn("sync", "Sync result not shown", e) } }

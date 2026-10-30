@@ -252,6 +252,9 @@ private fun PlanMode(
                 onSettings = { vm.openSettings() },
                 // plan sync (A-007): Settings → Browser sync – how to pair, or "Paired with …"
                 onPairBrowser = { vm.openSettings(SettingsPage.SYNC) },
+                // owner 2026-10-30: "Paired with browser ✓ · Pixel 8 ↔ Chrome · 1 min ago"; amber + ☰ dot on a real problem
+                sync = SyncMenuUi.of(vm.sync.state.collectAsState().value, com.onpath.app.plansync.PlanSync.deviceName(),
+                    System.currentTimeMillis()),
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
                 onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),

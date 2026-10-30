@@ -56,6 +56,62 @@ class SyncCallbacks(
     val onUnpair: () -> Unit = {},
 )
 
+/** Why the ☰ button carries an amber dot (owner 2026-10-30): only what needs the user – never plain offline. */
+enum class SyncAttention { FULL, REFUSED, STORAGE, ENDED, STALE }
+
+/**
+ * The ☰ item for the browser sync (owner 2026-10-30): not paired "Pair with browser"; paired "Paired with browser ✓"
+ * with a grey line "Pixel 8 ↔ Chrome on Linux · 1 min ago"; a problem worth attention ([warning]) makes the item amber
+ * with the reason as its line, and an amber dot on the ☰ button. Tap → Settings → Browser sync.
+ */
+data class SyncMenuUi(
+    val paired: Boolean = false,
+    /** Second line: "<device> ↔ <browser> · <ago>" (paired), the reason (problem); null = none. */
+    val line: String? = null,
+    /** Why the item is amber and ☰ has the dot; null = all well (or not paired). */
+    val warning: SyncAttention? = null,
+) {
+    companion object {
+        /** Paired and online, passes run, but none ended well for this long: worth a look. */
+        const val STALE_MS = 6 * 3_600_000L
+
+        /**
+         * The rule for the amber dot: mailbox full, server refused, sync files not written, the pairing ended in the
+         * browser (until Browser sync is opened), or paired and online with no good pass for > [STALE_MS]: the last pass
+         * (not offline) ended more than that after the last good one (or the pairing). No pass meanwhile – the app in
+         * the background, a tour – is no reason. Never for offline, never when not paired (apart from "ended").
+         */
+        fun attention(s: PlanSync.State): SyncAttention? {
+            if (!s.paired) return if (s.ended) SyncAttention.ENDED else null
+            return when (val p = s.problem) {
+                PlanSync.Problem.Offline -> null
+                is PlanSync.Problem.Refused -> if (p.status == 507) SyncAttention.FULL else SyncAttention.REFUSED
+                PlanSync.Problem.Storage -> SyncAttention.STORAGE
+                else -> if (s.checkedMs - maxOf(s.lastOkMs, s.sinceMs) > STALE_MS) SyncAttention.STALE else null
+            }
+        }
+
+        fun of(s: PlanSync.State, device: String, now: Long): SyncMenuUi {
+            val warning = attention(s)
+            val line = when {
+                warning != null -> reason(warning)
+                !s.paired -> null
+                else -> "$device ↔ ${s.peer ?: Txt.s(Res.string.sync_menu_browser)}" +
+                    (if (s.lastOkMs > 0) " · " + syncAgo(s.lastOkMs, now) else "")
+            }
+            return SyncMenuUi(s.paired, line, warning)
+        }
+
+        fun reason(a: SyncAttention): String = Txt.s(when (a) {
+            SyncAttention.FULL -> Res.string.sync_menu_full
+            SyncAttention.REFUSED -> Res.string.sync_menu_refused
+            SyncAttention.STORAGE -> Res.string.sync_menu_storage
+            SyncAttention.ENDED -> Res.string.sync_menu_ended
+            SyncAttention.STALE -> Res.string.sync_menu_stale
+        })
+    }
+}
+
 /** The list line under "Browser sync". */
 fun SettingsSummary.sync(ui: SyncUi): Summary = when {
     ui.askCheck != null -> Summary(Txt.s(Res.string.sync_ask_title), Summary.Attention.ACCENT)

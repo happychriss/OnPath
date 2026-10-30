@@ -38,6 +38,8 @@ class GermanScreenshotTest {
     @Test fun routeSpotsListHints() = shots.routeSpotsListHints()
     @Test fun planMenuOpen() = shots.planMenuOpen()
     @Test fun planMenuPhoneSetup() = shots.planMenuPhoneSetup()
+    @Test fun planMenuSyncPaired() = shots.planMenuSyncPaired()
+    @Test fun planMenuSyncProblem() = shots.planMenuSyncProblem()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()

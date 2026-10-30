@@ -66,12 +66,13 @@ class ScreenshotTest {
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
                       footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
+                      menu: PlanMenu = PlanMenu(onUpdates = {}),
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth())
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -286,11 +287,15 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, bottom: @Composable () -> Unit) {
+    private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
+                        bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
-            Frame { bottom() }
+            // [sync] is built inside the composition: its texts follow the test's language
+            val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
+                sync = sync?.invoke() ?: SyncMenuUi())
+            Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
-                PlanMenuItems(PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null)) {}
+                PlanMenuItems(menu) {}
             } }
         }
     }
@@ -305,6 +310,24 @@ class ScreenshotTest {
     /** ☰ while a tour needs something from the phone (location off …): red "Phone setup" first (owner 2026-10-30). */
     @Test fun planMenuPhoneSetup() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), phoneSetup = true) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    private val syncNow = 1_761_150_000_000L
+    private val paired = com.onpath.app.plansync.PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = syncNow - 60_000,
+        sinceMs = syncNow - 86_400_000, checkedMs = syncNow - 60_000)
+
+    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · 1 min ago". */
+    @Test fun planMenuSyncPaired() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired, "Pixel 8", syncNow) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** ☰ with a sync problem worth a look (mailbox full): amber dot on ☰, the item amber with the reason. */
+    @Test fun planMenuSyncProblem() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired.copy(problem = com.onpath.app.plansync.PlanSync.Problem.Refused(507, "full")), "Pixel 8", syncNow) }) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }

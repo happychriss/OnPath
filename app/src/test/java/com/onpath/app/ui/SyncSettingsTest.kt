@@ -49,4 +49,40 @@ class SyncSettingsTest {
             } finally { java.util.Locale.setDefault(before) }
         } finally { java.util.TimeZone.setDefault(zone) }
     }
+
+    /** The ☰ item and its amber dot (owner 2026-10-30): only for a problem worth a look – never for plain offline. */
+    @Test fun menuDotRule() {
+        val now = 1_761_150_000_000L
+        val h = 3_600_000L
+        val ok = PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 48 * h, checkedMs = now - 59_990)
+        assertNull(SyncMenuUi.attention(ok))
+        assertNull("not paired", SyncMenuUi.attention(PlanSync.State()))
+        assertNull("offline is never a dot", SyncMenuUi.attention(ok.copy(problem = PlanSync.Problem.Offline, lastOkMs = now - 30 * h, checkedMs = now)))
+        assertEquals(SyncAttention.FULL, SyncMenuUi.attention(ok.copy(problem = PlanSync.Problem.Refused(507, "full"))))
+        assertEquals(SyncAttention.REFUSED, SyncMenuUi.attention(ok.copy(problem = PlanSync.Problem.Refused(503, null))))
+        assertEquals(SyncAttention.STORAGE, SyncMenuUi.attention(ok.copy(problem = PlanSync.Problem.Storage)))
+        assertEquals(SyncAttention.ENDED, SyncMenuUi.attention(PlanSync.State(ended = true)))
+        // the last pass (online) ended > 6 h after the last good one: a look
+        val stale = ok.copy(lastOkMs = now - 7 * h, checkedMs = now)
+        assertEquals(SyncAttention.STALE, SyncMenuUi.attention(stale))
+        assertNull("6 h are not yet over", SyncMenuUi.attention(stale.copy(lastOkMs = now - 5 * h)))
+        assertNull("no pass since the good one 7 h ago (background, a tour, another screen)",
+            SyncMenuUi.attention(ok.copy(lastOkMs = now - 7 * h, checkedMs = now - 7 * h + 10)))
+        assertNull("no pass yet in this run of the app", SyncMenuUi.attention(ok.copy(lastOkMs = now - 7 * h, checkedMs = 0)))
+        assertNull("paired 1 h ago, nothing good yet: wait", SyncMenuUi.attention(ok.copy(lastOkMs = 0, sinceMs = now - h, checkedMs = now)))
+        assertEquals(SyncAttention.STALE, SyncMenuUi.attention(ok.copy(lastOkMs = 0, sinceMs = now - 7 * h, checkedMs = now)))
+        // newer app / not saved: the Settings page says it, no dot (owner's list)
+        assertNull(SyncMenuUi.attention(ok.copy(problem = PlanSync.Problem.NewerApp(1))))
+    }
+
+    @Test fun menuItemLines() {
+        val now = 1_761_150_000_000L
+        val ok = PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 86_400_000, checkedMs = now - 60_000)
+        assertEquals(SyncMenuUi(true, "Pixel 8 ↔ Chrome on Linux · 1 min ago", null), SyncMenuUi.of(ok, "Pixel 8", now))
+        assertEquals("Pixel 8 ↔ browser", SyncMenuUi.of(ok.copy(peer = null, lastOkMs = 0, checkedMs = 0), "Pixel 8", now).line)
+        assertEquals(SyncMenuUi(true, "Browser sync is full", SyncAttention.FULL),
+            SyncMenuUi.of(ok.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now))
+        assertEquals(SyncMenuUi(false, "Pairing ended in the browser", SyncAttention.ENDED), SyncMenuUi.of(PlanSync.State(ended = true), "Pixel 8", now))
+        assertEquals(SyncMenuUi(), SyncMenuUi.of(PlanSync.State(), "Pixel 8", now))
+    }
 }

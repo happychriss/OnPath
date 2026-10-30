@@ -200,6 +200,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != SettingsPage.OFFLINE_MAPS) offlineResult = null // the result line lasts until the page is left
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
+            if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
             page = v
         }
 

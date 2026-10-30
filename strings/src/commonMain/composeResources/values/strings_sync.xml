@@ -2,6 +2,13 @@
 <!-- Plan sync with the web planner (plansync/, ui/SyncSettings). Context: tools/i18n/meta/strings_sync.json -->
 <resources>
     <string name="sync_menu_pair">Pair with browser</string>
+    <string name="sync_menu_paired">Paired with browser</string>
+    <string name="sync_menu_browser">browser</string>
+    <string name="sync_menu_full">Browser sync is full</string>
+    <string name="sync_menu_refused">The sync server refuses the routes</string>
+    <string name="sync_menu_storage">Sync files not written – storage full?</string>
+    <string name="sync_menu_ended">Pairing ended in the browser</string>
+    <string name="sync_menu_stale">Not synced for over 6 hours</string>
     <string name="sync_intro">Your saved routes and imported GPX tracks can also be in the web planner on your computer – both ways, encrypted on the device before they leave it.</string>
     <string name="sync_steps">On the computer, open plan.onpath.earth → ☰ → Pair phone. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
     <string name="sync_open_camera">Open camera</string>

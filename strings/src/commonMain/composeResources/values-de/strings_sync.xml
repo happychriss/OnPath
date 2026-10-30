@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sync_menu_pair">Mit Browser verbinden</string>
+    <string name="sync_menu_paired">Mit Browser verbunden</string>
+    <string name="sync_menu_browser">Browser</string>
+    <string name="sync_menu_full">Browser-Abgleich ist voll</string>
+    <string name="sync_menu_refused">Der Sync-Server lehnt die Routen ab</string>
+    <string name="sync_menu_storage">Sync-Dateien nicht gespeichert – Speicher voll?</string>
+    <string name="sync_menu_ended">Verbindung im Browser beendet</string>
+    <string name="sync_menu_stale">Seit über 6 Stunden nicht abgeglichen</string>
     <string name="sync_intro">Deine gespeicherten Routen und importierten GPX-Tracks können auch im Web-Planer auf deinem Computer sein – in beide Richtungen, verschlüsselt, bevor sie das Gerät verlassen.</string>
     <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth → ☰ → Handy verbinden. Scanne den Code dort mit der Kamera deines Handys – OnPath öffnet sich und zeigt sechs Prüfziffern.</string>
     <string name="sync_open_camera">Kamera öffnen</string>

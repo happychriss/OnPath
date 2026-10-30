@@ -77,6 +77,7 @@ class SyncFiles(val dir: File) {
     private val ledgerFile = File(dir, "ledger.txt")
     private val linksFile = File(dir, "links.txt")
     private val statusFile = File(dir, "status.txt")
+    private val endedFile = File(dir, "ended.txt")
 
     fun pairing(): Pairing? {
         val lines = read(pairFile)?.lines() ?: return null
@@ -108,6 +109,11 @@ class SyncFiles(val dir: File) {
     /** When the last sync round ended well (ms), 0 = never. */
     fun lastOk(): Long = read(statusFile)?.lines()?.firstOrNull { it.startsWith("ok ") }?.removePrefix("ok ")?.trim()?.toLongOrNull() ?: 0
     fun saveLastOk(ms: Long) = write(statusFile, "ok $ms\n")
+
+    /** When the pairing was ended in the browser (ms) and the user has not looked at Browser sync since; 0 = no. */
+    fun ended(): Long = read(endedFile)?.trim()?.toLongOrNull() ?: 0
+    fun saveEnded(ms: Long) = write(endedFile, "$ms\n")
+    fun clearEnded() { if (endedFile.exists() && !endedFile.delete()) throw java.io.IOException("ended file not removed") }
 
     private fun read(f: File): String? = try {
         if (f.isFile) f.readText() else null
