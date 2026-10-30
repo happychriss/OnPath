@@ -16,8 +16,7 @@
     <string name="web_page_title">OnPath Planer</string>
     <string name="web_brand_title">onpath.earth (neuer Tab)</string>
     <string name="web_product">Planer</string>
-    <string name="web_nav_pair">Handy verbinden</string>
-    <string name="web_nav_send">Aufs Handy</string>
+    <string name="web_pair_phone">Handy verbinden</string>
     <string name="web_nav_help">Hilfe &amp; Quellen</string>
     <string name="web_header_hint">Ohne Konto · Routen bleiben in diesem Browser</string>
 
@@ -30,8 +29,9 @@
     <string name="web_map_content">Karteninhalt</string>
     <string name="web_map_content_title">Interessante Orte, Höhenlinien, Relief</string>
     <string name="web_plan_sheet">Plan</string>
-    <string name="web_sheet_handle">Punkte zeigen oder verbergen</string>
-    <string name="web_send_share">Aufs Handy · Teilen</string>
+    <string name="web_sheet_more">Mehr anzeigen</string>
+    <string name="web_sheet_less">Weniger anzeigen</string>
+    <string name="web_share">Teilen</string>
     <string name="web_hint_first_point">Klicke in die Karte, wo du starten oder hin willst.</string>
     <string name="web_hint_destination">Klicke in die Karte, um das Ziel zu setzen.</string>
     <string name="web_marker_title">%1$s – klicken für Optionen, ziehen zum Verschieben</string>
@@ -93,8 +93,9 @@
     <string name="web_mc_not_loaded">Einstellungen für den Karteninhalt nicht geladen: %1$s</string>
     <string name="web_mc_filter_failed">Filter für %1$s nicht angewendet: %2$s</string>
 
+    <string name="web_share_scan">Mit der OnPath-App scannen</string>
     <string name="web_share_qr">QR-Code des Plan-Links</string>
-    <string name="web_share_text">Scanne den Code mit der OnPath-App auf deinem Handy. Wer den Link hat, kann die Route öffnen – sie steckt im Link, auf keinem Server wird etwas gespeichert.</string>
+    <string name="web_share_text">Wer den Link hat, kann die Route öffnen – sie steckt im Link, auf keinem Server wird etwas gespeichert.</string>
     <string name="web_share_link">Plan-Link</string>
     <string name="web_copy_link">Link kopieren</string>
     <string name="web_share_system">Teilen…</string>
@@ -104,6 +105,9 @@
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_saved">Gespeicherte Routen</string>
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
+    <string name="web_plans_sync_title">Mit dem Handy verbinden</string>
+    <string name="web_sync_badge">Mit dem Handy verbunden</string>
+    <string name="web_sync_badge_last">zuletzt abgeglichen %1$s</string>
     <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
     <string name="web_plans_open">Diese Route öffnen</string>
     <string name="web_plans_from_other">vom anderen Gerät</string>
@@ -143,7 +147,7 @@
     <string name="web_sync_pair_cap">Zu viele neue Verbindungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
     <string name="web_sync_pair_offline">Zum Verbinden braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_not_a_code">Das ist kein Verbindungscode von OnPath.</string>
-    <string name="web_sync_already_paired">Dieser Browser ist schon verbunden. Trenne ihn zuerst (☰ → Handy verbinden).</string>
+    <string name="web_sync_already_paired">Dieser Browser ist schon verbunden. Trenne ihn zuerst (Meine Routen → Trennen).</string>
     <string name="web_sync_unpair_failed">Trennen fehlgeschlagen (%1$d). Versuch es später noch einmal.</string>
     <string name="web_sync_unpair_offline">Zum Trennen braucht es Internet, damit auch das Handy aufhört. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_unpaired">Getrennt. Deine Routen bleiben in diesem Browser.</string>
@@ -163,7 +167,7 @@
     <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Zwischenpunkte; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
     <string name="web_about_how_3">Rückgängig / Wiederholen, das Auge (halten: Route ausblenden) und Karteninhalt sind oben in der Werkzeugleiste.</string>
-    <string name="web_about_how_4">Aufs Handy: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal und speichere Routen in Meine Routen.</string>
+    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal in Meine Routen und speichere Routen dort.</string>
     <string name="web_credit_photon">Online-Suche: Photon von komoot (OpenStreetMap-Daten)</string>
     <string name="web_credit_maplibre">Kartendarstellung: MapLibre GL JS (BSD-Lizenz)</string>
     <string name="web_credit_font">Schrift: Manrope, © The Manrope Project Authors,</string>

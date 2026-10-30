@@ -1,4 +1,4 @@
-// "Send to phone · Share": the plan as a QR code (the OnPath app scans it) and as a link. The plan sits after "#" in
+// "Share" (the sheet's main button): the plan as a QR code (the OnPath app scans it) and as a link. The plan sits after "#" in
 // the link, so it never reaches a server – whoever opens the link plans the same route in their browser or app.
 import qrcode from 'qrcode-generator';
 import { t } from './i18n';
@@ -13,7 +13,8 @@ export function shareDialog(link: string, title: string | null, hint?: (box: HTM
   const d = document.createElement('dialog');
   d.className = 'share';
   d.innerHTML = `
-    <h2>${esc(t('web_send_share'))}</h2>
+    <h2>${esc(t('web_share'))}</h2>
+    <p class="scanline">${esc(t('web_share_scan'))}</p>
     <div class="qr" role="img" aria-label="${esc(t('web_share_qr'))}">${qr.createSvgTag({ scalable: true, margin: 2 })}</div>
     <p class="muted">${esc(t('web_share_text'))}</p>
     <input id="shareLink" readonly aria-label="${esc(t('web_share_link'))}">

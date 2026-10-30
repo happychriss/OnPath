@@ -26,10 +26,11 @@ const text = (sel) => page.evaluate((s) => document.querySelector(s)?.textConten
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 check(await page.evaluate(() => document.documentElement.lang) === 'de', 'html lang = de');
-check((await text('#header')).includes('Meine Routen') && (await text('#header')).includes('Handy verbinden'), 'header in German');
+check((await text('#header')).includes('Meine Routen') && (await text('#header')).includes('GPX importieren') && !/Handy verbinden|Aufs Handy/.test(await text('#header')),
+  'header in German (no Send to phone / Pair with phone entries – owner 2026-10-30)');
 check((await text('#activityChip')).includes('Wandern'), `activity from the engine in German: ${(await text('#activityChip')).trim()}`);
 check(/\d,\d km/.test(await text('#summary')), `distance with a decimal comma: ${(await text('#summary .dist')).trim()}`);
-check((await text('#pointsSection')).includes('Punkte') && (await text('#share')).includes('Aufs Handy'), 'sheet in German');
+check((await text('#pointsSection')).includes('Punkte') && await page.getAttribute('#share', 'aria-label') === 'Teilen', 'sheet in German (Share icon = Teilen)');
 const links = await page.evaluate(() => [...document.querySelectorAll('a[href^="https://onpath.earth"]')].map((a) => a.getAttribute('href')));
 for (const u of ['https://onpath.earth/de/', 'https://onpath.earth/de/datenschutz/', 'https://onpath.earth/de/impressum/'])
   check(links.includes(u), `website link ${u}`);
@@ -49,7 +50,7 @@ check(!(await page.$('#appHintLine')), '✕ closes it');
 await page.click('#share');
 await page.waitForSelector('dialog.share[open] .qr svg');
 check(!(await page.$('dialog.share #appHintLine')), 'QR dialog: not again in this session');
-check((await text('dialog.share h2')).includes('Aufs Handy · Teilen'), 'QR dialog title in German');
+check((await text('dialog.share h2')).trim() === 'Teilen' && (await text('dialog.share .scanline')).includes('Mit der OnPath-App scannen'), 'QR dialog in German: Teilen, "Mit der OnPath-App scannen" above the code');
 await page.click('#closeShare');
 
 // 2. a new session: the QR dialog shows the line
@@ -64,7 +65,7 @@ await p3.click('#map', { position: { x: 900, y: 300 } });
 await p3.waitForFunction(() => !document.getElementById('share').disabled, null, { timeout: 60_000 });
 await p3.click('#share');
 await p3.waitForSelector('dialog.share[open] .qr svg');
-check(!!(await p3.$('dialog.share #appHintLine')), 'Send to phone in a new session: the QR dialog has the line about the app');
+check(!!(await p3.$('dialog.share #appHintLine')), 'Share in a new session: the QR dialog has the line about the app');
 await ctx3.close();
 
 // 3. the switch: English, remembered, the plan kept

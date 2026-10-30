@@ -40,11 +40,14 @@ const ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } }
 const ctxB = await browser.newContext({ viewport: { width: 400, height: 800 }, userAgent: ANDROID });
 /** A header entry: inline on a wide screen, behind ☰ at phone width. */
 const menu = async (P, id) => { if (await P.isVisible('#menuBtn')) await P.click('#menuBtn'); await P.click(id); };
+/** Pairing lives in My routes → "Pair with phone" (owner 2026-10-30; no header entry): Pair phone opens the QR code. */
+const openPair = async (P) => { await menu(P, '#menuPlans'); await P.click('dialog.plans .syncsec #pairPhone'); };
 const A = await open(ctxA, '#p=' + CODE);
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 60_000 });
 
 // 1. A shows the pairing code; B opens the link (as the phone app would after scanning) and pairs
-await menu(A, '#menuPair');
+check(await A.isHidden('#syncBadge'), 'not paired: no status in the header');
+await openPair(A);
 await A.waitForSelector('#pairLink', { timeout: 30_000 });
 const link = await A.inputValue('#pairLink');
 const checkA = await A.textContent('#checkDigits');
@@ -61,10 +64,17 @@ await B.click('#joinCancel');
 await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with'), null, { timeout: 30_000 }).catch(() => {});
 check((await A.textContent('#pairBody')).includes('Chrome on Android'), 'browser says "Paired with Chrome on Android"');
 await A.click('#closePair');
+// the header shows the pairing: a phone with a green dot beside My routes; a click opens My routes at "Pair with phone"
+await A.waitForSelector('#syncBadge:not([hidden])', { timeout: 10_000 }).catch(() => {});
+check(await A.isVisible('#syncBadge') && (await A.getAttribute('#syncBadge', 'title')).startsWith('Paired with your phone'), 'header: paired status beside My routes (' + await A.getAttribute('#syncBadge', 'title') + ')');
+await A.click('#syncBadge');
+await A.waitForSelector('dialog.plans[open] .syncsec');
+check(await A.evaluate(() => !!document.activeElement?.closest('.syncsec')), 'a click opens My routes at Pair with phone');
+await A.click('#closePlans');
 
 // 2. save on A → appears on B
 await menu(A, '#menuPlans');
-await A.click('#saveCurrent'); // My plans → Save the current plan… → the name dialog (requestSave)
+await A.click('#saveCurrent'); // My routes → Save the current plan… → the name dialog (requestSave)
 await A.fill('#saveTitle', 'Waalweg');
 await A.click('#savePlan');
 await A.waitForFunction(async () => (await window.__sync.list()).some((p) => p.title === 'Waalweg'));
@@ -130,12 +140,16 @@ check(rows.length >= 3 && !/Waalweg|Browser name|Phone name|Android|Chrome/.test
 check(!JSON.stringify(env.SYNC.sqlite.prepare('SELECT * FROM mailbox').all()).includes(link.split('#pair=')[1]), 'server never saw the pairing code');
 
 // 9. unpair on B → A learns it, plans stay on both
-await menu(B, '#menuPair');
-await B.waitForSelector('#unpair', { timeout: 30_000 });
-await B.click('#unpair');
-await B.click('dialog.pair .confirm .danger');
-await B.waitForFunction(() => document.getElementById('pairStatus')?.textContent?.includes('Unpaired'), null, { timeout: 30_000 }).catch(() => {});
-check((await B.textContent('#pairStatus')).includes('Unpaired'), 'unpair on the phone side');
+await menu(B, '#menuPlans');
+await B.waitForSelector('dialog.plans #unpair:not([hidden])', { timeout: 30_000 });
+check((await B.textContent('dialog.plans .syncsec')).includes('Pair with phone') && (await B.textContent('#plansStatus')).includes('Paired with')
+  && await B.isVisible('dialog.plans #syncNow') && await B.isHidden('dialog.plans #pairPhone'), 'My routes → Pair with phone: "Paired with …", Sync now, Unpair');
+await B.click('dialog.plans #unpair');
+await B.click('dialog.plans .confirm .danger');
+await B.waitForFunction(() => document.getElementById('plansStatus')?.textContent?.includes('Unpaired'), null, { timeout: 30_000 }).catch(() => {});
+check((await B.textContent('#plansStatus')).includes('Unpaired') && await B.isVisible('dialog.plans #pairPhone'), 'unpair on the phone side (in My routes; Pair phone offered again)');
+await B.click('#closePlans');
+check(await B.isHidden('#syncBadge'), 'after unpairing: no paired status in the header');
 await syncNow(A);
 const sa = await status(A);
 check(!sa.paired && sa.message.includes('ended on the other device'), 'the browser learns the pairing was ended');
@@ -144,7 +158,7 @@ check(env.SYNC.sqlite.prepare('SELECT COUNT(*) AS n FROM item').get().n === 0, '
 
 // 10. the host's cap on new mailboxes per IP and day: a new pairing over it is refused in plain words
 env.SYNC_NEW_PER_IP_DAY = '1'; // this run made one mailbox today already
-await menu(A, '#menuPair');
+await openPair(A);
 await A.waitForSelector('#pairBody .status.error', { timeout: 30_000 }).catch(() => {});
 const capText = (await A.textContent('#pairBody').catch(() => '')) ?? '';
 check(capText.includes('Too many new pairings from this network today'), 'over the new-mailbox cap: the page says so ' + JSON.stringify(capText.slice(0, 80)));

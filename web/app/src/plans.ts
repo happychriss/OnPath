@@ -44,13 +44,21 @@ export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'
   return { text: t('web_sync_paired_with', who) + last + pending, kind: 'info' };
 }
 
-export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
+/**
+ * My routes: the saved routes, and at the bottom "Pair with phone" (owner 2026-10-30 – pairing lives here, not in
+ * the header): not paired → Pair phone (the QR code + check digits, [pair]); paired → "Paired with …", Sync now, Unpair.
+ */
+export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => void, atSync = false) {
   const d = dialog('plans', `
     <h2>${esc(t('routes_title'))}</h2>
     <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('plan_save_current_route'))}</button>
     <ul id="planList" class="planlist" aria-label="${esc(t('web_plans_saved'))}"></ul>
-    <div id="plansStatus" class="status muted"></div>
-    <div class="row end"><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="closePlans">${esc(t('common_close'))}</button></div>`);
+    <section class="syncsec" aria-labelledby="syncTitle">
+      <h3 id="syncTitle">${icon('sync', 20)}${esc(t('web_plans_sync_title'))}</h3>
+      <div id="plansStatus" class="status muted"></div>
+      <div class="row"><button id="pairPhone" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+    </section>
+    <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const cur = await host.current();
   $<HTMLButtonElement>('saveCurrent').disabled = !cur;
@@ -85,12 +93,26 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     st.classList.toggle('error', line.kind === 'error');
     st.classList.toggle('warning', line.kind === 'warning');
     $('syncNow').hidden = !sync.status.paired;
+    $('unpair').hidden = !sync.status.paired;
+    $('pairPhone').hidden = sync.status.paired;
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   d.addEventListener('close', () => off());
   $('syncNow').onclick = () => sync.syncNow();
+  $('pairPhone').onclick = () => pair(); // the pairing dialog takes this one's place
+  $('unpair').onclick = () => confirmUnpair(d, async () => {
+    const err = await sync.unpair();
+    await render();
+    $('plansStatus').textContent = err ?? t('web_sync_unpaired');
+    $('plansStatus').classList.toggle('error', !!err);
+  });
   $('closePlans').onclick = () => d.close();
-  render();
+  await render();
+  if (atSync) { // from the header's paired status: straight to "Pair with phone"
+    const sec = d.querySelector<HTMLElement>('.syncsec')!;
+    sec.scrollIntoView({ block: 'nearest' });
+    sec.querySelector<HTMLButtonElement>('button:not([hidden])')?.focus();
+  }
 }
 
 /**
@@ -154,7 +176,7 @@ function confirmDelete(parent: HTMLDialogElement, p: SavedPlan, del: () => void)
 }
 
 export async function pairDialog(sync: PlanSync, page: string) {
-  const d = dialog('pair', `<h2>${esc(t('web_nav_pair'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
+  const d = dialog('pair', `<h2>${esc(t('web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
     <div id="pairStatus" class="status muted"></div>
     <div class="row end" id="pairButtons"><button id="closePair">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;

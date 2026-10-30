@@ -33,6 +33,7 @@ await page.click('#share');
 await page.waitForSelector('dialog.share[open] .qr svg');
 const link = await page.inputValue('#shareLink');
 check(link.endsWith('#p=' + CODE), 'link in the dialog carries the code');
+check(await page.getAttribute('#share', 'title') === 'Share' && (await page.textContent('dialog.share .scanline')).includes('Scan with the OnPath app'), 'Share (icon next to ⋯) → "Scan with the OnPath app" above the QR code');
 check(await page.evaluate(() => document.querySelectorAll('dialog.share .qr svg rect, dialog.share .qr svg path').length) > 0, 'QR code drawn');
 await page.screenshot({ path: shot });
 await page.click('#closeShare');

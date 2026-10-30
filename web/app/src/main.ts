@@ -32,8 +32,9 @@ import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
 import { MapNotices } from './mapnotice';
 import { MapAreas, type MapTexts } from './areas';
-import { t, tp, lang, languages, switchLanguage, number, distance } from './i18n';
+import { t, tp, lang, languages, switchLanguage, number, distance, locale } from './i18n';
 import { appHint } from './apphint';
+import { setupSheetSteps } from './sheetstep';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -42,6 +43,8 @@ const ROUTE = '#1E3FAE';
 const COLORS = { start: '#2E7D32', via: ROUTE, end: '#C62828' }; // OnPathColors.Good / Route / Bad (ui/PlanPanel.stopColor)
 const base = new URL('./', location.href).href;
 const params = new URLSearchParams(location.search);
+/** ?debug: developer lines ("Planned in … ms · routing data …") in the sheet's status line (owner 2026-10-30: hidden otherwise). */
+const DEBUG = params.has('debug');
 // start view: ?at=lon,lat,zoom, else the view kept over the language switch's reload (i18n.switchLanguage), else Meran
 const lastView = (() => {
   try { const v = sessionStorage.getItem('onpath.viewOnce'); sessionStorage.removeItem('onpath.viewOnce'); return v; }
@@ -84,9 +87,9 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
  * what it does); `act` is set further down, once the page's parts exist.
  */
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
+  // owner 2026-10-30: no "Send to phone" / "Pair with phone" here – sharing is the sheet's Share icon, pairing a section
+  // of My routes ("Pair with phone"); while paired a small phone with a green dot sits beside My routes
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
-  { id: 'menuPair', icon: 'sync', label: t('web_nav_pair') },
-  { id: 'menuShare', icon: 'phone', label: t('web_nav_send') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
 ];
@@ -102,7 +105,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <span class="product">${escapeHtml(t('web_product'))}</span>
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
-      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
+      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
+        + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" hidden>${icon('phone', 20)}<i class="syncdot" aria-hidden="true"></i><span class="lbl">${escapeHtml(t('web_sync_badge'))}</span></button>` : '')).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
@@ -130,11 +134,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="footer"><button id="credits" class="credit" aria-label="${escapeHtml(t('plan_map_credits'))}">© OpenStreetMap</button>
     <span class="sitelinks">${siteLink('web_url_privacy', t('web_link_privacy'))}<span aria-hidden="true">·</span>${siteLink('web_url_legal', t('web_link_legal'))}</span></div>
   <section id="sheet" aria-label="${escapeHtml(t('web_plan_sheet'))}">
-    <button id="handle" aria-label="${escapeHtml(t('web_sheet_handle'))}"><span></span></button>
+    <button id="handle" aria-label="${escapeHtml(t('plan_resize_panel'))}" title="${escapeHtml(t('plan_resize_panel'))}" aria-controls="sheet"><span></span></button>
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
+      <button id="share" class="iconbtn" aria-label="${escapeHtml(t('web_share'))}" title="${escapeHtml(t('web_share'))}" disabled>${icon('share')}</button>
       <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
+      <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
         <button id="menuSavePlan" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
         <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
@@ -152,13 +158,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button></div>
       <ol id="points"></ol>
     </div>
-    <button id="share" class="primary wide" disabled>${icon('phone')}${escapeHtml(t('web_send_share'))}</button>
     <div id="status" class="status muted" role="status"></div>
     <div id="apphint"></div>
   </section>
   </div>`;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
+// the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
+const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), document.querySelector<HTMLElement>('.sheethead')!, () => {});
 
 // ---- map ----
 maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's module worker; tell it where
@@ -263,6 +271,8 @@ ready.then(async (ok) => {
   if (!ok) return;
   await sync.init();
   if (pairLink) joinDialog(sync, pairLink);
+  syncBadge();
+  sync.onChange(syncBadge);
 });
 addEventListener('hashchange', () => openFromLink());
 
@@ -404,6 +414,8 @@ $('points').addEventListener('click', (e) => {
   const i = Number(li.dataset.i);
   if ((e.target as HTMLElement).closest('.del')) { deletePoint(i); return; }
   const p = state.points[i];
+  // phone: the sheet goes to the profile step so list and map are both visible (the app's showPointFromList)
+  if (p && phoneWidth()) sheetSteps.set('profile');
   if (p) map.easeTo({ center: [p[1], p[0]], zoom: Math.max(map.getZoom(), 14) });
 });
 sortable($('points'), (from, to) => applyEdit('move', from, to));
@@ -590,8 +602,17 @@ async function loadShared(shared: SharedPlan) {
 /** Room for the top bar, the sheet (side panel or bottom sheet) and the map controls when the camera fits a plan. */
 function fitPadding(): maplibregl.PaddingOptions {
   const sheet = $('sheet').getBoundingClientRect();
-  const phone = matchMedia('(max-width: 700px)').matches;
-  return phone ? { top: 130, bottom: sheet.height + 30, left: 40, right: 40 } : { top: 90, bottom: 50, left: sheet.right + 50, right: 90 };
+  // the sheet as it is now (its step, or the track panel); the place card on a phone stands in for it
+  if (phoneWidth()) {
+    const card = document.body.classList.contains('card-open') ? $('placecard').getBoundingClientRect().height : 0;
+    return { top: 130, bottom: Math.max(sheet.height, card) + 30, left: 40, right: 40 };
+  }
+  // wide: the room beside the side panel, or – when the panel is short (small step) – the larger room below it
+  const stage = $('stage').getBoundingClientRect(), w = stage.width, h = stage.height;
+  const beside = { top: 90, bottom: 50, left: sheet.right - stage.left + 50, right: 90 };
+  const below = { top: sheet.bottom - stage.top + 40, bottom: 50, left: 40, right: 90 };
+  const room = (p: typeof beside) => Math.max(0, w - p.left - p.right) * Math.max(0, h - p.top - p.bottom);
+  return room(below) > room(beside) ? below : beside;
 }
 
 /** The current plan in the app's format (for the QR code, the link and the address bar). */
@@ -616,7 +637,7 @@ async function changed() {
   await drawPoints();
   const h = JSON.parse(await engine.call('historyState'));
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
-  $<HTMLButtonElement>('share').disabled = state.points.length < 2;
+  $<HTMLButtonElement>('share').disabled = state.points.length < 2; // Share (icon next to ⋯): a plan needs two points
   rememberInAddress();
   state.notRouted = false;
   if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
@@ -643,8 +664,9 @@ async function changed() {
   if (id !== state.latest) return;
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   const s = r.stats!;
-  status(s.bytesFetched ? t('web_planned_in_data', Math.round(s.routeMs), number(s.bytesFetched / 1e6, 1), Math.round(s.fetchMs))
+  if (DEBUG) status(s.bytesFetched ? t('web_planned_in_data', Math.round(s.routeMs), number(s.bytesFetched / 1e6, 1), Math.round(s.fetchMs))
     : t('web_planned_in', Math.round(s.routeMs)));
+  else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
 }
@@ -923,9 +945,20 @@ async function suggestName(): Promise<string> {
     return '';
   }
 }
-navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
+const plansDialog = (atSync = false) => myPlansDialog(sync, plansHost, () => pairDialog(sync, location.href), atSync);
+navItem('menuPlans').act = () => plansDialog();
+/** Paired with the phone: a small phone with a green dot beside My routes (owner 2026-10-30); a click opens My routes at
+ *  "Pair with phone". Not paired: nothing. */
+function syncBadge() {
+  const b = $('syncBadge'), s = sync.status;
+  b.hidden = !s.paired;
+  if (!s.paired) return;
+  const last = s.lastSync ? ' · ' + t('web_sync_badge_last', new Date(s.lastSync).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })) : '';
+  b.title = t('web_sync_badge') + last;
+  b.setAttribute('aria-label', b.title);
+}
+$('syncBadge').onclick = () => { closeMenus(); plansDialog(true); };
 $('menuSavePlan').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
-navItem('menuPair').act = () => pairDialog(sync, location.href);
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
@@ -942,7 +975,6 @@ const share = async () => {
   shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint);
 };
 $('share').onclick = share;
-navItem('menuShare').act = share;
 navItem('menuAbout').act = () => credits();
 // Map content (toolbar): the app's POI and map settings in one large panel, applied live (mapcontent.ts)
 const mapContent = new MapContentPanel(map, engine, (t) => status(t, 'error'));
@@ -958,7 +990,6 @@ const gpxImport = setupGpxImport({
 navItem('menuImportGpx').act = () => gpxImport.pick();
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
 $('credits').onclick = () => credits();
-$('handle').onclick = () => $('sheet').classList.toggle('expanded');
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };
 $('spots').addEventListener('click', (e) => {
   const i = (e.target as HTMLElement).closest<HTMLElement>('[data-spot]')?.dataset.spot;

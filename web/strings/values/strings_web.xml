@@ -19,12 +19,11 @@
     <string name="web_page_title">OnPath Planner</string>
     <string name="web_brand_title">onpath.earth (new tab)</string>
     <string name="web_product">Planner</string>
-    <string name="web_nav_pair">Pair phone</string>
-    <string name="web_nav_send">Send to phone</string>
+    <string name="web_pair_phone">Pair phone</string>
     <string name="web_nav_help">Help &amp; credits</string>
     <string name="web_header_hint">No account · routes stay in this browser</string>
 
-    <!-- the one moment for the app (after Send to phone, on a shared link) -->
+    <!-- the one moment for the app (in the Share dialog, on a shared link) -->
     <string name="web_app_hint">With the app: offline on the way, navigation, new route without signal.</string>
     <string name="web_app_hint_button">Get the app</string>
 
@@ -35,8 +34,9 @@
     <string name="web_map_content">Map content</string>
     <string name="web_map_content_title">Points of interest, contour lines, hill shading</string>
     <string name="web_plan_sheet">Plan</string>
-    <string name="web_sheet_handle">Show or hide the points</string>
-    <string name="web_send_share">Send to phone · Share</string>
+    <string name="web_sheet_more">Show more</string>
+    <string name="web_sheet_less">Show less</string>
+    <string name="web_share">Share</string>
     <string name="web_hint_first_point">Click the map where you want to start or go.</string>
     <string name="web_hint_destination">Click the map to set the destination.</string>
     <string name="web_marker_title">%1$s – click for options, drag to move</string>
@@ -104,9 +104,10 @@
     <string name="web_mc_not_loaded">Map content settings not loaded: %1$s</string>
     <string name="web_mc_filter_failed">POI filter on %1$s not applied: %2$s</string>
 
-    <!-- Send to phone · Share -->
+    <!-- Share (QR code + link) -->
+    <string name="web_share_scan">Scan with the OnPath app</string>
     <string name="web_share_qr">QR code of the plan link</string>
-    <string name="web_share_text">Scan this code with the OnPath app on your phone. Anyone with the link can open the route – it is inside the link, nothing is stored on a server.</string>
+    <string name="web_share_text">Anyone with the link can open the route – it is inside the link, nothing is stored on a server.</string>
     <string name="web_share_link">Plan link</string>
     <string name="web_copy_link">Copy link</string>
     <string name="web_share_system">Share…</string>
@@ -117,6 +118,9 @@
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_saved">Saved routes</string>
     <string name="web_plans_sync_now">Sync now</string>
+    <string name="web_plans_sync_title">Pair with phone</string>
+    <string name="web_sync_badge">Paired with your phone</string>
+    <string name="web_sync_badge_last">last synced %1$s</string>
     <string name="web_plans_none">No saved routes yet.</string>
     <string name="web_plans_open">Open this route</string>
     <string name="web_plans_from_other">from the other device</string>
@@ -157,7 +161,7 @@
     <string name="web_sync_pair_cap">Too many new pairings from this network today. Try again tomorrow.</string>
     <string name="web_sync_pair_offline">Pairing needs the internet. Check the connection and try again.</string>
     <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
-    <string name="web_sync_already_paired">This browser is already paired. Unpair it first (☰ → Pair phone).</string>
+    <string name="web_sync_already_paired">This browser is already paired. Unpair it first (My routes → Unpair).</string>
     <string name="web_sync_unpair_failed">Unpairing failed (%1$d). Try again later.</string>
     <string name="web_sync_unpair_offline">Unpairing needs the internet, so that the phone stops too. Check the connection and try again.</string>
     <string name="web_sync_unpaired">Unpaired. Your routes stay in this browser.</string>
@@ -178,7 +182,7 @@
     <string name="web_about_how_1">Click the map to set the start, then the destination and stops; click a point for its menu.</string>
     <string name="web_about_how_2">Search a place, then add it from its card. Drag ≡ in Points to change the order.</string>
     <string name="web_about_how_3">Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</string>
-    <string name="web_about_how_4">Send to phone: a QR code the OnPath app scans – or pair the phone once and save routes to My routes.</string>
+    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or pair the phone once in My routes and save routes there.</string>
     <string name="web_credit_photon">Search online: Photon by komoot (OpenStreetMap data)</string>
     <string name="web_credit_maplibre">Map renderer: MapLibre GL JS (BSD licence)</string>
     <string name="web_credit_font">Typeface: Manrope, © The Manrope Project Authors,</string>

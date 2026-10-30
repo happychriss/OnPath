@@ -125,6 +125,10 @@ jobs:
         working-directory: web/app
         run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Plan sheet steps (small / profile / Points on desktop and phone, handle, chevron, remembered; Share icon, place card)
+        working-directory: web/app
+        run: node test/sheet-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Plan sync (phase 2) – two browsers pair, sync both ways, offline + conflict copy, delete, unpair
         working-directory: web/app
         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
