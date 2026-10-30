@@ -1,6 +1,6 @@
 # OnPath battery audit (read-only), app 0.7.2 @ c8f2338
 
-Status: audit 2026-10-20 of app 0.7.2 (cloud, read-only; no device measurements) – line numbers and findings are as of that code. **Owner rule: save power only when nobody looks (background, pocket, screen off); on screen the app runs at full speed** ("when I look at it, it must run fast and polished" – so no map fps caps). **Done:** pocket-aware keep-screen-on (proximity screen-off + sleep after 60 s covered, `ui/PocketScreen.kt`), GPS slower while paused (10 s, never off – owner) + wake lock off while paused, PauseWatch reminder after 150 m, no network provider in the service; the UI (app open) uses an accurate (≤ 150 m) network fix when GPS is silent 30 s (owner: position indoors); a tour started indoors: the UI tracker (app visible only) asks the platform FUSED provider (Android 12+, balanced power, every 2 s; below that the existing network request) from the tour start until the service's first GPS fix, a pause or the end – the service itself still has no network / fused provider (`navigation/Provisional`, `LocationTracker.setFusedWanted`); chronometer notification re-posted only on change; slower GPS at rest (`RestWatch`). Owner: no battery % in the tour summary; the battery-optimisation hint is a quiet line in Settings. **Open:** adaptive GPS rate with interval-scaled thresholds (rules under discussion with the owner), frozen + tail track source, slow ticker, off-route question back-off, compass rate, onCamera/setNavGuide/lifecycle collectors.
+Status: audit 2026-10-20 of app 0.7.2 (cloud, read-only; no device measurements) – line numbers and findings are as of that code. **Owner rule: save power only when nobody looks (background, pocket, screen off); on screen the app runs at full speed** ("when I look at it, it must run fast and polished" – so no map fps caps). **Done:** smart screen while cycling (rest view on black far from the next turn, the map draws nothing under it; Smart = default for bike activities – section "Smart screen while cycling"), pocket-aware keep-screen-on (proximity screen-off + sleep after 60 s covered, `ui/PocketScreen.kt`), GPS slower while paused (10 s, never off – owner) + wake lock off while paused, PauseWatch reminder after 150 m, no network provider in the service; the UI (app open) uses an accurate (≤ 150 m) network fix when GPS is silent 30 s (owner: position indoors); a tour started indoors: the UI tracker (app visible only) asks the platform FUSED provider (Android 12+, balanced power, every 2 s; below that the existing network request) from the tour start until the service's first GPS fix, a pause or the end – the service itself still has no network / fused provider (`navigation/Provisional`, `LocationTracker.setFusedWanted`); chronometer notification re-posted only on change; slower GPS at rest (`RestWatch`). Owner: no battery % in the tour summary; the battery-optimisation hint is a quiet line in Settings. **Open:** adaptive GPS rate with interval-scaled thresholds (rules under discussion with the owner), frozen + tail track source, slow ticker, off-route question back-off, compass rate, onCamera/setNavGuide/lifecycle collectors.
 
 Scope: Navigate first (a tour is running: `RecordingService` records GPS, navigation and re-routing; the map follows the position heading-up), then Plan and the app in the background. Typical day: 6–14 h, phone mostly in the pocket with the screen off.
 
@@ -128,6 +128,32 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
   - **(b)** Keep it, but only for N minutes after the last touch, turn arrow or off-route question.
   - **(c)** While it is active, also hold a `PROXIMITY_SCREEN_OFF_WAKE_LOCK` (after checking `pm.isWakeLockLevelSupported`). The screen then goes off in the pocket and comes back when the phone is taken out, like during a phone call. This works on a Pixel 8.
 - **Risk:** none for recording.
+- **Done:** (c) for hikes (`ui/PocketScreen.kt`). Bike activities (owner 2026-10-30): "Screen while cycling" – see
+  "Smart screen while cycling" below.
+
+### Smart screen while cycling — Done (owner decisions 2026-10-30)
+- **What:** Bike, Gravel, E-bike, MTB, E-MTB; Settings → Navigation → "Screen while cycling: Always on / Smart / Like the
+  phone", **Smart is the default** (an old "keep screen on" switched off becomes "Like the phone"; the switch itself now
+  applies to hikes only). The phone is on the handlebar, so no proximity sensor for bikes (a hand reaching for the
+  screen would turn it off); Hike is unchanged (`ScreenPolicy`, `SmartScreenTest.hikeIsUnchangedWhateverTheCyclingChoice`).
+- **Rest view** (`ui/RestView.kt`): far from the next turn Navigate shows a black screen (OLED: black pixels are off)
+  with the turn card's sign large, the distance to it, direction, time left and arrival in dim grey (`OnPathColors.Rest*`:
+  arrow / distance 10:1, the rest 6:1 on black – readable in the sun at the phone's own brightness; the window brightness
+  is not changed: with auto-brightness in the sun a lower window brightness would make it unreadable, and the gain on a
+  mostly black screen is small). The screen stays on (keep-screen-on), so a tap works.
+- **The map stops drawing** under it, without touching the MapView's lifecycle or the camera mode: no fixes go to the
+  location component, no compass / route direction to the camera (`HeadingEngine.quiet`, sensor off), no recorded-track
+  updates (`MapScreen.MapSync`, `MapController.setQuiet`) – with nothing moving, MapLibre renders no frames (it renders
+  on demand). Everything is sent again the moment the map shows: the dot is placed at once (`PositionDot.jumps`), the
+  map takes the current direction at once. Hiding the SurfaceView was not used: MapLibre may drop its renderer with the
+  surface and redraw the tiles from scratch – not "instant".
+- **When the full map shows** (`ui/SmartScreen.kt`, pure, `SmartScreenTest`): 50 s before the next event at the current
+  speed (highest of the last 10 s; ≥ 150 m), until 10 s after it; 30 s after any touch (`MainActivity.dispatchTouchEvent`
+  → `ScreenTouch`); while off route / the re-route question / arrival question / GPS lost or waiting / paused / map moved
+  by hand / any dialog, sheet or the error card, and 10 s after. Events = the turn card's turns (`TurnDetector`), every
+  junction the bike vibrates for (BRouter's turns without slight bends), roundabouts and the destination; one place
+  within 30 m = one event. No fps cap anywhere (owner: "never").
+- **Open:** measure on the Pixel 8 (display / CPU / GPU / GNSS rails, 10-min demo ride Always on vs Smart).
 
 ### B2. MapLibre location animation and map redraw have no frame cap — HIGH while the screen is on
 - **Now:**
