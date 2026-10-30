@@ -183,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                 onEditRides = { vm.openEditRides(it) },
                                 initialTab = vm.routesTab,
                                 onTab = { vm.routesTab = it },
+                                marks = vm.syncMarks.collectAsState().value,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

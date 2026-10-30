@@ -784,6 +784,16 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
 
+    /** Planned tab after a sync: a route new from the browser and a changed imported track – bold + grey line until opened. */
+    @Test fun toursFromBrowser() = paparazzi.snapshot {
+        val list = tourList.mapIndexed { i, t -> t.copy(uuid = "u-$i") } +
+            Tour(5, TourKind.PLANNED, "Meran → Vellau", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
+        OnPathTheme {
+            RoutesScreen(list.sortedByDescending { it.createdMs }, {}, {}, {}, {}, {},
+                marks = mapOf("u-new" to com.onpath.app.plansync.SyncMark.NEW, "u-2" to com.onpath.app.plansync.SyncMark.CHANGED))
+        }
+    }
+
     /** My routes, tab Done: recorded tours (a demo tour too); no Import GPX here. */
     @Test fun toursDone() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }

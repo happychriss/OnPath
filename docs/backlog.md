@@ -72,6 +72,10 @@ the git log.
       Browser sync opens (`SyncPoll.opened` / `openDue`), not within 10 s of another pass, never during a tour; the
       ~60 s poll runs only while My routes / Browser sync is shown, no longer on the Plan map · browser: poll only
       while the plans list (or the sync view) is visible, pull on open (same 10 s debounce).
+    - Mark plans that came from the phone · (this commit, app side: `plansync/SyncMarks.kt`) · bold title + 'Neu vom
+      Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened; seeing
+      the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept in local
+      storage (owner 2026-10-30).
   - *Open order A-016 (replaces A-005):* `/.well-known/assetlinks.json` built on web-spike (ad990c9, v0.13.1 key);
     plan.onpath.earth answers 404 today → deploy the host, let Cloudflare Access pass `/.well-known/*` without login,
     check `adb shell pm get-app-links com.onpath.app`. Until then Android opens `#p=` / `#pair=` links in the browser.

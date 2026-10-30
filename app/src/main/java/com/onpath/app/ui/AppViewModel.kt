@@ -3464,6 +3464,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openTour(t: Tour) {
+        syncMarkSeen(t)
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
             routesOpen = false
@@ -3513,6 +3514,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
 
+    /** Routes from the browser not opened yet (My routes → Planned: bold + "New from the browser"); read once at start. */
+    val syncMarks: kotlinx.coroutines.flow.StateFlow<Map<String, com.onpath.app.plansync.SyncMark>> get() = sync.files.marks.state
+
+    /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */
+    private fun syncMarkSeen(t: Tour) {
+        if (t.uuid.isEmpty() || t.uuid !in syncMarks.value) return
+        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
+    }
+
     /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
     var pairAsk by mutableStateOf<ByteArray?>(null)
         private set
@@ -3523,6 +3533,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
 
     init {
+        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.all() } // marks.txt → syncMarks (small file, never throws)
         sync.start()
         // a tour ended: what waited for it comes now
         viewModelScope.launch {
@@ -3822,7 +3833,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
-            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("moved to the recycle bin") }
+            if (ok) { Backups.tourChanged(getApplication(), t.id); sync.files.marks.remove(t.uuid); sync.changed("moved to the recycle bin") }
             withContext(Dispatchers.Main) {
                 if (!ok) { routesProblem = Txt.s(Res.string.msg_tour_delete_failed, t.name); return@withContext }
                 if (shown?.tourId == t.id) shown = null
