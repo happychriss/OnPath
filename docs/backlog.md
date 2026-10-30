@@ -96,11 +96,6 @@ the git log.
     is not cut;
   - older features never phone-tested on purpose: re-routing P0–P4, arrival / time estimate, End-tour ride summary,
     "Route back to the start?", slower GPS at rest, map freshness.
-- **Re-routing: smarter choice of where to rejoin (owner; the release after next)** – `navigation/RerouteTargets`
-  offers the next stop (≤ 5 km ahead) and line points 500 / 1500 / 3000 m ahead (`docs/plan-auto-reroute.md` §5).
-  When should the way back skip the next route point (much closer to the one after) – or ask? Work from real cases:
-  the owner's ride of 2026-10-28 (left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m) and routes the owner uploads.
-  Idea: skip when the detour is far longer and the point is not POI-pinned / named; ask only when it might matter.
 - **Smart screen while cycling – built (e6ee6ed), measure + ride** – rest view for bike activities (owner decisions
   2026-10-30). Still: Pixel power rails A/B on a 10-min demo ride (Always on vs Smart), the owner rides with it.
   From `docs/design/battery-audit.md` still open: slower GPS with the screen off, frozen track + tail.

@@ -180,7 +180,7 @@ class RecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
-            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
+            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
@@ -204,6 +204,11 @@ class RecordingService : Service() {
             }
             ACTION_TAKE_ROUTE -> {
                 navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_TAKE_VIA -> {
+                // "Skip stop N?" – No: the new route via that stop
+                navigator?.let { handle(it.takeVia(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_KEEP_ROUTE -> {
@@ -724,7 +729,12 @@ class RecordingService : Service() {
                 .setContentIntent(openAppIntent())
             // an activity switch was asked for on the screen: no sound (the user is looking), the question stays
             if (pr is NavPrompt.Question && pr.switch != null) b.setSilent(true)
-            if (pr is NavPrompt.Question) {
+            if (pr is NavPrompt.Question && pr.via != null) {
+                // "Skip stop N?": Yes (without it) · No (via it) · Keep original
+                b.addAction(0, NavText.SKIP_YES, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.SKIP_NO, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
+            } else if (pr is NavPrompt.Question) {
                 b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
             }
@@ -1042,6 +1052,7 @@ class RecordingService : Service() {
         /** Answer to the off-route question [EXTRA_QUESTION] (app button or notification action). */
         const val ACTION_TAKE_ROUTE = "com.onpath.app.TAKE_ROUTE"
         const val ACTION_KEEP_ROUTE = "com.onpath.app.KEEP_ROUTE"
+        const val ACTION_TAKE_VIA = "com.onpath.app.TAKE_VIA"
         const val EXTRA_QUESTION = "question"
         /** Activity check: a proposed session for another activity is in ActivityCheck.PROPOSAL_FILE ([EXTRA_TIME_S] = its time). */
         const val ACTION_PROPOSE_SWITCH = "com.onpath.app.PROPOSE_SWITCH"

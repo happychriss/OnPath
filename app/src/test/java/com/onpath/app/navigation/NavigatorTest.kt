@@ -92,6 +92,39 @@ class NavigatorTest {
         assertFalse(r.nav.take(q.id).lineChanged)
     }
 
+    /** "Skip stop 3?" (StopSkip): Yes takes the line without it and it stays out; No takes the line via it. */
+    @Test fun skipQuestionYesLeavesTheStopOutNoGoesViaIt() {
+        fun start() = Run(Navigator(NavSession.start(NavKind.PLAN, "Test", Activity.BIKE_TOURING, 3, route,
+            listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 500.0), pt(1000.0, 1000.0)), names = listOf(null, null, "Café", null))))
+        val skip = found(1150.0 to 0.0).copy(skipStop = 2)
+        val via = found(1150.0 to 0.0, extra = 900.0)
+        for (yes in listOf(true, false)) {
+            val r = start()
+            r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+            r.nav.onResult(r.jobs.last().id, skip.copy(ask = via))
+            val q = r.nav.prompt as NavPrompt.Question
+            assertEquals(2, q.skipStop)
+            assertEquals("Café", q.skipName)
+            assertNotNull(q.via)
+            assertEquals("Off route – skip Café?", NavText.title(q))
+            assertTrue(NavText.question(q), NavText.question(q).startsWith("Skipping saves 780 m"))
+            val st = if (yes) r.nav.take(q.id) else r.nav.takeVia(q.id)
+            assertTrue(st.lineChanged)
+            assertTrue(r.nav.session.rerouted)
+            assertEquals(yes, 2 in r.nav.session.visited)
+            // the next re-route never sends back to a stop left out on purpose
+            assertEquals(yes, 2 in RerouteTargets.passed(r.nav.session.stops, 0.0, r.nav.session.visited))
+        }
+        // left out without asking: the card says so
+        val r = start()
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, skip)
+        val q = r.nav.prompt as NavPrompt.Question
+        assertEquals("Off route – turn round, new route found", NavText.title(q))
+        assertTrue(NavText.question(q), NavText.question(q).endsWith(" · without Café"))
+        assertFalse(r.nav.takeVia(q.id).lineChanged) // nothing to answer "No" to
+    }
+
     @Test fun backOnTheNewRouteThenOriginalIsUsedAgain() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))

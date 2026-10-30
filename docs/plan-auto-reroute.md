@@ -6,7 +6,7 @@ Status: **implemented (P0–P4).** The design below (§1–§9) was written befo
 | Piece | Where | Notes |
 | --- | --- | --- |
 | Detection (P0) | `navigation/OffRouteDetector`, `navigation/NavLine` | §4 as written: window −300 m / +2 km (+5 km while off), setting + min(accuracy, 20 m), 15 s **and** 25 m (+margin) moved, back on after 3 fixes within half the distance, GPS loss freezes timers (a confirmed state stays). |
-| Way back (P1) | `navigation/RerouteTargets`, `navigation/Rerouter`, `RoutingContract.RouteLimits/RouteCancel`, `BRouterEngine` | Option C. Base = progress when leaving, or further when abeam of a later part (shortcut). Candidates: next stop ≤ 5 km, +0.5/1.5/3 km, never beyond the next stop. Score = way back + rest of the original (both `Geo.estimateSeconds`, ties → nearer). **Extra rule:** a way back shorter than 80 % of the route part it replaces (+100 m) is a skip, not a rejoin (round-trip end next to you, way back of an out-and-back) and is not chosen. 8 s per request, 12 s total, cancel via BRouter `terminate()`. The straight-line engine is never used for a way back. |
+| Way back (P1) | `navigation/RerouteTargets`, `navigation/Rerouter`, `RoutingContract.RouteLimits/RouteCancel`, `BRouterEngine` | Option C. Base = progress when leaving, or further when abeam of a later part (shortcut). Candidates: next stop ≤ 5 km, +0.5/1.5/3 km, not beyond the next stop – unless it is an ordinary route point (§5.4: then also 500 m past it and the stop after). Score = way back + rest of the original (both `Geo.estimateSeconds`, ties → nearer). **Extra rule:** a way back shorter than 80 % of the route part it replaces (+100 m) is a skip, not a rejoin (round-trip end next to you, way back of an out-and-back) and is not chosen. 8 s per request, 12 s total, cancel via BRouter `terminate()`. The straight-line engine is never used for a way back. |
 | Flow (P2) | `navigation/Navigator` (pure), `navigation/NavSession` (`nav-session.json`), `recording/RecordingService` | Off route confirmed → one vibration + notification (sound) → "finding a way back…" → question. Question refreshed silently after 150 m (≥ 30 s). No way / no data → arrow banner, retry after 200 m or 2 min, max 3. "Keep original" → arrow banner, asked again only after 200 m **and** 2/4/8 min (with vibration). After "Take new route": back on the original (30 m into the untouched rest, or 3 fixes on the original near where you left it) → original used again, grey line gone, no vibration. Plan mode: no new questions; a pending one stays. Off-route warning off in Settings = never ask. |
 | Notification | `RecordingService.updateAlert` | One ongoing notification on channel `offroute-question` (high, sound, no channel vibration – the service vibrates once), lock-screen visible, actions **Take new route / Keep original**; stays until answered or back on route. The former `offroute` channel is deleted on start. |
 | UI (P3) | `ui/NavigateScreen` (`OffRouteUi`, `RerouteQuestionCard`), `ui/MapScreen.MapSync`, `map/MapController.NAV_LAYERS` | Question card low (thumb reach) above the grouped map controls; banners on top. Map layers `nav-original` (grey, below the followed line), `nav-proposal` (dashed preview while asking), `nav-guide` (dashed line to the route in arrow mode) – all in `ROUTE_OVERLAY_LAYERS` (eye button). |
@@ -29,6 +29,7 @@ progress (the to-go strip still uses `FollowProgress`).
 | Q5 | **No separate change** – "Continue navigation" uses the same ask flow when you are off route. |
 | Q6 | Not now (no answer = recommendation). |
 | Q7 | **Keep the 80 % rule** (owner): a way back shorter than 80 % of the route part it replaces is not offered (would cut a round trip short). The proposal is shown as a dashed preview and always needs confirmation. |
+| Q8 | **The next route point (owner 2026-10-30, §5.4):** when it now lies far behind / aside, the new route leaves it out; ask "Skip stop N?" only when it matters (borderline, or a POI-pinned / named stop); clear cases decide without a question (the card still says "without Stop N"). |
 
 UX rule from the owner for the whole app: **no messages that disappear by themselves**; banners/questions stay until
 answered or until the situation is gone.
@@ -180,6 +181,52 @@ Other numbers from the same run:
 BRouter, "to destination" and "rejoin + original" give almost the same total (BRouter rejoins its own optimum), so B
 works for plans – but **not** for tracks, round trips or very long routes. (3) A **single fixed** rejoin point can be
 bad (3.3 km leg to reach a point 300 m ahead, across the Etsch valley), hence several candidates (C).
+
+### 5.4 The next route point: via, leave out, or ask (owner 2026-10-30, Q8)
+
+Off the plan, the next route point may now lie behind – going there is a detour, while the point after it is on the
+way. Route points are mostly tapped to shape the line, so forcing the new route through them makes silly detours; a POI
+pinned to the plan or a named place (search result, shared place) was chosen on purpose.
+
+Both ways of re-routing compute the alternative: the **fresh route** (plans: position → stops not passed → destination)
+also routes straight to the stop after the next one; the **way back** (tracks, or no fresh route) also tries rejoin
+points past an ordinary next stop (500 m past it, the stop after it ≤ 10 km along; `RerouteTargets.pastNext`, marked
+`RejoinTarget.skips`). `navigation/StopSkip` compares the seconds to the stop after (N+1) **via N**, **straight** and
+**as planned** from where one is abeam of the plan (same time model as the plan sheet). N is "behind" only when going
+there costs clearly more than both the straight way and the plan: a detour the plan makes on purpose (a loop, a route
+dragged over a nicer path) is no reason to leave the point out – the rider is merely beside the plan.
+
+| Case (ref = the larger of straight and plan) | Decision |
+| --- | --- |
+| via < ref + **90 s** (≈ 450 m by bike, ≈ 110 m on foot) or via ≤ **1.2 ×** ref | **via** N, nothing said |
+| N deliberate (POI pinned, named, turning point – the plan goes there and back the same way) and more than that | **ask** |
+| via ≥ **1.5 ×** ref | **leave N out**; the question card says "… · without Stop 3" |
+| in between | **ask** "Off route – skip Stop 3?" · **Yes, skip** / **No, go there** (+ Keep original) |
+
+Never left out: the destination; a stop whose skip leaves less than **half** of the plan up to N+1 (the end of a round
+trip next to you – via, not even asked; like Q7). A stop left out (silently or Yes) is added to the session's
+`visited`, so a later re-route never sends back to it. Only the next stop is judged; one further on is judged at the
+next re-route. The question uses the off-route card (route-blue edge, two buttons + a text button "Keep original") and
+the HIGH `offroute-question` notification with three actions (Yes / No / Keep original); EN + DE.
+
+**Real case** (`tools/routing/jvm-test/StopSkipJvmTest.kt`, BRouter, Hilden by bike). The owner's ride of 2026-10-28
+(left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m off) is not in the repo as a trace, so the excursions are rebuilt
+on a 12.9 km Hilden round ride with route points at 1.1 / 2.0 / 6.3 / 9.9 km (asked when the off-route is confirmed and
+at the farthest point). "Before" = the app until now (always via every stop not passed):
+
+| Case | Off the plan | To the stop after: via / straight / plan | Before | Now |
+| --- | --- | --- | --- | --- |
+| km 0.5–0.8 right, confirmed | 98 m | 1492 / 1113 / 1443 m (+77 s) | via | via |
+| km 0.5–0.8 right, farthest | 376 m | 1942 / 1345 / 1349 m (×1.44) | via | **ask "Skip stop 2?"** |
+| km 0.5–0.8 left, confirmed / farthest | 68 / 271 m | 1307 / 1307 m; 1373 / 1373 m | via | via |
+| km 6.0–6.8 right, confirmed / farthest | 63 / 426 m | 6706 / 4556 / 6641 m; 7148 / 4998 / 6625 m | via | via (the round's loop is the plan) |
+| Route dragged 1.5 km south over a route point, rider on the direct road | 679 m | 7847 / 4343 / 6623 m (×1.22 plan) | via | **ask** (pinned / named: ask) |
+| Same, dragged 0.4 / 0.9 km | 506 m | ≤ ×1.0 plan | via | via |
+| Round trip, 150 m beside the start | 149 m | 6459 / 281 / 6206 m | via | via (never "skip the loop") |
+
+Without the plan comparison, the km 6 excursion would have asked "Skip stop 5?" (×1.49 of the straight way home) on a
+63 m deviation – that is why N must also cost more than the plan. Silent skips ("leave out") need a clearer case than
+these Hilden streets gave (≥ ×1.5 of both, e.g. a river between the rider and the point – `StopSkipTest`).
 
 ## 6. UX in Navigate mode
 

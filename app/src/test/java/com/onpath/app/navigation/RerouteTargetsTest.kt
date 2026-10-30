@@ -31,9 +31,23 @@ class RerouteTargetsTest {
     @Test fun nextStopIsACandidateAndLimitsTheLinePoints() {
         val s = stops(long, 0.0, 2_000.0, 5_000.0, 10_000.0)
         val c = RerouteTargets.candidates(long, 1_200.0, s, emptySet())
-        // next stop at 2 km; +0.5 km = 1.7 km is a line point, nothing beyond the stop
-        assertEquals(listOf(1_700.0, 2_000.0), c.map { it.alongM })
-        assertEquals(1, c.last().stopIndex)
+        // next stop at 2 km; +0.5 km = 1.7 km is a line point, the plain ones never beyond the stop
+        assertEquals(listOf(1_700.0, 2_000.0), c.filter { it.skips == null }.map { it.alongM })
+        assertEquals(1, c.filter { it.skips == null }.last().stopIndex)
+        // an ordinary route point (owner 2026-10-30): also 500 m past it and the stop after – marked, StopSkip decides
+        assertEquals(listOf(2_500.0, 5_000.0), c.filter { it.skips == 1 }.map { it.alongM })
+        assertEquals(2, c.last().stopIndex)
+    }
+
+    @Test fun nothingPastAPinnedNamedOrLastStop() {
+        val pinned = listOf(NavStop(long.pointAt(0.0), 0.0), NavStop(long.pointAt(2_000.0), 2_000.0, pinned = true),
+            NavStop(long.pointAt(5_000.0), 5_000.0), NavStop(long.pointAt(10_000.0), 10_000.0))
+        assertTrue(RerouteTargets.candidates(long, 1_200.0, pinned, emptySet()).all { it.skips == null && it.alongM <= 2_000.0 })
+        val named = pinned.mapIndexed { i, st -> if (i == 1) st.copy(pinned = false, name = "Café") else st }
+        assertTrue(RerouteTargets.candidates(long, 1_200.0, named, emptySet()).all { it.skips == null && it.alongM <= 2_000.0 })
+        // the destination is the next stop: nothing past it
+        val two = stops(long, 0.0, 10_000.0)
+        assertTrue(RerouteTargets.candidates(long, 8_000.0, two, emptySet()).none { it.skips != null })
     }
 
     @Test fun passedStopsAreSkippedAlsoPinnedOnes() {

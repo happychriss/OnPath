@@ -86,6 +86,13 @@
     <string name="nav_compass_nw">north-west</string>
     <string name="nav_back_to">Back to %1$s</string>
     <string name="nav_back_to_route">Back to the route</string>
+    <!-- re-route and the next stop: "Skip stop 3?" (navigation/StopSkip) -->
+    <string name="nav_title_skip_stop">Off route – skip %1$s?</string>
+    <string name="nav_state_skip_stop">Skip %1$s?</string>
+    <string name="nav_skip_yes">Yes, skip</string>
+    <string name="nav_skip_no">No, go there</string>
+    <string name="nav_skip_saves">Skipping saves %1$s</string>
+    <string name="nav_without_stop">without %1$s</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">%1$s to go</string>

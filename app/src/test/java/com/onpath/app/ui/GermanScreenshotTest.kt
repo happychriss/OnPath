@@ -44,6 +44,7 @@ class GermanScreenshotTest {
     @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
+    @Test fun navigateRerouteSkipStop() = shots.navigateRerouteSkipStop()
     @Test fun navigateApproximatePosition() = shots.navigateApproximatePosition()
     @Test fun navigateNotificationsOff() = shots.navigateNotificationsOff()
     @Test fun navigateNotificationsOffApproximate() = shots.navigateNotificationsOffApproximate()

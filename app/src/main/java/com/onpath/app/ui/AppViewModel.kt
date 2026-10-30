@@ -3028,6 +3028,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
+    /** "Skip stop N?" in Navigate – No: take the new route via that stop. */
+    fun takeViaRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_TAKE_VIA) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
     /** Off-route question in Navigate: keep following the original route. */
     fun keepOriginalRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_KEEP_ROUTE) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)

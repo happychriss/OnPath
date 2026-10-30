@@ -27,6 +27,15 @@ sealed interface NavPrompt {
         val switch: ActivitySwitch? = null,
         /** The new line starts by going back the way the rider came ([TurnRound]): "Turn round". */
         val turnRound: Boolean = false,
+        /** The new line leaves out this stop (index in the session's stops, [StopSkip]); null = none. */
+        val skipStop: Int? = null,
+        /** Name of [skipStop] when it has one (else "Stop N"). */
+        val skipName: String? = null,
+        /**
+         * Non-null: "Skip stop N?" – Yes takes this line (without [skipStop]), No takes [via] (the way via it);
+         * Keep original stays possible.
+         */
+        val via: Question? = null,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -209,8 +218,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (prompt == null) return Step() // back on route meanwhile
         return when (outcome) {
             is Rerouter.Found -> {
-                prompt = NavPrompt.Question(++questionId, outcome.extraM, outcome.rejoinInM, outcome.startOffM, outcome.line,
-                    outcome.legM, outcome.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), outcome.line))
+                prompt = question(++questionId, outcome)
                 failures = 0
                 Step(vibrate = vib)
             }
@@ -239,9 +247,22 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
+        return takeLine(q)
+    }
+
+    /** "No" to "Skip stop N?" for question [id]: the new route via that stop. */
+    fun takeVia(id: Int): Step {
+        val q = prompt as? NavPrompt.Question ?: return Step()
+        if (q.id != id) return Step()
+        return takeLine(q.via ?: return Step())
+    }
+
+    private fun takeLine(q: NavPrompt.Question): Step {
         turnRoundAt = if (q.turnRound) q.line.firstOrNull() else null
+        // a stop left out on purpose stays out: later re-routes never send back to it (like a passed one)
+        val visited = q.skipStop?.let { session.visited + it } ?: session.visited
         session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
-            version = session.version + 1)
+            visited = visited, version = session.version + 1)
         detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
         prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0
         return Step(cancelJob = true, lineChanged = true)
@@ -264,6 +285,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     }
 
     // ---- internals -------------------------------------------------------------------------------------------
+
+    private fun question(id: Int, f: Rerouter.Found): NavPrompt.Question = NavPrompt.Question(id, f.extraM, f.rejoinInM,
+        f.startOffM, f.line, f.legM, f.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), f.line),
+        skipStop = f.skipStop, skipName = f.skipStop?.let { session.stops.getOrNull(it)?.name?.takeIf { n -> n.isNotBlank() } },
+        via = f.ask?.let { question(id, it) })
 
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {
         prompt = NavPrompt.Searching

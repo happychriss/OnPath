@@ -170,6 +170,8 @@ fun NavigateOverlay(
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
+    /** "Skip stop N?" – No: the new route via that stop. */
+    onTakeVia: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
@@ -204,7 +206,7 @@ fun NavigateOverlay(
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
             Appearing(ui.offRoute?.prompt as? NavPrompt.Question) { q ->
-                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) },
+                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) },
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
             }
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
@@ -543,7 +545,8 @@ private fun OffRouteCard(o: OffRouteUi) {
  * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves.
  */
 @Composable
-internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
+                                 onVia: () -> Unit = {}) {
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp,
         border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
@@ -559,7 +562,21 @@ internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKe
                 }
             }
             Spacer(Modifier.size(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (q.via != null) {
+                // "Skip stop N?" (StopSkip: borderline, or a stop chosen on purpose): Yes = without it, No = via it
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onVia, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+                        Text(NavText.SKIP_NO, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    }
+                    Button(onClick = onTake, modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
+                        Text(NavText.SKIP_YES, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    }
+                }
+                TextButton(onClick = onKeep, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) {
+                    Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onKeep, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
                     Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 }
@@ -694,7 +711,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-            onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
+            onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },

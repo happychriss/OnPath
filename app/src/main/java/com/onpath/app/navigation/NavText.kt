@@ -11,10 +11,17 @@ import kotlin.math.roundToInt
 object NavText {
     val TAKE: String get() = Txt.s(Res.string.nav_take_new_route)
     val KEEP: String get() = Txt.s(Res.string.nav_keep_original)
+    /** "Skip stop N?" (StopSkip): Yes = the route without it, No = the route via it. */
+    val SKIP_YES: String get() = Txt.s(Res.string.nav_skip_yes)
+    val SKIP_NO: String get() = Txt.s(Res.string.nav_skip_no)
+
+    /** "Café Moser" / "Stop 3" – the stop a new route leaves out (numbered like the plan's points). */
+    fun stopLabel(q: NavPrompt.Question): String? = q.skipStop?.let { q.skipName ?: Txt.s(Res.string.plan_point_stop, it + 1) }
 
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: stopLabel(p)?.takeIf { p.via != null }?.let { Txt.s(Res.string.nav_title_skip_stop, it) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_title_turn_round else Res.string.nav_title_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
@@ -31,6 +38,7 @@ object NavText {
     fun state(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_state_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
+            ?: stopLabel(p)?.takeIf { p.via != null }?.let { Txt.s(Res.string.nav_state_skip_stop, it) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_state_turn_round else Res.string.nav_state_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_state_no_data)
@@ -56,10 +64,17 @@ object NavText {
             if (q.startOffM > FAR_START_M) append(" · ").append(Txt.s(Res.string.nav_nearest_way, Format.distance(round10(q.startOffM))))
             return@buildString
         }
-        append(extra(q.extraM))
+        val via = q.via
+        if (via != null) {
+            // "Skip stop 3?": what leaving it out saves, then the new route without it
+            val saved = round10(via.extraM - q.extraM)
+            append(if (saved >= 10) Txt.s(Res.string.nav_skip_saves, Format.distance(saved)) else Txt.s(Res.string.nav_about_as_long))
+        } else append(extra(q.extraM))
         if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, Format.distance(round10(q.legM))))   // fresh route (Rerouter.fresh)
         else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, Format.distance(round10(q.rejoinInM))))
         if (q.startOffM > FAR_START_M) append(" · ").append(Txt.s(Res.string.nav_nearest_way, Format.distance(round10(q.startOffM))))
+        // left out without asking (an ordinary route point far aside): said, so the plan's marker is not a surprise
+        if (via == null) stopLabel(q)?.let { append(" · ").append(Txt.s(Res.string.nav_without_stop, it)) }
     }
 
     fun extra(m: Double): String {

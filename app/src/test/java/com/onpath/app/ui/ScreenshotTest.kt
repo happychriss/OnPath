@@ -430,6 +430,11 @@ class ScreenshotTest {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(turnRound = true), hint)))
     }
 
+    /** The next route point now lies behind (StopSkip, borderline): "Skip Stop 3?" – Yes / No + Keep original. */
+    @Test fun navigateRerouteSkipStop() = paparazzi.snapshot {
+        NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
+    }
+
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
     @Test fun navigateOffRouteNoWay() = paparazzi.snapshot {
         NavFrame(offUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.NoWay(com.onpath.app.navigation.Rerouter.Reason.NO_WAY),
