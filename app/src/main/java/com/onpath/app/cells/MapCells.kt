@@ -296,13 +296,17 @@ class MapCells(
                 added += c
             }
             saveQueue()
+            // the state together with the queue entry (lock order queue → states, as in loadQueue): a worker round
+            // dropping the request at once ([prune]) never leaves it "requested" for ever.
+            // An UPDATE replaces an installed (outdated) cell: show it as loading, not as ready.
+            if (added.isNotEmpty()) update { m ->
+                added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested }
+            }
         }
         // the region view around them (quiet, small): the packages these cells need
         if (reason != CellReason.PACKAGE) ensurePackages(cells)
         if (added.isNotEmpty()) {
             Problems.trace("cells", "Requested ${added.size} region(s) (${reason.name.lowercase()}): ${added.joinToString { it.id }}")
-            // an UPDATE replaces an installed (outdated) cell: show it as loading, not as ready
-            update { m -> added.forEach { if (m[it] !is CellState.Ready || reason == CellReason.UPDATE) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }
@@ -327,11 +331,14 @@ class MapCells(
                 queue[p] = Pending(p, CellReason.PACKAGE, ownPoint = false, at = t, approvedMobile = false)
                 added += p
             }
-            if (added.isNotEmpty()) saveQueue()
+            if (added.isNotEmpty()) {
+                saveQueue()
+                // with the queue entry, as in [request]
+                update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
+            }
         }
         if (added.isNotEmpty()) {
             Problems.trace("cells", "Requested ${added.size} region package(s): ${added.joinToString { it.id }}")
-            update { m -> added.forEach { if (m[it] !is CellState.Ready) m[it] = CellState.Requested } }
             sent.removeAll(added.toSet())
             wake()
         }
@@ -706,8 +713,11 @@ class MapCells(
             }
         }
         if (drop.isEmpty()) return
-        synchronized(queue) { drop.forEach { queue.remove(it.first.id) }; saveQueue() }
-        update { m -> drop.forEach { (p, _) -> if (m[p.id] !is CellState.Ready) m.remove(p.id) } }
+        synchronized(queue) {
+            drop.forEach { queue.remove(it.first.id) }; saveQueue()
+            // under the queue lock like [request]: queue entry and state change together
+            update { m -> drop.forEach { (p, _) -> if (m[p.id] !is CellState.Ready) m.remove(p.id) } }
+        }
         drop.groupBy { it.second }.forEach { (why, list) ->
             Problems.trace("cells", "Dropped ${list.size} region request(s) before download – $why: " +
                 list.joinToString { "${it.first.id} (${it.first.reason.name.lowercase()})" })
