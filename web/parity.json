@@ -239,6 +239,22 @@
         "web/app/src/main.ts"
       ],
       "blob": "e96953d70a88dd981e6aad5a193a327ad1fa498a"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
+      "what": "multiPolygon – the packages' boxes put into the labels' within filter at runtime (merge itself runs at build time, OverviewStyle.kt)",
+      "web": [
+        "web/app/src/overview.ts"
+      ],
+      "blob": "9c76e0a2cfc6cedd6c386b87e71d72ea2a38029d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/cells/CellStore.kt",
+      "what": "region packages: a z7 package owns the tiles z7–9 under it (base, overlays, hillshade = region-shade); cells z10+",
+      "web": [
+        "web/app/src/cells.ts"
+      ],
+      "blob": "c349053617f537251de2e0a53b6722b3e0c07c31"
     }
   ],
   "watch": [

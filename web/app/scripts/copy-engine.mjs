@@ -34,6 +34,10 @@ fs.cpSync(path.join(a, 'sprites'), path.join(pub, 'sprites'), { recursive: true 
 const ovStyle = path.join(repo, 'web/engine/build/style/onpath-overview.json');
 if (fs.existsSync(ovStyle)) fs.copyFileSync(ovStyle, path.join(pub, 'style/onpath-overview.json'));
 else console.warn('no overview style – run: ./gradlew -p web/engine overviewStyle');
+// the same merged for region packages (z7–9, map-cells.md §20; overview.ts prefers it)
+const ovPackages = ovStyle.replace(/\.json$/, '-packages.json');
+if (fs.existsSync(ovPackages)) fs.copyFileSync(ovPackages, path.join(pub, 'style/onpath-overview-packages.json'));
+else console.warn('no region-package overview style – run: ./gradlew -p web/engine overviewStyle');
 const ovDir = process.env.ONPATH_OVERVIEW_DIR;
 if (ovDir) {
   fs.mkdirSync(path.join(pub, 'overview'), { recursive: true });

@@ -3,7 +3,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { handle } from "../src/index.js";
 
-const files = { "cells/f2/10/543/361/current.json": '{"version":"2026-10-23-s4"}', "cells/f2/10/543/361/2026-10-23-s4/base.pmtiles": "0123456789" };
+const files = { "cells/f2/10/543/361/current.json": '{"version":"2026-10-23-s4"}', "cells/f2/10/543/361/2026-10-23-s4/base.pmtiles": "0123456789",
+  // a region package (z7 tile, map-cells.md §20): same layout as a cell
+  "cells/f2/7/68/44/current.json": '{"version":"2026-10-28-s1"}', "cells/f2/7/68/44/2026-10-28-s1/hillshade.pmtiles": "abcdefghij" };
 const bucket = {
   async head(k) { return k in files ? obj(k) : null; },
   async get(k, opts = {}) {
@@ -30,6 +32,16 @@ test("current.json is not cached long; missing cell is 404", async () => {
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("cache-control"), "no-cache");
   assert.equal((await handle(new Request(H + "/data/cells/f2/10/1/1/current.json"), env)).status, 404);
+});
+
+test("region package files (z7) are served like cells", async () => {
+  const c = await handle(new Request(H + "/data/cells/f2/7/68/44/current.json"), env);
+  assert.equal(c.status, 200);
+  assert.equal((await c.json()).version, "2026-10-28-s1");
+  const r = await handle(new Request(H + "/data/cells/f2/7/68/44/2026-10-28-s1/hillshade.pmtiles", { headers: { range: "bytes=0-2" } }), env);
+  assert.equal(r.status, 206);
+  assert.equal(await r.text(), "abc");
+  assert.equal((await handle(new Request(H + "/data/cells/f2/7/1/1/current.json"), env)).status, 404);
 });
 
 test("only cell files are readable from the bucket", async () => {

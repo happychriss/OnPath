@@ -432,6 +432,7 @@ Owner decisions 2026-10-29 (cloud, 2026-10-30):
 | --- | --- | --- |
 | 13b | One green: the app's `#1F6E43` | Every green of the page is the app's: header eyebrow and header icons (were onpath.earth's `#526d57`; its button green `#245f46` was never used on the page), buttons, chip and menu icons, the Easy badge. Fills use `--green` (`#1F6E43`) in light and dark; green *text / icons* use `--green-fg` = the same green in light, in dark mode its light tone `#8ED6A8` (the app's `inversePrimary`) – `#1F6E43` on the dark background is only 2.7:1. Contrast (WCAG AA): white on the green button 6.2:1; green text on the header 6.0, on white 6.2, Easy badge 5.2; dark 6.7–10. The website's neutrals (`--site-bg/fg/line/soft`) stay. Test: ui-smoke (the app's green in light; ≥ 4.5:1 text, ≥ 3:1 icons in light and dark). |
 | 14 | Pace choice like the app's Settings → Pace | The activity drop-down ends with **Your pace**: the five levels of the current activity's group (Hiking, or "Cycling · <bike>" – the app keeps one level for hiking and one for cycling) with the app's labels and "about 4 km/h · 300 m up per hour" line and intro. A click sets it (the list stays open); the sheet's time is recomputed by the engine (`planTime`: the app's `TimeEstimate.planSeconds` with `planFactors` of the chosen level, no new routing); new plans and an imported track's model time use it too (`WebPace.kt`). Remembered in localStorage under the app's Prefs key names (`onpath.hikePaceLevel` / `onpath.bikePaceLevel`). The long-route question keeps Average, as in the app (`LongRoute`). Tests: browser-compare (every level, Hike / bike / e-bike, Wasm = JVM `JvmRun.paceRun` exactly), parity-smoke (section, time follows, stays open, remembered after reload). |
+| 15 | Region packages for zoom 7–9 (map-cells.md §20) | Read like cells from the maps bucket through `/data/` (same R2 layout: `cells/f2/7/<x>/<y>/current.json` + `<version>/{base,overlays,hillshade}.pmtiles`; the host's key pattern `cells/…` already covers it – host test added). `cells.ts`: a tile z7–9 comes from the package of its z7 parent (base, overlays = long-distance routes, hillshade = the style source `region-shade`), z10+ from the cells as before; a missing / broken package file is left out (warned once). Style: the app merges per installed packages (`Overview.merge(packages = boxes)`, StyleLoader reloads); its structure does not depend on *which* packages, only the `within` geometry of the overview's labels from z7 does – so the build also writes `onpath-overview-packages.json` (the app's merge with a placeholder box in the South Pacific) and the page sets the boxes of the packages it finds into that filter (`overview.ts followPackages`, mirror of `Overview.multiPolygon`). Without any package it draws like the plain overview style (the detailed layers from z7 find no tiles). The page never asks for a package to be built (the app does, `MapCells.ensurePackages`) – it shows the ones that exist. Test: overview-smoke with a fake package (`test/fake-package.mjs`: a solid-magenta hillshade.pmtiles for z7 tile 68/44, Munich): its relief covers the overview at z8, the labels' filter holds its box, no overview label inside it; Meran (no package) keeps the overview and its labels. |
 
  Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help).
@@ -468,7 +469,8 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 | Mirrored UI rules (Android / Compose files) | `Screens.SacScale`, `MapOverlays.stopLabel` + menus, `PlanStatus.noRouteLine` texts, `RouteRules.saveMode`, `MapFooter.gpsColor`, `MapController` arrows + layer order, `MAP_CREDITS`, `ElevationProfile` colours, `TourBar.longRouteText`, `Panels.TrackPanel`, `PointsSection`, `PlanPoints.dropIndex/shift` (per pointer move) | mirrored | listed with the app file's hash in `web/parity.json` |
 | Engine stand-ins for Android files | `debug/Problems`, `debug/UserText`, `data/DataFiles`, `recording/GpsStatus`, `Txt` / `XmlStrings` | mirrored | `web/engine/src/main/kotlin/com/onpath/app/…` |
 | Not on the web (on purpose) | navigation, recording, re-routing, activity check, rides, cells download / loading prompts, backups, Google share (`SharedPlace`), plan links into the app (`PlanLinks`), haptics, Points delete guard, Notices | – | phone only; `watch` in `web/parity.json` lists the plan-related ones |
-| Not on the web yet | region packages z7–9, Route details screen, hollow grey unreachable point | – | open items (§14.3) |
+| Region view z7–9 (region packages) | `map/Overview.merge(packages)`, `cells/CellStore` (a package owns z7–9) | same (§13 #15) | merge shared at build time (`OverviewStyle.kt`, placeholder box); package lookup + `within` boxes mirrored (`cells.ts`, `overview.ts`) |
+| Not on the web yet | Route details screen, hollow grey unreachable point | – | open items (§14.3) |
 
 ### 14.2 How the web stays in sync
 
@@ -490,7 +492,6 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 
 ### 14.3 Open items
 
-- Region packages (z7–9) on the web: served from the maps bucket like cells, `Overview.merge(packages = …)`.
 - `PlanStatus.noRouteLine` texts are still mirrored in `main.ts`; the engine now compiles `PlanStatus` – the page could
   ask it (UI agent's file).
 
@@ -523,6 +524,5 @@ release workflow downloads, SHA256-checked in the web CI, ~14 MB static assets) 
 the app's own `map/Overview.merge` (run on the JVM at build time: `./gradlew -p web/engine overviewStyle` →
 `style/onpath-overview.json`). The page only points the `asset://overview/` URLs at its `overview/` folder and keeps
 the cover (`detail-cover`) on the cells it found – the app covers its installed cells. Without the files (a local build
-without `ONPATH_OVERVIEW_DIR`) the plain style is used as before. Region packages (z7–9) are not served yet; their
-`region-shade` source is left out like a missing file. Test: `overview-smoke.mjs` (zoom 5 and 8 draw the overview; with
+without `ONPATH_OVERVIEW_DIR`) the plain style is used as before. Region packages (z7–9): §13 #15 (since 2026-10-30). Test: `overview-smoke.mjs` (zoom 5 and 8 draw the overview; with
 map data also zoom 12.5 with the cover).

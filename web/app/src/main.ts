@@ -28,7 +28,7 @@ import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
 import { setupGpxImport } from './gpximport';
-import { overviewStyle, followCover } from './overview';
+import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
 import './fonts/manrope.css';
 import './style.css';
@@ -161,6 +161,7 @@ $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
 if (useCells) followCover(map, cells.found); // the overview hides where the cells' detailed map is
+if (useCells) followPackages(map, cells.packages); // region packages (z7–9): the overview's labels left out there
 map.on('load', () => {
   if (useCells) cells.loadPois(map);
   map.addSource('planned-route', { type: 'geojson', data: empty() });
