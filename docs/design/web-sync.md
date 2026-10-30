@@ -113,6 +113,44 @@ AAD = version byte | mailbox id (16 bytes) | item id (16 bytes)
 ```
 A 20-point plan with title ≈ 160 bytes; 500 points ≈ 3 KB. On the wire and in D1: Base64url text.
 
+### 5.1 JOIN item and device role (A-017, 2026-10-30) – format fixed before building
+
+Owner model A-017: one *folder* per phone in the browser; a second browser (laptop + desktop, a friend's PC) pairs
+by itself and the phone **redirects** it into the phone's one mailbox. Two additions to the item format, both
+backward compatible (old readers skip unknown kinds and tags):
+
+```
+kind 4 = JOIN        (only ever written by a phone into a browser's fresh mailbox)
+  id      = first 16 bytes of SHA-256("OnPath join")            – one JOIN per mailbox, the same on every side
+  device  = the phone's device id (8 bytes)
+  fields  5 = the phone's own pairing code (ASCII, PairCode text format, the same text as in a #pair= link)
+  sealed with the BROWSER's mailbox keys (the code the phone just scanned), like every item in that mailbox
+
+kind 2 = DEVICE hello, new optional field
+  6 = role (varint): 1 = phone app, 2 = browser          – missing = unknown (old app / old page)
+```
+
+Tag 5 belongs to JOIN and tag 6 to the role, so one tag never means two things (A-017 named "tag 5" for both; the
+item decoder reads tags without looking at the kind, hence two numbers). `SyncItem` gets `pairCode: String?` (kind
+JOIN) and `role: Int?` (kind DEVICE); `isUserItem` stays plans + tracks only, so JOIN and hellos never become copies.
+
+**Redirect round (phone, already paired with mailbox P, scans the code B of another browser):**
+1. Shows the check number of code B → the user taps Pair (no other question).
+2. Derives B's keys and token; claims B's mailbox if needed (`POST /sync/v1/<B>/claim`, §8) and `PUT`s the JOIN item
+   (field 5 = P's pairing code) into B. Nothing else is written into B.
+3. Shows "Paired". The phone stays in P; `sync_unpair_first` goes.
+
+**Browser side (holds code B, waits after showing the QR code):**
+1. On its next pull it finds the JOIN item, opens it with B's keys, checks the code is a valid PairCode.
+2. Adopts code P (stores it as the open folder's mailbox, folder key = JOIN's `device`), `DELETE`s mailbox B (its
+   own transitional one), reads P from the start (`since = 0`). The check number shown stays B's (both screens
+   showed it).
+3. Writes its own hello into P with role 2. A phone's hello carries role 1; the browser names the folder after the
+   hello with role 1 (two phones with the same name: "· gekoppelt 30.10.").
+
+A browser that pairs directly with an unpaired phone (today's flow) gets no JOIN: the phone joins B itself and B is
+the phone's mailbox from then on. The folder key is the device id of the hello with role 1.
+
 ## 6. Conflict rule (`SyncMerge`)
 
 - **Newer wins** – total order: `updatedAt`, then device id, then the item bytes. Every device picks the same
