@@ -87,6 +87,46 @@ class CueRuleTest {
         assertFalse(cue(JunctionCue.SLIGHT_RIGHT, null))
     }
 
+    // ---- leaving the way one is on for a smaller one (owner 2026-10-30: on foot first, then the bike) ----
+    // Bike kinds of way (CueRule.bikeKind): roads (unclassified and up, 20–30) > streets and bike ways (residential,
+    // service, cycleway, designated, paved track: touring / trekking 6, mtb.brf 14 / 16 / 6) > tracks and paths (≤ 4).
+
+    @Test fun bikeLeavingTheStreetForATrackVibratesEvenStraightOn() {
+        // the street bends 50° right, the route goes straight on onto a field track
+        assertTrue(cue(JunctionCue.SLIGHT_LEFT, shape(-3f, 6, 4, 50f to 6)))
+        // the same off an unclassified road
+        assertTrue(cue(JunctionCue.SLIGHT_RIGHT, shape(2f, 20, 4, -45f to 20)))
+        // Hilden → Schloss Benrath (MTB) 5913 m: 20° left onto a track, the cycleway goes on 82° right
+        assertTrue(cue(JunctionCue.SLIGHT_LEFT, shape(-20f, 6, 4, 82f to 6)))
+    }
+
+    @Test fun bikeCyclewayToPathStraightOnVibrates() {
+        // touring / trekking: cycleway 6 → path 4, the cycleway bends 55° left
+        assertTrue(cue(JunctionCue.SLIGHT_RIGHT, shape(4f, 6, 4, -55f to 6)))
+        // mtb.brf: cycleway 6 → path 2
+        assertTrue(cue(JunctionCue.SLIGHT_RIGHT, shape(4f, 6, 2, -55f to 6)))
+    }
+
+    @Test fun bikeStreetGoesOnStraightTrackBranchesOffIsQuiet() {
+        // the street goes on straight, a track branches off: no change
+        assertFalse(cue(JunctionCue.SLIGHT_LEFT, shape(-2f, 6, 6, 60f to 4)))
+        assertFalse(cue(JunctionCue.SLIGHT_RIGHT, shape(5f, 20, 20, -40f to 4, 95f to 6)))
+        // the street ends in two tracks: no bigger way goes on – the plain rule (clearly the straighter one: quiet)
+        assertFalse(cue(JunctionCue.SLIGHT_LEFT, shape(-5f, 6, 4, 60f to 4)))
+    }
+
+    @Test fun bikeKindsOfWay() {
+        // off the main road straight on into a side street while the main road bends: a smaller kind – vibrate
+        assertTrue(cue(JunctionCue.SLIGHT_LEFT, shape(3f, 22, 6, -50f to 22)))
+        // residential → service road (mtb.brf 16 → 14) straight on: both streets – the plain rule
+        assertFalse(cue(JunctionCue.SLIGHT_LEFT, shape(-3f, 16, 14, 50f to 16)))
+        // track → path (mtb.brf 4 → 2) straight on: touring / trekking cannot tell them apart (both 4) – one kind
+        assertFalse(cue(JunctionCue.SLIGHT_LEFT, shape(-3f, 4, 2, 50f to 4)))
+        // primary → tertiary straight on: both roads
+        assertFalse(cue(JunctionCue.SLIGHT_LEFT, shape(-3f, 26, 22, 50f to 26)))
+        assertEquals(listOf(0, 1, 1, 2, 2, 2, 3, 3, 3), listOf(0, 2, 4, 6, 14, 16, 20, 22, 30).map { CueRule.bikeKind(it) })
+    }
+
     // ---- on foot (owner 2026-10-30): the same rule with hiking-mountain.brf's classes ----
     // 2 gravel / grass path, 3 path, 4 path grade2, 6 paved path, 8 track, 10 paved track, 12 / 14 service, 16 steps,
     // 18 residential, 24 secondary. "Meran" / "Algund" cases = hints of the routed hikes in tools/routing/jvm-test/JunctionsTest.kt.
@@ -131,8 +171,6 @@ class CueRuleTest {
     @Test fun hikeLeavingTheTrackForAPathVibratesEvenStraightOn() {
         // the track bends 50° right, the route goes straight on into a path: the classic missed turn on foot
         assertTrue(hike(JunctionCue.SLIGHT_LEFT, shape(-5f, 8, 3, 50f to 8)))
-        // (the bike's rule: straight on along the clearly straightest way – quiet)
-        assertFalse(CueRule.needed(JunctionCue.SLIGHT_LEFT, shape(-5f, 8, 3, 50f to 8)))
         // Algund → Vellau 700 m: off the residential street into a service road, the street goes on
         assertTrue(hike(JunctionCue.SLIGHT_LEFT, shape(-18f, 18, 14, 42f to 18)))
         // the track ends in two paths: no bigger way goes on – the plain rule (clearly the straighter one: quiet)

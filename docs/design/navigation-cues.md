@@ -20,8 +20,8 @@ plays the real junction patterns.
 | Setting | Settings → Navigation → *Vibrate at junctions*: Off / Always (default) / Screen locked | same setting |
 | Pattern | 1 pulse = left, 2 pulses = right (250 ms pulses, 220 ms gap); roundabouts / U-turns by their side | same |
 | Where | Only where one could go wrong (`CueRule`): clear turns, forks with a similar way, roundabouts, U-turns. Quiet: straight on along the clearly straightest way (≤ 45°, every other way ≥ 35° more), along the trail / street one is on (all other ways a smaller class, no step down, bend ≤ 75°), no other way to take | same rule |
-| Way classes | hiking-mountain.brf's classes read as one class each: path (any surface) < track < service / cycleway < steps / pedestrian < streets (`CueRule.hikeClass`) – two paths at a fork are "similar" whatever their surface tags | the bike profiles' own classes (6 residential / service / cycleway, 4 path / track) |
-| Extra on foot | Leaving the way one is on for a smaller one while that way goes on (off the forest road onto a path) always vibrates – even straight on | – (straight on stays quiet) |
+| Way classes | hiking-mountain.brf's classes read as one class each: path (any surface) < track < service / cycleway < steps / pedestrian < streets (`CueRule.hikeClass`) – two paths at a fork are "similar" whatever their surface tags | the bike profiles' own classes (6 residential / service / cycleway, 4 path / track); for "a smaller one" three kinds of way (`CueRule.bikeKind`): track / path / steps (≤ 4) < street / bike way (residential, service, cycleway, paved track) < road (unclassified and up) – residential → service road or track → path is not a step down |
+| Leaving for a smaller way | Leaving the way one is on for a smaller one while that way goes on (off the forest road onto a path) always vibrates – even straight on | same (owner 2026-10-30, after the hike): off the street straight on onto a field track / path, off the cycleway onto a path, off the main road into a side street |
 | Lead | 25 s before the junction at the current speed, 25–60 m (speed unknown: 5 km/h → 35 m) | 8 s before, 30–100 m (speed unknown: 22 km/h → 44 m) |
 | Speed | highest GPS speed of the last 10 s (`SpeedWindow`) | same |
 | Close junctions | one cue when the next junction worth a cue is within 30 s of walking (at least 50 m) – before the first, with its pattern | within 12 s of riding (at least 50 m) |
@@ -32,6 +32,11 @@ Before 2026-10-30 the hike vibrated 40 m before *every* junction (none within 50
 South Tyrol hikes of `tools/routing/jvm-test/JunctionsTest.kt` that was 9 / 11 / 4 / 10 cues (Meran Obermais →
 Tappeinerweg, Algund → Vellau, Meran 2000 → Ifinger hut, Meran → Dorf Tirol); now 8 / 11 / 4 / 9 – those routes are
 mostly real turns; the quiet ones are bends of a road or track with a path branching off.
+
+On the routed Hilden town rides of `tools/routing/jvm-test/BikeCuesTest.kt` (five rides, 19 – 37 junctions each) the bike's
+"smaller way" rule turned one junction in all from quiet to a cue (MTB to Schloss Benrath: off the cycleway onto a
+track, the cycleway bends 82° away); the cue counts stayed the same – that cue now comes before a close pair of turns
+instead of at the second of them.
 
 ### Other vibrations (`recording/RecordingService`)
 
