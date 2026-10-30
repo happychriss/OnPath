@@ -25,7 +25,7 @@ origin/main merged – web-spike carries main's app code again and merges main r
 | `app/src/test/java/com/onpath/app/sync/` | `SyncCryptoTest` (FIPS 180-4, RFC 4231, RFC 5869, FIPS 197, GCM spec vectors; byte-equal to javax.crypto on 200 random inputs), `PlanSyncTest` (formats, frozen v1 values, merge, ledger, two ledgers through a fake mailbox). Run by `./gradlew -p web/engine test`. |
 | `web/engine/.../WebSync.kt` | string calls for the page (`syncKeys`, `syncApply`, `syncOutbox`, …; exports in `WebApi.kt`) |
 | `web/host/src/sync.js`, `web/host/migrations/0001_sync.sql` | the mailbox (Worker route `/sync/v1/…`, D1) |
-| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store, sync loop, ☰ → My plans / Pair phone, join dialog |
+| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store, sync loop, My routes with its "Pair with phone" section (header status while paired), join dialog |
 | Tests | `web/host/test/sync.test.js` (mailbox on Node's SQLite as fake D1), `web/app/test/sync-engine.mjs` (Wasm = JVM frozen bytes), `web/app/test/sync-smoke.mjs` (two browser contexts, end to end) – all in CI, none needs map data |
 
 ## 2. Threat model
@@ -182,7 +182,7 @@ Header `Authorization: Bearer <token>` on every call.
 - ☰ → **My plans**: save the current plan (name field, "Save as a new plan" when the open plan is a saved one), list
   newest first with date and "from the other device", open, rename, delete (asks once: "It is also deleted on the
   paired phone."), sync status line, "Sync now" when paired. The plan sheet's ⋯ → "Save to My plans" opens the same.
-- ☰ → **Pair phone**: QR code of the pairing link, "In the OnPath app: ☰ → Pair with browser, then scan this code",
+- My routes → **Pair with phone** → Pair phone (since 2026-10-30; was ☰ → Pair phone): QR code of the pairing link, "In the OnPath app: ☰ → Pair with browser, then scan this code",
   check digits, "Waiting for the phone…" → "Paired with Pixel 8"; then **Unpair** (asks: "Plans stop syncing; they
   stay on this browser and on the phone").
 - A pairing link opened in a browser (e.g. the phone's camera opened the web page instead of the app): "Pairing code –

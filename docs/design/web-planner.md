@@ -300,7 +300,7 @@ environment?"
 
 | Feature | Phone (source) | Web now | How |
 | --- | --- | --- | --- |
-| Search pill + round ☰ | `ui/PlanTopBar` | same; ☰ = Send to phone · Share, About & credits | page (My routes, recording, settings, updates are app-only) |
+| Search pill + round ☰ | `ui/PlanTopBar` | same; header / ☰ = My routes (+ pairing), Import GPX, Help & credits; Share = the sheet's icon | page (My routes, recording, settings, updates are app-only) |
 | Search, place card (Add to route / Remove, As start, As destination, Google) | `ui/search/*`, `search/AddPreview` | same | app code (§10) + `PoiLinks` |
 | Map controls group: compass, eye, undo, redo, locate + GPS dot | `ui/MapFooter.MapControls` | same order and rules (eye only with a route, undo / redo only when possible) | page; undo / redo = app's `PlanHistory` |
 | "Page orientation" = compass: shows the map's bearing, tap → north up | `CompassControl`, `AppViewModel.onCompass` | same; the map turns with right mouse / two fingers, no tilt | page; heading-up skipped (§11.4) |
@@ -309,12 +309,12 @@ environment?"
 | Go here (from my location) | GPS | browser location (asks on first use) | page |
 | Point menu: Start here ("Removes N points before it"), Start & finish here, Open in Google Maps (named), Delete | `PointMenu` | same | app rule, texts mirrored |
 | Google Maps link-out | `poi/GoogleMapsLink.PoiLinks` (app: geo: intent, else web URL) | web URL in a new tab, nothing drawn or fetched | app code |
-| Plan sheet: activity chip, time + distance, ⋯, climb + max, difficulty badge (raised by technique), profile, Points (≡ drag, ✕, tap → map, Reverse, Round trip), one primary button | `ui/PlanPanel`, `PointsSection`, `StepSheet` | same; primary = Send to phone · Share; ⋯ = Export GPX, Clear route | texts from the app's `Format`, `RouteSummary.rating`, `PlanPoints`, `PlanEdits.move` |
+| Plan sheet: activity chip, time + distance, ⋯, climb + max, difficulty badge (raised by technique), profile, Points (≡ drag, ✕, tap → map, Reverse, Round trip), one primary button | `ui/PlanPanel`, `PointsSection`, `StepSheet` | same; no big primary button (owner 2026-10-30): Share = icon next to ⋯; ⋯ = Save, Export GPX, Clear route | texts from the app's `Format`, `RouteSummary.rating`, `PlanPoints`, `PlanEdits.move` |
 | Route warnings: amber ⚠ line → "On this route" → tap shows the spot | `ui/RouteWarnings` | same | app code |
 | Activity picker (six activities, line under each, T1–T5 with SAC text, Done) | `ActivityPicker`, `Screens.SacScale` | same | names from the app's `Activity`; SAC texts mirrored |
 | Export GPX | `GpxWriter`, `SportType` | download | app code |
 | Map credits: short "© OpenStreetMap", tap → full credits | `MapFooter`, `MAP_CREDITS` | same | page |
-| Bottom sheet steps small / profile / full | `StepSheet` | phone width: two steps (summary + profile, + Points); wide screen: side panel, all shown | page |
+| Sheet steps small / profile / full | `PlanPanel.PlanSize`, `StepSheet` | the same three steps on the side panel and the bottom sheet (§11.3; handle, chevron, summary click, arrow keys; remembered) | page (`sheetstep.ts`) |
 | Undo keys | – | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | web extra |
 | Drag a marker | no (hold-only, owner) | yes (mouse habit) – becomes an unpinned point, one undo step | web extra, see 11.5 |
 | Navigate, recording, saved routes, offline maps, settings, haptics, Route details screen, time details | app | – | not a planner's job / later |
@@ -370,18 +370,42 @@ browser's cache storage (IndexedDB) across visits.
 ### 11.3 Page structure (web layout since 2026-10-28, §13)
 
 - **Header line** (56 px; onpath.earth's look: logo, Manrope, site colours): OnPath · PLANNER, then the entries
-  My plans · Pair phone · Send to phone · Help & credits (one list, `NAV` in `main.ts` – new entries go there), right
-  "No account · plans stay in this browser". Phone width: 48 px, the entries behind ☰.
+  My routes (+ a phone with a green dot while paired) · Import GPX · Help & credits · The app (one list, `NAV` in `main.ts` – new entries go there), right
+  "No account · routes stay in this browser". Phone width: 48 px, the entries behind ☰. No Send to phone / Pair phone entries (owner 2026-10-30): sharing is the sheet's Share icon, pairing a section of My routes.
 - **Top bar = one unit** (shared background and shadow): the search field (flexible width), then the map tools
   separated by thin dividers – undo, redo | eye, compass, locate + GPS dot | Map content ▾ (always there, greyed when
   not possible). Phone width: the search across the top and the tools as a row directly below it in the same bar.
 - **Type**: Manrope (OFL), bundled from this host (`web/app/src/fonts/`, woff2, latin, 400/500/600/700, licence text
   beside the files, named in Help & credits) – no font-service requests.
 - **Wide screen (> 700 px)**: the top bar top left (up to 860 px), the plan sheet below it as a side
-  panel (384 px; summary, profile and the primary button stay in view, a long Points list scrolls inside), zoom ±
+  panel (384 px; three steps, see below; a long Points list scrolls inside), zoom ±
   bottom right, scale + "© OpenStreetMap" bottom left beside the panel. The place card floats beside the sheet.
-- **Phone width**: the top bar across the top (search, tools below), the plan sheet as a bottom sheet (handle: summary + profile + button ↔ + Points); the place card is a bottom card that stands in for the
+- **Phone width**: the top bar across the top (search, tools below), the plan sheet as a bottom sheet (the same three steps); the place card is a bottom card that stands in for the
   sheet while it is open.
+- **Plan sheet steps** (owner 2026-10-30, option A – the app's `PlanSize` MINI / COMPACT / FULL, one step model for
+  both widths, `sheetstep.ts`):
+  - *small* – the head: activity chip · Share icon · ⋯ · chevron in one line, then time + distance (never wrapped),
+    then ↑/↓ + difficulty badge; the route's red / amber / grey lines stay visible here, as in the app (they sit above
+    its MINI step end), so a new error line never needs a step change. About 150 px tall.
+  - *profile* – + the elevation profile and "Saved as …".
+  - *points* – + the Points list (the full sheet; on a phone it takes most of the height).
+  - Controls: the grab handle on top (the app's handle tap: one step bigger, from Points back to profile), the chevron
+    next to ⋯ ("Mehr anzeigen" until Points, then "Weniger anzeigen" → small; ⌄ / ⌃ point to where the sheet grows:
+    down for the side panel, up for the bottom sheet), a click on the summary (= handle), Arrow up / down on handle or
+    chevron. Remembered in `localStorage` `onpath.sheetStep` (try / catch); nothing remembered → side panel *points*
+    (as before), bottom sheet *profile* (the app's default), following the width until a step is chosen. A Points row
+    tapped on a phone → *profile* (the app's `showPointFromList`).
+  - Unchanged in every step: the place card (beside the panel / instead of the bottom sheet), the GPX track panel (takes
+    the sheet's place completely; Close track brings the step back), the long-route question (a dialog), the status
+    line's waits and errors (plain info only from *profile*; the developer timing "Planned in … ms" only with `?debug`).
+  - Map fit (`fitPadding`): phone → bottom = sheet (or place card) height; wide → the room beside the panel, or below
+    it when that is larger (a short *small* panel).
+- **No big main button** (owner 2026-10-30): Share is an icon next to ⋯ (hidden until two points); it opens the
+  dialog (QR code with "Scan with the OnPath app" above it, Copy link, system share, the one app line below).
+- **Pairing lives in My routes** – section "Pair with phone / Mit dem Handy verbinden" at the bottom: not paired → Pair
+  phone (the QR code + check digits dialog); paired → "Paired with …", Sync now, Unpair. While paired a small phone
+  with a green dot sits beside My routes in the header (tooltip "Paired with your phone · last synced …"); a click opens
+  My routes at that section. `#pair=` links open the join dialog as before.
 - Menus: point / POI / first-point menus are map popups at the point; ⋯ is a drop-down; the activity picker is a
   drop-down at the chip; Map content is a large panel; share, save and credits are dialogs. Colours and type follow
   `OnPathColors` (green primary, route blue, amber warnings, red errors); icons are the app's Material icons.
@@ -393,7 +417,7 @@ browser's cache storage (IndexedDB) across visits.
   hold-only by owner decision.
 - **No heading-up compass mode**: there is no walking direction while planning at a desk, and the browser compass needs
   a permission prompt on iOS. North up / turned only.
-- Two sheet steps instead of three on phones; no profile scrubbing dot; no Route details (way types / surfaces) screen
+- No profile scrubbing dot; no Route details (way types / surfaces) screen
   yet – the data is in the plan answer (`wayTypes`, `surfaces`), the screen is Compose.
 - No saved routes / My routes, recording, Navigate, offline maps, settings – the web planner hands the plan to the
   phone (QR / link).
@@ -403,7 +427,7 @@ browser's cache storage (IndexedDB) across visits.
 
 1. Click = hold (current) or require a long press / right-click to add points, like the phone?
 2. Keep marker dragging on the web (current) or hold-only as on the phone?
-3. Primary button: "Send to phone · Share" (current) – or also offer "Open in the app" on phones (needs the app's link
+3. Share (icon next to ⋯, owner 2026-10-30) – or also offer "Open in the app" on phones (needs the app's link
    handling, §8 app part)?
 4. Prefetch: the 1° part under the map centre from zoom 9 (2–10 MB per area) – fine for a public page, or only after
    the first click?
@@ -414,7 +438,7 @@ Pair once (the browser shows a QR code, the app scans it), then saved plans sync
 encrypted (AES-256-GCM; key from the pairing secret, which never reaches a server) through a small mailbox in this
 host (`/sync/v1/…`, D1). Newer wins, the older stays as a copy; unpair on both sides. The shared Kotlin
 (`app/.../sync/`, branch `feat/plan-sync`) runs in the app and – in the engine – in the browser; the page has
-☰ → My plans and ☰ → Pair phone. Everything – threat model, formats, API, limits, the owner's Cloudflare steps
+My routes with its "Pair with phone" section (§11.3; was ☰ → My plans / Pair phone). Everything – threat model, formats, API, limits, the owner's Cloudflare steps
 (D1, Access bypass for `/sync/*`), the app-side task list and the privacy text – is in **`docs/design/web-sync.md`**.
 
 ## 13. Web layout (cloud, 2026-10-28) – owner feedback on the live test page
@@ -448,6 +472,14 @@ Owner decisions 2026-10-29 (cloud, 2026-10-30):
 | 13b | One green: the app's `#1F6E43` | Every green of the page is the app's: header eyebrow and header icons (were onpath.earth's `#526d57`; its button green `#245f46` was never used on the page), buttons, chip and menu icons, the Easy badge. Fills use `--green` (`#1F6E43`) in light and dark; green *text / icons* use `--green-fg` = the same green in light, in dark mode its light tone `#8ED6A8` (the app's `inversePrimary`) – `#1F6E43` on the dark background is only 2.7:1. Contrast (WCAG AA): white on the green button 6.2:1; green text on the header 6.0, on white 6.2, Easy badge 5.2; dark 6.7–10. The website's neutrals (`--site-bg/fg/line/soft`) stay. Test: ui-smoke (the app's green in light; ≥ 4.5:1 text, ≥ 3:1 icons in light and dark). |
 | 14 | Pace choice like the app's Settings → Pace | The activity drop-down ends with **Your pace**: the five levels of the current activity's group (Hiking, or "Cycling · <bike>" – the app keeps one level for hiking and one for cycling) with the app's labels and "about 4 km/h · 300 m up per hour" line and intro. A click sets it (the list stays open); the sheet's time is recomputed by the engine (`planTime`: the app's `TimeEstimate.planSeconds` with `planFactors` of the chosen level, no new routing); new plans and an imported track's model time use it too (`WebPace.kt`). Remembered in localStorage under the app's Prefs key names (`onpath.hikePaceLevel` / `onpath.bikePaceLevel`). The long-route question keeps Average, as in the app (`LongRoute`). Tests: browser-compare (every level, Hike / bike / e-bike, Wasm = JVM `JvmRun.paceRun` exactly), parity-smoke (section, time follows, stays open, remembered after reload). |
 | 15 | Region packages for zoom 7–9 (map-cells.md §20) | Read like cells from the maps bucket through `/data/` (same R2 layout: `cells/f2/7/<x>/<y>/current.json` + `<version>/{base,overlays,hillshade}.pmtiles`; the host's key pattern `cells/…` already covers it – host test added). `cells.ts`: a tile z7–9 comes from the package of its z7 parent (base, overlays = long-distance routes, hillshade = the style source `region-shade`), z10+ from the cells as before; a missing / broken package file is left out (warned once). Style: the app merges per installed packages (`Overview.merge(packages = boxes)`, StyleLoader reloads); its structure does not depend on *which* packages, only the `within` geometry of the overview's labels from z7 does – so the build also writes `onpath-overview-packages.json` (the app's merge with a placeholder box in the South Pacific) and the page sets the boxes of the packages it finds into that filter (`overview.ts followPackages`, mirror of `Overview.multiPolygon`). Without any package it draws like the plain overview style (the detailed layers from z7 find no tiles). The page never asks for a package to be built (the app does, `MapCells.ensurePackages`) – it shows the ones that exist. Test: overview-smoke with a fake package (`test/fake-package.mjs`: a solid-magenta hillshade.pmtiles for z7 tile 68/44, Munich): its relief covers the overview at z8, the labels' filter holds its box, no overview label inside it; Meran (no package) keeps the overview and its labels. |
+
+Owner decisions 2026-10-30 (cloud, same day):
+
+| # | Owner | Now |
+| --- | --- | --- |
+| 16 | Plan sheet collapsible on wide screens too, three steps like the app (option A) | §11.3 "Plan sheet steps": small / profile / points on both widths, grab handle + chevron + summary click + arrow keys, remembered (`onpath.sheetStep`), map fit follows the panel. Test: `test/sheet-smoke.mjs` (CI) – three steps on desktop (1440×900) and phone (390×844), every control, reload, fit, place card, GPX track panel. |
+| 17 | "Send to phone" and "Pair phone" side by side confuse | Header: My routes · Import GPX · Help & credits · The app. Share = icon next to ⋯ (no big green button; hidden on an empty plan), dialog "Scan with the OnPath app" above the QR code. Pairing = section "Pair with phone" in My routes; a phone with a green dot beside My routes while paired. Tests: sheet-smoke, sync-smoke (pair / unpair through My routes, header status), share-smoke, lang-smoke. |
+| 18 | "Route planen" wrapped beside the chip; "Planned in … ms · routing data …" is a developer line | The head puts chip and icons on one line and time / title on its own line (never wrapped); the timing shows only with `?debug`. Test: sheet-smoke. |
 
  Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help).
@@ -661,7 +693,7 @@ Cloudflare Access stays on until the owner switches it off (steps below).
   site 2026-10-30 (`/en/…` paths do not exist).
 - **The app line** (`apphint.ts`): „Mit der App: offline unterwegs, Navigation, neue Route ohne Netz.“ + „App holen“
   (EN "With the app: offline on the way, navigation, new route without signal." + "Get the app") →
-  `/de/ausprobieren/` / `/try/` – never a store link. Shown in the QR dialog after "Send to phone" and in the plan sheet
+  `/de/ausprobieren/` / `/try/` – never a store link. Shown in the Share dialog and in the plan sheet
   when a shared plan link is opened (the sheet is beside / under the fitted route, so it never covers it); once per
   browser session (`sessionStorage`), ✕ closes it, never full screen, nothing counted.
 
@@ -713,7 +745,7 @@ Until launch every answer of the host carries `X-Robots-Tag: noindex, nofollow` 
 **Stored in the browser (only there, never sent unless said below):**
 - `localStorage`: `onpath.activity`, `onpath.sac` (last activity and T level), `onpath.hikePaceLevel`,
   `onpath.bikePaceLevel` (pace setting), `onpath.mapContent` (POI kinds hidden, contour lines / relief on), `onpath.lang`
-  (language chosen with the switch), `onpath.browserId` (random id for the map-area quota, see below).
+  (language chosen with the switch), `onpath.sheetStep` (plan sheet step: small / profile / points), `onpath.browserId` (random id for the map-area quota, see below).
 - `sessionStorage`: `onpath.appHintShown` (the app line was shown in this session), `onpath.viewOnce` (map view kept over the language switch reload, removed at once).
 - IndexedDB `onpath` (store `kv`): saved plans (My plans) and their sync ledger, a random device id, and – once paired –
   the pairing secret (the key for the end-to-end encryption; never leaves the browser except inside the pairing QR
