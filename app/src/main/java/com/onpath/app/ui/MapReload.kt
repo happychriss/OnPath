@@ -36,6 +36,9 @@ class MapHostView {
     }
 
     fun disposed() { gone = true; reloadFn = null }
+
+    /** The host was disposed (its map is destroyed): a delayed style load must not run any more. */
+    val isGone: Boolean get() = gone
 }
 
 /** A process-wide "latest" reference: whoever set it last owns it; only the owner clears it. */

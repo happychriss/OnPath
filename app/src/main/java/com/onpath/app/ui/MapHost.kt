@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.onpath.app.map.MapController
+import com.onpath.app.map.MapMemory
 import com.onpath.app.map.StyleLoader
 import com.onpath.app.routing.GeoPoint
 import org.maplibre.android.camera.CameraPosition
@@ -79,7 +80,24 @@ fun MapHost(
             }
         }
         lifecycle.addObserver(observer)
+        // Android says the app is hidden or memory runs low: free the map's tile caches (MapMemory)
+        val trim = object : android.content.ComponentCallbacks2 {
+            override fun onTrimMemory(level: Int) {
+                if (!MapMemory.freesCaches(level)) return
+                Problems.trace("map", "Map tile caches freed (trim level $level), native heap " +
+                    "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB before")
+                mapView.onLowMemory()
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onLowMemory() {
+                Problems.trace("map", "Map tile caches freed (low memory)")
+                mapView.onLowMemory()
+            }
+            override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {}
+        }
+        context.applicationContext.registerComponentCallbacks(trim)
         onDispose {
+            context.applicationContext.unregisterComponentCallbacks(trim)
             lifecycle.removeObserver(observer)
             if (resumed) mapView.onPause()
             if (started) mapView.onStop()
@@ -103,7 +121,7 @@ fun MapHost(
             var fallbackUsed = false
             fun styleJson() = StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(),
                 vm.detailedAreas(), vm.devToolsShown, vm.packageAreas())
-            fun load(json: String) {
+            fun setStyle(json: String) {
                 val loadedFrom = StyleLoader.lastMapDir
                 host.loading(loadedFrom ?: vm.dataFiles.dir)
                 val t0 = android.os.SystemClock.elapsedRealtime()
@@ -125,6 +143,17 @@ fun MapHost(
                         com.onpath.app.debug.Problems.error("map", "Map setup failed after the style loaded (app layers missing)", e)
                     }
                 }
+            }
+            // A reload: the old style's file GeoJSON (the POIs' native index) is emptied and freed with a frame or two
+            // before the new style is set – else MapLibre holds it beside the new one (MapMemory). A newer load during
+            // that wait wins: the older one is then dropped (it would replace the newer style).
+            var loadSeq = 0
+            fun load(json: String) {
+                val seq = ++loadSeq
+                val old = myCtrl[0]?.style
+                val freed = old?.let { MapMemory.releaseFileGeoJson(it) } ?: 0
+                if (freed == 0) setStyle(json)
+                else MapMemory.afterFrames(mapView, map) { if (!host.isGone && seq == loadSeq) setStyle(json) }
             }
             map.addOnCameraIdleListener {
                 val c = map.cameraPosition
