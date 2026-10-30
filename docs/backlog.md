@@ -9,10 +9,6 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
-- **Small UI findings from the A-013 shots (2026-10-30)** – (1) arrival time: the app rounds to 5 min
-  (`TimeEstimate.clock`, "10:20"), the lock-screen notification shows the exact minute ("10:22",
-  `RecordingService.navNotification`) – same rule for both?; (2) End-tour dialog shows a bus icon when only a lift was
-  detected; (3) activity chip in Plan: German shows only "T2", English "Hike · T2".
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
   the Pixel 2026-10-30, step 1 = fresh install → emulator); rest view + smarter cues on the bike and on foot; pocket after
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below.
