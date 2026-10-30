@@ -10,7 +10,7 @@
     <string name="sync_menu_ended">Pairing ended in the browser</string>
     <string name="sync_menu_stale">Not synced for over 6 hours</string>
     <string name="sync_intro">Your saved routes and imported GPX tracks can also be in the web planner on your computer – both ways, encrypted on the device before they leave it.</string>
-    <string name="sync_steps">On the computer, open plan.onpath.earth → ☰ → Pair phone. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
+    <string name="sync_steps">On the computer, open plan.onpath.earth and click “Pair phone” at the top. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
     <string name="sync_open_camera">Open camera</string>
     <string name="sync_no_camera">No camera app found – open the camera yourself and scan the code.</string>
     <string name="sync_ask_title">Pair with this browser?</string>

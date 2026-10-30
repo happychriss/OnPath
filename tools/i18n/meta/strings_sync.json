@@ -8,7 +8,7 @@
   "sync_menu_ended": {"area": "Plan · ☰ menu", "context": "Amber second line of \"Pair with browser\": the pairing was ended in the browser (until Browser sync is opened)", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_menu_stale": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: online and paired, but no good sync for more than 6 hours", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_intro": {"area": "Settings · Browser sync", "context": "First line of the page when not paired", "priority": 2, "confidence": "sicher"},
-  "sync_steps": {"area": "Settings · Browser sync", "context": "How to pair: the web planner's menu item is \"Pair phone\" (the German web text must match)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Must match the web planner's German menu text"},
+  "sync_steps": {"area": "Settings · Browser sync", "context": "How to pair: the web planner's header button is \"Pair phone\" (the German web text must match)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Must match the web planner's German header button text"},
   "sync_open_camera": {"area": "Settings · Browser sync", "context": "Button: opens the phone's camera app (it reads the QR code)", "priority": 2, "confidence": "sicher", "max": 24},
   "sync_no_camera": {"area": "Settings · Browser sync", "context": "Red line when no camera app opens", "priority": 3, "confidence": "sicher"},
   "sync_ask_title": {"area": "Settings · Browser sync", "context": "Question after a pairing code was scanned (with Pair / Cancel)", "priority": 1, "confidence": "sicher"},

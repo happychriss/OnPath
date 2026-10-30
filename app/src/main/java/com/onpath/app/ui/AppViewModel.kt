@@ -3649,7 +3649,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
             is com.onpath.app.routing.PlanLinks.Found.Plan -> found.plan
-            // a pairing link of the web planner (☰ → Pair phone): Settings → Browser sync asks first (A-007)
+            // a pairing link of the web planner ("Pair phone" in its header): Settings → Browser sync asks first (A-007)
             is com.onpath.app.routing.PlanLinks.Found.Pairing -> { receivePairing(found.secret, via); return }
             is com.onpath.app.routing.PlanLinks.Found.BrokenPairing -> {
                 Problems.warn("sync", "Pairing link ($via) could not be read: cut off or a newer version")

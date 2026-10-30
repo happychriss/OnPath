@@ -23,7 +23,7 @@ object PlanLinks {
         data class Plan(val plan: SharedPlan) : Found
         /** It is a plan link, but the plan can't be read (cut off, typed wrong, newer format, no points). */
         data object Broken : Found
-        /** A pairing link of the web planner (☰ → Pair phone, its QR code): [secret] = the shared pairing secret. */
+        /** A pairing link of the web planner ("Pair phone" in its header, its QR code): [secret] = the shared pairing secret. */
         class Pairing(val secret: ByteArray) : Found
         /** A pairing link that can't be read (cut off, a newer version). */
         data object BrokenPairing : Found
