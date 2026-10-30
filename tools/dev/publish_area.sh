@@ -12,12 +12,13 @@
 #   building; so a crashed or stopped run just starts again
 # - PARALLEL containers (default 2), each BATCH cells one after the other (the job copies 1.4 GB of Planetiler
 #   sources at every container start), 4 CPUs at a small CPU share / IO weight, 8 GiB (cell_lib.sh); a batch starts
-#   only while MemAvailable ≥ START_FREE_GB and the disk has ≥ MIN_DISK_GB free
+#   only while MemAvailable ≥ MIN_FREE_GB (kept for the desktop) + PEAK_GB (one build's peak: the raw cut, ~4 GB) +
+#   what the running containers may still grow to PEAK_GB, and while the disk has ≥ MIN_DISK_GB free
 # - a failed cell is tried once more at the end of the queue, then listed in failed.txt; the run goes on
 # - logs: <area dir>/run-YYYYMMDD.log, per batch logs/<label>-<n>.log, one-line status.txt (done / failed / left / ETA),
 #   done.txt (id seconds bytes), failed.txt
 # - stop: SIGTERM / systemctl --user stop <unit> → the containers of this run are killed, status "stopped"
-# Env: R2_ENV_FILE, ONPATH_CELLS_WORK, PARALLEL=2, BATCH=5, START_FREE_GB=11, MIN_DISK_GB=40, FRESH_DAYS=30.
+# Env: R2_ENV_FILE, ONPATH_CELLS_WORK, PARALLEL=2, BATCH=5, MIN_FREE_GB=6, PEAK_GB=4, MIN_DISK_GB=40, FRESH_DAYS=30.
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO=$(cd "$HERE/../.." && pwd)
@@ -28,7 +29,8 @@ AREA=$(cd "${1:?usage: publish_area.sh <area dir>}" && pwd) || exit 2
 NAME=$(basename "$AREA")
 PARALLEL=${PARALLEL:-2}
 BATCH=${BATCH:-5}
-START_FREE_GB=${START_FREE_GB:-11}
+MIN_FREE_GB=${MIN_FREE_GB:-6}
+PEAK_GB=${PEAK_GB:-4}
 MIN_DISK_GB=${MIN_DISK_GB:-40}
 FRESH_DAYS=${FRESH_DAYS:-30}
 LOG="$AREA/run-$(date +%Y%m%d).log"
@@ -128,25 +130,39 @@ write_status() {
 }
 
 # ------------------------------------------------------------------------------------ one worker = one container slot
+need_mb() {  # RAM a new container needs free: what is kept for the desktop + its own peak + what the running ones may
+  # still grow to their peak (docker stats = usage without page cache; the raw cut peaks at ~4 GB for seconds)
+  local ids
+  ids=$(docker ps -q --filter "label=onpath-area=$NAME")
+  { [ -n "$ids" ] && docker stats --no-stream --format '{{.MemUsage}}' $ids; } 2>/dev/null | awk -v keep="$MIN_FREE_GB" -v peak="$PEAK_GB" '
+    { v = $1; if (v ~ /GiB/) { sub(/GiB/, "", v); v *= 1024 } else if (v ~ /MiB/) sub(/MiB/, "", v); else v = 0
+      g = peak * 1024 - v; if (g > 0) grow += g }
+    END { printf "%d\n", keep * 1024 + peak * 1024 + grow }'
+}
+
 gate() {  # wait until there is room for one more container
-  local said=0 avail disk
+  local said=0 avail need disk
   while true; do
-    avail=$(awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo)
     disk=$(df -BG --output=avail "$CELL_WORK" | tail -1 | tr -dc 0-9)
     if [ "$disk" -lt "$MIN_DISK_GB" ]; then cell_log "only ${disk} GB disk left (< $MIN_DISK_GB) – worker stops"; return 1; fi
-    [ "$avail" -ge "$START_FREE_GB" ] && return 0
-    [ $said = 1 ] || cell_log "waiting: ${avail} GB RAM available (< $START_FREE_GB)"
+    avail=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+    need=$(need_mb)
+    [ "$avail" -ge "$need" ] && return 0
+    [ $said = 1 ] || cell_log "waiting: $((avail / 1024)) GB RAM available, $((need / 1024)) GB needed for one more container"
     said=1
     sleep 60
   done
 }
 
 worker() {
-  local label="$NAME-$1" n=0 cells t0 dt blog c line sz per
+  local label="$NAME-$1" n=0 cells t0 dt blog c line sz per dpid rc i
+  # the gate lock is held from the RAM check until this worker's container runs (the next check then sees it)
+  exec 8>"$AREA/.gate"
   while true; do
-    gate || return 0
+    flock 8
+    gate || { flock -u 8; return 0; }
     mapfile -t cells < <(pop "$BATCH")
-    [ ${#cells[@]} -gt 0 ] || { cell_log "$label: queue empty"; return 0; }
+    [ ${#cells[@]} -gt 0 ] || { flock -u 8; cell_log "$label: queue empty"; return 0; }
     n=$((n + 1))
     blog="$AREA/logs/$label-$(date +%m%d%H%M%S).log"
     printf '%s\n' "${cells[@]}" > "$AREA/running-$1"
@@ -162,8 +178,15 @@ worker() {
       -e CELLS="${cells[*]}" -e FORMAT=2 -e SRC_DIR=/src -e WORK=/work -e DATA_ROOT=/store -e OMP_NUM_THREADS=1 \
       -e JAVA_XMX=2g -e HOME=/tmp -e CLOUD_RUN_EXECUTION="donald-$label-$(date +%Y%m%d%H%M%S)" \
       -v "$CELL_WORK/src:/src" -v "$CELL_WORK/work-$label:/work" -v "$CELL_WORK/store-$label:/store" \
-      --env-file "$ENVF" "onpath-cell-job:$TAG" > "$blog" 2>&1
-    local rc=$?
+      --env-file "$ENVF" "onpath-cell-job:$TAG" > "$blog" 2>&1 8>&- &
+    dpid=$!
+    for i in $(seq 1 30); do
+      [ -n "$(docker ps -q --filter "name=^onpath-cell-$label\$")" ] && break
+      sleep 1
+    done
+    flock -u 8
+    wait "$dpid"
+    rc=$?
     docker rm -f "onpath-cell-$label" >/dev/null 2>&1 || true   # after a timeout
     dt=$(( $(date +%s) - t0 ))
     per=$(( dt / ${#cells[@]} ))
