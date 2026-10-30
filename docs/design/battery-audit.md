@@ -253,7 +253,7 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
 
 - Recording and navigation run in a location foreground service. The UI is not needed when the screen is off (F-NAV-04).
 - Elapsed time is counted from real-time deltas, so delayed ticks do not lose time (`RecordingService.kt:286-288`). This also makes removing the wake lock possible later (mind the 600 s cap).
-- Notifications are throttled (5 s), the alert notification is deduplicated (15 s), `setOnlyAlertOnce`, and the recording channel is `IMPORTANCE_LOW`.
+- Notifications are throttled (5 s), the alert notification is deduplicated (15 s), `setOnlyAlertOnce`, and the recording channel is `IMPORTANCE_LOW`. Following a route uses the `navigation` channel instead (`IMPORTANCE_DEFAULT` so it shows on the lock screen, but no sound / vibration / light; owner 2026-10-30) – same re-post rate (at most every 10 s while following, once a minute).
 - Re-routing:
   - runs on a single-thread executor;
   - a newer job cancels the older one (`RouteCancel` + job cancel);

@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
  */
 object PhoneStateReader {
     /** The notification channels OnPath depends on (RecordingService.createChannels). */
-    val CHANNELS = listOf("recording", "offroute-question")
+    val CHANNELS = listOf(com.onpath.app.recording.TourChannels.RECORDING, com.onpath.app.recording.TourChannels.NAVIGATION, "offroute-question")
 
     fun location(ctx: Context): LocationGrant = when {
         granted(ctx, Manifest.permission.ACCESS_FINE_LOCATION) -> LocationGrant.PRECISE

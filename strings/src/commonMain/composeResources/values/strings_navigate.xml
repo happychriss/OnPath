@@ -99,6 +99,8 @@
     <!-- recording notifications and problems -->
     <string name="nav_channel_recording">Recording</string>
     <string name="nav_channel_recording_desc">Shows distance and time while recording</string>
+    <string name="nav_channel_navigation">Navigation</string>
+    <string name="nav_channel_navigation_desc">Next turn, time to go and arrival while you follow a route – also on the lock screen. Silent.</string>
     <string name="nav_channel_off_route">Off route</string>
     <string name="nav_channel_off_route_desc">Asks when you leave the route you follow: take a new route or keep the original</string>
     <string name="nav_rec_stopped_title">Recording stopped</string>

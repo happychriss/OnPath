@@ -98,6 +98,8 @@
     <!-- recording notifications and problems -->
     <string name="nav_channel_recording">Aufzeichnung</string>
     <string name="nav_channel_recording_desc">Zeigt Strecke und Zeit während der Aufzeichnung</string>
+    <string name="nav_channel_navigation">Navigation</string>
+    <string name="nav_channel_navigation_desc">Nächste Abzweigung, Restzeit und Ankunft, während du einer Route folgst – auch auf dem Sperrbildschirm. Lautlos.</string>
     <string name="nav_channel_off_route">Abseits der Route</string>
     <string name="nav_channel_off_route_desc">Fragt nach, wenn du die Route verlässt: neue Route nehmen oder die ursprüngliche behalten</string>
     <string name="nav_rec_stopped_title">Aufzeichnung gestoppt</string>

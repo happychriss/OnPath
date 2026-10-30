@@ -169,6 +169,10 @@ class RecordingService : Service() {
         db = TourDb.get(this)
         tracker = LocationTracker(this, 1000L, useNetwork = false) // the track is GPS only; no network fixes (battery)
         createChannels(this)
+        routeChannelOk = Build.VERSION.SDK_INT < 26 || try {
+            nm().getNotificationChannel(TourChannels.NAVIGATION) != null
+        } catch (e: Exception) { Problems.warn("recording", "Navigation notification channel not readable; tour uses the recording channel", e); false }
+        if (!routeChannelOk) Problems.warn("recording", "Navigation notification channel missing; the route notification stays off the lock screen")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -291,7 +295,7 @@ class RecordingService : Service() {
 
     private fun goForeground(): Boolean = try {
         ServiceCompat.startForeground(
-            this, NOTIF_ID, buildNotification(),
+            this, tourPost().id, buildNotification(),
             if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0,
         )
         true
@@ -828,13 +832,14 @@ class RecordingService : Service() {
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
         val now = SystemClock.elapsedRealtime()
         navText = navNotification()
-        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "")
+        val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "") +
+            tourPost().channel
         // following: what the lock screen shows (next junction, time to go) changes often – at most every 10 s
         val minGap = if (navText != null) 10_000 else 5000
         if (force || (now - lastNotify > minGap && key != lastNotifyKey) || now - lastNotify > 60_000) {
             lastNotify = now
             lastNotifyKey = key
-            try { nm().notify(NOTIF_ID, buildNotification()) } catch (e: SecurityException) {
+            try { nm().notify(tourPost().id, buildNotification()) } catch (e: SecurityException) {
                 Problems.warn("recording", "Recording notification update refused (notification permission?)", e)
             }
         }
@@ -964,9 +969,17 @@ class RecordingService : Service() {
         else -> Txt.s(Res.string.nav_status_recording)
     }
 
+    /**
+     * Following a route: the "navigation" channel (shown on the lock screen, still silent); a plain recording: the
+     * quiet "recording" channel. Same id either way – a switch is an update, the service keeps running.
+     */
+    private fun tourPost() = TourChannels.forTour(followingRoute = navigator != null && routeChannelOk)
+    /** The "navigation" channel exists (a missing channel would make startForeground throw). */
+    private var routeChannelOk = false
+
     private fun buildNotification(): Notification {
         val status = notifStatus()
-        val b = NotificationCompat.Builder(this, CHANNEL_REC)
+        val b = NotificationCompat.Builder(this, tourPost().channel)
             .setSmallIcon(R.drawable.ic_notification)
             // running: distance + a system-run clock (no re-post every second); paused: the clock stands still
             .setContentTitle(if (paused) "${Format.distance(distance)} · ${Format.clock(elapsedS)}" else Format.distance(distance))
@@ -1029,13 +1042,12 @@ class RecordingService : Service() {
         fun newTourSac(extra: Int, stored: Int): Int =
             com.onpath.app.data.LastActivity.sac(extra.takeIf { it in 1..5 }, stored)
 
-        const val CHANNEL_REC = "recording"
+        const val CHANNEL_REC = TourChannels.RECORDING
         /** Old off-route channel (vibrated by itself); deleted, see [CHANNEL_NAV]. */
         private const val CHANNEL_ALERT_OLD = "offroute"
         /** Off-route question: high importance with sound, no channel vibration (the service vibrates once itself). */
         const val CHANNEL_NAV = "offroute-question"
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
-        private const val NOTIF_ID = 42
         private const val ALERT_ID = 43
         private const val PAUSE_ALERT_ID = 44
         /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
@@ -1060,8 +1072,21 @@ class RecordingService : Service() {
             if (Build.VERSION.SDK_INT < 26) return
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_REC, Txt.s(Res.string.nav_channel_recording), NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CHANNEL_REC, Txt.s(Res.string.nav_channel_recording), TourChannels.recordingSpec.importance).apply {
                     description = Txt.s(Res.string.nav_channel_recording_desc)
+                }
+            )
+            // following a route: on the lock screen (importance DEFAULT, Android 14+ hides silent ones there) but
+            // never a sound, buzz, light or heads-up popup – TourChannels.navigationSpec
+            val nav = TourChannels.navigationSpec
+            nm.createNotificationChannel(
+                NotificationChannel(nav.id, Txt.s(Res.string.nav_channel_navigation), nav.importance).apply {
+                    description = Txt.s(Res.string.nav_channel_navigation_desc)
+                    if (!nav.sound) setSound(null, null)
+                    enableVibration(nav.vibration)
+                    if (!nav.vibration) vibrationPattern = null
+                    enableLights(nav.lights)
+                    if (nav.lockScreenPublic) lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
             )
             runCatching { nm.deleteNotificationChannel(CHANNEL_ALERT_OLD) } // expected to be harmless: old channel may not exist
