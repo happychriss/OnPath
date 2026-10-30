@@ -3,7 +3,7 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 names and descriptions",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text)",
       "web": [
         "web/app/src/activity.ts"
       ],
@@ -266,12 +266,20 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/cells/CellTriggers.kt",
-      "what": "T1 point set (more than 3 new = loaded plan → T4 only), T3 position, T4 route corridor – web triggers",
+      "what": "T1 point set (more than 3 new = loaded plan → T4 only), T2 search result, T3 position, T4 route corridor – web triggers (the map resting orders nothing, A-011)",
       "web": [
         "web/app/src/areas.ts",
         "web/app/src/main.ts"
       ],
       "blob": "c6e3a6a2e87a5c9de32a321b4e267e535693faa2"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/data/Geo.kt",
+      "what": "Format.number / Format.distance – numbers the page writes itself (leg distances, profile axis): decimal comma in German",
+      "web": [
+        "web/app/src/i18n.ts"
+      ],
+      "blob": "74cb74d2734193734c8a870ebb11cb83434f0312"
     }
   ],
   "watch": [
@@ -924,6 +932,50 @@
     },
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "1116e28fc80be390d13ae7e5e36729f5f2db8517",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
+      "blob": "8a2913776723ea465583e568ede1b434ed8cedbd",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_backup.xml": {
+      "blob": "5b7628ba44cd1c9ac0b6608571bf1897a8e6e65d",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_common.xml": {
+      "blob": "40843fef3ec02901e26d8c5a8feeb561d5b0428f",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
+      "blob": "09681a613dea0d696f470ee7dae4e25d8fb7d4a2",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
+      "blob": "cb13ebf04815b10d682e4306d4fe3554cbda05f7",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
+      "blob": "71849658932d8f1c0fbb35dda061d1eb47bbe2cd",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
+      "blob": "78faf947eb511fc82964034b03c63ad1e67145c2",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
+      "blob": "8abf682d5badc097fdcc9efa6a8a9b46152f0a0e",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
+      "blob": "8d43ef41a89e7c654e3db4ad32898fa963164f4b",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
+      "blob": "b01aee47039025e670e9ac157a24d566040fc667",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
+      "blob": "549e098467a5d5848dc01b1ab228a6017af0a767",
       "perf": []
     }
   }

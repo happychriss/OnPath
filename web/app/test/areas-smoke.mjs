@@ -2,7 +2,7 @@
 // A. No key on the host (owner step open): the owner's report reproduced – Locate jumps to a spot without cells. The
 //    overview (outside any region package: Natural Earth water at the Bodensee) and a region package's relief (fake
 //    package, solid magenta, Munich) stay visible at zoom 11–15; the strip says that the detailed map is not available
-//    on the web yet. Nothing hangs. (C: a page opened on a spot without cells says "Overview only …" first.)
+//    on the web yet. Nothing hangs. (C: a page opened on a spot without cells says "Overview only – set a point here …" and orders nothing.)
 // B. Key + a fake doorman behind the host's real proxy (web/host/src/maps.js): Locate → "Finding your position…" →
 //    the own area is requested once (reason point) → the strip shows the app's texts ("Preparing map for this area –
 //    about 5 min", "Your position · waiting – about 5 min", then "being prepared – 40 %") → ready: current.json appears
@@ -92,7 +92,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
 
 // ---- B: key + fake doorman behind the real proxy ----
 {
-  const asked = [];
+  const asked = [], ids = [];
   let polls = 0;
   const doorman = { fetch: async (req) => {
     const u = new URL(req.url);
@@ -112,12 +112,13 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     return Response.json({ cells: ids.map((id) => ({ id, state: 'building', step: 'base', progress: 0.4, eta_s: 110 })), poll_s: 5 });
   } };
   const { page, ctx, server, log } = await open({ geolocation: { ...MUNICH, accuracy: 20 }, permissions: ['geolocation'] }, '11.16,46.67,12',
-    { maps: (req) => handleMaps(req, { MAP_KEY: 'k', DOORMAN: doorman }) });
+    { maps: (req) => { if (req.method === 'POST') ids.push(req.headers.get('x-onpath-browser')); return handleMaps(req, { MAP_KEY: 'k', DOORMAN: doorman }); } });
   await page.click('#locate');
   check(await waitStrip(page, 'Preparing map for this area – about 5 min', 15_000), `the own area is requested: "${(await strip(page)).split('\n')[0]}"`);
   check((await strip(page)).includes('Your position · waiting – about 5 min'), 'row: Your position · waiting – about 5 min (the app\'s texts)');
   check(asked.length === 1 && asked[0].reason === 'point' && asked[0].cells.join() === CELL && asked[0].formats.join() === '2',
     `one request through the proxy: ${JSON.stringify(asked)}`);
+  check(ids.length === 1 && /^[0-9a-f]{32}$/.test(ids[0] ?? ''), `the request carries the browser's random id (quotas): ${ids[0]}`);
   check(await waitStrip(page, 'being prepared – 40 %, about 2 min', 15_000), 'polling: "being prepared – 40 %, about 2 min"');
   const gone = await page.waitForFunction(() => document.getElementById('mapnotes').hidden, null, { timeout: 20_000 }).then(() => true, () => false);
   check(gone, 'ready: the strip closes by itself (no "done" message)');
@@ -131,12 +132,28 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
 
 // ---- C: a page opened on a spot without cells, then location denied ----
 {
-  const { page, ctx, server } = await open({}, '11.16,46.67,12', { maps: (req) => handleMaps(req, {}) });
-  check(await waitStrip(page, 'Overview only', 3000), `opened at zoom 12 without detailed map: "${(await strip(page)).split('\n')[0]}"`);
-  check(await waitStrip(page, 'not available on the web yet', 10_000), 'after the map rested: not available on the web yet (no key)');
+  let calls = 0;
+  const { page, ctx, server } = await open({}, '11.16,46.67,12', { maps: (req) => { calls++; return handleMaps(req, {}); } });
+  check(await waitStrip(page, 'Overview only – set a point here to load the detailed map', 3000), `opened at zoom 12 without detailed map: "${(await strip(page)).split('\n')[0]}"`);
+  await page.waitForTimeout(6000);
+  check(calls === 0 && (await strip(page)).includes('Overview only'), `the map resting orders nothing (public page, A-011): ${calls} map-area calls`);
   await page.click('#locate');
   check(await waitStrip(page, 'Location is not allowed for this page', 10_000), `denied: "${(await strip(page)).replace(/\s+/g, ' ').slice(0, 90)}…"`);
   check(await page.evaluate(() => document.querySelector('.mapnote.error') != null), 'denied is a red line (ERROR) with a way out');
+  await ctx.close(); server.close();
+}
+
+// ---- C2: the host's quota for new map areas reached (A-011): a plain grey line with the way on, nothing more asked ----
+{
+  let calls = 0;
+  // Vienna: no cell there (B built Munich's)
+  const { page, ctx, server } = await open({ geolocation: { latitude: 48.2082, longitude: 16.3738, accuracy: 20 }, permissions: ['geolocation'] }, '11.16,46.67,12',
+    { maps: () => { calls++; return Response.json({ error: 'quota reached', quota: 'browser' }, { status: 429 }); } });
+  await page.click('#locate');
+  check(await waitStrip(page, 'Enough new map areas for today in this browser', 15_000), `quota: "${(await strip(page)).split('\n')[0]}"`);
+  check(await page.evaluate(() => document.querySelector('.mapnote.info') != null && !document.querySelector('.mapnote.error')), 'quota is a grey line (INFO), not an error');
+  await page.waitForTimeout(6000);
+  check(calls === 1, `one request, then nothing more is asked (${calls} calls)`);
   await ctx.close(); server.close();
 }
 

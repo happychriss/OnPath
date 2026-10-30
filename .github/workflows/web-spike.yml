@@ -68,6 +68,12 @@ jobs:
       - name: Build the Wasm engine (TeaVM)
         run: ./gradlew -p web/engine --no-daemon test generateWasmGC copyWasmGCRuntime overviewStyle  # test = the app's own tests of the shared files (appTests) + WebImportTest
 
+      - name: Texts – no hard-coded user texts in the page, every web text in every language (web/strings)
+        run: node web/app/test/texts-check.mjs
+
+      - name: Engine texts follow the page's language (German / English, decimal comma)
+        run: node web/app/test/lang-engine.mjs $GITHUB_WORKSPACE/segments
+
       - name: Plan sync in Wasm = the JVM's frozen bytes (keys, blob)
         run: node web/app/test/sync-engine.mjs
 
@@ -130,6 +136,10 @@ jobs:
       - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
         working-directory: web/app
         run: node test/areas-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
+        working-directory: web/app
+        run: node test/lang-smoke.mjs $GITHUB_WORKSPACE/segments
 
       - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
         working-directory: web/app

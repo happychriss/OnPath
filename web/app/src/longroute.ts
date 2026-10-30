@@ -4,6 +4,7 @@
 // shows the dialog. "Plan anyway" remembers the points (asked once per plan, like the app's longRouteOk).
 import type { EngineClient } from './engine/client';
 import type { Activity } from './engine/types';
+import { t } from './i18n';
 
 type LatLon = [number, number];
 interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string }
@@ -15,7 +16,7 @@ const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixe
 export function allowLongRoute(points: LatLon[]) { okFor = keyOf(points); }
 
 /** Texts of the not-routed line after Cancel: "Route not calculated – very long plan." + "Plan anyway". */
-export let notRoutedTexts = { line: 'Route not calculated – very long plan.', button: 'Plan anyway' };
+export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_anyway') };
 
 /**
  * True = route now (short enough, or already allowed); false = the user cancelled. Shows the app's question when the
@@ -38,7 +39,7 @@ function question(a: Ask): Promise<boolean> {
     const d = document.createElement('dialog');
     d.className = 'share longroute';
     d.innerHTML = `<h2>⚠ ${esc(a.title ?? '')}</h2><p>${esc(a.text ?? '')}</p>
-      <div class="row"><button id="lrCancel">${esc(a.cancel ?? 'Cancel')}</button><button class="primary" id="lrPlan">${esc(a.plan ?? 'Plan anyway')}</button></div>`;
+      <div class="row"><button id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button><button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_anyway'))}</button></div>`;
     document.body.append(d);
     const done = (v: boolean) => { d.close(); d.remove(); resolve(v); };
     d.querySelector<HTMLButtonElement>('#lrPlan')!.onclick = () => done(true);

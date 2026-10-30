@@ -1,0 +1,98 @@
+// The page's texts in every language (docs/design/web-planner.md §18), generated into src/gen/texts.ts at build time:
+// - the web's own texts: web/strings/values*/strings_*.xml (Compose resource format, like the app's – values/ = English,
+//   values-<lang>/ = that language; adding a language = adding one folder, here and in strings/);
+// - the app's texts the page uses: every 'key' literal in src/**/*.ts that is a key of the app's strings/
+//   (Compose resources), read from the same XML files the app and the engine read – so the page says what the app says.
+// Rules as XmlStrings (the app's reader): text as written, only \n \t \uXXXX \\ special; placeholders %1$s / %1$d.
+// Fails the build on a web key without English, a duplicate key, or a t('…') / tp('…') whose key exists nowhere.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repo = path.resolve(here, '../../..');
+const src = path.resolve(here, '../src');
+const out = path.join(src, 'gen/texts.ts');
+
+function unescape(s) {
+  return s.replace(/\\(\\|n|t|u[0-9a-fA-F]{4})/g, (_, c) => (c === '\\' ? '\\' : c === 'n' ? '\n' : c === 't' ? '\t' : String.fromCharCode(parseInt(c.slice(1), 16))));
+}
+function decode(s) { // XML entities + CDATA-free text (the files use &amp; &lt; &gt; &quot; &apos; only)
+  return s.replace(/<!--[\s\S]*?-->/g, '').replace(/&(amp|lt|gt|quot|apos|#(\d+));/g, (_, e, n) =>
+    n ? String.fromCharCode(Number(n)) : { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }[e]);
+}
+
+/** One resources folder → { strings: {key: text}, plurals: {key: {one, other}} }. */
+function readDir(dir) {
+  const strings = {}, plurals = {};
+  if (!fs.existsSync(dir)) return { strings, plurals };
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.xml')).sort()) {
+    const xml = fs.readFileSync(path.join(dir, f), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    for (const m of xml.matchAll(/<string\s+name="([a-z0-9_]+)"\s*>([\s\S]*?)<\/string>/g)) {
+      if (m[1] in strings) throw new Error(`duplicate '${m[1]}' in ${dir}/${f}`);
+      strings[m[1]] = unescape(decode(m[2]));
+    }
+    for (const m of xml.matchAll(/<plurals\s+name="([a-z0-9_]+)"\s*>([\s\S]*?)<\/plurals>/g)) {
+      const forms = {};
+      for (const it of m[2].matchAll(/<item\s+quantity="(\w+)"\s*>([\s\S]*?)<\/item>/g)) forms[it[1]] = unescape(decode(it[2]));
+      if (forms.other == null) throw new Error(`plural '${m[1]}' has no 'other' in ${dir}/${f}`);
+      plurals[m[1]] = { one: forms.one ?? null, other: forms.other };
+    }
+  }
+  return { strings, plurals };
+}
+
+/** values/ = en first, then values-<lang>/ (sorted). */
+function languages(root) {
+  return [['en', path.join(root, 'values')], ...fs.readdirSync(root).filter((d) => d.startsWith('values-')).sort()
+    .map((d) => [d.slice('values-'.length), path.join(root, d)])];
+}
+
+const webRoot = path.join(repo, 'web/strings');
+const appRoot = path.join(repo, 'strings/src/commonMain/composeResources');
+const web = Object.fromEntries(languages(webRoot).map(([l, d]) => [l, readDir(d)]));
+const app = Object.fromEntries(languages(appRoot).map(([l, d]) => [l, readDir(d)]));
+const langs = [...new Set([...Object.keys(web), ...Object.keys(app)])];
+
+// the app keys the page uses: every quoted lower_snake literal that is an app key
+const files = [];
+const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+  const p = path.join(d, e.name);
+  if (e.isDirectory()) { if (e.name !== 'gen') walk(p); } else if (p.endsWith('.ts')) files.push(p);
+} };
+walk(src);
+const used = new Set(), called = new Set();
+for (const f of files) {
+  const code = fs.readFileSync(f, 'utf8');
+  for (const m of code.matchAll(/['"`]([a-z][a-z0-9]*_[a-z0-9_]+)['"`]/g)) used.add(m[1]);
+  for (const m of code.matchAll(/\btp?\(\s*['"`]([a-z0-9_]+)['"`]\s*[,)]/g)) called.add(m[1]);
+}
+const en = app.en;
+const appKeys = [...used].filter((k) => k in en.strings || k in en.plurals).sort();
+
+const table = {};
+for (const l of langs) {
+  const t = {};
+  for (const k of appKeys) {
+    const v = app[l]?.strings[k] ?? app[l]?.plurals[k];
+    if (v != null) t[k] = typeof v === 'string' ? v : [v.one, v.other];
+  }
+  for (const [k, v] of Object.entries(web[l]?.strings ?? {})) {
+    if (k in en.strings || k in en.plurals) throw new Error(`web key '${k}' is also an app key – use the app's`);
+    t[k] = v;
+  }
+  for (const [k, v] of Object.entries(web[l]?.plurals ?? {})) t[k] = [v.one, v.other];
+  table[l] = t;
+}
+for (const l of langs) for (const k of Object.keys(table[l])) if (!(k in table.en)) throw new Error(`'${k}' (${l}) has no English text`);
+const missing = [...called].filter((k) => !(k in table.en));
+if (missing.length) throw new Error(`texts used but not found in web/strings or strings/: ${missing.join(', ')}`);
+
+fs.mkdirSync(path.dirname(out), { recursive: true });
+fs.writeFileSync(out, `// generated by web/app/scripts/gen-strings.mjs from web/strings and strings/ – do not edit
+/** The text languages (English first = the fallback). */
+export const LANGS = ${JSON.stringify(langs)} as const;
+/** Per language: key → text, or [one, other] for a plural (one may be null). */
+export const TEXTS: Record<string, Record<string, string | [string | null, string]>> = ${JSON.stringify(table, null, 1)};
+`);
+console.log(`texts: ${langs.join(', ')} · ${appKeys.length} app keys + ${Object.keys(web.en?.strings ?? {}).length + Object.keys(web.en?.plurals ?? {}).length} web keys → src/gen/texts.ts`);

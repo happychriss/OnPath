@@ -6,6 +6,7 @@
 import type * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import { icon } from './icons';
+import { t } from './i18n';
 
 interface Kind { key: string; group: string; en: string; glyph: string; color: string }
 export interface MapContent { hidden: string[]; contours: boolean; hillshade: boolean }
@@ -28,7 +29,7 @@ export class MapContentPanel {
       this.kinds = j.kinds; this.defaults = j.defaultHidden;
       this.groups = j.groups.map((g) => [g.key, g.label]);
       this.state = load() ?? { hidden: [...this.defaults], contours: true, hillshade: true };
-    }).catch((e) => onProblem(`Map content settings not loaded: ${e}`));
+    }).catch((e) => onProblem(t('web_mc_not_loaded', String(e))));
   }
 
   /** Applies the remembered choice to the map (after the style loaded). */
@@ -41,7 +42,7 @@ export class MapContentPanel {
         if (!this.original.has(l.id)) this.original.set(l.id, 'filter' in l ? l.filter ?? null : null);
         const orig = this.original.get(l.id);
         const json = await this.engine.call('poiFilter', orig == null ? '' : JSON.stringify(orig), s.hidden.join(','));
-        try { this.map.setFilter(l.id, json ? JSON.parse(json) : null); } catch (e) { this.onProblem(`POI filter on ${l.id} not applied: ${e}`); }
+        try { this.map.setFilter(l.id, json ? JSON.parse(json) : null); } catch (e) { this.onProblem(t('web_mc_filter_failed', l.id, String(e))); }
       } else if (l.id.startsWith('contour-') || l.id.startsWith('hillshade')) {
         const on = l.id.startsWith('contour-') ? s.contours : s.hillshade;
         this.map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none');
@@ -55,17 +56,17 @@ export class MapContentPanel {
     this.d?.close();
     const d = document.createElement('dialog');
     d.className = 'mapcontent';
-    d.setAttribute('aria-label', 'Map content');
-    d.innerHTML = `<div class="mchead"><h2>Map content</h2>
-        <input id="kindFilter" type="search" placeholder="Find a kind (e.g. water, hut)" aria-label="Find a kind" autocomplete="off">
-        <button id="mcClose" class="iconbtn" aria-label="Close" autofocus>${icon('close')}</button></div>
+    d.setAttribute('aria-label', t('web_map_content'));
+    d.innerHTML = `<div class="mchead"><h2>${esc(t('web_map_content'))}</h2>
+        <input id="kindFilter" type="search" placeholder="${esc(t('web_mc_find'))}" aria-label="${esc(t('web_mc_find_label'))}" autocomplete="off">
+        <button id="mcClose" class="iconbtn" aria-label="${esc(t('common_close'))}" autofocus>${icon('close')}</button></div>
       <div class="mcbody">
-        <section class="mcmap"><h3>Map</h3>
-          <label class="kind"><input type="checkbox" id="mcContours"> Contour lines</label>
-          <label class="kind"><input type="checkbox" id="mcHillshade"> Hill shading</label></section>
-        <section><div class="mcpoihead"><h3>Points of interest</h3><span id="mcCount" class="muted small"></span>
-          <button id="mcAll" class="textbtn">Show all</button><button id="mcNone" class="textbtn">Hide all</button>
-          <button id="mcReset" class="textbtn">Reset</button></div>
+        <section class="mcmap"><h3>${esc(t('web_mc_map'))}</h3>
+          <label class="kind"><input type="checkbox" id="mcContours"> ${esc(t('settings_map_contours'))}</label>
+          <label class="kind"><input type="checkbox" id="mcHillshade"> ${esc(t('settings_map_hillshade'))}</label></section>
+        <section><div class="mcpoihead"><h3>${esc(t('settings_page_poi'))}</h3><span id="mcCount" class="muted small"></span>
+          <button id="mcAll" class="textbtn">${esc(t('common_show_all'))}</button><button id="mcNone" class="textbtn">${esc(t('settings_poi_hide_all'))}</button>
+          <button id="mcReset" class="textbtn">${esc(t('common_reset'))}</button></div>
           <div id="mcGroups" class="mcgroups"></div></section>
       </div>`;
     document.body.append(d);
@@ -108,7 +109,7 @@ export class MapContentPanel {
     if (!d || !s) return;
     const f = this.filter.trim().toLowerCase();
     const hidden = new Set(s.hidden);
-    d.querySelector('#mcCount')!.textContent = `${this.kinds.filter((k) => !hidden.has(k.key)).length} of ${this.kinds.length} kinds shown`;
+    d.querySelector('#mcCount')!.textContent = t('settings_poi_shown', this.kinds.filter((k) => !hidden.has(k.key)).length, this.kinds.length);
     d.querySelector('#mcGroups')!.innerHTML = this.groups.map(([g, label]) => {
       const all = this.kinds.filter((k) => k.group === g);
       const kinds = all.filter((k) => !f || k.en.toLowerCase().includes(f) || label.toLowerCase().includes(f) || k.key.includes(f));
@@ -116,10 +117,10 @@ export class MapContentPanel {
       const on = all.filter((k) => !hidden.has(k.key)).length;
       return `<fieldset class="mcgroup"><legend><label class="grouprow"><input type="checkbox" data-group="${g}" ${on === all.length ? 'checked' : ''}
           ${on > 0 && on < all.length ? 'data-mixed="1"' : ''}><span class="dot" style="background:${all[0].color}"></span><b>${esc(label)}</b>
-          <span class="muted small">${on} of ${all.length}</span></label></legend>
+          <span class="muted small">${esc(t('web_mc_of', on, all.length))}</span></label></legend>
         ${kinds.map((k) => `<label class="kind"><input type="checkbox" data-kind="${k.key}" ${hidden.has(k.key) ? '' : 'checked'}>
           <span class="glyph small" style="background:${k.color}">${esc(k.glyph)}</span>${esc(k.en)}</label>`).join('')}</fieldset>`;
-    }).join('') || '<p class="muted">No kind matches.</p>';
+    }).join('') || `<p class="muted">${esc(t('web_mc_no_match'))}</p>`;
     d.querySelectorAll<HTMLInputElement>('[data-mixed]').forEach((i) => { i.indeterminate = true; });
   }
 }

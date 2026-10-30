@@ -5,14 +5,17 @@
 // strip texts ("Preparing map for this area – about 6 min", rows, "2 more areas · waiting") and, when a cell is ready,
 // reloads the cell sources – the files are read in place from R2 (/data/), so only its current.json appears.
 // Triggers, mirrored for a desktop: a point set in the plan (T1, own cell), the position after Locate (T3), a search
-// result shown (T2), the computed route (T4, the cells the line crosses, at most 12) and – the web's own, the owner's
-// wish – the map resting at zoom >= 10 for REST_MS on a spot without detailed map (the centre cell). Each cell is asked
-// for once per page (dedupe); cells already built are never asked for.
+// result shown (T2) and the computed route (T4, the cells the line crosses, at most 12) – only explicit needs, like the
+// app. The map resting at zoom >= 10 on a spot without detailed map orders nothing (public page, A-011: idle panning
+// must not build map areas); the strip then says "Overview only – set a point here to load the detailed map". Each cell
+// is asked for once per page (dedupe); cells already built are never asked for. The browser sends its random id
+// (X-OnPath-Browser, browserId) so the host can count new builds per browser (web/host/src/maps.js quotas).
 import type * as maplibregl from 'maplibre-gl';
 import type { Cells } from './cells';
 import type { MapNotices, Notice } from './mapnotice';
+import { t, fill } from './i18n';
 
-export type Why = 'here' | 'planned' | 'searched' | 'view';
+export type Why = 'here' | 'planned' | 'searched';
 type Reason = 'point' | 'near' | 'corridor';
 type State =
   | { s: 'requested' } | { s: 'queued'; eta?: number } | { s: 'building'; progress: number; eta?: number }
@@ -20,14 +23,26 @@ type State =
 export type MapTexts = Record<string, string | { one: string | null; other: string }>;
 
 const CELL_Z = 10;
-/** The map rests this long at zoom >= 10 before its centre's area is asked for (scrolling alone never asks). */
-export const REST_MS = 4000;
 const MAX_CORRIDOR = 12;
 const MAX_ROWS = 3; // CellCards.MAX_ROWS
 const BACKOFF_S = [30, 60, 120, 300]; // server down / 5xx (the app: 1, 2, 5, 10 min – shorter while the page is open)
-/** Web text (no app text fits: the app says "Map downloads not available in this build"). */
-export const NOT_ON_WEB = 'The detailed map for this area is not available on the web yet – the overview map is shown.';
-export const OVERVIEW_WAIT = 'Overview only – the detailed map for this area is asked for when the map rests here.';
+const BROWSER_KEY = 'onpath.browserId';
+
+/**
+ * A random id of this browser (16 random bytes, hex; kept in localStorage) – sent with map-area requests so the host
+ * can limit new builds per browser and day / month. Nothing else: no position, no name, never joined with anything.
+ */
+export function browserId(): string {
+  try {
+    const have = localStorage.getItem(BROWSER_KEY);
+    if (have && /^[0-9a-f]{32}$/.test(have)) return have;
+  } catch { /* expected: storage blocked – a new id per page load (the per-IP limits still apply) */ }
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  const id = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  try { localStorage.setItem(BROWSER_KEY, id); } catch { /* expected: storage blocked */ }
+  return id;
+}
 
 const tileX = (lon: number) => Math.floor(((lon + 180) / 360) * 2 ** CELL_Z);
 const tileY = (lat: number) => {
@@ -38,9 +53,7 @@ export const cellOf = (lat: number, lon: number) => `10-${tileX(lon)}-${tileY(la
 const xy = (id: string) => id.split('-').slice(1).map(Number) as [number, number];
 
 /** XmlStrings.format: `%N$s` / `%N$d` → the N-th argument. */
-export function fmt(raw: string, ...args: (string | number)[]): string {
-  return raw.replace(/%(\d)\$[sd]/g, (_, n) => String(args[Number(n) - 1]));
-}
+export const fmt = fill;
 
 export class MapAreas {
   private states = new Map<string, State>();
@@ -49,10 +62,12 @@ export class MapAreas {
   private hidden = false;
   /** False once the proxy says the web has no key (owner step open): nothing more is asked. */
   private available = true;
-  private restTimer = 0;
   private pollTimer = 0;
   private failures = 0;
-  private waitingRest: string | null = null;
+  /** The map rests at zoom >= 10 on this area without detailed map, not asked for: "Overview only – set a point here". */
+  private restAbsent: string | null = null;
+  /** The host's quota for new map areas is used up (429 with a "quota" answer): said once, nothing more is asked. */
+  private quota: string | null = null;
   /** The map rests at zoom >= 10 on a spot without detailed map (what "not available on the web" refers to). */
   private centreAbsent = false;
   private naHidden = false;
@@ -61,7 +76,7 @@ export class MapAreas {
   constructor(private map: maplibregl.Map, private cells: Cells, private api: string, texts: Promise<MapTexts>,
     private notices: MapNotices, private fetchImpl: typeof fetch = (...a) => fetch(...a)) {
     texts.then((t) => { this.t = t; this.show(); }).catch((e) => console.warn('map texts not loaded', e));
-    map.on('movestart', () => { clearTimeout(this.restTimer); if (this.waitingRest) { this.waitingRest = null; this.show(); } });
+    map.on('movestart', () => { if (this.restAbsent) { this.restAbsent = null; this.show(); } });
     map.on('moveend', () => this.rested());
     map.once('idle', () => this.rested()); // the page may open on a spot without detailed map
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && this.pending().length) this.poll(); });
@@ -92,9 +107,8 @@ export class MapAreas {
     if (missing.length) this.request(missing, 'corridor', 'planned', null);
   }
 
-  /** The web's own trigger: the map rests at zoom >= 10 on a spot without detailed map → its centre area. */
+  /** The map rests: at zoom >= 10 on a spot without detailed map the strip says so (nothing is asked for). */
   private rested() {
-    clearTimeout(this.restTimer);
     const c = this.map.getCenter();
     const id = cellOf(c.lat, c.lng);
     if (this.map.getZoom() < CELL_Z) { this.centreAbsent = false; this.show(); return; }
@@ -102,15 +116,8 @@ export class MapAreas {
       const now = this.map.getCenter();
       if (cellOf(now.lat, now.lng) !== id) return; // moved on meanwhile
       this.centreAbsent = !there;
-      if (there || this.states.has(id) || !this.available) { this.show(); return; }
-      this.waitingRest = id;
+      this.restAbsent = there || this.states.has(id) || !this.available ? null : id;
       this.show();
-      this.restTimer = window.setTimeout(() => {
-        const now = this.map.getCenter();
-        if (cellOf(now.lat, now.lng) !== id || this.map.getZoom() < CELL_Z) return;
-        this.waitingRest = null;
-        this.request([id], 'point', 'view', null);
-      }, REST_MS);
     });
   }
 
@@ -121,7 +128,7 @@ export class MapAreas {
     if (!this.job || this.job.ids.every((id) => this.done(id))) { this.job = { why, own, ids: [] }; this.hidden = false; }
     for (const id of fresh) { this.job.ids.push(id); this.states.set(id, { s: 'requested' }); }
     if (!this.job.own && own) { this.job.own = own; this.job.why = why; }
-    if (!this.available) { this.show(); return; }
+    if (!this.available || this.quota) { this.show(); return; }
     this.show();
     this.send('request', fresh, reason);
   }
@@ -134,7 +141,8 @@ export class MapAreas {
     let r: Response;
     try {
       r = kind === 'request'
-        ? await this.fetchImpl(this.api + 'cells/request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cells: ids, reason, formats: [2] }) })
+        ? await this.fetchImpl(this.api + 'cells/request', { method: 'POST', headers: { 'content-type': 'application/json', 'x-onpath-browser': browserId() },
+          body: JSON.stringify({ cells: ids, reason, formats: [2] }) })
         : await this.fetchImpl(this.api + 'cells/status?ids=' + ids.join(','));
     } catch (e) {
       console.info('map areas: no connection to the map server', e); // expected offline: INFO, the strip says it
@@ -144,6 +152,15 @@ export class MapAreas {
       console.info(`map areas: not available on this host (HTTP ${r.status})`);
       this.available = false;
       clearTimeout(this.pollTimer);
+      return this.show();
+    }
+    if (r.status === 429 && kind === 'request' && (await r.clone().json().catch(() => ({}))).quota) {
+      // the host's limit for new map areas (per browser / per IP / for everyone, per day or month): said plainly, once
+      const q = (await r.json()) as { quota: string };
+      console.info(`map areas: quota reached (${q.quota})`);
+      this.quota = q.quota;
+      for (const id of ids) this.states.delete(id); // not asked – a later page (another day) may ask again
+      if (this.job) this.job.ids = this.job.ids.filter((id) => this.states.has(id));
       return this.show();
     }
     if (r.status === 429 || r.status >= 500) {
@@ -202,9 +219,14 @@ export class MapAreas {
   build(): Notice | null {
     const close = { label: this.s('maps_hide_cd'), onClose: () => { this.hidden = true; } };
     const job = this.job;
+    const hide = { label: t('web_hide'), onClose: () => { this.naHidden = true; } };
     // no key on this host (owner step open): said while the map rests on a spot without detailed map – nothing hangs
-    if (!this.available) return this.centreAbsent && !this.naHidden ? { kind: 'info', title: NOT_ON_WEB, close: { label: 'Hide', onClose: () => { this.naHidden = true; } } } : null;
-    if (!job || this.hidden) return this.waitingRest ? { kind: 'info', title: OVERVIEW_WAIT } : null;
+    if (!this.available) return this.centreAbsent && !this.naHidden ? { kind: 'info', title: t('web_maps_not_on_web'), close: hide } : null;
+    // the host's limit for new map areas reached: one grey line with the way on (the app has every area)
+    if (this.quota && !this.naHidden && (!job || job.ids.every((id) => this.done(id)))) {
+      return { kind: 'info', title: t(this.quota === 'global' ? 'web_maps_quota_all' : 'web_maps_quota'), close: hide };
+    }
+    if (!job || this.hidden || job.ids.length === 0) return this.restAbsent ? { kind: 'info', title: t('web_maps_overview_only') } : null;
     const all = job.ids;
     const st = (id: string) => this.states.get(id)!;
     if (all.every((id) => st(id).s === 'ready')) return null; // closes by itself when every area is there (MapLoad)
@@ -212,7 +234,7 @@ export class MapAreas {
     const failed = all.filter((id) => st(id).s === 'failed');
     if (!open.length && failed.length) {
       const reason = (st(failed[0]) as { reason: string }).reason;
-      return { kind: 'error', title: failed.length === 1 ? reason : this.s('maps_card_failed_many', failed.length, reason), close: { ...close, label: 'Hide' } };
+      return { kind: 'error', title: failed.length === 1 ? reason : this.s('maps_card_failed_many', failed.length, reason), close: { ...close, label: t('web_hide') } };
     }
     const busy = open.filter((id) => st(id).s !== 'offline');
     if (!busy.length) {

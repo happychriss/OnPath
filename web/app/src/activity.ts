@@ -1,8 +1,9 @@
 // The activity picker (the app's ActivityPicker dialog): the six activities with the line under each, and for Hike the
 // SAC level T1–T5 with its short description. Names come from the app's Activity enum (engine call "activities");
-// the SAC texts are the app's ui/Screens.SacScale (an Android file, so mirrored here).
+// the SAC texts are the app's (routes_sac_<n>_name / _text, ui/Screens.SacScale) in the page's language.
 import type { Activity } from './engine/types';
 import { activityIcon } from './icons';
+import { t } from './i18n';
 
 export interface ActivityRow { key: Activity; label: string; line: string; chip: string }
 
@@ -18,13 +19,11 @@ export interface PaceHost {
   pick(group: 'hike' | 'bike', level: string): Promise<void>;
 }
 
-const SAC = [
-  ['Hiking', 'Well-built path, flat or slightly steep. No fall risk. Trainers are enough.'],
-  ['Mountain hiking', 'Continuous path, steep in places, fall risk not excluded. Some sure-footedness; hiking boots recommended.'],
-  ['Demanding mountain hiking', 'Path not always visible; exposed places may have ropes or chains; hands sometimes needed for balance. Sure-footed, good hiking boots.'],
-  ['Alpine hiking', 'Path not always present; hands needed in places; exposed terrain, steep grass, scree, easy snow fields. Experience in exposed terrain.'],
-  ['Demanding alpine hiking', 'Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed.'],
+const SAC_KEYS = [
+  ['routes_sac_1_name', 'routes_sac_1_text'], ['routes_sac_2_name', 'routes_sac_2_text'], ['routes_sac_3_name', 'routes_sac_3_text'],
+  ['routes_sac_4_name', 'routes_sac_4_text'], ['routes_sac_5_name', 'routes_sac_5_text'],
 ];
+const SAC = SAC_KEYS.map(([n, d]) => [t(n), t(d)]);
 
 /**
  * A drop-down anchored to the activity chip (owner 2026-10-28: no dialog, no Done): a click on an activity picks it and
@@ -125,16 +124,16 @@ export class ActivityPicker {
     this.box.innerHTML = this.rows.map((r) => {
       const on = r.key === this.act;
       const row = `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}">
-          ${activityIcon(r.key)}<span class="txt"><b>${r.label}</b><span class="muted small">${r.line}</span></span></button>`;
+          ${activityIcon(r.key)}<span class="txt"><b>${esc(r.label)}</b><span class="muted small">${esc(r.line)}</span></span></button>`;
       if (r.key !== 'HIKE') return row;
       const [name, text] = SAC[this.sac - 1];
       return row + `<div id="sacRow" class="sacrow">
-          <div class="seg" role="group" aria-label="Hiking difficulty (SAC)">${[1, 2, 3, 4, 5].map((t) => {
-            const [n, d] = SAC[t - 1];
-            const sel = this.act === 'HIKE' && t === this.sac;
-            return `<button data-sac="${t}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${t} · ${n} – ${d}">T${t}</button>`;
+          <div class="seg" role="group" aria-label="${esc(t('web_sac_group'))}">${[1, 2, 3, 4, 5].map((n) => {
+            const [name, text] = SAC[n - 1];
+            const sel = this.act === 'HIKE' && n === this.sac;
+            return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}">T${n}</button>`;
           }).join('')}</div>
-          <div class="muted small">T${this.sac} · ${name} – ${text}</div></div>`;
+          <div class="muted small">T${this.sac} · ${esc(name)} – ${esc(text)}</div></div>`;
     }).join('');
   }
 }

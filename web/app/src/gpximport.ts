@@ -9,6 +9,9 @@ import type { EngineClient } from './engine/client';
 import type { Activity, PlanResult } from './engine/types';
 import { profileSvg } from './profile';
 import './gpximport.css';
+import { t } from './i18n';
+
+const text = t; // inside panel() the track is called t
 
 type LatLon = [number, number];
 
@@ -79,21 +82,21 @@ export function setupGpxImport(h: GpxHost) {
   ensureLayers();
 
   async function importFile(f: File) {
-    h.status(`Importing ${f.name}…`);
-    let t: Track;
+    h.status(t('web_gpx_importing', f.name));
+    let track: Track;
     try {
       const { activity, sac } = h.activity();
-      t = JSON.parse(await h.engine.gpxRead(new Uint8Array(await f.arrayBuffer()), f.name, activity, sac)) as Track;
+      track = JSON.parse(await h.engine.gpxRead(new Uint8Array(await f.arrayBuffer()), f.name, activity, sac)) as Track;
     } catch (e) {
-      h.status(`Could not import this file – it could not be opened or read.`, 'error');
+      h.status(t('web_gpx_unreadable'), 'error');
       console.warn('GPX import failed', e);
       return;
     }
-    if (t.error) { h.status(t.error, 'error'); return; }
+    if (track.error) { h.status(track.error, 'error'); return; }
     // like the app: the activity is chosen before the track is shown
-    if (t.switch) h.setActivity(t.activity, t.sac);
-    show(t);
-    h.status(`Imported “${t.name}”`);
+    if (track.switch) h.setActivity(track.activity, track.sac);
+    show(track);
+    h.status(t('web_gpx_imported', track.name));
   }
 
   function show(t: Track) {
@@ -152,7 +155,7 @@ export function setupGpxImport(h: GpxHost) {
       const { activity, sac } = h.activity();
       let r: { points?: LatLon[]; error?: string };
       try { r = JSON.parse(await h.engine.planFromTrack(track, activity, sac)); }
-      catch (e) { r = { error: 'The track could not be turned into a route – the routing data may be missing there.' }; console.warn(e); }
+      catch (e) { r = { error: text('plan_from_track_failed') }; console.warn(e); }
       planBtn.disabled = false; planBtn.classList.remove('busy');
       if (shown !== t) return; // closed or replaced meanwhile
       if (!r.points || r.points.length < 2) { err.textContent = r.error ?? ''; err.hidden = false; return; }

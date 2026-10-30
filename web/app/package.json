@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "engine": "node scripts/copy-engine.mjs",
-    "dev": "npm run engine && vite",
-    "build": "npm run engine && tsc --noEmit && vite build",
-    "compare": "node test/browser-compare.mjs"
+    "dev": "npm run engine && npm run strings && vite",
+    "build": "npm run engine && npm run strings && tsc --noEmit && vite build",
+    "compare": "node test/browser-compare.mjs",
+    "strings": "node scripts/gen-strings.mjs"
   },
   "dependencies": {
     "maplibre-gl": "6.13.0",

@@ -1,6 +1,7 @@
 // My position for the locate control and "Go here" (the app's LocateControl + GPS dot). The browser asks for
 // permission on the first use; nothing is sent anywhere.
 import * as maplibregl from 'maplibre-gl';
+import { t } from './i18n';
 
 /** The app's GpsStatus names (recording/LocationTracker.kt), plus UNKNOWN = not asked yet. */
 export type GpsState = 'UNKNOWN' | 'NO_PERMISSION' | 'OFF' | 'SEARCHING' | 'WEAK' | 'GOOD';
@@ -73,7 +74,7 @@ export class Position {
     if (!this.dot) {
       const el = document.createElement('div');
       el.className = 'mypos';
-      el.title = 'Your position';
+      el.title = t('maps_row_your_position');
       this.dot = new maplibregl.Marker({ element: el }).setLngLat([this.fix[1], this.fix[0]]).addTo(this.map);
     } else this.dot.setLngLat([this.fix[1], this.fix[0]]);
   }

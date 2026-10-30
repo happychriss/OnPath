@@ -31,7 +31,9 @@ import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
 import { MapNotices } from './mapnotice';
-import { MapAreas, fmt, type MapTexts } from './areas';
+import { MapAreas, type MapTexts } from './areas';
+import { t, tp, lang, languages, switchLanguage, number, distance } from './i18n';
+import { appHint } from './apphint';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -77,53 +79,61 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
  * what it does); `act` is set further down, once the page's parts exist.
  */
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
-  { id: 'menuPlans', icon: 'folder', label: 'My plans' },
-  { id: 'menuPair', icon: 'sync', label: 'Pair phone' },
-  { id: 'menuShare', icon: 'phone', label: 'Send to phone' },
-  { id: 'menuImportGpx', icon: 'route', label: 'Import GPX' }, // gpximport.ts (the app's My routes → Import GPX)
-  { id: 'menuAbout', icon: 'help', label: 'Help & credits' },
+  { id: 'menuPlans', icon: 'folder', label: t('web_nav_my_plans') },
+  { id: 'menuPair', icon: 'sync', label: t('web_nav_pair') },
+  { id: 'menuShare', icon: 'phone', label: t('web_nav_send') },
+  { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
+  { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
 ];
+/** The website's pages for this language (web/strings: the app, privacy, legal notice) – calm links, new tab. */
+const siteLink = (key: string, label: string, cls = '') =>
+  `<a class="${cls}" href="${t(key)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
 const navItem = (id: string) => NAV.find((n) => n.id === id)!;
 
+document.title = t('web_page_title');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
-    <a class="brand" href="https://onpath.earth" target="_blank" rel="noopener" title="onpath.earth (new tab)">${logo(30)}<span>OnPath</span></a>
-    <span class="product">Planner</span>
-    <button id="menuBtn" class="iconbtn" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
-    <nav id="mainMenu" class="nav" aria-label="Planner">
-      ${NAV.map((n) => `<button id="${n.id}" role="menuitem">${icon(n.icon, 20)}<span>${n.label.replace('&', '&amp;')}</span></button>`).join('')}
+    <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span>OnPath</span></a>
+    <span class="product">${escapeHtml(t('web_product'))}</span>
+    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
+    <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
+      ${NAV.map((n) => `<button id="${n.id}" role="menuitem">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
+      ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
-    <span class="hint muted">No account · plans stay in this browser</span>
+    <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
+    <span id="langSwitch" class="langswitch" role="group" aria-label="${escapeHtml(t('web_lang_switch'))}">${languages.map((l) =>
+      `<button data-lang="${l}" lang="${l}" aria-pressed="${l === lang}" title="${escapeHtml(t('web_lang_name_' + l))}">${l.toUpperCase()}</button>`).join('')}</span>
   </header>
   <div id="stage">
   <div id="map"></div>
   <div id="topbar" class="topbar">
   <div id="searchbox"></div>
   <span class="barsep" aria-hidden="true"></span>
-  <div id="toolbar" class="toolbar" role="toolbar" aria-label="Map tools">
-    <button id="undo" class="tool" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>${icon('undo')}</button>
-    <button id="redo" class="tool" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>${icon('redo')}</button>
+  <div id="toolbar" class="toolbar" role="toolbar" aria-label="${escapeHtml(t('web_map_tools'))}">
+    <button id="undo" class="tool" aria-label="${escapeHtml(t('plan_undo'))}" title="${escapeHtml(t('web_undo_title'))}" disabled>${icon('undo')}</button>
+    <button id="redo" class="tool" aria-label="${escapeHtml(t('plan_redo'))}" title="${escapeHtml(t('web_redo_title'))}" disabled>${icon('redo')}</button>
     <span class="sep"></span>
-    <button id="eye" class="tool" aria-label="Hold to hide the route" title="Hold to hide the route" disabled>${icon('eye')}</button>
+    <button id="eye" class="tool" aria-label="${escapeHtml(t('plan_hold_hide_route'))}" title="${escapeHtml(t('plan_hold_hide_route'))}" disabled>${icon('eye')}</button>
     <button id="compass" class="tool"></button>
     <button id="locate" class="tool"></button>
     <span class="sep"></span>
-    <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="Points of interest, contour lines, hill shading">${icon('layers')}<span>Map content</span>${icon('dropDown', 18)}</button>
+    <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="${escapeHtml(t('web_map_content_title'))}">${icon('layers')}<span>${escapeHtml(t('web_map_content'))}</span>${icon('dropDown', 18)}</button>
   </div>
   </div>
   <div id="placecard" class="placecard" hidden></div>
   <div id="mapnotes" class="mapnotes" hidden></div>
-  <div id="footer"><button id="credits" class="credit" aria-label="Show map credits">© OpenStreetMap</button></div>
-  <section id="sheet" aria-label="Plan">
-    <button id="handle" aria-label="Show or hide the points"><span></span></button>
+  <div id="footer"><button id="credits" class="credit" aria-label="${escapeHtml(t('plan_map_credits'))}">© OpenStreetMap</button>
+    <span class="sitelinks">${siteLink('web_url_privacy', t('web_link_privacy'))}<span aria-hidden="true">·</span>${siteLink('web_url_legal', t('web_link_legal'))}</span></div>
+  <section id="sheet" aria-label="${escapeHtml(t('web_plan_sheet'))}">
+    <button id="handle" aria-label="${escapeHtml(t('web_sheet_handle'))}"><span></span></button>
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
-      <button id="sheetMenuBtn" class="iconbtn" aria-label="Route actions" aria-haspopup="menu">${icon('more')}</button>
+      <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
-        <button id="menuSavePlan" role="menuitem">${icon('save')}Save to My plans</button>
-        <button id="exportGpx" role="menuitem">${icon('download')}Export GPX</button>
-        <hr><button id="clear" role="menuitem">${icon('delete')}Clear route</button>
+        <button id="menuSavePlan" role="menuitem">${icon('save')}${escapeHtml(t('web_save_to_plans'))}</button>
+        <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
+        <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_clear_route'))}</button>
       </div>
     </div>
     <div id="savedLine" class="savedline muted small" hidden></div>
@@ -132,13 +142,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <ul id="spots" class="spots" hidden></ul>
     <div id="profile"></div>
     <div id="pointsSection" hidden>
-      <div class="pointshead"><b>Points</b>
-        <button id="reverse" class="textbtn">${icon('swap', 18)}Reverse</button>
-        <button id="roundTrip" class="textbtn">${icon('loop', 18)}Round trip</button></div>
+      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
+        <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
+        <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button></div>
       <ol id="points"></ol>
     </div>
-    <button id="share" class="primary wide" disabled>${icon('phone')}Send to phone · Share</button>
+    <button id="share" class="primary wide" disabled>${icon('phone')}${escapeHtml(t('web_send_share'))}</button>
     <div id="status" class="status muted" role="status"></div>
+    <div id="apphint"></div>
   </section>
   </div>`;
 
@@ -211,7 +222,7 @@ async function loadStyle(): Promise<StyleSpecification> {
   }));
   for (const id of missing) delete s.sources[id];
   s.layers = s.layers.filter((l) => !('source' in l) || !missing.has(l.source as string));
-  if (missing.size) status(`Map files not found here: ${[...missing].join(', ')}`);
+  if (missing.size) status(t('web_map_files_missing', [...missing].join(', ')));
   return s;
 }
 
@@ -220,9 +231,9 @@ const engine = new EngineClient();
 const planGaps = new PlanGapsLayer(map, engine); // points the route does not reach (plangaps.ts)
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 (window as unknown as { __state: typeof state }).__state = state; // for the browser tests (pace: the plan the sheet shows)
-status('Loading the routing engine…', 'busy');
-const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) => {
-  status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`, r.ok ? 'info' : 'error');
+status(t('web_engine_loading'), 'busy');
+const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang).then((r) => {
+  status(r.ok ? t('web_engine_ready', Math.round(r.stats?.engineLoadMs ?? 0)) : t('web_engine_failed', r.error ?? ''), r.ok ? 'info' : 'error');
   return r.ok;
 });
 // the pace setting (the app's Settings → Pace, Prefs keys hikePaceLevel / bikePaceLevel) before the first plan
@@ -250,9 +261,6 @@ const notices = new MapNotices($('mapnotes'));
 /** The app's texts for the strip and the waits (WebMaps.kt); empty until the engine is there. */
 const mapTexts: Promise<MapTexts> = ready.then(async (ok) => (ok ? JSON.parse(await engine.call('mapTexts')) as MapTexts : {}))
   .catch((e) => { console.warn('map texts not loaded', e); return {}; });
-let texts: MapTexts = {};
-mapTexts.then((t) => { texts = t; });
-const txt = (k: string, fallback: string, ...args: (string | number)[]) => { const v = texts[k]; return typeof v === 'string' ? fmt(v, ...args) : fallback; };
 const areas = useCells ? new MapAreas(map, cells, params.get('mapsApi') ?? base + 'maps/v1/', mapTexts, notices) : null;
 (window as unknown as { __areas: MapAreas | null }).__areas = areas; // for the browser tests
 // the map's tiles still loading 400 ms after it stopped: "Loading the map for your area" with a spinner, until idle
@@ -260,7 +268,7 @@ let loadingTimer = 0;
 map.on('moveend', () => {
   clearTimeout(loadingTimer);
   loadingTimer = window.setTimeout(() => {
-    if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: txt('maps_load_loading', 'Loading the map for your area') });
+    if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: t('maps_load_loading') });
   }, 400);
 });
 map.on('movestart', () => clearTimeout(loadingTimer));
@@ -329,7 +337,7 @@ let hidden = false; // the eye is held
 
 /** stopLabel of the app (ui/MapOverlays.stopLabel – an Android file, so mirrored: 4 lines). */
 function stopLabel(i: number, count: number, name?: string | null) {
-  return name?.trim() ? name : i === 0 ? 'Start' : i === count - 1 && count > 1 ? 'Destination' : `Stop ${i + 1}`;
+  return name?.trim() ? name : i === 0 ? t('plan_point_start') : i === count - 1 && count > 1 ? t('plan_point_destination') : t('plan_point_stop', i + 1);
 }
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
@@ -345,7 +353,7 @@ async function drawPoints() {
     el.className = 'pin';
     el.style.background = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
     el.textContent = state.roundTrip && i === 0 ? '↺' : String(i + 1);
-    el.title = `${stopLabel(i, n, state.meta[i]?.name)} – click for options, drag to move`;
+    el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
     el.style.visibility = hidden ? 'hidden' : '';
     const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([lon, lat]).addTo(map);
     // a dragged point is a new place: no longer pinned or named (as in the app); a loop's start moves its end too
@@ -365,14 +373,14 @@ async function drawPoints() {
     markers.push(m);
   });
   $('points').innerHTML = r.rows.map((row) => {
-    const role = row.role === 'START' ? 'Start' : row.role === 'GOAL' ? 'Destination' : '';
+    const role = row.role === 'START' ? t('plan_point_start') : row.role === 'GOAL' ? t('plan_point_destination') : '';
     const color = row.loop ? COLORS.start : stopColor(row.i, n);
     return `<li data-i="${row.i}">
-      <button class="grip" title="Drag to change the order (or Arrow up / down)" aria-label="Move ${escapeHtml(row.name)}">${icon('drag', 20)}</button>
+      <button class="grip" title="${escapeHtml(t('web_grip_title'))}" aria-label="${escapeHtml(t('web_grip_move', row.name))}">${icon('drag', 20)}</button>
       <span class="num" style="background:${color}">${row.loop ? '↺' : row.i + 1}</span>
-      <span class="txt"><span>${escapeHtml(row.name)}</span>${role || row.loop ? `<span class="muted small">${row.loop ? 'Start & finish' : role}</span>` : ''}</span>
-      ${row.legM != null ? `<span class="leg muted">${row.approx ? '~' : '+'}${(row.legM / 1000).toFixed(1)} km</span>` : '<span class="leg"></span>'}
-      <button class="del iconbtn" aria-label="Delete ${escapeHtml(row.name)}">${icon('close', 20)}</button></li>`;
+      <span class="txt"><span>${escapeHtml(row.name)}</span>${role || row.loop ? `<span class="muted small">${escapeHtml(row.loop ? t('plan_point_start_finish') : role)}</span>` : ''}</span>
+      ${row.legM != null ? `<span class="leg muted">${row.approx ? '~' : '+'}${number(row.legM / 1000, 1)} km</span>` : '<span class="leg"></span>'}
+      <button class="del iconbtn" aria-label="${escapeHtml(t('web_delete_point', row.name))}">${icon('close', 20)}</button></li>`;
   }).join('');
   $<HTMLButtonElement>('roundTrip').disabled = n < 2 || state.roundTrip;
   $<HTMLButtonElement>('reverse').disabled = n < 2;
@@ -451,41 +459,39 @@ const position = new Position(map, () => { renderFabs(); locateNotice(); });
 /** Locate was clicked and its answer is not shown yet: the strip says why the map waits. */
 let locating = false;
 let locateTimer = 0;
-const LOCATE_DENIED = 'Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again.';
-const LOCATE_OFF = 'Your position is not available – location is off or this device cannot find it.';
 function locateNotice() {
   if (!locating) return;
   clearTimeout(locateTimer);
-  const close = { label: 'Hide', onClose: () => { locating = false; } };
+  const close = { label: t('web_hide'), onClose: () => { locating = false; } };
   if (position.fix && (position.status === 'GOOD' || position.status === 'WEAK')) {
     locating = false;
     notices.set('locate', null);
     areas?.wantPoint(position.fix[0], position.fix[1], 'here'); // T3: the detailed map where you are
   } else if (position.status === 'NO_PERMISSION') {
     locating = false;
-    notices.set('locate', { kind: 'error', title: LOCATE_DENIED, close });
+    notices.set('locate', { kind: 'error', title: t('web_locate_denied'), close });
   } else if (position.status === 'OFF') {
     locating = false;
-    notices.set('locate', { kind: 'error', title: LOCATE_OFF, close });
+    notices.set('locate', { kind: 'error', title: t('web_locate_off'), close });
   } else {
-    notices.set('locate', { kind: 'busy', title: 'Finding your position…', close });
+    notices.set('locate', { kind: 'busy', title: t('web_locate_finding'), close });
     // still nothing after 20 s: say so (the browser keeps trying; a fix still moves the map there)
-    locateTimer = window.setTimeout(() => { if (locating && !position.fix) notices.set('locate', { kind: 'busy', title: 'Still finding your position – the browser has not found it yet…', close }); }, 20_000);
+    locateTimer = window.setTimeout(() => { if (locating && !position.fix) notices.set('locate', { kind: 'busy', title: t('web_locate_still'), close }); }, 20_000);
   }
 }
 
 /** "Go here": the item and its reason when it cannot be used (the app's MapGestures.fromMeBlocked). */
 async function goHereItem(onGo: () => void): Promise<MenuItem> {
   const blocked = position.status === 'UNKNOWN' ? '' : await engine.call('fromMeBlocked', position.status, position.fix != null);
-  return { icon: 'gpsFixed', label: 'Go here', sub: blocked || (position.fix ? 'From your position' : 'From your position – asks for it'),
+  return { icon: 'gpsFixed', label: t('plan_go_here'), sub: blocked || (position.fix ? t('web_from_position') : t('web_from_position_ask')),
     disabled: !!blocked, act: onGo };
 }
 
 /** From my position to [to] (first point = me, unpinned). */
 async function fromMe(to: LatLon, toMeta: Meta) {
-  status('Finding your position…', 'busy');
+  status(t('web_locate_finding'), 'busy');
   const me = await position.once();
-  if (!me) { status('Your position is not available. Set the start on the map.', 'error'); return; }
+  if (!me) { status(t('web_position_unavailable'), 'error'); return; }
   status('');
   await commit([me, to], [{ pinned: false }, toMeta]);
 }
@@ -494,9 +500,9 @@ async function fromMe(to: LatLon, toMeta: Meta) {
 async function firstPointMenu(at: maplibregl.LngLat) {
   const p: LatLon = [at.lat, at.lng];
   openMenu(at, [
-    { icon: 'tripOrigin', label: 'Start here', act: () => commit([p], [{ pinned: false }]) },
+    { icon: 'tripOrigin', label: t('plan_start_here'), act: () => commit([p], [{ pinned: false }]) },
     await goHereItem(() => fromMe(p, { pinned: false })),
-  ], `<b>New route</b>`);
+  ], `<b>${escapeHtml(t('plan_new_route'))}</b>`);
 }
 
 /** Point menu: number + name, then the app's entries for this point (MapGestures.pointMenu, in the engine). */
@@ -505,10 +511,10 @@ async function pointMenu(i: number) {
   const [lat, lon] = state.points[i];
   const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip));
   const items: MenuItem[] = acts.map((a): MenuItem => {
-    if (a === 'MAKE_START') return { icon: 'tripOrigin', label: 'Start here', sub: `Removes the ${i === 1 ? '1 point' : `${i} points`} before it`, act: () => applyEdit('startHere', i) };
-    if (a === 'LOOP_START') return { icon: 'tripOrigin', label: 'Start & finish here', sub: 'Same round trip, starts here', act: () => applyEdit('startHere', i) };
-    if (a === 'GOOGLE') return { icon: 'map', label: 'Open in Google Maps', act: () => google(name ?? '', lat, lon, '') };
-    return { icon: 'delete', label: 'Delete', danger: true, act: () => deletePoint(i) };
+    if (a === 'MAKE_START') return { icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), act: () => applyEdit('startHere', i) };
+    if (a === 'LOOP_START') return { icon: 'tripOrigin', label: t('plan_start_finish_here'), sub: t('plan_same_round_trip'), act: () => applyEdit('startHere', i) };
+    if (a === 'GOOGLE') return { icon: 'map', label: t('plan_open_google_maps'), act: () => google(name ?? '', lat, lon, '') };
+    return { icon: 'delete', label: t('common_delete'), danger: true, act: () => deletePoint(i) };
   });
   const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
   openMenu(new maplibregl.LngLat(lon, lat), items,
@@ -523,10 +529,10 @@ async function poiMenu(f: MapGeoJSONFeature) {
   if (!info) return;
   const hit = { title: info.title, name: pr.name ? String(pr.name) : null, lat, lon } as Hit;
   const items: MenuItem[] = state.points.length === 0
-    ? [{ icon: 'tripOrigin', label: 'Start here', act: () => addPlace(hit, 'START') },
+    ? [{ icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') },
       await goHereItem(() => fromMe([Number(lat.toFixed(6)), Number(lon.toFixed(6))], { pinned: true, name: info.title }))]
-    : [{ icon: 'addLocation', label: 'Add to route', act: () => addPlace(hit, 'SMART') }];
-  items.push({ icon: 'map', label: 'Open in Google Maps', act: () => window.open(info.google, '_blank', 'noopener') });
+    : [{ icon: 'addLocation', label: t('plan_add_to_route'), act: () => addPlace(hit, 'SMART') }];
+  items.push({ icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') });
   openMenu(new maplibregl.LngLat(lon, lat), items,
     `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`);
 }
@@ -544,9 +550,12 @@ async function openFromLink() {
   linkChecked = true;
   if (!/[#&?]p=/.test(location.href)) return;
   const shared = await engine.parse(location.href);
-  if (!shared) { status('This link does not contain a readable plan.', 'error'); return; }
+  if (!shared) { status(t('web_link_unreadable'), 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
   forgetSaved();
+  // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
+  // there before the camera fits the plan beside the sheet)
+  if (shared.points.length >= 2) appHint($('apphint'));
   await loadShared(shared);
 }
 
@@ -604,22 +613,23 @@ async function changed() {
   newPointsAsked();
   // waits said where the user acted (the sheet): the routing data download (the app's "Loading the map for your area ·
   // about 9 MB", map-cells.md §19.8), then "Calculating the route…"
-  const calculating = () => txt('plan_calculating', 'Calculating the route…');
+  const calculating = () => t('plan_calculating');
   status(calculating(), 'busy');
   const r = await engine.plan(state.points, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
-    if (pr.phase === 'download') status(`${txt('maps_load_loading', 'Loading the map for your area')} · ${txt('maps_about_mb', `about ${Math.max(1, Math.round(pr.bytes / 1e6))} MB`, Math.max(1, Math.round(pr.bytes / 1e6)))}`, 'busy');
+    if (pr.phase === 'download') status(`${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}`, 'busy');
     else status(calculating(), 'busy');
   });
   if (id !== state.latest) return; // a newer request supersedes this one
   state.planning = false;
-  if (!r.ok || !r.plan) { status(`Planning failed: ${r.error}`, 'error'); render(); return; }
+  if (!r.ok || !r.plan) { status(t('web_plan_failed', r.error ?? ''), 'error'); render(); return; }
   state.plan = r.plan;
   await planGaps.update(state.points, state.activity, namesText()); // points the route does not reach (app: PlanGaps)
   if (id !== state.latest) return;
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   const s = r.stats!;
-  status(`Planned in ${Math.round(s.routeMs)} ms` + (s.bytesFetched ? ` · routing data ${(s.bytesFetched / 1e6).toFixed(1)} MB in ${Math.round(s.fetchMs)} ms` : ''));
+  status(s.bytesFetched ? t('web_planned_in_data', Math.round(s.routeMs), number(s.bytesFetched / 1e6, 1), Math.round(s.fetchMs))
+    : t('web_planned_in', Math.round(s.routeMs)));
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
 }
@@ -659,10 +669,10 @@ function render() {
   const sub = document.querySelector<HTMLDivElement>('#summary .subline')!;
   const notice = $('notice');
   if (!p) {
-    head.innerHTML = '<span class="title">Plan a route</span>';
+    head.innerHTML = `<span class="title">${escapeHtml(t('plan_plan_a_route'))}</span>`;
     const n = state.points.length;
-    sub.textContent = n === 0 ? 'Click the map where you want to start or go.'
-      : n === 1 ? 'Click the map to set the destination.' : state.notRouted ? notRoutedTexts.line : 'Calculating the route…';
+    sub.textContent = n === 0 ? t('web_hint_first_point')
+      : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : t('plan_calculating');
     if (state.notRouted && n >= 2) {
       const b = document.createElement('button');
       b.className = 'textbtn'; b.id = 'planAnyway'; b.textContent = notRoutedTexts.button;
@@ -682,7 +692,7 @@ function render() {
     notice.innerHTML = red ? `⚠ ${escapeHtml(red)}` : '';
     if (planGaps.last.text) {
       const b = document.createElement('button');
-      b.className = 'textbtn'; b.id = 'showGap'; b.textContent = 'Show';
+      b.className = 'textbtn'; b.id = 'showGap'; b.textContent = t('common_show');
       b.onclick = () => planGaps.show(fitPadding());
       notice.append(' ', b);
     }
@@ -705,7 +715,7 @@ async function renderSaved() {
   line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
   if (line.hidden) return;
   const changed = state.savedCode != null && (await ready) && (await engine.encode(sharedPlan())) !== state.savedCode;
-  line.innerHTML = `${icon('check', 16)}<span>Saved as <b>${escapeHtml(state.savedTitle!)}</b>${changed ? ' · changed since' : ''}</span>`;
+  line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(state.savedTitle!)}</b>`)}</span>`;
 }
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
@@ -726,12 +736,12 @@ async function setPace(group: 'hike' | 'bike', level: string) {
   state.plan.timeS = t.timeS; state.plan.texts.time = t.time;
   render();
 }
-engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => status(`Activity names not loaded: ${e}`, 'error'));
+engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => status(t('web_activities_failed', String(e)), 'error'));
 function renderChip() {
   const row = picker.row(state.activity);
   $('activityChip').innerHTML = `${activityIcon(state.activity, 20)}<span>${escapeHtml(row?.chip ?? state.activity)}` +
     `${state.activity === 'HIKE' ? ' · T' + state.sac : ''}</span>${icon('dropDown', 18)}`;
-  $('activityChip').setAttribute('aria-label', `Activity: ${row?.label ?? state.activity}${state.activity === 'HIKE' ? ' T' + state.sac : ''}. Change`);
+  $('activityChip').setAttribute('aria-label', t('web_activity_chip_desc', `${row?.label ?? state.activity}${state.activity === 'HIKE' ? ' T' + state.sac : ''}`));
 }
 function setActivity(a: Activity, sac: number, plan: boolean) {
   const same = a === state.activity && sac === state.sac;
@@ -748,7 +758,7 @@ function renderFabs() {
   const b = map.getBearing();
   const c = $('compass');
   c.innerHTML = needle(b);
-  const what = Math.abs(b) > 1 ? 'Map is turned. Click for north up' : 'Map is north up. Turn it with the right mouse button or two fingers';
+  const what = Math.abs(b) > 1 ? t('web_compass_turned') : t('web_compass_north');
   c.title = what; c.setAttribute('aria-label', what);
   $<HTMLButtonElement>('eye').disabled = !state.plan || state.points.length < 2;
   $<HTMLButtonElement>('undo').disabled = !state.canUndo;
@@ -756,8 +766,8 @@ function renderFabs() {
   const l = $('locate');
   l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed') + `<span class="gpsdot ${position.dotClass}"></span>`;
   l.classList.toggle('on', position.following);
-  const lw = position.status === 'OFF' ? 'Location is off or not available here' : position.status === 'NO_PERMISSION'
-    ? 'Location not allowed in this browser' : 'Centre on my position';
+  const lw = position.status === 'OFF' ? t('web_locate_off_title') : position.status === 'NO_PERMISSION'
+    ? t('web_locate_denied_title') : t('web_locate_title');
   l.title = lw; l.setAttribute('aria-label', lw);
 }
 map.on('rotate', () => renderFabs());
@@ -858,7 +868,7 @@ const plansHost = {
   openId: () => state.savedId,
   open: async (p: { id: string; plan: string; title: string | null }) => {
     const shared = await engine.parse('p=' + p.plan);
-    if (!shared) { status('This saved plan could not be read.', 'error'); return; }
+    if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan;
     if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; render(); return; }
     await loadShared({ ...shared, title: p.title });
@@ -867,7 +877,7 @@ const plansHost = {
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title;
     rememberInAddress();
     render();
-    status(`Saved as “${p.title ?? 'Plan'}”`);
+    status(t('plan_saved_as', p.title ?? t('web_plan_default')));
   },
   suggestName,
 };
@@ -884,7 +894,7 @@ async function suggestName(): Promise<string> {
     const names = [pinnedName(0), pinnedName(state.points.length - 1), ...via].map((n) => n.replace(/\t/g, ' ')).join('\t');
     return await engine.call('routeName', enc(thin as LatLon[]), names);
   } catch (e) {
-    status(`No name proposed: ${e}`);
+    status(t('web_no_name', String(e)));
     return '';
   }
 }
@@ -903,8 +913,8 @@ $('exportGpx').onclick = async () => {
 };
 const share = async () => {
   closeMenus();
-  if (state.points.length < 2) { status('Set a start and a destination first.'); return; }
-  shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title);
+  if (state.points.length < 2) { status(t('plan_err_set_start_dest')); return; }
+  shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint);
 };
 $('share').onclick = share;
 navItem('menuShare').act = share;
@@ -939,24 +949,26 @@ $('spots').addEventListener('click', (e) => {
 function credits() {
   const d = document.createElement('dialog');
   d.className = 'share';
-  d.innerHTML = `<h2>OnPath web planner</h2>
-    <p class="muted">A test page: the OnPath app's own planning code in your browser. Your plan stays in the link and,
-      once saved, in this browser (and on your paired phone, end-to-end encrypted). No account.</p>
-    <b>How to plan</b><ul class="credits"><li>Click the map to set the start, then the destination and stops; click a point for its menu.</li>
-      <li>Search a place, then add it from its card. Drag ≡ in Points to change the order.</li>
-      <li>Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</li>
-      <li>Send to phone: a QR code the OnPath app scans – or pair the phone once and save plans to My plans.</li></ul>
-    <b>Credits</b><ul class="credits">${['Map data © OpenStreetMap contributors (ODbL)', 'Vector tile schema © OpenMapTiles',
-      'Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)', 'Routing: BRouter (MIT)',
-      'Search online: Photon by komoot (OpenStreetMap data)', 'POI icons: Maki and Temaki (CC0)',
-      'Map renderer: MapLibre GL JS (BSD licence)'].map((t) => `<li>${t}</li>`).join('')}
-      <li>Typeface: Manrope, © The Manrope Project Authors, <a href="${manropeLicence}" target="_blank" rel="noopener">SIL Open Font License 1.1</a></li></ul>
-    <p class="muted small">Licence: Apache-2.0</p><div class="row"><button class="primary" id="closeCredits">Close</button></div>`;
+  const li = (k: string) => `<li>${escapeHtml(t(k))}</li>`;
+  d.innerHTML = `<h2>${escapeHtml(t('web_about_title'))}</h2>
+    <p class="muted">${escapeHtml(t('web_about_text'))}</p>
+    <b>${escapeHtml(t('web_about_how'))}</b><ul class="credits">${['web_about_how_1', 'web_about_how_2', 'web_about_how_3', 'web_about_how_4'].map(li).join('')}</ul>
+    <b>${escapeHtml(t('settings_about_credits'))}</b><ul class="credits">${['settings_credit_osm', 'settings_credit_omt', 'settings_credit_terrain',
+      'settings_credit_ne', 'settings_credit_brouter', 'web_credit_photon', 'settings_credit_icons', 'web_credit_maplibre'].map(li).join('')}
+      <li>${escapeHtml(t('web_credit_font'))} <a href="${manropeLicence}" target="_blank" rel="noopener">SIL Open Font License 1.1</a></li></ul>
+    <p class="muted small">${escapeHtml(t('settings_about_licence'))} · ${siteLink('web_url_privacy', t('web_link_privacy'))} · ${siteLink('web_url_legal', t('web_link_legal'))}</p>
+    <div class="row"><button class="primary" id="closeCredits">${escapeHtml(t('common_close'))}</button></div>`;
   document.body.append(d);
   d.querySelector<HTMLButtonElement>('#closeCredits')!.onclick = () => d.close();
   d.addEventListener('close', () => d.remove());
   d.showModal();
 }
+
+// the language switch (i18n.ts): remembered, the page reloads in that language (the plan stays in the address)
+$('langSwitch').addEventListener('click', (e) => {
+  const l = (e.target as HTMLElement).closest<HTMLElement>('[data-lang]')?.dataset.lang as typeof lang | undefined;
+  if (l && l !== lang) switchLanguage(l);
+});
 
 // phone layout: the map controls and the footer sit above the sheet
 new ResizeObserver(() => document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px')).observe($('sheet'));

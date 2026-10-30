@@ -46,7 +46,8 @@ function sharedFiles() {
   const tests = list('appTests').map((f) => 'app/src/test/java/com/onpath/app/' + f);
   const dir = (d, re) => fs.readdirSync(path.join(repo, d)).filter((f) => re.test(f)).sort().map((f) => `${d}/${f}`);
   return [...main, ...tests, 'app/src/main/java/btools/router/OnPathHints.java',
-    ...dir('strings/src/commonMain/composeResources/values', /\.xml$/), ...dir('app/libs', /\.jar$/),
+    ...dir('strings/src/commonMain/composeResources/values', /\.xml$/), ...dir('strings/src/commonMain/composeResources/values-de', /\.xml$/),
+    ...dir('app/libs', /\.jar$/),
     ...dir('app/src/main/assets/brouter', /\.(brf|dat)$/), 'app/src/main/assets/style/f2/onpath.json'];
 }
 

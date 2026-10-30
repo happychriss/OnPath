@@ -3,6 +3,7 @@
 // item format, the conflict rule (newer wins, the older stays as a copy). This file only stores the ledger text
 // (IndexedDB) and talks to the mailbox (/sync/v1/, same host – encrypted blobs only).
 import type { EngineClient } from './engine/client';
+import { t } from './i18n';
 
 export interface SavedPlan { id: string; title: string | null; plan: string; updatedAt: number; mine: boolean }
 export interface Device { name: string; updatedAt: number }
@@ -74,7 +75,7 @@ export class PlanSync {
   async init() {
     if (!(await this.store.get('device'))) await this.store.set('device', await this.call('syncNewDevice', rand(8)));
     await this.refresh();
-    if (!this.store.persistent) this.say('This browser does not keep saved plans after the tab is closed (storage blocked).', 'warning');
+    if (!this.store.persistent) this.say(t('web_sync_not_kept'), 'warning');
     const tick = () => { if (document.visibilityState === 'visible') this.syncSoon(0); };
     this.timer = window.setInterval(tick, EVERY_MS);
     addEventListener('online', tick);
@@ -118,9 +119,9 @@ export class PlanSync {
       const k = await this.keys(pair);
       try {
         const r = await this.fetch(k.mailbox, { method: 'POST' }, k.token);
-        if (!r.ok) return { error: `The sync server refused a new pairing (${r.status}). Try again later.` };
+        if (!r.ok) return { error: t('web_sync_pair_refused', r.status) };
       } catch {
-        return { error: 'Pairing needs the internet. Check the connection and try again.' }; // expected: offline
+        return { error: t('web_sync_pair_offline') }; // expected: offline
       }
       await this.store.set('pair', pair);
       await this.refresh();
@@ -132,10 +133,10 @@ export class PlanSync {
   /** Joins the pairing in [text] (a #pair= link) – what the phone app does after scanning. Null = done, else why not. */
   async join(text: string): Promise<string | null> {
     const pair = await this.call('syncPairParse', text);
-    if (!pair) return 'This is not a pairing code of OnPath.';
+    if (!pair) return t('web_sync_not_a_code');
     const now = await this.store.get('pair');
     if (now === pair) return null;
-    if (now) return 'This browser is already paired. Unpair it first (☰ → Pair phone).';
+    if (now) return t('web_sync_already_paired');
     await this.store.set('pair', pair);
     await this.refresh();
     await this.syncNow();
@@ -149,13 +150,13 @@ export class PlanSync {
     const k = await this.keys(pair);
     try {
       const r = await this.fetch(k.mailbox, { method: 'DELETE' }, k.token);
-      if (!r.ok && r.status !== 410 && r.status !== 404) return `Unpairing failed (${r.status}). Try again later.`;
+      if (!r.ok && r.status !== 410 && r.status !== 404) return t('web_sync_unpair_failed', r.status);
     } catch {
-      return 'Unpairing needs the internet, so that the phone stops too. Check the connection and try again.'; // expected: offline
+      return t('web_sync_unpair_offline'); // expected: offline
     }
     await this.locked(() => this.forget());
     await this.refresh();
-    this.say('Unpaired. Your plans stay in this browser.', 'info');
+    this.say(t('web_sync_unpaired'), 'info');
     return null;
   }
 
@@ -178,9 +179,9 @@ export class PlanSync {
           await this.forget();
           this.say(e.message, 'warning');
         } else if (e instanceof TypeError || (e as Error).name === 'TimeoutError' || !navigator.onLine) {
-          this.say('Offline – your plans sync when the connection is back.', 'info'); // expected: no network
+          this.say(t('web_sync_offline'), 'info'); // expected: no network
         } else {
-          this.say(`Sync failed: ${(e as Error).message}`, 'error');
+          this.say(t('web_sync_failed', (e as Error).message), 'error');
           console.warn('[Problems] WARN sync', e);
         }
       }
@@ -207,7 +208,7 @@ export class PlanSync {
         const cut = out.lastIndexOf('#bad ');
         await this.setLedger(out.slice(0, cut));
         const bad = Number(out.slice(cut + 5));
-        if (bad > 0) this.say(`${bad} synced item(s) could not be read (made by a newer app?). They are left as they are.`, 'warning');
+        if (bad > 0) this.say(t('web_sync_unreadable', bad), 'warning');
         if (!body.more) break;
       }
       // 2. push what changed here; 409 = another device wrote first → read again, the merge keeps both
@@ -229,10 +230,10 @@ export class PlanSync {
   }
 
   private async refused(r: Response): Promise<never> {
-    if (r.status === 410 || r.status === 403) throw new Gone('The pairing was ended on the other device. Your plans stay in this browser.');
-    if (r.status === 429) throw new Error('the sync server is busy – it tries again in a minute');
-    if (r.status === 507) throw new Error((await r.json().catch(() => ({}))).error ?? 'too many saved plans');
-    throw new Error(`the sync server answered ${r.status}`);
+    if (r.status === 410 || r.status === 403) throw new Gone(t('web_sync_gone'));
+    if (r.status === 429) throw new Error(t('web_sync_busy'));
+    if (r.status === 507) throw new Error(t('web_sync_full'));
+    throw new Error(t('web_sync_answered', r.status));
   }
 
   /** Forgets the pairing (call inside [locked]); the plans stay and upload again after a new pairing. */
@@ -284,10 +285,10 @@ export class PlanSync {
 /** "Firefox on Linux" – what the phone shows as the paired browser (encrypted, never seen by the server). */
 export function deviceName(ua = navigator.userAgent): string {
   const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome'
-    : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+    : /Safari\//.test(ua) ? 'Safari' : t('web_device_browser');
   const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows'
     : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
-  return os ? `${browser} on ${os}` : browser;
+  return os ? t('web_device_name', browser, os) : browser;
 }
 
 function rand(n: number): string {

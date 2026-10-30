@@ -1,5 +1,6 @@
 // Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
 import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, Progress, SharedPlan } from './types';
+import { t } from '../i18n';
 
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
@@ -20,7 +21,7 @@ export class EngineClient {
     // page waiting forever – every open request gets a plain failure the caller already shows
     const failAll = (why: string) => {
       console.error('[engine] ' + why); // reported like the app's Problems log (console in the browser)
-      for (const [id, resolve] of this.waiting) resolve({ id, ok: false, error: 'The planner stopped unexpectedly – please reload the page.' });
+      for (const [id, resolve] of this.waiting) resolve({ id, ok: false, error: t('web_engine_stopped') });
       this.waiting.clear();
     };
     this.worker.onerror = (e) => failAll('worker error: ' + (e.message || 'unknown'));
@@ -37,7 +38,7 @@ export class EngineClient {
       const timer = setTimeout(() => {
         if (!this.waiting.delete(id)) return;
         console.error(`[engine] no answer to "${req.type}" in ${EngineClient.NO_ANSWER_MS / 1000} s`);
-        resolve({ id, ok: false, error: 'The planner did not answer – please reload the page.' });
+        resolve({ id, ok: false, error: t('web_engine_no_answer') });
       }, EngineClient.NO_ANSWER_MS);
       this.waiting.set(id, (r) => { clearTimeout(timer); resolve(r); });
       this.worker.postMessage({ ...req, id } as EngineRequest);
@@ -45,7 +46,7 @@ export class EngineClient {
   }
 
   /** [base] = where engine/ and brouter/ are served; [segments] = rd5 files with HTTP range support. */
-  configure(base: string, segments: string, packed = false) { return this.ask({ type: 'config', base, segments, packed }); }
+  configure(base: string, segments: string, packed = false, lang = 'en') { return this.ask({ type: 'config', base, segments, packed, lang }); }
 
   route(points: [number, number][], activity: Activity, sac: number) {
     return this.ask({ type: 'route', points: enc(points), activity, sac });

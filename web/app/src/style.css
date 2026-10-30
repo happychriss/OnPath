@@ -292,3 +292,22 @@ dialog.pair .check b { letter-spacing: .08em; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner, .status.busy::before { animation-duration: 3s; } }
 @media (max-width: 700px) { .mapnotes { top: 122px; left: 12px; right: 12px; width: auto; max-width: none; } }
+
+/* ---- website links, language switch, the one line about the app (A-011; web-planner.md §18) ---- */
+.nav a.navlink { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 15px; color: var(--site-fg); text-decoration: none; }
+.nav a.navlink:hover { background: var(--site-soft); }
+.langswitch { display: inline-flex; flex: none; margin-left: 12px; border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; }
+.langswitch button { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 5px 8px; }
+.langswitch button[aria-pressed="true"] { background: var(--site-soft); color: var(--site-fg); }
+.langswitch button:hover { color: var(--site-fg); }
+@media (max-width: 1020px) { .langswitch { margin-left: auto; } }
+.sitelinks { display: inline-flex; gap: 6px; align-items: center; background: rgba(255,255,255,.7); color: #333; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+.sitelinks a { color: #333; text-decoration: none; } .sitelinks a:hover { text-decoration: underline; }
+.apphint { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 6px 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+.apphint .txt { flex: 1; color: var(--muted); }
+.apphint a.outline { flex: none; border: 1px solid var(--muted); color: var(--green-fg); border-radius: 18px; padding: 5px 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.apphint .x { flex: none; width: 32px; height: 32px; font-size: 18px; color: var(--muted); }
+@media (max-width: 700px) {
+  .langswitch { order: 1; margin-left: auto; } #menuBtn { order: 2; margin-left: 0; }
+  .nav.open a.navlink { padding: 12px 18px; border-radius: 0; }
+}
