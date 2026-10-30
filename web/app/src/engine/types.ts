@@ -1,7 +1,7 @@
 export type Activity = 'BIKE_TOURING' | 'BIKE_TREKKING' | 'EBIKE' | 'MTB' | 'EMTB' | 'HIKE';
 
 export type EngineRequest =
-  | { id: number; type: 'config'; base: string; segments: string; packed?: boolean }
+  | { id: number; type: 'config'; base: string; segments: string; packed?: boolean; lang?: string }
   | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number; pinned?: string }
   | { id: number; type: 'encode'; plan: SharedPlan }
   | { id: number; type: 'parse'; text: string }

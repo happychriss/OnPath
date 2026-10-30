@@ -7,6 +7,7 @@ import { fetchPacked } from '../b64';
 
 interface WasmEngine {
   init(root: string): void;
+  setLanguage(lang: string): string;
   putFile(path: string, data: Int8Array): void;
   partsNeeded(points: string): string;
   putLayout(tile: string, index: Int8Array, tail: Int8Array): void;
@@ -64,6 +65,7 @@ declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngin
 
 let base = '';
 let segments = '';
+let lang = 'en'; // the text language (Txt.setLanguage), from the page's config before the engine loads
 let packed = false; // preview host: rd5 published as <name>.b64.txt (see packed.ts)
 const loadMs = { engine: 0 };
 
@@ -79,6 +81,7 @@ function getEngine(): Promise<WasmEngine> {
     await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js', base).href);
     const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm', base).href);
     exports.init('/onpath');
+    exports.setLanguage(lang); // the page's language (i18n.ts) for the app's texts the engine writes
     const list: string[] = await (await fetch(new URL('brouter/index.json', base))).json();
     await Promise.all(list.map(async (f) => {
       const buf = await (await fetch(new URL('brouter/' + f, base))).arrayBuffer();
@@ -215,7 +218,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
   try {
     if (req.type === 'config') {
-      base = req.base; segments = req.segments; packed = !!req.packed;
+      base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en';
       const e = await getEngine();
       reply({ id: req.id, ok: true, stats: { engineLoadMs: loadMs.engine } as RouteStats, problems: JSON.parse(e.problems()) });
       return;

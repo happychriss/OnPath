@@ -23,6 +23,7 @@ import com.onpath.app.recording.GpsStatus
 import com.onpath.app.ui.MapGestures
 import com.onpath.app.ui.PlanHistory
 import com.onpath.app.ui.RouteWarnings
+import com.onpath.strings.*
 import org.teavm.jso.JSExport
 import org.teavm.jso.typedarrays.Int8Array
 import java.io.File
@@ -191,7 +192,7 @@ object Engine {
                 append(",\"texts\":{\"time\":").append(str(Format.duration(times)))
                 append(",\"distance\":").append(str(Format.distance(p.distanceM)))
                 append(",\"climb\":").append(str("↑ ${Format.meters(p.ascentM)}  ↓ ${Format.meters(p.descentM)}" +
-                    (top?.let { "  ·  max ${Format.meters(it)}" } ?: ""))).append('}')
+                    (top?.let { "  ·  " + Txt.s(Res.string.plan_max_height, Format.meters(it)) } ?: ""))).append('}')
                 append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
                 // route warnings and hints, the app's amber line and its "On this route" rows (ui/RouteWarnings)
                 val spots = if (p.points.size >= 2) RouteWarnings.detect(p.points, act, sac) else emptyList()
@@ -393,7 +394,7 @@ object Engine {
      */
     fun gpx(name: String, activity: String, sac: Int): String {
         val line = lastPlan?.second?.points?.takeIf { it.size >= 2 } ?: return "null"
-        val n = name.ifBlank { "OnPath route" }
+        val n = name.ifBlank { Txt.s(Res.string.msg_name_share) }
         val text = com.onpath.app.gpx.GpxWriter.write(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
             type = com.onpath.app.gpx.SportType.typeOf(Activity.valueOf(activity), sac))
         return "{\"file\":" + str(com.onpath.app.gpx.GpxWriter.fileName(n)) + ",\"gpx\":" + str(text) + "}"
@@ -441,6 +442,9 @@ class WebContext(private val dir: File) : android.content.Context() {
 // ---- Exports for the browser (TeaVM) ----
 
 @JSExport fun init(rootDir: String) = Engine.init(rootDir)
+
+/** The text language of everything the engine writes ("en", "de"; web-planner.md §18). Returns the one used. */
+@JSExport fun setLanguage(lang: String): String = com.onpath.strings.Txt.setLanguage(lang)
 
 @JSExport fun putFile(relPath: String, data: Int8Array) = Engine.putFile(relPath, data.copyToJavaArray())
 
