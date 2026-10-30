@@ -1,6 +1,15 @@
 # All JVM unit tests (incl. the screenshot tests) after every push to main that touches the app – beside the release,
 # not a gate (the release runs only the risk-based selection, tools/ci/risk_tests.py; owner). Like the E2E
 # run: a red run is fixed at once.
+#
+# Screenshots: the unit run is also the Paparazzi check – every snapshot compared with the images in
+# app/src/test/snapshots/images/ (verifyPaparazziDebug runs the same test task in verify mode, so the suite runs once).
+# A changed screen = record locally (./gradlew :app:recordPaparazziDebug), look at the images, commit them.
+#
+# Lint: its own job, reports only (owner: not failing the build at first). Known findings are in app/lint-baseline.xml,
+# so the report and the job summary list only NEW issues.
+#
+# Actions pinned to a commit (# = its release), like maps-deploy.yml.
 name: Unit tests
 
 on:
@@ -24,23 +33,56 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Risk selection script
         run: cd tools/ci && python3 -m unittest -q test_risk_tests
-      - name: All unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
-      - name: Test report
+      - name: All unit tests + screenshot check
+        run: ./gradlew --no-daemon testDebugUnitTest verifyPaparazziDebug
+      - name: Test report + screenshot differences
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unit-report
-          path: app/build/reports/tests/
+          path: |
+            app/build/reports/tests/
+            app/build/paparazzi/failures/
+          if-no-files-found: ignore
           retention-days: 7
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+      # abortOnError = false (app/build.gradle.kts): findings never fail this step; continue-on-error keeps a lint
+      # crash from turning the run red while lint only reports
+      - name: Android lint (new findings only – the rest is in app/lint-baseline.xml)
+        continue-on-error: true
+        run: ./gradlew --no-daemon :app:lintDebug
+      - name: Lint summary
+        if: always()
+        run: python3 tools/ci/lint_summary.py app/build/reports/lint-results-debug.xml >> "$GITHUB_STEP_SUMMARY"
+      - name: Lint report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+          retention-days: 14

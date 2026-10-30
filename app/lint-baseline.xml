@@ -1,0 +1,1177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.4.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.1)" variant="all" version="9.4.1">
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs(a).edit().putString(&quot;tree&quot;, tree?.toString()).putString(&quot;treeLabel&quot;, label).remove(&quot;lastError&quot;).commit()"
+        errorLine2="                                                                                                                  ~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="110"
+            column="115"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="                            TdCell(String.format(&quot;%.1f&quot;, row.kmh), 0.9f)"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/TimeDetailsScreen.kt"
+            line="109"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="                            TdCell(String.format(&quot;%.1f&quot;, if (row.wayS > 0) row.distanceM / row.wayS * 3.6 else 0.0), 0.9f)"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/TimeDetailsScreen.kt"
+            line="127"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="private fun f2(v: Double) = String.format(&quot;%.2f&quot;, v)"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/TimeDetailsScreen.kt"
+            line="149"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 26): `android.location.LocationManager#isLocationEnabled`"
+        errorLine1="                if (sdk >= 28) lm.isLocationEnabled"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/setup/PhoneStateReader.kt"
+            line="53"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 26): `android.app.ActivityManager#isBackgroundRestricted`"
+        errorLine1="                sdk >= 28 &amp;&amp; ctx.getSystemService(ActivityManager::class.java).isBackgroundRestricted"
+        errorLine2="                                                                               ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/setup/PhoneStateReader.kt"
+            line="65"
+            column="80"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 26): `android.app.usage.UsageStatsManager#getAppStandbyBucket`"
+        errorLine1="                if (sdk >= 28) ctx.getSystemService(UsageStatsManager::class.java).appStandbyBucket else null"
+        errorLine2="                                                                                   ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/setup/PhoneStateReader.kt"
+            line="68"
+            column="84"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 26): `android.os.PowerManager#getLocationPowerSaveMode`"
+        errorLine1="            locationSaverMode = guard(null, &quot;battery saver location mode&quot;) { if (sdk >= 28) pm.locationPowerSaveMode else null },"
+        errorLine2="                                                                                               ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/setup/PhoneStateReader.kt"
+            line="71"
+            column="96"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 35"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="28"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="FullBackupContent"
+        message="`sync/` is not in an included path"
+        errorLine1="    &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
+        errorLine2="                                 ~~~~~">
+        <location
+            file="src/main/res/xml/backup_rules.xml"
+            line="14"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="FullBackupContent"
+        message="`sync/` is not in an included path"
+        errorLine1="        &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
+        errorLine2="                                     ~~~~~">
+        <location
+            file="src/main/res/xml/data_extraction_rules.xml"
+            line="16"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="FullBackupContent"
+        message="`sync/` is not in an included path"
+        errorLine1="        &lt;exclude domain=&quot;file&quot; path=&quot;sync/&quot; />"
+        errorLine2="                                     ~~~~~">
+        <location
+            file="src/main/res/xml/data_extraction_rules.xml"
+            line="24"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="            override fun i(tag: String, msg: String) { Log.i(tag, msg) }"
+        errorLine2="                                                       ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/OnPathApp.kt"
+            line="59"
+            column="56"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="            override fun i(tag: String, msg: String, tr: Throwable?) { Log.i(tag, msg, tr) }"
+        errorLine2="                                                                       ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/OnPathApp.kt"
+            line="60"
+            column="72"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="    private fun log(msg: String) { try { Log.i(&quot;OnPath&quot;, msg) } catch (_: Throwable) { } }"
+        errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/OptionalSources.kt"
+            line="41"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="                Level.INFO -> Log.i(TAG, msg, t)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/debug/Problems.kt"
+            line="226"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="                Level.WARN -> Log.w(TAG, msg, t)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/debug/Problems.kt"
+            line="227"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="                Level.ERROR, Level.CRASH -> Log.e(TAG, msg, t)"
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/debug/Problems.kt"
+            line="228"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="            Log.i(&quot;OnPath&quot;, &quot;reroute #${job.id}: &quot; + when (out) {"
+        errorLine2="            ^">
+        <location
+            file="src/main/java/com/onpath/app/recording/RecordingService.kt"
+            line="582"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="                Log.i(&quot;OnPath&quot;, &quot;Map style: $what&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/StyleLoader.kt"
+            line="184"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ChromeOsAbiSupport"
+        message="Missing x86_64 ABI support for ChromeOS"
+        errorLine1="            abiFilters += listOf(&quot;arm64-v8a&quot;)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="40"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="Wakelock"
+        message="The `release()` call is not always reached (can exit the method via path acquire() → if → > → then → trace() → if → then / → + → else → removeCallbacks() → nextChangeInMs() → uptimeMillis() → let() → postDelayed() → return → exit; use try/finally to ensure `release` is always called)"
+        errorLine1="                if (o.lock) l.acquire() else l.release(if (o.keepOn) 0 else PowerManager.RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY)"
+        errorLine2="                                               ~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/PocketScreen.kt"
+            line="106"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="WakelockTimeout"
+        message="Provide a timeout when requesting a wakelock with `PowerManager.Wakelock.acquire(long timeout)`. This will ensure the OS will cleanup any wakelocks that last longer than you intend, and will save your user&apos;s battery."
+        errorLine1="                if (o.lock) l.acquire() else l.release(if (o.keepOn) 0 else PowerManager.RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY)"
+        errorLine2="                            ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/PocketScreen.kt"
+            line="106"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="        Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/update/AppUpdater.kt"
+            line="169"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="        if (km == null || !km.isKeyguardLocked || android.os.Build.VERSION.SDK_INT &lt; 26) { toPlan(); return }"
+        errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/MainActivity.kt"
+            line="434"
+            column="51"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= 26) nm().createNotificationChannel("
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/cells/MapLoadService.kt"
+            line="101"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="                if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/cells/MapLoadService.kt"
+            line="152"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="        routeChannelOk = Build.VERSION.SDK_INT &lt; 26 || try {"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/recording/RecordingService.kt"
+            line="173"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; 26) return"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/recording/RecordingService.kt"
+            line="1078"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields (static reference to `Backups` which has field `app` pointing to `Context`); this is a memory leak"
+        errorLine1="/**"
+        errorLine2="^">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="19"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields; this is a memory leak"
+        errorLine1="    @Volatile private var app: Context? = null"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="40"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="            throw BackupException(if (d.usableSpace &lt; bytes.size) Txt.s(Res.string.backup_err_storage_full) else Txt.s(Res.string.backup_err_file_storage), e)"
+        errorLine2="                                        ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/AndroidBackupStore.kt"
+            line="151"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="    private val freeSpace: (File) -> Long = { it.usableSpace },"
+        errorLine2="                                                 ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/cells/CellStore.kt"
+            line="41"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="    private val freeSpace: (File) -> Long = { it.usableSpace },"
+        errorLine2="                                                 ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/cells/CellStore.kt"
+            line="41"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="        val free = dest.parentFile?.usableSpace ?: Long.MAX_VALUE"
+        errorLine2="                                    ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/DataImporter.kt"
+            line="95"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="            val free = store.root.apply { mkdirs() }.usableSpace"
+        errorLine2="                                                     ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/cells/MapCells.kt"
+            line="929"
+            column="54"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="        if (dir.apply { mkdirs() }.usableSpace in 1 until p.bytes + finalSize + SPACE_MARGIN) {"
+        errorLine2="                                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Rd5PartStore.kt"
+            line="310"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="            if (total > 0 &amp;&amp; (segmentsDir.usableSpace &lt; total - done + 50L * 1024 * 1024)) {"
+        errorLine2="                                          ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/SegmentDownloader.kt"
+            line="52"
+            column="43"/>
+    </issue>
+
+    <issue
+        id="MonochromeLauncherIcon"
+        message="The application adaptive icon is missing a monochrome tag"
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        val uri = Uri.parse(handle)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/AndroidBackupStore.kt"
+            line="26"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        val uri = Uri.parse(handle)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/AndroidBackupStore.kt"
+            line="50"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        val uri = Uri.parse(handle)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/AndroidBackupStore.kt"
+            line="68"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(ctx).edit().putString(KEY, c.name).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/AppLanguage.kt"
+            line="53"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse(&quot;package:${context.packageName}&quot;))"
+        errorLine2="                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/update/AppUpdater.kt"
+            line="173"
+            column="60"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                sp.edit().putLong(&quot;updateCheck&quot;, now).apply()"
+        errorLine2="                ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/AppViewModel.kt"
+            line="1540"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            a.contentResolver.releasePersistableUriPermission(Uri.parse(old),"
+        errorLine2="                                                              ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="105"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs(a).edit().putString(&quot;tree&quot;, tree?.toString()).putString(&quot;treeLabel&quot;, label).remove(&quot;lastError&quot;).commit()"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="110"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(ctx(context)).edit().remove(&quot;pendingFailure&quot;).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="119"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs(a).edit().putLong(&quot;lastMs&quot;, System.currentTimeMillis()).remove(&quot;lastError&quot;).apply()"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="124"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs(a).edit().putString(&quot;lastError&quot;, reason).putString(&quot;pendingFailure&quot;, text).apply()"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="132"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(a).edit().clear().putBoolean(&quot;restoreOffered&quot;, true).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="201"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun setRestoreOffered(context: Context) { prefs(ctx(context)).edit().putBoolean(&quot;restoreOffered&quot;, true).apply() }"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/backup/Backups.kt"
+            line="209"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        val app = Intent(Intent.ACTION_VIEW, Uri.parse(link.appUri)).setPackage(PoiLinks.GOOGLE_MAPS_PACKAGE)"
+        errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/poi/GoogleMapsLink.kt"
+            line="114"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        return start(context, app) || start(context, Intent(Intent.ACTION_VIEW, Uri.parse(link.webUrl)))"
+        errorLine2="                                                                                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/poi/GoogleMapsLink.kt"
+            line="115"
+            column="81"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        PoiLinks.websiteUrl(website)?.let { start(context, Intent(Intent.ACTION_VIEW, Uri.parse(it))) } ?: false"
+        errorLine2="                                                                                      ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/poi/GoogleMapsLink.kt"
+            line="119"
+            column="87"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        PoiLinks.wikipediaUrl(tag)?.let { start(context, Intent(Intent.ACTION_VIEW, Uri.parse(it))) } ?: false"
+        errorLine2="                                                                                    ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/poi/GoogleMapsLink.kt"
+            line="122"
+            column="85"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        PoiLinks.phoneUri(phone)?.let { start(context, Intent(Intent.ACTION_DIAL, Uri.parse(it))) } ?: false"
+        errorLine2="                                                                                  ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/poi/GoogleMapsLink.kt"
+            line="126"
+            column="83"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun remember(c: Context, fingerprint: String) { c.getSharedPreferences(PREFS, 0).edit().putString(KEY, fingerprint).apply() }"
+        errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/IncomingIntent.kt"
+            line="41"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        sp.edit().putLong(&quot;crashShownUntil&quot;, crash.last).apply()"
+        errorLine2="        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/MainActivity.kt"
+            line="612"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        onMoreHelp = { b -> open(Intent(Intent.ACTION_VIEW, Uri.parse(&quot;https://dontkillmyapp.com/${b.helpPage}&quot;)), &quot;brand help page&quot;) },"
+        errorLine2="                                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/MainActivity.kt"
+            line="692"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val bmp = android.graphics.Bitmap.createBitmap(s, s, android.graphics.Bitmap.Config.ARGB_8888)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="328"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="573"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="579"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="579"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="583"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(ROUTE_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="583"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="626"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="631"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="631"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="635"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(TURN_HINT_COLOR)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="635"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="931"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(color)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="937"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = android.graphics.Color.parseColor(color)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="937"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = if (hollow) android.graphics.Color.parseColor(color) else android.graphics.Color.WHITE"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="943"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        p.color = if (hollow) android.graphics.Color.parseColor(color) else android.graphics.Color.WHITE"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/map/MapController.kt"
+            line="943"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;lastActivity&quot;, v.name).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="24"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putInt(&quot;lastSac&quot;, v.coerceIn(1, 5)).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="39"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            sp.edit().putFloat(&quot;camLat&quot;, v.first.toFloat()).putFloat(&quot;camLon&quot;, v.second.toFloat())"
+        errorLine2="            ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="64"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        sp.edit().putStringSet(&quot;poiHidden&quot;, HashSet(now)).putInt(&quot;poiDefaultsVer&quot;, kinds.DEFAULTS_VERSION).apply()"
+        errorLine2="        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="74"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="97"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;plan&quot;, TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="120"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;planSavedName&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="128"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putLong(&quot;planSavedId&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="131"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;planSavedPoints&quot;, v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="134"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;planLinkPoints&quot;, v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="139"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;planPinned&quot;, TourDb.waypointsToJson(v.map { GpxWaypoint(it.lat, it.lon, null) })).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="144"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        sp.edit().remove(&quot;paceStore&quot;).apply()"
+        errorLine2="        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="152"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putString(&quot;vibrationFelt&quot;, v.name).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="161"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putBoolean(&quot;brandStepsDone&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="166"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putBoolean(&quot;setupWelcomeSeen&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="171"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun countAsk(what: String) = sp.edit().putInt(&quot;asks_$what&quot;, asks(what) + 1).apply()"
+        errorLine2="                                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="175"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun snooze(id: com.onpath.app.setup.CheckId, now: Long) = sp.edit().putLong(&quot;snooze_${id.name}&quot;, now).apply()"
+        errorLine2="                                                              ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="181"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { if (v != null) sp.edit().putLong(&quot;lastSeenAt&quot;, v.atMs).putString(&quot;lastSeenOk&quot;, v.ok.joinToString(&quot;,&quot;) { it.name }).apply() }"
+        errorLine2="                                ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="191"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putBoolean(&quot;devToolsUnlocked&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="196"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putLong(&quot;diagnosticsSeenMs&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="201"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putLong(&quot;routingDataCheckedAt&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="206"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) = sp.edit().putBoolean(&quot;followIsTrack&quot;, v).apply()"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/Prefs.kt"
+            line="211"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="    val uri = Uri.parse(url)"
+        errorLine2="              ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/ui/search/SearchHost.kt"
+            line="66"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        sp.edit().putString(&quot;recent&quot;, list.joinToString(&quot;\n&quot;) { encode(it) }).apply()"
+        errorLine2="        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/search/SearchStore.kt"
+            line="19"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun clearRecent() { sp.edit().remove(&quot;recent&quot;).apply() }"
+        errorLine2="                        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/search/SearchStore.kt"
+            line="22"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        sp.edit().putString(&quot;names&quot;, names.entries.toList().takeLast(200)"
+        errorLine2="        ~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/search/SearchStore.kt"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/TourDb.kt"
+            line="144"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/TourDb.kt"
+            line="222"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/TourDb.kt"
+            line="250"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/onpath/app/data/TourDb.kt"
+            line="273"
+            column="9"/>
+    </issue>
+
+</issues>

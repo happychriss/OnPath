@@ -105,7 +105,9 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   GitHub Release with the APK – once per version (re-runs skip existing releases). The release runs
   **risk-based unit tests** (`tools/ci/risk_tests.py`: core-feature packages always + packages changed since the last
   release; build files → all) beside the emulator start test; the **full** unit suite runs after every push in
-  `unit.yml` (not a gate – a red run is fixed at once, like E2E). Cloud sessions may not
+  `unit.yml` with the screenshot check (`verifyPaparazziDebug` against the committed images) and a lint job that only
+  reports new findings (known ones in `app/lint-baseline.xml`) – not a gate; a red run is fixed at once, like E2E.
+  Actions in the workflows are pinned to a commit (`# vX.Y.Z` beside it). Cloud sessions may not
   push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
 

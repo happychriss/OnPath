@@ -15,8 +15,6 @@ the git log.
 - **[desktop] Germany pre-built on donald → TEST R2 (owner 2026-10-30)** – all ~500 map cells + region packages (z7–9)
   for Germany, built overnight with `tools/dev/publish_cells.sh` (origin/main, job image, 2–3 at once, low priority),
   doorman adopts them. Production stays cloud-only.
-- **Flaky under full local load:** `NoStaleDownloadsTest.pointNoLongerWantedIsNotDownloaded` failed once in a full local
-  run, green alone and in CI – watch it.
 - **Web planner: mirror app changes (keep this list current)** – owner 2026-10-30: every app change the browser should
   mirror gets a line here (what · app commit · what the web does); a done line is removed. web-spike last merged main at
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
@@ -135,8 +133,9 @@ the git log.
 - **Router classes** – the app does not compare the cells' `wayclass` hash with its own profiles (a profile change
   needs a rebuild of all cells); tertiary and bigger roads have no class (`docs/map-style-notes.md`).
 - **Safety:** cliffs and fords on the map.
-- **CI:** `verifyPaparazziDebug` and lint do not run in CI; `actions/checkout@v4` / `setup-java@v4` give Node 20
-  warnings.
+- **CI follow-ups:** lint reports only (known findings in `app/lint-baseline.xml`) – work the baseline down, then let
+  lint fail the run; `gradle/actions` stays on v5 (MIT): v6 moves its caching into a closed component under Gradle's
+  Terms of Use – owner to decide before upgrading.
 - **Compass accuracy gating; DEM-based ascent** (today GPS altitude with 5 m hysteresis).
 - **Small:** Ifinger T1 JVM test (`tools/routing/jvm-test/RerouterJvmTest.kt`, expects "unreachable", BRouter finds
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).

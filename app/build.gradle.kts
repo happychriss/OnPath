@@ -100,6 +100,12 @@ android {
     lint {
         abortOnError = false
         checkReleaseBuilds = false
+        // Known findings live in the baseline: only new ones are reported (CI job "lint" in unit.yml).
+        // Refresh after fixing some: delete the file, run ./gradlew :app:lintDebug once (it writes a new one).
+        baseline = file("lint-baseline.xml")
+        // "a newer version exists" depends on the day, not on the code: it would show up as new after every library
+        // release (the baseline matches the message, which names the version)
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
