@@ -135,7 +135,7 @@
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Tour beenden?</string>
     <string name="nav_delete_track_title">Diesen Track löschen?</string>
-    <string name="nav_recycle_bin_note">Er bleibt %1$d Tage im Papierkorb.</string>
+    <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
     <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
     <string name="nav_continue">Weiter</string>
