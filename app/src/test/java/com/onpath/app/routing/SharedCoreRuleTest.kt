@@ -13,7 +13,7 @@ import java.io.File
 class SharedCoreRuleTest {
     private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync", "setup")
     /** Single shared files in packages that also hold platform code (package/name; the web planner compiles them). */
-    private val files = listOf("search/PlaceIndex.kt")
+    private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */
