@@ -55,7 +55,7 @@ check((await page.textContent('#summary .subline')).includes('Route not calculat
 check(await pins() === 2, 'both points still there');
 // 1b. Plan anyway: no second question, the planner runs (no routing data up north here: its plain error)
 await page.click('#planAnyway');
-await page.waitForFunction(() => !document.querySelector('dialog.longroute') && /Planned|failed|Planning/.test(document.getElementById('status').textContent), null, { timeout: 120_000 });
+await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
 check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking again');
 
 // 1c. a clicked point that makes a short plan very long: Cancel takes it back (PlanStatus.onCancel → UNDO)
