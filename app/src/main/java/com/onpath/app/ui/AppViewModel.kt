@@ -3356,6 +3356,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun continueRecording(t: Tour) {
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.CONTINUE)
         unfinished = null
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {
             putExtra(RecordingService.EXTRA_CONTINUE_ID, t.id)
@@ -3393,6 +3394,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
         val rides = unfinishedRides?.second?.rides
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.SAVE)
         unfinished = null; unfinishedRides = null
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
@@ -3414,6 +3416,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
     fun deleteUnfinished(t: Tour) {
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.DELETE)
         unfinished = null; unfinishedRides = null
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")

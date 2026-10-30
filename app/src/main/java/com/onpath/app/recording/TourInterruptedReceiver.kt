@@ -51,7 +51,7 @@ class TourInterruptedReceiver : BroadcastReceiver() {
         try { NotificationManagerCompat.from(app).notify(INTERRUPTED_ID, n) } catch (e: SecurityException) {
             Problems.warn("recording", "Interrupted-tour notification refused (notification permission?)", e)
         }
-        Problems.warn("recording", "Recording of '${tour.name}' was interrupted by ${if (boot) "a restart" else "an update"}; user asked to continue")
+        Problems.warn("recording", InterruptedLog.interruptedLine(tour.name, boot))
     }
 
     companion object { private const val INTERRUPTED_ID = 45 }
