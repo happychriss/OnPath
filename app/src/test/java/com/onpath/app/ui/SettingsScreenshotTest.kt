@@ -117,10 +117,6 @@ class SettingsScreenshotTest {
     @Test fun syncAsk() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi(askCheck = "395 514")) }
     /** Paired: the browser's name, "Last synced: 1 min ago", Unpair – no Sync now (it syncs every minute by itself). */
     @Test fun syncPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC) }
-    /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, then the paired page. */
-    @Test fun syncPairedNote() = paparazzi.snapshot {
-        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 5_000, pairedNote = true))
-    }
     /** Paired, the last pass found items from a newer app (amber line). */
     @Test fun syncNewerApp() = paparazzi.snapshot {
         Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Firefox on Windows", lastOkMs = now - 86_400_000,

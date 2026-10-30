@@ -86,9 +86,11 @@ the git log.
       daily salted `ipHash`; `[observability.logs] invocation_logs = false` in `web/host/wrangler.toml`.
     - Plan header: time + distance never cut (own line when narrow) · e55badb · check the web sheet on a narrow phone.
       The German chip "Wandern · T2" – the web already builds it so.
-    - Pairing confirmation · after pairing the browser shows the same short confirmation ('Verbunden – … Gespeichert
-      wird auf deinem Handy.', app string `sync_paired_note`, with OK); the route list may say 'Gespeichert auf deinem
-      Handy' (owner 2026-10-30).
+    - Pairing confirmation · (this commit, app side) · after pairing the browser shows the same sentence with OK, until
+      OK: 'Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.' (EN 'Paired.
+      What you save in the browser comes to your phone – everything is kept there.', app string `sync_paired_plan`);
+      the phone goes straight back to the Plan map and shows it there as a strip with OK (first pairing and a joining
+      browser alike); the route list may say 'Gespeichert auf deinem Handy' (owner 2026-10-30).
     - Pull right away when the plans list opens (owner 2026-10-30) · app: a pass when My routes / its Planned tab /
       Browser sync opens (`SyncPoll.opened` / `openDue`), not within 10 s of another pass, never during a tour; the
       ~60 s poll runs only while My routes / Browser sync is shown, no longer on the Plan map · browser: poll only

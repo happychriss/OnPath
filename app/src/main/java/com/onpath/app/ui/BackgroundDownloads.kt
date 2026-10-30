@@ -308,19 +308,28 @@ fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> 
         detail = if (mustBuild) str(Res.string.maps_here_ask_detail) else null)
 
 /**
+ * A note the user must see once at the top of the map, with OK (owner allows this one blue strip without a question,
+ * e.g. "Paired. …"): same look as the map strips, stays until OK, the map below stays usable.
+ */
+@Composable
+fun OkNoteStrip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onOk: () -> Unit, modifier: Modifier = Modifier) =
+    Notice(title, warning = false, onClose = null, listOf(str(Res.string.common_ok) to onOk), modifier, icon = icon)
+
+/**
  * One strip at the top: a title, an optional detail line, buttons right-aligned (last = main). Blue (ACTION) for a
  * question; amber with ⚠ (WARNING) for a failure that offers "Try again".
  */
 @Composable
 private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
-                   buttons: List<Pair<String, () -> Unit>>, modifier: Modifier, detail: String? = null) {
+                   buttons: List<Pair<String, () -> Unit>>, modifier: Modifier, detail: String? = null,
+                   icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Download) {
     val bg = if (warning) OnPathColors.WarnContainer else OnPathColors.InfoBlue.copy(alpha = 0.94f)
     val fg = if (warning) OnPathColors.OnWarnContainer else Color.White
     Surface(shape = RoundedCornerShape(12.dp), color = bg, contentColor = fg, shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (warning) Icons.Outlined.Warning else Icons.Outlined.Download, null,
+                Icon(if (warning) Icons.Outlined.Warning else icon, null,
                     tint = if (warning) OnPathColors.Warn else fg, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))

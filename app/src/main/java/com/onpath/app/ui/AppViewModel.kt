@@ -191,8 +191,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var settings by mutableStateOf(prefs.settings)
         private set
     /**
-     * The pairing just made here was stored: Browser sync shows "Paired – … They're kept on your phone." with OK
-     * (owner 2026-10-30) until OK, Unpair or the page is left; never for "already paired".
+     * A pairing was just made here (first browser or another one, A-017): the Plan map shows "Paired. …" with OK at the
+     * top (owner 2026-10-30) until OK or Unpair; never for "already paired" or a failure ([PairLanding]).
      */
     var pairedNote by mutableStateOf(false)
         private set
@@ -210,7 +210,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
-            if (v != SettingsPage.SYNC) pairedNote = false // the "Paired – …" confirmation lasts until the page is left
             page = v
         }
 
@@ -3592,7 +3591,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.onpath.app.plansync.PairStep.JOIN -> "another browser – asking (it joins this phone's mailbox)"
             })
             when (step) {
-                com.onpath.app.plansync.PairStep.ALREADY -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                com.onpath.app.plansync.PairStep.ALREADY -> {
+                    pairEnded(PairResult.ALREADY) // stays on Browser sync, no "Paired. …" strip
+                    sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                }
                 // A-017: a second browser (laptop + desktop, a friend's PC) – the same check digits and Pair, no "unpair first"
                 else -> if (!pairJoining) pairAsk = secret
             }
@@ -3611,20 +3613,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun confirmPair() {
         val s = pairAsk ?: return
         pairedNote = false
-        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairedNote = ok }; return }
+        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }; return }
         if (pairJoining) return
         pairJoining = true
         sync.join(s) { o ->
             pairJoining = false
             if (pairAsk === s) pairAsk = null // (Pair / Cancel are hidden meanwhile; a newer scanned code stays)
             when (o) {
-                null -> sync.pair(s) { ok -> pairedNote = ok } // unpaired meanwhile: a normal pairing
-                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairedNote = true
-                is com.onpath.app.sync.SyncRound.Outcome.Offline -> sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS)
-                is com.onpath.app.sync.SyncRound.Outcome.Ended -> sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS)
-                is com.onpath.app.sync.SyncRound.Outcome.Refused -> sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS)
+                // unpaired meanwhile: a normal pairing
+                null -> sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }
+                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairEnded(PairResult.JOINED)
+                is com.onpath.app.sync.SyncRound.Outcome.Offline -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS) }
+                is com.onpath.app.sync.SyncRound.Outcome.Ended -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS) }
+                is com.onpath.app.sync.SyncRound.Outcome.Refused -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS) }
             }
         }
+    }
+
+    /** Pair ended (main thread): made → back to the Plan map with "Paired. …" + OK (owner 2026-10-30); else stay. */
+    private fun pairEnded(r: PairResult) {
+        val s = PairLanding.after(r, PairLanding.Screens(showSettings, settingsPage, routesOpen, pairedNote))
+        Problems.info("sync", "Pair ended: $r" + if (s.note) " – back to the Plan map with the note" else "")
+        if (settingsPage != s.settingsPage) settingsPage = s.settingsPage
+        if (showSettings != s.settingsOpen) showSettings = s.settingsOpen
+        if (routesOpen != s.routesOpen) routesOpen = s.routesOpen
+        pairedNote = s.note
     }
 
     fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }

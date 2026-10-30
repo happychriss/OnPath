@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.plansync.PlanSync
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
-import com.onpath.strings.sync_paired_note
+import com.onpath.strings.sync_paired_plan
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -22,21 +22,38 @@ class SyncSettingsTest {
         assertEquals(Summary("Pair with this browser?", Summary.Attention.ACCENT), SettingsSummary.sync(SyncUi(askCheck = "395 514")))
     }
 
-    /** "Paired – …" with OK right after Pair (owner 2026-10-30): only once a pairing made here was stored. */
-    @Test fun pairedNoteShowsOnlyAfterAPairingMadeHere() {
+    /**
+     * After Pair (owner 2026-10-30): a pairing made – the first one or another browser joining (A-017) – goes straight
+     * back to the Plan screen with "Paired. …" + OK; already paired or a failure stays on the pairing step, no note.
+     */
+    @Test fun pairLanding() {
+        val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = false)
+        val plan = PairLanding.Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = true)
+        assertEquals(plan, PairLanding.after(PairResult.PAIRED, onSync))
+        assertEquals(plan, PairLanding.after(PairResult.JOINED, onSync))
+        // Settings opened over My routes: both close, the Plan map shows
+        assertEquals(plan, PairLanding.after(PairResult.JOINED, onSync.copy(routesOpen = true)))
+        // nothing made: stay where the user is, no note
+        assertEquals(onSync, PairLanding.after(PairResult.ALREADY, onSync))
+        assertEquals(onSync, PairLanding.after(PairResult.NOT_STORED, onSync))
+        assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync))
+        // a failure never leaves an older note behind
+        assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync.copy(note = true)))
+        assertEquals("Paired. What you save in the browser comes to your phone – everything is kept there.",
+            Txt.s(Res.string.sync_paired_plan))
+        val before = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            assertEquals("Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.",
+                Txt.s(Res.string.sync_paired_plan))
+        } finally { java.util.Locale.setDefault(before) }
+    }
+
+    /** The joining spinner shows only while a code waits (its Pair was tapped). */
+    @Test fun joiningOnlyWithACode() {
         val paired = PlanSync.State(paired = true, peer = "Chrome on Linux")
-        // Pair tapped, the pairing stored: the confirmation instead of the paired page
-        assertTrue(SyncUi.of(paired, askCheck = null, pairedNote = true).pairedNote)
-        // OK tapped (or the page left): the normal paired page
-        assertEquals(SyncUi(paired = true, peer = "Chrome on Linux"), SyncUi.of(paired, askCheck = null, pairedNote = false))
-        // "already paired" (a code of the same browser scanned again) never sets it
-        assertTrue(!SyncUi.of(paired, askCheck = null).pairedNote)
-        // the pairing could not be stored / was ended meanwhile: not paired – no confirmation
-        assertTrue(!SyncUi.of(PlanSync.State(), askCheck = null, pairedNote = true).pairedNote)
-        // a new code waits for Pair / Cancel: the question first
-        assertTrue(!SyncUi.of(paired, askCheck = "395 514", pairedNote = true).pairedNote)
-        assertEquals("Paired – you can now edit your routes in the browser too. They're kept on your phone.",
-            Txt.s(Res.string.sync_paired_note))
+        assertEquals(SyncUi(paired = true, peer = "Chrome on Linux"), SyncUi.of(paired, askCheck = null, joining = true))
+        assertTrue(SyncUi.of(paired, askCheck = "395 514", joining = true).joining)
     }
 
     @Test fun statusLines() {

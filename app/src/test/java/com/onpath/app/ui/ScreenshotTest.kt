@@ -910,6 +910,11 @@ class ScreenshotTest {
     }
 
     /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
+    /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
+    @Test fun planPairedNote() = paparazzi.snapshot {
+        Frame(top = { PairedNoteStrip(onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
     @Test fun planUnsavedLongHike() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3, unsaved = true),
             PlanCallbacks()) }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
@@ -44,28 +45,55 @@ data class SyncUi(
     val problem: PlanSync.Problem? = null,
     /** A scanned pairing code waits for Pair / Cancel: its six check digits ("395 514"). */
     val askCheck: String? = null,
-    /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, before the paired page. */
-    val pairedNote: Boolean = false,
     /** Pair was tapped for another browser while paired (A-017) and its one write runs: a spinner instead of the buttons. */
     val joining: Boolean = false,
 ) {
     companion object {
-        /**
-         * [pairedNote]: a pairing made here was stored and its OK not tapped yet. Shown only while the state says paired
-         * and no new code waits for Pair / Cancel ("already paired" never sets it).
-         */
-        fun of(s: PlanSync.State, askCheck: String?, pairedNote: Boolean = false, joining: Boolean = false) =
-            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, pairedNote = pairedNote && s.paired && askCheck == null,
-                joining = joining && askCheck != null)
+        fun of(s: PlanSync.State, askCheck: String?, joining: Boolean = false) =
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null)
     }
 }
+
+/** How a tapped Pair ended on the phone. */
+enum class PairResult {
+    /** The first pairing was stored. */
+    PAIRED,
+    /** Another browser joined this phone's mailbox (A-017). */
+    JOINED,
+    /** The scanned code is the browser this phone is paired with already (no question was asked). */
+    ALREADY,
+    /** The pairing could not be stored (the page shows the storage problem). */
+    NOT_STORED,
+    /** Joining failed: offline, code used / ended, refused – a red line on the pairing step. */
+    JOIN_FAILED,
+}
+
+/**
+ * Where the app goes after Pair (owner 2026-10-30): a pairing made (first browser or another one) → straight back to
+ * the Plan screen (Settings and My routes closed) with the "Paired. …" strip and OK at the top of the map, until OK;
+ * anything else stays where it is, without the strip.
+ */
+object PairLanding {
+    data class Screens(val settingsOpen: Boolean, val settingsPage: SettingsPage?, val routesOpen: Boolean, val note: Boolean)
+
+    fun after(result: PairResult, now: Screens): Screens = when (result) {
+        PairResult.PAIRED, PairResult.JOINED -> Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = true)
+        else -> now.copy(note = false)
+    }
+}
+
+/**
+ * The pairing just made, at the top of the Plan map (owner 2026-10-30): what it means + OK. Stays until OK (never by
+ * itself); the map below stays usable.
+ */
+@Composable
+fun PairedNoteStrip(onOk: () -> Unit, modifier: Modifier = Modifier) =
+    OkNoteStrip(str(Res.string.sync_paired_plan), Icons.Outlined.CheckCircle, onOk, modifier)
 
 class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},
     val onPair: () -> Unit = {},
     val onCancelPair: () -> Unit = {},
-    /** OK under the "Paired – …" confirmation: the normal paired page. */
-    val onPairedOk: () -> Unit = {},
     /** After the question (it can lose something: the browser stops getting the routes). */
     val onUnpair: () -> Unit = {},
 )
@@ -185,11 +213,6 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                         Button(onClick = cb.onPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_pair)) }
                         TextButton(onClick = cb.onCancelPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
                     }
-                }
-                ui.pairedNote -> {
-                    // the pairing just made (owner 2026-10-30): what it means, then OK → the paired page
-                    Text(str(Res.string.sync_paired_note), style = MaterialTheme.typography.bodyLarge)
-                    Button(onClick = cb.onPairedOk, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_ok)) }
                 }
                 !ui.paired -> {
                     Text(str(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium)

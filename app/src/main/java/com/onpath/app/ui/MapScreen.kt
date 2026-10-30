@@ -329,11 +329,15 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
     // plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
     val chipOn = bg != null && !vm.searchOpen && notice == null
-    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null) {
-        vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null) && !vm.searchOpen)
+    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null, vm.pairedNote) {
+        vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null || vm.pairedNote) && !vm.searchOpen)
     }
     val here = vm.hereAsk
-    if (notice != null && !vm.searchOpen) {
+    if (vm.pairedNote && !vm.searchOpen) {
+        // a pairing was just made (owner 2026-10-30): "Paired. …" with OK, until OK; the map strips wait for it
+        PairedNoteStrip(onOk = vm::pairedNoteOk,
+            modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+    } else if (notice != null && !vm.searchOpen) {
         MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
     } else if (here != null && !vm.searchOpen) {
         // opening the app asks for the map of here, it never loads by itself, e.g. in a car (owner)
