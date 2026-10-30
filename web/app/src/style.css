@@ -9,16 +9,8 @@
   --sheet-w: 384px; --sheet-h: 0px;
   --site-bg: #fafaf6; --site-fg: #243c31; --site-line: #dce1d6; --site-soft: #eef0e8;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #1b1d1c; --fg: #e8eae7; --muted: #a8aca7; --line: #343836; --surface2: #252826;
-  --green-fg: #8ED6A8; --green-light: #23402f; --chip: #27304d; --chip-fg: #dfe5fb; --warn-bg: #3a2c12; --warn: #f3c66e;
-  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark;
-  --site-bg: #1f2421; --site-fg: #e3ebe5; --site-line: #343c37; --site-soft: #2a312d; } }
-:root[data-theme="dark"] {
-  --bg: #1b1d1c; --fg: #e8eae7; --muted: #a8aca7; --line: #343836; --surface2: #252826;
-  --green-fg: #8ED6A8; --green-light: #23402f; --chip: #27304d; --chip-fg: #dfe5fb; --warn-bg: #3a2c12; --warn: #f3c66e;
-  --error-bg: #4a1f1c; --error: #ff8a80; --shadow: rgba(0,0,0,.55); color-scheme: dark;
-  --site-bg: #1f2421; --site-fg: #e3ebe5; --site-line: #343c37; --site-soft: #2a312d; }
+/* Always light, like the app (owner 2026-10-30: the app has no dark mode; the map is light) – no dark scheme. */
+:root { color-scheme: light; }
 html, body { margin: 0; height: 100%; font: 14px/1.4 Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg); background: var(--bg); }
 [hidden] { display: none !important; }
 #app { position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; }

@@ -58,12 +58,14 @@ for (const sel of ['.product', '.nav button .ic', '.chip .ic']) {
 }
 const prim = light.find((x) => x.sel === 'button.primary');
 if (prim && prim.fill !== appGreen) contrastFails.push(`button.primary fill ${prim.fill}, not the app's green`);
+for (const x of light) if (x.ratio < x.min) contrastFails.push(`${x.sel} ${x.color} contrast ${x.ratio.toFixed(2)} < ${x.min}`);
+// always light like the app (owner 2026-10-30): a dark system setting changes nothing
 await page.emulateMedia({ colorScheme: 'dark' });
 const dark = await greens();
-for (const [mode, list] of [['light', light], ['dark', dark]]) for (const x of list) {
-  if (x.ratio < x.min) contrastFails.push(`${mode}: ${x.sel} ${x.color} contrast ${x.ratio.toFixed(2)} < ${x.min}`);
-}
-console.log('greens:', [...light.map((x) => `light ${x.sel} ${x.ratio.toFixed(1)}`), ...dark.map((x) => `dark ${x.sel} ${x.ratio.toFixed(1)}`)].join(' · '));
+const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+if (bg !== 'rgb(255, 255, 255)') contrastFails.push(`dark system setting: page background ${bg}, not light`);
+for (const x of dark) { const l = light.find((y) => y.sel === x.sel); if (l && l.color !== x.color) contrastFails.push(`dark system setting changed ${x.sel}: ${x.color}`); }
+console.log('greens:', light.map((x) => `${x.sel} ${x.ratio.toFixed(1)}`).join(' · '));
 if (contrastFails.length) errors.push('one green / contrast: ' + contrastFails.join('; '));
 await browser.close(); server.close();
 console.log('summary:', summary.replace(/\s+/g, ' ').trim());
